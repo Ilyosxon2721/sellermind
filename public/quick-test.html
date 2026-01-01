@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Быстрый тест API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .panel {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button.success:hover {
+            background: #218838;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .status.loading {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .status.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .status.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h1>⚡ Быстрый тест системы</h1>
+        <p>Автоматически используется ваш Bearer токен</p>
+
+        <button onclick="testAll()">🧪 Запустить все тесты</button>
+        <button onclick="testRequirements()">1️⃣ Тест: Загрузка требований</button>
+        <button onclick="testAuth()">2️⃣ Тест: Авторизация</button>
+        <button onclick="testCreateWB()" class="success">3️⃣ Создать тестовый аккаунт WB</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const BEARER_TOKEN = '38|Ii2FMDNNIR0VkhieP7Cnnr03uWX4qvqx3FTXmLI156f9d263';
+
+        function addResult(title, status, data) {
+            const resultsDiv = document.getElementById('results');
+            const panel = document.createElement('div');
+            panel.className = 'panel';
+
+            let statusClass = 'loading';
+            let icon = '⏳';
+            if (status === 'success') {
+                statusClass = 'success';
+                icon = '✅';
+            } else if (status === 'error') {
+                statusClass = 'error';
+                icon = '❌';
+            }
+
+            panel.innerHTML = `
+                <h2>${icon} ${title}</h2>
+                <div class="status ${statusClass}">
+                    ${typeof data === 'string' ? data : ''}
+                </div>
+                ${typeof data === 'object' ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+
+            resultsDiv.appendChild(panel);
+            return panel;
+        }
+
+        async function testRequirements() {
+            const panel = addResult('Тест 1: Загрузка требований (без авторизации)', 'loading', 'Отправка запроса...');
+
+            try {
+                const response = await fetch('/api/marketplace/accounts/requirements?marketplace=wb', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    panel.innerHTML = `
+                        <h2>✅ Тест 1: Загрузка требований (без авторизации)</h2>
+                        <div class="status success">
+                            Успешно! Endpoint работает корректно.<br>
+                            Статус: ${response.status}<br>
+                            Маркетплейс: ${data.name}<br>
+                            Полей в форме: ${data.fields.length}<br>
+                            Setup guide токенов: ${data.setup_guide?.tokens?.length || 0}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    panel.innerHTML = `
+                        <h2>❌ Тест 1: Ошибка</h2>
+                        <div class="status error">
+                            Статус: ${response.status}<br>
+                            Ошибка: ${data.message || 'Неизвестная ошибка'}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                panel.innerHTML = `
+                    <h2>❌ Тест 1: Ошибка сети</h2>
+                    <div class="status error">${error.message}</div>
+                `;
+            }
+        }
+
+        async function testAuth() {
+            const panel = addResult('Тест 2: Проверка авторизации', 'loading', 'Отправка запроса...');
+
+            try {
+                const response = await fetch('/api/marketplace/accounts?company_id=1', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${BEARER_TOKEN}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    panel.innerHTML = `
+                        <h2>✅ Тест 2: Проверка авторизации</h2>
+                        <div class="status success">
+                            Авторизация работает!<br>
+                            Статус: ${response.status}<br>
+                            Найдено аккаунтов: ${data.accounts?.length || 0}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else if (response.status === 401) {
+                    panel.innerHTML = `
+                        <h2>❌ Тест 2: Ошибка авторизации</h2>
+                        <div class="status error">
+                            Bearer токен недействителен или истёк.<br>
+                            Статус: ${response.status}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    panel.innerHTML = `
+                        <h2>❌ Тест 2: Ошибка</h2>
+                        <div class="status error">
+                            Статус: ${response.status}<br>
+                            ${data.message || 'Неизвестная ошибка'}
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                panel.innerHTML = `
+                    <h2>❌ Тест 2: Ошибка сети</h2>
+                    <div class="status error">${error.message}</div>
+                `;
+            }
+        }
+
+        async function testCreateWB() {
+            const panel = addResult('Тест 3: Создание тестового аккаунта Wildberries', 'loading', 'Отправка запроса...');
+
+            const testData = {
+                company_id: 1,
+                marketplace: 'wb',
+                name: 'Тестовый аккаунт WB ' + new Date().toLocaleTimeString(),
+                credentials: {
+                    api_token: 'eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjQxMTE1djEiLCJ0eXAiOiJKV1QifQ.TEST_TOKEN_FOR_VALIDATION'
+                }
+            };
+
+            try {
+                const response = await fetch('/api/marketplace/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${BEARER_TOKEN}`
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok || response.status === 201) {
+                    panel.innerHTML = `
+                        <h2>✅ Тест 3: Аккаунт создан</h2>
+                        <div class="status success">
+                            ${data.message}<br>
+                            ID аккаунта: ${data.account?.id}<br>
+                            Активен: ${data.account?.is_active ? 'Да' : 'Нет'}
+                        </div>
+                        <div class="info">
+                            <strong>Отправленные данные:</strong>
+                            <pre>${JSON.stringify(testData, null, 2)}</pre>
+                        </div>
+                        <strong>Ответ сервера:</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else if (response.status === 422) {
+                    panel.innerHTML = `
+                        <h2>❌ Тест 3: Ошибка валидации (422)</h2>
+                        <div class="status error">
+                            ${data.message || data.error || 'Ошибка валидации'}<br>
+                            <strong>Это ожидаемая ошибка, если токен недействителен.</strong>
+                        </div>
+                        ${data.errors ? `
+                            <strong>Детали валидации:</strong>
+                            <pre>${JSON.stringify(data.errors, null, 2)}</pre>
+                        ` : ''}
+                        ${data.received_credentials ? `
+                            <p><strong>Получены поля credentials:</strong> ${data.received_credentials.join(', ')}</p>
+                        ` : ''}
+                        <div class="info">
+                            <strong>Отправленные данные:</strong>
+                            <pre>${JSON.stringify(testData, null, 2)}</pre>
+                        </div>
+                        <strong>Полный ответ:</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    panel.innerHTML = `
+                        <h2>❌ Тест 3: Ошибка ${response.status}</h2>
+                        <div class="status error">
+                            ${data.message || 'Неизвестная ошибка'}
+                        </div>
+                        <div class="info">
+                            <strong>Отправленные данные:</strong>
+                            <pre>${JSON.stringify(testData, null, 2)}</pre>
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                panel.innerHTML = `
+                    <h2>❌ Тест 3: Ошибка сети</h2>
+                    <div class="status error">${error.message}</div>
+                `;
+            }
+        }
+
+        async function testAll() {
+            document.getElementById('results').innerHTML = '';
+            await testRequirements();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testAuth();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testCreateWB();
+        }
+
+        // Автоматически запускаем тесты при загрузке
+        window.addEventListener('load', () => {
+            setTimeout(testAll, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Полный тест системы добавления аккаунтов</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin-bottom: 10px;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+        }
+        .alert-success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #060;
+        }
+        .alert-warning {
+            background: #ffe;
+            border: 1px solid #ffc;
+            color: #880;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .form-group .help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .required {
+            color: red;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button.success:hover {
+            background: #218838;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+        .json-key {
+            color: #9cdcfe;
+        }
+        .json-string {
+            color: #ce9178;
+        }
+        .json-number {
+            color: #b5cea8;
+        }
+        .json-boolean {
+            color: #569cd6;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 12px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .credentials-builder {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Полный тест системы добавления аккаунтов маркетплейса</h1>
+            <p>Эта страница помогает отладить процесс добавления аккаунта от начала до конца</p>
+        </div>
+
+        <div id="alerts"></div>
+
+        <div class="grid">
+            <!-- ШАГ 1: Настройка тестирования -->
+            <div class="panel">
+                <h2>Шаг 1: Настройка</h2>
+
+                <div class="form-group">
+                    <label>Bearer Token (для авторизации) <span class="required">*</span></label>
+                    <textarea id="bearer_token" rows="3" placeholder="Вставьте ваш Bearer токен для авторизации"></textarea>
+                    <div class="help">Необходим для создания аккаунта. Получите в системе авторизации.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Company ID <span class="required">*</span></label>
+                    <input type="number" id="company_id" value="1">
+                    <div class="help">ID вашей компании в системе</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Маркетплейс <span class="required">*</span></label>
+                    <select id="marketplace">
+                        <option value="">-- Выберите маркетплейс --</option>
+                        <option value="wb">Wildberries</option>
+                        <option value="uzum">Uzum Market</option>
+                        <option value="ozon">Ozon</option>
+                        <option value="ym">Яндекс.Маркет</option>
+                    </select>
+                </div>
+
+                <button onclick="step1LoadRequirements()">📋 Загрузить требования</button>
+            </div>
+
+            <!-- ШАГ 2: Требования -->
+            <div class="panel">
+                <h2>Шаг 2: Требования к полям</h2>
+                <div id="requirements-content">
+                    <p style="color: #666;">Выберите маркетплейс и нажмите "Загрузить требования"</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ШАГ 3: Заполнение формы -->
+        <div class="panel" id="form-panel" style="display: none;">
+            <h2>Шаг 3: Заполнение учётных данных</h2>
+            <div id="credentials-form"></div>
+            <div class="credentials-builder">
+                <strong>Предпросмотр JSON:</strong>
+                <pre id="json-preview">{}</pre>
+            </div>
+            <button class="success" onclick="step3CreateAccount()">✅ Создать аккаунт</button>
+        </div>
+
+        <!-- ШАГ 4: Результат -->
+        <div class="panel" id="result-panel" style="display: none;">
+            <h2>Шаг 4: Результат</h2>
+            <div id="result-content"></div>
+        </div>
+
+        <!-- Debug panel -->
+        <div class="panel">
+            <h2>🔍 Отладочная информация</h2>
+            <div id="debug-content">
+                <p style="color: #666;">Информация о запросах появится здесь</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRequirements = null;
+        let currentCredentials = {};
+
+        // ШАГ 1: Загрузка требований
+        async function step1LoadRequirements() {
+            const marketplace = document.getElementById('marketplace').value;
+
+            if (!marketplace) {
+                showAlert('error', 'Выберите маркетплейс');
+                return;
+            }
+
+            clearAlert();
+            addDebug('GET', `/api/marketplace/accounts/requirements?marketplace=${marketplace}`, 'Загрузка требований...');
+
+            try {
+                const response = await fetch(`/api/marketplace/accounts/requirements?marketplace=${marketplace}`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                addDebug('RESPONSE', response.status, data);
+
+                if (!response.ok) {
+                    showAlert('error', `Ошибка ${response.status}: ${data.message}`);
+                    return;
+                }
+
+                currentRequirements = data;
+                displayRequirements(data);
+                buildCredentialsForm(data);
+                showAlert('success', '✅ Требования успешно загружены!');
+
+            } catch (error) {
+                showAlert('error', 'Ошибка загрузки: ' + error.message);
+                addDebug('ERROR', 'Network error', error.message);
+            }
+        }
+
+        // Отобразить требования
+        function displayRequirements(data) {
+            const container = document.getElementById('requirements-content');
+            let html = `<h3>${data.name}</h3>`;
+            html += `<p>${data.description}</p>`;
+
+            if (data.setup_guide) {
+                html += `<div style="margin-top: 16px;">`;
+                html += `<div class="step">`;
+                html += `<div class="step-title">${data.setup_guide.title}</div>`;
+                html += `<div>${data.setup_guide.subtitle}</div>`;
+                html += `</div>`;
+
+                data.setup_guide.tokens.forEach(token => {
+                    html += `<div class="step">`;
+                    html += `<div class="step-title">${token.number}. ${token.name}</div>`;
+                    token.permissions.forEach(perm => {
+                        html += `<div style="font-size: 13px; color: #28a745;">${perm}</div>`;
+                    });
+                    html += `</div>`;
+                });
+
+                html += `<a href="${data.setup_guide.link}" target="_blank" style="color: #007bff;">${data.setup_guide.link_text}</a>`;
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Построить форму для credentials
+        function buildCredentialsForm(data) {
+            const container = document.getElementById('credentials-form');
+            currentCredentials = {};
+
+            let html = '<div class="form-group">';
+            html += '<label>Название аккаунта</label>';
+            html += '<input type="text" id="account_name" placeholder="Мой магазин" onchange="updateCredentials()">';
+            html += '<div class="help">Произвольное название для различения аккаунтов</div>';
+            html += '</div>';
+
+            data.fields.forEach(field => {
+                if (field.name === 'name') return; // Уже добавили выше
+
+                html += '<div class="form-group">';
+                html += `<label>${field.label} ${field.required ? '<span class="required">*</span>' : ''}</label>`;
+
+                if (field.type === 'array') {
+                    html += `<input type="text" id="field_${field.name}" placeholder="${field.placeholder || ''}" onchange="updateCredentials()" data-field="${field.name}" data-type="array">`;
+                } else {
+                    html += `<input type="${field.type}" id="field_${field.name}" placeholder="${field.placeholder || ''}" onchange="updateCredentials()" data-field="${field.name}">`;
+                }
+
+                html += `<div class="help">${field.help}</div>`;
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+            document.getElementById('form-panel').style.display = 'block';
+            updateCredentials();
+        }
+
+        // Обновить credentials
+        function updateCredentials() {
+            currentCredentials = {};
+
+            document.querySelectorAll('[data-field]').forEach(input => {
+                const fieldName = input.dataset.field;
+                const value = input.value.trim();
+
+                if (!value) return;
+
+                if (input.dataset.type === 'array') {
+                    // Парсим массив из строки "12345, 67890"
+                    currentCredentials[fieldName] = value.split(',').map(v => {
+                        const num = parseInt(v.trim());
+                        return isNaN(num) ? v.trim() : num;
+                    }).filter(v => v);
+                } else {
+                    currentCredentials[fieldName] = value;
+                }
+            });
+
+            const accountName = document.getElementById('account_name').value.trim();
+            const companyId = parseInt(document.getElementById('company_id').value);
+            const marketplace = document.getElementById('marketplace').value;
+
+            const requestBody = {
+                company_id: companyId,
+                marketplace: marketplace,
+                credentials: currentCredentials
+            };
+
+            if (accountName) {
+                requestBody.name = accountName;
+            }
+
+            document.getElementById('json-preview').textContent = JSON.stringify(requestBody, null, 2);
+        }
+
+        // ШАГ 3: Создать аккаунт
+        async function step3CreateAccount() {
+            const token = document.getElementById('bearer_token').value.trim();
+
+            if (!token) {
+                showAlert('error', '❌ Укажите Bearer токен для авторизации!');
+                return;
+            }
+
+            const companyId = parseInt(document.getElementById('company_id').value);
+            const marketplace = document.getElementById('marketplace').value;
+            const accountName = document.getElementById('account_name').value.trim();
+
+            const requestBody = {
+                company_id: companyId,
+                marketplace: marketplace,
+                credentials: currentCredentials
+            };
+
+            if (accountName) {
+                requestBody.name = accountName;
+            }
+
+            clearAlert();
+            addDebug('POST', '/api/marketplace/accounts', requestBody);
+
+            try {
+                const response = await fetch('/api/marketplace/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                addDebug('RESPONSE', response.status, data);
+
+                document.getElementById('result-panel').style.display = 'block';
+                const resultContainer = document.getElementById('result-content');
+
+                if (response.ok) {
+                    showAlert('success', '✅ ' + (data.message || 'Аккаунт успешно создан!'));
+
+                    resultContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>Успех!</strong> ${data.message}
+                        </div>
+                        <h3>Информация об аккаунте:</h3>
+                        <pre>${JSON.stringify(data.account, null, 2)}</pre>
+                        ${data.test_result ? `
+                            <h3>Результат теста подключения:</h3>
+                            <pre>${JSON.stringify(data.test_result, null, 2)}</pre>
+                        ` : ''}
+                    `;
+                } else {
+                    showAlert('error', '❌ Ошибка: ' + (data.message || data.error || 'Неизвестная ошибка'));
+
+                    resultContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            <strong>Ошибка ${response.status}</strong><br>
+                            ${data.message || data.error || 'Неизвестная ошибка'}
+                        </div>
+                        ${data.errors ? `
+                            <h3>Детали ошибок валидации:</h3>
+                            <pre>${JSON.stringify(data.errors, null, 2)}</pre>
+                        ` : ''}
+                        ${data.received_credentials ? `
+                            <h3>Получены поля:</h3>
+                            <p>${data.received_credentials.join(', ')}</p>
+                        ` : ''}
+                        <h3>Полный ответ сервера:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+
+            } catch (error) {
+                showAlert('error', '❌ Ошибка сети: ' + error.message);
+                addDebug('ERROR', 'Network error', error.message);
+            }
+        }
+
+        // Утилиты для UI
+        function showAlert(type, message) {
+            const container = document.getElementById('alerts');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+
+        function clearAlert() {
+            document.getElementById('alerts').innerHTML = '';
+        }
+
+        function addDebug(type, url, data) {
+            const container = document.getElementById('debug-content');
+            const timestamp = new Date().toLocaleTimeString();
+
+            let html = container.innerHTML;
+            if (html.includes('Информация о запросах')) {
+                html = '';
+            }
+
+            html += `<div class="step">`;
+            html += `<div class="step-title">[${timestamp}] ${type} ${url}</div>`;
+            html += `<pre>${typeof data === 'object' ? JSON.stringify(data, null, 2) : data}</pre>`;
+            html += `</div>`;
+
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

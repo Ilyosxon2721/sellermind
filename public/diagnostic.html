@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SellerMind AI - Platform Diagnostics</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; margin-bottom: 30px; }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #2563eb;
+            font-size: 18px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .status.success { background: #dcfce7; color: #166534; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+        .status.warning { background: #fef3c7; color: #92400e; }
+        .status.pending { background: #e5e7eb; color: #374151; }
+        button {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+        pre {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .info-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #374151;
+            display: inline-block;
+            min-width: 180px;
+        }
+        .fix-button {
+            background: #dc2626;
+            margin-left: 10px;
+        }
+        .fix-button:hover { background: #b91c1c; }
+        .success-message {
+            background: #dcfce7;
+            border: 1px solid #86efac;
+            color: #166534;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 SellerMind AI - Диагностика платформы</h1>
+
+    <!-- localStorage Check -->
+    <div class="test-section">
+        <h2>1. LocalStorage Status <span id="ls-status" class="status pending">Pending</span></h2>
+        <div id="ls-content"></div>
+        <button onclick="checkLocalStorage()">Проверить localStorage</button>
+        <button class="fix-button" onclick="fixLocalStorage()">Очистить и исправить</button>
+    </div>
+
+    <!-- API Health -->
+    <div class="test-section">
+        <h2>2. API Health Check <span id="api-status" class="status pending">Pending</span></h2>
+        <div id="api-content"></div>
+        <button onclick="checkAPI()">Проверить API</button>
+    </div>
+
+    <!-- Authentication -->
+    <div class="test-section">
+        <h2>3. Authentication Test <span id="auth-status" class="status pending">Pending</span></h2>
+        <div id="auth-content"></div>
+        <div style="margin: 15px 0;">
+            <input type="email" id="test-email" placeholder="Email" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 250px;">
+            <input type="password" id="test-password" placeholder="Password" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 250px; margin-left: 10px;">
+        </div>
+        <button onclick="testAuth()">Тест авторизации</button>
+    </div>
+
+    <!-- Database Connectivity -->
+    <div class="test-section">
+        <h2>4. Database & Routes <span id="db-status" class="status pending">Pending</span></h2>
+        <div id="db-content"></div>
+        <button onclick="checkDatabase()">Проверить базу данных</button>
+    </div>
+
+    <!-- Alpine.js Check -->
+    <div class="test-section">
+        <h2>5. Alpine.js Status <span id="alpine-status" class="status pending">Pending</span></h2>
+        <div id="alpine-content"></div>
+        <button onclick="checkAlpine()">Проверить Alpine.js</button>
+    </div>
+
+    <!-- Full System Test -->
+    <div class="test-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <h2 style="color: white; border-color: rgba(255,255,255,0.3);">🚀 Полная диагностика</h2>
+        <button onclick="runFullDiagnostic()" style="background: white; color: #667eea;">Запустить все тесты</button>
+    </div>
+
+    <script>
+        // 1. LocalStorage Check
+        function checkLocalStorage() {
+            const statusEl = document.getElementById('ls-status');
+            const contentEl = document.getElementById('ls-content');
+
+            try {
+                const keys = ['auth_token', '_x_auth_token', 'auth_user', '_x_auth_user', 'current_company', '_x_current_company', 'token'];
+                let html = '<div class="info-item"><strong>Найдено ключей:</strong></div>';
+                let hasErrors = false;
+
+                keys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value) {
+                        html += `<div class="info-item">`;
+                        html += `<span class="info-label">${key}:</span>`;
+
+                        try {
+                            const parsed = JSON.parse(value);
+                            html += `<span class="status success">OK</span> `;
+                            html += `<code>${value.substring(0, 50)}${value.length > 50 ? '...' : ''}</code>`;
+                        } catch (e) {
+                            hasErrors = true;
+                            html += `<span class="status error">JSON Parse Error</span> `;
+                            html += `<code>${value.substring(0, 50)}</code>`;
+                        }
+                        html += `</div>`;
+                    }
+                });
+
+                contentEl.innerHTML = html;
+
+                if (hasErrors) {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Errors Found';
+                    contentEl.innerHTML += '<div class="error-message">⚠️ Обнаружены ошибки парсинга JSON. Нажмите "Очистить и исправить"</div>';
+                } else {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'OK';
+                }
+            } catch (e) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Error';
+                contentEl.innerHTML = `<div class="error-message">Error: ${e.message}</div>`;
+            }
+        }
+
+        function fixLocalStorage() {
+            if (confirm('Это очистит все данные localStorage и потребует повторной авторизации. Продолжить?')) {
+                localStorage.clear();
+                document.getElementById('ls-content').innerHTML = '<div class="success-message">✅ localStorage очищен. Попробуйте войти заново.</div>';
+                document.getElementById('ls-status').className = 'status success';
+                document.getElementById('ls-status').textContent = 'Fixed';
+            }
+        }
+
+        // 2. API Health Check
+        async function checkAPI() {
+            const statusEl = document.getElementById('api-status');
+            const contentEl = document.getElementById('api-content');
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Checking...';
+
+            const endpoints = [
+                { name: 'Sanctum CSRF Cookie', url: '/sanctum/csrf-cookie', method: 'GET' },
+                { name: 'Health Check', url: '/api/health', method: 'GET' },
+            ];
+
+            let html = '';
+            let allOk = true;
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url, { method: endpoint.method });
+                    const status = response.status;
+                    const ok = status >= 200 && status < 300;
+
+                    html += `<div class="info-item">`;
+                    html += `<span class="info-label">${endpoint.name}:</span>`;
+                    html += `<span class="status ${ok ? 'success' : 'error'}">${status}</span>`;
+                    html += `</div>`;
+
+                    if (!ok) allOk = false;
+                } catch (e) {
+                    html += `<div class="info-item">`;
+                    html += `<span class="info-label">${endpoint.name}:</span>`;
+                    html += `<span class="status error">Failed</span> ${e.message}`;
+                    html += `</div>`;
+                    allOk = false;
+                }
+            }
+
+            contentEl.innerHTML = html;
+            statusEl.className = allOk ? 'status success' : 'status error';
+            statusEl.textContent = allOk ? 'OK' : 'Errors';
+        }
+
+        // 3. Authentication Test
+        async function testAuth() {
+            const statusEl = document.getElementById('auth-status');
+            const contentEl = document.getElementById('auth-content');
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            if (!email || !password) {
+                contentEl.innerHTML = '<div class="error-message">Введите email и пароль</div>';
+                return;
+            }
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Testing...';
+
+            try {
+                // Get CSRF cookie first
+                await fetch('/sanctum/csrf-cookie');
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Success';
+                    contentEl.innerHTML = `
+                        <div class="success-message">✅ Авторизация успешна!</div>
+                        <div class="info-item"><span class="info-label">User ID:</span> ${data.user?.id}</div>
+                        <div class="info-item"><span class="info-label">Email:</span> ${data.user?.email}</div>
+                        <div class="info-item"><span class="info-label">Token:</span> ${data.token?.substring(0, 20)}...</div>
+                    `;
+
+                    // Test companies endpoint
+                    const companiesRes = await fetch('/api/companies', {
+                        headers: {
+                            'Authorization': 'Bearer ' + data.token,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const companiesData = await companiesRes.json();
+
+                    contentEl.innerHTML += `
+                        <div class="info-item"><span class="info-label">Companies:</span> ${companiesData.companies?.length || 0} найдено</div>
+                        <pre>${JSON.stringify(companiesData.companies, null, 2)}</pre>
+                    `;
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Failed';
+                    contentEl.innerHTML = `
+                        <div class="error-message">❌ Ошибка: ${data.message || 'Unknown error'}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (e) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Error';
+                contentEl.innerHTML = `<div class="error-message">Error: ${e.message}</div>`;
+            }
+        }
+
+        // 4. Database Check (via API)
+        async function checkDatabase() {
+            const statusEl = document.getElementById('db-status');
+            const contentEl = document.getElementById('db-content');
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Checking...';
+
+            try {
+                // Try to hit an endpoint that requires DB
+                const response = await fetch('/api/health');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Connected';
+                    contentEl.innerHTML = `
+                        <div class="success-message">✅ API отвечает</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Error';
+                    contentEl.innerHTML = `<div class="error-message">API returned ${response.status}</div>`;
+                }
+            } catch (e) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Error';
+                contentEl.innerHTML = `<div class="error-message">Error: ${e.message}</div>`;
+            }
+        }
+
+        // 5. Alpine.js Check
+        function checkAlpine() {
+            const statusEl = document.getElementById('alpine-status');
+            const contentEl = document.getElementById('alpine-content');
+
+            if (window.Alpine) {
+                statusEl.className = 'status success';
+                statusEl.textContent = 'Loaded';
+
+                let html = '<div class="success-message">✅ Alpine.js загружен</div>';
+
+                // Check stores
+                const stores = ['auth', 'chat', 'products'];
+                stores.forEach(storeName => {
+                    try {
+                        const store = Alpine.store(storeName);
+                        html += `<div class="info-item">`;
+                        html += `<span class="info-label">Store: ${storeName}</span>`;
+                        html += `<span class="status success">OK</span>`;
+                        html += `</div>`;
+                    } catch (e) {
+                        html += `<div class="info-item">`;
+                        html += `<span class="info-label">Store: ${storeName}</span>`;
+                        html += `<span class="status error">Missing</span>`;
+                        html += `</div>`;
+                    }
+                });
+
+                contentEl.innerHTML = html;
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Not Loaded';
+                contentEl.innerHTML = '<div class="error-message">❌ Alpine.js не загружен. Проверьте app.js.</div>';
+            }
+        }
+
+        // Full Diagnostic
+        async function runFullDiagnostic() {
+            checkLocalStorage();
+            await checkAPI();
+            await checkDatabase();
+            checkAlpine();
+            alert('Диагностика завершена! Проверьте результаты выше.');
+        }
+
+        // Auto-run on load
+        window.onload = () => {
+            checkLocalStorage();
+            checkAlpine();
+        };
+    </script>
+</body>
+</html>

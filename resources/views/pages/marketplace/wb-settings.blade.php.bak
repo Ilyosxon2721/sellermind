@@ -1,0 +1,404 @@
+@extends('layouts.app')
+
+@section('content')
+<div x-data="{
+         account: null,
+         loading: true,
+         saving: false,
+         testing: false,
+         testResults: null,
+         form: {
+             api_key: '',
+             wb_content_token: '',
+             wb_marketplace_token: '',
+             wb_prices_token: '',
+             wb_statistics_token: ''
+         },
+         showTokens: {
+             api_key: false,
+             content: false,
+             marketplace: false,
+             prices: false,
+             statistics: false
+         },
+         async init() {
+             if (!$store.auth.isAuthenticated) {
+                 window.location.href = '/login';
+                 return;
+             }
+             await this.loadSettings();
+         },
+         async loadSettings() {
+             this.loading = true;
+             try {
+                 const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+                 const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings', {
+                     headers: { 'Authorization': 'Bearer ' + token }
+                 });
+                 if (res.ok) {
+                     const data = await res.json();
+                     this.account = data.account;
+                 } else if (res.status === 400) {
+                     alert('Этот аккаунт не является Wildberries');
+                     window.location.href = '/marketplace/{{ $accountId }}';
+                 }
+             } catch (e) {
+                 console.error('Error loading settings:', e);
+             }
+             this.loading = false;
+         },
+         async saveSettings() {
+             this.saving = true;
+             try {
+                 const payload = {};
+                 // Only include fields that have values (even empty to clear)
+                 Object.keys(this.form).forEach(key => {
+                     if (this.form[key] !== '') {
+                         payload[key] = this.form[key];
+                     }
+                 });
+
+                 const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+                 const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings', {
+                     method: 'PUT',
+                     headers: {
+                         'Authorization': 'Bearer ' + token,
+                         'Content-Type': 'application/json',
+                         'Accept': 'application/json'
+                     },
+                     body: JSON.stringify(payload)
+                 });
+
+                 const data = await res.json();
+
+                 if (res.ok) {
+                     // Clear form and reload settings
+                     this.form = {
+                         api_key: '',
+                         wb_content_token: '',
+                         wb_marketplace_token: '',
+                         wb_prices_token: '',
+                         wb_statistics_token: ''
+                     };
+                     await this.loadSettings();
+                     alert('Токены успешно обновлены');
+                 } else {
+                     console.error('Error response:', res.status, data);
+                     let errorMsg = data.message || 'Ошибка сохранения';
+                     // Show validation errors if any
+                     if (data.errors) {
+                         const errorList = Object.values(data.errors).flat();
+                         errorMsg += ':\n' + errorList.join('\n');
+                     }
+                     alert(errorMsg);
+                 }
+             } catch (e) {
+                 console.error('Error saving settings:', e);
+                 alert('Ошибка сохранения настроек: ' + e.message);
+             }
+             this.saving = false;
+         },
+         async testConnection() {
+             this.testing = true;
+             this.testResults = null;
+             try {
+                 const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+                 const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/test', {
+                     method: 'POST',
+                     headers: {
+                         'Authorization': 'Bearer ' + token,
+                         'Accept': 'application/json'
+                     }
+                 });
+                 const data = await res.json();
+                 this.testResults = data;
+                 // Reload to get updated token validity
+                 await this.loadSettings();
+             } catch (e) {
+                 console.error('Error testing connection:', e);
+                 this.testResults = { success: false, error: 'Network error' };
+             }
+             this.testing = false;
+         },
+         getTokenStatusClass(hasToken) {
+             return hasToken
+                 ? 'bg-green-100 text-green-800'
+                 : 'bg-gray-100 text-gray-500';
+         },
+         getTestResultClass(result) {
+             return result?.success
+                 ? 'bg-green-50 border-green-200 text-green-800'
+                 : 'bg-red-50 border-red-200 text-red-800';
+         }
+     }"
+     class="flex h-screen bg-gray-50">
+
+    <x-sidebar />
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Настройки Wildberries API</h1>
+                        <p class="text-gray-600 text-sm" x-text="account?.name || 'Загрузка...'"></p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span x-show="account?.wb_tokens_valid === false"
+                          class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                        Токены недействительны
+                    </span>
+                    <span x-show="account?.wb_tokens_valid === true"
+                          class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        Токены валидны
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-6">
+            <!-- Loading State -->
+            <div x-show="loading" class="flex items-center justify-center h-64">
+                <svg class="w-8 h-8 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+
+            <div x-show="!loading" class="max-w-3xl mx-auto space-y-6">
+                <!-- Current Token Status -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Текущий статус токенов</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div class="text-center p-3 rounded-lg" :class="getTokenStatusClass(account?.tokens?.api_key)">
+                            <div class="text-sm font-medium">API Key</div>
+                            <div class="text-xs mt-1" x-text="account?.tokens?.api_key ? 'Настроен' : 'Не настроен'"></div>
+                        </div>
+                        <div class="text-center p-3 rounded-lg" :class="getTokenStatusClass(account?.tokens?.content)">
+                            <div class="text-sm font-medium">Content</div>
+                            <div class="text-xs mt-1" x-text="account?.tokens?.content ? 'Настроен' : 'Основной'"></div>
+                        </div>
+                        <div class="text-center p-3 rounded-lg" :class="getTokenStatusClass(account?.tokens?.marketplace)">
+                            <div class="text-sm font-medium">Marketplace</div>
+                            <div class="text-xs mt-1" x-text="account?.tokens?.marketplace ? 'Настроен' : 'Основной'"></div>
+                        </div>
+                        <div class="text-center p-3 rounded-lg" :class="getTokenStatusClass(account?.tokens?.prices)">
+                            <div class="text-sm font-medium">Prices</div>
+                            <div class="text-xs mt-1" x-text="account?.tokens?.prices ? 'Настроен' : 'Основной'"></div>
+                        </div>
+                        <div class="text-center p-3 rounded-lg" :class="getTokenStatusClass(account?.tokens?.statistics)">
+                            <div class="text-sm font-medium">Statistics</div>
+                            <div class="text-xs mt-1" x-text="account?.tokens?.statistics ? 'Настроен' : 'Основной'"></div>
+                        </div>
+                    </div>
+                    <p x-show="account?.wb_last_successful_call" class="text-xs text-gray-500 mt-4">
+                        Последний успешный вызов: <span x-text="new Date(account?.wb_last_successful_call).toLocaleString('ru-RU')"></span>
+                    </p>
+                </div>
+
+                <!-- Token Update Form -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Обновить токены</h3>
+                    <p class="text-sm text-gray-500 mb-6">
+                        Заполните только те поля, которые хотите обновить. Пустые поля не будут изменены.
+                        Для категорий (Content, Marketplace и т.д.) можно использовать основной API Key, если отдельный токен не настроен.
+                    </p>
+
+                    <form @submit.prevent="saveSettings()" class="space-y-4">
+                        <!-- Main API Key -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Основной API Key
+                            </label>
+                            <div class="relative">
+                                <input :type="showTokens.api_key ? 'text' : 'password'"
+                                       x-model="form.api_key"
+                                       placeholder="Введите новый API Key для обновления"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10">
+                                <button type="button" @click="showTokens.api_key = !showTokens.api_key"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <svg x-show="!showTokens.api_key" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    <svg x-show="showTokens.api_key" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Используется как fallback для всех категорий API</p>
+                        </div>
+
+                        <!-- Category Tokens -->
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <h4 class="text-sm font-medium text-gray-900 mb-3">Отдельные токены по категориям (опционально)</h4>
+
+                            <!-- Content Token -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Content API Token
+                                </label>
+                                <div class="relative">
+                                    <input :type="showTokens.content ? 'text' : 'password'"
+                                           x-model="form.wb_content_token"
+                                           placeholder="Токен для Content API"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10">
+                                    <button type="button" @click="showTokens.content = !showTokens.content"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Для работы с карточками товаров</p>
+                            </div>
+
+                            <!-- Marketplace Token -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Marketplace API Token
+                                </label>
+                                <div class="relative">
+                                    <input :type="showTokens.marketplace ? 'text' : 'password'"
+                                           x-model="form.wb_marketplace_token"
+                                           placeholder="Токен для Marketplace API"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10">
+                                    <button type="button" @click="showTokens.marketplace = !showTokens.marketplace"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Для FBS заказов и поставок</p>
+                            </div>
+
+                            <!-- Prices Token -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Prices API Token
+                                </label>
+                                <div class="relative">
+                                    <input :type="showTokens.prices ? 'text' : 'password'"
+                                           x-model="form.wb_prices_token"
+                                           placeholder="Токен для Prices API"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10">
+                                    <button type="button" @click="showTokens.prices = !showTokens.prices"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Для управления ценами и скидками</p>
+                            </div>
+
+                            <!-- Statistics Token -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Statistics API Token
+                                </label>
+                                <div class="relative">
+                                    <input :type="showTokens.statistics ? 'text' : 'password'"
+                                           x-model="form.wb_statistics_token"
+                                           placeholder="Токен для Statistics API"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10">
+                                    <button type="button" @click="showTokens.statistics = !showTokens.statistics"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Для статистики продаж и остатков</p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="submit" :disabled="saving"
+                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center space-x-2">
+                                <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span x-text="saving ? 'Сохранение...' : 'Сохранить токены'"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Test Connection -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Проверка подключения</h3>
+                            <p class="text-sm text-gray-500">Проверить доступность всех API категорий</p>
+                        </div>
+                        <button @click="testConnection()" :disabled="testing"
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition disabled:opacity-50 flex items-center space-x-2">
+                            <svg x-show="testing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <svg x-show="!testing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="testing ? 'Проверка...' : 'Проверить API'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Test Results -->
+                    <div x-show="testResults" class="space-y-2">
+                        <template x-for="(result, category) in testResults?.results" :key="category">
+                            <div class="flex items-center justify-between px-4 py-3 rounded-lg border"
+                                 :class="getTestResultClass(result)">
+                                <div class="flex items-center space-x-3">
+                                    <svg x-show="result.success" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <svg x-show="!result.success" class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    <span class="font-medium capitalize" x-text="category"></span>
+                                </div>
+                                <div class="flex items-center space-x-3 text-sm">
+                                    <span x-show="result.message" x-text="result.message" class="text-gray-600"></span>
+                                    <span x-text="result.duration_ms + 'ms'" class="text-gray-400"></span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div x-show="testResults && !testResults.success" class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p class="text-sm text-yellow-800">
+                                <strong>Внимание:</strong> Некоторые API категории недоступны. Проверьте токены в личном кабинете Wildberries
+                                и убедитесь, что они имеют необходимые права доступа.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Section -->
+                <div class="bg-blue-50 rounded-xl border border-blue-200 p-6">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-2">Как получить API токены?</h3>
+                    <ol class="list-decimal list-inside text-sm text-blue-800 space-y-2">
+                        <li>Войдите в личный кабинет продавца Wildberries</li>
+                        <li>Перейдите в раздел "Настройки" -> "Доступ к API"</li>
+                        <li>Создайте новый токен или скопируйте существующий</li>
+                        <li>Убедитесь, что токен имеет права на нужные категории API</li>
+                        <li>Вставьте токен в соответствующее поле выше</li>
+                    </ol>
+                    <p class="text-xs text-blue-600 mt-4">
+                        Если вы используете один токен для всех категорий, достаточно заполнить только поле "Основной API Key".
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+@endsection

@@ -1,0 +1,395 @@
+<?php
+// file: app/Services/Marketplaces/Sync/OrdersSyncService.php
+
+namespace App\Services\Marketplaces\Sync;
+
+use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceSyncLog;
+use App\Models\WbOrder;
+use App\Models\WbOrderItem;
+use App\Models\UzumOrder;
+use App\Models\UzumOrderItem;
+use App\Services\Marketplaces\MarketplaceClientFactory;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class OrdersSyncService
+{
+    public function __construct(
+        protected MarketplaceClientFactory $clientFactory
+    ) {}
+
+    /**
+     * Sync orders for all active accounts (or filtered by marketplace)
+     */
+    public function syncAll(string $marketplace = 'all', int $daysBack = 7): array
+    {
+        $query = MarketplaceAccount::query()->where('is_active', true);
+
+        if ($marketplace !== 'all') {
+            $query->where('marketplace', $marketplace);
+        }
+
+        $accounts = $query->get();
+        $results = [];
+
+        foreach ($accounts as $account) {
+            $results[$account->id] = $this->syncAccountOrders($account, $daysBack);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Sync orders for a specific account
+     */
+    public function syncAccountOrders(MarketplaceAccount $account, int $daysBack = 7): array
+    {
+        $from = now()->subDays($daysBack)->startOfDay();
+        $to = now()->endOfDay();
+
+        // Create sync log
+        $syncLog = MarketplaceSyncLog::start(
+            $account->id,
+            MarketplaceSyncLog::TYPE_ORDERS,
+            [
+                'from' => $from->toIso8601String(),
+                'to' => $to->toIso8601String(),
+                'days_back' => $daysBack,
+            ]
+        );
+
+        try {
+            Log::channel('daily')->info('Starting orders sync', [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace,
+                'from' => $from->toDateTimeString(),
+                'to' => $to->toDateTimeString(),
+            ]);
+
+            $client = $this->clientFactory->forAccount($account);
+            $ordersData = $client->fetchOrders($account, $from, $to);
+
+            $stats = $this->persistOrders($account, $ordersData);
+
+            $syncLog->markAsSuccess(
+                "Синхронизировано заказов: {$stats['created']} новых, {$stats['updated']} обновлено",
+                $stats
+            );
+
+            Log::channel('daily')->info('Orders sync completed', [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace,
+                'stats' => $stats,
+            ]);
+
+            return [
+                'success' => true,
+                'stats' => $stats,
+            ];
+        } catch (\Throwable $e) {
+            $errorMessage = mb_substr($e->getMessage(), 0, 500);
+
+            $syncLog->markAsError($errorMessage);
+
+            Log::channel('daily')->error('Orders sync failed', [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace,
+                'error' => $e->getMessage(),
+                'trace' => mb_substr($e->getTraceAsString(), 0, 1000),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $errorMessage,
+            ];
+        }
+    }
+
+    /**
+     * Persist orders data to database
+     */
+    protected function persistOrders(MarketplaceAccount $account, array $ordersData): array
+    {
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = 0;
+
+        foreach ($ordersData as $orderData) {
+            try {
+                $result = $this->persistOrder($account, $orderData);
+
+                if ($result === 'created') {
+                    $created++;
+                } elseif ($result === 'updated') {
+                    $updated++;
+                } else {
+                    $skipped++;
+                }
+            } catch (\Throwable $e) {
+                $errors++;
+                Log::channel('daily')->warning('Failed to persist order', [
+                    'account_id' => $account->id,
+                    'external_order_id' => $orderData['external_order_id'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return [
+            'total' => count($ordersData),
+            'created' => $created,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * Persist single order
+     */
+    protected function persistOrder(MarketplaceAccount $account, array $orderData): string
+    {
+        if ($account->marketplace === 'wb') {
+            return $this->persistWbOrder($account, $orderData);
+        }
+
+        if ($account->marketplace === 'uzum') {
+            return $this->persistUzumOrder($account, $orderData);
+        }
+
+        throw new \RuntimeException("Unsupported marketplace: {$account->marketplace}");
+    }
+
+    /**
+     * Persist WB order
+     */
+    protected function persistWbOrder(MarketplaceAccount $account, array $orderData): string
+    {
+        $externalOrderId = $orderData['external_order_id'] ?? null;
+
+        if (!$externalOrderId) {
+            throw new \RuntimeException('Missing external_order_id');
+        }
+
+        $existingOrder = WbOrder::where('marketplace_account_id', $account->id)
+            ->where('external_order_id', $externalOrderId)
+            ->first();
+
+        // Parse ordered_at date
+        $orderedAt = null;
+        if (!empty($orderData['ordered_at'])) {
+            try {
+                $orderedAt = Carbon::parse($orderData['ordered_at']);
+            } catch (\Exception $e) {
+                $orderedAt = now();
+            }
+        }
+
+        // Получаем SKU (берём первый из массива skus если есть)
+        $sku = null;
+        if (!empty($orderData['wb_skus']) && is_array($orderData['wb_skus'])) {
+            $sku = (string) $orderData['wb_skus'][0];
+        }
+
+        // Получаем office (берём первый из массива offices если есть)
+        $office = null;
+        if (!empty($orderData['wb_offices']) && is_array($orderData['wb_offices'])) {
+            $office = (string) $orderData['wb_offices'][0];
+        } elseif (!empty($orderData['wb_office_id'])) {
+            $office = (string) $orderData['wb_office_id'];
+        }
+
+        $orderPayload = [
+            'marketplace_account_id' => $account->id,
+            'external_order_id' => $externalOrderId,
+            'rid' => $orderData['wb_rid'] ?? null,
+            'order_uid' => $orderData['wb_order_uid'] ?? null,
+            'nm_id' => $orderData['wb_nm_id'] ?? null,
+            'chrt_id' => $orderData['wb_chrt_id'] ?? null,
+            'article' => $orderData['wb_article'] ?? null,
+            'sku' => $sku,
+            'status' => $orderData['status'] ?? 'new',
+            'status_normalized' => $orderData['status_normalized'] ?? ($orderData['status'] ?? 'new'),
+            'wb_status' => $orderData['wb_status'] ?? null,
+            'wb_status_group' => $orderData['wb_status_group'] ?? null,
+            'wb_supplier_status' => $orderData['wb_supplier_status'] ?? null,
+            'wb_delivery_type' => $orderData['wb_delivery_type'] ?? null,
+            'cargo_type' => $orderData['wb_cargo_type'] ?? null,
+            'warehouse_id' => $orderData['wb_warehouse_id'] ?? ($orderData['warehouse_id'] ?? null),
+            'supply_id' => $orderData['supply_id'] ?? null,
+            'office' => $office,
+            'customer_name' => $orderData['customer_name'] ?? null,
+            'customer_phone' => $orderData['customer_phone'] ?? null,
+            'total_amount' => $orderData['total_amount'] ?? 0,
+            'price' => $orderData['wb_price'] ?? null,
+            'scan_price' => $orderData['wb_scan_price'] ?? null,
+            'converted_price' => $orderData['wb_converted_price'] ?? null,
+            'currency' => $orderData['currency'] ?? 'RUB',
+            'currency_code' => $orderData['wb_currency_code'] ?? null,
+            'converted_currency_code' => $orderData['wb_converted_currency_code'] ?? null,
+            'is_b2b' => $orderData['wb_is_b2b'] ?? false,
+            'is_zero_order' => $orderData['wb_is_zero_order'] ?? false,
+            'ordered_at' => $orderedAt,
+            'delivered_at' => !empty($orderData['delivered_at']) ? Carbon::parse($orderData['delivered_at']) : null,
+            'raw_payload' => $orderData['raw_payload'] ?? $orderData,
+        ];
+
+        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+            if ($existingOrder) {
+                // Проверяем были ли реальные изменения
+                $hasChanges = false;
+                foreach ($orderPayload as $key => $value) {
+                    if ($existingOrder->$key != $value) {
+                        $hasChanges = true;
+                        break;
+                    }
+                }
+
+                $existingOrder->update($orderPayload);
+
+                // Даже если данные не изменились, обновляем updated_at чтобы показать что синхронизация прошла
+                if (!$hasChanges) {
+                    $existingOrder->touch();
+                }
+
+                $order = $existingOrder;
+                $result = 'updated';
+            } else {
+                $order = WbOrder::create($orderPayload);
+                $result = 'created';
+            }
+
+            // Sync order items
+            $this->syncWbOrderItems($order, $orderData['items'] ?? []);
+
+            return $result;
+        });
+    }
+
+    /**
+     * Persist Uzum order
+     */
+    protected function persistUzumOrder(MarketplaceAccount $account, array $orderData): string
+    {
+        $externalOrderId = $orderData['external_order_id'] ?? null;
+
+        if (!$externalOrderId) {
+            throw new \RuntimeException('Missing external_order_id');
+        }
+
+        $existingOrder = UzumOrder::where('marketplace_account_id', $account->id)
+            ->where('external_order_id', $externalOrderId)
+            ->first();
+
+        // Parse ordered_at date with millisecond support
+        $orderedAt = null;
+        if (!empty($orderData['ordered_at'])) {
+            try {
+                if (is_numeric($orderData['ordered_at'])) {
+                    $ts = (string) $orderData['ordered_at'];
+                    if (strlen($ts) > 13) {
+                        $ts = substr($ts, 0, 13);
+                    }
+                    $num = (int) $ts;
+                    $orderedAt = $num > 1e12
+                        ? Carbon::createFromTimestampMs($num)
+                        : Carbon::createFromTimestamp($num);
+                } else {
+                    $orderedAt = Carbon::parse($orderData['ordered_at']);
+                }
+            } catch (\Exception $e) {
+                $orderedAt = now();
+            }
+        }
+
+        $orderPayload = [
+            'marketplace_account_id' => $account->id,
+            'external_order_id' => $externalOrderId,
+            'status' => $orderData['status'] ?? 'new',
+            'status_normalized' => $orderData['status_normalized'] ?? ($orderData['status'] ?? 'new'),
+            'uzum_status' => $orderData['uzum_status'] ?? null,
+            'customer_name' => $orderData['customer_name'] ?? null,
+            'customer_phone' => $orderData['customer_phone'] ?? null,
+            'total_amount' => $orderData['total_amount'] ?? 0,
+            'currency' => $orderData['currency'] ?? 'UZS',
+            'ordered_at' => $orderedAt,
+            'raw_payload' => $orderData['raw_payload'] ?? $orderData,
+        ];
+
+        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+            if ($existingOrder) {
+                // Проверяем были ли реальные изменения
+                $hasChanges = false;
+                foreach ($orderPayload as $key => $value) {
+                    if ($existingOrder->$key != $value) {
+                        $hasChanges = true;
+                        break;
+                    }
+                }
+
+                $existingOrder->update($orderPayload);
+
+                // Даже если данные не изменились, обновляем updated_at чтобы показать что синхронизация прошла
+                if (!$hasChanges) {
+                    $existingOrder->touch();
+                }
+
+                $order = $existingOrder;
+                $result = 'updated';
+            } else {
+                $order = UzumOrder::create($orderPayload);
+                $result = 'created';
+            }
+
+            // Sync order items
+            $this->syncUzumOrderItems($order, $orderData['items'] ?? []);
+
+            return $result;
+        });
+    }
+
+    /**
+     * Sync WB order items
+     */
+    protected function syncWbOrderItems(WbOrder $order, array $items): void
+    {
+        // Delete existing items for this order (simple approach)
+        $order->items()->delete();
+
+        foreach ($items as $itemData) {
+            WbOrderItem::create([
+                'wb_order_id' => $order->id,
+                'external_offer_id' => $itemData['external_offer_id'] ?? null,
+                'name' => $itemData['name'] ?? null,
+                'quantity' => $itemData['quantity'] ?? 1,
+                'price' => $itemData['price'] ?? 0,
+                'total_price' => $itemData['total_price'] ?? ($itemData['price'] ?? 0) * ($itemData['quantity'] ?? 1),
+                'raw_payload' => $itemData['raw_payload'] ?? $itemData,
+            ]);
+        }
+    }
+
+    /**
+     * Sync Uzum order items
+     */
+    protected function syncUzumOrderItems(UzumOrder $order, array $items): void
+    {
+        // Delete existing items for this order (simple approach)
+        $order->items()->delete();
+
+        foreach ($items as $itemData) {
+            UzumOrderItem::create([
+                'uzum_order_id' => $order->id,
+                'external_offer_id' => $itemData['external_offer_id'] ?? null,
+                'name' => $itemData['name'] ?? null,
+                'quantity' => $itemData['quantity'] ?? 1,
+                'price' => $itemData['price'] ?? 0,
+                'total_price' => $itemData['total_price'] ?? ($itemData['price'] ?? 0) * ($itemData['quantity'] ?? 1),
+                'raw_payload' => $itemData['raw_payload'] ?? $itemData,
+            ]);
+        }
+    }
+}

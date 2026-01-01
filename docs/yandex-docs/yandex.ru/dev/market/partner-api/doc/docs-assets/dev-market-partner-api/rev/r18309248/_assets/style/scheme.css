@@ -1,0 +1,5 @@
+.g-root_theme_dark {
+    --g-color-base-background: rgba(25,25,25, 0.85);
+    --g-color-text-link: rgba(131,164,245, 0.85);
+    --g-color-text-link-pressed: rgba(246,29,40, 0.85);
+}

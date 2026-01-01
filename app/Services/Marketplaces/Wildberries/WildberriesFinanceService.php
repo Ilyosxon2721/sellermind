@@ -1,0 +1,410 @@
+<?php
+// file: app/Services/Marketplaces/Wildberries/WildberriesFinanceService.php
+
+namespace App\Services\Marketplaces\Wildberries;
+
+use App\Models\MarketplaceAccount;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * Service for Wildberries financial reports and balance
+ *
+ * WB Statistics API:
+ * - GET /api/v1/account/balance - Get seller balance
+ * - GET /api/v5/supplier/reportDetailByPeriod - Detailed sales report
+ *
+ * WB Documents API:
+ * - GET /api/v1/documents/categories - Get document categories
+ * - GET /api/v1/documents/list - Get documents list
+ * - GET /api/v1/documents/download - Download document
+ * - GET /api/v1/documents/download/all - Download all documents
+ */
+class WildberriesFinanceService
+{
+    protected WildberriesHttpClient $httpClient;
+
+    public function __construct(WildberriesHttpClient $httpClient)
+    {
+        $this->httpClient = $httpClient;
+    }
+
+    /**
+     * Get seller account balance
+     *
+     * @param MarketplaceAccount $account
+     * @return array Balance information
+     */
+    public function getBalance(MarketplaceAccount $account): array
+    {
+        try {
+            $response = $this->httpClient->get('statistics', '/api/v1/account/balance');
+
+            Log::info('WB balance fetched', [
+                'account_id' => $account->id,
+                'balance' => $response['balance'] ?? null,
+            ]);
+
+            return $response;
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB balance', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get detailed sales report by period
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom Start date
+     * @param Carbon|null $dateTo End date (default: now)
+     * @param int $limit Records per page (max 100000, default 1000)
+     * @param int $rrdid Last record ID for pagination
+     * @return array Report data
+     */
+    public function getDetailedReport(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        ?Carbon $dateTo = null,
+        int $limit = 1000,
+        int $rrdid = 0
+    ): array {
+        $dateTo = $dateTo ?? now();
+
+        if ($limit > 100000) {
+            $limit = 100000;
+        }
+
+        try {
+            $params = [
+                'dateFrom' => $dateFrom->format('Y-m-d'),
+                'dateTo' => $dateTo->format('Y-m-d'),
+                'limit' => $limit,
+                'rrdid' => $rrdid,
+            ];
+
+            $response = $this->httpClient->get('statistics', '/api/v5/supplier/reportDetailByPeriod', $params);
+
+            Log::info('WB detailed report fetched', [
+                'account_id' => $account->id,
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'records' => is_array($response) ? count($response) : 0,
+            ]);
+
+            return is_array($response) ? $response : [];
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB detailed report', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get full detailed report with pagination
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon|null $dateTo
+     * @return array All report records
+     */
+    public function getFullDetailedReport(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        ?Carbon $dateTo = null
+    ): array {
+        $allRecords = [];
+        $rrdid = 0;
+        $limit = 100000; // Max per request
+
+        do {
+            $batch = $this->getDetailedReport($account, $dateFrom, $dateTo, $limit, $rrdid);
+
+            if (empty($batch)) {
+                break;
+            }
+
+            $allRecords = array_merge($allRecords, $batch);
+
+            // Get last record ID for next page
+            $lastRecord = end($batch);
+            $rrdid = $lastRecord['rrd_id'] ?? 0;
+
+            // If we got less than limit, we're done
+            if (count($batch) < $limit) {
+                break;
+            }
+        } while (true);
+
+        Log::info('WB full detailed report fetched', [
+            'account_id' => $account->id,
+            'total_records' => count($allRecords),
+        ]);
+
+        return $allRecords;
+    }
+
+    /**
+     * Get document categories
+     *
+     * @param MarketplaceAccount $account
+     * @return array Categories list
+     */
+    public function getDocumentCategories(MarketplaceAccount $account): array
+    {
+        try {
+            $response = $this->httpClient->get('statistics', '/api/v1/documents/categories');
+
+            Log::info('WB document categories fetched', [
+                'account_id' => $account->id,
+                'count' => count($response ?? []),
+            ]);
+
+            return $response ?? [];
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB document categories', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get documents list
+     *
+     * @param MarketplaceAccount $account
+     * @param string|null $category Document category
+     * @param Carbon|null $dateFrom Start date
+     * @param Carbon|null $dateTo End date
+     * @return array Documents list
+     */
+    public function getDocuments(
+        MarketplaceAccount $account,
+        ?string $category = null,
+        ?Carbon $dateFrom = null,
+        ?Carbon $dateTo = null
+    ): array {
+        try {
+            $params = [];
+
+            if ($category) {
+                $params['category'] = $category;
+            }
+
+            if ($dateFrom) {
+                $params['dateFrom'] = $dateFrom->format('Y-m-d');
+            }
+
+            if ($dateTo) {
+                $params['dateTo'] = $dateTo->format('Y-m-d');
+            }
+
+            $response = $this->httpClient->get('statistics', '/api/v1/documents/list', $params);
+
+            Log::info('WB documents list fetched', [
+                'account_id' => $account->id,
+                'category' => $category,
+                'count' => count($response['documents'] ?? []),
+            ]);
+
+            return $response['documents'] ?? [];
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB documents list', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Download document
+     *
+     * @param MarketplaceAccount $account
+     * @param string $documentId Document ID
+     * @param bool $save Save to storage
+     * @return array ['content' => string, 'file_path' => string|null, 'filename' => string]
+     */
+    public function downloadDocument(
+        MarketplaceAccount $account,
+        string $documentId,
+        bool $save = true
+    ): array {
+        try {
+            $params = ['documentId' => $documentId];
+
+            // API returns binary data (usually PDF or Excel)
+            $response = $this->httpClient->get('statistics', '/api/v1/documents/download', $params, [
+                'raw_response' => true,
+            ]);
+
+            $filename = "wb-document-{$documentId}.pdf";
+            $filePath = null;
+
+            if ($save) {
+                $filePath = $this->saveDocument($account, $documentId, $response, $filename);
+            }
+
+            Log::info('WB document downloaded', [
+                'account_id' => $account->id,
+                'document_id' => $documentId,
+                'saved' => $save,
+            ]);
+
+            return [
+                'content' => $response,
+                'file_path' => $filePath,
+                'filename' => $filename,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to download WB document', [
+                'account_id' => $account->id,
+                'document_id' => $documentId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Download all documents for period
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon $dateTo
+     * @param bool $save Save to storage
+     * @return array List of downloaded documents
+     */
+    public function downloadAllDocuments(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        Carbon $dateTo,
+        bool $save = true
+    ): array {
+        $documents = $this->getDocuments($account, null, $dateFrom, $dateTo);
+        $downloaded = [];
+
+        foreach ($documents as $doc) {
+            $documentId = $doc['documentId'] ?? $doc['id'] ?? null;
+
+            if (!$documentId) {
+                continue;
+            }
+
+            try {
+                $result = $this->downloadDocument($account, $documentId, $save);
+                $downloaded[] = array_merge($doc, $result);
+            } catch (\Exception $e) {
+                Log::error('Failed to download document in batch', [
+                    'account_id' => $account->id,
+                    'document_id' => $documentId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $downloaded[] = array_merge($doc, [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        Log::info('WB bulk documents download completed', [
+            'account_id' => $account->id,
+            'total' => count($documents),
+            'downloaded' => count(array_filter($downloaded, fn($d) => !isset($d['error']))),
+        ]);
+
+        return $downloaded;
+    }
+
+    /**
+     * Calculate financial summary from detailed report
+     *
+     * @param array $reportData Detailed report data
+     * @return array Summary statistics
+     */
+    public function calculateSummary(array $reportData): array
+    {
+        $summary = [
+            'total_sales' => 0,
+            'total_returns' => 0,
+            'total_commission' => 0,
+            'total_logistics' => 0,
+            'total_penalty' => 0,
+            'net_profit' => 0,
+            'orders_count' => 0,
+            'returns_count' => 0,
+        ];
+
+        foreach ($reportData as $record) {
+            $realizationReportId = $record['realizationreport_id'] ?? null;
+
+            // Sale
+            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Продажа') {
+                $summary['total_sales'] += $record['retail_amount'] ?? 0;
+                $summary['total_commission'] += abs($record['commission_amount'] ?? 0);
+                $summary['total_logistics'] += abs($record['delivery_rub'] ?? 0);
+                $summary['orders_count']++;
+            }
+
+            // Return
+            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Возврат') {
+                $summary['total_returns'] += abs($record['retail_amount'] ?? 0);
+                $summary['returns_count']++;
+            }
+
+            // Penalty
+            if (isset($record['penalty'])) {
+                $summary['total_penalty'] += abs($record['penalty']);
+            }
+        }
+
+        $summary['net_profit'] = $summary['total_sales']
+            - $summary['total_returns']
+            - $summary['total_commission']
+            - $summary['total_logistics']
+            - $summary['total_penalty'];
+
+        return $summary;
+    }
+
+    /**
+     * Save document to storage
+     *
+     * @param MarketplaceAccount $account
+     * @param string $documentId
+     * @param string $content
+     * @param string $filename
+     * @return string File path
+     */
+    protected function saveDocument(
+        MarketplaceAccount $account,
+        string $documentId,
+        string $content,
+        string $filename
+    ): string {
+        $timestamp = now()->format('Y-m-d_His');
+        $path = "marketplace/documents/account-{$account->id}/{$timestamp}-{$filename}";
+
+        Storage::disk('local')->put($path, $content);
+
+        Log::info('WB document saved to storage', [
+            'account_id' => $account->id,
+            'path' => $path,
+            'size' => strlen($content),
+        ]);
+
+        return $path;
+    }
+}

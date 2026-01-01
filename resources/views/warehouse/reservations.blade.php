@@ -1,0 +1,311 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="flex h-screen bg-gradient-to-br from-slate-50 to-purple-50" x-data="reservationsPage()">
+    <x-sidebar />
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Резервы</h1>
+                    <p class="text-sm text-gray-500">Активные и закрытые резервы по складам</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors flex items-center space-x-2" @click="load()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Обновить</span>
+                    </button>
+                    <button class="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all shadow-lg shadow-purple-500/25 flex items-center space-x-2" @click="openCreate()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Создать резерв</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <!-- Filters -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
+                    <button class="text-sm text-gray-500 hover:text-gray-700" @click="resetFilters()">Сбросить</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Склад</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" x-model="filters.warehouse_id">
+                            <option value="">Все склады</option>
+                            @foreach($warehouses as $wh)
+                                <option value="{{ $wh->id }}" @selected($wh->id === $selectedWarehouseId)>{{ $wh->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" x-model="filters.status">
+                            <option value="">Все</option>
+                            <option value="ACTIVE">Активные</option>
+                            <option value="RELEASED">Отпущенные</option>
+                            <option value="CONSUMED">Списанные</option>
+                            <option value="CANCELLED">Отменённые</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Причина</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" x-model="filters.reason">
+                            <option value="">Все</option>
+                            <option value="MARKETPLACE_ORDER">Заказ МП</option>
+                            <option value="MANUAL">Ручной</option>
+                            <option value="PICKING">Сборка</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button class="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors font-medium" @click="load()">Применить</button>
+                    </div>
+                </div>
+                <template x-if="error">
+                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="error"></div>
+                </template>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="items.filter(r => r.status === 'ACTIVE').length">0</div>
+                        <div class="text-sm text-gray-500">Активных</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="items.reduce((s, r) => s + (r.status === 'ACTIVE' ? parseFloat(r.qty) : 0), 0).toFixed(0)">0</div>
+                        <div class="text-sm text-gray-500">Всего зарезервировано</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="items.length">0</div>
+                        <div class="text-sm text-gray-500">Всего записей</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Кол-во</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Причина</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Источник</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Действия</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                        <template x-if="loading">
+                            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                <div class="flex items-center justify-center space-x-2">
+                                    <svg class="animate-spin w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                    <span>Загрузка...</span>
+                                </div>
+                            </td></tr>
+                        </template>
+                        <template x-if="!loading && items.length === 0">
+                            <tr><td colspan="6" class="px-6 py-12 text-center">
+                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                </div>
+                                <div class="text-gray-500">Резервы не найдены</div>
+                            </td></tr>
+                        </template>
+                        <template x-for="res in items" :key="res.id">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-semibold text-purple-600" x-text="res.sku?.sku_code || res.sku_id"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium" x-text="res.qty"></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium" 
+                                          :class="{
+                                              'bg-green-100 text-green-700': res.status === 'ACTIVE',
+                                              'bg-amber-100 text-amber-700': res.status === 'RELEASED',
+                                              'bg-blue-100 text-blue-700': res.status === 'CONSUMED',
+                                              'bg-gray-100 text-gray-700': res.status === 'CANCELLED'
+                                          }" 
+                                          x-text="res.status"></span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="res.reason"></td>
+                                <td class="px-6 py-4 text-sm text-gray-500" x-text="res.source_type || '—'"></td>
+                                <td class="px-6 py-4 text-right space-x-2">
+                                    <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="release(res.id)" :disabled="res.status !== 'ACTIVE'">Отпустить</button>
+                                    <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'">Списать</button>
+                                </td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Создать резерв</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Склад</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500" x-model="form.warehouse_id">
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">SKU ID</label>
+                    <input type="number" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500" x-model="form.sku_id" placeholder="например 101">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Количество</label>
+                    <input type="number" step="0.001" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500" x-model="form.qty">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Причина</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500" x-model="form.reason">
+                        <option value="MARKETPLACE_ORDER">Заказ МП</option>
+                        <option value="MANUAL">Ручной</option>
+                        <option value="PICKING">Сборка</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors" @click="showModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all shadow-lg shadow-purple-500/25" @click="submit()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
+        <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-purple-600 text-white' : 'bg-red-600 text-white'">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function reservationsPage() {
+        return {
+            filters: { warehouse_id: '{{ $selectedWarehouseId }}', status: 'ACTIVE', reason: '' },
+            items: [],
+            error: '',
+            loading: false,
+            toast: { show: false, message: '', type: 'success' },
+            showModal: false,
+            form: { warehouse_id: '{{ $selectedWarehouseId }}', sku_id: '', qty: 1, reason: 'MANUAL' },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 4000);
+            },
+
+            getAuthHeaders() {
+                const token = localStorage.getItem('_x_auth_token');
+                const parsed = token ? JSON.parse(token) : null;
+                return {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': parsed ? `Bearer ${parsed}` : ''
+                };
+            },
+
+            async load() {
+                this.error = '';
+                this.loading = true;
+                const params = new URLSearchParams();
+                Object.entries(this.filters).forEach(([k, v]) => v ? params.append(k, v) : null);
+                try {
+                    const resp = await fetch(`/api/marketplace/stock/reservations?${params.toString()}`, {headers: this.getAuthHeaders()});
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
+                    this.items = json.data || [];
+                } catch (e) {
+                    console.error(e);
+                    this.error = e.message || 'Ошибка';
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async release(id) {
+                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/release`);
+            },
+
+            async consume(id) {
+                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/consume`);
+            },
+
+            async simpleAction(url) {
+                try {
+                    const resp = await fetch(url, { method: 'POST', headers: this.getAuthHeaders() });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка операции');
+                    this.showToast('Операция выполнена', 'success');
+                    this.load();
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка', 'error');
+                }
+            },
+
+            resetFilters() {
+                this.filters.status = 'ACTIVE';
+                this.filters.reason = '';
+                this.load();
+            },
+
+            openCreate() {
+                this.form = { warehouse_id: this.filters.warehouse_id, sku_id: '', qty: 1, reason: 'MANUAL' };
+                this.showModal = true;
+            },
+
+            async submit() {
+                try {
+                    const resp = await fetch('/api/marketplace/stock/reserve', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(this.form),
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка создания');
+                    this.showModal = false;
+                    this.showToast('Резерв создан', 'success');
+                    this.load();
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка', 'error');
+                }
+            },
+
+            init() {
+                this.load();
+            }
+        }
+    }
+</script>
+@endsection

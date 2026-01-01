@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Быстрая инструкция: Токены Wildberries</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #1a1a1a;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+
+        .token-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .token-item:hover {
+            background: #f0f1f3;
+            transform: translateX(4px);
+        }
+
+        .token-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        .token-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .token-sections {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 8px;
+            padding-left: 44px;
+        }
+
+        .token-sections strong {
+            color: #667eea;
+        }
+
+        .token-usage {
+            color: #888;
+            font-size: 13px;
+            font-style: italic;
+            padding-left: 44px;
+        }
+
+        .steps {
+            background: #e8eaf6;
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 32px;
+        }
+
+        .steps h2 {
+            color: #1a1a1a;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .step {
+            display: flex;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .step-number {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 14px;
+        }
+
+        .step-text {
+            color: #333;
+            font-size: 15px;
+            padding-top: 4px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 12px;
+            margin-top: 24px;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+
+        .warning-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+
+        .warning-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .token-sections, .token-usage {
+                padding-left: 0;
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔑 Быстрая инструкция: Токены Wildberries API</h1>
+            <p class="subtitle">Как создать 4 токена для интеграции с SellerMind AI</p>
+
+            <!-- Токен 1 -->
+            <div class="token-item">
+                <div class="token-title">
+                    <span class="token-number">1</span>
+                    Marketplace API Token
+                </div>
+                <div class="token-sections">
+                    <strong>Разделы в ЛК WB:</strong><br>
+                    ✅ Marketplace → Заказы, Поставки, Остатки товаров, Сборочные задания<br>
+                    ✅ Warehouses → Просмотр складов
+                </div>
+                <div class="token-usage">
+                    💡 Используется для: загрузка заказов, обновление остатков, управление поставками
+                </div>
+            </div>
+
+            <!-- Токен 2 -->
+            <div class="token-item">
+                <div class="token-title">
+                    <span class="token-number">2</span>
+                    Content API Token
+                </div>
+                <div class="token-sections">
+                    <strong>Разделы в ЛК WB:</strong><br>
+                    ✅ Content → Управление карточками товаров, Просмотр, Создание, Редактирование, Медиа<br>
+                    ✅ Nomenclature → Просмотр номенклатуры
+                </div>
+                <div class="token-usage">
+                    💡 Используется для: создание и редактирование карточек товаров, загрузка фото
+                </div>
+            </div>
+
+            <!-- Токен 3 -->
+            <div class="token-item">
+                <div class="token-title">
+                    <span class="token-number">3</span>
+                    Prices & Discounts API Token
+                </div>
+                <div class="token-sections">
+                    <strong>Разделы в ЛК WB:</strong><br>
+                    ✅ Prices & Discounts → Управление ценами, Просмотр цен, Обновление цен, Скидки<br>
+                    ✅ Promotions → Просмотр акций (опционально)
+                </div>
+                <div class="token-usage">
+                    💡 Используется для: массовое обновление цен, управление скидками
+                </div>
+            </div>
+
+            <!-- Токен 4 -->
+            <div class="token-item">
+                <div class="token-title">
+                    <span class="token-number">4</span>
+                    Statistics API Token
+                </div>
+                <div class="token-sections">
+                    <strong>Разделы в ЛК WB:</strong><br>
+                    ✅ Statistics → Статистика продаж, Детализация заказов, Отчёты<br>
+                    ✅ Analytics → Аналитика товаров, Финансовая аналитика
+                </div>
+                <div class="token-usage">
+                    💡 Используется для: аналитика продаж, финансовые отчёты, детализация по товарам
+                </div>
+            </div>
+
+            <!-- Шаги -->
+            <div class="steps">
+                <h2>📋 Порядок действий</h2>
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-text">
+                        Откройте <strong>seller.wildberries.ru</strong> и войдите в свой аккаунт
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-text">
+                        Перейдите в раздел <strong>Настройки → Доступ к API</strong>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-text">
+                        Создайте <strong>4 токена</strong> с названиями:<br>
+                        • SellerMind - Marketplace API<br>
+                        • SellerMind - Content API<br>
+                        • SellerMind - Prices API<br>
+                        • SellerMind - Statistics API
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-text">
+                        Для каждого токена отметьте <strong>соответствующие разделы</strong> (см. выше)
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-text">
+                        Скопируйте созданные токены и вставьте в <strong>SellerMind → Маркетплейсы → Wildberries → Настройки</strong>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="step-text">
+                        Нажмите <strong>"Сохранить токены"</strong> и проверьте подключение
+                    </div>
+                </div>
+            </div>
+
+            <!-- Предупреждение -->
+            <div class="warning">
+                <div class="warning-title">⚠️ Важно!</div>
+                <div class="warning-text">
+                    • Все 4 токена обязательны для полной работы интеграции<br>
+                    • Токены автоматически шифруются при сохранении в SellerMind<br>
+                    • Не публикуйте токены в открытых источниках (Git, email, мессенджеры)<br>
+                    • При изменении пароля WB токены могут быть отозваны — создайте новые
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div>
+                <a href="https://seller.wildberries.ru" target="_blank" class="btn">
+                    🔗 Открыть ЛК Wildberries
+                </a>
+                <a href="/WB_TOKEN_GUIDE.md" target="_blank" class="btn btn-secondary">
+                    📖 Подробная инструкция
+                </a>
+                <a href="/marketplace/wb/settings" class="btn btn-secondary">
+                    ⚙️ Настройки SellerMind
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

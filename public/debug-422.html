@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Отладка ошибки 422</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .panel {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .error {
+            background: #fee;
+            border-left: 4px solid #c00;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #efe;
+            border-left: 4px solid #060;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .warning {
+            background: #ffe;
+            border-left: 4px solid #f80;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #c82333;
+        }
+        button.success {
+            background: #28a745;
+        }
+        button.success:hover {
+            background: #218838;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        table td:first-child {
+            font-weight: 600;
+            width: 200px;
+        }
+        .check {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .check.yes {
+            background: #28a745;
+            color: white;
+        }
+        .check.no {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h1>🔍 Детальная отладка ошибки 422</h1>
+        <p>Эта страница поможет найти точную причину ошибки при добавлении аккаунта маркетплейса</p>
+
+        <div class="info">
+            <strong>Ваш Bearer токен:</strong> 38|Ii2FMDNNIR0VkhieP7Cnnr03uWX4qvqx3FTXmLI156f9d263
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="step1CaptureRequest()">🎯 Шаг 1: Захватить запрос от frontend</button>
+            <button onclick="step2TestDirect()" class="success">✅ Шаг 2: Отправить правильный запрос</button>
+            <button onclick="step3Compare()">🔄 Шаг 3: Сравнить запросы</button>
+        </div>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const TOKEN = '38|Ii2FMDNNIR0VkhieP7Cnnr03uWX4qvqx3FTXmLI156f9d263';
+
+        function addPanel(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const panel = document.createElement('div');
+            panel.className = 'panel';
+            panel.innerHTML = `<h2>${title}</h2>${content}`;
+            results.appendChild(panel);
+            return panel;
+        }
+
+        // Шаг 1: Отправить запрос в capture-request.php
+        async function step1CaptureRequest() {
+            addPanel('📝 Инструкция', `
+                <div class="warning">
+                    <h3>Что нужно сделать:</h3>
+                    <ol>
+                        <li>Откройте DevTools (F12) → вкладка <strong>Network</strong></li>
+                        <li>В вашем frontend попробуйте добавить аккаунт</li>
+                        <li>Найдите запрос <code>POST /api/marketplace/accounts</code></li>
+                        <li>Правой кнопкой → Copy → Copy as fetch</li>
+                        <li>Замените URL на: <code>/capture-request.php</code></li>
+                        <li>Вставьте в консоль браузера и нажмите Enter</li>
+                        <li>Нажмите кнопку ниже чтобы увидеть результат</li>
+                    </ol>
+                </div>
+                <button onclick="loadCapturedRequest()">Показать захваченный запрос</button>
+            `);
+        }
+
+        // Загрузить сохранённый запрос
+        async function loadCapturedRequest() {
+            try {
+                const response = await fetch('/request-log.json');
+                const data = await response.json();
+
+                let html = '<div class="success">✅ Запрос успешно захвачен!</div>';
+                html += '<h3>Проверка обязательных полей:</h3><table>';
+
+                // Проверка Authorization
+                const hasAuth = data.headers?.Authorization || data.headers?.authorization;
+                html += `<tr><td><span class="check ${hasAuth ? 'yes' : 'no'}">${hasAuth ? '✓' : '✗'}</span> Authorization header</td><td>${hasAuth || '❌ ОТСУТСТВУЕТ'}</td></tr>`;
+
+                // Проверка Content-Type
+                const contentType = data.headers?.['Content-Type'] || data.headers?.['content-type'];
+                html += `<tr><td><span class="check ${contentType ? 'yes' : 'no'}">${contentType ? '✓' : '✗'}</span> Content-Type</td><td>${contentType || '❌ ОТСУТСТВУЕТ'}</td></tr>`;
+
+                // Проверка body
+                const hasBody = data.raw_body && data.raw_body.length > 0;
+                html += `<tr><td><span class="check ${hasBody ? 'yes' : 'no'}">${hasBody ? '✓' : '✗'}</span> Request Body</td><td>${hasBody ? data.raw_body.length + ' символов' : '❌ ПУСТОЙ'}</td></tr>`;
+
+                // Проверка JSON
+                const isValidJSON = data.parsed_json !== null;
+                html += `<tr><td><span class="check ${isValidJSON ? 'yes' : 'no'}">${isValidJSON ? '✓' : '✗'}</span> Valid JSON</td><td>${isValidJSON ? '✅ Да' : '❌ Нет: ' + data.json_error}</td></tr>`;
+
+                if (data.parsed_json) {
+                    html += `<tr><td><span class="check ${data.parsed_json.company_id ? 'yes' : 'no'}">${data.parsed_json.company_id ? '✓' : '✗'}</span> company_id</td><td>${data.parsed_json.company_id || '❌ ОТСУТСТВУЕТ'}</td></tr>`;
+                    html += `<tr><td><span class="check ${data.parsed_json.marketplace ? 'yes' : 'no'}">${data.parsed_json.marketplace ? '✓' : '✗'}</span> marketplace</td><td>${data.parsed_json.marketplace || '❌ ОТСУТСТВУЕТ'}</td></tr>`;
+                    html += `<tr><td><span class="check ${data.parsed_json.credentials ? 'yes' : 'no'}">${data.parsed_json.credentials ? '✓' : '✗'}</span> credentials</td><td>${data.parsed_json.credentials ? JSON.stringify(data.parsed_json.credentials) : '❌ ОТСУТСТВУЕТ'}</td></tr>`;
+                }
+
+                html += '</table>';
+
+                html += '<h3>Полный запрос:</h3>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+                addPanel('📊 Анализ захваченного запроса', html);
+
+            } catch (error) {
+                addPanel('❌ Ошибка', `
+                    <div class="error">
+                        Не удалось загрузить захваченный запрос.<br>
+                        Ошибка: ${error.message}<br><br>
+                        <strong>Возможные причины:</strong>
+                        <ul>
+                            <li>Запрос ещё не был отправлен в capture-request.php</li>
+                            <li>Файл request-log.json не создан</li>
+                        </ul>
+                    </div>
+                `);
+            }
+        }
+
+        // Шаг 2: Отправить правильный запрос
+        async function step2TestDirect() {
+            const requestData = {
+                company_id: 1,
+                marketplace: 'wb',
+                name: 'Test Debug ' + new Date().toLocaleTimeString(),
+                credentials: {
+                    api_token: 'eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjQxMTE1djEifQ.eyJlbnQiOjF9.sig'
+                }
+            };
+
+            addPanel('⏳ Отправка запроса...', `
+                <p>Отправляю правильный запрос к API...</p>
+                <pre>${JSON.stringify(requestData, null, 2)}</pre>
+            `);
+
+            try {
+                const response = await fetch('/api/marketplace/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${TOKEN}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                let html = '';
+                if (response.ok || response.status === 201) {
+                    html = `<div class="success">✅ Запрос успешен! Статус: ${response.status}</div>`;
+                } else if (response.status === 422) {
+                    html = `<div class="error">❌ Ошибка 422 - Validation Error</div>`;
+                    if (data.errors) {
+                        html += '<h3>Детали ошибок:</h3><pre>' + JSON.stringify(data.errors, null, 2) + '</pre>';
+                    }
+                } else {
+                    html = `<div class="error">❌ Ошибка ${response.status}</div>`;
+                }
+
+                html += '<h3>Полный ответ:</h3>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+                addPanel('📬 Ответ от API', html);
+
+            } catch (error) {
+                addPanel('❌ Ошибка сети', `
+                    <div class="error">${error.message}</div>
+                `);
+            }
+        }
+
+        // Шаг 3: Сравнить запросы
+        async function step3Compare() {
+            addPanel('🔄 Сравнение', `
+                <div class="info">
+                    <h3>Сравнение запросов</h3>
+                    <p>Загрузите захваченный запрос (Шаг 1), затем отправьте правильный запрос (Шаг 2).</p>
+                    <p>После этого вы сможете увидеть различия.</p>
+                </div>
+            `);
+        }
+
+        // Автоматически показываем инструкцию
+        window.addEventListener('load', () => {
+            addPanel('💡 Совет', `
+                <div class="info">
+                    <h3>Быстрая диагностика:</h3>
+                    <p><strong>Вариант 1:</strong> Нажмите "Шаг 2" чтобы отправить правильный запрос и убедиться что API работает.</p>
+                    <p><strong>Вариант 2:</strong> Следуйте инструкции в "Шаг 1" чтобы перехватить запрос от вашего frontend и увидеть что не так.</p>
+                    <hr>
+                    <h3>Частые причины ошибки 422:</h3>
+                    <ul>
+                        <li>❌ Отсутствует <code>Authorization: Bearer TOKEN</code> в заголовках</li>
+                        <li>❌ <code>company_id</code> передан как строка вместо числа</li>
+                        <li>❌ <code>credentials</code> пустой или не является объектом</li>
+                        <li>❌ <code>marketplace</code> содержит неверное значение (должно быть: wb, uzum, ozon, ym)</li>
+                    </ul>
+                </div>
+            `);
+        });
+    </script>
+</body>
+</html>

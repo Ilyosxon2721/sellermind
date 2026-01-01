@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Orders Data</title>
+</head>
+<body>
+    <h1>Test Orders API</h1>
+    <button onclick="testOrders()">Load Orders</button>
+    <button onclick="testSupplies()">Load Supplies</button>
+    <pre id="result"></pre>
+
+    <script>
+        const TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvc2VsbGVyTWluZC9hcGkvYXV0aC9sb2dpbiIsImlhdCI6MTczMjc2NzQyMywiZXhwIjoxNzMzMzcyMjIzLCJuYmYiOjE3MzI3Njc0MjMsImp0aSI6IjdwT1pIZjRScXJCdmFKUlgiLCJzdWIiOiIxIiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyJ9.kV2aVJ2rg-KFMj1aSOO6qPnlYLYSAzDXV7VrKjMRHEk";
+        
+        async function testOrders() {
+            try {
+                const res = await fetch('/api/marketplace/orders?company_id=1&marketplace_account_id=2&limit=10', {
+                    headers: {
+                        'Authorization': 'Bearer ' + TOKEN,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                document.getElementById('result').textContent = 'Error: ' + e.message;
+            }
+        }
+        
+        async function testSupplies() {
+            try {
+                const res = await fetch('/api/marketplace/supplies?company_id=1&marketplace_account_id=2', {
+                    headers: {
+                        'Authorization': 'Bearer ' + TOKEN,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                document.getElementById('result').textContent = 'Error: ' + e.message;
+            }
+        }
+    </script>
+</body>
+</html>

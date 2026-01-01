@@ -1,0 +1,736 @@
+<!DOCTYPE html><html lang="ru"><head><meta charSet="utf-8"/><title>Документация — WB API</title><link rel="alternate" hrefLang="ru" href="https://dev.wildberries.ru/openapi/wb-tariffs"/><link rel="alternate" hrefLang="en-us" href="https://dev.wildberries.ru/en/openapi/wb-tariffs"/><meta name="description" content="Руководство и инструкции по использованию WB API. Полная техническая документация для разработчиков. Начните интеграцию с пошаговыми инструкциями и примерами кода."/><meta name="yandex-verification" content="61b95d33285e2612"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="google-site-verification" content="guMau7oNvBifqUhZGuuGVtiGD0HkKe8v6uwYpvj2ZIg"/><meta property="og:url" content="https://dev.wildberries.ru"/><meta property="og:site_name" content="WB API"/><meta property="og:title" content="Документация — WB API"/><meta property="og:description" content="Руководство и инструкции по использованию WB API. Полная техническая документация для разработчиков. Начните интеграцию с пошаговыми инструкциями и примерами кода."/><meta property="og:image" content="https://dev.wildberries.ru/images/open-graph.png"/><link rel="icon" href="/images/favicon.ico" type="image/x-icon"/><link rel="icon" href="/images/favicon-16x16.png" type="image/png" sizes="16x16"/><link rel="icon" href="/images/favicon-32x32.png" type="image/png" sizes="32x32"/><link rel="icon" href="/images/android-chrome-192x192.png" type="image/png" sizes="192x192"/><link rel="icon" href="/images/android-chrome-512x512.png" type="image/png" sizes="512x512"/><link rel="apple-touch-icon" href="/images/apple-touch-icon.png" sizes="180x180"/><style>.djCrup{width:calc(100% - calc(50% - 24px));padding:0 24px;}/*!sc*/
+@media print,screen and (max-width: 1366px){.djCrup{width:100%;padding:0px 24px;}}/*!sc*/
+data-styled.g4[id=&quot;sc-fQpRED&quot;]{content:&quot;djCrup,&quot;}/*!sc*/
+.eLUhIO{padding:0px 0;}/*!sc*/
+.eLUhIO:last-child{min-height:calc(100vh + 1px);}/*!sc*/
+.eLUhIO&gt;.eLUhIO:last-child{min-height:initial;}/*!sc*/
+@media print,screen and (max-width: 1366px){.eLUhIO{padding:0;}}/*!sc*/
+.KmzkR{padding:0px 0;position:relative;}/*!sc*/
+.KmzkR:last-child{min-height:calc(100vh + 1px);}/*!sc*/
+.KmzkR&gt;.KmzkR:last-child{min-height:initial;}/*!sc*/
+@media print,screen and (max-width: 1366px){.KmzkR{padding:0;}}/*!sc*/
+.KmzkR:not(:last-of-type):after{position:absolute;bottom:0;width:100%;display:block;content:&#x27;&#x27;;border-bottom:1px solid rgba(0, 0, 0, 0.2);}/*!sc*/
+data-styled.g5[id=&quot;sc-dsLQwm&quot;]{content:&quot;eLUhIO,KmzkR,&quot;}/*!sc*/
+.tmKyO{width:calc(50% - 24px);color:#F6F6F9;background-color:transparent;padding:0 24px;}/*!sc*/
+@media print,screen and (max-width: 1366px){.tmKyO{width:100%;padding:0px 24px;}}/*!sc*/
+data-styled.g6[id=&quot;sc-iKTcqh&quot;]{content:&quot;tmKyO,&quot;}/*!sc*/
+.ijBuoE{background-color:transparent;}/*!sc*/
+data-styled.g7[id=&quot;sc-gnpbhQ&quot;]{content:&quot;ijBuoE,&quot;}/*!sc*/
+.jgmHHX{display:flex;width:100%;padding:0;}/*!sc*/
+@media print,screen and (max-width: 1366px){.jgmHHX{flex-direction:column;}}/*!sc*/
+data-styled.g8[id=&quot;sc-la-DxNn&quot;]{content:&quot;jgmHHX,&quot;}/*!sc*/
+.jymFpj{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.85714em;line-height:1.6em;color:#F6F6F9;}/*!sc*/
+data-styled.g9[id=&quot;sc-iCZwEW&quot;]{content:&quot;jymFpj,&quot;}/*!sc*/
+.lbDlFu{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.57143em;line-height:1.6em;color:#F6F6F9;margin:0 0 20px;}/*!sc*/
+data-styled.g10[id=&quot;sc-knesRu&quot;]{content:&quot;lbDlFu,&quot;}/*!sc*/
+.jLhRGC{color:#F6F6F9;}/*!sc*/
+data-styled.g12[id=&quot;sc-kkmypM&quot;]{content:&quot;jLhRGC,&quot;}/*!sc*/
+.gwrByh{border-bottom:1px solid rgba(38, 50, 56, 0.3);margin:1em 0 1em 0;color:rgba(38, 50, 56, 0.5);font-weight:normal;text-transform:uppercase;font-size:0.929em;line-height:20px;}/*!sc*/
+data-styled.g13[id=&quot;sc-dkjaqt&quot;]{content:&quot;gwrByh,&quot;}/*!sc*/
+.hSvuOo{cursor:pointer;margin-left:-20px;padding:0;line-height:1;width:20px;display:inline-block;outline:0;}/*!sc*/
+.hSvuOo:before{content:&#x27;&#x27;;width:15px;height:15px;background-size:contain;background-image:url(&#x27;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeD0iMCIgeT0iMCIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA1MTIgNTEyIiB4bWw6c3BhY2U9InByZXNlcnZlIj48cGF0aCBmaWxsPSIjMDEwMTAxIiBkPSJNNDU5LjcgMjMzLjRsLTkwLjUgOTAuNWMtNTAgNTAtMTMxIDUwLTE4MSAwIC03LjktNy44LTE0LTE2LjctMTkuNC0yNS44bDQyLjEtNDIuMWMyLTIgNC41LTMuMiA2LjgtNC41IDIuOSA5LjkgOCAxOS4zIDE1LjggMjcuMiAyNSAyNSA2NS42IDI0LjkgOTAuNSAwbDkwLjUtOTAuNWMyNS0yNSAyNS02NS42IDAtOTAuNSAtMjQuOS0yNS02NS41LTI1LTkwLjUgMGwtMzIuMiAzMi4yYy0yNi4xLTEwLjItNTQuMi0xMi45LTgxLjYtOC45bDY4LjYtNjguNmM1MC01MCAxMzEtNTAgMTgxIDBDNTA5LjYgMTAyLjMgNTA5LjYgMTgzLjQgNDU5LjcgMjMzLjR6TTIyMC4zIDM4Mi4ybC0zMi4yIDMyLjJjLTI1IDI0LjktNjUuNiAyNC45LTkwLjUgMCAtMjUtMjUtMjUtNjUuNiAwLTkwLjVsOTAuNS05MC41YzI1LTI1IDY1LjUtMjUgOTAuNSAwIDcuOCA3LjggMTIuOSAxNy4yIDE1LjggMjcuMSAyLjQtMS40IDQuOC0yLjUgNi44LTQuNWw0Mi4xLTQyYy01LjQtOS4yLTExLjYtMTgtMTkuNC0yNS44IC01MC01MC0xMzEtNTAtMTgxIDBsLTkwLjUgOTAuNWMtNTAgNTAtNTAgMTMxIDAgMTgxIDUwIDUwIDEzMSA1MCAxODEgMGw2OC42LTY4LjZDMjc0LjYgMzk1LjEgMjQ2LjQgMzkyLjMgMjIwLjMgMzgyLjJ6Ii8+PC9zdmc+Cg==&#x27;);opacity:0.5;visibility:hidden;display:inline-block;vertical-align:middle;}/*!sc*/
+h1:hover&gt;.hSvuOo::before,h2:hover&gt;.hSvuOo::before,.hSvuOo:hover::before{visibility:visible;}/*!sc*/
+data-styled.g14[id=&quot;sc-jCbFiK&quot;]{content:&quot;hSvuOo,&quot;}/*!sc*/
+.gUrACV{height:18px;width:18px;min-width:18px;vertical-align:middle;float:right;transition:transform 0.2s ease-out;transform:rotateZ(-90deg);}/*!sc*/
+.gskTeH{height:20px;width:20px;min-width:20px;vertical-align:middle;float:right;transition:transform 0.2s ease-out;transform:rotateZ(0);}/*!sc*/
+.gskTeH polygon{fill:black;}/*!sc*/
+.dJanPw{height:1.3em;width:1.3em;min-width:1.3em;vertical-align:middle;transition:transform 0.2s ease-out;transform:rotateZ(-90deg);}/*!sc*/
+.fqtTpb{height:1.5em;width:1.5em;min-width:1.5em;vertical-align:middle;float:left;transition:transform 0.2s ease-out;transform:rotateZ(-90deg);}/*!sc*/
+.fqtTpb polygon{fill:#1d8127;}/*!sc*/
+.ezFOZv{height:1.5em;width:1.5em;min-width:1.5em;vertical-align:middle;float:left;transition:transform 0.2s ease-out;transform:rotateZ(-90deg);}/*!sc*/
+.ezFOZv polygon{fill:#d41f1c;}/*!sc*/
+data-styled.g15[id=&quot;sc-cBYhjr&quot;]{content:&quot;gUrACV,gskTeH,dJanPw,fqtTpb,ezFOZv,&quot;}/*!sc*/
+.bhffov{border-left:1px solid #EBEBF599;box-sizing:border-box;position:relative;padding:10px 10px 10px 0;}/*!sc*/
+@media screen and (max-width: 1024px){.bhffov{display:block;overflow:hidden;}}/*!sc*/
+tr:first-of-type&gt;.bhffov,tr.last&gt;.bhffov{border-left-width:0;background-position:top left;background-repeat:no-repeat;background-size:1px 100%;}/*!sc*/
+tr:first-of-type&gt;.bhffov{background-image:linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 22px,
+      #EBEBF599 22px,
+      #EBEBF599 100%
+    );}/*!sc*/
+tr.last&gt;.bhffov{background-image:linear-gradient(
+      to bottom,
+      #EBEBF599 0%,
+      #EBEBF599 22px,
+      transparent 22px,
+      transparent 100%
+    );}/*!sc*/
+tr.last+tr&gt;.bhffov{border-left-color:transparent;}/*!sc*/
+tr.last:first-child&gt;.bhffov{background:none;border-left-color:transparent;}/*!sc*/
+data-styled.g18[id=&quot;sc-tOkKi&quot;]{content:&quot;bhffov,&quot;}/*!sc*/
+.eLZDks{vertical-align:top;line-height:20px;white-space:nowrap;font-size:13px;font-family:monospace;}/*!sc*/
+.eLZDks.deprecated{text-decoration:line-through;color:#707070;}/*!sc*/
+data-styled.g20[id=&quot;sc-epPVmt&quot;]{content:&quot;eLZDks,&quot;}/*!sc*/
+.JQLsZ{border-bottom:1px solid #9fb4be;padding:10px 0;width:75%;box-sizing:border-box;}/*!sc*/
+tr.expanded .JQLsZ{border-bottom:none;}/*!sc*/
+@media screen and (max-width: 1024px){.JQLsZ{padding:0 20px;border-bottom:none;border-left:1px solid #EBEBF599;}tr.last&gt;.JQLsZ{border-left:none;}}/*!sc*/
+data-styled.g21[id=&quot;sc-fpSrms&quot;]{content:&quot;JQLsZ,&quot;}/*!sc*/
+.jzWJIy{color:#EBEBF599;font-family:monospace;margin-right:10px;}/*!sc*/
+.jzWJIy::before{content:&#x27;&#x27;;display:inline-block;vertical-align:middle;width:10px;height:1px;background:#EBEBF599;}/*!sc*/
+.jzWJIy::after{content:&#x27;&#x27;;display:inline-block;vertical-align:middle;width:1px;background:#EBEBF599;height:7px;}/*!sc*/
+data-styled.g22[id=&quot;sc-hfvVTD&quot;]{content:&quot;jzWJIy,&quot;}/*!sc*/
+.fPSXOj{border-collapse:separate;border-radius:3px;font-size:16px;border-spacing:0;width:100%;}/*!sc*/
+.fPSXOj &gt;tr{vertical-align:middle;}/*!sc*/
+@media screen and (max-width: 1024px){.fPSXOj{display:block;}.fPSXOj &gt;tr,.fPSXOj &gt;tbody&gt;tr{display:block;}}/*!sc*/
+@media screen and (max-width: 1024px) and (-ms-high-contrast:none){.fPSXOj td{float:left;width:100%;}}/*!sc*/
+.fPSXOj .sc-ifyrTC,.fPSXOj .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC,.fPSXOj .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC{margin:1em;margin-right:0;background:#010101;}/*!sc*/
+.fPSXOj .sc-ifyrTC .sc-ifyrTC,.fPSXOj .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC,.fPSXOj .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC .sc-ifyrTC{background:#ffffff;}/*!sc*/
+data-styled.g24[id=&quot;sc-dENhDJ&quot;]{content:&quot;fPSXOj,&quot;}/*!sc*/
+.gVJPfy &gt;ul{list-style:none;padding:0;margin:0;margin:0 -5px;}/*!sc*/
+.gVJPfy &gt;ul &gt;li{padding:5px 10px;display:inline-block;background-color:transparent;border-bottom:1px solid rgba(0, 0, 0, 0.5);cursor:pointer;text-align:center;outline:none;color:#b9b9d0;margin:0 4px 4px 4px;border:1px solid transparent;border-radius:5px;min-width:60px;font-size:0.9em;font-weight:bold;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.react-tabs__tab--selected{color:#F6F6F9;background:#F6F6F9;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.react-tabs__tab--selected:focus{outline:auto;}/*!sc*/
+.gVJPfy &gt;ul &gt;li:only-child{flex:none;min-width:100px;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.tab-success{color:#1d8127;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.tab-redirect{color:#ffa500;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.tab-info{color:#87ceeb;}/*!sc*/
+.gVJPfy &gt;ul &gt;li.tab-error{color:#d41f1c;}/*!sc*/
+.gVJPfy &gt;.react-tabs__tab-panel{background:transparent;}/*!sc*/
+.gVJPfy &gt;.react-tabs__tab-panel&gt;div,.gVJPfy &gt;.react-tabs__tab-panel&gt;pre{padding:16px;margin:0;}/*!sc*/
+.gVJPfy &gt;.react-tabs__tab-panel&gt;div&gt;pre{padding:0;}/*!sc*/
+data-styled.g30[id=&quot;sc-bSlUec&quot;]{content:&quot;gVJPfy,&quot;}/*!sc*/
+.fwfkcU code[class*=&#x27;language-&#x27;],.fwfkcU pre[class*=&#x27;language-&#x27;]{text-shadow:0 -0.1em 0.2em black;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none;}/*!sc*/
+@media print{.fwfkcU code[class*=&#x27;language-&#x27;],.fwfkcU pre[class*=&#x27;language-&#x27;]{text-shadow:none;}}/*!sc*/
+.fwfkcU pre[class*=&#x27;language-&#x27;]{padding:1em;margin:0.5em 0;overflow:auto;}/*!sc*/
+.fwfkcU .token.comment,.fwfkcU .token.prolog,.fwfkcU .token.doctype,.fwfkcU .token.cdata{color:hsl(30, 20%, 50%);}/*!sc*/
+.fwfkcU .token.punctuation{opacity:0.7;}/*!sc*/
+.fwfkcU .namespace{opacity:0.7;}/*!sc*/
+.fwfkcU .token.property,.fwfkcU .token.tag,.fwfkcU .token.number,.fwfkcU .token.constant,.fwfkcU .token.symbol{color:#4a8bb3;}/*!sc*/
+.fwfkcU .token.boolean{color:#e64441;}/*!sc*/
+.fwfkcU .token.selector,.fwfkcU .token.attr-name,.fwfkcU .token.string,.fwfkcU .token.char,.fwfkcU .token.builtin,.fwfkcU .token.inserted{color:#a0fbaa;}/*!sc*/
+.fwfkcU .token.selector+a,.fwfkcU .token.attr-name+a,.fwfkcU .token.string+a,.fwfkcU .token.char+a,.fwfkcU .token.builtin+a,.fwfkcU .token.inserted+a,.fwfkcU .token.selector+a:visited,.fwfkcU .token.attr-name+a:visited,.fwfkcU .token.string+a:visited,.fwfkcU .token.char+a:visited,.fwfkcU .token.builtin+a:visited,.fwfkcU .token.inserted+a:visited{color:#4ed2ba;text-decoration:underline;}/*!sc*/
+.fwfkcU .token.property.string{color:white;}/*!sc*/
+.fwfkcU .token.operator,.fwfkcU .token.entity,.fwfkcU .token.url,.fwfkcU .token.variable{color:hsl(40, 90%, 60%);}/*!sc*/
+.fwfkcU .token.atrule,.fwfkcU .token.attr-value,.fwfkcU .token.keyword{color:hsl(350, 40%, 70%);}/*!sc*/
+.fwfkcU .token.regex,.fwfkcU .token.important{color:#e90;}/*!sc*/
+.fwfkcU .token.important,.fwfkcU .token.bold{font-weight:bold;}/*!sc*/
+.fwfkcU .token.italic{font-style:italic;}/*!sc*/
+.fwfkcU .token.entity{cursor:help;}/*!sc*/
+.fwfkcU .token.deleted{color:red;}/*!sc*/
+data-styled.g32[id=&quot;sc-euGpHm&quot;]{content:&quot;fwfkcU,&quot;}/*!sc*/
+.dGzeta{opacity:0.7;transition:opacity 0.3s ease;text-align:right;}/*!sc*/
+.dGzeta:focus-within{opacity:1;}/*!sc*/
+.dGzeta &gt;button{background-color:transparent;border:0;color:inherit;padding:2px 10px;font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:16px;line-height:20px;cursor:pointer;outline:0;}/*!sc*/
+.dGzeta &gt;button :hover,.dGzeta &gt;button :focus{background:rgba(255, 255, 255, 0.1);}/*!sc*/
+data-styled.g33[id=&quot;sc-pFPEP&quot;]{content:&quot;dGzeta,&quot;}/*!sc*/
+.bWVgjU{position:relative;}/*!sc*/
+data-styled.g37[id=&quot;sc-dJDBYC&quot;]{content:&quot;bWVgjU,&quot;}/*!sc*/
+.FdjRy{position:absolute;pointer-events:none;z-index:1;top:50%;-webkit-transform:translateY(-50%);-ms-transform:translateY(-50%);transform:translateY(-50%);right:8px;margin:auto;text-align:center;}/*!sc*/
+.FdjRy polyline{color:white;}/*!sc*/
+data-styled.g38[id=&quot;sc-kTYLvb&quot;]{content:&quot;FdjRy,&quot;}/*!sc*/
+.eKERE{box-sizing:border-box;min-width:100px;outline:none;display:inline-block;border-radius:2px;border:1px solid rgba(38, 50, 56, 0.5);vertical-align:bottom;padding:2px 0px 2px 6px;position:relative;width:auto;background:white;color:#263238;font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:0.929em;line-height:1.5em;cursor:pointer;transition:border 0.25s ease,color 0.25s ease,box-shadow 0.25s ease;}/*!sc*/
+.eKERE label{box-sizing:border-box;min-width:100px;outline:none;display:inline-block;font-family:&quot;WB Hauss VF&quot;,sans-serif;color:#F6F6F9;vertical-align:bottom;width:auto;text-transform:none;padding:0 22px 0 4px;font-size:0.929em;line-height:1.5em;font-family:inherit;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}/*!sc*/
+.eKERE .dropdown-select{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;border:none;appearance:none;cursor:pointer;color:#F6F6F9;line-height:inherit;font-family:inherit;}/*!sc*/
+.eKERE:hover,.eKERE:focus-within{border:1px solid #F6F6F9;color:#F6F6F9;box-shadow:0px 0px 0px 1px #F6F6F9;}/*!sc*/
+data-styled.g39[id=&quot;sc-dorvvM&quot;]{content:&quot;eKERE,&quot;}/*!sc*/
+.eKUBFp{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:440;line-height:20px;}/*!sc*/
+.eKUBFp p:last-child{margin-bottom:0;}/*!sc*/
+.eKUBFp h1{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.85714em;line-height:1.6em;color:#F6F6F9;margin-top:0;}/*!sc*/
+.eKUBFp h2{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.57143em;line-height:1.6em;color:#F6F6F9;}/*!sc*/
+.eKUBFp code{color:#e53935;background-color:rgba(38, 50, 56, 0.05);font-family:monospace;border-radius:2px;border:1px solid rgba(38, 50, 56, 0.1);padding:0 4px;font-size:13px;font-weight:440;word-break:break-word;}/*!sc*/
+.eKUBFp pre{font-family:monospace;white-space:pre;background-color:transparent;color:white;padding:16px;overflow-x:auto;line-height:normal;border-radius:0;border:1px solid rgba(38, 50, 56, 0.1);}/*!sc*/
+.eKUBFp pre code{background-color:transparent;color:white;padding:0;}/*!sc*/
+.eKUBFp pre code:before,.eKUBFp pre code:after{content:none;}/*!sc*/
+.eKUBFp blockquote{margin:0;margin-bottom:1em;padding:0 15px;color:#777;border-left:4px solid #ddd;}/*!sc*/
+.eKUBFp img{max-width:100%;box-sizing:content-box;}/*!sc*/
+.eKUBFp ul,.eKUBFp ol{padding-left:2em;margin:0;margin-bottom:1em;}/*!sc*/
+.eKUBFp ul ul,.eKUBFp ol ul,.eKUBFp ul ol,.eKUBFp ol ol{margin-bottom:0;margin-top:0;}/*!sc*/
+.eKUBFp table{display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all;border-collapse:collapse;border-spacing:0;margin-top:1.5em;margin-bottom:1.5em;}/*!sc*/
+.eKUBFp table tr{background-color:#fff;border-top:1px solid #ccc;}/*!sc*/
+.eKUBFp table tr:nth-child(2n){background-color:#010101;}/*!sc*/
+.eKUBFp table th,.eKUBFp table td{padding:6px 13px;border:1px solid #ddd;}/*!sc*/
+.eKUBFp table th{text-align:left;font-weight:bold;}/*!sc*/
+.eKUBFp .share-link{cursor:pointer;margin-left:-20px;padding:0;line-height:1;width:20px;display:inline-block;outline:0;}/*!sc*/
+.eKUBFp .share-link:before{content:&#x27;&#x27;;width:15px;height:15px;background-size:contain;background-image:url(&#x27;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeD0iMCIgeT0iMCIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA1MTIgNTEyIiB4bWw6c3BhY2U9InByZXNlcnZlIj48cGF0aCBmaWxsPSIjMDEwMTAxIiBkPSJNNDU5LjcgMjMzLjRsLTkwLjUgOTAuNWMtNTAgNTAtMTMxIDUwLTE4MSAwIC03LjktNy44LTE0LTE2LjctMTkuNC0yNS44bDQyLjEtNDIuMWMyLTIgNC41LTMuMiA2LjgtNC41IDIuOSA5LjkgOCAxOS4zIDE1LjggMjcuMiAyNSAyNSA2NS42IDI0LjkgOTAuNSAwbDkwLjUtOTAuNWMyNS0yNSAyNS02NS42IDAtOTAuNSAtMjQuOS0yNS02NS41LTI1LTkwLjUgMGwtMzIuMiAzMi4yYy0yNi4xLTEwLjItNTQuMi0xMi45LTgxLjYtOC45bDY4LjYtNjguNmM1MC01MCAxMzEtNTAgMTgxIDBDNTA5LjYgMTAyLjMgNTA5LjYgMTgzLjQgNDU5LjcgMjMzLjR6TTIyMC4zIDM4Mi4ybC0zMi4yIDMyLjJjLTI1IDI0LjktNjUuNiAyNC45LTkwLjUgMCAtMjUtMjUtMjUtNjUuNiAwLTkwLjVsOTAuNS05MC41YzI1LTI1IDY1LjUtMjUgOTAuNSAwIDcuOCA3LjggMTIuOSAxNy4yIDE1LjggMjcuMSAyLjQtMS40IDQuOC0yLjUgNi44LTQuNWw0Mi4xLTQyYy01LjQtOS4yLTExLjYtMTgtMTkuNC0yNS44IC01MC01MC0xMzEtNTAtMTgxIDBsLTkwLjUgOTAuNWMtNTAgNTAtNTAgMTMxIDAgMTgxIDUwIDUwIDEzMSA1MCAxODEgMGw2OC42LTY4LjZDMjc0LjYgMzk1LjEgMjQ2LjQgMzkyLjMgMjIwLjMgMzgyLjJ6Ii8+PC9zdmc+Cg==&#x27;);opacity:0.5;visibility:hidden;display:inline-block;vertical-align:middle;}/*!sc*/
+.eKUBFp h1:hover&gt;.share-link::before,.eKUBFp h2:hover&gt;.share-link::before,.eKUBFp .share-link:hover::before{visibility:visible;}/*!sc*/
+.eKUBFp a{text-decoration:auto;color:#AA80FF;}/*!sc*/
+.eKUBFp a:visited{color:#AA80FF;}/*!sc*/
+.eKUBFp a:hover{color:#eee6ff;text-decoration:auto;}/*!sc*/
+.ipGiFP{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:440;line-height:20px;}/*!sc*/
+.ipGiFP p:last-child{margin-bottom:0;}/*!sc*/
+.ipGiFP p:first-child{margin-top:0;}/*!sc*/
+.ipGiFP p:last-child{margin-bottom:0;}/*!sc*/
+.ipGiFP h1{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.85714em;line-height:1.6em;color:#F6F6F9;margin-top:0;}/*!sc*/
+.ipGiFP h2{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:400;font-size:1.57143em;line-height:1.6em;color:#F6F6F9;}/*!sc*/
+.ipGiFP code{color:#e53935;background-color:rgba(38, 50, 56, 0.05);font-family:monospace;border-radius:2px;border:1px solid rgba(38, 50, 56, 0.1);padding:0 4px;font-size:13px;font-weight:440;word-break:break-word;}/*!sc*/
+.ipGiFP pre{font-family:monospace;white-space:pre;background-color:transparent;color:white;padding:16px;overflow-x:auto;line-height:normal;border-radius:0;border:1px solid rgba(38, 50, 56, 0.1);}/*!sc*/
+.ipGiFP pre code{background-color:transparent;color:white;padding:0;}/*!sc*/
+.ipGiFP pre code:before,.ipGiFP pre code:after{content:none;}/*!sc*/
+.ipGiFP blockquote{margin:0;margin-bottom:1em;padding:0 15px;color:#777;border-left:4px solid #ddd;}/*!sc*/
+.ipGiFP img{max-width:100%;box-sizing:content-box;}/*!sc*/
+.ipGiFP ul,.ipGiFP ol{padding-left:2em;margin:0;margin-bottom:1em;}/*!sc*/
+.ipGiFP ul ul,.ipGiFP ol ul,.ipGiFP ul ol,.ipGiFP ol ol{margin-bottom:0;margin-top:0;}/*!sc*/
+.ipGiFP table{display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all;border-collapse:collapse;border-spacing:0;margin-top:1.5em;margin-bottom:1.5em;}/*!sc*/
+.ipGiFP table tr{background-color:#fff;border-top:1px solid #ccc;}/*!sc*/
+.ipGiFP table tr:nth-child(2n){background-color:#010101;}/*!sc*/
+.ipGiFP table th,.ipGiFP table td{padding:6px 13px;border:1px solid #ddd;}/*!sc*/
+.ipGiFP table th{text-align:left;font-weight:bold;}/*!sc*/
+.ipGiFP .share-link{cursor:pointer;margin-left:-20px;padding:0;line-height:1;width:20px;display:inline-block;outline:0;}/*!sc*/
+.ipGiFP .share-link:before{content:&#x27;&#x27;;width:15px;height:15px;background-size:contain;background-image:url(&#x27;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeD0iMCIgeT0iMCIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA1MTIgNTEyIiB4bWw6c3BhY2U9InByZXNlcnZlIj48cGF0aCBmaWxsPSIjMDEwMTAxIiBkPSJNNDU5LjcgMjMzLjRsLTkwLjUgOTAuNWMtNTAgNTAtMTMxIDUwLTE4MSAwIC03LjktNy44LTE0LTE2LjctMTkuNC0yNS44bDQyLjEtNDIuMWMyLTIgNC41LTMuMiA2LjgtNC41IDIuOSA5LjkgOCAxOS4zIDE1LjggMjcuMiAyNSAyNSA2NS42IDI0LjkgOTAuNSAwbDkwLjUtOTAuNWMyNS0yNSAyNS02NS42IDAtOTAuNSAtMjQuOS0yNS02NS41LTI1LTkwLjUgMGwtMzIuMiAzMi4yYy0yNi4xLTEwLjItNTQuMi0xMi45LTgxLjYtOC45bDY4LjYtNjguNmM1MC01MCAxMzEtNTAgMTgxIDBDNTA5LjYgMTAyLjMgNTA5LjYgMTgzLjQgNDU5LjcgMjMzLjR6TTIyMC4zIDM4Mi4ybC0zMi4yIDMyLjJjLTI1IDI0LjktNjUuNiAyNC45LTkwLjUgMCAtMjUtMjUtMjUtNjUuNiAwLTkwLjVsOTAuNS05MC41YzI1LTI1IDY1LjUtMjUgOTAuNSAwIDcuOCA3LjggMTIuOSAxNy4yIDE1LjggMjcuMSAyLjQtMS40IDQuOC0yLjUgNi44LTQuNWw0Mi4xLTQyYy01LjQtOS4yLTExLjYtMTgtMTkuNC0yNS44IC01MC01MC0xMzEtNTAtMTgxIDBsLTkwLjUgOTAuNWMtNTAgNTAtNTAgMTMxIDAgMTgxIDUwIDUwIDEzMSA1MCAxODEgMGw2OC42LTY4LjZDMjc0LjYgMzk1LjEgMjQ2LjQgMzkyLjMgMjIwLjMgMzgyLjJ6Ii8+PC9zdmc+Cg==&#x27;);opacity:0.5;visibility:hidden;display:inline-block;vertical-align:middle;}/*!sc*/
+.ipGiFP h1:hover&gt;.share-link::before,.ipGiFP h2:hover&gt;.share-link::before,.ipGiFP .share-link:hover::before{visibility:visible;}/*!sc*/
+.ipGiFP a{text-decoration:auto;color:#AA80FF;}/*!sc*/
+.ipGiFP a:visited{color:#AA80FF;}/*!sc*/
+.ipGiFP a:hover{color:#eee6ff;text-decoration:auto;}/*!sc*/
+data-styled.g42[id=&quot;sc-exayXG&quot;]{content:&quot;eKUBFp,ipGiFP,&quot;}/*!sc*/
+.dRdjww{display:inline;}/*!sc*/
+data-styled.g43[id=&quot;sc-dHrNzZ&quot;]{content:&quot;dRdjww,&quot;}/*!sc*/
+.ecCAmX{position:relative;}/*!sc*/
+data-styled.g44[id=&quot;sc-eHujzY&quot;]{content:&quot;ecCAmX,&quot;}/*!sc*/
+.dgzSkD:hover&gt;.sc-pFPEP{opacity:1;}/*!sc*/
+data-styled.g49[id=&quot;sc-eTdEpr&quot;]{content:&quot;dgzSkD,&quot;}/*!sc*/
+.fghMRy{font-family:monospace;font-size:13px;white-space:pre;contain:content;overflow-x:auto;}/*!sc*/
+.fghMRy .redoc-json code&gt;.collapser{display:none;pointer-events:none;}/*!sc*/
+.fghMRy .callback-function{color:gray;}/*!sc*/
+.fghMRy .collapser:after{content:&#x27;-&#x27;;cursor:pointer;}/*!sc*/
+.fghMRy .collapsed&gt;.collapser:after{content:&#x27;+&#x27;;cursor:pointer;}/*!sc*/
+.fghMRy .ellipsis:after{content:&#x27; … &#x27;;}/*!sc*/
+.fghMRy .collapsible{margin-left:2em;}/*!sc*/
+.fghMRy .hoverable{padding-top:1px;padding-bottom:1px;padding-left:2px;padding-right:2px;border-radius:2px;}/*!sc*/
+.fghMRy .hovered{background-color:rgba(235, 238, 249, 1);}/*!sc*/
+.fghMRy .collapser{background-color:transparent;border:0;color:#fff;font-family:monospace;font-size:13px;padding-right:6px;padding-left:6px;padding-top:0;padding-bottom:0;display:flex;align-items:center;justify-content:center;width:15px;height:15px;position:absolute;top:4px;left:-1.5em;cursor:default;user-select:none;-webkit-user-select:none;padding:2px;}/*!sc*/
+.fghMRy .collapser:focus{outline-color:#fff;outline-style:dotted;outline-width:1px;}/*!sc*/
+.fghMRy ul{list-style-type:none;padding:0px;margin:0px 0px 0px 26px;}/*!sc*/
+.fghMRy li{position:relative;display:block;}/*!sc*/
+.fghMRy .hoverable{display:inline-block;}/*!sc*/
+.fghMRy .selected{outline-style:solid;outline-width:1px;outline-style:dotted;}/*!sc*/
+.fghMRy .collapsed&gt;.collapsible{display:none;}/*!sc*/
+.fghMRy .ellipsis{display:none;}/*!sc*/
+.fghMRy .collapsed&gt;.ellipsis{display:inherit;}/*!sc*/
+data-styled.g50[id=&quot;sc-fTgapq&quot;]{content:&quot;fghMRy,&quot;}/*!sc*/
+.cQDyba{padding:0.9em;background-color:transparent;margin:0 0 10px 0;display:block;font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:0.929em;line-height:1.5em;}/*!sc*/
+data-styled.g51[id=&quot;sc-ZubPq&quot;]{content:&quot;cQDyba,&quot;}/*!sc*/
+.cpxoae{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:12px;position:absolute;z-index:1;top:-11px;left:12px;font-weight:600;color:rgba(246,246,249,0.7);}/*!sc*/
+data-styled.g52[id=&quot;sc-foMnoT&quot;]{content:&quot;cpxoae,&quot;}/*!sc*/
+.iLXIA-d{position:relative;}/*!sc*/
+data-styled.g53[id=&quot;sc-WChnI&quot;]{content:&quot;iLXIA-d,&quot;}/*!sc*/
+.eYgXn{margin:0 0 10px 0;display:block;background-color:transparent;border:none;padding:0.9em 1.6em 0.9em 0.9em;box-shadow:none;}/*!sc*/
+.eYgXn label{color:#F6F6F9;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:1em;text-transform:none;border:none;}/*!sc*/
+.eYgXn:hover,.eYgXn:focus-within{border:none;box-shadow:none;background-color:transparent;}/*!sc*/
+data-styled.g54[id=&quot;sc-flUsNl&quot;]{content:&quot;eYgXn,&quot;}/*!sc*/
+.gDrQpr{margin-top:15px;}/*!sc*/
+data-styled.g56[id=&quot;sc-AmOMz&quot;]{content:&quot;gDrQpr,&quot;}/*!sc*/
+.bJcEcT{vertical-align:middle;font-size:13px;line-height:20px;}/*!sc*/
+data-styled.g58[id=&quot;sc-xuUkR&quot;]{content:&quot;bJcEcT,&quot;}/*!sc*/
+.gsJNaa{color:rgba(235,235,245,0.5);}/*!sc*/
+data-styled.g59[id=&quot;sc-cvzDha&quot;]{content:&quot;gsJNaa,&quot;}/*!sc*/
+.khKFLF{color:#EBEBF599;}/*!sc*/
+data-styled.g60[id=&quot;sc-gKROGD&quot;]{content:&quot;khKFLF,&quot;}/*!sc*/
+.eYMuOI{color:#ff4760;font-size:13px;font-weight:normal;margin-left:20px;line-height:1;}/*!sc*/
+data-styled.g62[id=&quot;sc-hrDJJk&quot;]{content:&quot;eYMuOI,&quot;}/*!sc*/
+.fQEYXv{border-radius:2px;word-break:break-word;background-color:rgba(246,246,249,0.05);color:rgba(246,246,249,0.9);padding:0 4px;border:1px solid rgba(246,246,249,0.1);font-family:monospace;}/*!sc*/
++{margin-left:0;}/*!sc*/
+data-styled.g66[id=&quot;sc-cDelgQ&quot;]{content:&quot;fQEYXv,&quot;}/*!sc*/
+.jWKDln:after{content:&#x27; and &#x27;;font-weight:normal;}/*!sc*/
+.jWKDln:last-child:after{content:none;}/*!sc*/
+.jWKDln a{text-decoration:auto;color:#AA80FF;}/*!sc*/
+.jWKDln a:visited{color:#AA80FF;}/*!sc*/
+.jWKDln a:hover{color:#eee6ff;text-decoration:auto;}/*!sc*/
+data-styled.g80[id=&quot;sc-blcnQh&quot;]{content:&quot;jWKDln,&quot;}/*!sc*/
+.cqNsTO{white-space:nowrap;}/*!sc*/
+.cqNsTO:after{content:&#x27; or &#x27;;white-space:pre;}/*!sc*/
+.cqNsTO:last-child:after,.cqNsTO:only-child:after{content:none;}/*!sc*/
+.cqNsTO a{text-decoration:auto;color:#AA80FF;}/*!sc*/
+.cqNsTO a:visited{color:#AA80FF;}/*!sc*/
+.cqNsTO a:hover{color:#eee6ff;text-decoration:auto;}/*!sc*/
+data-styled.g81[id=&quot;sc-iHlJgr&quot;]{content:&quot;cqNsTO,&quot;}/*!sc*/
+.febKCY{flex:1 1 auto;cursor:pointer;}/*!sc*/
+data-styled.g82[id=&quot;sc-jHofgq&quot;]{content:&quot;febKCY,&quot;}/*!sc*/
+.cuBJLO{width:75%;text-overflow:ellipsis;border-radius:4px;overflow:hidden;}/*!sc*/
+@media screen and (max-width: 1024px){.cuBJLO{margin-top:10px;}}/*!sc*/
+data-styled.g83[id=&quot;sc-iRFtIJ&quot;]{content:&quot;cuBJLO,&quot;}/*!sc*/
+.eGMvsx{display:inline-block;margin:0;}/*!sc*/
+data-styled.g84[id=&quot;sc-jRHPII&quot;]{content:&quot;eGMvsx,&quot;}/*!sc*/
+.bAHxMG{width:100%;display:flex;margin:1em 0;flex-direction:row;}/*!sc*/
+@media screen and (max-width: 1024px){.bAHxMG{flex-direction:column;}}/*!sc*/
+data-styled.g85[id=&quot;sc-hWiVxH&quot;]{content:&quot;bAHxMG,&quot;}/*!sc*/
+.edbYXQ{margin-top:0;margin-bottom:0.5em;}/*!sc*/
+data-styled.g91[id=&quot;sc-gjHHYa&quot;]{content:&quot;edbYXQ,&quot;}/*!sc*/
+.CCdkg{width:9ex;display:inline-block;height:13px;line-height:13px;background-color:#333;border-radius:3px;background-repeat:no-repeat;background-position:6px 4px;font-size:7px;font-family:Verdana,sans-serif;color:white;text-transform:uppercase;text-align:center;font-weight:bold;vertical-align:middle;margin-right:6px;margin-top:2px;}/*!sc*/
+.CCdkg.get{background-color:#0098FE;}/*!sc*/
+.CCdkg.post{background-color:#1DCB74;}/*!sc*/
+.CCdkg.put{background-color:#FF8533;}/*!sc*/
+.CCdkg.options{background-color:#947014;}/*!sc*/
+.CCdkg.patch{background-color:#AA80FF;}/*!sc*/
+.CCdkg.delete{background-color:#ff4760;}/*!sc*/
+.CCdkg.basic{background-color:#707070;}/*!sc*/
+.CCdkg.link{background-color:#07818F;}/*!sc*/
+.CCdkg.head{background-color:#A23DAD;}/*!sc*/
+.CCdkg.hook{background-color:#F6F6F9;}/*!sc*/
+.CCdkg.schema{background-color:#707070;}/*!sc*/
+data-styled.g99[id=&quot;sc-exkVDC&quot;]{content:&quot;CCdkg,&quot;}/*!sc*/
+.hYtPsf{margin:0;padding:0;}/*!sc*/
+.hYtPsf:first-child{padding-bottom:32px;}/*!sc*/
+.sc-iMDhdf .sc-iMDhdf{font-size:0.929em;}/*!sc*/
+.fEjWGm{margin:0;padding:0;display:none;}/*!sc*/
+.fEjWGm:first-child{padding-bottom:32px;}/*!sc*/
+.sc-iMDhdf .sc-iMDhdf{font-size:0.929em;}/*!sc*/
+data-styled.g100[id=&quot;sc-iMDhdf&quot;]{content:&quot;hYtPsf,fEjWGm,&quot;}/*!sc*/
+.btrDvq{list-style:none inside none;overflow:hidden;text-overflow:ellipsis;padding:0;}/*!sc*/
+data-styled.g101[id=&quot;sc-loAbOW&quot;]{content:&quot;btrDvq,&quot;}/*!sc*/
+.rPxYz{cursor:pointer;color:#F6F6F9;margin:0;padding:12.5px 16px;display:flex;justify-content:space-between;font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:0.929em;text-transform:none;background-color:transparent;}/*!sc*/
+.rPxYz:hover{color:#F6F6F9;background-color:transparent;}/*!sc*/
+.rPxYz .sc-cBYhjr{height:1.5em;width:1.5em;}/*!sc*/
+.rPxYz .sc-cBYhjr polygon{fill:#F6F6F9;}/*!sc*/
+.eyqmuI{cursor:pointer;color:#F6F6F9;margin:0;padding:12.5px 16px;display:flex;justify-content:space-between;font-family:&quot;WB Hauss VF&quot;,sans-serif;background-color:transparent;}/*!sc*/
+.eyqmuI:hover{color:#F6F6F9;background-color:transparent;}/*!sc*/
+.eyqmuI .sc-cBYhjr{height:1.5em;width:1.5em;}/*!sc*/
+.eyqmuI .sc-cBYhjr polygon{fill:#F6F6F9;}/*!sc*/
+data-styled.g102[id=&quot;sc-bPZXsP&quot;]{content:&quot;rPxYz,eyqmuI,&quot;}/*!sc*/
+.glMKqQ{display:inline-block;vertical-align:middle;width:calc(100% - 38px);overflow:hidden;text-overflow:ellipsis;}/*!sc*/
+data-styled.g103[id=&quot;sc-eteQWc&quot;]{content:&quot;glMKqQ,&quot;}/*!sc*/
+.eIWzFd{font-size:0.8em;margin-top:8px;text-align:center;position:fixed;width:350px;bottom:0;background:transparent;}/*!sc*/
+.eIWzFd a,.eIWzFd a:visited,.eIWzFd a:hover{color:#F6F6F9!important;padding:4px 0;border-top:1px solid transparent;text-decoration:none;display:flex;align-items:center;justify-content:center;}/*!sc*/
+.eIWzFd img{width:15px;margin-right:5px;}/*!sc*/
+@media screen and (max-width: 1024px){.eIWzFd{width:100%;}}/*!sc*/
+data-styled.g104[id=&quot;sc-gkavYR&quot;]{content:&quot;eIWzFd,&quot;}/*!sc*/
+.dCbPd{cursor:pointer;position:relative;margin-bottom:5px;}/*!sc*/
+data-styled.g110[id=&quot;sc-dKsqdn&quot;]{content:&quot;dCbPd,&quot;}/*!sc*/
+.LftNx{font-family:monospace;margin-left:10px;flex:1;overflow-x:hidden;text-overflow:ellipsis;}/*!sc*/
+data-styled.g111[id=&quot;sc-eowDPD&quot;]{content:&quot;LftNx,&quot;}/*!sc*/
+.gWNvBR{outline:0;color:inherit;width:100%;text-align:left;cursor:pointer;padding:10px 30px 10px 10px;border-radius:0;background-color:transparent;display:flex;white-space:nowrap;align-items:center;border:0;border-bottom:1px solid #ccc;transition:border-color 0.25s ease;}/*!sc*/
+.gWNvBR ..sc-eowDPD{color:#F6F6F9;}/*!sc*/
+.gWNvBR:focus{box-shadow:inset 0 2px 2px rgba(0, 0, 0, 0.45),0 2px 0 rgba(128, 128, 128, 0.25);}/*!sc*/
+data-styled.g112[id=&quot;sc-iAlELC&quot;]{content:&quot;gWNvBR,&quot;}/*!sc*/
+.buUsEL{font-size:0.929em;line-height:20px;background-color:#0098FE;color:#ffffff;padding:3px 10px;text-transform:uppercase;font-family:&quot;WB Hauss VF&quot;,sans-serif;margin:0;}/*!sc*/
+data-styled.g113[id=&quot;sc-oeqTF&quot;]{content:&quot;buUsEL,&quot;}/*!sc*/
+.bFiOkX{position:absolute;width:100%;z-index:100;background:#fafafa;color:#263238;box-sizing:border-box;box-shadow:0 0 6px rgba(0, 0, 0, 0.33);overflow:hidden;border-bottom-left-radius:4px;border-bottom-right-radius:4px;transition:all 0.25s ease;visibility:hidden;transform:translateY(-50%) scaleY(0);}/*!sc*/
+data-styled.g114[id=&quot;sc-ezTrPE&quot;]{content:&quot;bFiOkX,&quot;}/*!sc*/
+.hdRKqQ{padding:10px;}/*!sc*/
+data-styled.g115[id=&quot;sc-drnuxz&quot;]{content:&quot;hdRKqQ,&quot;}/*!sc*/
+.iZKkOH{padding:5px;border:1px solid #ccc;background:#fff;word-break:break-all;color:#F6F6F9;}/*!sc*/
+.iZKkOH &gt;span{color:#F6F6F9;}/*!sc*/
+data-styled.g116[id=&quot;sc-hDcvty&quot;]{content:&quot;iZKkOH,&quot;}/*!sc*/
+.gcYfHW{display:block;border:0;width:100%;text-align:left;padding:10px;border-radius:2px;margin-bottom:4px;line-height:1.5em;cursor:pointer;color:#1d8127;background-color:rgba(29,129,39,0.07);}/*!sc*/
+.gcYfHW:focus{outline:auto #1d8127;}/*!sc*/
+.gbPhWg{display:block;border:0;width:100%;text-align:left;padding:10px;border-radius:2px;margin-bottom:4px;line-height:1.5em;cursor:pointer;color:#d41f1c;background-color:rgba(212,31,28,0.07);}/*!sc*/
+.gbPhWg:focus{outline:auto #d41f1c;}/*!sc*/
+data-styled.g119[id=&quot;sc-giOWAb&quot;]{content:&quot;gcYfHW,gbPhWg,&quot;}/*!sc*/
+.gXPvFO{vertical-align:top;}/*!sc*/
+data-styled.g122[id=&quot;sc-catHVh&quot;]{content:&quot;gXPvFO,&quot;}/*!sc*/
+.gvTwBv{font-size:1.3em;padding:0.2em 0;margin:3em 0 1.1em;color:#F6F6F9;font-weight:normal;}/*!sc*/
+data-styled.g123[id=&quot;sc-eiLgtK&quot;]{content:&quot;gvTwBv,&quot;}/*!sc*/
+.dlKTbr{margin-bottom:24px;}/*!sc*/
+data-styled.g128[id=&quot;sc-fpJhiv&quot;]{content:&quot;dlKTbr,&quot;}/*!sc*/
+.GNTqg{user-select:none;width:20px;height:20px;align-self:center;display:flex;flex-direction:column;color:#F6F6F9;}/*!sc*/
+data-styled.g129[id=&quot;sc-bQEQyQ&quot;]{content:&quot;GNTqg,&quot;}/*!sc*/
+.erhxLV{width:350px;background-color:transparent;overflow:hidden;display:flex;flex-direction:column;backface-visibility:hidden;height:100vh;position:sticky;position:-webkit-sticky;top:0;}/*!sc*/
+@media screen and (max-width: 1024px){.erhxLV{position:fixed;z-index:20;width:100%;background:transparent;display:none;}}/*!sc*/
+@media print{.erhxLV{display:none;}}/*!sc*/
+data-styled.g130[id=&quot;sc-dUMaFF&quot;]{content:&quot;erhxLV,&quot;}/*!sc*/
+.kavMAo{outline:none;user-select:none;background-color:#f2f2f2;color:#F6F6F9;display:none;cursor:pointer;position:fixed;right:20px;z-index:100;border-radius:50%;box-shadow:0 0 20px rgba(0, 0, 0, 0.3);bottom:44px;width:60px;height:60px;padding:0 20px;}/*!sc*/
+@media screen and (max-width: 1024px){.kavMAo{display:flex;}}/*!sc*/
+.kavMAo svg{color:#0065FB;}/*!sc*/
+@media print{.kavMAo{display:none;}}/*!sc*/
+data-styled.g131[id=&quot;sc-elEJnV&quot;]{content:&quot;kavMAo,&quot;}/*!sc*/
+.hVapSd{font-family:&quot;WB Hauss VF&quot;,sans-serif;font-size:16px;font-weight:440;line-height:20px;color:#F6F6F9;display:flex;position:relative;text-align:left;-webkit-font-smoothing:antialiased;font-smoothing:antialiased;text-rendering:optimizeSpeed!important;tap-highlight-color:rgba(0, 0, 0, 0);text-size-adjust:100%;}/*!sc*/
+.hVapSd *{box-sizing:border-box;-webkit-tap-highlight-color:rgba(255, 255, 255, 0);}/*!sc*/
+data-styled.g132[id=&quot;sc-ixtKjU&quot;]{content:&quot;hVapSd,&quot;}/*!sc*/
+.hqDTuk{z-index:1;position:relative;overflow:hidden;width:calc(100% - 350px);contain:layout;}/*!sc*/
+@media print,screen and (max-width: 1024px){.hqDTuk{width:100%;}}/*!sc*/
+data-styled.g133[id=&quot;sc-dKGrn&quot;]{content:&quot;hqDTuk,&quot;}/*!sc*/
+.cqlNzA{background:transparent;position:absolute;top:0;bottom:0;right:0;width:calc(50% - 24px);}/*!sc*/
+@media print,screen and (max-width: 1366px){.cqlNzA{display:none;}}/*!sc*/
+data-styled.g134[id=&quot;sc-epzHnm&quot;]{content:&quot;cqlNzA,&quot;}/*!sc*/
+.dcjLWY{padding:5px 0;}/*!sc*/
+data-styled.g135[id=&quot;sc-dovzVR&quot;]{content:&quot;dcjLWY,&quot;}/*!sc*/
+.binqez{width:calc(100% - 32px);box-sizing:border-box;margin:0 16px;padding:5px 8px 5px 16px;border:0;border-bottom:1px solid transparent;font-family:&quot;WB Hauss VF&quot;,sans-serif;font-weight:bold;font-size:13px;color:#F6F6F9;background-color:transparent;outline:none;}/*!sc*/
+data-styled.g136[id=&quot;sc-hAkARQ&quot;]{content:&quot;binqez,&quot;}/*!sc*/
+.lcioed{position:absolute;left:16px;height:1.8em;width:0.9em;}/*!sc*/
+.lcioed path{fill:#F6F6F9;}/*!sc*/
+data-styled.g137[id=&quot;sc-kvXgyf&quot;]{content:&quot;lcioed,&quot;}/*!sc*/
+</style><meta name="next-head-count" content="20"/><script src="/static/scripts/redoc.standalone.v2.1.3.js"></script><link rel="preload" href="/_next/static/css/156f815252ac2e2c.css" as="style"/><link rel="stylesheet" href="/_next/static/css/156f815252ac2e2c.css" data-n-g=""/><link rel="preload" href="/_next/static/css/ef50a2c754ebde11.css" as="style"/><link rel="stylesheet" href="/_next/static/css/ef50a2c754ebde11.css" data-n-p=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-42372ed130431b0a.js"></script><script src="/_next/static/chunks/webpack-6c6253e3c46f1d73.js" defer=""></script><script src="/_next/static/chunks/framework-62375962ea965f35.js" defer=""></script><script src="/_next/static/chunks/main-373171a68e1f2cc5.js" defer=""></script><script src="/_next/static/chunks/pages/_app-45bd9e470b0f98ea.js" defer=""></script><script src="/_next/static/chunks/742-eca08f3f78c38c41.js" defer=""></script><script src="/_next/static/chunks/pages/%5Blocale%5D/openapi/wb-tariffs-857f56407a04064d.js" defer=""></script><script src="/_next/static/ntUTi399CWV62cUDmKfsX/_buildManifest.js" defer=""></script><script src="/_next/static/ntUTi399CWV62cUDmKfsX/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="page-wrapper page-wrapper_fixed"><main class="content"><div class="docs-skeleton_root__M0MY9" id="docs-skeleton"><div class="docs-skeleton_wrapper__cR8Jn"><div class="docs-skeleton_menu__ivt05"><div class="docs-skeleton_search__aTTwb"><span class="_Text_1q4zt_5 _Text--body-l_1q4zt_416 _Text--text-comment_1q4zt_646" data-name="Text">Поиск</span><svg width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.334 15a6.667 6.667 0 1 1 5.266-2.579l4.49 4.49-1.179 1.178-4.49-4.49A6.638 6.638 0 0 1 8.335 15Zm5-6.667a5 5 0 1 1-10 0 5 5 0 0 1 10 0Z" fill="#EBEBF5" fill-opacity=".3"></path></svg></div><div class="docs-skeleton_menuContent__Tf4zf"><div class="docs-skeleton_menuBlock__elFcw"><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div></div><div class="docs-skeleton_menuBlock__elFcw"><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div></div><div class="docs-skeleton_menuBlock__elFcw"><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div><div class="docs-skeleton_menuItem__4QUK7"></div></div></div></div><div class="docs-skeleton_content__zu4Wh"><div class="docs-skeleton_middle__HFPpR"><div class="docs-skeleton_block__jRhjZ docs-skeleton_title__BUhnB"></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_medium__LHEsO"></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_large__eReHs"></div><div><div class="docs-skeleton_row__4D6Ed"><div class="docs-skeleton_block__jRhjZ docs-skeleton_title__BUhnB"></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_circle__UIl1O"></div></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_small__R4umy"></div></div><div><div class="docs-skeleton_row__4D6Ed"><div class="docs-skeleton_block__jRhjZ docs-skeleton_title__BUhnB"></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_circle__UIl1O"></div></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_small__R4umy"></div></div></div><div class="docs-skeleton_sampleBlock__R85np"><div><div class="docs-skeleton_block__jRhjZ docs-skeleton_medium__LHEsO"></div><div class="docs-skeleton_block__jRhjZ docs-skeleton_large__eReHs"></div></div></div></div></div></div><div class="doc-wrapper"><div>
+  
+      <div id="redoc"><div class="sc-ixtKjU hVapSd redoc-wrap"><div class="sc-dUMaFF erhxLV menu-content" style="top:0px;height:calc(100vh - 0px)"><div role="search" class="sc-dovzVR dcjLWY"><svg class="sc-kvXgyf lcioed search-icon" version="1.1" viewBox="0 0 1000 1000" x="0px" xmlns="http://www.w3.org/2000/svg" y="0px"><path d="M968.2,849.4L667.3,549c83.9-136.5,66.7-317.4-51.7-435.6C477.1-25,252.5-25,113.9,113.4c-138.5,138.3-138.5,362.6,0,501C219.2,730.1,413.2,743,547.6,666.5l301.9,301.4c43.6,43.6,76.9,14.9,104.2-12.4C981,928.3,1011.8,893,968.2,849.4z M524.5,522c-88.9,88.7-233,88.7-321.8,0c-88.9-88.7-88.9-232.6,0-321.3c88.9-88.7,233-88.7,321.8,0C613.4,289.4,613.4,433.3,524.5,522z"></path></svg><input placeholder="Search..." aria-label="Search" type="text" class="sc-hAkARQ binqez search-input" value=""></div><div class="sc-dJDBYC bWVgjU scrollbar-container undefined"><ul role="menu" class="sc-iMDhdf hYtPsf"><li tabindex="0" depth="1" data-item-id="tag/Tarify" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP rPxYz -depth1"><span width="calc(100% - 38px)" title="Тарифы" class="sc-eteQWc glMKqQ">Тарифы</span></label></li><li tabindex="0" depth="1" data-item-id="tag/Komissii" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP rPxYz -depth1"><span width="calc(100% - 38px)" title="Комиссии" class="sc-eteQWc glMKqQ">Комиссии</span><svg class="sc-cBYhjr gUrACV" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></label><ul class="sc-iMDhdf fEjWGm"><li tabindex="0" depth="2" data-item-id="tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP eyqmuI -depth2"><span type="get" class="sc-exkVDC CCdkg operation-type get">get</span><span tabindex="0" width="calc(100% - 38px)" class="sc-eteQWc glMKqQ">Комиссия по категориям товаров{{ /api/v1/tariffs/commission }}</span></label></li></ul></li><li tabindex="0" depth="1" data-item-id="tag/Koefficienty-skladov" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP rPxYz -depth1"><span width="calc(100% - 38px)" title="Коэффициенты складов" class="sc-eteQWc glMKqQ">Коэффициенты складов</span><svg class="sc-cBYhjr gUrACV" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></label><ul class="sc-iMDhdf fEjWGm"><li tabindex="0" depth="2" data-item-id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP eyqmuI -depth2"><span type="get" class="sc-exkVDC CCdkg operation-type get">get</span><span tabindex="0" width="calc(100% - 38px)" class="sc-eteQWc glMKqQ">Тарифы для коробов{{ /api/v1/tariffs/box }}</span></label></li><li tabindex="0" depth="2" data-item-id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP eyqmuI -depth2"><span type="get" class="sc-exkVDC CCdkg operation-type get">get</span><span tabindex="0" width="calc(100% - 38px)" class="sc-eteQWc glMKqQ">Тарифы для монопаллет{{ /api/v1/tariffs/pallet }}</span></label></li></ul></li><li tabindex="0" depth="1" data-item-id="tag/Stoimost-vozvrata-prodavcu" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP rPxYz -depth1"><span width="calc(100% - 38px)" title="Стоимость возврата продавцу" class="sc-eteQWc glMKqQ">Стоимость возврата продавцу</span><svg class="sc-cBYhjr gUrACV" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></label><ul class="sc-iMDhdf fEjWGm"><li tabindex="0" depth="2" data-item-id="tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get" role="menuitem" class="sc-loAbOW btrDvq"><label class="sc-bPZXsP eyqmuI -depth2"><span type="get" class="sc-exkVDC CCdkg operation-type get">get</span><span tabindex="0" width="calc(100% - 38px)" class="sc-eteQWc glMKqQ">Тарифы на&nbsp;возврат{{ /api/v1/tariffs/return }}</span></label></li></ul></li></ul><div class="sc-gkavYR eIWzFd"><a target="_blank" rel="noopener noreferrer" href="https://redocly.com/redoc/">API docs by Redocly</a></div></div></div><div class="sc-elEJnV kavMAo"><div class="sc-bQEQyQ GNTqg"><svg class="" style="transform:translate(2px, -4px) rotate(180deg);transition:transform 0.2s ease" viewBox="0 0 926.23699 573.74994" version="1.1" x="0px" y="0px" width="15" height="15"><g transform="translate(904.92214,-879.1482)"><path d="
+          m -673.67664,1221.6502 -231.2455,-231.24803 55.6165,
+          -55.627 c 30.5891,-30.59485 56.1806,-55.627 56.8701,-55.627 0.6894,
+          0 79.8637,78.60862 175.9427,174.68583 l 174.6892,174.6858 174.6892,
+          -174.6858 c 96.079,-96.07721 175.253196,-174.68583 175.942696,
+          -174.68583 0.6895,0 26.281,25.03215 56.8701,
+          55.627 l 55.6165,55.627 -231.245496,231.24803 c -127.185,127.1864
+          -231.5279,231.248 -231.873,231.248 -0.3451,0 -104.688,
+          -104.0616 -231.873,-231.248 z
+        " fill="currentColor"></path></g></svg><svg class="" style="transform:translate(2px, 4px);transition:transform 0.2s ease" viewBox="0 0 926.23699 573.74994" version="1.1" x="0px" y="0px" width="15" height="15"><g transform="translate(904.92214,-879.1482)"><path d="
+          m -673.67664,1221.6502 -231.2455,-231.24803 55.6165,
+          -55.627 c 30.5891,-30.59485 56.1806,-55.627 56.8701,-55.627 0.6894,
+          0 79.8637,78.60862 175.9427,174.68583 l 174.6892,174.6858 174.6892,
+          -174.6858 c 96.079,-96.07721 175.253196,-174.68583 175.942696,
+          -174.68583 0.6895,0 26.281,25.03215 56.8701,
+          55.627 l 55.6165,55.627 -231.245496,231.24803 c -127.185,127.1864
+          -231.5279,231.248 -231.873,231.248 -0.3451,0 -104.688,
+          -104.0616 -231.873,-231.248 z
+        " fill="currentColor"></path></g></svg></div></div><div class="sc-dKGrn hqDTuk api-content"><div class="sc-dsLQwm eLUhIO"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup api-info"><h1 class="sc-iCZwEW sc-gjHHYa jymFpj edbYXQ">Тарифы<!-- --> <span>(<!-- -->tariffs<!-- -->)</span></h1><div class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"></div><div data-role="redoc-summary" html="" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"></div><div data-role="redoc-description" html="<div class=&quot;description_important&quot;>
+    Узнать больше о комиссиях и тарифах можно в <a href=&quot;https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493&quot;>справочном центре</a>
+</div>
+
+<p>В разделе описаны методы получения:</p>
+<ol>
+<li><a href=&quot;./wb-tariffs#tag/Komissii&quot;>Комиссий</a></li>
+<li><a href=&quot;./wb-tariffs#tag/Koefficienty-skladov&quot;>Коэффициентов складов</a></li>
+<li><a href=&quot;./wb-tariffs#tag/Stoimost-vozvrata-prodavcu&quot;>Тарифов на возврат товаров продавцу</a></li>
+</ol>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><div class="description_important">
+    Узнать больше о комиссиях и тарифах можно в <a href="https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493">справочном центре</a>
+</div>
+
+<p>В разделе описаны методы получения:</p>
+<ol>
+<li><a href="./wb-tariffs#tag/Komissii">Комиссий</a></li>
+<li><a href="./wb-tariffs#tag/Koefficienty-skladov">Коэффициентов складов</a></li>
+<li><a href="./wb-tariffs#tag/Stoimost-vozvrata-prodavcu">Тарифов на возврат товаров продавцу</a></li>
+</ol>
+</div></div></div></div><div id="tag/Tarify" data-section-id="tag/Tarify" class="sc-dsLQwm eLUhIO"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Tarify" aria-label="tag/Tarify"></a>Тарифы</h2></div></div><div class="sc-fQpRED djCrup"><div class="sc-euGpHm sc-exayXG fwfkcU eKUBFp redoc-markdown " html="<div class=&quot;api-description&quot;>
+
+<div class=&quot;description_important&quot;>
+    Узнать больше о комиссиях и тарифах можно в <a href=&quot;https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493&quot;>справочном центре</a>
+</div>
+
+<p>В разделе описаны методы получения:</p>
+<ol>
+<li><a href=&quot;./wb-tariffs#tag/Komissii&quot;>Комиссий</a></li>
+<li><a href=&quot;./wb-tariffs#tag/Koefficienty-skladov&quot;>Коэффициентов складов</a></li>
+<li><a href=&quot;./wb-tariffs#tag/Stoimost-vozvrata-prodavcu&quot;>Тарифов на возврат товаров продавцу</a></li>
+</ol>
+</div>"><div class="api-description">
+
+<div class="description_important">
+    Узнать больше о комиссиях и тарифах можно в <a href="https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493">справочном центре</a>
+</div>
+
+<p>В разделе описаны методы получения:</p>
+<ol>
+<li><a href="./wb-tariffs#tag/Komissii">Комиссий</a></li>
+<li><a href="./wb-tariffs#tag/Koefficienty-skladov">Коэффициентов складов</a></li>
+<li><a href="./wb-tariffs#tag/Stoimost-vozvrata-prodavcu">Тарифов на возврат товаров продавцу</a></li>
+</ol>
+</div></div></div></div><div id="tag/Komissii" data-section-id="tag/Komissii" class="sc-dsLQwm eLUhIO"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Komissii" aria-label="tag/Komissii"></a>Комиссии</h2></div></div><div class="sc-fQpRED djCrup"><div class="sc-euGpHm sc-exayXG fwfkcU eKUBFp redoc-markdown " html="<div class=&quot;description_auth&quot;>
+  Комиссии можно получить с <a href=&quot;./api-information#tag/Avtorizaciya/Kak-sozdat-token&quot;>токеном</a> любой категории
+</div>
+
+<div class=&quot;description_important&quot;>
+  Узнать больше о комиссиях можно в <a href=&quot;https://seller.wildberries.ru/instructions/material/A-111?categoryId=f2850fa5-0d2f-4515-b05a-d161b2d167b8&quot;>справочном центре</a>
+</div>
+
+<p>Метод получения <a href=&quot;./wb-tariffs#tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get&quot;>комиссии по категориям товаров</a>.</p>
+"><div class="description_auth">
+  Комиссии можно получить с <a href="./api-information#tag/Avtorizaciya/Kak-sozdat-token">токеном</a> любой категории
+</div>
+
+<div class="description_important">
+  Узнать больше о комиссиях можно в <a href="https://seller.wildberries.ru/instructions/material/A-111?categoryId=f2850fa5-0d2f-4515-b05a-d161b2d167b8">справочном центре</a>
+</div>
+
+<p>Метод получения <a href="./wb-tariffs#tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get">комиссии по категориям товаров</a>.</p>
+</div></div></div><div id="tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get" data-section-id="tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get" class="sc-dsLQwm KmzkR"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get" aria-label="tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get"></a>Комиссия по категориям товаров{{ /api/v1/tariffs/commission }}<!-- --> </h2><div class="sc-dKsqdn dCbPd"><button class="sc-iAlELC gWNvBR"><span type="get" class="sc-oeqTF buUsEL http-verb get">get</span><span class="sc-eowDPD LftNx">/api/v1/tariffs/commission</span><svg class="sc-cBYhjr gskTeH" style="margin-right:-25px" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></button><div aria-hidden="true" class="sc-ezTrPE bFiOkX"><div class="sc-drnuxz hdRKqQ"><div html="" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"></div><div tabindex="0" role="button"><div class="sc-hDcvty iZKkOH"><span>https://common-api.wildberries.ru</span>/api/v1/tariffs/commission</div></div></div></div></div><div class="sc-fpJhiv dlKTbr"><div html="<div class='description-title'><span>Описание метода</span></div>
+
+<p>Метод возвращает данные о <a href=&quot;https://seller.wildberries.ru/dynamic-product-categories/commission&quot;>комиссии</a> WB по <a href=&quot;./work-with-products#tag/Kategorii-predmety-i-harakteristiki/paths/~1content~1v2~1object~1parent~1all/get&quot;>родительским категориям товаров</a> согласно модели продаж.</p>
+<div class=&quot;description_limit&quot;>
+<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>1 запрос</td>
+<td>1 минута</td>
+<td>2 запроса</td>
+</tr>
+</tbody></table>
+</div>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><div class="description-title"><span>Описание метода</span></div>
+
+<p>Метод возвращает данные о <a href="https://seller.wildberries.ru/dynamic-product-categories/commission">комиссии</a> WB по <a href="./work-with-products#tag/Kategorii-predmety-i-harakteristiki/paths/~1content~1v2~1object~1parent~1all/get">родительским категориям товаров</a> согласно модели продаж.</p>
+<div class="description_limit">
+<a href="./api-information#tag/Vvedenie/Limity-zaprosov">Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>1 запрос</td>
+<td>1 минута</td>
+<td>2 запроса</td>
+</tr>
+</tbody></table>
+</div>
+</div></div><div class="sc-hWiVxH bAHxMG"><div class="sc-jHofgq febKCY"><h5 class="sc-dkjaqt sc-jRHPII gwrByh eGMvsx">Authorizations:</h5><svg class="sc-cBYhjr dJanPw" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></div><div class="sc-iRFtIJ cuBJLO"><span class="sc-iHlJgr cqNsTO"><span class="sc-blcnQh jWKDln"><i>HeaderApiKey</i></span></span></div></div><div><h5 class="sc-dkjaqt gwrByh">query<!-- --> Parameters</h5><table class="sc-dENhDJ fPSXOj"><tbody><tr class="last "><td kind="field" title="locale" class="sc-tOkKi sc-epPVmt bhffov eLZDks"><span class="sc-hfvVTD jzWJIy"></span><span class="property-name">locale</span></td><td class="sc-fpSrms JQLsZ"><div><div><span class="sc-xuUkR sc-cvzDha bJcEcT gsJNaa"></span><span class="sc-xuUkR sc-gKROGD bJcEcT khKFLF">string</span></div> <div><span class="sc-xuUkR bJcEcT"> <!-- -->Example:<!-- --> </span> <span class="sc-xuUkR sc-cDelgQ bJcEcT fQEYXv">locale=ru</span></div><div><div html="<p>Язык полей ответа <code>parentName</code> и <code>subjectName</code>:</p>
+<ul>
+<li><code>ru</code> — русский</li>
+<li><code>en</code> — английский</li>
+<li><code>zh</code> — китайский</li>
+</ul>
+" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"><p>Язык полей ответа <code>parentName</code> и <code>subjectName</code>:</p>
+<ul>
+<li><code>ru</code> — русский</li>
+<li><code>en</code> — английский</li>
+<li><code>zh</code> — китайский</li>
+</ul>
+</div></div></div></td></tr></tbody></table></div><div><h3 class="sc-eiLgtK gvTwBv">Responses</h3><div><button class="sc-giOWAb gcYfHW"><svg class="sc-cBYhjr fqtTpb" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">200<!-- --> </strong><div html="<p><span class='response__value response__value_success'>Успешно</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value response__value_success">Успешно</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">400<!-- --> </strong><div html="<p><span class='response__value '>Неправильный запрос</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Неправильный запрос</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">401<!-- --> </strong><div html="<p><span class='response__value '>Не авторизован</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Не авторизован</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">429<!-- --> </strong><div html="<p><span class='response__value '>Слишком много запросов</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Слишком много запросов</span></p>
+</div></button></div></div></div><div class="sc-iKTcqh sc-gnpbhQ tmKyO ijBuoE"><div><h3 class="sc-kkmypM jLhRGC"> <!-- -->Response samples<!-- --> </h3><div class="sc-bSlUec gVJPfy" data-rttabs="true"><ul class="react-tabs__tab-list" role="tablist"><li class="tab-success react-tabs__tab--selected" role="tab" id="tab:R9ppa:0" aria-selected="true" aria-disabled="false" aria-controls="panel:R9ppa:0" tabindex="0" data-rttab="true">200</li><li class="tab-error" role="tab" id="tab:R9ppa:1" aria-selected="false" aria-disabled="false" aria-controls="panel:R9ppa:1" data-rttab="true">400</li><li class="tab-error" role="tab" id="tab:R9ppa:2" aria-selected="false" aria-disabled="false" aria-controls="panel:R9ppa:2" data-rttab="true">401</li><li class="tab-error" role="tab" id="tab:R9ppa:3" aria-selected="false" aria-disabled="false" aria-controls="panel:R9ppa:3" data-rttab="true">429</li></ul><div class="react-tabs__tab-panel react-tabs__tab-panel--selected" role="tabpanel" id="panel:R9ppa:0" aria-labelledby="tab:R9ppa:0"><div><div class="sc-WChnI iLXIA-d"><span class="sc-foMnoT cpxoae">Content type</span><div class="sc-ZubPq cQDyba">application/json</div></div><div class="sc-AmOMz gDrQpr"><div class="sc-WChnI iLXIA-d"><span class="sc-foMnoT cpxoae">Example</span><div class="sc-dorvvM sc-flUsNl eKERE eYgXn"><svg class="sc-kTYLvb FdjRy" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><select class="dropdown-select"><option value="Commission" selected="">Commission</option><option value="CommissionChina">CommissionChina</option><option value="CommissionTurkey">CommissionTurkey</option><option value="CommissionUzbekistan">CommissionUzbekistan</option><option value="CommissionUAE">CommissionUAE</option></select><label>Commission</label></div></div><div><div html="<p>Комиссия</p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><p>Комиссия</p>
+</div><div class="sc-eTdEpr dgzSkD"><div class="sc-pFPEP dGzeta"><button><div class="sc-eHujzY ecCAmX">Copy</div></button><button> Expand all </button><button> Collapse all </button></div><div class="sc-euGpHm fwfkcU sc-fTgapq fghMRy"><div class="redoc-json"><code><button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable "><span class="property token string">"report"</span>: <button class="collapser" aria-label="collapse"></button><span class="token punctuation">[</span><span class="ellipsis"></span><ul class="array collapsible"><li><div class="hoverable collapsed"><button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"kgvpBooking"</span>: <span class="token number">14.5</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"kgvpMarketplace"</span>: <span class="token number">15.5</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"kgvpPickup"</span>: <span class="token number">14.5</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"kgvpSupplier"</span>: <span class="token number">12.5</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"kgvpSupplierExpress"</span>: <span class="token number">3</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"paidStorageKgvp"</span>: <span class="token number">15.5</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"parentID"</span>: <span class="token number">657</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"parentName"</span>: <span class="token string">"Бытовая техника"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"subjectID"</span>: <span class="token number">6461</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"subjectName"</span>: <span class="token string">"Оборудование зуботехническое"</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">]</span></div></li></ul><span class="token punctuation">}</span></code></div></div></div></div></div></div></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9ppa:1" aria-labelledby="tab:R9ppa:1"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9ppa:2" aria-labelledby="tab:R9ppa:2"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9ppa:3" aria-labelledby="tab:R9ppa:3"></div></div></div></div></div></div><div id="tag/Koefficienty-skladov" data-section-id="tag/Koefficienty-skladov" class="sc-dsLQwm eLUhIO"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Koefficienty-skladov" aria-label="tag/Koefficienty-skladov"></a>Коэффициенты складов</h2></div></div><div class="sc-fQpRED djCrup"><div class="sc-euGpHm sc-exayXG fwfkcU eKUBFp redoc-markdown " html="<div class=&quot;description_auth&quot;>
+  Коэффициенты складов можно получить с <a href=&quot;./api-information#tag/Avtorizaciya/Kak-sozdat-token&quot;>токеном</a> любой категории
+</div>
+
+<p>Предоставляются данные по текущим и архивным тарифам для:</p>
+<ul>
+<li><a href=&quot;./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get&quot;>коробов</a></li>
+<li><a href=&quot;./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get&quot;>монопаллет</a></li>
+</ul>
+"><div class="description_auth">
+  Коэффициенты складов можно получить с <a href="./api-information#tag/Avtorizaciya/Kak-sozdat-token">токеном</a> любой категории
+</div>
+
+<p>Предоставляются данные по текущим и архивным тарифам для:</p>
+<ul>
+<li><a href="./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get">коробов</a></li>
+<li><a href="./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get">монопаллет</a></li>
+</ul>
+</div></div></div><div id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get" data-section-id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get" class="sc-dsLQwm KmzkR"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get" aria-label="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get"></a>Тарифы для коробов{{ /api/v1/tariffs/box }}<!-- --> </h2><div class="sc-dKsqdn dCbPd"><button class="sc-iAlELC gWNvBR"><span type="get" class="sc-oeqTF buUsEL http-verb get">get</span><span class="sc-eowDPD LftNx">/api/v1/tariffs/box</span><svg class="sc-cBYhjr gskTeH" style="margin-right:-25px" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></button><div aria-hidden="true" class="sc-ezTrPE bFiOkX"><div class="sc-drnuxz hdRKqQ"><div html="" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"></div><div tabindex="0" role="button"><div class="sc-hDcvty iZKkOH"><span>https://common-api.wildberries.ru</span>/api/v1/tariffs/box</div></div></div></div></div><div class="sc-fpJhiv dlKTbr"><div html="<div class='description-title'><span>Описание метода</span></div>
+
+<p>Для товаров, которые поставляются на&nbsp;склад в коробах, метод возвращает <a href=&quot;https://seller.wildberries.ru/dynamic-product-categories&quot;>тарифы на остаток</a>:</p>
+<ul>
+<li>доставка со склада или пункта приёма до покупателя</li>
+<li>доставка от покупателя до пункта приёма</li>
+<li>хранение на&nbsp;складе WB</li>
+</ul>
+<div class=&quot;description_limit&quot;>
+<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><div class="description-title"><span>Описание метода</span></div>
+
+<p>Для товаров, которые поставляются на&nbsp;склад в коробах, метод возвращает <a href="https://seller.wildberries.ru/dynamic-product-categories">тарифы на остаток</a>:</p>
+<ul>
+<li>доставка со склада или пункта приёма до покупателя</li>
+<li>доставка от покупателя до пункта приёма</li>
+<li>хранение на&nbsp;складе WB</li>
+</ul>
+<div class="description_limit">
+<a href="./api-information#tag/Vvedenie/Limity-zaprosov">Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+</div></div><div class="sc-hWiVxH bAHxMG"><div class="sc-jHofgq febKCY"><h5 class="sc-dkjaqt sc-jRHPII gwrByh eGMvsx">Authorizations:</h5><svg class="sc-cBYhjr dJanPw" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></div><div class="sc-iRFtIJ cuBJLO"><span class="sc-iHlJgr cqNsTO"><span class="sc-blcnQh jWKDln"><i>HeaderApiKey</i></span></span></div></div><div><h5 class="sc-dkjaqt gwrByh">query<!-- --> Parameters</h5><table class="sc-dENhDJ fPSXOj"><tbody><tr class="last "><td kind="field" title="date" class="sc-tOkKi sc-epPVmt bhffov eLZDks"><span class="sc-hfvVTD jzWJIy"></span><span class="property-name">date</span><div class="sc-xuUkR sc-hrDJJk bJcEcT eYMuOI">required</div></td><td class="sc-fpSrms JQLsZ"><div><div><span class="sc-xuUkR sc-cvzDha bJcEcT gsJNaa"></span><span class="sc-xuUkR sc-gKROGD bJcEcT khKFLF">string</span></div> <div><div html="<p>Дата в формате ГГГГ-ММ-ДД</p>
+" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"><p>Дата в формате ГГГГ-ММ-ДД</p>
+</div></div></div></td></tr></tbody></table></div><div><h3 class="sc-eiLgtK gvTwBv">Responses</h3><div><button class="sc-giOWAb gcYfHW"><svg class="sc-cBYhjr fqtTpb" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">200<!-- --> </strong><div html="<p><span class='response__value response__value_success'>Успешно</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value response__value_success">Успешно</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">400<!-- --> </strong><div html="<p><span class='response__value '>Неправильный запрос</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Неправильный запрос</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">401<!-- --> </strong><div html="<p><span class='response__value '>Не авторизован</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Не авторизован</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">429<!-- --> </strong><div html="<p><span class='response__value '>Слишком много запросов</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Слишком много запросов</span></p>
+</div></button></div></div></div><div class="sc-iKTcqh sc-gnpbhQ tmKyO ijBuoE"><div><h3 class="sc-kkmypM jLhRGC"> <!-- -->Response samples<!-- --> </h3><div class="sc-bSlUec gVJPfy" data-rttabs="true"><ul class="react-tabs__tab-list" role="tablist"><li class="tab-success react-tabs__tab--selected" role="tab" id="tab:Rjipq:0" aria-selected="true" aria-disabled="false" aria-controls="panel:Rjipq:0" tabindex="0" data-rttab="true">200</li><li class="tab-error" role="tab" id="tab:Rjipq:1" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjipq:1" data-rttab="true">400</li><li class="tab-error" role="tab" id="tab:Rjipq:2" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjipq:2" data-rttab="true">401</li><li class="tab-error" role="tab" id="tab:Rjipq:3" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjipq:3" data-rttab="true">429</li></ul><div class="react-tabs__tab-panel react-tabs__tab-panel--selected" role="tabpanel" id="panel:Rjipq:0" aria-labelledby="tab:Rjipq:0"><div><div class="sc-WChnI iLXIA-d"><span class="sc-foMnoT cpxoae">Content type</span><div class="sc-ZubPq cQDyba">application/json</div></div><div class="sc-AmOMz gDrQpr"><div class="sc-eTdEpr dgzSkD"><div class="sc-pFPEP dGzeta"><button><div class="sc-eHujzY ecCAmX">Copy</div></button><button> Expand all </button><button> Collapse all </button></div><div class="sc-euGpHm fwfkcU sc-fTgapq fghMRy"><div class="redoc-json"><code><button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable "><span class="property token string">"response"</span>: <button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"data"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"dtNextBox"</span>: <span class="token string">"2024-02-01"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"dtTillMax"</span>: <span class="token string">"2024-03-31"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseList"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">[</span><span class="ellipsis"></span><ul class="array collapsible"><li><div class="hoverable collapsed"><button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryBase"</span>: <span class="token string">"48"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryCoefExpr"</span>: <span class="token string">"160"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryLiter"</span>: <span class="token string">"11,2"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryMarketplaceBase"</span>: <span class="token string">"40"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryMarketplaceCoefExpr"</span>: <span class="token string">"125"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxDeliveryMarketplaceLiter"</span>: <span class="token string">"11"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxStorageBase"</span>: <span class="token string">"0,14"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxStorageCoefExpr"</span>: <span class="token string">"115"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"boxStorageLiter"</span>: <span class="token string">"0,07"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"geoName"</span>: <span class="token string">"Центральный федеральный округ"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseName"</span>: <span class="token string">"Коледино"</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">]</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></code></div></div></div></div></div></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjipq:1" aria-labelledby="tab:Rjipq:1"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjipq:2" aria-labelledby="tab:Rjipq:2"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjipq:3" aria-labelledby="tab:Rjipq:3"></div></div></div></div></div></div><div id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get" data-section-id="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get" class="sc-dsLQwm KmzkR"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get" aria-label="tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get"></a>Тарифы для монопаллет{{ /api/v1/tariffs/pallet }}<!-- --> </h2><div class="sc-dKsqdn dCbPd"><button class="sc-iAlELC gWNvBR"><span type="get" class="sc-oeqTF buUsEL http-verb get">get</span><span class="sc-eowDPD LftNx">/api/v1/tariffs/pallet</span><svg class="sc-cBYhjr gskTeH" style="margin-right:-25px" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></button><div aria-hidden="true" class="sc-ezTrPE bFiOkX"><div class="sc-drnuxz hdRKqQ"><div html="" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"></div><div tabindex="0" role="button"><div class="sc-hDcvty iZKkOH"><span>https://common-api.wildberries.ru</span>/api/v1/tariffs/pallet</div></div></div></div></div><div class="sc-fpJhiv dlKTbr"><div html="<div class='description-title'><span>Описание метода</span></div>
+
+<p>Для товаров, которые поставляются на&nbsp;склад WB на&nbsp;монопаллетах, метод возвращает <a href=&quot;https://seller.wildberries.ru/dynamic-product-categories&quot;>стоимость</a>:</p>
+<ul>
+<li>доставки со склада до покупателя</li>
+<li>доставки от покупателя до склада</li>
+<li>хранения на&nbsp;складе WB</li>
+</ul>
+<div class=&quot;description_limit&quot;>
+<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><div class="description-title"><span>Описание метода</span></div>
+
+<p>Для товаров, которые поставляются на&nbsp;склад WB на&nbsp;монопаллетах, метод возвращает <a href="https://seller.wildberries.ru/dynamic-product-categories">стоимость</a>:</p>
+<ul>
+<li>доставки со склада до покупателя</li>
+<li>доставки от покупателя до склада</li>
+<li>хранения на&nbsp;складе WB</li>
+</ul>
+<div class="description_limit">
+<a href="./api-information#tag/Vvedenie/Limity-zaprosov">Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+</div></div><div class="sc-hWiVxH bAHxMG"><div class="sc-jHofgq febKCY"><h5 class="sc-dkjaqt sc-jRHPII gwrByh eGMvsx">Authorizations:</h5><svg class="sc-cBYhjr dJanPw" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></div><div class="sc-iRFtIJ cuBJLO"><span class="sc-iHlJgr cqNsTO"><span class="sc-blcnQh jWKDln"><i>HeaderApiKey</i></span></span></div></div><div><h5 class="sc-dkjaqt gwrByh">query<!-- --> Parameters</h5><table class="sc-dENhDJ fPSXOj"><tbody><tr class="last "><td kind="field" title="date" class="sc-tOkKi sc-epPVmt bhffov eLZDks"><span class="sc-hfvVTD jzWJIy"></span><span class="property-name">date</span><div class="sc-xuUkR sc-hrDJJk bJcEcT eYMuOI">required</div></td><td class="sc-fpSrms JQLsZ"><div><div><span class="sc-xuUkR sc-cvzDha bJcEcT gsJNaa"></span><span class="sc-xuUkR sc-gKROGD bJcEcT khKFLF">string</span></div> <div><div html="<p>Дата в формате ГГГГ-ММ-ДД</p>
+" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"><p>Дата в формате ГГГГ-ММ-ДД</p>
+</div></div></div></td></tr></tbody></table></div><div><h3 class="sc-eiLgtK gvTwBv">Responses</h3><div><button class="sc-giOWAb gcYfHW"><svg class="sc-cBYhjr fqtTpb" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">200<!-- --> </strong><div html="<p><span class='response__value response__value_success'>Успешно</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value response__value_success">Успешно</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">400<!-- --> </strong><div html="<p><span class='response__value '>Неправильный запрос</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Неправильный запрос</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">401<!-- --> </strong><div html="<p><span class='response__value '>Не авторизован</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Не авторизован</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">429<!-- --> </strong><div html="<p><span class='response__value '>Слишком много запросов</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Слишком много запросов</span></p>
+</div></button></div></div></div><div class="sc-iKTcqh sc-gnpbhQ tmKyO ijBuoE"><div><h3 class="sc-kkmypM jLhRGC"> <!-- -->Response samples<!-- --> </h3><div class="sc-bSlUec gVJPfy" data-rttabs="true"><ul class="react-tabs__tab-list" role="tablist"><li class="tab-success react-tabs__tab--selected" role="tab" id="tab:Rjj9q:0" aria-selected="true" aria-disabled="false" aria-controls="panel:Rjj9q:0" tabindex="0" data-rttab="true">200</li><li class="tab-error" role="tab" id="tab:Rjj9q:1" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjj9q:1" data-rttab="true">400</li><li class="tab-error" role="tab" id="tab:Rjj9q:2" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjj9q:2" data-rttab="true">401</li><li class="tab-error" role="tab" id="tab:Rjj9q:3" aria-selected="false" aria-disabled="false" aria-controls="panel:Rjj9q:3" data-rttab="true">429</li></ul><div class="react-tabs__tab-panel react-tabs__tab-panel--selected" role="tabpanel" id="panel:Rjj9q:0" aria-labelledby="tab:Rjj9q:0"><div><div class="sc-WChnI iLXIA-d"><span class="sc-foMnoT cpxoae">Content type</span><div class="sc-ZubPq cQDyba">application/json</div></div><div class="sc-AmOMz gDrQpr"><div class="sc-eTdEpr dgzSkD"><div class="sc-pFPEP dGzeta"><button><div class="sc-eHujzY ecCAmX">Copy</div></button><button> Expand all </button><button> Collapse all </button></div><div class="sc-euGpHm fwfkcU sc-fTgapq fghMRy"><div class="redoc-json"><code><button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable "><span class="property token string">"response"</span>: <button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"data"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"dtNextPallet"</span>: <span class="token string">"2024-02-01"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"dtTillMax"</span>: <span class="token string">"2024-03-31"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseList"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">[</span><span class="ellipsis"></span><ul class="array collapsible"><li><div class="hoverable collapsed"><button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"palletDeliveryExpr"</span>: <span class="token string">"170"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"palletDeliveryValueBase"</span>: <span class="token string">"51"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"palletDeliveryValueLiter"</span>: <span class="token string">"11,9"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"palletStorageExpr"</span>: <span class="token string">"155"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"palletStorageValueExpr"</span>: <span class="token string">"35.65"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseName"</span>: <span class="token string">"Коледино"</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">]</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></code></div></div></div></div></div></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjj9q:1" aria-labelledby="tab:Rjj9q:1"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjj9q:2" aria-labelledby="tab:Rjj9q:2"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:Rjj9q:3" aria-labelledby="tab:Rjj9q:3"></div></div></div></div></div></div><div id="tag/Stoimost-vozvrata-prodavcu" data-section-id="tag/Stoimost-vozvrata-prodavcu" class="sc-dsLQwm eLUhIO"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Stoimost-vozvrata-prodavcu" aria-label="tag/Stoimost-vozvrata-prodavcu"></a>Стоимость возврата продавцу</h2></div></div><div class="sc-fQpRED djCrup"><div class="sc-euGpHm sc-exayXG fwfkcU eKUBFp redoc-markdown " html="<div class=&quot;description_auth&quot;>
+  Стоимость возврата продавцу можно получить с <a href=&quot;./api-information#tag/Avtorizaciya/Kak-sozdat-token&quot;>токеном</a> любой категории
+</div>
+
+<div class=&quot;description_important&quot;>
+  Узнать больше о возвратах продавцу можно в <a href=&quot;https://seller.wildberries.ru/instructions/material/A-40?categoryId=8499952e-79d5-4be4-9c75-4aa29e0eb146&amp;goBackOption=prevRoute&quot;>справочном центре</a>
+</div>
+
+<p>Метод получения <a href=&quot;./wb-tariffs#tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get&quot;>тарифов на возврат</a>.</p>
+"><div class="description_auth">
+  Стоимость возврата продавцу можно получить с <a href="./api-information#tag/Avtorizaciya/Kak-sozdat-token">токеном</a> любой категории
+</div>
+
+<div class="description_important">
+  Узнать больше о возвратах продавцу можно в <a href="https://seller.wildberries.ru/instructions/material/A-40?categoryId=8499952e-79d5-4be4-9c75-4aa29e0eb146&amp;goBackOption=prevRoute">справочном центре</a>
+</div>
+
+<p>Метод получения <a href="./wb-tariffs#tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get">тарифов на возврат</a>.</p>
+</div></div></div><div id="tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get" data-section-id="tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get" class="sc-dsLQwm KmzkR"><div class="sc-la-DxNn jgmHHX"><div class="sc-fQpRED djCrup"><h2 class="sc-knesRu lbDlFu"><a class="sc-jCbFiK hSvuOo" href="#tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get" aria-label="tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get"></a>Тарифы на&nbsp;возврат{{ /api/v1/tariffs/return }}<!-- --> </h2><div class="sc-dKsqdn dCbPd"><button class="sc-iAlELC gWNvBR"><span type="get" class="sc-oeqTF buUsEL http-verb get">get</span><span class="sc-eowDPD LftNx">/api/v1/tariffs/return</span><svg class="sc-cBYhjr gskTeH" style="margin-right:-25px" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></button><div aria-hidden="true" class="sc-ezTrPE bFiOkX"><div class="sc-drnuxz hdRKqQ"><div html="" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"></div><div tabindex="0" role="button"><div class="sc-hDcvty iZKkOH"><span>https://common-api.wildberries.ru</span>/api/v1/tariffs/return</div></div></div></div></div><div class="sc-fpJhiv dlKTbr"><div html="<div class='description-title'><span>Описание метода</span></div>
+
+<p>Метод возвращает <a href=&quot;https://seller.wildberries.ru/dynamic-product-categories/return-cost&quot;>тарифы</a>:</p>
+<ul>
+<li>на&nbsp;перевозку товаров со склада WB или из пункта приёма до продавца</li>
+<li>на&nbsp;обратную перевозку возвратов, которые не забрал продавец</li>
+</ul>
+<div class=&quot;description_limit&quot;>
+<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp"><div class="description-title"><span>Описание метода</span></div>
+
+<p>Метод возвращает <a href="https://seller.wildberries.ru/dynamic-product-categories/return-cost">тарифы</a>:</p>
+<ul>
+<li>на&nbsp;перевозку товаров со склада WB или из пункта приёма до продавца</li>
+<li>на&nbsp;обратную перевозку возвратов, которые не забрал продавец</li>
+</ul>
+<div class="description_limit">
+<a href="./api-information#tag/Vvedenie/Limity-zaprosov">Лимит запросов</a> на один аккаунт продавца:
+
+<table>
+<thead>
+<tr>
+<th>Период</th>
+<th>Лимит</th>
+<th>Интервал</th>
+<th>Всплеск</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 минута</td>
+<td>60 запросов</td>
+<td>1 секунда</td>
+<td>5 запросов</td>
+</tr>
+</tbody></table>
+</div>
+</div></div><div class="sc-hWiVxH bAHxMG"><div class="sc-jHofgq febKCY"><h5 class="sc-dkjaqt sc-jRHPII gwrByh eGMvsx">Authorizations:</h5><svg class="sc-cBYhjr dJanPw" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg></div><div class="sc-iRFtIJ cuBJLO"><span class="sc-iHlJgr cqNsTO"><span class="sc-blcnQh jWKDln"><i>HeaderApiKey</i></span></span></div></div><div><h5 class="sc-dkjaqt gwrByh">query<!-- --> Parameters</h5><table class="sc-dENhDJ fPSXOj"><tbody><tr class="last "><td kind="field" title="date" class="sc-tOkKi sc-epPVmt bhffov eLZDks"><span class="sc-hfvVTD jzWJIy"></span><span class="property-name">date</span><div class="sc-xuUkR sc-hrDJJk bJcEcT eYMuOI">required</div></td><td class="sc-fpSrms JQLsZ"><div><div><span class="sc-xuUkR sc-cvzDha bJcEcT gsJNaa"></span><span class="sc-xuUkR sc-gKROGD bJcEcT khKFLF">string</span></div> <div><div html="<p>Дата в формате ГГГГ-ММ-ДД</p>
+" class="sc-euGpHm sc-exayXG fwfkcU ipGiFP"><p>Дата в формате ГГГГ-ММ-ДД</p>
+</div></div></div></td></tr></tbody></table></div><div><h3 class="sc-eiLgtK gvTwBv">Responses</h3><div><button class="sc-giOWAb gcYfHW"><svg class="sc-cBYhjr fqtTpb" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">200<!-- --> </strong><div html="<p><span class='response__value response__value_success'>Успешно</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value response__value_success">Успешно</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">400<!-- --> </strong><div html="<p><span class='response__value '>Неправильный запрос</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Неправильный запрос</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">401<!-- --> </strong><div html="<p><span class='response__value '>Не авторизован</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Не авторизован</span></p>
+</div></button></div><div><button class="sc-giOWAb gbPhWg"><svg class="sc-cBYhjr ezFOZv" version="1.1" viewBox="0 0 24 24" x="0" xmlns="http://www.w3.org/2000/svg" y="0" aria-hidden="true"><polygon points="17.3 8.3 12 13.6 6.7 8.3 5.3 9.7 12 16.4 18.7 9.7 "></polygon></svg><strong class="sc-catHVh gXPvFO">429<!-- --> </strong><div html="<p><span class='response__value '>Слишком много запросов</span></p>
+" class="sc-euGpHm sc-exayXG fwfkcU eKUBFp sc-dHrNzZ dRdjww"><p><span class="response__value ">Слишком много запросов</span></p>
+</div></button></div></div></div><div class="sc-iKTcqh sc-gnpbhQ tmKyO ijBuoE"><div><h3 class="sc-kkmypM jLhRGC"> <!-- -->Response samples<!-- --> </h3><div class="sc-bSlUec gVJPfy" data-rttabs="true"><ul class="react-tabs__tab-list" role="tablist"><li class="tab-success react-tabs__tab--selected" role="tab" id="tab:R9pqa:0" aria-selected="true" aria-disabled="false" aria-controls="panel:R9pqa:0" tabindex="0" data-rttab="true">200</li><li class="tab-error" role="tab" id="tab:R9pqa:1" aria-selected="false" aria-disabled="false" aria-controls="panel:R9pqa:1" data-rttab="true">400</li><li class="tab-error" role="tab" id="tab:R9pqa:2" aria-selected="false" aria-disabled="false" aria-controls="panel:R9pqa:2" data-rttab="true">401</li><li class="tab-error" role="tab" id="tab:R9pqa:3" aria-selected="false" aria-disabled="false" aria-controls="panel:R9pqa:3" data-rttab="true">429</li></ul><div class="react-tabs__tab-panel react-tabs__tab-panel--selected" role="tabpanel" id="panel:R9pqa:0" aria-labelledby="tab:R9pqa:0"><div><div class="sc-WChnI iLXIA-d"><span class="sc-foMnoT cpxoae">Content type</span><div class="sc-ZubPq cQDyba">application/json</div></div><div class="sc-AmOMz gDrQpr"><div class="sc-eTdEpr dgzSkD"><div class="sc-pFPEP dGzeta"><button><div class="sc-eHujzY ecCAmX">Copy</div></button><button> Expand all </button><button> Collapse all </button></div><div class="sc-euGpHm fwfkcU sc-fTgapq fghMRy"><div class="redoc-json"><code><button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable "><span class="property token string">"response"</span>: <button class="collapser" aria-label="collapse"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"data"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"dtNextDeliveryDumpKgt"</span>: <span class="token string">"2024-02-01"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"dtNextDeliveryDumpSrg"</span>: <span class="token string">"2024-02-01"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"dtNextDeliveryDumpSup"</span>: <span class="token string">"2024-02-01"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseList"</span>: <button class="collapser" aria-label="expand"></button><span class="token punctuation">[</span><span class="ellipsis"></span><ul class="array collapsible"><li><div class="hoverable collapsed"><button class="collapser" aria-label="expand"></button><span class="token punctuation">{</span><span class="ellipsis"></span><ul class="obj collapsible"><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpKgtOfficeBase"</span>: <span class="token string">"1 039"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpKgtOfficeLiter"</span>: <span class="token string">"9,1"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpKgtReturnExpr"</span>: <span class="token string">"1 050"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSrgOfficeExpr"</span>: <span class="token string">"170"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSrgReturnExpr"</span>: <span class="token string">"170"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSupCourierBase"</span>: <span class="token string">"229"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSupCourierLiter"</span>: <span class="token string">"9,1"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSupOfficeBase"</span>: <span class="token string">"129"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSupOfficeLiter"</span>: <span class="token string">"9,1"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"deliveryDumpSupReturnExpr"</span>: <span class="token string">"250"</span><span class="token punctuation">,</span></div></li><li><div class="hoverable collapsed"><span class="property token string">"warehouseName"</span>: <span class="token string">"Электросталь"</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">]</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></div></li></ul><span class="token punctuation">}</span></code></div></div></div></div></div></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9pqa:1" aria-labelledby="tab:R9pqa:1"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9pqa:2" aria-labelledby="tab:R9pqa:2"></div><div class="react-tabs__tab-panel" role="tabpanel" id="panel:R9pqa:3" aria-labelledby="tab:R9pqa:3"></div></div></div></div></div></div></div><div class="sc-epzHnm cqlNzA"></div></div></div>
+      <script>
+      const __redoc_state = {"menu":{"activeItemIdx":-1},"spec":{"data":{"openapi":"3.0.0","info":{"title":"Тарифы","version":"tariffs","description":"<div class=\"description_important\">\n    Узнать больше о комиссиях и тарифах можно в <a href=\"https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493\">справочном центре</a>\n</div>\n\nВ разделе описаны методы получения:\n  1. [Комиссий](./wb-tariffs#tag/Komissii)\n  2. [Коэффициентов складов](./wb-tariffs#tag/Koefficienty-skladov)\n  3. [Тарифов на возврат товаров продавцу](./wb-tariffs#tag/Stoimost-vozvrata-prodavcu)\n","x-file-name":"tariffs"},"security":[{"HeaderApiKey":[]}],"tags":[{"name":"Тарифы","description":"<div class=\"api-description\">\n\n<div class=\"description_important\">\n    Узнать больше о комиссиях и тарифах можно в <a href=\"https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493\">справочном центре</a>\n</div>\n\nВ разделе описаны методы получения:\n  1. [Комиссий](./wb-tariffs#tag/Komissii)\n  2. [Коэффициентов складов](./wb-tariffs#tag/Koefficienty-skladov)\n  3. [Тарифов на возврат товаров продавцу](./wb-tariffs#tag/Stoimost-vozvrata-prodavcu)\n\n\n</div>","x-traitTag":true},{"name":"Комиссии","description":"<div class=\"description_auth\">\n  Комиссии можно получить с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-token\">токеном</a> любой категории\n</div>\n\n<div class=\"description_important\">\n  Узнать больше о комиссиях можно в <a href=\"https://seller.wildberries.ru/instructions/material/A-111?categoryId=f2850fa5-0d2f-4515-b05a-d161b2d167b8\">справочном центре</a>\n</div>\n\nМетод получения [комиссии по категориям товаров](./wb-tariffs#tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get).\n"},{"name":"Коэффициенты складов","description":"<div class=\"description_auth\">\n  Коэффициенты складов можно получить с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-token\">токеном</a> любой категории\n</div>\n\nПредоставляются данные по текущим и архивным тарифам для:\n  - [коробов](./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get)\n  - [монопаллет](./wb-tariffs#tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get)\n"},{"name":"Стоимость возврата продавцу","description":"<div class=\"description_auth\">\n  Стоимость возврата продавцу можно получить с <a href=\"./api-information#tag/Avtorizaciya/Kak-sozdat-token\">токеном</a> любой категории\n</div>\n\n<div class=\"description_important\">\n  Узнать больше о возвратах продавцу можно в <a href=\"https://seller.wildberries.ru/instructions/material/A-40?categoryId=8499952e-79d5-4be4-9c75-4aa29e0eb146&goBackOption=prevRoute\">справочном центре</a>\n</div>\n\nМетод получения [тарифов на возврат](./wb-tariffs#tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get).\n"}],"paths":{"/api/v1/tariffs/commission":{"servers":[{"url":"https://common-api.wildberries.ru"}],"get":{"x-readonly-method":true,"x-category":"commonapi","summary":"Комиссия по категориям товаров{{ /api/v1/tariffs/commission }}","tags":["Комиссии"],"description":"<div class='description-title'><span>Описание метода</span></div>\n\nМетод возвращает данные о [комиссии](https://seller.wildberries.ru/dynamic-product-categories/commission) WB по [родительским категориям товаров](./work-with-products#tag/Kategorii-predmety-i-harakteristiki/paths/~1content~1v2~1object~1parent~1all/get) согласно модели продаж.\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 минута | 1 запрос | 1 минута | 2 запроса |\n</div>\n","parameters":[{"$ref":"#/components/parameters/Locale"}],"responses":{"200":{"description":"<span class='response__value response__value_success'>Успешно</span>","content":{"application/json":{"schema":{"oneOf":[{"$ref":"#/components/schemas/Commission"},{"$ref":"#/components/schemas/CommissionChina"},{"$ref":"#/components/schemas/CommissionTurkey"},{"$ref":"#/components/schemas/CommissionUzbekistan"},{"$ref":"#/components/schemas/CommissionUAE"}]},"examples":{"Commission":{"$ref":"#/components/examples/Commission"},"CommissionChina":{"$ref":"#/components/examples/CommissionChina"},"CommissionTurkey":{"$ref":"#/components/examples/CommissionTurkey"},"CommissionUzbekistan":{"$ref":"#/components/examples/CommissionUzbekistan"},"CommissionUAE":{"$ref":"#/components/examples/CommissionUAE"}}}}},"400":{"description":"<span class='response__value '>Неправильный запрос</span>","content":{"application/problem+json":{"schema":{"$ref":"#/components/schemas/BadRequest"},"example":{"detail":"parameter \"locale\" in query has an error: value is not one of the allowed values [\"ru\",\"en\",\"zh\"]","origin":"api-statistics","requestId":"102d2641a931c41bed60649d6c99d80a","title":"Bad Request"}}}},"401":{"$ref":"#/components/responses/401","description":"<span class='response__value '></span>"},"429":{"$ref":"#/components/responses/429","description":"<span class='response__value '></span>"}}}},"/api/v1/tariffs/box":{"servers":[{"url":"https://common-api.wildberries.ru"}],"get":{"x-readonly-method":true,"x-category":"commonapi","summary":"Тарифы для коробов{{ /api/v1/tariffs/box }}","tags":["Коэффициенты складов"],"description":"<div class='description-title'><span>Описание метода</span></div>\n\nДля товаров, которые поставляются на склад в коробах, метод возвращает [тарифы на остаток](https://seller.wildberries.ru/dynamic-product-categories):\n  - доставка со склада или пункта приёма до покупателя\n  - доставка от покупателя до пункта приёма\n  - хранение на складе WB\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 минута | 60 запросов | 1 секунда | 5 запросов |\n</div>\n","parameters":[{"$ref":"#/components/parameters/Date"}],"responses":{"200":{"description":"<span class='response__value response__value_success'>Успешно</span>","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TariffsBoxResponse"}}}},"400":{"description":"<span class='response__value '>Неправильный запрос</span>","content":{"application/problem+json":{"schema":{"$ref":"#/components/schemas/BadRequest"},"example":{"detail":"Invalid date param","origin":"tariffs","requestId":"70da980b108e6f52ce7630921bd05b1a","title":"Bad Request"}}}},"401":{"$ref":"#/components/responses/401","description":"<span class='response__value '></span>"},"429":{"$ref":"#/components/responses/429","description":"<span class='response__value '></span>"}}}},"/api/v1/tariffs/pallet":{"servers":[{"url":"https://common-api.wildberries.ru"}],"get":{"x-readonly-method":true,"x-category":"commonapi","summary":"Тарифы для монопаллет{{ /api/v1/tariffs/pallet }}","tags":["Коэффициенты складов"],"description":"<div class='description-title'><span>Описание метода</span></div>\n\nДля товаров, которые поставляются на склад WB на монопаллетах, метод возвращает [стоимость](https://seller.wildberries.ru/dynamic-product-categories):\n  - доставки со склада до покупателя\n  - доставки от покупателя до склада\n  - хранения на складе WB\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 минута | 60 запросов | 1 секунда | 5 запросов |\n</div>\n","parameters":[{"$ref":"#/components/parameters/Date"}],"responses":{"200":{"description":"<span class='response__value response__value_success'>Успешно</span>","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TariffsPalletResponse"}}}},"400":{"description":"<span class='response__value '>Неправильный запрос</span>","content":{"application/problem+json":{"schema":{"$ref":"#/components/schemas/BadRequest"},"example":{"detail":"parameter \"date\" in query has an error: value is required but missing","origin":"tariffs","requestId":"7bc5c30d95933058d0e0bddc79b9da547","title":"Bad Request"}}}},"401":{"$ref":"#/components/responses/401","description":"<span class='response__value '></span>"},"429":{"$ref":"#/components/responses/429","description":"<span class='response__value '></span>"}}}},"/api/v1/tariffs/return":{"servers":[{"url":"https://common-api.wildberries.ru"}],"get":{"x-readonly-method":true,"x-category":"commonapi","summary":"Тарифы на возврат{{ /api/v1/tariffs/return }}","tags":["Стоимость возврата продавцу"],"description":"<div class='description-title'><span>Описание метода</span></div>\n\nМетод возвращает [тарифы](https://seller.wildberries.ru/dynamic-product-categories/return-cost):\n  - на перевозку товаров со склада WB или из пункта приёма до продавца\n  - на обратную перевозку возвратов, которые не забрал продавец\n\n<div class=\"description_limit\">\n<a href='./api-information#tag/Vvedenie/Limity-zaprosov'>Лимит запросов</a> на один аккаунт продавца:\n\n| Период | Лимит | Интервал | Всплеск |\n| --- | --- | --- | --- |\n| 1 минута | 60 запросов | 1 секунда | 5 запросов |\n</div>\n","parameters":[{"$ref":"#/components/parameters/Date"}],"responses":{"200":{"description":"<span class='response__value response__value_success'>Успешно</span>","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ReturnTariffsResponse"}}}},"400":{"description":"<span class='response__value '>Неправильный запрос</span>","content":{"application/problem+json":{"schema":{"$ref":"#/components/schemas/BadRequest"},"example":{"detail":"parameter \"date\" in query has an error: empty value is not allowed","origin":"tariffs","requestId":"e8096bddcfe5e3ff75f1afd26755364c","title":"Bad Request"}}}},"401":{"$ref":"#/components/responses/401","description":"<span class='response__value '></span>"},"429":{"$ref":"#/components/responses/429","description":"<span class='response__value '></span>"}}}}},"components":{"examples":{"Commission":{"summary":"Commission","description":"Комиссия","value":{"report":[{"kgvpBooking":14.5,"kgvpMarketplace":15.5,"kgvpPickup":14.5,"kgvpSupplier":12.5,"kgvpSupplierExpress":3,"paidStorageKgvp":15.5,"parentID":657,"parentName":"Бытовая техника","subjectID":6461,"subjectName":"Оборудование зуботехническое"}]}},"CommissionChina":{"summary":"CommissionChina","description":"Комиссия Китай","value":{"report":[{"kgvpChina":15.5,"parentID":657,"parentName":"国内设备","subjectID":6461,"subjectName":"牙齿矫正设备"}]}},"CommissionTurkey":{"summary":"CommissionTurkey","description":"Комиссия Турция","value":{"report":[{"kgvpTurkey":15.5,"parentID":657,"parentName":"Home appliance","subjectID":6461,"subjectName":"Dental equipment"}]}},"CommissionUzbekistan":{"summary":"CommissionUzbekistan","description":"Комиссия Узбекистан","value":{"report":[{"kgvpUzbekistan":15.5,"parentID":657,"parentName":"Бытовая техника","subjectID":6461,"subjectName":"Оборудование зуботехническое"}]}},"CommissionUAE":{"summary":"CommissionUAE","description":"Комиссия ОАЭ","value":{"report":[{"kgvpUAE":15.5,"parentID":657,"parentName":"Home appliance","subjectID":6461,"subjectName":"Dental equipment"}]}}},"securitySchemes":{"HeaderApiKey":{"type":"apiKey","name":"Authorization","in":"header"}},"parameters":{"Date":{"in":"query","name":"date","required":true,"description":"Дата в формате ГГГГ-ММ-ДД","schema":{"type":"string"}},"Locale":{"name":"locale","in":"query","schema":{"type":"string","example":"ru"},"description":"Язык полей ответа `parentName` и `subjectName`:\n  - `ru` — русский\n  - `en` — английский\n  - `zh` — китайский\n"}},"schemas":{"models.TariffsBoxResponse":{"type":"object","properties":{"data":{"$ref":"#/components/schemas/models.WarehousesBoxRates"}}},"models.WarehousesBoxRates":{"type":"object","properties":{"dtNextBox":{"type":"string","description":"Дата начала следующего тарифа","example":"2024-02-01"},"dtTillMax":{"type":"string","description":"Дата окончания последнего установленного тарифа","example":"2024-03-31"},"warehouseList":{"type":"array","items":{"$ref":"#/components/schemas/models.WarehouseBoxRates"},"nullable":true,"description":"Тарифы для коробов, сгруппированные по складам"}}},"models.WarehouseBoxRates":{"type":"object","properties":{"boxDeliveryBase":{"type":"string","description":"Логистика, первый литр, ₽","example":"48"},"boxDeliveryCoefExpr":{"type":"string","description":"Коэффициент **Логистика**, %. На него умножается стоимость логистики. Уже учтён в тарифах","example":"160"},"boxDeliveryLiter":{"type":"string","description":"Логистика, дополнительный литр, ₽","example":"11,2"},"boxDeliveryMarketplaceBase":{"type":"string","description":"Логистика FBS, первый литр, ₽","example":"40"},"boxDeliveryMarketplaceCoefExpr":{"type":"string","description":"Коэффициент **FBS**, %. На него умножается стоимость логистики FBS. Уже учтён в тарифах","example":"125"},"boxDeliveryMarketplaceLiter":{"type":"string","description":"Логистика FBS, дополнительный литр, ₽","example":"11"},"boxStorageBase":{"type":"string","description":"Хранение в день, первый литр, ₽","example":"0,14"},"boxStorageCoefExpr":{"type":"string","description":"Коэффициент **Хранение**, %. На него умножается стоимость хранения в день. Уже учтён в тарифах","example":"115"},"boxStorageLiter":{"type":"string","description":"Хранение в день, дополнительный литр, ₽","example":"0,07"},"geoName":{"type":"string","description":"Страна, для РФ — округ","example":"Центральный федеральный округ"},"warehouseName":{"type":"string","description":"Название склада","example":"Коледино"}}},"models.TariffsPalletResponse":{"type":"object","properties":{"data":{"$ref":"#/components/schemas/models.WarehousesPalletRates"}}},"models.WarehousesPalletRates":{"type":"object","properties":{"dtNextPallet":{"type":"string","description":"Дата начала следующего тарифа","example":"2024-02-01"},"dtTillMax":{"type":"string","description":"Дата окончания последнего установленного тарифа","example":"2024-03-31"},"warehouseList":{"type":"array","items":{"$ref":"#/components/schemas/models.WarehousePalletRates"},"nullable":true,"description":"Тарифы для монопаллет, сгруппированные по складам"}}},"models.WarehousePalletRates":{"type":"object","properties":{"palletDeliveryExpr":{"type":"string","description":"Коэффициент доставки, %. На него умножается стоимость доставки. Во всех тарифах этот коэффициент уже учтён","example":"170"},"palletDeliveryValueBase":{"type":"string","description":"Доставка 1 литра, ₽","example":"51"},"palletDeliveryValueLiter":{"type":"string","description":"Доставка каждого дополнительного литра, ₽","example":"11,9"},"palletStorageExpr":{"type":"string","description":"Коэффициент хранения, %. На него умножается стоимость хранения. Во всех тарифах этот коэффициент уже учтён","example":"155"},"palletStorageValueExpr":{"type":"string","description":"Хранение 1 монопаллеты, ₽","example":"35.65"},"warehouseName":{"type":"string","description":"Название склада","example":"Коледино"}}},"models.ReturnTariffsResponse":{"type":"object","properties":{"data":{"$ref":"#/components/schemas/models.WarehousesReturnRates"}}},"models.WarehousesReturnRates":{"type":"object","properties":{"dtNextDeliveryDumpKgt":{"type":"string","description":"Дата начала следующего тарифа при грузовой доставке","example":"2024-02-01"},"dtNextDeliveryDumpSrg":{"type":"string","description":"Дата начала следующего тарифа для неопознанных товаров","example":"2024-02-01"},"dtNextDeliveryDumpSup":{"type":"string","description":"Дата начала следующего тарифа при обычной доставке","example":"2024-02-01"},"warehouseList":{"type":"array","items":{"$ref":"#/components/schemas/models.WarehouseReturnRates"},"nullable":true,"description":"Тарифы на возврат, сгруппированные по складам:\n  - стоимость возврата брака и возврата по инициативе продавца при грузовой доставке.\n  - стоимость возврата неопознанного складом товара.\n  - стоимость возврата брака, возврата по инициативе продавца и автовозвратов Маркетплейс (в пункт выдачи и обратно).\n\nМожно получить стоимость возврата в пункт выдачи (ПВЗ) и обратной логистики — если продавец не забрал товары из пункта выдачи за 7 дней.\n"}}},"models.WarehouseReturnRates":{"type":"object","properties":{"deliveryDumpKgtOfficeBase":{"type":"string","description":"**Стоимость возврата при грузовой доставке, доставка на ПВЗ (базовая цена за 1 л), ₽**\nПрименяется для крупногабаритных товаров, когда:\n  - продавец хочет вывезти товары со склада WB;\n  - на складе обнаружили бракованные товары;\n  - покупатель возвращает товар, но его нельзя вернуть в продажу.\n","example":"1 039"},"deliveryDumpKgtOfficeLiter":{"type":"string","description":"**Стоимость возврата при грузовой доставке, доставка на ПВЗ (доп. литр), ₽**<br>\nСтоимость за каждый дополнительный литр.\n","example":"9,1"},"deliveryDumpKgtReturnExpr":{"type":"string","description":"**Стоимость возврата при грузовой доставке, обратная логистика невостребованного возврата, ₽**<br>\nГрузовая доставка невостребованного возврата обратно на склад WB. За единицу товара.\n","example":"1 050"},"deliveryDumpSrgOfficeExpr":{"type":"string","description":"**Стоимость возврата неопознанного складом товара за каждую единицу, доставка на ПВЗ, ₽**<br>\nПрименяется для товаров, которые не смогли принять на складе.\n","example":"170"},"deliveryDumpSrgReturnExpr":{"type":"string","description":"**Стоимость возврата неопознанного складом товара за каждую единицу, обратная логистика невостребованного возврата, ₽** <br>Доставка невостребованного возврата обратно на склад WB.\n","example":"170"},"deliveryDumpSupCourierBase":{"type":"string","description":"**Стоимость возврата, доставка курьером (базовая цена за 1 л), ₽**\n\nПрименяется, когда:\n  - продавец хочет вывезти товары со склада Wildberries\n  - на складе обнаружили бракованные товары\n  - покупатель возвращает товар, но его нельзя вернуть в продажу\n  - подключён автовозврат товаров, продаваемых по схеме Маркетплейс\n","example":"229"},"deliveryDumpSupCourierLiter":{"type":"string","description":"**Стоимость возврата, доставка курьером (доп. л), ₽**\n<br>Стоимость за каждый дополнительный литр.\n","example":"9,1"},"deliveryDumpSupOfficeBase":{"type":"string","description":"**Стоимость возврата, доставка на ПВЗ (базовая цена за 1 л), ₽**\n\nПрименяется, когда:\n  - продавец хочет вывезти товары со склада Wildberries\n  - на складе обнаружили бракованные товары\n  - покупатель возвращает товар, но его нельзя вернуть в продажу\n  - подключён автовозврат товаров, продаваемых по схеме Маркетплейс\n","example":"129"},"deliveryDumpSupOfficeLiter":{"type":"string","description":"**Стоимость возврата, доставка на ПВЗ (доп. литр), ₽** <br>Стоимость за каждый дополнительный литр\n","example":"9,1"},"deliveryDumpSupReturnExpr":{"type":"string","description":"**Стоимость возврата, обратная логистика невостребованного возврата, за единицу товара, ₽**<br>\nДоставка невостребованного возврата обратно на склад Wildberries.\n\nПрименяется, когда:\n  - продавец хочет вывезти товары со склада Wildberries\n  - на складе обнаружили бракованные товары\n  - покупатель возвращает товар, но его нельзя вернуть в продажу\n  - подключён автовозврат товаров, продаваемых по схеме Маркетплейс\n","example":"250"},"warehouseName":{"type":"string","description":"Название склада","example":"Электросталь"}}},"TariffsBoxResponse":{"type":"object","properties":{"response":{"$ref":"#/components/schemas/models.TariffsBoxResponse"}}},"TariffsPalletResponse":{"type":"object","properties":{"response":{"$ref":"#/components/schemas/models.TariffsPalletResponse"}}},"ReturnTariffsResponse":{"type":"object","properties":{"response":{"$ref":"#/components/schemas/models.ReturnTariffsResponse"}}},"Commission":{"type":"object","properties":{"report":{"type":"array","description":"Список комиссий","items":{"type":"object","properties":{"kgvpBooking":{"type":"number","description":"Комиссия по модели «Бронирование», %"},"kgvpMarketplace":{"type":"number","description":"Комиссия по модели «Маркетплейс» (`FBS`), %"},"kgvpPickup":{"type":"number","description":"Комиссия по модели «Самовывоз из магазина продавца» (`C&C`), %"},"kgvpSupplier":{"type":"number","description":"Комиссия по моделям «Витрина» (`DBS`) и «Курьер WB» (`DBW`), %"},"kgvpSupplierExpress":{"type":"number","description":"Комиссия по модели «Витрина экспресс» (`EDBS`), %"},"paidStorageKgvp":{"type":"number","description":"Комиссия по модели «Склад WB» (`FBW`), %"},"parentID":{"type":"integer","description":"ID родительской категории"},"parentName":{"type":"string","description":"Название родительской категории"},"subjectID":{"type":"integer","description":"ID предмета"},"subjectName":{"type":"string","description":"Название предмета"}}}}}},"CommissionChina":{"type":"object","properties":{"report":{"type":"array","description":"Список комиссий","items":{"type":"object","properties":{"kgvpChina":{"type":"number","description":"Комиссия для продавцов из Китая, %"},"parentID":{"type":"integer","description":"ID родительской категории"},"parentName":{"type":"string","description":"Название родительской категории"},"subjectID":{"type":"integer","description":"ID предмета"},"subjectName":{"type":"string","description":"Название предмета"}}}}}},"CommissionTurkey":{"type":"object","properties":{"report":{"type":"array","description":"Список комиссий","items":{"type":"object","properties":{"kgvpTurkey":{"type":"number","description":"Комиссия для продавцов из Турции, %"},"parentID":{"type":"integer","description":"ID родительской категории"},"parentName":{"type":"string","description":"Название родительской категории"},"subjectID":{"type":"integer","description":"ID предмета"},"subjectName":{"type":"string","description":"Название предмета"}}}}}},"CommissionUzbekistan":{"type":"object","properties":{"report":{"type":"array","description":"Список комиссий","items":{"type":"object","properties":{"kgvpUzbekistan":{"type":"number","description":"Комиссия для продавцов из Узбекистана, %"},"parentID":{"type":"integer","description":"ID родительской категории"},"parentName":{"type":"string","description":"Название родительской категории"},"subjectID":{"type":"integer","description":"ID предмета"},"subjectName":{"type":"string","description":"Название предмета"}}}}}},"CommissionUAE":{"type":"object","properties":{"report":{"type":"array","description":"Список комиссий","items":{"type":"object","properties":{"kgvpUAE":{"type":"number","description":"Комиссия для продавцов из ОАЭ, %"},"parentID":{"type":"integer","description":"ID родительской категории"},"parentName":{"type":"string","description":"Название родительской категории"},"subjectID":{"type":"integer","description":"ID предмета"},"subjectName":{"type":"string","description":"Название предмета"}}}}}},"BadRequest":{"type":"object","properties":{"detail":{"type":"string","description":"Детали ошибки"},"origin":{"type":"string","description":"ID внутреннего сервиса WB"},"requestId":{"type":"string","description":"Уникальный ID запроса"},"title":{"type":"string","description":"Заголовок ошибки"}}}},"responses":{"401":{"description":"<span class='response__value '>Не авторизован</span>","content":{"application/json":{"schema":{"type":"object","properties":{"title":{"type":"string","description":"Заголовок ошибки"},"detail":{"type":"string","description":"Детали ошибки"},"code":{"type":"string","description":"Внутренний код ошибки"},"requestId":{"type":"string","description":"Уникальный ID запроса"},"origin":{"type":"string","description":"ID внутреннего сервиса WB"},"status":{"type":"number","description":"HTTP статус-код"},"statusText":{"type":"string","description":"Расшифровка HTTP статус-кода"},"timestamp":{"type":"string","format":"date-time","description":"Дата и время запроса"}}},"example":{"title":"unauthorized","detail":"token problem; token is malformed: could not base64 decode signature: illegal base64 data at input byte 84","code":"07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75","requestId":"7b80742415072fe8b6b7f7761f1d1211","origin":"s2s-api-auth-catalog","status":401,"statusText":"Unauthorized","timestamp":"2024-09-30T06:52:38Z"}}}},"429":{"description":"<span class='response__value '>Слишком много запросов</span>","content":{"application/json":{"schema":{"type":"object","properties":{"title":{"type":"string","description":"Заголовок ошибки"},"detail":{"type":"string","description":"Детали ошибки"},"code":{"type":"string","description":"Внутренний код ошибки"},"requestId":{"type":"string","description":"Уникальный ID запроса"},"origin":{"type":"string","description":"ID внутреннего сервиса WB"},"status":{"type":"number","description":"HTTP статус-код"},"statusText":{"type":"string","description":"Расшифровка HTTP статус-кода"},"timestamp":{"type":"string","format":"date-time","description":"Дата и время запроса"}}},"example":{"title":"too many requests","detail":"limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489","code":"07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]","requestId":"9d3c02cc698f8b041c661a7c28bed293","origin":"s2s-api-auth-catalog","status":429,"statusText":"Too Many Requests","timestamp":"2024-09-30T06:52:38Z"}}}}}}}},"searchIndex":{"store":["tag/Tarify","tag/Komissii","tag/Komissii/paths/~1api~1v1~1tariffs~1commission/get","tag/Koefficienty-skladov","tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get","tag/Koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get","tag/Stoimost-vozvrata-prodavcu","tag/Stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get"],"index":{"version":"2.3.9","fields":["title","description"],"fieldVectors":[["title/0",[0,0.529]],["description/0",[0,0.786,1,0.103,2,2.09,3,1.102,4,2.09,5,0.575,6,2.09,7,1.494,8,2.09,9,2.09,10,2.09]],["title/1",[0,0.529]],["description/1",[0,0.788,1,0.105,3,1.16,11,1.16,12,1.16,13,2.201,14,2.201]],["title/2",[0,0.602,15,0.991]],["description/2",[0,0.798,1,0.087,5,0.746,7,1.195,15,1.195,16,0.647,17,0.647,18,1.672,19,0.647,20,1.672,21,0.647,22,0.647]],["title/3",[0,0.586]],["description/3",[0,0.79,1,0.092,11,1.198,12,1.198,23,2.272,24,2.272]],["title/4",[0,0.59,25,1.09]],["description/4",[0,0.802,1,0.079,5,0.577,16,0.553,17,0.553,19,0.553,21,0.553,22,0.553,25,1.023,26,1.023,27,0.754,28,0.754]],["title/5",[0,0.59,29,1.09]],["description/5",[0,0.801,1,0.081,5,0.592,16,0.573,17,0.573,19,0.833,21,0.573,22,0.573,26,1.059,27,0.781,28,0.781,29,1.059]],["title/6",[0,0.607]],["description/6",[0,0.79,1,0.104,3,1.136,11,1.136,12,1.136,30,2.155,31,2.155]],["title/7",[0,0.59,32,1.09]],["description/7",[0,0.801,1,0.082,5,0.604,16,0.59,17,0.59,19,0.59,21,0.59,22,0.59,27,0.804,28,0.804,32,1.09,33,1.525]]],"invertedIndex":[["",{"_index":0,"title":{"0":{},"1":{},"2":{},"3":{},"4":{},"5":{},"6":{},"7":{}},"description":{"0":{},"1":{},"2":{},"3":{},"4":{},"5":{},"6":{},"7":{}}}],["1",{"_index":5,"title":{},"description":{"0":{},"2":{},"4":{},"5":{},"7":{}}}],["2",{"_index":7,"title":{},"description":{"0":{},"2":{}}}],["3",{"_index":9,"title":{},"description":{"0":{}}}],["5",{"_index":28,"title":{},"description":{"4":{},"5":{},"7":{}}}],["60",{"_index":27,"title":{},"description":{"4":{},"5":{},"7":{}}}],["api/v1/tariffs/box",{"_index":25,"title":{"4":{}},"description":{"4":{}}}],["api/v1/tariffs/commiss",{"_index":15,"title":{"2":{}},"description":{"2":{}}}],["api/v1/tariffs/pallet",{"_index":29,"title":{"5":{}},"description":{"5":{}}}],["api/v1/tariffs/return",{"_index":32,"title":{"7":{}},"description":{"7":{}}}],["class=\"api-descript",{"_index":2,"title":{},"description":{"0":{}}}],["class=\"description_auth",{"_index":11,"title":{},"description":{"1":{},"3":{},"6":{}}}],["class=\"description_import",{"_index":3,"title":{},"description":{"0":{},"1":{},"6":{}}}],["class=\"description_limit",{"_index":21,"title":{},"description":{"2":{},"4":{},"5":{},"7":{}}}],["class='description-title'><span",{"_index":16,"title":{},"description":{"2":{},"4":{},"5":{},"7":{}}}],["div",{"_index":1,"title":{},"description":{"0":{},"1":{},"2":{},"3":{},"4":{},"5":{},"6":{},"7":{}}}],["href=\"./api-information#tag/avtorizaciya/kak-sozdat-token\">токеном</a",{"_index":12,"title":{},"description":{"1":{},"3":{},"6":{}}}],["href=\"https://seller.wildberries.ru/instructions/category/a04560b5-256d-48cb-8f09-60e283b5d493",{"_index":4,"title":{},"description":{"0":{}}}],["href=\"https://seller.wildberries.ru/instructions/material/a-111?categoryid=f2850fa5-0d2f-4515-b05a-d161b2d167b8",{"_index":13,"title":{},"description":{"1":{}}}],["href=\"https://seller.wildberries.ru/instructions/material/a-40?categoryid=8499952e-79d5-4be4-9c75-4aa29e0eb146&gobackoption=prevrout",{"_index":30,"title":{},"description":{"6":{}}}],["href='./api-information#tag/vvedenie/limity-zaprosov",{"_index":22,"title":{},"description":{"2":{},"4":{},"5":{},"7":{}}}],["https://seller.wildberries.ru/dynamic-product-categori",{"_index":26,"title":{},"description":{"4":{},"5":{}}}],["https://seller.wildberries.ru/dynamic-product-categories/commiss",{"_index":18,"title":{},"description":{"2":{}}}],["https://seller.wildberries.ru/dynamic-product-categories/return-cost",{"_index":33,"title":{},"description":{"7":{}}}],["span></div",{"_index":17,"title":{},"description":{"2":{},"4":{},"5":{},"7":{}}}],["wb",{"_index":19,"title":{},"description":{"2":{},"4":{},"5":{},"7":{}}}],["wb-tariffs#tag/koefficienty-skladov",{"_index":8,"title":{},"description":{"0":{}}}],["wb-tariffs#tag/koefficienty-skladov/paths/~1api~1v1~1tariffs~1box/get",{"_index":23,"title":{},"description":{"3":{}}}],["wb-tariffs#tag/koefficienty-skladov/paths/~1api~1v1~1tariffs~1pallet/get",{"_index":24,"title":{},"description":{"3":{}}}],["wb-tariffs#tag/komissii",{"_index":6,"title":{},"description":{"0":{}}}],["wb-tariffs#tag/komissii/paths/~1api~1v1~1tariffs~1commission/get",{"_index":14,"title":{},"description":{"1":{}}}],["wb-tariffs#tag/stoimost-vozvrata-prodavcu",{"_index":10,"title":{},"description":{"0":{}}}],["wb-tariffs#tag/stoimost-vozvrata-prodavcu/paths/~1api~1v1~1tariffs~1return/get",{"_index":31,"title":{},"description":{"6":{}}}],["work-with-products#tag/kategorii-predmety-i-harakteristiki/paths/~1content~1v2~1object~1parent~1all/get",{"_index":20,"title":{},"description":{"2":{}}}]],"pipeline":[]}},"options":{"scrollYOffset":"80","hideDownloadButton":true,"pathInMiddlePanel":true,"theme":{"spacing":{"unit":4,"sectionHorizontal":24,"sectionVertical":0},"breakpoints":{"small":"1024px","medium":"1366px","large":"1920px"},"colors":{"tonalOffset":0.2,"primary":{"main":"#F6F6F9"},"success":{"main":"#1d8127"},"warning":{"main":"#ffa500","contrastText":"#F6F6F9"},"error":{"main":"#d41f1c"},"text":{"primary":"#F6F6F9"},"border":{"dark":"rgba(0,0,0, 0.1)","light":"#F6F6F9"},"responses":{"success":{},"error":{},"redirect":{},"info":{}},"http":{"get":"#0098FE","post":"#1DCB74","put":"#FF8533","options":"#947014","patch":"#AA80FF","delete":"#ff4760","basic":"#707070","link":"#07818F","head":"#A23DAD"}},"schema":{"linesColor":"#EBEBF599","defaultDetailsWidth":"75%","typeNameColor":"#EBEBF599","typeTitleColor":"#EBEBF599","requireLabelColor":"#ff4760","labelsTextSize":"13px","nestingSpacing":"1em","nestedBackground":"#010101"},"typography":{"fontSize":"16px","lineHeight":"20px","fontWeightRegular":"440","fontWeightBold":"600","fontWeightLight":"300","fontFamily":"\"WB Hauss VF\",sans-serif","smoothing":"antialiased","optimizeSpeed":true,"headings":{"fontFamily":"\"WB Hauss VF\",sans-serif","fontWeight":"400","lineHeight":"1.6em"},"code":{"fontSize":"13px","fontFamily":"monospace","lineHeight":"20px","fontWeight":"440","color":"#e53935","backgroundColor":"rgba(38, 50, 56, 0.05)","wrap":false},"links":{"color":"#AA80FF","visited":"#AA80FF","textDecoration":"auto","hoverTextDecoration":"auto"}},"sidebar":{"width":"350px","backgroundColor":"transparent","textColor":"#F6F6F9"},"rightPanel":{"backgroundColor":"transparent","width":"calc(50% - 24px)","textColor":"#F6F6F9"},"codeBlock":{},"fab":{"backgroundColor":"#f2f2f2","color":"#0065FB"}}}};
+
+      var container = document.getElementById('redoc');
+      Redoc.hydrate(__redoc_state, container);
+
+      </script>
+
+
+
+</div></div></main></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"locale":"ru"},"__N_SSG":true},"page":"/[locale]/openapi/wb-tariffs","query":{"locale":"ru"},"buildId":"ntUTi399CWV62cUDmKfsX","isFallback":false,"isExperimentalCompile":false,"gsp":true,"scriptLoader":[]}</script></body></html>

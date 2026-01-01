@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диагностика ошибки 422</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .error {
+            background: #fee;
+            border-left: 4px solid #c00;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #efe;
+            border-left: 4px solid #060;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: #ffe;
+            border-left: 4px solid #f80;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+        }
+        .checklist {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .checklist-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+        .step {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Диагностика ошибки 422 при добавлении аккаунта</h1>
+
+    <div class="panel">
+        <h2>Проблема</h2>
+        <div class="error">
+            <strong>Ошибка:</strong> POST http://127.0.0.1:8000/api/marketplace/accounts 422 (Unprocessable Content)
+        </div>
+        <p>Код 422 означает, что сервер понял запрос, но не смог его обработать из-за ошибок валидации данных.</p>
+    </div>
+
+    <div class="panel">
+        <h2>Чек-лист возможных причин</h2>
+        <div class="checklist">
+            <div class="checklist-item">✅ <strong>Отсутствует Bearer токен</strong> - запрос требует авторизации</div>
+            <div class="checklist-item">✅ <strong>Неверный формат credentials</strong> - должен быть объект, а не строка</div>
+            <div class="checklist-item">✅ <strong>Отсутствуют обязательные поля</strong> - company_id, marketplace, credentials</div>
+            <div class="checklist-item">✅ <strong>Неверное значение marketplace</strong> - должно быть: wb, uzum, ozon или ym</div>
+            <div class="checklist-item">✅ <strong>Company_id не существует</strong> - указанная компания не найдена в БД</div>
+            <div class="checklist-item">✅ <strong>Пустой объект credentials</strong> - должен содержать токены</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Тест 1: Проверка требований API (без авторизации)</h2>
+        <p>Этот запрос должен работать без токена</p>
+        <button onclick="testRequirements()">🧪 Проверить GET /api/marketplace/accounts/requirements?marketplace=wb</button>
+        <div id="test1-result"></div>
+    </div>
+
+    <div class="panel">
+        <h2>Тест 2: Создание аккаунта (с авторизацией)</h2>
+
+        <label>Bearer Token (обязательно!):</label>
+        <textarea id="bearer-token" placeholder="Вставьте ваш Bearer токен здесь"></textarea>
+
+        <label>Company ID:</label>
+        <input type="number" id="company-id" value="1">
+
+        <label>Marketplace:</label>
+        <select id="marketplace-select">
+            <option value="wb">Wildberries</option>
+            <option value="uzum">Uzum Market</option>
+            <option value="ozon">Ozon</option>
+            <option value="ym">Яндекс.Маркет</option>
+        </select>
+
+        <label>API Token (для примера):</label>
+        <input type="text" id="api-token" placeholder="eyJhbGciOiJFUzI1NiIsImtpZCI6...">
+
+        <br><br>
+        <button onclick="testCreateAccount()">🧪 Проверить POST /api/marketplace/accounts</button>
+        <div id="test2-result"></div>
+    </div>
+
+    <div class="panel">
+        <h2>Тест 3: Отправка запроса в точности как frontend</h2>
+        <p>Вставьте JSON, который отправляет ваш frontend:</p>
+        <textarea id="frontend-json" rows="10" placeholder='{"company_id": 1, "marketplace": "wb", "credentials": {...}}'></textarea>
+        <br><br>
+        <button onclick="testFrontendRequest()">🧪 Отправить как frontend</button>
+        <div id="test3-result"></div>
+    </div>
+
+    <div class="panel">
+        <h2>📋 Правильный формат запроса</h2>
+        <div class="step">
+            <strong>Минимальный запрос для Wildberries:</strong>
+            <pre>{
+  "company_id": 1,
+  "marketplace": "wb",
+  "credentials": {
+    "api_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6..."
+  }
+}</pre>
+        </div>
+
+        <div class="step">
+            <strong>С несколькими токенами:</strong>
+            <pre>{
+  "company_id": 1,
+  "marketplace": "wb",
+  "name": "Мой магазин WB",
+  "credentials": {
+    "wb_content_token": "eyJ...",
+    "wb_marketplace_token": "eyJ...",
+    "wb_prices_token": "eyJ...",
+    "wb_statistics_token": "eyJ..."
+  }
+}</pre>
+        </div>
+
+        <div class="step">
+            <strong>Для Uzum Market:</strong>
+            <pre>{
+  "company_id": 1,
+  "marketplace": "uzum",
+  "credentials": {
+    "api_token": "w/77NI6IG8xzWK5sUj4An8...",
+    "shop_ids": [12345, 67890]
+  }
+}</pre>
+        </div>
+    </div>
+
+    <script>
+        async function testRequirements() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = '<p>⏳ Отправка запроса...</p>';
+
+            try {
+                const response = await fetch('/api/marketplace/accounts/requirements?marketplace=wb', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>Успех!</strong> Endpoint работает корректно.
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>Ошибка ${response.status}</strong>
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Ошибка сети:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testCreateAccount() {
+            const resultDiv = document.getElementById('test2-result');
+            const token = document.getElementById('bearer-token').value.trim();
+            const companyId = parseInt(document.getElementById('company-id').value);
+            const marketplace = document.getElementById('marketplace-select').value;
+            const apiToken = document.getElementById('api-token').value.trim();
+
+            if (!token) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Укажите Bearer токен!</div>';
+                return;
+            }
+
+            if (!apiToken) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Укажите API токен для примера!</div>';
+                return;
+            }
+
+            const requestBody = {
+                company_id: companyId,
+                marketplace: marketplace,
+                credentials: {
+                    api_token: apiToken
+                }
+            };
+
+            resultDiv.innerHTML = `
+                <p>⏳ Отправка запроса...</p>
+                <pre>POST /api/marketplace/accounts
+Authorization: Bearer ${token.substring(0, 20)}...
+Content-Type: application/json
+
+${JSON.stringify(requestBody, null, 2)}</pre>
+            `;
+
+            try {
+                const response = await fetch('/api/marketplace/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>Успех! Аккаунт создан</strong>
+                        </div>
+                        <h3>Ответ сервера:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>Ошибка ${response.status}: ${response.statusText}</strong><br>
+                            ${data.message || data.error || ''}
+                        </div>
+                        ${data.errors ? `
+                            <h3>Ошибки валидации:</h3>
+                            <pre>${JSON.stringify(data.errors, null, 2)}</pre>
+                        ` : ''}
+                        ${data.received_credentials ? `
+                            <p><strong>Получены поля credentials:</strong> ${data.received_credentials.join(', ')}</p>
+                        ` : ''}
+                        <h3>Полный ответ:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Ошибка сети:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testFrontendRequest() {
+            const resultDiv = document.getElementById('test3-result');
+            const token = document.getElementById('bearer-token').value.trim();
+            const jsonText = document.getElementById('frontend-json').value.trim();
+
+            if (!token) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Укажите Bearer токен!</div>';
+                return;
+            }
+
+            if (!jsonText) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Вставьте JSON запроса!</div>';
+                return;
+            }
+
+            let requestBody;
+            try {
+                requestBody = JSON.parse(jsonText);
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="error">❌ Неверный JSON: ${e.message}</div>`;
+                return;
+            }
+
+            resultDiv.innerHTML = `
+                <p>⏳ Отправка вашего JSON...</p>
+                <pre>${JSON.stringify(requestBody, null, 2)}</pre>
+            `;
+
+            try {
+                const response = await fetch('/api/marketplace/accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>Успех! Аккаунт создан</strong>
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>Ошибка ${response.status}: ${response.statusText}</strong><br>
+                            ${data.message || data.error || ''}
+                        </div>
+                        ${data.errors ? `
+                            <h3>Детали ошибок:</h3>
+                            <pre>${JSON.stringify(data.errors, null, 2)}</pre>
+                        ` : ''}
+                        <h3>Полный ответ:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Ошибка сети:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
