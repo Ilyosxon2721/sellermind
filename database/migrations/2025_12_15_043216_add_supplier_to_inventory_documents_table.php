@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inventory_documents', function (Blueprint $table) {
-            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->nullOnDelete();
+            // Using unsignedBigInteger instead of foreignId to avoid migration order issues
+            $table->unsignedBigInteger('supplier_id')->nullable();
             $table->string('source_doc_no')->nullable();
+            $table->index('supplier_id');
         });
     }
 
@@ -23,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('inventory_documents', function (Blueprint $table) {
-            $table->dropForeign(['supplier_id']);
+            $table->dropIndex(['supplier_id']);
             $table->dropColumn(['supplier_id', 'source_doc_no']);
         });
     }

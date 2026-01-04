@@ -375,55 +375,77 @@
                 <p class="text-lg text-gray-600">Без скрытых платежей. Отмена в любой момент.</p>
             </div>
             
-            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                <div class="bg-white rounded-2xl p-8 border border-gray-200">
-                    <div class="text-gray-500 text-sm font-medium mb-2">Старт</div>
-                    <div class="text-4xl font-bold text-gray-900 mb-1">Бесплатно</div>
-                    <div class="text-gray-500 mb-6">навсегда</div>
-                    <ul class="space-y-3 mb-8 text-gray-600 text-sm">
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 1 маркетплейс</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 100 товаров</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Базовая аналитика</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> AI-чат (10 запросов/день)</li>
-                    </ul>
-                    <a href="/register" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        Начать бесплатно
-                    </a>
-                </div>
-                
+            <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
+                @foreach($plans as $plan)
+                @if($plan->is_popular)
                 <div class="bg-blue-600 rounded-2xl p-8 relative shadow-xl shadow-blue-600/30">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-400 text-orange-900 text-xs font-bold rounded-full">
                         Популярный
                     </div>
-                    <div class="text-white/80 text-sm font-medium mb-2">Бизнес</div>
-                    <div class="text-4xl font-bold text-white mb-1">$29<span class="text-xl font-normal">/мес</span></div>
-                    <div class="text-white/80 mb-6">за компанию</div>
+                    <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                    <div class="text-4xl font-bold text-white mb-1">
+                        @if($plan->price == 0)
+                            Бесплатно
+                        @elseif($plan->slug === 'enterprise')
+                            от {{ number_format($plan->price, 0, ',', ' ') }}
+                        @else
+                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
+                        @endif
+                    </div>
+                    <div class="text-white/80 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
                     <ul class="space-y-3 mb-8 text-white text-sm">
-                        <li class="flex items-center"><span class="mr-2">✓</span> Все маркетплейсы</li>
-                        <li class="flex items-center"><span class="mr-2">✓</span> Безлимит товаров</li>
-                        <li class="flex items-center"><span class="mr-2">✓</span> Полная аналитика</li>
-                        <li class="flex items-center"><span class="mr-2">✓</span> AI без ограничений</li>
-                        <li class="flex items-center"><span class="mr-2">✓</span> WMS-система</li>
+                        <li class="flex items-center"><span class="mr-2">✓</span> 
+                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} маркетплейса @endif
+                        </li>
+                        <li class="flex items-center"><span class="mr-2">✓</span>
+                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
+                        </li>
+                        <li class="flex items-center"><span class="mr-2">✓</span>
+                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
+                        </li>
+                        @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> Аналитика</li>@endif
+                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> Автоценообразование</li>@endif
+                        @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> API доступ</li>@endif
+                        @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li>@endif
                     </ul>
                     <a href="/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
                         Выбрать план
                     </a>
                 </div>
-                
+                @else
                 <div class="bg-white rounded-2xl p-8 border border-gray-200">
-                    <div class="text-gray-500 text-sm font-medium mb-2">Enterprise</div>
-                    <div class="text-4xl font-bold text-gray-900 mb-1">Custom</div>
-                    <div class="text-gray-500 mb-6">по запросу</div>
+                    <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                    <div class="text-4xl font-bold text-gray-900 mb-1">
+                        @if($plan->price == 0)
+                            Бесплатно
+                        @elseif($plan->slug === 'enterprise')
+                            от {{ number_format($plan->price, 0, ',', ' ') }}
+                        @else
+                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
+                        @endif
+                    </div>
+                    <div class="text-gray-500 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
                     <ul class="space-y-3 mb-8 text-gray-600 text-sm">
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Всё из Бизнес</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Выделенный сервер</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API интеграция</li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> SLA 99.99%</li>
+                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 
+                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} {{ $plan->max_marketplace_accounts == 1 ? 'маркетплейс' : 'маркетплейса' }} @endif
+                        </li>
+                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
+                        </li>
+                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
+                        </li>
+                        @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Аналитика</li>@endif
+                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Автоценообразование</li>@endif
+                        @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li>@endif
+                        @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li>@endif
                     </ul>
-                    <a href="#" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        Связаться
+                    <a href="{{ $plan->slug === 'enterprise' ? '#' : '/register' }}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                        {{ $plan->slug === 'enterprise' ? 'Связаться' : 'Выбрать план' }}
                     </a>
                 </div>
+                @endif
+                @endforeach
             </div>
         </div>
     </section>

@@ -78,6 +78,9 @@ class DatabaseSeeder extends Seeder
 
         // Warehouse core defaults (units, channels, main warehouse)
         $this->call(WarehouseCoreSeeder::class);
+        
+        // Plans and pricing tiers
+        $this->call(PlanSeeder::class);
 
         // AP demo supplier + invoice + payment draft
         $supplier = Supplier::create([

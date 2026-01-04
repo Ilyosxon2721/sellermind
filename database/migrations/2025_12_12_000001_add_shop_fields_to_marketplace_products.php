@@ -27,15 +27,7 @@ return new class extends Migration
             if (!Schema::hasColumn('marketplace_products', 'raw_payload')) {
                 $table->json('raw_payload')->nullable()->after('preview_image');
             }
-
-            // Добавляем уникальный индекс по аккаунту/магазину/внешнему id товара
-            $indexes = $this->listIndexes('marketplace_products');
-            if (!in_array('mp_acc_shop_ext_prod_unique', $indexes, true)) {
-                $table->unique(
-                    ['marketplace_account_id', 'shop_id', 'external_product_id'],
-                    'mp_acc_shop_ext_prod_unique'
-                );
-            }
+            // Note: unique index mp_acc_shop_ext_prod_unique already created in create_marketplace_products_table
         });
     }
 
@@ -69,8 +61,8 @@ return new class extends Migration
     protected function listIndexes(string $table): array
     {
         try {
-            $connection = Schema::getConnection()->getDoctrineSchemaManager();
-            return array_keys($connection->listTableIndexes($table));
+            $indexes = \DB::select("SHOW INDEX FROM {$table}");
+            return array_unique(array_column($indexes, 'Key_name'));
         } catch (\Throwable $e) {
             return [];
         }

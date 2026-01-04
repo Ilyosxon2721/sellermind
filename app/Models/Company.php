@@ -61,4 +61,48 @@ class Company extends Model
     {
         return $this->users()->wherePivot('role', 'owner')->first();
     }
+
+    /**
+     * Все подписки компании
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Активная подписка
+     */
+    public function activeSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('status', 'active')
+            ->latest('starts_at');
+    }
+
+    /**
+     * Получить текущий тариф
+     */
+    public function getCurrentPlan(): ?Plan
+    {
+        return $this->activeSubscription?->plan;
+    }
+
+    /**
+     * Проверить лимит
+     */
+    public function checkLimit(string $type, int $count = 1): bool
+    {
+        $subscription = $this->activeSubscription;
+        if (!$subscription) {
+            return false;
+        }
+
+        return match($type) {
+            'products' => $subscription->canAddProducts($count),
+            'orders' => $subscription->canProcessOrders($count),
+            'ai' => $subscription->canUseAI($count),
+            default => true,
+        };
+    }
 }

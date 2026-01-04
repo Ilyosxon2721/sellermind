@@ -58,7 +58,7 @@ class Inventory extends Model
 
     public function warehouse(): BelongsTo
     {
-        return $this->belongsTo(Warehouse::class);
+        return $this->belongsTo(Warehouse\Warehouse::class);
     }
 
     public function createdByUser(): BelongsTo
