@@ -175,25 +175,9 @@ function companiesPage() {
         async loadCompanies() {
             this.loading = true;
             try {
-                let url = '/api/companies';
-                if (this.search) {
-                    url += '?search=' + encodeURIComponent(this.search);
-                }
-
-                const response = await fetch(url, {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    this.companies = data.data || data || [];
-                } else {
-                    console.error('Failed to load companies:', response.status);
-                }
+                const params = this.search ? { search: this.search } : {};
+                const response = await window.api.companies.list(params);
+                this.companies = response.data || response || [];
             } catch (error) {
                 console.error('Error loading companies:', error);
                 alert('Ошибка при загрузке компаний');
