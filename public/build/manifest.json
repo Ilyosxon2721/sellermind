@@ -1,0 +1,29 @@
+{
+  "_alpine-w3y3or6b.js": {
+    "file": "assets/alpine-w3y3or6b.js",
+    "name": "alpine"
+  },
+  "_vendor-Dos3PyFQ.js": {
+    "file": "assets/vendor-Dos3PyFQ.js",
+    "name": "vendor"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BeYbIrsC.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-DEZ1aEr5.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_vendor-Dos3PyFQ.js",
+      "_alpine-w3y3or6b.js"
+    ]
+  }
+}
