@@ -132,10 +132,16 @@ Route::middleware('auth.any')->group(function () {
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
     // Companies
-    Route::apiResource('companies', CompanyController::class);
-    Route::get('companies/{company}/members', [CompanyController::class, 'getMembers']);
-    Route::post('companies/{company}/members', [CompanyController::class, 'addMember']);
-    Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember']);
+    Route::apiResource('companies', CompanyController::class)->names([
+        'index' => 'api.companies.index',
+        'store' => 'api.companies.store',
+        'show' => 'api.companies.show',
+        'update' => 'api.companies.update',
+        'destroy' => 'api.companies.destroy',
+    ]);
+    Route::get('companies/{company}/members', [CompanyController::class, 'getMembers'])->name('api.companies.members');
+    Route::post('companies/{company}/members', [CompanyController::class, 'addMember'])->name('api.companies.addMember');
+    Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember'])->name('api.companies.removeMember');
 
     // Warehouse Management (top-level endpoints)
     Route::get('warehouse/list', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'index']);
