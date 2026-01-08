@@ -34,15 +34,14 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    @auth
-    <!-- Initialize Alpine store with server-side auth data -->
+    <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
         document.addEventListener('alpine:init', () => {
             // Initialize auth store with server data
             const authStore = Alpine.store('auth');
 
+            @auth
             // Set user data from Laravel session
-            @if(auth()->user())
             if (!authStore.user) {
                 authStore.user = @json(auth()->user());
             }
@@ -51,15 +50,21 @@
             if (!authStore.token) {
                 authStore.token = 'session-auth';
             }
+            @endauth
 
-            // Load user's companies if not already loaded
-            if (!authStore.currentCompany && authStore.companies.length === 0) {
-                // This will be loaded by the dashboard itself
+            // If no auth from session, check localStorage for API token
+            // This handles API-based authentication
+            if (!authStore.token) {
+                const token = localStorage.getItem('_x_auth_token');
+                if (!token) {
+                    // Not authenticated, redirect to login
+                    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && window.location.pathname !== '/') {
+                        window.location.href = '/login';
+                    }
+                }
             }
-            @endif
         });
     </script>
-    @endauth
 </head>
 <body class="bg-gray-50">
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
