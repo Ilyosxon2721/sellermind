@@ -52,6 +52,11 @@ class Company extends Model
         return $this->hasMany(MarketplaceAccount::class);
     }
 
+    public function warehouses(): HasMany
+    {
+        return $this->hasMany(Warehouse\Warehouse::class);
+    }
+
     public function aiUsageLogs(): HasMany
     {
         return $this->hasMany(AIUsageLog::class);

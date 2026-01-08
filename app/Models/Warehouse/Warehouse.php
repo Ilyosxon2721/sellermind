@@ -38,6 +38,11 @@ class Warehouse extends Model
         return $query->where('company_id', $companyId);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Company::class);
+    }
+
     public function locations(): HasMany
     {
         return $this->hasMany(WarehouseLocation::class);
