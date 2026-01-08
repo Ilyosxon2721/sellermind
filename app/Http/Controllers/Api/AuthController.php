@@ -33,7 +33,7 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             return response()->json([
                 'message' => 'Неверный email или пароль.',
             ], 401);
@@ -41,6 +41,9 @@ class AuthController extends Controller
 
         $user = Auth::user();
         $token = $user->createToken('auth-token')->plainTextToken;
+
+        // Regenerate session to prevent fixation attacks
+        $request->session()->regenerate();
 
         return response()->json([
             'user' => new UserResource($user),

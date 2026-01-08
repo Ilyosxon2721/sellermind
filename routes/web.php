@@ -127,7 +127,7 @@ Route::get('/sales/create', function () {
     return view('sales.create');
 })->name('sales.create');
 
-Route::get('/companies', function () {
+Route::middleware('auth.any')->get('/companies', function () {
     return view('companies.index');
 })->name('companies.index');
 
