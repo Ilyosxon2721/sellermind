@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'products',
             'products/*',
+            'api/*', // Exclude all API routes from CSRF (using Bearer token auth)
         ]);
 
         // Add performance headers globally
