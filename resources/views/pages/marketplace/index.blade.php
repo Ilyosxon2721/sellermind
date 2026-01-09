@@ -503,10 +503,19 @@ function marketplacePage() {
 
         getAuthHeaders() {
             const token = this.getToken();
-            return {
+            const headers = {
                 'Authorization': 'Bearer ' + token,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             };
+
+            // Add CSRF token if available
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                headers['X-CSRF-TOKEN'] = csrfToken.content;
+            }
+
+            return headers;
         },
 
         normalizeMarketplace(marketplace) {
