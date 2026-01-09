@@ -1,4 +1,5 @@
 import './bootstrap';
+import './polling'; // HTTP polling для real-time обновлений
 import Alpine from 'alpinejs';
 import persist from '@alpinejs/persist';
 import api, { auth, companies, products, dialogs, chat, images, tasks } from './services/api';
@@ -81,7 +82,7 @@ Alpine.store('auth', {
                 if (!currentExists) {
                     // Try to find user's primary company first
                     const userCompanyId = this.user?.company_id;
-                    const userCompany = userCompanyId 
+                    const userCompany = userCompanyId
                         ? this.companies.find(c => c.id === userCompanyId)
                         : null;
                     this.currentCompany = userCompany || this.companies[0];

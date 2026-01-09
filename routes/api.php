@@ -131,6 +131,15 @@ Route::middleware('auth.any')->group(function () {
     Route::put('me', [AuthController::class, 'updateProfile']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
+    // Polling API (для real-time обновлений без WebSocket)
+    Route::middleware('throttle:120,1')->prefix('polling')->group(function () {
+        Route::get('marketplace/orders/{accountId}', [\App\Http\Controllers\Api\PollingController::class, 'checkMarketplaceOrders']);
+        Route::get('marketplace/sync-status/{accountId}', [\App\Http\Controllers\Api\PollingController::class, 'checkSyncStatus']);
+        Route::get('notifications', [\App\Http\Controllers\Api\PollingController::class, 'checkNotifications']);
+        Route::get('dashboard/stats', [\App\Http\Controllers\Api\PollingController::class, 'getDashboardStats']);
+        Route::get('supplies/{accountId}', [\App\Http\Controllers\Api\PollingController::class, 'checkSupplies']);
+    });
+
     // Companies
     Route::apiResource('companies', CompanyController::class)->names([
         'index' => 'api.companies.index',
