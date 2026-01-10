@@ -88,6 +88,9 @@ php artisan serve
 - [WEBSOCKET_ANALYSIS.md](WEBSOCKET_ANALYSIS.md) — анализ WebSocket конфигурации
 - [docs/](docs/) — дополнительная документация
 
+### Функции
+- [docs/BULK_OPERATIONS_GUIDE.md](docs/BULK_OPERATIONS_GUIDE.md) — массовые операции с товарами (экспорт/импорт, bulk update)
+
 ### Планирование
 - [IMPROVEMENT_RECOMMENDATIONS.md](IMPROVEMENT_RECOMMENDATIONS.md) — рекомендации по улучшению проекта (47 функций)
 
