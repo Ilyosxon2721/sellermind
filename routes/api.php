@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MarketplaceProductController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceOrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductBulkController;
 use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
@@ -163,6 +164,14 @@ Route::middleware('auth.any')->group(function () {
     Route::apiResource('products', ProductController::class);
     Route::post('products/{product}/publish', [ProductController::class, 'publish']);
     Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+
+    // Product Bulk Operations
+    Route::prefix('products/bulk')->group(function () {
+        Route::post('export', [ProductBulkController::class, 'export']);
+        Route::post('import/preview', [ProductBulkController::class, 'previewImport']);
+        Route::post('import/apply', [ProductBulkController::class, 'applyImport']);
+        Route::post('update', [ProductBulkController::class, 'bulkUpdate']);
+    });
 
     // Product Descriptions
     Route::get('products/{product}/descriptions', [ProductDescriptionController::class, 'index']);
