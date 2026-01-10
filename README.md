@@ -75,8 +75,13 @@ php artisan serve
 
 ## 📚 Документация
 
+### Production
 - [DEPLOYMENT.md](DEPLOYMENT.md) — развертывание на продакшн
 - [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md) — чек-лист деплоя
+- [QUEUE_WORKER_PRODUCTION_GUIDE.md](QUEUE_WORKER_PRODUCTION_GUIDE.md) — настройка очередей для production
+
+### Разработка
+- [QUEUE_SETUP.md](QUEUE_SETUP.md) — настройка очередей для разработки
 - [docs/](docs/) — дополнительная документация
 
 ## 📄 Лицензия
