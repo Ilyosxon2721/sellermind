@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\WildberriesSupplyController;
 use App\Http\Controllers\Api\WildberriesOrderMetaController;
 use App\Http\Controllers\Api\UzumSettingsController;
 use App\Http\Controllers\Api\WildberriesProductController;
+use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\MarketplaceWebhookController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -38,14 +39,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public routes
-Route::get('health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toIso8601String(),
-        'database' => \DB::connection()->getDatabaseName(),
-    ]);
-});
+// Public routes - Health Check
+Route::get('health', [HealthCheckController::class, 'index']);
+Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
