@@ -76,12 +76,16 @@ php artisan serve
 ## 📚 Документация
 
 ### Production
+- [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md) — полный аудит готовности к production
 - [DEPLOYMENT.md](DEPLOYMENT.md) — развертывание на продакшн
 - [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md) — чек-лист деплоя
 - [QUEUE_WORKER_PRODUCTION_GUIDE.md](QUEUE_WORKER_PRODUCTION_GUIDE.md) — настройка очередей для production
+- [REVERB_FORGE_SETUP.md](REVERB_FORGE_SETUP.md) — настройка WebSocket на Laravel Forge
 
 ### Разработка
 - [QUEUE_SETUP.md](QUEUE_SETUP.md) — настройка очередей для разработки
+- [ENABLE_WEBSOCKET_GUIDE.md](ENABLE_WEBSOCKET_GUIDE.md) — включение WebSocket (Reverb) для real-time обновлений
+- [WEBSOCKET_ANALYSIS.md](WEBSOCKET_ANALYSIS.md) — анализ WebSocket конфигурации
 - [docs/](docs/) — дополнительная документация
 
 ## 📄 Лицензия
