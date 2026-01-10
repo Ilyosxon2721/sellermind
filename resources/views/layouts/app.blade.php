@@ -50,6 +50,9 @@
             if (!authStore.token) {
                 authStore.token = 'session-auth';
             }
+
+            // Load companies for authenticated users
+            authStore.loadCompanies();
             @endauth
 
             // If no auth from session, check localStorage for API token
@@ -70,6 +73,9 @@
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         @yield('content')
     </div>
+
+    <!-- Company Prompt Modal -->
+    <x-company-prompt-modal />
 
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
