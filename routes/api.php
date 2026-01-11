@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\MarketplaceOrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductBulkController;
 use App\Http\Controllers\Api\ProductDescriptionController;
+use App\Http\Controllers\Api\TelegramController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
@@ -127,6 +128,15 @@ Route::middleware('auth.any')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
     Route::put('me', [AuthController::class, 'updateProfile']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
+
+    // Telegram Notifications
+    Route::prefix('telegram')->group(function () {
+        Route::get('status', [TelegramController::class, 'status']);
+        Route::post('generate-link-code', [TelegramController::class, 'generateLinkCode']);
+        Route::post('disconnect', [TelegramController::class, 'disconnect']);
+        Route::get('notification-settings', [TelegramController::class, 'getSettings']);
+        Route::put('notification-settings', [TelegramController::class, 'updateSettings']);
+    });
 
     // Polling API (для real-time обновлений без WebSocket)
     Route::middleware('throttle:120,1')->prefix('polling')->group(function () {

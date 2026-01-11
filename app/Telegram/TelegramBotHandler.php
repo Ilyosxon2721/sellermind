@@ -210,11 +210,39 @@ class TelegramBotHandler
             return;
         }
 
-        // Here you would verify the link code and associate the Telegram user with the account
-        $linkCode = $args[0];
-        // TODO: Implement actual linking logic
+        // Verify the link code and associate the Telegram user with the account
+        $code = strtoupper($args[0]);
+        $linkCode = \App\Models\TelegramLinkCode::where('code', $code)->first();
 
-        $this->telegram->sendMessage($chatId, "✅ Аккаунт успешно привязан!");
+        if (!$linkCode) {
+            $this->telegram->sendMessage($chatId, "❌ Неверный код. Проверьте и попробуйте снова.");
+            return;
+        }
+
+        if (!$linkCode->isValid()) {
+            $this->telegram->sendMessage($chatId, "❌ Код истёк или уже использован. Сгенерируйте новый код на сайте.");
+            return;
+        }
+
+        // Link the Telegram account
+        $user = $linkCode->user;
+        $user->update([
+            'telegram_id' => (string) $message['from']['id'],
+            'telegram_username' => $message['from']['username'] ?? null,
+            'telegram_notifications_enabled' => true,
+        ]);
+
+        $linkCode->markAsUsed();
+
+        $text = "✅ <b>Аккаунт успешно привязан!</b>\n\n";
+        $text .= "Теперь вы будете получать уведомления о:\n";
+        $text .= "• Низких остатках товаров\n";
+        $text .= "• Завершении массовых операций\n";
+        $text .= "• Синхронизации с маркетплейсами\n";
+        $text .= "• Критических ошибках\n\n";
+        $text .= "Настройте уведомления в Настройках на сайте.";
+
+        $this->telegram->sendMessage($chatId, $text);
     }
 
     private function handlePhoto(int $chatId, array $photos, string $caption, array $message): void

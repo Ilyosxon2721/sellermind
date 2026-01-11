@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Notifications\BulkOperationCompletedNotification;
+use App\Notifications\CriticalErrorNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -121,9 +123,11 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                 'errors' => count($errors),
             ]);
 
-            // TODO: Send notification to user about completion
-            // You can use Laravel's notification system here
-            // Notification::send($user, new BulkUpdateCompletedNotification($updated, $errors));
+            // Send notification to user
+            $user = User::find($this->userId);
+            if ($user) {
+                $user->notify(new BulkOperationCompletedNotification($updated, $errors));
+            }
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -161,6 +165,14 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
             unlink($this->filePath);
         }
 
-        // TODO: Send failure notification to user
+        // Send failure notification to user
+        $user = User::find($this->userId);
+        if ($user) {
+            $user->notify(new CriticalErrorNotification(
+                'Ошибка массового обновления товаров',
+                'Не удалось завершить импорт товаров из-за ошибки.',
+                $exception->getMessage()
+            ));
+        }
     }
 }

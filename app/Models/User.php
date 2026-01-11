@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -18,6 +19,9 @@ class User extends Authenticatable
         'email',
         'password',
         'locale',
+        'telegram_id',
+        'telegram_username',
+        'telegram_notifications_enabled',
     ];
 
     protected $hidden = [
@@ -31,6 +35,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'telegram_notifications_enabled' => 'boolean',
         ];
     }
 
@@ -102,5 +107,21 @@ class User extends Authenticatable
             ->where('companies.id', $companyId)
             ->wherePivot('role', 'owner')
             ->exists();
+    }
+
+    /**
+     * Get the user's notification settings
+     */
+    public function notificationSettings(): HasOne
+    {
+        return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    /**
+     * Route notifications for the Telegram channel
+     */
+    public function routeNotificationForTelegram(): ?string
+    {
+        return $this->telegram_id;
     }
 }

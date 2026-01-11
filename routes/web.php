@@ -35,6 +35,10 @@ Route::get('/chat', function () {
     return view('pages.chat');
 })->name('chat');
 
+Route::get('/settings', function () {
+    return view('pages.settings');
+})->name('settings');
+
 Route::prefix('products')->name('web.products.')->group(function () {
     Route::get('/', [ProductWebController::class, 'index'])->name('index');
     Route::get('/create', [ProductWebController::class, 'create'])->name('create');
