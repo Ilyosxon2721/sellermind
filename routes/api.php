@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductBulkController;
 use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\TelegramController;
+use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
@@ -199,6 +200,20 @@ Route::middleware('auth.any')->group(function () {
     
     // Generic image upload (for new products without ID)
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
+
+    // Promotions (Smart Promotions)
+    Route::prefix('promotions')->group(function () {
+        Route::get('/', [PromotionController::class, 'index']);
+        Route::post('/', [PromotionController::class, 'store']);
+        Route::get('detect-slow-moving', [PromotionController::class, 'detectSlowMoving']);
+        Route::post('create-automatic', [PromotionController::class, 'createAutomatic']);
+        Route::get('{promotion}', [PromotionController::class, 'show']);
+        Route::put('{promotion}', [PromotionController::class, 'update']);
+        Route::delete('{promotion}', [PromotionController::class, 'destroy']);
+        Route::post('{promotion}/apply', [PromotionController::class, 'apply']);
+        Route::post('{promotion}/remove', [PromotionController::class, 'remove']);
+        Route::get('{promotion}/stats', [PromotionController::class, 'stats']);
+    });
 
     // Dialogs
     Route::apiResource('dialogs', DialogController::class);
