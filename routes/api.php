@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ProductBulkController;
 use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\SalesAnalyticsController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
@@ -213,6 +214,18 @@ Route::middleware('auth.any')->group(function () {
         Route::post('{promotion}/apply', [PromotionController::class, 'apply']);
         Route::post('{promotion}/remove', [PromotionController::class, 'remove']);
         Route::get('{promotion}/stats', [PromotionController::class, 'stats']);
+    });
+
+    // Sales Analytics
+    Route::prefix('analytics')->group(function () {
+        Route::get('dashboard', [SalesAnalyticsController::class, 'dashboard']);
+        Route::get('overview', [SalesAnalyticsController::class, 'overview']);
+        Route::get('sales-by-day', [SalesAnalyticsController::class, 'salesByDay']);
+        Route::get('top-products', [SalesAnalyticsController::class, 'topProducts']);
+        Route::get('flop-products', [SalesAnalyticsController::class, 'flopProducts']);
+        Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
+        Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
+        Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
     });
 
     // Dialogs
