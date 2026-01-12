@@ -52,7 +52,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6" x-data>
+        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6 pwa-content-padding" x-data>
             <!-- Filters -->
             <form method="GET" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-ref="filterForm">
                 <div class="flex items-center justify-between mb-4">

@@ -93,6 +93,11 @@
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+    <!-- Bottom Tab Navigation (PWA only, mobile/tablet) -->
+    @auth
+    <x-bottom-tab-nav />
+    @endauth
+
     <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
     @vite('resources/js/pwa.js')
 

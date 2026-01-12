@@ -30,7 +30,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding">
             <!-- Collapsible Filters -->
             <div class="card">
                 <div class="card-header flex items-center justify-between cursor-pointer" @click="showFilters = !showFilters">
