@@ -5,11 +5,16 @@
 
     <x-sidebar></x-sidebar>
     <x-mobile-header />
-    
+    <x-pwa-top-navbar title="Дашборд">
+        <x-slot name="subtitle">
+            <span x-text="$store.auth.currentCompany?.name || 'Выберите компанию'"></span>
+        </x-slot>
+    </x-pwa-top-navbar>
+
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Header -->
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
+        <!-- Header (hidden on mobile, shown on desktop) -->
+        <header class="hidden lg:block bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Дашборд</h1>
@@ -32,7 +37,7 @@
         </header>
         
         <!-- Dashboard Content -->
-        <main class="flex-1 overflow-y-auto p-6 pwa-content-padding">
+        <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding">
             <!-- Loading -->
             <div x-show="loading" class="flex items-center justify-center h-64">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

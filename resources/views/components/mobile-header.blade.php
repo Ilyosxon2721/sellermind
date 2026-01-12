@@ -1,5 +1,7 @@
-<!-- Mobile Header with Hamburger Menu (visible only on mobile) -->
-<div class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+<!-- Mobile Header with Hamburger Menu (visible only on mobile in browser mode, hidden in PWA mode) -->
+<div x-data="{ isPWA: window.isPWAInstalled || false }"
+     x-show="!isPWA"
+     class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
     <!-- Hamburger Menu Button -->
     <button @click="sidebarOpen = !sidebarOpen"
             type="button"

@@ -984,6 +984,11 @@ a:hover {
     .pwa-content-padding {
         padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
     }
+
+    /* Add top padding for PWA top navbar */
+    .pwa-top-padding {
+        padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)) !important;
+    }
 }
 
 /* Native-like touch interactions */

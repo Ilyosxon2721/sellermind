@@ -36,9 +36,19 @@
 <div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
     <x-sidebar />
     <x-mobile-header />
+    <x-pwa-top-navbar title="Товары" subtitle="Список товаров компании">
+        <x-slot name="actions">
+            <a href="{{ route('web.products.create') }}"
+               class="p-2 hover:bg-white/10 rounded-lg transition-colors active:scale-95">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </a>
+        </x-slot>
+    </x-pwa-top-navbar>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
+        <header class="hidden lg:block bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 bg-clip-text text-transparent">Товары</h1>
@@ -52,7 +62,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6 pwa-content-padding" x-data>
+        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6 pwa-content-padding pwa-top-padding" x-data>
             <!-- Filters -->
             <form method="GET" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-ref="filterForm">
                 <div class="flex items-center justify-between mb-4">
