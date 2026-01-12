@@ -128,6 +128,11 @@ function companyPromptModal() {
                     name: this.form.name.trim()
                 });
 
+                // Update user data if returned
+                if (result.user) {
+                    Alpine.store('auth').user = result.user;
+                }
+
                 // Reload companies
                 await Alpine.store('auth').loadCompanies();
 

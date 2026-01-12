@@ -39,8 +39,18 @@ class CompanyController extends Controller
             'role' => 'owner',
         ]);
 
+        // Update user's company_id to the newly created company
+        $user = $request->user();
+        if (!$user->company_id) {
+            $user->company_id = $company->id;
+            $user->save();
+            // Refresh the user instance
+            $user->refresh();
+        }
+
         return response()->json([
             'company' => new CompanyResource($company),
+            'user' => $user, // Return updated user so client can update their state
         ], 201);
     }
 
