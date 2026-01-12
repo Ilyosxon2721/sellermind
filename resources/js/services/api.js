@@ -97,8 +97,8 @@ export const companies = {
         return response.data.companies;
     },
 
-    async create(name) {
-        const response = await api.post('/companies', { name });
+    async create(data) {
+        const response = await api.post('/companies', data);
         return response.data.company;
     },
 };

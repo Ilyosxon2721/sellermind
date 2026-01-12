@@ -155,7 +155,7 @@
                             @forelse($products as $product)
                                 @php
                                     $image = $product->mainImage ?? $product->images->first();
-                                    $channels = collect($product->channelSettings ?? [])->keyBy(fn($s) => $s->channel->code ?? $s->channel_id);
+                                    $channels = collect($product->channelSettings ?? [])->keyBy(fn($s) => $s->channel?->code ?? $s->channel_id);
                                 @endphp
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4">
@@ -178,7 +178,7 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex gap-1.5">
-                                            @foreach(['wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'uzum' => 'Uzum'] as $code => $label)
+                                            @foreach(['WB' => 'WB', 'OZON' => 'Ozon', 'YM' => 'YM', 'UZUM' => 'Uzum'] as $code => $label)
                                                 @php $status = optional($channels->get($code))->status; @endphp
                                                 <span class="px-2 py-1 rounded-lg text-xs font-medium
                                                     @if($status === 'published') bg-green-100 text-green-700
