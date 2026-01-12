@@ -145,3 +145,83 @@ Schedule::command('uzum:sync-orders')
         \Log::error('Uzum orders sync failed');
     })
     ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Quick Wins Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Automated tasks for Smart Promotions, Review Responses, and Analytics
+|
+*/
+
+// Smart Promotions: Создание автоматических промо для неликвида (каждый понедельник)
+Schedule::call(function () {
+    $companies = \App\Models\Company::where('is_active', true)->get();
+
+    foreach ($companies as $company) {
+        \App\Jobs\ProcessAutoPromotionsJob::dispatch($company->id, [
+            'min_days_no_sale' => 30,
+            'min_stock' => 5,
+            'min_price' => 100,
+        ]);
+    }
+})->weekly()
+    ->mondays()
+    ->at('09:00')
+    ->name('create-auto-promotions')
+    ->onSuccess(function () {
+        \Log::info('Smart Promotions: Auto promotion jobs dispatched');
+    })
+    ->onFailure(function () {
+        \Log::error('Smart Promotions: Failed to dispatch auto promotion jobs');
+    });
+
+// Smart Promotions: Уведомления об истекающих акциях (каждый день)
+Schedule::call(function () {
+    $companies = \App\Models\Company::where('is_active', true)->get();
+
+    foreach ($companies as $company) {
+        \App\Jobs\SendPromotionExpiringNotificationsJob::dispatch($company->id, 3);
+    }
+})->daily()
+    ->at('10:00')
+    ->name('notify-expiring-promotions')
+    ->onSuccess(function () {
+        \Log::info('Smart Promotions: Expiring notification jobs dispatched');
+    })
+    ->onFailure(function () {
+        \Log::error('Smart Promotions: Failed to dispatch expiring notification jobs');
+    });
+
+// Sales Analytics: Обновление кэша аналитики (каждый час)
+Schedule::call(function () {
+    // Предварительный расчет аналитики для всех компаний
+    $companies = \App\Models\Company::where('is_active', true)->get();
+
+    foreach ($companies as $company) {
+        try {
+            $analyticsService = app(\App\Services\SalesAnalyticsService::class);
+
+            // Кэшируем аналитику на час
+            \Cache::put(
+                "sales_analytics_{$company->id}_30days",
+                $analyticsService->getOverview($company->id, '30days'),
+                now()->addHour()
+            );
+        } catch (\Exception $e) {
+            \Log::error("Analytics cache failed for company {$company->id}: " . $e->getMessage());
+        }
+    }
+})->hourly()
+    ->name('cache-sales-analytics')
+    ->onFailure(function () {
+        \Log::error('Failed to cache sales analytics');
+    });
+
+// Review Responses: Синхронизация отзывов с маркетплейсов (каждые 30 минут)
+// TODO: Реализовать команду для автоматического импорта отзывов с WB/Ozon/Yandex
+// Schedule::command('reviews:sync-from-marketplaces')
+//     ->everyThirtyMinutes()
+//     ->withoutOverlapping(15)
+//     ->appendOutputTo(storage_path('logs/reviews.log'));
