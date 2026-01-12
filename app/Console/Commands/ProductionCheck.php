@@ -1,4 +1,4 @@
-<?php
+h<?php
 
 namespace App\Console\Commands;
 
@@ -302,7 +302,7 @@ class ProductionCheck extends Command
         $this->warnings++;
     }
 
-    public function fail(string $message): void
+    protected function failCheck(string $message): void
     {
         $this->line("   <fg=red>✗</> {$message}");
         $this->errors++;
