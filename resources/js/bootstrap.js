@@ -9,6 +9,9 @@ let wsSocketId = null;
 let wsConnected = false;
 const subscribedChannels = new Set();
 const requestedChannels = new Set(); // keep requested subscriptions across reconnects
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const BASE_RECONNECT_DELAY = 5000; // 5 seconds
 
 function buildWsUrl() {
     // Prefer Vite envs (standard Laravel Reverb defaults)
@@ -18,8 +21,8 @@ function buildWsUrl() {
     const key = import.meta.env.VITE_REVERB_APP_KEY;
     const path = import.meta.env.VITE_REVERB_APP_PATH || '';
 
-    if (!key) {
-        console.error('❌ REVERB_APP_KEY is not configured. WebSocket disabled.');
+    if (!key || key === 'undefined' || key === '') {
+        // WebSocket disabled - no key configured
         return null;
     }
 
@@ -39,6 +42,7 @@ function connectGlobalWebSocket() {
         wsConnection.onopen = () => {
             console.log('✅ Global WebSocket connected');
             wsConnected = true;
+            reconnectAttempts = 0; // Reset on successful connection
 
             // Trigger custom event for pages that need to know
             window.dispatchEvent(new CustomEvent('websocket:connected'));
@@ -84,12 +88,14 @@ function connectGlobalWebSocket() {
         };
 
         wsConnection.onerror = (error) => {
-            console.error('❌ Global WebSocket error:', error);
+            // Only log error if we've successfully connected before (to avoid spam on initial failure)
+            if (reconnectAttempts === 0) {
+                console.warn('⚠️ WebSocket connection failed (will retry silently)');
+            }
             wsConnected = false;
         };
 
         wsConnection.onclose = () => {
-            console.log('🔌 Global WebSocket disconnected');
             wsConnected = false;
             subscribedChannels.clear();
             wsConnection = null;
@@ -97,8 +103,20 @@ function connectGlobalWebSocket() {
             // Trigger custom event
             window.dispatchEvent(new CustomEvent('websocket:disconnected'));
 
-            // Reconnect after 5 seconds
-            setTimeout(() => connectGlobalWebSocket(), 5000);
+            // Reconnect with exponential backoff
+            reconnectAttempts++;
+
+            if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+                const delay = BASE_RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts - 1);
+
+                if (reconnectAttempts === 1) {
+                    console.log('🔌 WebSocket disconnected, will retry...');
+                }
+
+                setTimeout(() => connectGlobalWebSocket(), delay);
+            } else {
+                console.warn('⚠️ WebSocket connection failed after', MAX_RECONNECT_ATTEMPTS, 'attempts. Real-time updates disabled.');
+            }
         };
     } catch (error) {
         console.error('Failed to connect Global WebSocket:', error);
@@ -111,13 +129,12 @@ window.subscribeToChannel = function(channelName) {
     requestedChannels.add(channelName);
 
     if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-        console.warn('WebSocket not connected, will subscribe on reconnect');
+        // Silently queue for later - don't spam console
         return false;
     }
 
     // Avoid duplicate subscriptions
     if (subscribedChannels.has(channelName)) {
-        console.log(`Already subscribed to: ${channelName}`);
         return true;
     }
 
@@ -130,12 +147,13 @@ window.subscribeToChannel = function(channelName) {
     }));
 
     subscribedChannels.add(channelName);
-    console.log(`✅ Subscribed to channel: ${channelName}`);
     return true;
 };
 
 // Global function to unsubscribe from channels
 window.unsubscribeFromChannel = function(channelName) {
+    requestedChannels.delete(channelName);
+
     if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
         return;
     }
@@ -148,7 +166,6 @@ window.unsubscribeFromChannel = function(channelName) {
     }));
 
     subscribedChannels.delete(channelName);
-    console.log(`Unsubscribed from channel: ${channelName}`);
 };
 
 // Getters for WebSocket state
@@ -156,8 +173,18 @@ window.getWebSocketState = function() {
     return {
         connected: wsConnected,
         socketId: wsSocketId,
-        connection: wsConnection
+        connection: wsConnection,
+        reconnectAttempts: reconnectAttempts
     };
+};
+
+// Force reconnect (reset attempt counter)
+window.reconnectWebSocket = function() {
+    if (wsConnection) {
+        wsConnection.close();
+    }
+    reconnectAttempts = 0;
+    connectGlobalWebSocket();
 };
 
 // Auto-connect when page loads
