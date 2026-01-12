@@ -186,6 +186,11 @@ Route::middleware('auth')->group(function () {
         return view('pricing.autopricing');
     })->name('pricing.autopricing');
 
+    // Subscription Plans (Public - can be accessed without auth)
+    Route::get('/plans', function () {
+        return view('plans.index');
+    })->withoutMiddleware('auth')->name('plans.index');
+
     // Marketplace Module
     Route::get('/marketplace', function () {
         return view('pages.marketplace.index');
@@ -509,7 +514,31 @@ if (env('VPC_ENABLED', false)) {
     Route::get('/vpc-sessions/{vpcSession}/actions-list', [VpcControlApiController::class, 'getActions'])->name('vpc_sessions.actions_list');
     Route::post('/vpc-sessions/{vpcSession}/control-mode-api', [VpcControlApiController::class, 'setControlMode'])->name('vpc_sessions.control_mode_api');
 }
+    // Payment routes (protected)
+    Route::get('/payment/subscription/{subscription}', [\App\Http\Controllers\PaymentController::class, 'initiate'])
+        ->name('payment.initiate');
+    Route::post('/payment/click/{subscription}', [\App\Http\Controllers\PaymentController::class, 'initiateClick'])
+        ->name('payment.initiate.click');
+    Route::post('/payment/payme/{subscription}', [\App\Http\Controllers\PaymentController::class, 'initiatePayme'])
+        ->name('payment.initiate.payme');
+    Route::get('/payment/callback/click/{subscription}', [\App\Http\Controllers\PaymentController::class, 'callbackClick'])
+        ->name('payment.callback.click');
+    Route::get('/payment/callback/payme/{subscription}', [\App\Http\Controllers\PaymentController::class, 'callbackPayme'])
+        ->name('payment.callback.payme');
+    Route::get('/payment/renew/{subscription}', [\App\Http\Controllers\PaymentController::class, 'renew'])
+        ->name('payment.renew');
 }); // End of auth middleware group
+
+// Payment webhooks (public, no CSRF)
+Route::post('/webhooks/click/prepare', [\App\Http\Controllers\Webhooks\ClickWebhookController::class, 'prepare'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('webhook.click.prepare');
+Route::post('/webhooks/click/complete', [\App\Http\Controllers\Webhooks\ClickWebhookController::class, 'complete'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('webhook.click.complete');
+Route::post('/webhooks/payme', [\App\Http\Controllers\Webhooks\PaymeWebhookController::class, 'handle'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('webhook.payme');
 
 // Telegram webhook (public, no auth required)
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])

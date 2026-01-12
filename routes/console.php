@@ -225,3 +225,24 @@ Schedule::call(function () {
 //     ->everyThirtyMinutes()
 //     ->withoutOverlapping(15)
 //     ->appendOutputTo(storage_path('logs/reviews.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Subscription & Billing Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Check for expiring subscriptions and send notifications
+|
+*/
+
+// Check for expiring subscriptions daily at 9:00 AM
+Schedule::command('subscriptions:check-expiring --notify-days=7,3,1 --mark-expired')
+    ->dailyAt('09:00')
+    ->name('check-expiring-subscriptions')
+    ->onSuccess(function () {
+        \Log::info('Subscription check completed successfully');
+    })
+    ->onFailure(function () {
+        \Log::error('Subscription check failed');
+    })
+    ->appendOutputTo(storage_path('logs/subscriptions.log'));

@@ -136,10 +136,12 @@ class SalesController extends Controller
      */
     private function getUzumOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
+        if (!$companyId) {
+            return collect();
+        }
+
         $query = UzumOrder::query()
-            ->when($companyId, function($q) use ($companyId) {
-                $q->whereHas('account', fn($query) => $query->where('company_id', $companyId));
-            })
+            ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $dateFrom)
             ->whereDate('ordered_at', '<=', $dateTo);
         
@@ -172,15 +174,13 @@ class SalesController extends Controller
      */
     private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
-        if (!class_exists(WbOrder::class)) {
+        if (!$companyId || !class_exists(WbOrder::class)) {
             return collect();
         }
 
         try {
             $query = WbOrder::query()
-                ->when($companyId, function($q) use ($companyId) {
-                    $q->whereHas('account', fn($query) => $query->where('company_id', $companyId));
-                })
+                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
                 ->whereDate('ordered_at', '>=', $dateFrom)
                 ->whereDate('ordered_at', '<=', $dateTo);
             
@@ -217,11 +217,13 @@ class SalesController extends Controller
      */
     private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
+        if (!$companyId) {
+            return collect();
+        }
+
         try {
             $query = OzonOrder::query()
-                ->when($companyId, function($q) use ($companyId) {
-                    $q->whereHas('account', fn($query) => $query->where('company_id', $companyId));
-                })
+                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
                 ->whereDate('created_at_ozon', '>=', $dateFrom)
                 ->whereDate('created_at_ozon', '<=', $dateTo);
 
@@ -265,11 +267,13 @@ class SalesController extends Controller
      */
     private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
+        if (!$companyId) {
+            return collect();
+        }
+
         try {
             $query = YandexMarketOrder::query()
-                ->when($companyId, function($q) use ($companyId) {
-                    $q->whereHas('account', fn($query) => $query->where('company_id', $companyId));
-                })
+                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
                 ->whereDate('created_at_ym', '>=', $dateFrom)
                 ->whereDate('created_at_ym', '<=', $dateTo);
 
@@ -307,18 +311,18 @@ class SalesController extends Controller
      */
     private function getManualOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
+        if (!$companyId) {
+            return collect();
+        }
+
         $query = ChannelOrder::query()
             ->whereNull('channel_id') // Manual orders have no channel
             ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo);
-
-        // Filter by company via payload if company_id is set
-        if ($companyId) {
-            $query->where(function($q) use ($companyId) {
+            ->whereDate('created_at', '<=', $dateTo)
+            ->where(function($q) use ($companyId) {
                 $q->whereJsonContains('payload_json->company_id', $companyId)
                   ->orWhereJsonContains('payload_json->is_manual', true);
             });
-        }
         
         if ($status) {
             $query->where('status', $status);
@@ -380,8 +384,7 @@ class SalesController extends Controller
             return auth()->user()->company_id;
         }
 
-        // If not authenticated, return null to show all companies' orders
-        // This is useful for development and when session auth is not set up
+        // If no company, return null (will result in empty orders list)
         return null;
     }
     
