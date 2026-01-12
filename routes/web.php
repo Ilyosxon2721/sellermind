@@ -9,13 +9,28 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\VpcSessionController;
 use App\Http\Controllers\VpcControlApiController;
 
-// Public pages
-Route::get('/', function () {
+// Public pages - Smart routing based on PWA mode
+Route::get('/', function (Illuminate\Http\Request $request) {
+    // Check if PWA is installed (standalone mode)
+    $isPWA = $request->cookie('pwa_installed') === 'true';
+
+    // PWA App Mode: Act like a native app
+    if ($isPWA) {
+        if (auth()->check()) {
+            // Authenticated → Dashboard
+            return redirect('/dashboard');
+        } else {
+            // Not authenticated → Login (skip landing)
+            return redirect('/login');
+        }
+    }
+
+    // Browser Mode: Show landing page for marketing
     $plans = \App\Models\Plan::where('is_active', true)
         ->orderBy('sort_order')
         ->get();
     return view('welcome', compact('plans'));
-});
+})->name('home');
 
 Route::get('/login', function () {
     return view('pages.login');
@@ -24,6 +39,11 @@ Route::get('/login', function () {
 Route::get('/register', function () {
     return view('pages.register');
 })->name('register');
+
+// Health check for PWA offline detection
+Route::get('/api/health', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
