@@ -639,36 +639,16 @@ function salesPage() {
                     this.totalPages = data.meta?.last_page || 1;
                     this.stats = data.stats || this.stats;
                 } else {
-                    // Demo data for display
-                    this.loadDemoData();
+                    // No data - show empty state
+                    this.orders = [];
                 }
             } catch (e) {
                 console.error('Load orders error:', e);
-                this.loadDemoData();
+                // No data - show empty state
+                this.orders = [];
             } finally {
                 this.loading = false;
             }
-        },
-        
-        loadDemoData() {
-            const today = new Date().toISOString();
-            this.orders = [
-                { id: 1, order_number: '84409626', created_at: today, marketplace: 'uzum', customer_name: 'Алексей М.', total_amount: 137000, currency: 'UZS', status: 'new' },
-                { id: 2, order_number: '84409627', created_at: today, marketplace: 'uzum', customer_name: 'Марина К.', total_amount: 245000, currency: 'UZS', status: 'processing' },
-                { id: 3, order_number: 'WB-123456', created_at: today, marketplace: 'wb', customer_name: 'Иван П.', total_amount: 3500, currency: 'RUB', status: 'shipped' },
-                { id: 4, order_number: 'MAN-001', created_at: today, marketplace: 'manual', customer_name: 'ТОО Рассвет', total_amount: 500000, currency: 'UZS', status: 'delivered' },
-            ];
-            this.stats = {
-                totalOrders: 4,
-                totalAmount: 885500,
-                marketplaceOrders: 3,
-                manualOrders: 1,
-                byMarketplace: [
-                    { name: 'uzum', label: 'Uzum', count: 2 },
-                    { name: 'wb', label: 'WB', count: 1 },
-                    { name: 'manual', label: 'Ручные', count: 1 }
-                ]
-            };
         },
         
         resetFilters() {
@@ -729,21 +709,8 @@ function salesPage() {
                     alert('Ошибка создания проводки');
                 }
             } catch (e) {
-                // Demo: just add to local list
-                this.orders.unshift({
-                    id: Date.now(),
-                    order_number: this.newOrder.order_number || `MAN-${Date.now()}`,
-                    created_at: new Date().toISOString(),
-                    marketplace: 'manual',
-                    customer_name: this.newOrder.customer_name,
-                    total_amount: this.newOrder.total_amount,
-                    currency: this.newOrder.currency,
-                    status: 'new'
-                });
-                this.stats.totalOrders++;
-                this.stats.manualOrders++;
-                this.showCreateModal = false;
-                this.newOrder = { order_number: '', customer_name: '', total_amount: 0, currency: 'UZS', notes: '' };
+                console.error('Create manual order error:', e);
+                alert('Ошибка создания проводки');
             }
         },
         

@@ -15,9 +15,9 @@ class TelegramController extends Controller
     /**
      * Get Telegram connection status
      */
-    public function status(): JsonResponse
+    public function status(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         return response()->json([
             'connected' => !empty($user->telegram_id),
@@ -30,9 +30,9 @@ class TelegramController extends Controller
     /**
      * Generate a new link code
      */
-    public function generateLinkCode(): JsonResponse
+    public function generateLinkCode(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
         $linkCode = TelegramLinkCode::generate($user->id);
 
         return response()->json([
@@ -49,9 +49,9 @@ class TelegramController extends Controller
     /**
      * Disconnect Telegram account
      */
-    public function disconnect(): JsonResponse
+    public function disconnect(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         $user->update([
             'telegram_id' => null,
@@ -86,7 +86,7 @@ class TelegramController extends Controller
             'business_hours_end' => 'sometimes|nullable|date_format:H:i',
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
         // Update user telegram_notifications_enabled if provided
         if (isset($validated['telegram_notifications_enabled'])) {
@@ -115,9 +115,9 @@ class TelegramController extends Controller
     /**
      * Get notification settings
      */
-    public function getSettings(): JsonResponse
+    public function getSettings(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
         $settings = $user->notificationSettings;
 
         if (!$settings) {

@@ -22,46 +22,47 @@ Route::get('/register', function () {
     return view('pages.register');
 })->name('register');
 
-// App pages - Dashboard is the main page after login
-Route::get('/home', function () {
-    return view('pages.dashboard');
-})->name('home');
+// App pages - Dashboard is the main page after login (protected by auth middleware)
+Route::middleware('auth')->group(function () {
+    Route::get('/home', function () {
+        return view('pages.dashboard');
+    })->name('home');
 
-Route::get('/dashboard', function () {
-    return view('pages.dashboard');
-})->name('dashboard');
+    Route::get('/dashboard', function () {
+        return view('pages.dashboard');
+    })->name('dashboard');
 
-Route::get('/chat', function () {
-    return view('pages.chat');
-})->name('chat');
+    Route::get('/chat', function () {
+        return view('pages.chat');
+    })->name('chat');
 
-Route::get('/settings', function () {
-    return view('pages.settings');
-})->name('settings');
+    Route::get('/settings', function () {
+        return view('pages.settings');
+    })->name('settings');
 
-Route::get('/promotions', function () {
-    return view('pages.promotions');
-})->name('promotions');
+    Route::get('/promotions', function () {
+        return view('pages.promotions');
+    })->name('promotions');
 
-Route::get('/analytics', function () {
-    return view('pages.analytics');
-})->name('analytics');
+    Route::get('/analytics', function () {
+        return view('pages.analytics');
+    })->name('analytics');
 
-Route::get('/reviews', function () {
-    return view('pages.reviews');
-})->name('reviews');
+    Route::get('/reviews', function () {
+        return view('pages.reviews');
+    })->name('reviews');
 
-Route::prefix('products')->name('web.products.')->group(function () {
-    Route::get('/', [ProductWebController::class, 'index'])->name('index');
-    Route::get('/create', [ProductWebController::class, 'create'])->name('create');
-    Route::post('/', [ProductWebController::class, 'store'])->name('store');
-    Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
-    Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
-    Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
-    Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
-});
+    Route::prefix('products')->name('web.products.')->group(function () {
+        Route::get('/', [ProductWebController::class, 'index'])->name('index');
+        Route::get('/create', [ProductWebController::class, 'create'])->name('create');
+        Route::post('/', [ProductWebController::class, 'store'])->name('store');
+        Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
+        Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
+        Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
+        Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+    });
 
-Route::prefix('warehouse')->name('warehouse.')->group(function () {
+    Route::prefix('warehouse')->name('warehouse.')->group(function () {
     Route::get('/', [WarehouseController::class, 'dashboard'])->name('dashboard');
     Route::get('/balance', [WarehouseController::class, 'balance'])->name('balance');
     Route::get('/in', [WarehouseController::class, 'receipts'])->name('in');
@@ -88,11 +89,11 @@ Route::prefix('warehouse')->name('warehouse.')->group(function () {
         Route::post('/api', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'store'])->name('api.store');
         Route::put('/api/{id}', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'update'])->name('api.update');
         Route::post('/api/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault'])->name('api.default');
+        });
     });
-});
 
-// Cabinet aliases for warehouse
-Route::prefix('cabinet/warehouse')->group(function () {
+    // Cabinet aliases for warehouse
+    Route::prefix('cabinet/warehouse')->group(function () {
     Route::get('/', [WarehouseController::class, 'dashboard'])->name('cabinet.warehouse.dashboard');
     Route::get('/balance', [WarehouseController::class, 'balance'])->name('cabinet.warehouse.balance');
     Route::get('/in', [WarehouseController::class, 'receipts'])->name('cabinet.warehouse.in');
@@ -107,97 +108,93 @@ Route::prefix('cabinet/warehouse')->group(function () {
     Route::get('/documents', [WarehouseController::class, 'documents'])->name('cabinet.warehouse.documents');
     Route::get('/documents/{id}', [WarehouseController::class, 'document'])->name('cabinet.warehouse.documents.show');
     Route::get('/reservations', [WarehouseController::class, 'reservations'])->name('cabinet.warehouse.reservations');
-    Route::get('/ledger', function () {
-        $controller = app(WarehouseController::class);
-        return $controller->ledger(request());
-    })->name('cabinet.warehouse.ledger');
-});
+        Route::get('/ledger', function () {
+            $controller = app(WarehouseController::class);
+            return $controller->ledger(request());
+        })->name('cabinet.warehouse.ledger');
+    });
 
-Route::get('/tasks', function () {
-    return view('pages.tasks');
-})->name('tasks');
+    Route::get('/tasks', function () {
+        return view('pages.tasks');
+    })->name('tasks');
 
-// Agent Mode
-Route::get('/agent', function () {
-    return view('pages.agent.index');
-})->name('agent.index');
+    // Agent Mode
+    Route::get('/agent', function () {
+        return view('pages.agent.index');
+    })->name('agent.index');
 
-Route::get('/agent/create', function () {
-    return view('pages.agent.create');
-})->name('agent.create');
+    Route::get('/agent/create', function () {
+        return view('pages.agent.create');
+    })->name('agent.create');
 
-Route::get('/agent/{taskId}', function ($taskId) {
-    return view('pages.agent.show', ['taskId' => $taskId]);
-})->name('agent.show');
+    Route::get('/agent/{taskId}', function ($taskId) {
+        return view('pages.agent.show', ['taskId' => $taskId]);
+    })->name('agent.show');
 
+    Route::get('/agent/run/{runId}', function ($runId) {
+        return view('pages.agent.run', ['runId' => $runId]);
+    })->name('agent.run');
 
-Route::get('/agent/run/{runId}', function ($runId) {
-    return view('pages.agent.run', ['runId' => $runId]);
-})->name('agent.run');
+    Route::get('/sales', function () {
+        return view('sales.index');
+    })->name('sales.index');
 
-Route::get('/sales', function () {
-    return view('sales.index');
-})->name('sales.index');
+    Route::get('/sales/create', function () {
+        return view('sales.create');
+    })->name('sales.create');
 
-Route::get('/sales/create', function () {
-    return view('sales.create');
-})->name('sales.create');
+    Route::get('/companies', function () {
+        return view('companies.index');
+    })->name('companies.index');
 
-Route::get('/companies', function () {
-    return view('companies.index');
-})->name('companies.index');
+    Route::get('/company/profile', function () {
+        return view('company.profile');
+    })->name('company.profile');
 
-Route::get('/company/profile', function () {
-    return view('company.profile');
-})->name('company.profile');
+    Route::get('/counterparties', function () {
+        return view('counterparties.index');
+    })->name('counterparties.index');
 
-Route::get('/counterparties', function () {
-    return view('counterparties.index');
-})->name('counterparties.index');
+    Route::get('/inventory', function () {
+        return view('inventory.index');
+    })->name('inventory.index');
 
-Route::get('/inventory', function () {
-    return view('inventory.index');
-})->name('inventory.index');
+    Route::get('/replenishment', function () {
+        return view('replenishment.index');
+    })->name('replenishment.index');
 
-Route::get('/replenishment', function () {
-    return view('replenishment.index');
-})->name('replenishment.index');
+    Route::get('/ap', function () {
+        $companyId = auth()->user()?->company_id ?? \App\Models\Company::query()->value('id');
+        $suppliers = Supplier::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
-Route::get('/ap', function () {
-    $companyId = auth()->user()?->company_id ?? \App\Models\Company::query()->value('id');
-    $suppliers = Supplier::query()
-        ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-        ->orderBy('name')
-        ->get(['id', 'name']);
+        return view('ap.index', [
+            'suppliers' => $suppliers,
+        ]);
+    })->name('ap.index');
 
-    return view('ap.index', [
-        'suppliers' => $suppliers,
-    ]);
-})->name('ap.index');
+    Route::get('/pricing', function () {
+        return view('pricing.index');
+    })->name('pricing.index');
 
-Route::get('/pricing', function () {
-    return view('pricing.index');
-})->name('pricing.index');
+    Route::get('/pricing/autopricing', function () {
+        return view('pricing.autopricing');
+    })->name('pricing.autopricing');
 
-Route::get('/pricing/autopricing', function () {
-    return view('pricing.autopricing');
-})->name('pricing.autopricing');
+    // Marketplace Module
+    Route::get('/marketplace', function () {
+        return view('pages.marketplace.index');
+    })->name('marketplace.index');
 
-// Marketplace Module
-Route::get('/marketplace', function () {
-    return view('pages.marketplace.index');
-})->name('marketplace.index');
+    // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
+        ->name('marketplace.sync-logs');
 
-// Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
-use App\Http\Controllers\MarketplaceSyncLogController;
-use App\Models\MarketplaceAccount;
-use Illuminate\Support\Facades\Auth;
-Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
-    ->name('marketplace.sync-logs');
-
-Route::get('/marketplace/{accountId}', function ($accountId) {
-    return view('pages.marketplace.show', ['accountId' => $accountId]);
-})->name('marketplace.show');
+    Route::get('/marketplace/{accountId}', function ($accountId) {
+        return view('pages.marketplace.show', ['accountId' => $accountId]);
+    })->name('marketplace.show');
 
 Route::get('/marketplace/{accountId}/products', function ($accountId) {
     $account = MarketplaceAccount::findOrFail($accountId);
@@ -511,7 +508,8 @@ if (env('VPC_ENABLED', false)) {
     Route::get('/vpc-sessions/{vpcSession}/actions-list', [VpcControlApiController::class, 'getActions'])->name('vpc_sessions.actions_list');
     Route::post('/vpc-sessions/{vpcSession}/control-mode-api', [VpcControlApiController::class, 'setControlMode'])->name('vpc_sessions.control_mode_api');
 }
+}); // End of auth middleware group
 
-// Telegram webhook
+// Telegram webhook (public, no auth required)
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

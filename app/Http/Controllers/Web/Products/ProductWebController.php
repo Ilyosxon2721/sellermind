@@ -25,8 +25,8 @@ class ProductWebController extends Controller
 
     public function index(Request $request): View|RedirectResponse
     {
-        $user = $this->ensureUser($request);
-        $companyId = $user?->company_id ?? \App\Models\Company::query()->value('id');
+        $user = $request->user();
+        $companyId = $user?->company_id;
 
         // Если нет компании вовсе — отдаём пустой список, чтобы не падать
         if (!$companyId) {
@@ -82,8 +82,8 @@ class ProductWebController extends Controller
 
     public function create(Request $request): View
     {
-        $user = $this->ensureUser($request);
-        $companyId = $user?->company_id ?? \App\Models\Company::query()->value('id');
+        $user = $request->user();
+        $companyId = $user?->company_id;
 
         $categories = ProductCategory::query()
             ->where('company_id', $companyId)
@@ -108,7 +108,6 @@ class ProductWebController extends Controller
 
     public function edit(Request $request, Product $product): View
     {
-        $this->ensureUser($request);
         $this->authorizeCompany($request, $product);
 
         $product->load([
@@ -157,7 +156,6 @@ class ProductWebController extends Controller
 
     public function update(Request $request, Product $product): RedirectResponse
     {
-        $this->ensureUser($request);
         $this->authorizeCompany($request, $product);
 
         $dto = $this->buildDto($request, $product);
@@ -170,7 +168,6 @@ class ProductWebController extends Controller
 
     public function destroy(Request $request, Product $product): RedirectResponse
     {
-        $this->ensureUser($request);
         $this->authorizeCompany($request, $product);
 
         $product->is_archived = true;
@@ -184,7 +181,6 @@ class ProductWebController extends Controller
 
     public function publish(Request $request, Product $product): RedirectResponse
     {
-        $this->ensureUser($request);
         $this->authorizeCompany($request, $product);
         $channels = $request->input('channels', []);
 
@@ -195,7 +191,7 @@ class ProductWebController extends Controller
 
     protected function buildDto(Request $request, ?Product $product = null): array
     {
-        $user = $this->ensureUser($request);
+        $user = $request->user();
         $request->validate([
             'product.name' => ['required', 'string', 'max:255'],
             'product.article' => ['required', 'string', 'max:100'],
@@ -442,28 +438,9 @@ class ProductWebController extends Controller
 
     protected function authorizeCompany(Request $request, Product $product): void
     {
-        $user = $this->ensureUser($request);
+        $user = $request->user();
         if (!$user || $product->company_id !== $user->company_id) {
             abort(403, 'Forbidden');
         }
-    }
-
-    /**
-     * Ensure we have an authenticated user; if not, log in the first available (demo) user.
-     */
-    private function ensureUser(Request $request): ?User
-    {
-        $user = $request->user();
-        if ($user) {
-            return $user;
-        }
-
-        $fallback = User::query()->first();
-        if ($fallback) {
-            Auth::login($fallback);
-            return $fallback;
-        }
-
-        return null;
     }
 }
