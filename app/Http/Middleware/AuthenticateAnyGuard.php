@@ -19,6 +19,14 @@ class AuthenticateAnyGuard
             }
         }
 
+        // For API requests, return JSON
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        // For web requests, redirect to login
         return redirect()->guest(route('login'));
     }
 }
