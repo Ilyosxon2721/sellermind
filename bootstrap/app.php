@@ -29,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
 
         // Configure API rate limiting
-        $middleware->throttleApi(limit: 60, decayMinutes: 1);
+        $middleware->throttleApi('api');
 
         // Route middleware aliases
         $middleware->alias([
