@@ -4,6 +4,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="flex h-screen bg-gray-50" x-data="salesPage()">
     <x-sidebar />
+    <x-mobile-header />
 
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
@@ -197,8 +198,8 @@
             </div>
 
             <!-- Orders table -->
-            <div class="table-container">
-                <table class="table">
+            <div class="table-container overflow-x-auto">
+                <table class="table min-w-full">
                     <thead>
                         <tr>
                             <th>№ заказа</th>
