@@ -30,6 +30,7 @@ class AuthController extends Controller
         if ($request->hasSession()) {
             Auth::login($user, true);
             $request->session()->regenerate();
+            $request->session()->save(); // Force save session
         }
 
         return response()->json([
@@ -40,7 +41,10 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        $credentials = $request->only('email', 'password');
+        $remember = $request->boolean('remember');
+
+        if (!Auth::attempt($credentials, $remember)) {
             return response()->json([
                 'message' => 'Неверный email или пароль.',
             ], 401);
@@ -51,9 +55,11 @@ class AuthController extends Controller
         // Create API token
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        // Regenerate session (only if session is available)
+        // Ensure web session is created and saved (only if session is available)
         if ($request->hasSession()) {
+            // Auth::attempt already logged in, but let's ensure it's saved
             $request->session()->regenerate();
+            $request->session()->save(); // Force save session
         }
 
         return response()->json([
