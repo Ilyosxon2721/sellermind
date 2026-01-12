@@ -41,11 +41,11 @@ class AddSecurityHeaders
         if (env('APP_ENV') === 'production') {
             $csp = implode('; ', [
                 "default-src 'self'",
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Allow inline scripts for Alpine.js
-                "style-src 'self' 'unsafe-inline'", // Allow inline styles for Tailwind
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net", // Allow inline scripts for Alpine.js and Chart.js
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net", // Allow inline styles for Tailwind and external fonts
                 "img-src 'self' data: https:",
-                "font-src 'self' data:",
-                "connect-src 'self' wss: https:",
+                "font-src 'self' data: https://fonts.bunny.net", // Allow fonts from Bunny Fonts CDN
+                "connect-src 'self' wss: ws: https:",
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 "form-action 'self'",
