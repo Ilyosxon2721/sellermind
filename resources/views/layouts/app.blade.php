@@ -104,6 +104,9 @@
     <x-bottom-tab-nav />
     @endauth
 
+    <!-- Global Action Sheet -->
+    <x-global-action-sheet />
+
     <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
     @vite('resources/js/pwa.js')
 
