@@ -83,6 +83,9 @@
     </script>
 </head>
 <body class="bg-gray-50">
+    <!-- Splash Screen (PWA only) -->
+    <x-splash-screen />
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         @yield('content')
     </div>
@@ -92,6 +95,9 @@
 
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Offline Indicator -->
+    <x-offline-indicator />
 
     <!-- Bottom Tab Navigation (PWA only, mobile/tablet) -->
     @auth

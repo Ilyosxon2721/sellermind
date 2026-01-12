@@ -140,9 +140,9 @@ function bottomTabNav() {
         },
 
         hapticFeedback() {
-            // Light haptic feedback on tap (iOS/Android)
-            if ('vibrate' in navigator) {
-                navigator.vibrate(10);
+            // Use global haptic system
+            if (window.haptic) {
+                window.haptic.selection();
             }
         }
     };

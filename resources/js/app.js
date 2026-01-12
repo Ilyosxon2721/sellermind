@@ -1,5 +1,6 @@
 import './bootstrap';
 import './polling'; // HTTP polling для real-time обновлений
+import './haptic'; // Haptic feedback system
 import Alpine from 'alpinejs';
 import persist from '@alpinejs/persist';
 import api, { auth, companies, products, dialogs, chat, images, tasks } from './services/api';
