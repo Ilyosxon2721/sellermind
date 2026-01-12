@@ -16,6 +16,7 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
+        // Create user
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -23,10 +24,23 @@ class AuthController extends Controller
             'locale' => $request->locale ?? 'ru',
         ]);
 
+        // Create default company for the user
+        $company = \App\Models\Company::create([
+            'name' => $request->name ? $request->name . "'s Company" : 'My Company',
+            'owner_id' => $user->id,
+            'is_active' => true,
+        ]);
+
+        // Attach user to company
+        $user->companies()->attach($company->id, [
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->load('companies')),
             'token' => $token,
         ], 201);
     }
