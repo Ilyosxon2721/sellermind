@@ -85,6 +85,19 @@ class ProductWebController extends Controller
         $user = $request->user();
         $companyId = $user?->company_id;
 
+        // Redirect to company setup if no company
+        if (!$companyId) {
+            return view('products.edit', [
+                'product' => new Product(),
+                'categories' => collect(),
+                'attributesList' => collect(),
+                'globalSizes' => collect(),
+                'globalColors' => collect(),
+                'initialState' => $this->buildInitialState(null),
+                'noCompany' => true,
+            ]);
+        }
+
         $categories = ProductCategory::query()
             ->where('company_id', $companyId)
             ->orderBy('name')
@@ -103,6 +116,7 @@ class ProductWebController extends Controller
             'globalSizes' => $globalSizes,
             'globalColors' => $globalColors,
             'initialState' => $this->buildInitialState(null),
+            'noCompany' => false,
         ]);
     }
 
