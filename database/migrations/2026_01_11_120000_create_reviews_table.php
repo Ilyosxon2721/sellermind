@@ -11,6 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('reviews')) {
+            // Table exists, add only new columns if missing
+            Schema::table('reviews', function (Blueprint $table) {
+                if (!Schema::hasColumn('reviews', 'is_published')) {
+                    $table->boolean('is_published')->default(false)->after('status');
+                }
+            });
+            return;
+        }
+
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
