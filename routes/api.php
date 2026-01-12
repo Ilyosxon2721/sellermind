@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\SalesAnalyticsController;
+use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
@@ -226,6 +227,20 @@ Route::middleware('auth.any')->group(function () {
         Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
         Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
         Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
+    });
+
+    // Review Response Generator
+    Route::prefix('reviews')->group(function () {
+        Route::get('/', [ReviewResponseController::class, 'index']);
+        Route::post('/', [ReviewResponseController::class, 'store']);
+        Route::get('statistics', [ReviewResponseController::class, 'statistics']);
+        Route::get('templates', [ReviewResponseController::class, 'templates']);
+        Route::post('templates', [ReviewResponseController::class, 'storeTemplate']);
+        Route::post('bulk-generate', [ReviewResponseController::class, 'bulkGenerate']);
+        Route::get('{review}', [ReviewResponseController::class, 'show']);
+        Route::post('{review}/generate', [ReviewResponseController::class, 'generateResponse']);
+        Route::post('{review}/save-response', [ReviewResponseController::class, 'saveResponse']);
+        Route::get('{review}/suggest-templates', [ReviewResponseController::class, 'suggestTemplates']);
     });
 
     // Dialogs
