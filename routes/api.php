@@ -31,6 +31,8 @@ use App\Http\Controllers\Api\WildberriesOrderMetaController;
 use App\Http\Controllers\Api\UzumSettingsController;
 use App\Http\Controllers\Api\WildberriesProductController;
 use App\Http\Controllers\Api\HealthCheckController;
+use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\MarketplaceWebhookController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -159,14 +161,31 @@ Route::middleware('auth.any')->group(function () {
         'destroy' => 'api.companies.destroy',
     ]);
     Route::get('companies/{company}/members', [CompanyController::class, 'getMembers'])->name('api.companies.members');
-    Route::post('companies/{company}/members', [CompanyController::class, 'addMember'])->name('api.companies.addMember');
+    Route::post('companies/{company}/members', [CompanyController::class, 'addMember'])
+        ->middleware('plan.limits:users,1')
+        ->name('api.companies.addMember');
     Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember'])->name('api.companies.removeMember');
+
+    // Plans (Public - can view without auth, but included in auth group for consistency)
+    Route::get('plans', [PlanController::class, 'index'])->name('api.plans.index');
+    Route::get('plans/{slugOrId}', [PlanController::class, 'show'])->name('api.plans.show');
+
+    // Subscriptions
+    Route::prefix('subscription')->group(function () {
+        Route::get('status', [SubscriptionController::class, 'status'])->name('api.subscription.status');
+        Route::post('subscribe', [SubscriptionController::class, 'subscribe'])->name('api.subscription.subscribe');
+        Route::post('cancel', [SubscriptionController::class, 'cancel'])->name('api.subscription.cancel');
+        Route::post('renew', [SubscriptionController::class, 'renew'])->name('api.subscription.renew');
+        Route::get('history', [SubscriptionController::class, 'history'])->name('api.subscription.history');
+    });
 
     // Warehouse Management (top-level endpoints)
     Route::get('warehouse/list', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'index']);
     Route::get('warehouses', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'index']);
-    Route::post('warehouse', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'store']);
-    Route::post('warehouses', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'store']);
+    Route::post('warehouse', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'store'])
+        ->middleware('plan.limits:warehouses,1');
+    Route::post('warehouses', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'store'])
+        ->middleware('plan.limits:warehouses,1');
     Route::get('warehouse/{id}', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'show']);
     Route::put('warehouse/{id}', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'update']);
     Route::put('warehouses/{id}', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'update']);
@@ -174,7 +193,8 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
     // Products
-    Route::apiResource('products', ProductController::class);
+    Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
+    Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
     Route::post('products/{product}/publish', [ProductController::class, 'publish']);
     Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
 
@@ -284,7 +304,8 @@ Route::middleware('auth.any')->group(function () {
         Route::get('accounts/requirements', [MarketplaceAccountController::class, 'requirements'])
             ->withoutMiddleware('auth:sanctum'); // Публичный доступ для просмотра требований
         Route::get('accounts', [MarketplaceAccountController::class, 'index']);
-        Route::post('accounts', [MarketplaceAccountController::class, 'store']);
+        Route::post('accounts', [MarketplaceAccountController::class, 'store'])
+            ->middleware('plan.limits:marketplace_accounts,1');
         Route::get('accounts/{account}', [MarketplaceAccountController::class, 'show']);
         Route::delete('accounts/{account}', [MarketplaceAccountController::class, 'destroy']);
         Route::post('accounts/{account}/test', [MarketplaceAccountController::class, 'test']);

@@ -31,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Route middleware aliases
         $middleware->alias([
             'auth.any' => \App\Http\Middleware\AuthenticateAnyGuard::class,
+            'subscription' => \App\Http\Middleware\CheckSubscription::class,
+            'plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
