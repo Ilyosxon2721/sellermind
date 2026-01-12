@@ -25,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add performance headers globally
         $middleware->append(\App\Http\Middleware\AddPerformanceHeaders::class);
 
+        // Add security headers globally
+        $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
+
+        // Configure API rate limiting
+        $middleware->throttleApi(limit: 60, decayMinutes: 1);
+
         // Route middleware aliases
         $middleware->alias([
             'auth.any' => \App\Http\Middleware\AuthenticateAnyGuard::class,

@@ -10,7 +10,12 @@ use App\Http\Controllers\Api\MarketplaceProductController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceOrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductBulkController;
 use App\Http\Controllers\Api\ProductDescriptionController;
+use App\Http\Controllers\Api\TelegramController;
+use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\SalesAnalyticsController;
+use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\Admin\DialogAdminController;
 use App\Http\Controllers\Api\AgentTaskController;
@@ -25,6 +30,7 @@ use App\Http\Controllers\Api\WildberriesSupplyController;
 use App\Http\Controllers\Api\WildberriesOrderMetaController;
 use App\Http\Controllers\Api\UzumSettingsController;
 use App\Http\Controllers\Api\WildberriesProductController;
+use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\MarketplaceWebhookController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -38,14 +44,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public routes
-Route::get('health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toIso8601String(),
-        'database' => \DB::connection()->getDatabaseName(),
-    ]);
-});
+// Public routes - Health Check
+Route::get('health', [HealthCheckController::class, 'index']);
+Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
@@ -131,6 +132,15 @@ Route::middleware('auth.any')->group(function () {
     Route::put('me', [AuthController::class, 'updateProfile']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
+    // Telegram Notifications
+    Route::prefix('telegram')->group(function () {
+        Route::get('status', [TelegramController::class, 'status']);
+        Route::post('generate-link-code', [TelegramController::class, 'generateLinkCode']);
+        Route::post('disconnect', [TelegramController::class, 'disconnect']);
+        Route::get('notification-settings', [TelegramController::class, 'getSettings']);
+        Route::put('notification-settings', [TelegramController::class, 'updateSettings']);
+    });
+
     // Polling API (для real-time обновлений без WebSocket)
     Route::middleware('throttle:120,1')->prefix('polling')->group(function () {
         Route::get('marketplace/orders/{accountId}', [\App\Http\Controllers\Api\PollingController::class, 'checkMarketplaceOrders']);
@@ -168,6 +178,14 @@ Route::middleware('auth.any')->group(function () {
     Route::post('products/{product}/publish', [ProductController::class, 'publish']);
     Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
 
+    // Product Bulk Operations
+    Route::prefix('products/bulk')->group(function () {
+        Route::post('export', [ProductBulkController::class, 'export']);
+        Route::post('import/preview', [ProductBulkController::class, 'previewImport']);
+        Route::post('import/apply', [ProductBulkController::class, 'applyImport']);
+        Route::post('update', [ProductBulkController::class, 'bulkUpdate']);
+    });
+
     // Product Descriptions
     Route::get('products/{product}/descriptions', [ProductDescriptionController::class, 'index']);
     Route::post('products/{product}/descriptions', [ProductDescriptionController::class, 'store']);
@@ -184,6 +202,46 @@ Route::middleware('auth.any')->group(function () {
     
     // Generic image upload (for new products without ID)
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
+
+    // Promotions (Smart Promotions)
+    Route::prefix('promotions')->group(function () {
+        Route::get('/', [PromotionController::class, 'index']);
+        Route::post('/', [PromotionController::class, 'store']);
+        Route::get('detect-slow-moving', [PromotionController::class, 'detectSlowMoving']);
+        Route::post('create-automatic', [PromotionController::class, 'createAutomatic']);
+        Route::get('{promotion}', [PromotionController::class, 'show']);
+        Route::put('{promotion}', [PromotionController::class, 'update']);
+        Route::delete('{promotion}', [PromotionController::class, 'destroy']);
+        Route::post('{promotion}/apply', [PromotionController::class, 'apply']);
+        Route::post('{promotion}/remove', [PromotionController::class, 'remove']);
+        Route::get('{promotion}/stats', [PromotionController::class, 'stats']);
+    });
+
+    // Sales Analytics
+    Route::prefix('analytics')->group(function () {
+        Route::get('dashboard', [SalesAnalyticsController::class, 'dashboard']);
+        Route::get('overview', [SalesAnalyticsController::class, 'overview']);
+        Route::get('sales-by-day', [SalesAnalyticsController::class, 'salesByDay']);
+        Route::get('top-products', [SalesAnalyticsController::class, 'topProducts']);
+        Route::get('flop-products', [SalesAnalyticsController::class, 'flopProducts']);
+        Route::get('sales-by-category', [SalesAnalyticsController::class, 'salesByCategory']);
+        Route::get('sales-by-marketplace', [SalesAnalyticsController::class, 'salesByMarketplace']);
+        Route::get('product/{productId}/performance', [SalesAnalyticsController::class, 'productPerformance']);
+    });
+
+    // Review Response Generator
+    Route::prefix('reviews')->group(function () {
+        Route::get('/', [ReviewResponseController::class, 'index']);
+        Route::post('/', [ReviewResponseController::class, 'store']);
+        Route::get('statistics', [ReviewResponseController::class, 'statistics']);
+        Route::get('templates', [ReviewResponseController::class, 'templates']);
+        Route::post('templates', [ReviewResponseController::class, 'storeTemplate']);
+        Route::post('bulk-generate', [ReviewResponseController::class, 'bulkGenerate']);
+        Route::get('{review}', [ReviewResponseController::class, 'show']);
+        Route::post('{review}/generate', [ReviewResponseController::class, 'generateResponse']);
+        Route::post('{review}/save-response', [ReviewResponseController::class, 'saveResponse']);
+        Route::get('{review}/suggest-templates', [ReviewResponseController::class, 'suggestTemplates']);
+    });
 
     // Dialogs
     Route::apiResource('dialogs', DialogController::class);

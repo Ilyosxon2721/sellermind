@@ -15,12 +15,30 @@
                     <h1 class="text-2xl font-bold text-gray-900">Товары</h1>
                     <p class="text-gray-600 text-sm">Создание карточек с полями маркетплейсов</p>
                 </div>
-                <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center space-x-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    <span>Добавить товар</span>
-                </button>
+                <div class="flex items-center space-x-3">
+                    <button @click="exportProducts()"
+                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span>Экспорт</span>
+                    </button>
+
+                    <button @click="openImportModal()"
+                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        <span>Импорт</span>
+                    </button>
+
+                    <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>Добавить товар</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Search & Filters -->
@@ -203,11 +221,19 @@
         </main>
     </div>
 
+    <!-- Bulk Operations UI -->
+    <x-product-bulk-operations />
+
 </div>
 
+<script src="/js/product-bulk.js"></script>
 <script>
     function productPage() {
         return {
+            // Bulk operations functionality
+            ...window.productBulkMixin,
+
+            // Original functionality
             products: [],
             loading: false,
             search: '',

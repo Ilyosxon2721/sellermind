@@ -35,6 +35,22 @@ Route::get('/chat', function () {
     return view('pages.chat');
 })->name('chat');
 
+Route::get('/settings', function () {
+    return view('pages.settings');
+})->name('settings');
+
+Route::get('/promotions', function () {
+    return view('pages.promotions');
+})->name('promotions');
+
+Route::get('/analytics', function () {
+    return view('pages.analytics');
+})->name('analytics');
+
+Route::get('/reviews', function () {
+    return view('pages.reviews');
+})->name('reviews');
+
 Route::prefix('products')->name('web.products.')->group(function () {
     Route::get('/', [ProductWebController::class, 'index'])->name('index');
     Route::get('/create', [ProductWebController::class, 'create'])->name('create');

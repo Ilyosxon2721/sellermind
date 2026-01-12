@@ -49,9 +49,14 @@ Alpine.store('auth', {
     token: safePersist(null, 'auth_token'),
     currentCompany: safePersist(null, 'current_company'),
     companies: [],
+    showCompanyPrompt: false,
 
     get isAuthenticated() {
         return !!this.token;
+    },
+
+    get hasCompanies() {
+        return this.companies.length > 0;
     },
 
     async login(email, password) {
@@ -87,6 +92,11 @@ Alpine.store('auth', {
                         : null;
                     this.currentCompany = userCompany || this.companies[0];
                 }
+                this.showCompanyPrompt = false;
+            } else {
+                // No companies - show prompt to create one
+                this.showCompanyPrompt = true;
+                this.currentCompany = null;
             }
             // Always load dialogs for current company
             if (this.currentCompany) {
