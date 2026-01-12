@@ -7,6 +7,19 @@
     <title>{{ config('app.name', 'SellerMind') }}</title>
     <meta name="description" content="Платформа управления продажами на маркетплейсах">
 
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SellerMind">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/images/icons/icon-192x192.png">
+
     <!-- Resource Hints for Performance -->
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
     <link rel="dns-prefetch" href="https://fonts.bunny.net">
@@ -79,5 +92,108 @@
 
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(registration => {
+                        console.log('✅ PWA: Service Worker registered');
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    console.log('🔄 PWA: New version available');
+
+                                    // Show update notification
+                                    if (confirm('Доступна новая версия SellerMind. Обновить сейчас?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.warn('⚠️ PWA: Service Worker registration failed:', error);
+                    });
+
+                // Handle service worker updates
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        let pwaInstallButton = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent default install prompt
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show custom install button
+            showInstallPromotion();
+        });
+
+        function showInstallPromotion() {
+            // Create install button if not exists
+            if (!pwaInstallButton && deferredPrompt) {
+                pwaInstallButton = document.createElement('button');
+                pwaInstallButton.innerHTML = `
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Установить приложение
+                `;
+                pwaInstallButton.className = 'fixed bottom-4 right-4 z-50 px-4 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center font-medium';
+                pwaInstallButton.onclick = installPWA;
+                document.body.appendChild(pwaInstallButton);
+
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    if (pwaInstallButton) {
+                        pwaInstallButton.style.opacity = '0';
+                        setTimeout(() => pwaInstallButton?.remove(), 300);
+                    }
+                }, 10000);
+            }
+        }
+
+        async function installPWA() {
+            if (!deferredPrompt) return;
+
+            // Show install prompt
+            deferredPrompt.prompt();
+
+            // Wait for user response
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`PWA install ${outcome}`);
+
+            // Clear the prompt
+            deferredPrompt = null;
+            pwaInstallButton?.remove();
+            pwaInstallButton = null;
+        }
+
+        // Track if app was installed
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA: App installed successfully');
+            deferredPrompt = null;
+            pwaInstallButton?.remove();
+        });
+
+        // Expose install function globally
+        window.installPWA = installPWA;
+    </script>
 </body>
 </html>

@@ -22,6 +22,11 @@ Route::get('/register', function () {
     return view('pages.register');
 })->name('register');
 
+// Health check for PWA offline detection
+Route::get('/api/health', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
     Route::get('/home', function () {
