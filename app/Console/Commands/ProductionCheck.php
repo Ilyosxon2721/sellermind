@@ -94,7 +94,7 @@ class ProductionCheck extends Command
         // APP_KEY check
         $appKey = config('app.key');
         if (empty($appKey)) {
-            $this->fail('APP_KEY is not set! Run: php artisan key:generate');
+            $this->failCheck('APP_KEY is not set! Run: php artisan key:generate');
         } else {
             $this->pass('APP_KEY is set');
         }
@@ -123,7 +123,7 @@ class ProductionCheck extends Command
         $this->newLine();
 
         if (config('app.debug')) {
-            $this->fail('APP_DEBUG is enabled! Set APP_DEBUG=false in production');
+            $this->failCheck('APP_DEBUG is enabled! Set APP_DEBUG=false in production');
         } else {
             $this->pass('Debug mode is disabled');
         }
@@ -151,7 +151,7 @@ class ProductionCheck extends Command
             }
 
         } catch (\Exception $e) {
-            $this->fail('Database connection failed: ' . $e->getMessage());
+            $this->failCheck('Database connection failed: ' . $e->getMessage());
         }
     }
 
@@ -179,7 +179,7 @@ class ProductionCheck extends Command
         if (is_writable($storagePath)) {
             $this->pass('Storage directory is writable');
         } else {
-            $this->fail('Storage directory is not writable');
+            $this->failCheck('Storage directory is not writable');
         }
 
         // Check disk space
@@ -188,7 +188,7 @@ class ProductionCheck extends Command
         $usedPercent = (($total - $free) / $total) * 100;
 
         if ($usedPercent > 90) {
-            $this->fail(sprintf('Disk space critically low: %.1f%% used', $usedPercent));
+            $this->failCheck(sprintf('Disk space critically low: %.1f%% used', $usedPercent));
         } elseif ($usedPercent > 80) {
             $this->warn(sprintf('Disk space low: %.1f%% used', $usedPercent));
         } else {
@@ -219,7 +219,7 @@ class ProductionCheck extends Command
             if (is_writable($dir)) {
                 $this->pass(basename($dir) . ' is writable');
             } else {
-                $this->fail(basename($dir) . ' is not writable');
+                $this->failCheck(basename($dir) . ' is not writable');
             }
         }
     }
@@ -239,7 +239,7 @@ class ProductionCheck extends Command
         foreach ($required as $key => $description) {
             $value = env($key);
             if (empty($value)) {
-                $this->fail("{$key} is not set ({$description})");
+                $this->failCheck("{$key} is not set ({$description})");
             } else {
                 $this->pass("{$key} is configured");
             }
@@ -302,7 +302,7 @@ class ProductionCheck extends Command
         $this->warnings++;
     }
 
-    protected function fail(string $message): void
+    protected function failCheck(string $message): void
     {
         $this->line("   <fg=red>✗</> {$message}");
         $this->errors++;
