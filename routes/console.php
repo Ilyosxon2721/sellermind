@@ -197,7 +197,7 @@ Schedule::call(function () {
 // Sales Analytics: Обновление кэша аналитики (каждый час)
 Schedule::call(function () {
     // Предварительный расчет аналитики для всех компаний
-    $companies = \App\Models\Company::where('is_active', true)->get();
+    $companies = \App\Models\Company::all();
 
     foreach ($companies as $company) {
         try {

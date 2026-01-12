@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MarketplaceSyncLogController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Web\Products\ProductWebController;
 use App\Http\Controllers\Web\Warehouse\WarehouseController;
