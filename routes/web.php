@@ -183,6 +183,11 @@ Route::middleware('auth')->group(function () {
         return view('pricing.autopricing');
     })->name('pricing.autopricing');
 
+    // Subscription Plans (Public - can be accessed without auth)
+    Route::get('/plans', function () {
+        return view('plans.index');
+    })->withoutMiddleware('auth')->name('plans.index');
+
     // Marketplace Module
     Route::get('/marketplace', function () {
         return view('pages.marketplace.index');
