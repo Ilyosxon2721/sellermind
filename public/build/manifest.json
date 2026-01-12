@@ -7,8 +7,14 @@
     "file": "assets/vendor-Dos3PyFQ.js",
     "name": "vendor"
   },
+  "node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
+    "file": "assets/workbox-window.prod.es5-CLYUWRvB.js",
+    "name": "workbox-window.prod.es5",
+    "src": "node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+    "isDynamicEntry": true
+  },
   "resources/css/app.css": {
-    "file": "assets/app-BeYbIrsC.css",
+    "file": "assets/app-DSeymOUe.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -17,13 +23,22 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BdQLNtU2.js",
+    "file": "assets/app-BL-yfK52.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
       "_vendor-Dos3PyFQ.js",
       "_alpine-w3y3or6b.js"
+    ]
+  },
+  "resources/js/pwa.js": {
+    "file": "assets/pwa-Byf29zta.js",
+    "name": "pwa",
+    "src": "resources/js/pwa.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/workbox-window/build/workbox-window.prod.es5.mjs"
     ]
   }
 }

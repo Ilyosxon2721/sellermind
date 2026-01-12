@@ -93,46 +93,11 @@
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
+    @vite('resources/js/pwa.js')
+
+    <!-- PWA Install Prompt -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(registration => {
-                        console.log('✅ PWA: Service Worker registered');
-
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New version available
-                                    console.log('🔄 PWA: New version available');
-
-                                    // Show update notification
-                                    if (confirm('Доступна новая версия SellerMind. Обновить сейчас?')) {
-                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        window.location.reload();
-                                    }
-                                }
-                            });
-                        });
-                    })
-                    .catch(error => {
-                        console.warn('⚠️ PWA: Service Worker registration failed:', error);
-                    });
-
-                // Handle service worker updates
-                let refreshing = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (refreshing) return;
-                    refreshing = true;
-                    window.location.reload();
-                });
-            });
-        }
-
-        // PWA Install Prompt
         let deferredPrompt;
         let pwaInstallButton = null;
 
