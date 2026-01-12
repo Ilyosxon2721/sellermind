@@ -147,7 +147,7 @@ Route::get('/companies', function () {
     return view('companies.index');
 })->name('companies.index');
 
-Route::middleware('auth.any')->get('/company/profile', function () {
+Route::get('/company/profile', function () {
     return view('company.profile');
 })->name('company.profile');
 
@@ -192,7 +192,7 @@ Route::get('/marketplace', function () {
 use App\Http\Controllers\MarketplaceSyncLogController;
 use App\Models\MarketplaceAccount;
 use Illuminate\Support\Facades\Auth;
-Route::middleware('auth.any')->get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
+Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
     ->name('marketplace.sync-logs');
 
 Route::get('/marketplace/{accountId}', function ($accountId) {
