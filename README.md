@@ -43,7 +43,30 @@ We've implemented 5 high-impact features that provide immediate business value:
 
 ## 🚀 Quick Deploy to Production
 
-### Option 1: Automated (10 minutes) ⚡
+### Option 1: Laravel Forge (5 minutes) 🔥 **RECOMMENDED**
+
+**Easiest way to deploy!**
+
+Laravel Forge автоматизирует всё:
+- ✅ Server setup (Nginx, PHP, MySQL, Redis, Supervisor)
+- ✅ SSL certificates (Let's Encrypt)
+- ✅ Queue workers & Scheduler
+- ✅ Auto-deploy from GitHub
+- ✅ Monitoring & Backups
+
+**Cost:** ~$24-31/month (окупается за 1 час работы!)
+
+**Quick Start:**
+1. Sign up at [forge.laravel.com](https://forge.laravel.com)
+2. Create server + site (5 clicks)
+3. Connect GitHub repo
+4. Deploy!
+
+**📖 Full Guide:** See `FORGE_DEPLOYMENT.md`
+
+---
+
+### Option 2: Automated Script (10 minutes) ⚡
 
 ```bash
 # On your production server:
@@ -55,7 +78,9 @@ nano deploy.sh  # Edit DOMAIN variable
 
 **That's it!** The script will handle everything automatically.
 
-### Option 2: Follow Guides
+---
+
+### Option 3: Manual Guides
 
 - **Quick Start (30 min):** See `PRODUCTION_DEPLOYMENT.md`
 - **Complete Guide:** See `DEPLOYMENT_CHECKLIST.md`

@@ -13,7 +13,35 @@
 
 ---
 
-## 🎯 OPTION 1: Automated Deployment (Recommended - 10 minutes)
+## 🎯 OPTION 1: Laravel Forge (Easiest - 5 minutes) 🔥
+
+**Рекомендуется для продакшена!**
+
+Laravel Forge автоматизирует ВСЁ:
+- ✅ Настройку сервера (Nginx, PHP, MySQL, Redis)
+- ✅ SSL сертификаты (Let's Encrypt)
+- ✅ Queue workers (Supervisor)
+- ✅ Cron scheduler
+- ✅ Auto-deploy при push в GitHub
+- ✅ Monitoring и backups
+
+**Стоимость:** ~$24-31/месяц (Forge $12-19 + Server $12)
+
+### Быстрый старт:
+
+1. Зарегистрируйся на [forge.laravel.com](https://forge.laravel.com)
+2. Создай сервер (DigitalOcean, AWS, etc.)
+3. Добавь сайт с GitHub репозиторием
+4. Настрой SSL, queue workers, scheduler через UI
+5. Deploy!
+
+**📖 Подробная инструкция:** See `FORGE_DEPLOYMENT.md`
+
+**Время:** 5-10 минут | **Сложность:** ⭐ Легко
+
+---
+
+## 🎯 OPTION 2: Automated Deployment Script (10 minutes)
 
 ### On Your Production Server:
 
