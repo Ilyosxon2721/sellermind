@@ -34,11 +34,9 @@ return new class extends Migration
             $table->timestamp('response_date')->nullable();
             $table->foreignId('responded_by')->nullable()->constrained('users')->onDelete('set null');
             $table->boolean('is_ai_generated')->default(false);
-            $table->foreignId('template_id')->nullable()->constrained('review_templates')->onDelete('set null');
-
+            $table->unsignedBigInteger('template_id')->nullable();
             // Status
             $table->enum('status', ['pending', 'responded', 'ignored'])->default('pending');
-            $table->boolean('is_published')->default(false);
 
             // Sentiment analysis
             $table->enum('sentiment', ['positive', 'neutral', 'negative'])->nullable();
