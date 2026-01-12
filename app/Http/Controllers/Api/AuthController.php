@@ -23,12 +23,14 @@ class AuthController extends Controller
             'locale' => $request->locale ?? 'ru',
         ]);
 
-        // Create both API token and web session
+        // Create API token
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        // Log the user in for web session
-        Auth::login($user, true);
-        $request->session()->regenerate();
+        // Log the user in for web session (only if session is available)
+        if ($request->hasSession()) {
+            Auth::login($user, true);
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'user' => new UserResource($user),
@@ -46,11 +48,13 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        // Create both API token and web session
+        // Create API token
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        // Auth::attempt already created web session, but let's ensure it's saved
-        $request->session()->regenerate();
+        // Regenerate session (only if session is available)
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'user' => new UserResource($user),
@@ -63,10 +67,12 @@ class AuthController extends Controller
         // Delete Sanctum token
         $request->user()->currentAccessToken()?->delete();
 
-        // Also clear web session
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // Also clear web session (only if session is available)
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'message' => 'Вы успешно вышли из системы.',
