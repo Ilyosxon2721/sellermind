@@ -27,9 +27,10 @@
                       localStorage.setItem('_x_auth_token', JSON.stringify(result.token));
                       localStorage.setItem('_x_auth_user', JSON.stringify(result.user));
                   }
-                  // Wait for all async operations to complete
-                  await new Promise(r => setTimeout(r, 300));
-                  window.location.href = '/home';
+                  // Wait for session to be saved and companies to load
+                  await new Promise(r => setTimeout(r, 1000));
+                  // Use window.location to trigger full page reload with session
+                  window.location.href = '/dashboard';
               } catch (e) {
                   this.error = e.response?.data?.message || 'Ошибка входа';
                   this.loading = false;
