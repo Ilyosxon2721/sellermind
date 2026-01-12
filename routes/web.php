@@ -5,6 +5,9 @@ use App\Http\Controllers\Web\Products\ProductWebController;
 use App\Http\Controllers\Web\Warehouse\WarehouseController;
 use App\Models\AP\Supplier;
 use Illuminate\Support\Facades\Route;
+// VPC Sessions - DISABLED: Module not complete, enable via VPC_ENABLED=true in .env
+use App\Http\Controllers\VpcSessionController;
+use App\Http\Controllers\VpcControlApiController;
 
 // Public pages
 Route::get('/', function () {
@@ -486,9 +489,7 @@ Route::get('/marketplace/{accountId}/ozon-orders/json', function (\Illuminate\Ht
     ]);
 })->name('marketplace.ozon-orders.json');
 
-// VPC Sessions - DISABLED: Module not complete, enable via VPC_ENABLED=true in .env
-use App\Http\Controllers\VpcSessionController;
-use App\Http\Controllers\VpcControlApiController;
+
 
 if (env('VPC_ENABLED', false)) {
     Route::get('/vpc-sessions', [VpcSessionController::class, 'index'])->name('vpc_sessions.index');
