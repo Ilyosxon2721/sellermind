@@ -177,13 +177,8 @@ return [
     |
     */
 
-    'before_send' => function (\Sentry\Event $event): ?\Sentry\Event {
-        // Don't send events in local environment
-        if (app()->environment('local')) {
-            return null;
-        }
+    'before_send' => null,
 
-        return $event;
-    },
+    
 
 ];
