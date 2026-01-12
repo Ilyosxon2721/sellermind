@@ -37,7 +37,8 @@
         </header>
         
         <!-- Dashboard Content -->
-        <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding">
+        <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding"
+              x-pull-to-refresh="loadData">
             <!-- Loading Skeletons -->
             <div x-show="loading" x-cloak>
                 <!-- KPI Cards Skeleton -->
