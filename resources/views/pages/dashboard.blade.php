@@ -2,8 +2,9 @@
 
 @section('content')
 <div x-data="dashboardPage()" x-init="init()" class="flex h-screen bg-gray-50">
-    
+
     <x-sidebar></x-sidebar>
+    <x-mobile-header />
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">

@@ -35,6 +35,7 @@
 
 <div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
     <x-sidebar />
+    <x-mobile-header />
 
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
