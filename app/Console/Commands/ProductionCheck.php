@@ -302,7 +302,7 @@ class ProductionCheck extends Command
         $this->warnings++;
     }
 
-    protected function fail(string $message): void
+    public function fail(string $message): void
     {
         $this->line("   <fg=red>✗</> {$message}");
         $this->errors++;
