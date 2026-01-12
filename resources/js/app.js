@@ -265,6 +265,22 @@ Alpine.store('products', {
     },
 });
 
+// PWA Store
+Alpine.store('pwa', {
+    isInstalled: window.isPWAInstalled || false,
+
+    get canInstall() {
+        return 'BeforeInstallPromptEvent' in window;
+    },
+
+    checkStatus() {
+        this.isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+                          window.navigator.standalone === true ||
+                          document.referrer.includes('android-app://');
+        return this.isInstalled;
+    }
+});
+
 // Make Alpine available globally before starting
 window.Alpine = Alpine;
 

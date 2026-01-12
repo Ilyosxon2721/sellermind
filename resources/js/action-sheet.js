@@ -6,9 +6,9 @@
  */
 
 // Alpine.js component
-if (window.Alpine) {
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('actionSheet', () => ({
+document.addEventListener('alpine:init', () => {
+    if (window.Alpine) {
+        window.Alpine.data('actionSheet', () => ({
             isOpen: false,
             actions: [],
             title: '',
@@ -66,7 +66,7 @@ if (window.Alpine) {
         }));
 
         // Global helper to show action sheets
-        Alpine.magic('actionSheet', () => {
+        window.Alpine.magic('actionSheet', () => {
             return {
                 show(options) {
                     // Dispatch event to open action sheet
@@ -76,8 +76,8 @@ if (window.Alpine) {
                 }
             };
         });
-    });
-}
+    }
+});
 
 // Standalone class for non-Alpine usage
 class ActionSheet {
