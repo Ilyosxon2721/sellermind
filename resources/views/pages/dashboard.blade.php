@@ -38,11 +38,31 @@
         
         <!-- Dashboard Content -->
         <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding">
-            <!-- Loading -->
-            <div x-show="loading" class="flex items-center justify-center h-64">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <!-- Loading Skeletons -->
+            <div x-show="loading" x-cloak>
+                <!-- KPI Cards Skeleton -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <x-skeleton-stats-card />
+                    <x-skeleton-stats-card />
+                    <x-skeleton-stats-card />
+                    <x-skeleton-stats-card />
+                </div>
+
+                <!-- Charts & Activity Skeleton -->
+                <div class="grid lg:grid-cols-3 gap-6 mb-8">
+                    <div class="lg:col-span-2">
+                        <x-skeleton-card :rows="2" />
+                    </div>
+                    <x-skeleton-list :items="5" />
+                </div>
+
+                <!-- Bottom Section Skeleton -->
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <x-skeleton-list :items="4" :withAvatar="true" />
+                    <x-skeleton-card :rows="2" />
+                </div>
             </div>
-            
+
             <div x-show="!loading" x-cloak>
                 <!-- KPI Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
