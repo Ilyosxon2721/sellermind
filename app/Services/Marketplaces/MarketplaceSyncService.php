@@ -18,6 +18,7 @@ use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Jobs\SyncWildberriesSupplies;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class MarketplaceSyncService

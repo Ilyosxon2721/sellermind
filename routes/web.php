@@ -26,7 +26,7 @@ Route::get('/register', function () {
 })->name('register');
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
-Route::middleware('auth')->group(function () {
+Route::middleware('auth.any')->group(function () {
     Route::get('/home', function () {
         return view('pages.dashboard');
     })->name('home');

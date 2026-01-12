@@ -31,7 +31,7 @@ class ProductWebController extends Controller
         // Если нет компании вовсе — отдаём пустой список, чтобы не падать
         if (!$companyId) {
             return view('products.index', [
-                'products' => collect(),
+                'products' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'categories' => collect(),
                 'filters' => [
                     'search' => '',
