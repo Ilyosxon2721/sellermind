@@ -48,8 +48,8 @@ Route::get('/api/health', function () {
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
     Route::get('/home', function () {
-        return view('pages.dashboard');
-    })->name('home');
+        return redirect()->route('dashboard');
+    });
 
     Route::get('/dashboard', function () {
         return view('pages.dashboard');

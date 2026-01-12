@@ -4,6 +4,10 @@ import './haptic'; // Haptic feedback system
 import './pull-to-refresh'; // Pull-to-refresh gesture
 import './page-transitions'; // Native page transitions
 import './action-sheet'; // Native action sheets
+import './toast'; // Toast notifications
+import './empty-state'; // Empty states
+import './share'; // Web Share API
+import './swipe-actions'; // Swipe actions
 import Alpine from 'alpinejs';
 import persist from '@alpinejs/persist';
 import api, { auth, companies, products, dialogs, chat, images, tasks } from './services/api';
