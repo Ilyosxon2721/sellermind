@@ -71,6 +71,11 @@ Alpine.store('auth', {
         const result = await auth.login(email, password);
         this.user = result.user;
         this.token = result.token;
+
+        // Ensure token is saved to localStorage immediately
+        localStorage.setItem('_x_auth_token', JSON.stringify(result.token));
+        localStorage.setItem('_x_auth_user', JSON.stringify(result.user));
+
         // Load companies and auto-select first one
         await this.loadCompanies();
         return result;
@@ -80,6 +85,11 @@ Alpine.store('auth', {
         const result = await auth.register(data);
         this.user = result.user;
         this.token = result.token;
+
+        // Ensure token is saved to localStorage immediately
+        localStorage.setItem('_x_auth_token', JSON.stringify(result.token));
+        localStorage.setItem('_x_auth_user', JSON.stringify(result.user));
+
         // Load companies and auto-select first one
         await this.loadCompanies();
         return result;

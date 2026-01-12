@@ -15,8 +15,30 @@ class MarketplaceSyncLogController extends Controller
      */
     public function index(Request $request): View
     {
+        $user = $request->user();
+        $companyId = $user?->company_id;
+
+        // If no company, return empty results
+        if (!$companyId) {
+            return view('pages.marketplace.sync-logs', [
+                'logs' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
+                'marketplaces' => [],
+                'accounts' => collect(),
+                'filters' => [
+                    'marketplace' => null,
+                    'account_id' => null,
+                    'status' => null,
+                    'type' => null,
+                ],
+                'noCompany' => true,
+            ]);
+        }
+
         $query = MarketplaceSyncLog::query()
             ->with('account')
+            ->whereHas('account', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })
             ->orderByDesc('created_at');
 
         // Filter by marketplace
@@ -43,15 +65,17 @@ class MarketplaceSyncLogController extends Controller
 
         $logs = $query->paginate(50);
 
-        // Get unique marketplaces for filter
+        // Get unique marketplaces for filter (only for current company)
         $marketplaces = MarketplaceAccount::query()
+            ->where('company_id', $companyId)
             ->select('marketplace')
             ->distinct()
             ->pluck('marketplace')
             ->all();
 
-        // Get accounts for filter
+        // Get accounts for filter (only for current company)
         $accounts = MarketplaceAccount::query()
+            ->where('company_id', $companyId)
             ->select('id', 'name', 'marketplace')
             ->orderBy('name')
             ->get();
@@ -66,6 +90,7 @@ class MarketplaceSyncLogController extends Controller
                 'status' => $request->get('status'),
                 'type' => $request->get('type'),
             ],
+            'noCompany' => false,
         ]);
     }
 }
