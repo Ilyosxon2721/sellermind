@@ -26,7 +26,7 @@ export default defineConfig({
                 display: 'standalone',
                 orientation: 'portrait-primary',
                 scope: '/',
-                start_url: '/dashboard',
+                start_url: '/',
                 icons: [
                     {
                         src: '/images/icons/icon-192x192.png',

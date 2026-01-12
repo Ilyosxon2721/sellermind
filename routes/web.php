@@ -6,13 +6,28 @@ use App\Http\Controllers\Web\Warehouse\WarehouseController;
 use App\Models\AP\Supplier;
 use Illuminate\Support\Facades\Route;
 
-// Public pages
-Route::get('/', function () {
+// Public pages - Smart routing based on PWA mode
+Route::get('/', function (Illuminate\Http\Request $request) {
+    // Check if PWA is installed (standalone mode)
+    $isPWA = $request->cookie('pwa_installed') === 'true';
+
+    // PWA App Mode: Act like a native app
+    if ($isPWA) {
+        if (auth()->check()) {
+            // Authenticated → Dashboard
+            return redirect('/dashboard');
+        } else {
+            // Not authenticated → Login (skip landing)
+            return redirect('/login');
+        }
+    }
+
+    // Browser Mode: Show landing page for marketing
     $plans = \App\Models\Plan::where('is_active', true)
         ->orderBy('sort_order')
         ->get();
     return view('welcome', compact('plans'));
-});
+})->name('home');
 
 Route::get('/login', function () {
     return view('pages.login');

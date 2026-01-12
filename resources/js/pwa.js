@@ -74,6 +74,51 @@ window.updatePWA = () => {
     updateSW(true);
 };
 
+// Detect and mark PWA standalone mode
+function detectPWAMode() {
+    // Check if app is running in standalone mode (installed PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        window.navigator.standalone === true || // iOS
+                        document.referrer.includes('android-app://'); // Android
+
+    if (isStandalone) {
+        // Set cookie to indicate PWA mode for server-side detection
+        document.cookie = 'pwa_installed=true; path=/; max-age=31536000; SameSite=Lax';
+        console.log('📱 PWA Mode: Standalone (Installed App)');
+    } else {
+        // Set cookie to indicate browser mode
+        document.cookie = 'pwa_installed=false; path=/; max-age=31536000; SameSite=Lax';
+        console.log('🌐 PWA Mode: Browser');
+    }
+
+    // Expose as global
+    window.isPWAInstalled = isStandalone;
+
+    return isStandalone;
+}
+
+// Run detection on load
+const isPWA = detectPWAMode();
+
+// Listen for display mode changes (when user installs/uninstalls)
+window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+    if (e.matches) {
+        document.cookie = 'pwa_installed=true; path=/; max-age=31536000; SameSite=Lax';
+        console.log('📱 PWA installed - switching to app mode');
+        window.isPWAInstalled = true;
+
+        // Reload to apply new routing
+        if (window.location.pathname === '/' || window.location.pathname === '') {
+            window.location.reload();
+        }
+    } else {
+        document.cookie = 'pwa_installed=false; path=/; max-age=31536000; SameSite=Lax';
+        console.log('🌐 PWA uninstalled - switching to browser mode');
+        window.isPWAInstalled = false;
+    }
+});
+
 // Log PWA info in console
 console.log('📱 PWA Mode: Enabled');
 console.log('💡 To manually update: window.updatePWA()');
+console.log('💡 Check PWA status: window.isPWAInstalled');
