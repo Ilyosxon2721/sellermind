@@ -57,7 +57,7 @@ Alpine.store('auth', {
     user: safePersist(null, 'auth_user'),
     token: safePersist(null, 'auth_token'),
     currentCompany: safePersist(null, 'current_company'),
-    companies: [],
+    companies: safePersist([], 'auth_companies'),
     showCompanyPrompt: false,
 
     get isAuthenticated() {
@@ -124,6 +124,15 @@ Alpine.store('auth', {
         } catch (e) {
             console.error('Failed to load companies:', e);
         }
+    },
+
+    async ensureCompaniesLoaded() {
+        if (!this.hasCompanies) {
+            await this.loadCompanies();
+        }
+        // Wait for Alpine persist to complete
+        await new Promise(resolve => setTimeout(resolve, 50));
+        return this.companies;
     },
 
     async logout() {
@@ -342,14 +351,3 @@ window.Alpine = Alpine;
 
 // Start Alpine
 Alpine.start();
-
-// Auto-load companies on page load if user is authenticated
-document.addEventListener('alpine:init', () => {
-    const authStore = Alpine.store('auth');
-    if (authStore.isAuthenticated && !authStore.hasCompanies) {
-        console.log('Auto-loading companies on page init...');
-        authStore.loadCompanies().catch(err => {
-            console.error('Failed to auto-load companies:', err);
-        });
-    }
-});
