@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="analyticsPage()" x-init="init()" class="flex h-screen bg-gray-50">
 
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gray-50" x-data="analyticsPage()" x-init="init()">
     <x-sidebar></x-sidebar>
 
-    <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -15,16 +14,13 @@
                     <p class="text-sm text-gray-500">Анализ и статистика по продажам</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <select x-model="period" @change="loadData()"
-                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+                    <select x-model="period" @change="loadData()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
                         <option value="today">Сегодня</option>
                         <option value="7days">7 дней</option>
                         <option value="30days" selected>30 дней</option>
                         <option value="90days">90 дней</option>
                     </select>
-                    <button @click="loadData()"
-                            :disabled="loading"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                    <button @click="loadData()" :disabled="loading" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
                         <span x-show="!loading">🔄 Обновить</span>
                         <span x-show="loading">Загрузка...</span>
                     </button>
@@ -32,298 +28,240 @@
             </div>
         </header>
 
-        <!-- Content -->
         <main class="flex-1 overflow-y-auto p-6">
-            <!-- Loading -->
-            <div x-show="loading" class="text-center py-12">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <p class="mt-2 text-gray-600">Загрузка данных...</p>
-            </div>
-
-            <div x-show="!loading" class="space-y-6">
-                <!-- Overview Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Total Revenue -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm text-gray-600">Выручка</span>
-                            <span class="text-2xl">💰</span>
-                        </div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="'₽ ' + (overview.total_revenue || 0).toLocaleString()"></div>
-                        <div class="mt-2 flex items-center text-sm">
-                            <span :class="overview.revenue_growth_percentage >= 0 ? 'text-green-600' : 'text-red-600'"
-                                  x-text="(overview.revenue_growth_percentage >= 0 ? '▲ ' : '▼ ') + Math.abs(overview.revenue_growth_percentage).toFixed(1) + '%'"></span>
-                            <span class="text-gray-500 ml-1">vs пред. период</span>
-                        </div>
-                    </div>
-
-                    <!-- Total Sales -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm text-gray-600">Продано единиц</span>
-                            <span class="text-2xl">📦</span>
-                        </div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="(overview.total_sales || 0).toLocaleString()"></div>
-                        <div class="mt-2 text-sm text-gray-500">всего товаров</div>
-                    </div>
-
-                    <!-- Total Orders -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm text-gray-600">Заказов</span>
-                            <span class="text-2xl">🛒</span>
-                        </div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="(overview.total_orders || 0).toLocaleString()"></div>
-                        <div class="mt-2 text-sm text-gray-500">за период</div>
-                    </div>
-
-                    <!-- Average Order Value -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm text-gray-600">Средний чек</span>
-                            <span class="text-2xl">💳</span>
-                        </div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="'₽ ' + (overview.average_order_value || 0).toLocaleString()"></div>
-                        <div class="mt-2 text-sm text-gray-500">на заказ</div>
-                    </div>
-                </div>
-
-                <!-- Charts Row -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Sales by Day Chart -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Продажи по дням</h3>
-                        <canvas id="salesByDayChart" height="250"></canvas>
-                    </div>
-
-                    <!-- Sales by Category Chart -->
-                    <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">По категориям</h3>
-                        <canvas id="salesByCategoryChart" height="250"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Products -->
-                <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">🏆 ТОП-10 товаров</h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Товар</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Продано</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Выручка</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Заказов</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Сред. цена</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <template x-for="(product, index) in topProducts" :key="product.product_id">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 text-sm text-gray-900" x-text="index + 1"></td>
-                                        <td class="px-4 py-3 text-sm font-medium text-gray-900" x-text="product.product_name"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-500" x-text="product.sku"></td>
-                                        <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="product.total_quantity.toLocaleString()"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-semibold text-green-600" x-text="'₽ ' + product.total_revenue.toLocaleString()"></td>
-                                        <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="product.order_count"></td>
-                                        <td class="px-4 py-3 text-sm text-right text-gray-900" x-text="'₽ ' + product.avg_price.toLocaleString()"></td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                        <div x-show="topProducts.length === 0" class="text-center py-8 text-gray-500">
-                            Нет данных за выбранный период
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sales by Marketplace -->
-                <div class="bg-white rounded-lg shadow border border-gray-200 p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📊 По маркетплейсам</h3>
-                    <div class="space-y-4">
-                        <template x-for="marketplace in salesByMarketplace" :key="marketplace.marketplace">
-                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-2">
-                                        <span class="font-semibold text-gray-900 capitalize" x-text="marketplace.marketplace"></span>
-                                        <span class="text-sm text-gray-500" x-text="'(' + marketplace.account_name + ')'"></span>
-                                    </div>
-                                    <div class="mt-1 text-sm text-gray-600">
-                                        <span x-text="marketplace.total_quantity.toLocaleString() + ' ед.'"></span>
-                                        <span class="mx-2">•</span>
-                                        <span x-text="marketplace.order_count + ' заказов'"></span>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-lg font-bold text-green-600" x-text="'₽ ' + marketplace.total_revenue.toLocaleString()"></div>
-                                </div>
-                            </div>
-                        </template>
-                        <div x-show="salesByMarketplace.length === 0" class="text-center py-8 text-gray-500">
-                            Нет данных за выбранный период
-                        </div>
-                    </div>
-                </div>
-            </div>
+            @include('pages.partials.analytics-content')
         </main>
     </div>
 </div>
 
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="analyticsPage()" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Аналитика">
+        <button @click="showPeriodSheet = true" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll pb-20" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);" x-pull-to-refresh="loadData">
+
+        {{-- Period Selector --}}
+        <div class="px-4 pt-4 pb-3">
+            <div class="native-card">
+                <div class="flex items-center justify-between">
+                    <p class="native-body font-semibold" x-text="getPeriodLabel(period)">За 30 дней</p>
+                    <button @click="showPeriodSheet = true" class="text-blue-600 text-sm font-semibold" onclick="if(window.haptic) window.haptic.light()">
+                        Изменить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Stats Cards --}}
+        <div x-show="!loading" x-cloak class="px-4 space-y-3">
+            {{-- Revenue --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="native-caption">Выручка</p>
+                            <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(overview.total_revenue)">0</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span :class="overview.revenue_growth_percentage >= 0 ? 'text-green-600' : 'text-red-600'" class="text-sm font-semibold"
+                              x-text="(overview.revenue_growth_percentage >= 0 ? '↑ ' : '↓ ') + Math.abs(overview.revenue_growth_percentage).toFixed(1) + '%'"></span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Orders --}}
+            <div class="native-card">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="native-caption">Заказов</p>
+                                <p class="text-2xl font-bold text-gray-900" x-text="overview.total_orders || 0">0</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="native-caption">Средний чек</p>
+                                <p class="text-lg font-bold text-gray-700" x-text="formatMoney(overview.average_order_value)">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sales --}}
+            <div class="native-card">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="native-caption">Продано единиц</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="overview.total_sales || 0">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Top Products --}}
+        <div x-show="!loading && topProducts.length > 0" x-cloak class="px-4 pt-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="native-headline">Топ товаров</h2>
+            </div>
+
+            <div class="native-list">
+                <template x-for="(product, index) in topProducts.slice(0, 5)" :key="product.id">
+                    <div class="native-list-item">
+                        <div class="flex items-center space-x-3 flex-1">
+                            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center font-bold text-blue-600" x-text="index + 1"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="native-body font-semibold truncate" x-text="product.name"></p>
+                                <p class="native-caption" x-text="product.sales_count + ' продаж'"></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="native-body font-bold text-green-600" x-text="formatMoney(product.revenue)"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Sales by Marketplace --}}
+        <div x-show="!loading && salesByMarketplace.length > 0" x-cloak class="px-4 pt-6 pb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="native-headline">По маркетплейсам</h2>
+            </div>
+
+            <div class="space-y-3">
+                <template x-for="marketplace in salesByMarketplace" :key="marketplace.marketplace">
+                    <div class="native-card">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <p class="native-body font-semibold" x-text="getMarketplaceName(marketplace.marketplace)"></p>
+                                <p class="native-caption" x-text="marketplace.orders_count + ' заказов'"></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="native-body font-bold text-green-600" x-text="formatMoney(marketplace.revenue)"></p>
+                                <p class="native-caption" x-text="marketplace.percentage.toFixed(1) + '%'"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Loading State --}}
+        <div x-show="loading" class="px-4 pt-4 space-y-3">
+            <x-skeleton-card :rows="3" />
+            <x-skeleton-card :rows="3" />
+            <x-skeleton-card :rows="3" />
+        </div>
+    </main>
+
+    {{-- Period Sheet --}}
+    <div x-show="showPeriodSheet" x-cloak @click.self="showPeriodSheet = false" class="native-modal-overlay" style="display: none;">
+        <div class="native-sheet" @click.away="showPeriodSheet = false">
+            <div class="native-sheet-handle"></div>
+            <h3 class="native-headline mb-4">Выберите период</h3>
+
+            <div class="space-y-2">
+                <button @click="period = 'today'; loadData(); showPeriodSheet = false" class="native-btn w-full" :class="period === 'today' ? '' : 'native-btn-secondary'">Сегодня</button>
+                <button @click="period = '7days'; loadData(); showPeriodSheet = false" class="native-btn w-full" :class="period === '7days' ? '' : 'native-btn-secondary'">7 дней</button>
+                <button @click="period = '30days'; loadData(); showPeriodSheet = false" class="native-btn w-full" :class="period === '30days' ? '' : 'native-btn-secondary'">30 дней</button>
+                <button @click="period = '90days'; loadData(); showPeriodSheet = false" class="native-btn w-full" :class="period === '90days' ? '' : 'native-btn-secondary'">90 дней</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 function analyticsPage() {
     return {
-        period: '30days',
         loading: false,
-        overview: {},
-        salesByDay: {},
-        topProducts: [],
-        salesByCategory: [],
-        salesByMarketplace: [],
-
-        charts: {
-            salesByDay: null,
-            salesByCategory: null,
+        showPeriodSheet: false,
+        period: '30days',
+        overview: {
+            total_revenue: 0,
+            total_orders: 0,
+            total_sales: 0,
+            average_order_value: 0,
+            revenue_growth_percentage: 0
         },
+        topProducts: [],
+        salesByMarketplace: [],
 
         async init() {
             await this.loadData();
         },
 
         async loadData() {
+            if (!this.$store.auth.currentCompany) {
+                return;
+            }
+
             this.loading = true;
             try {
-                const response = await fetch(`/api/analytics/dashboard?period=${this.period}`, {
-                    headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                const response = await window.api.get('/api/analytics/overview', {
+                    params: {
+                        period: this.period,
+                        company_id: this.$store.auth.currentCompany.id
                     },
+                    silent: true
                 });
 
-                const data = await response.json();
-
-                this.overview = data.overview || {};
-                this.salesByDay = data.sales_by_day || {};
-                this.topProducts = data.top_products || [];
-                this.salesByCategory = data.sales_by_category || [];
-                this.salesByMarketplace = data.sales_by_marketplace || [];
-
-                // Update charts
-                this.$nextTick(() => {
-                    this.renderSalesByDayChart();
-                    this.renderSalesByCategoryChart();
-                });
+                this.overview = response.data.overview || this.overview;
+                this.topProducts = response.data.top_products || [];
+                this.salesByMarketplace = response.data.sales_by_marketplace || [];
             } catch (error) {
                 console.error('Failed to load analytics:', error);
-                alert('Ошибка загрузки аналитики');
             } finally {
                 this.loading = false;
             }
         },
 
-        renderSalesByDayChart() {
-            const ctx = document.getElementById('salesByDayChart');
-            if (!ctx) return;
-
-            // Destroy existing chart
-            if (this.charts.salesByDay) {
-                this.charts.salesByDay.destroy();
-            }
-
-            this.charts.salesByDay = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: this.salesByDay.labels || [],
-                    datasets: [{
-                        label: 'Выручка (₽)',
-                        data: this.salesByDay.revenues || [],
-                        borderColor: 'rgb(99, 102, 241)',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        tension: 0.3,
-                        fill: true,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return 'Выручка: ₽ ' + context.parsed.y.toLocaleString();
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '₽ ' + value.toLocaleString();
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+        getPeriodLabel(period) {
+            const labels = {
+                today: 'Сегодня',
+                '7days': 'За 7 дней',
+                '30days': 'За 30 дней',
+                '90days': 'За 90 дней'
+            };
+            return labels[period] || 'За 30 дней';
         },
 
-        renderSalesByCategoryChart() {
-            const ctx = document.getElementById('salesByCategoryChart');
-            if (!ctx) return;
-
-            // Destroy existing chart
-            if (this.charts.salesByCategory) {
-                this.charts.salesByCategory.destroy();
-            }
-
-            const labels = this.salesByCategory.map(c => c.category_name);
-            const data = this.salesByCategory.map(c => c.total_revenue);
-
-            this.charts.salesByCategory = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: [
-                            'rgba(99, 102, 241, 0.8)',
-                            'rgba(34, 197, 94, 0.8)',
-                            'rgba(234, 179, 8, 0.8)',
-                            'rgba(239, 68, 68, 0.8)',
-                            'rgba(168, 85, 247, 0.8)',
-                            'rgba(236, 72, 153, 0.8)',
-                        ],
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    return label + ': ₽ ' + value.toLocaleString();
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+        getMarketplaceName(marketplace) {
+            const names = {
+                uzum: 'Uzum',
+                wb: 'Wildberries',
+                ozon: 'Ozon',
+                ym: 'Yandex Market',
+                manual: 'Ручные'
+            };
+            return names[marketplace] || marketplace;
         },
+
+        formatMoney(value) {
+            if (!value && value !== 0) return '0 сум';
+            return new Intl.NumberFormat('ru-RU').format(value) + ' сум';
+        }
     };
 }
 </script>
