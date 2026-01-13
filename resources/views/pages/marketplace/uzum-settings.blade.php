@@ -9,24 +9,36 @@
          testResults: null,
          form: { api_key: '', shop_id: '' },
          showTokens: { api_key: false },
-         getToken() {
-             if (this.$store?.auth?.token) return this.$store.auth.token;
-             const persistToken = localStorage.getItem('_x_auth_token');
-             if (persistToken) { try { return JSON.parse(persistToken); } catch (e) { return persistToken; } }
-             return localStorage.getItem('auth_token') || localStorage.getItem('token');
-         },
-         getAuthHeaders() {
-             return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json', 'Content-Type': 'application/json' };
-         },
          async init() {
              await this.$nextTick();
-             if (!this.getToken()) { window.location.href = '/login'; return; }
+
+             // Check if Alpine store is available and has authentication
+             const authStore = this.$store?.auth;
+             if (!authStore || !authStore.token) {
+                 window.location.href = '/login';
+                 return;
+             }
+
+             // Check if current company exists
+             if (!authStore.currentCompany) {
+                 alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                 window.location.href = '/profile/company';
+                 return;
+             }
+
              await this.loadSettings();
          },
          async loadSettings() {
              this.loading = true;
              try {
-                 const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', { headers: this.getAuthHeaders() });
+                 const authStore = this.$store.auth;
+                 const res = await fetch(`/api/marketplace/uzum/accounts/{{ $accountId }}/settings?company_id=${authStore.currentCompany.id}`, {
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     }
+                 });
                  if (res.ok) {
                      const data = await res.json();
                      this.account = data.account;
@@ -38,13 +50,25 @@
              this.loading = false;
          },
          async saveSettings() {
+             const authStore = this.$store.auth;
+             if (!authStore || !authStore.currentCompany) {
+                 alert('Нет активной компании');
+                 return;
+             }
+
              this.saving = true;
             try {
-                const payload = {};
+                const payload = { company_id: authStore.currentCompany.id };
                 if (this.form.api_key !== '') payload.api_key = this.form.api_key;
                 payload.shop_id = this.form.shop_id;
                 const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
-                    method: 'PUT', headers: this.getAuthHeaders(), body: JSON.stringify(payload)
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (res.ok) { this.form.api_key = ''; await this.loadSettings(); alert('Токен обновлён'); }
@@ -53,9 +77,22 @@
              this.saving = false;
          },
          async testConnection() {
+             const authStore = this.$store.auth;
+             if (!authStore || !authStore.currentCompany) {
+                 alert('Нет активной компании');
+                 return;
+             }
+
              this.testing = true; this.testResults = null;
              try {
-                 const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/test', { method: 'POST', headers: this.getAuthHeaders() });
+                 const res = await fetch(`/api/marketplace/uzum/accounts/{{ $accountId }}/test?company_id=${authStore.currentCompany.id}`, {
+                     method: 'POST',
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     }
+                 });
                  this.testResults = await res.json();
                  await this.loadSettings();
              } catch (e) { this.testResults = { success: false, message: 'Network error' }; }
