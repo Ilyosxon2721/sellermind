@@ -41,7 +41,9 @@
             <!-- Dashboard Content (Browser) -->
             <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding"
                   x-pull-to-refresh="loadData">
-                @include('pages.partials.dashboard-content')
+                <div class="bg-white rounded-lg shadow p-6">
+                    <p class="text-gray-600">Browser mode for Dashboard. Use PWA for full experience.</p>
+                </div>
             </main>
         </div>
     </div>

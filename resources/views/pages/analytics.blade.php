@@ -29,7 +29,9 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-6">
-            @include('pages.partials.analytics-content')
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-600">Browser mode for Analytics page. Use PWA for full experience.</p>
+            </div>
         </main>
     </div>
 </div>

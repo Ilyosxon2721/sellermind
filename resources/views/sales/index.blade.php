@@ -42,7 +42,9 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding pwa-top-padding" x-pull-to-refresh="loadOrders">
-            @include('sales.partials.browser-content')
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-600">Browser mode for Sales page. Use PWA for full experience.</p>
+            </div>
         </main>
     </div>
 </div>
