@@ -342,3 +342,14 @@ window.Alpine = Alpine;
 
 // Start Alpine
 Alpine.start();
+
+// Auto-load companies on page load if user is authenticated
+document.addEventListener('alpine:init', () => {
+    const authStore = Alpine.store('auth');
+    if (authStore.isAuthenticated && !authStore.hasCompanies) {
+        console.log('Auto-loading companies on page init...');
+        authStore.loadCompanies().catch(err => {
+            console.error('Failed to auto-load companies:', err);
+        });
+    }
+});
