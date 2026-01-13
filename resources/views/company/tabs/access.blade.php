@@ -133,25 +133,18 @@ function accessTab() {
 
         async loadCompanies() {
             try {
-                const response = await fetch('/api/companies', {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+                const response = await window.api.get('/companies');
+                this.companies = response.data.companies || response.data.data || [];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    this.companies = data.companies || data.data || [];
-
-                    if (this.companies.length > 0) {
-                        this.selectedCompanyId = this.companies[0].id;
-                        await this.loadEmployees();
-                    }
+                if (this.companies.length > 0) {
+                    this.selectedCompanyId = this.companies[0].id;
+                    await this.loadEmployees();
                 }
             } catch (error) {
                 console.error('Error loading companies:', error);
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить компании');
+                }
             }
         },
 
@@ -163,24 +156,14 @@ function accessTab() {
 
             this.loading = true;
             try {
-                // Note: This endpoint needs to be created
-                const response = await fetch(`/api/companies/${this.selectedCompanyId}/members`, {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    this.employees = data.members || data.data || [];
-                } else {
-                    this.employees = [];
-                }
+                const response = await window.api.get(`/companies/${this.selectedCompanyId}/members`);
+                this.employees = response.data.members || response.data.data || [];
             } catch (error) {
                 console.error('Error loading employees:', error);
                 this.employees = [];
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить сотрудников');
+                }
             } finally {
                 this.loading = false;
             }

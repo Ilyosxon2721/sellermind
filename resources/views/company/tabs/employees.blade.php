@@ -169,26 +169,19 @@ function employeesTab() {
 
         async loadCompanies() {
             try {
-                const response = await fetch('/api/companies', {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+                const response = await window.api.get('/companies');
+                this.companies = response.data.companies || response.data.data || [];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    this.companies = data.companies || data.data || [];
-
-                    // Auto-select first company if available
-                    if (this.companies.length > 0) {
-                        this.selectedCompanyId = this.companies[0].id;
-                        await this.loadEmployees();
-                    }
+                // Auto-select first company if available
+                if (this.companies.length > 0) {
+                    this.selectedCompanyId = this.companies[0].id;
+                    await this.loadEmployees();
                 }
             } catch (error) {
                 console.error('Error loading companies:', error);
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить компании');
+                }
             }
         },
 
@@ -200,37 +193,15 @@ function employeesTab() {
 
             this.loading = true;
             try {
-                const response = await fetch(`/api/companies/${this.selectedCompanyId}`, {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const company = data.company || data;
-
-                    // Fetch company with users
-                    const usersResponse = await fetch(`/api/companies/${this.selectedCompanyId}/members`, {
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    if (usersResponse.ok) {
-                        const usersData = await usersResponse.json();
-                        this.employees = usersData.members || usersData.data || [];
-                    } else {
-                        this.employees = [];
-                    }
-                }
+                // Fetch company members
+                const response = await window.api.get(`/companies/${this.selectedCompanyId}/members`);
+                this.employees = response.data.members || response.data.data || [];
             } catch (error) {
                 console.error('Error loading employees:', error);
                 this.employees = [];
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить сотрудников');
+                }
             } finally {
                 this.loading = false;
             }
@@ -257,30 +228,22 @@ function employeesTab() {
 
             this.inviting = true;
             try {
-                const response = await fetch(`/api/companies/${this.selectedCompanyId}/members`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(this.inviteForm)
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    this.closeInviteModal();
-                    await this.loadEmployees();
-                    alert('Сотрудник добавлен');
+                await window.api.post(`/companies/${this.selectedCompanyId}/members`, this.inviteForm);
+                this.closeInviteModal();
+                await this.loadEmployees();
+                if (window.toast) {
+                    window.toast.success('Сотрудник добавлен');
                 } else {
-                    alert('Ошибка: ' + (result.message || 'Не удалось добавить сотрудника'));
+                    alert('Сотрудник добавлен');
                 }
             } catch (error) {
                 console.error('Error inviting employee:', error);
-                alert('Ошибка при добавлении сотрудника');
+                const message = error.response?.data?.message || 'Не удалось добавить сотрудника';
+                if (window.toast) {
+                    window.toast.error('Ошибка: ' + message);
+                } else {
+                    alert('Ошибка: ' + message);
+                }
             } finally {
                 this.inviting = false;
             }
@@ -292,26 +255,21 @@ function employeesTab() {
             }
 
             try {
-                const response = await fetch(`/api/companies/${this.selectedCompanyId}/members/${employee.id}`, {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                });
-
-                if (response.ok) {
-                    await this.loadEmployees();
-                    alert('Сотрудник удален');
+                await window.api.delete(`/companies/${this.selectedCompanyId}/members/${employee.id}`);
+                await this.loadEmployees();
+                if (window.toast) {
+                    window.toast.success('Сотрудник удален');
                 } else {
-                    const error = await response.json();
-                    alert('Ошибка: ' + (error.message || 'Не удалось удалить сотрудника'));
+                    alert('Сотрудник удален');
                 }
             } catch (error) {
                 console.error('Error removing employee:', error);
-                alert('Ошибка при удалении сотрудника');
+                const message = error.response?.data?.message || 'Не удалось удалить сотрудника';
+                if (window.toast) {
+                    window.toast.error('Ошибка: ' + message);
+                } else {
+                    alert('Ошибка: ' + message);
+                }
             }
         },
 
