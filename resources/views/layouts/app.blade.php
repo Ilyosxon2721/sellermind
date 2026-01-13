@@ -49,7 +49,7 @@
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
-        document.addEventListener('alpine:init', () => {
+        document.addEventListener('alpine:init', async () => {
             // Initialize auth store with server data
             const authStore = Alpine.store('auth');
 
@@ -64,8 +64,10 @@
                 authStore.token = 'session-auth';
             }
 
-            // Load companies for authenticated users
-            authStore.loadCompanies();
+            // Load companies for authenticated users (only if not already loaded)
+            if (authStore.isAuthenticated && !authStore.hasCompanies) {
+                await authStore.loadCompanies();
+            }
             @endauth
 
             // If no auth from session, check localStorage for API token

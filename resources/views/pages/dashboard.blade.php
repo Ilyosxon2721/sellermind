@@ -258,14 +258,8 @@ function dashboardPage() {
         async init() {
             // Wait for auth store to be ready
             if (this.$store.auth.isAuthenticated) {
-                // Load companies if not already loaded
-                if (!this.$store.auth.hasCompanies) {
-                    console.log('Loading companies...');
-                    await this.$store.auth.loadCompanies();
-                }
-
-                // Wait a bit for company to be set
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Ensure companies are loaded and persisted
+                await this.$store.auth.ensureCompaniesLoaded();
 
                 // Load data
                 this.loadData();
