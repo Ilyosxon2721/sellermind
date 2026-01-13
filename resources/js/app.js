@@ -1,6 +1,7 @@
 import './bootstrap';
 import './polling'; // HTTP polling для real-time обновлений
 import './haptic'; // Haptic feedback system
+import './loading'; // Global loading indicator
 import './pull-to-refresh'; // Pull-to-refresh gesture
 import './page-transitions'; // Native page transitions
 import './action-sheet'; // Native action sheets

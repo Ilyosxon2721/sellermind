@@ -1,8 +1,8 @@
 {{-- Bottom Tab Navigation - Native Mobile App Style --}}
-{{-- Only shows in PWA installed mode on mobile/tablet devices --}}
+{{-- Shows on all mobile/tablet devices (not just PWA) --}}
 
 <nav x-data="bottomTabNav()"
-     x-show="isPWA"
+     x-show="shouldShow"
      x-cloak
      class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 safe-area-bottom">
 
@@ -115,19 +115,19 @@
 <script>
 function bottomTabNav() {
     return {
-        isPWA: window.isPWAInstalled || false,
         currentPath: window.location.pathname,
 
         init() {
-            // Listen for PWA mode changes
-            this.$watch('$store.pwa.isInstalled', (value) => {
-                this.isPWA = value;
-            });
-
             // Update on navigation (for SPA-like behavior)
             window.addEventListener('popstate', () => {
                 this.currentPath = window.location.pathname;
             });
+        },
+
+        get shouldShow() {
+            // Always show on mobile (screen width < 1024px)
+            // Hide on desktop (lg: breakpoint)
+            return true; // CSS handles hiding on desktop with lg:hidden
         },
 
         isActive(path) {
