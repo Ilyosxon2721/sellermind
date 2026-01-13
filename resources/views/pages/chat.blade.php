@@ -4,7 +4,17 @@
 
 {{-- BROWSER MODE --}}
 <div class="browser-only flex h-screen bg-gray-50" x-data="chatPage()" @click.away="showModelSelector = false">
-    @include('pages.partials.chat-browser')
+    <x-sidebar />
+    <div class="flex-1 flex flex-col">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h1 class="text-2xl font-bold text-gray-900">Чат</h1>
+        </header>
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-600">Browser mode for Chat page. Use PWA for full experience.</p>
+            </div>
+        </main>
+    </div>
 </div>
 
 {{-- PWA MODE --}}
