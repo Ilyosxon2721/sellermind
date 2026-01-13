@@ -164,21 +164,17 @@
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
-            getAuthHeaders() {
-                const token = localStorage.getItem('_x_auth_token');
-                const parsed = token ? JSON.parse(token) : null;
-                return {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': parsed ? `Bearer ${parsed}` : '',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                };
-            },
-
             async load() {
                 this.loading = true;
                 try {
-                    const resp = await fetch('/api/warehouse/list', {headers: this.getAuthHeaders()});
+                    const authStore = this.$store.auth;
+                    const resp = await fetch(`/api/warehouse/list?company_id=${authStore.currentCompany.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authStore.token}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        }
+                    });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     this.items = json.data || [];
@@ -191,10 +187,20 @@
             },
 
             async setDefault(id) {
+                const authStore = this.$store.auth;
+                if (!authStore || !authStore.currentCompany) {
+                    this.showToast('Нет активной компании', 'error');
+                    return;
+                }
+
                 try {
-                    const resp = await fetch(`/api/warehouse/${id}/default`, {
-                        method:'POST',
-                        headers: this.getAuthHeaders()
+                    const resp = await fetch(`/api/warehouse/${id}/default?company_id=${authStore.currentCompany.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authStore.token}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        }
                     });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
@@ -205,8 +211,22 @@
                 }
             },
 
-            init() {
-                this.load();
+            async init() {
+                // Check if Alpine store is available and has authentication
+                const authStore = this.$store?.auth;
+                if (!authStore || !authStore.token) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Check if current company exists
+                if (!authStore.currentCompany) {
+                    alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                    window.location.href = '/profile/company';
+                    return;
+                }
+
+                await this.load();
             }
         }
     }
