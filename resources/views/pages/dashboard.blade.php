@@ -49,7 +49,7 @@
     </div>
 
     {{-- PWA MODE - Native App Layout --}}
-    <div class="pwa-only min-h-screen bg-gray-50" style="background: #f2f2f7;">
+    <div class="pwa-only min-h-screen" style="background: #f2f2f7;">
         {{-- Native iOS/Android Header --}}
         <x-pwa-header title="Главная" :showProfile="true">
             {{-- Period selector button --}}
@@ -63,7 +63,8 @@
         </x-pwa-header>
 
         {{-- Main Native Content --}}
-        <main class="native-scroll pb-20" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);"
+        <main class="overflow-y-auto"
+              style="height: calc(100vh - 44px - env(safe-area-inset-top, 0px)); padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));"
               x-pull-to-refresh="loadData">
 
             {{-- Loading State --}}
@@ -76,114 +77,118 @@
 
             {{-- Content --}}
             <div x-show="!loading" x-cloak>
-                {{-- Stats Cards (Native Style) --}}
-                <div class="space-y-3 px-4 py-4">
-                    {{-- Revenue Card --}}
-                    <div class="native-card">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="native-caption">Выручка</p>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.revenue)">0 сум</p>
-                                </div>
-                            </div>
-                            <span class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full" x-text="periodLabel"></span>
-                        </div>
-                        <div class="pt-3 border-t border-gray-100">
-                            <p class="native-caption" x-text="stats.orders_count + ' заказов'"></p>
-                        </div>
+                {{-- Period Badge --}}
+                <div class="px-4 pt-4 pb-2">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-white rounded-full shadow-sm">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-700" x-text="periodLabel"></span>
                     </div>
+                </div>
 
-                    {{-- Orders Today Card --}}
-                    <div class="native-card">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="native-caption">Заказы сегодня</p>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="stats.today_orders">0</p>
-                                </div>
+                {{-- Stats Grid --}}
+                <div class="px-4 pb-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        {{-- Revenue Card --}}
+                        <div class="native-card">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
                             </div>
-                            <p class="native-body font-semibold text-gray-600" x-text="formatMoney(stats.today_revenue)"></p>
+                            <p class="text-xs text-gray-500 mb-1">Выручка</p>
+                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="formatMoney(stats.revenue)">0 сум</p>
+                            <p class="text-xs text-gray-400 mt-1" x-text="stats.orders_count + ' заказов'"></p>
                         </div>
-                    </div>
 
-                    {{-- Products Card --}}
-                    <div class="native-card">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="native-caption">Товары</p>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="stats.products_count">0</p>
-                                </div>
+                        {{-- Orders Today Card --}}
+                        <div class="native-card">
+                            <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-green-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                </svg>
                             </div>
-                            <a href="/products" class="text-blue-600 text-sm font-semibold">Все →</a>
+                            <p class="text-xs text-gray-500 mb-1">Сегодня</p>
+                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.today_orders">0</p>
+                            <p class="text-xs text-gray-400 mt-1" x-text="formatMoney(stats.today_revenue)"></p>
                         </div>
-                    </div>
 
-                    {{-- Marketplaces Card --}}
-                    <div class="native-card">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="native-caption">Маркетплейсы</p>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="stats.marketplace_accounts">0</p>
-                                </div>
+                        {{-- Products Card --}}
+                        <div class="native-card native-pressable" @click="window.location.href='/products'">
+                            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
                             </div>
-                            <span class="text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full">Активно</span>
+                            <p class="text-xs text-gray-500 mb-1">Товары</p>
+                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.products_count">0</p>
+                            <div class="flex items-center mt-1">
+                                <span class="text-xs text-blue-600 font-medium">Открыть</span>
+                                <svg class="w-3 h-3 text-blue-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        {{-- Marketplaces Card --}}
+                        <div class="native-card">
+                            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-orange-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-1">Маркетплейсы</p>
+                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.marketplace_accounts">0</p>
+                            <span class="inline-block text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full mt-1 font-medium">Активно</span>
                         </div>
                     </div>
                 </div>
 
-                {{-- Recent Activity (Native List) --}}
-                <div class="px-4 pt-4 pb-20">
+                {{-- Recent Activity --}}
+                <div class="px-4 pt-3">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="native-headline">Последняя активность</h2>
-                        <a href="/marketplace/orders" class="text-blue-600 text-sm font-semibold">Все</a>
+                        <h2 class="text-base font-semibold text-gray-900">Последние заказы</h2>
+                        <a href="/sales" class="text-sm font-medium text-blue-600">Все</a>
                     </div>
 
-                    <div class="native-list" x-show="recentOrders.length > 0">
+                    <div class="space-y-2" x-show="recentOrders.length > 0">
                         <template x-for="order in recentOrders" :key="order.id">
-                            <div class="native-list-item native-list-item-chevron"
-                                 @click="window.location.href = '/marketplace/orders?id=' + order.id">
-                                <div class="flex-1">
-                                    <p class="native-body font-semibold" x-text="order.marketplace_order_id"></p>
-                                    <p class="native-caption mt-1" x-text="order.marketplace + ' • ' + formatDate(order.created_at)"></p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="native-body font-semibold" x-text="formatMoney(order.total_price)"></p>
-                                    <p class="native-caption mt-1" x-text="order.status"></p>
+                            <div class="native-card native-pressable"
+                                 @click="window.location.href = '/sales?id=' + order.id">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <span class="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                                <span x-text="order.marketplace"></span>
+                                            </span>
+                                            <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.marketplace_order_id"></p>
+                                        </div>
+                                        <p class="text-xs text-gray-500" x-text="formatDate(order.created_at)"></p>
+                                    </div>
+                                    <div class="text-right flex items-center space-x-2">
+                                        <div>
+                                            <p class="text-sm font-bold text-gray-900" x-text="formatMoney(order.total_price)"></p>
+                                            <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium" x-text="order.status"></span>
+                                        </div>
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         </template>
                     </div>
 
                     {{-- Empty State --}}
-                    <div x-show="recentOrders.length === 0" class="native-card text-center py-8">
-                        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                        </svg>
-                        <p class="native-body text-gray-500 mb-2">Пока нет заказов</p>
-                        <p class="native-caption">Они появятся здесь, как только начнут поступать</p>
+                    <div x-show="recentOrders.length === 0" class="native-card text-center py-12">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                            </svg>
+                        </div>
+                        <p class="text-sm font-medium text-gray-900 mb-1">Пока нет заказов</p>
+                        <p class="text-xs text-gray-500">Они появятся здесь автоматически</p>
                     </div>
                 </div>
             </div>

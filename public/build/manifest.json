@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-DjRQz8W8.css",
+    "file": "assets/app-EgicIJkd.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-BlcPDVU9.css",
+    "file": "assets/pwa-native-ZKE3rAVn.css",
     "src": "resources/css/pwa-native.css",
     "isEntry": true,
     "name": "pwa-native",
