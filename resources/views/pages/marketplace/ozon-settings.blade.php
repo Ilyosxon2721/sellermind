@@ -314,48 +314,41 @@ function ozonSettingsPage() {
         },
         savingStock: false,
         stockSyncResult: null,
-        
-        getToken() {
-            if (this.$store?.auth?.token) return this.$store.auth.token;
-            const persistToken = localStorage.getItem('_x_auth_token');
-            if (persistToken) {
-                try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
-            }
-            return localStorage.getItem('_x_auth_token');
-        },
-        
-        getAuthHeaders() {
-            let token = localStorage.getItem('_x_auth_token');
-            if (!token) {
-                console.error('No auth token found in localStorage');
-                window.location.href = '/login';
-                return {};
-            }
-            // Strip literal quotes if token is JSON-stringified
-            if (token.startsWith('"')) {
-                token = JSON.parse(token);
-            }
 
-            return {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            };
-        },
-        
         async init() {
             await this.$nextTick();
+
+            // Check if Alpine store is available and has authentication
+            const authStore = this.$store?.auth;
+            if (!authStore || !authStore.token) {
+                console.error('No auth token found, redirecting to login');
+                window.location.href = '/login';
+                return;
+            }
+
+            // Check if current company exists
+            if (!authStore.currentCompany) {
+                alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                window.location.href = '/profile/company';
+                return;
+            }
+
             await this.loadAccount();
             await this.loadWarehouses();
             await this.loadLocalWarehouses();
             await this.loadStockSettings();
         },
-        
+
         async loadAccount() {
             this.loading = true;
             try {
-                const res = await fetch('/api/marketplace/accounts/{{ $accountId }}', {
-                    headers: this.getAuthHeaders()
+                const authStore = this.$store.auth;
+                const res = await fetch(`/api/marketplace/accounts/{{ $accountId }}?company_id=${authStore.currentCompany.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -375,12 +368,22 @@ function ozonSettingsPage() {
         },
         
         async testConnection() {
+            const authStore = this.$store.auth;
+            if (!authStore || !authStore.currentCompany) {
+                alert('Нет активной компании');
+                return;
+            }
+
             this.testing = true;
             this.testResult = null;
             try {
-                const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/test', {
+                const res = await fetch(`/api/marketplace/accounts/{{ $accountId }}/test?company_id=${authStore.currentCompany.id}`, {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.testResult = await res.json();
                 this.connectionStatus = this.testResult.success ? 'connected' : 'error';
@@ -392,13 +395,24 @@ function ozonSettingsPage() {
         },
         
         async saveSettings() {
+            const authStore = this.$store.auth;
+            if (!authStore || !authStore.currentCompany) {
+                alert('Нет активной компании');
+                return;
+            }
+
             this.saving = true;
             this.saveResult = null;
             try {
                 const res = await fetch('/api/marketplace/ozon/accounts/{{ $accountId }}/settings', {
                     method: 'PUT',
-                    headers: this.getAuthHeaders(),
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
+                        company_id: authStore.currentCompany.id,
                         client_id: this.credentials.client_id,
                         api_key: this.credentials.api_key
                     })
@@ -421,7 +435,11 @@ function ozonSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/products', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
@@ -436,7 +454,11 @@ function ozonSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/orders', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
@@ -451,7 +473,11 @@ function ozonSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/prices', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
@@ -466,7 +492,11 @@ function ozonSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/stocks', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
@@ -479,7 +509,11 @@ function ozonSettingsPage() {
             this.loadingWarehouses = true;
             try {
                 const res = await fetch('/api/marketplace/ozon/accounts/{{ $accountId }}/warehouses', {
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -495,7 +529,11 @@ function ozonSettingsPage() {
             this.loadingLocalWarehouses = true;
             try {
                 const res = await fetch('/api/warehouses', {
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -510,7 +548,11 @@ function ozonSettingsPage() {
         async loadStockSettings() {
             try {
                 const res = await fetch('/api/marketplace/ozon/accounts/{{ $accountId }}/warehouses/mapping', {
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -529,7 +571,11 @@ function ozonSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/ozon/accounts/{{ $accountId }}/warehouses/mapping', {
                     method: 'PUT',
-                    headers: this.getAuthHeaders(),
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         stock_sync_mode: this.stockSync.mode,
                         warehouse_id: this.stockSync.warehouseId,

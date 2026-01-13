@@ -22,35 +22,36 @@
              prices: false,
              statistics: false
          },
-         getToken() {
-             if (this.$store.auth.token) return this.$store.auth.token;
-             const persistToken = localStorage.getItem('_x_auth_token');
-             if (persistToken) {
-                 try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
-             }
-             return localStorage.getItem('auth_token') || localStorage.getItem('token');
-         },
-         getAuthHeaders() {
-             return {
-                 'Authorization': 'Bearer ' + this.getToken(),
-                 'Accept': 'application/json',
-                 'Content-Type': 'application/json'
-             };
-         },
          async init() {
              await this.$nextTick();
-             if (!this.getToken()) {
+
+             // Check if Alpine store is available and has authentication
+             const authStore = this.$store?.auth;
+             if (!authStore || !authStore.token) {
                  console.log('No token found, redirecting to login');
                  window.location.href = '/login';
                  return;
              }
+
+             // Check if current company exists
+             if (!authStore.currentCompany) {
+                 alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                 window.location.href = '/profile/company';
+                 return;
+             }
+
              await this.loadSettings();
          },
          async loadSettings() {
              this.loading = true;
              try {
-                 const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings', {
-                     headers: this.getAuthHeaders()
+                 const authStore = this.$store.auth;
+                 const res = await fetch(`/api/marketplace/wb/accounts/{{ $accountId }}/settings?company_id=${authStore.currentCompany.id}`, {
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     }
                  });
                  if (res.ok) {
                      const data = await res.json();
@@ -68,9 +69,15 @@
              this.loading = false;
          },
          async saveSettings() {
+             const authStore = this.$store.auth;
+             if (!authStore || !authStore.currentCompany) {
+                 alert('Нет активной компании');
+                 return;
+             }
+
              this.saving = true;
              try {
-                 const payload = {};
+                 const payload = { company_id: authStore.currentCompany.id };
                  Object.keys(this.form).forEach(key => {
                      if (this.form[key] !== '') {
                          payload[key] = this.form[key];
@@ -81,7 +88,11 @@
 
                  const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings', {
                      method: 'PUT',
-                     headers: this.getAuthHeaders(),
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     },
                      body: JSON.stringify(payload)
                  });
 
@@ -113,12 +124,22 @@
              this.saving = false;
          },
          async testConnection() {
+             const authStore = this.$store.auth;
+             if (!authStore || !authStore.currentCompany) {
+                 alert('Нет активной компании');
+                 return;
+             }
+
              this.testing = true;
              this.testResults = null;
              try {
-                 const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/test', {
+                 const res = await fetch(`/api/marketplace/wb/accounts/{{ $accountId }}/test?company_id=${authStore.currentCompany.id}`, {
                      method: 'POST',
-                     headers: this.getAuthHeaders()
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     }
                  });
                  const data = await res.json();
                  this.testResults = data;

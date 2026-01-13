@@ -622,11 +622,16 @@ function marketplacePage() {
 
         async deleteAccount(accountId) {
             try {
-                const res = await fetch(`/api/marketplace/accounts/${accountId}`, {
+                if (!this.$store.auth.currentCompany) {
+                    this.showNotification('error', 'Ошибка', 'Нет активной компании');
+                    return;
+                }
+
+                const res = await fetch(`/api/marketplace/accounts/${accountId}?company_id=${this.$store.auth.currentCompany.id}`, {
                     method: 'DELETE',
                     headers: this.getAuthHeaders()
                 });
-                
+
                 if (res.ok) {
                     this.accounts = this.accounts.filter(a => a.id !== accountId);
                     this.showNotification('success', 'Успешно', 'Аккаунт удалён');
