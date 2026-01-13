@@ -222,38 +222,37 @@ function ymSettingsPage() {
             catalog: false,
             orders: false
         },
-        
-        getToken() {
-            if (this.$store?.auth?.token) return this.$store.auth.token;
-            const persistToken = localStorage.getItem('_x_auth_token');
-            if (persistToken) {
-                try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
-            }
-            return localStorage.getItem('auth_token') || localStorage.getItem('token');
-        },
-        
-        getAuthHeaders() {
-            return {
-                'Authorization': 'Bearer ' + this.getToken(),
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            };
-        },
-        
+
         async init() {
             await this.$nextTick();
-            if (!this.getToken()) {
+
+            // Check if Alpine store is available and has authentication
+            const authStore = this.$store?.auth;
+            if (!authStore || !authStore.token) {
                 window.location.href = '/login';
                 return;
             }
+
+            // Check if current company exists
+            if (!authStore.currentCompany) {
+                alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                window.location.href = '/profile/company';
+                return;
+            }
+
             await this.loadAccount();
         },
-        
+
         async loadAccount() {
             this.loading = true;
             try {
-                const res = await fetch('/api/marketplace/accounts/{{ $accountId }}', {
-                    headers: this.getAuthHeaders()
+                const authStore = this.$store.auth;
+                const res = await fetch(`/api/marketplace/accounts/{{ $accountId }}?company_id=${authStore.currentCompany.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -274,12 +273,22 @@ function ymSettingsPage() {
         },
         
         async testConnection() {
+            const authStore = this.$store.auth;
+            if (!authStore || !authStore.currentCompany) {
+                alert('Нет активной компании');
+                return;
+            }
+
             this.testing = true;
             this.testResult = null;
             try {
-                const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/ping', {
+                const res = await fetch(`/api/marketplace/yandex-market/accounts/{{ $accountId }}/ping?company_id=${authStore.currentCompany.id}`, {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.testResult = await res.json();
                 this.connectionStatus = this.testResult.success ? 'connected' : 'error';
@@ -294,7 +303,11 @@ function ymSettingsPage() {
             this.loadingCampaigns = true;
             try {
                 const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/campaigns', {
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 const data = await res.json();
                 this.campaigns = data.campaigns || [];
@@ -309,13 +322,24 @@ function ymSettingsPage() {
         },
         
         async saveSettings() {
+            const authStore = this.$store.auth;
+            if (!authStore || !authStore.currentCompany) {
+                alert('Нет активной компании');
+                return;
+            }
+
             this.saving = true;
             this.saveResult = null;
             try {
                 const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/settings', {
                     method: 'PUT',
-                    headers: this.getAuthHeaders(),
+                    headers: {
+                        'Authorization': `Bearer ${authStore.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
+                        company_id: authStore.currentCompany.id,
                         api_key: this.credentials.api_key,
                         campaign_id: this.credentials.campaign_id,
                         business_id: this.credentials.business_id
@@ -334,7 +358,11 @@ function ymSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/sync-catalog', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
@@ -349,7 +377,11 @@ function ymSettingsPage() {
             try {
                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/orders', {
                     method: 'POST',
-                    headers: this.getAuthHeaders()
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
                 this.syncResult = await res.json();
             } catch (e) {
