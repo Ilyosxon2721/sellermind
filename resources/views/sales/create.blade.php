@@ -748,6 +748,7 @@ function saleCreatePage() {
                     type: 'manual',
                     source: 'manual',
                     sale_number: this.sale.sale_number,
+                    company_id: this.sale.company_id,
                     counterparty_id: this.sale.counterparty_id || null,
                     warehouse_id: this.sale.warehouse_id,
                     currency: this.sale.currency,

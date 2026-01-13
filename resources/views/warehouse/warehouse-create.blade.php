@@ -157,15 +157,6 @@
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
-            getAuthHeaders() {
-                const token = localStorage.getItem('_x_auth_token');
-                const parsed = token ? JSON.parse(token) : null;
-                return {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': parsed ? `Bearer ${parsed}` : ''
-                };
-            },
 
             addZone() {
                 this.form.meta.zones.push({ name: '', bins: [] });
@@ -185,19 +176,36 @@
                     this.showToast('Название склада обязательно', 'error');
                     return;
                 }
+
+                // Check if Alpine store is available and has currentCompany
+                const authStore = this.$store.auth;
+                if (!authStore || !authStore.currentCompany) {
+                    this.showToast('Нет активной компании. Пожалуйста, создайте компанию в профиле.', 'error');
+                    return;
+                }
+
                 this.saving = true;
                 try {
-                    const payload = { ...this.form };
+                    const payload = {
+                        ...this.form,
+                        company_id: authStore.currentCompany.id
+                    };
                     if (payload.meta && payload.meta.zones) {
                         payload.meta_json = payload.meta;
                     }
+
                     const resp = await fetch('/api/warehouse', {
-                        method:'POST',
-                        headers: this.getAuthHeaders(),
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authStore.token}`
+                        },
                         body: JSON.stringify(payload)
                     });
+
                     const json = await resp.json();
-                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка сохранения');
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка сохранения');
                     this.showToast('Склад создан!', 'success');
                     setTimeout(() => { window.location.href = '/warehouse/list'; }, 1000);
                 } catch(e) {
