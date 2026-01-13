@@ -39,10 +39,162 @@
             </header>
 
             <!-- Dashboard Content (Browser) -->
-            <main class="flex-1 overflow-y-auto p-6 pwa-content-padding pwa-top-padding"
+            <main class="flex-1 overflow-y-auto p-6"
                   x-pull-to-refresh="loadData">
-                <div class="bg-white rounded-lg shadow p-6">
-                    <p class="text-gray-600">Browser mode for Dashboard. Use PWA for full experience.</p>
+
+                {{-- Loading State --}}
+                <div x-show="loading" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {{-- Skeleton Cards --}}
+                        <div class="bg-white rounded-lg shadow p-6 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                            <div class="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                            <div class="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                            <div class="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                            <div class="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Stats Cards (4 in a row) --}}
+                <div x-show="!loading" x-cloak class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {{-- Revenue Card --}}
+                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <span class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-medium" x-text="periodLabel"></span>
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Выручка</h3>
+                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(stats.revenue)">0 сум</p>
+                            <p class="text-sm text-gray-500" x-text="stats.orders_count + ' заказов'"></p>
+                        </div>
+
+                        {{-- Orders Today Card --}}
+                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Заказы сегодня</h3>
+                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.today_orders">0</p>
+                            <p class="text-sm text-gray-500" x-text="formatMoney(stats.today_revenue)"></p>
+                        </div>
+
+                        {{-- Products Card --}}
+                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer" @click="window.location.href='/products'">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Товары</h3>
+                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.products_count">0</p>
+                            <p class="text-sm text-blue-600 font-medium flex items-center">
+                                Открыть
+                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </p>
+                        </div>
+
+                        {{-- Marketplaces Card --}}
+                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Маркетплейсы</h3>
+                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.marketplace_accounts">0</p>
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">Активно</span>
+                        </div>
+                    </div>
+
+                    {{-- Recent Orders Table --}}
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h2 class="text-lg font-semibold text-gray-900">Последние заказы</h2>
+                            <a href="/sales" class="text-sm text-blue-600 hover:text-blue-700 font-medium">Все заказы →</a>
+                        </div>
+
+                        {{-- Table --}}
+                        <div x-show="recentOrders.length > 0">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заказ</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Маркетплейс</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <template x-for="order in recentOrders" :key="order.id">
+                                        <tr class="hover:bg-gray-50 cursor-pointer transition-colors" @click="window.location.href = '/sales?id=' + order.id">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900" x-text="'#' + order.marketplace_order_id"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded" x-text="order.marketplace"></span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded" x-text="order.status"></span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-semibold text-gray-900" x-text="formatMoney(order.total_price)"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-500" x-text="formatDate(order.created_at)"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                                <button class="text-blue-600 hover:text-blue-900">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Empty State --}}
+                        <div x-show="recentOrders.length === 0" class="px-6 py-12 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">Пока нет заказов</h3>
+                            <p class="mt-1 text-sm text-gray-500">Они появятся здесь автоматически</p>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
