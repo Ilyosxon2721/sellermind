@@ -4,7 +4,14 @@
 <nav x-data="bottomTabNav()"
      x-show="shouldShow"
      x-cloak
-     class="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 safe-area-bottom">
+     class="fixed bottom-0 left-0 right-0 z-50 lg:hidden native-tabs">
+     {{-- Native tabs style will apply in PWA mode, regular border in browser mode --}}
+     <style>
+     .browser-mode .native-tabs {
+         background: white;
+         border-top: 1px solid #e5e7eb;
+     }
+     </style>
 
     <div class="flex items-center justify-around h-16 px-2">
 

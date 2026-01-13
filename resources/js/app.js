@@ -276,19 +276,64 @@ Alpine.store('products', {
     },
 });
 
-// PWA Store
+// PWA Store - Enhanced with native mode detection
 Alpine.store('pwa', {
     isInstalled: window.isPWAInstalled || false,
+    isIOS: window.isIOS || false,
+    isAndroid: window.isAndroid || false,
+    platform: window.pwaDetector?.platform || 'web',
 
     get canInstall() {
         return 'BeforeInstallPromptEvent' in window;
+    },
+
+    get isPWAMode() {
+        return this.isInstalled;
+    },
+
+    get isBrowserMode() {
+        return !this.isInstalled;
     },
 
     checkStatus() {
         this.isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
                           window.navigator.standalone === true ||
                           document.referrer.includes('android-app://');
+
+        // Update platform detection
+        if (window.pwaDetector) {
+            this.isIOS = window.pwaDetector.isIOS;
+            this.isAndroid = window.pwaDetector.isAndroid;
+            this.platform = window.pwaDetector.platform;
+        }
+
         return this.isInstalled;
+    },
+
+    // Platform-specific haptic feedback
+    haptic(type = 'light') {
+        if (window.haptic) {
+            window.haptic[type]();
+        }
+    }
+});
+
+// UI Store - For managing UI state
+Alpine.store('ui', {
+    sidebarOpen: false,
+
+    toggleSidebar() {
+        this.sidebarOpen = !this.sidebarOpen;
+        if (window.haptic) window.haptic.light();
+    },
+
+    closeSidebar() {
+        this.sidebarOpen = false;
+    },
+
+    openSidebar() {
+        this.sidebarOpen = true;
+        if (window.haptic) window.haptic.light();
     }
 });
 

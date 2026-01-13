@@ -45,7 +45,7 @@
     </style>
 
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
