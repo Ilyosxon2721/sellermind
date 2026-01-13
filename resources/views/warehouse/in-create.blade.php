@@ -229,15 +229,6 @@
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
-            getAuthHeaders() {
-                const token = localStorage.getItem('_x_auth_token');
-                const parsed = token ? JSON.parse(token) : null;
-                return {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': parsed ? `Bearer ${parsed}` : ''
-                };
-            },
 
             addLine() { 
                 this.form.lines.push({sku_id:'', qty:1, unit_cost:'', search:'', suggestions: [], reason: '', country: ''}); 
@@ -259,21 +250,37 @@
 
             async save(postNow = false) {
                 this.error = '';
+
+                // Check if Alpine store is available and has currentCompany
+                const authStore = this.$store.auth;
+                if (!authStore || !authStore.currentCompany) {
+                    this.error = 'Нет активной компании. Пожалуйста, создайте компанию в профиле.';
+                    this.showToast(this.error, 'error');
+                    return;
+                }
+
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authStore.token}`
+                };
+
                 this.saving = true;
                 try {
                     const createResp = await fetch('/api/marketplace/inventory/documents', {
                         method:'POST',
-                        headers: this.getAuthHeaders(),
+                        headers: headers,
                         body: JSON.stringify({
                             type:'IN',
                             warehouse_id: this.form.warehouse_id,
                             comment: this.form.comment,
                             supplier_id: this.form.supplier_id || null,
-                            source_doc_no: this.form.source_doc_no || null
+                            source_doc_no: this.form.source_doc_no || null,
+                            company_id: authStore.currentCompany.id
                         })
                     });
                     const createJson = await createResp.json();
-                    if (!createResp.ok || createJson.errors) throw new Error(createJson.errors?.[0]?.message || 'Ошибка создания документа');
+                    if (!createResp.ok || createJson.errors) throw new Error(createJson.errors?.[0]?.message || createJson.message || 'Ошибка создания документа');
                     const docId = createJson.data.id;
 
                     const linesPayload = this.form.lines
@@ -290,20 +297,20 @@
                     if (linesPayload.length) {
                         const linesResp = await fetch(`/api/marketplace/inventory/documents/${docId}/lines`, {
                             method:'POST',
-                            headers: this.getAuthHeaders(),
+                            headers: headers,
                             body: JSON.stringify({lines: linesPayload})
                         });
                         const linesJson = await linesResp.json();
-                        if (!linesResp.ok || linesJson.errors) throw new Error(linesJson.errors?.[0]?.message || 'Ошибка строк');
+                        if (!linesResp.ok || linesJson.errors) throw new Error(linesJson.errors?.[0]?.message || linesJson.message || 'Ошибка строк');
                     }
 
                     if (postNow || this.form.postAfter || this.form.statusUi === 'POSTED') {
                         const postResp = await fetch(`/api/marketplace/inventory/documents/${docId}/post`, {
-                            method:'POST', 
-                            headers: this.getAuthHeaders()
+                            method:'POST',
+                            headers: headers
                         });
                         const postJson = await postResp.json();
-                        if (!postResp.ok || postJson.errors) throw new Error(postJson.errors?.[0]?.message || 'Ошибка проведения');
+                        if (!postResp.ok || postJson.errors) throw new Error(postJson.errors?.[0]?.message || postJson.message || 'Ошибка проведения');
                     }
 
                     this.showToast('Документ создан', 'success');
