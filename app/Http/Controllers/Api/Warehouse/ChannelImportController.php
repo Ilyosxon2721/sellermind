@@ -20,6 +20,18 @@ class ChannelImportController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+        return $user->company_id ?? $user->companies()->first()?->id;
+    }
+
     public function import(Request $request)
     {
         $data = $request->validate([
@@ -34,8 +46,7 @@ class ChannelImportController extends Controller
             'orders.*.items.*.price' => ['nullable', 'numeric'],
         ]);
 
-        $user = Auth::user();
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }

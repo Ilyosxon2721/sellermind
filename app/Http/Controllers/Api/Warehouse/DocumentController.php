@@ -14,9 +14,21 @@ class DocumentController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+        return $user->company_id ?? $user->companies()->first()?->id;
+    }
+
     public function index(Request $request)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -45,7 +57,7 @@ class DocumentController extends Controller
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'source_doc_no' => ['nullable', 'string'],
         ]);
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         $userId = Auth::id();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
@@ -69,7 +81,7 @@ class DocumentController extends Controller
 
     public function addLines($id, Request $request)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -111,7 +123,7 @@ class DocumentController extends Controller
 
     public function show($id)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -134,7 +146,7 @@ class DocumentController extends Controller
 
     public function post($id)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         $userId = Auth::id();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
@@ -151,7 +163,7 @@ class DocumentController extends Controller
 
     public function reverse($id)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         $userId = Auth::id();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);

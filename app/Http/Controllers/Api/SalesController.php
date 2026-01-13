@@ -380,12 +380,14 @@ class SalesController extends Controller
      */
     private function getCompanyId(Request $request): ?int
     {
-        if (auth()->check() && auth()->user()->company_id) {
-            return auth()->user()->company_id;
+        $user = auth()->user();
+
+        if (!$user) {
+            return null;
         }
 
-        // If no company, return null (will result in empty orders list)
-        return null;
+        // Try direct company_id first, then fallback to companies relationship
+        return $user->company_id ?? $user->companies()->first()?->id;
     }
     
     /**

@@ -13,9 +13,21 @@ class ReservationController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+        return $user->company_id ?? $user->companies()->first()?->id;
+    }
+
     public function index(Request $request)
     {
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -47,7 +59,7 @@ class ReservationController extends Controller
             'source_id' => ['nullable', 'integer'],
         ]);
 
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         $userId = Auth::id();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
@@ -72,8 +84,7 @@ class ReservationController extends Controller
 
     public function release($id)
     {
-        $companyId = Auth::user()?->company_id;
-        $user = Auth::user();
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -86,8 +97,7 @@ class ReservationController extends Controller
 
     public function consume($id)
     {
-        $companyId = Auth::user()?->company_id;
-        $user = Auth::user();
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }

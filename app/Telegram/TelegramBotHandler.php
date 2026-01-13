@@ -428,9 +428,7 @@ class TelegramBotHandler
 
     private function getUserByTelegramId(int $telegramId): ?User
     {
-        // TODO: Implement user lookup by telegram_id
-        // For now, return null
-        return null;
+        return User::where('telegram_id', (string) $telegramId)->first();
     }
 
     private function setState(int $chatId, array $state): void
