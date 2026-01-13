@@ -713,16 +713,6 @@ function marketplacePage() {
                 // Подготавливаем credentials
                 const credentials = {...this.credentials};
 
-                // Для Uzum: преобразуем shop_ids из строки в массив
-                if (this.selectedMarketplace === 'uzum' && credentials.shop_ids) {
-                    if (typeof credentials.shop_ids === 'string') {
-                        credentials.shop_ids = credentials.shop_ids
-                            .split(',')
-                            .map(id => parseInt(id.trim()))
-                            .filter(id => !isNaN(id));
-                    }
-                }
-
                 const payload = {
                     company_id: this.$store.auth.currentCompany.id,
                     marketplace: this.selectedMarketplace,

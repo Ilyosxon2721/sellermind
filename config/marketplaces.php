@@ -105,7 +105,6 @@ return [
         ],
         'uzum' => [
             'api_token' => ['label' => 'API токен', 'type' => 'password', 'required' => true, 'hint' => 'Токен для доступа к API Uzum Market'],
-            'shop_ids' => ['label' => 'ID магазинов (через запятую)', 'type' => 'text', 'required' => true, 'hint' => 'Например: 12345, 67890'],
         ],
         'ym' => [
             'oauth_token' => ['label' => 'API-ключ / OAuth токен', 'type' => 'password', 'required' => true, 'hint' => 'Создайте в личном кабинете Яндекс.Маркет: Настройки → API → Сгенерировать новый API-ключ'],

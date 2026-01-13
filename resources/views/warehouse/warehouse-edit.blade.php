@@ -168,16 +168,6 @@
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
-            getAuthHeaders() {
-                const token = localStorage.getItem('_x_auth_token');
-                const parsed = token ? JSON.parse(token) : null;
-                return {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': parsed ? `Bearer ${parsed}` : ''
-                };
-            },
-
             addZone() {
                 if (!this.form.meta) this.form.meta = { zones: [] };
                 if (!this.form.meta.zones) this.form.meta.zones = [];
@@ -195,7 +185,14 @@
 
             async loadWarehouse() {
                 try {
-                    const resp = await fetch(`/api/warehouse/${this.warehouseId}`, {headers: this.getAuthHeaders()});
+                    const authStore = this.$store.auth;
+                    const resp = await fetch(`/api/warehouse/${this.warehouseId}?company_id=${authStore.currentCompany.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authStore.token}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        }
+                    });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     const data = json.data || {};
@@ -216,6 +213,12 @@
             },
 
             async save() {
+                const authStore = this.$store.auth;
+                if (!authStore || !authStore.currentCompany) {
+                    this.showToast('Нет активной компании', 'error');
+                    return;
+                }
+
                 this.saving = true;
                 try {
                     const payload = { ...this.form };
@@ -223,9 +226,13 @@
                     if (payload.meta) {
                         payload.meta_json = payload.meta;
                     }
-                    const resp = await fetch(`/api/warehouse/${this.warehouseId}`, {
-                        method:'PUT',
-                        headers: this.getAuthHeaders(),
+                    const resp = await fetch(`/api/warehouse/${this.warehouseId}?company_id=${authStore.currentCompany.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${authStore.token}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
                         body: JSON.stringify(payload)
                     });
                     const json = await resp.json();
@@ -239,8 +246,22 @@
                 }
             },
 
-            init() {
-                this.loadWarehouse();
+            async init() {
+                // Check if Alpine store is available and has authentication
+                const authStore = this.$store?.auth;
+                if (!authStore || !authStore.token) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Check if current company exists
+                if (!authStore.currentCompany) {
+                    alert('Нет активной компании. Пожалуйста, создайте компанию в профиле.');
+                    window.location.href = '/profile/company';
+                    return;
+                }
+
+                await this.loadWarehouse();
             }
         }
     }
