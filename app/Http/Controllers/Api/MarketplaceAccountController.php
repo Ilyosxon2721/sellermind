@@ -99,6 +99,12 @@ class MarketplaceAccountController extends Controller
                 $existing->wb_statistics_token = $creds['wb_statistics_token'] ?? null;
             }
 
+            // For Uzum: save API token to dedicated field
+            if ($request->marketplace === 'uzum') {
+                $creds = $request->credentials;
+                $existing->uzum_api_key = $creds['api_token'] ?? null;
+            }
+
             $existing->save();
 
             // Тестируем новые credentials
@@ -154,6 +160,12 @@ class MarketplaceAccountController extends Controller
             $accountData['wb_statistics_token'] = $creds['wb_statistics_token'] ?? null;
         }
 
+        // For Uzum: save API token to dedicated field
+        if ($request->marketplace === 'uzum') {
+            $creds = $request->credentials;
+            $accountData['uzum_api_key'] = $creds['api_token'] ?? null;
+        }
+
         $account = MarketplaceAccount::create($accountData);
         $account->markAsConnected();
 
@@ -178,8 +190,53 @@ class MarketplaceAccountController extends Controller
             ], 201);
         }
 
+        // For Uzum: automatically fetch and store shops
+        $shopsInfo = '';
+        if ($account->marketplace === 'uzum') {
+            try {
+                $httpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'uzum');
+                $uzumClient = new \App\Services\Marketplaces\UzumClient(
+                    $httpClient,
+                    app(\App\Services\Marketplaces\IssueDetectorService::class)
+                );
+
+                $shops = $uzumClient->fetchShops($account);
+
+                if (!empty($shops)) {
+                    // Store shops in database
+                    foreach ($shops as $shop) {
+                        if (isset($shop['id'])) {
+                            \App\Models\MarketplaceShop::updateOrCreate([
+                                'marketplace_account_id' => $account->id,
+                                'external_id' => (string) $shop['id'],
+                            ], [
+                                'name' => $shop['name'] ?? null,
+                                'raw_payload' => $shop,
+                            ]);
+                        }
+                    }
+
+                    // Update account with comma-separated shop IDs
+                    $shopIds = array_column($shops, 'id');
+                    $account->update(['shop_id' => implode(',', $shopIds)]);
+
+                    $shopNames = array_column($shops, 'name');
+                    $shopsInfo = ' Найдено магазинов: ' . count($shops) . ' (' . implode(', ', array_slice($shopNames, 0, 3)) . ')';
+                    if (count($shops) > 3) {
+                        $shopsInfo .= '...';
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to auto-fetch Uzum shops', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage()
+                ]);
+                $shopsInfo = ' Магазины будут загружены позже.';
+            }
+        }
+
         return response()->json([
-            'message' => 'Маркетплейс успешно подключён! ' . $testResult['message'],
+            'message' => 'Маркетплейс успешно подключён! ' . $testResult['message'] . $shopsInfo,
             'account' => [
                 'id' => $account->id,
                 'marketplace' => $account->marketplace,
@@ -675,10 +732,10 @@ class MarketplaceAccountController extends Controller
             'uzum' => [
                 'marketplace' => 'uzum',
                 'name' => 'Uzum Market',
-                'description' => 'Для подключения к Uzum Market необходимо создать API токен и указать ID магазинов',
+                'description' => 'Для подключения к Uzum Market необходимо создать API токен. Магазины будут подключены автоматически.',
                 'setup_guide' => [
                     'title' => 'Как создать токен Uzum Market?',
-                    'subtitle' => 'Uzum Market использует один API токен для доступа ко всем функциям.',
+                    'subtitle' => 'Uzum Market использует один API токен для доступа ко всем функциям. Все доступные магазины будут подключены автоматически.',
                     'link' => 'https://seller.uzum.uz/integration/api',
                     'link_text' => 'Открыть ЛК Uzum Market',
                     'tokens' => [
@@ -690,19 +747,8 @@ class MarketplaceAccountController extends Controller
                                 'ЛК Uzum → Интеграции → API → Создать токен'
                             ],
                             'permissions' => [
-                                '✓ Полный доступ ко всем API'
-                            ]
-                        ],
-                        [
-                            'number' => 2,
-                            'name' => 'Shop IDs (ID магазинов)',
-                            'field_name' => 'shop_ids',
-                            'steps' => [
-                                'ЛК Uzum → Магазины → Скопируйте ID'
-                            ],
-                            'permissions' => [
-                                'ℹ️ ID отображается рядом с названием магазина',
-                                'ℹ️ Можно указать несколько магазинов через запятую'
+                                '✓ Полный доступ ко всем API',
+                                'ℹ️ Все доступные магазины будут подключены автоматически'
                             ]
                         ]
                     ],
@@ -720,43 +766,32 @@ class MarketplaceAccountController extends Controller
                     ],
                     [
                         'name' => 'api_token',
-                        'label' => '1. API Token',
+                        'label' => 'API Token',
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => 'w/77NI6IG8xzWK5sUj4An8...',
-                        'help' => 'Токен для доступа к API Uzum Market'
-                    ],
-                    [
-                        'name' => 'shop_ids',
-                        'label' => '2. Shop IDs (ID магазинов)',
-                        'type' => 'array',
-                        'required' => true,
-                        'placeholder' => '12345, 67890',
-                        'help' => 'Список ID ваших магазинов через запятую или массив чисел'
+                        'help' => 'Токен для доступа к API Uzum Market. Все доступные магазины будут подключены автоматически.'
                     ],
                 ],
                 'instructions' => [
-                    'title' => 'Где получить API токен и ID магазинов Uzum Market:',
+                    'title' => 'Где получить API токен Uzum Market:',
                     'steps' => [
                         'Войдите в личный кабинет Uzum Market',
                         'Перейдите в раздел "Интеграции" → "API"',
                         'Нажмите "Создать новый API токен"',
                         'Скопируйте созданный токен',
-                        'Перейдите в раздел "Магазины"',
-                        'Найдите ID ваших магазинов (отображается рядом с названием магазина)',
-                        'Скопируйте ID всех магазинов, которые нужно подключить'
+                        'Вставьте токен в форму подключения',
+                        'Все доступные магазины будут автоматически найдены и подключены'
                     ],
                     'notes' => [
-                        'API токен должен иметь доступ ко всем указанным магазинам',
-                        'Вы можете подключить несколько магазинов одним токеном',
-                        'ID магазинов можно указать через запятую (12345, 67890) или как массив JSON [12345, 67890]',
-                        'Если токен не имеет доступа к магазину - система сообщит об ошибке при подключении'
+                        'API токен должен иметь доступ к магазинам',
+                        'Все магазины, доступные токену, будут подключены автоматически',
+                        'Не нужно вручную указывать ID магазинов - система получит их через API',
+                        'После подключения вы увидите список подключенных магазинов'
                     ]
                 ],
                 'validation' => [
-                    'required_fields' => ['api_token', 'shop_ids'],
-                    'shop_ids_type' => 'array',
-                    'shop_ids_min_count' => 1
+                    'required_fields' => ['api_token']
                 ]
             ],
 
@@ -990,15 +1025,7 @@ class MarketplaceAccountController extends Controller
                 if (empty($credentials['api_token'])) {
                     return 'Для Uzum необходимо указать API токен (api_token).';
                 }
-
-                if (empty($credentials['shop_ids']) || !is_array($credentials['shop_ids'])) {
-                    return 'Для Uzum необходимо указать ID магазинов (shop_ids) в виде массива. ' .
-                           'Например: [12345, 67890]';
-                }
-
-                if (count($credentials['shop_ids']) === 0) {
-                    return 'Укажите хотя бы один ID магазина для Uzum.';
-                }
+                // Shop IDs will be fetched automatically from API
                 break;
 
             case 'ozon':
