@@ -250,12 +250,37 @@ function dashboardPage() {
             return labels[this.period] || '7 дней';
         },
 
-        init() {
-            this.loadData();
+        async init() {
+            // Wait for auth store to be ready
+            if (this.$store.auth.isAuthenticated) {
+                // Load companies if not already loaded
+                if (!this.$store.auth.hasCompanies) {
+                    console.log('Loading companies...');
+                    await this.$store.auth.loadCompanies();
+                }
+
+                // Wait a bit for company to be set
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Load data
+                this.loadData();
+
+                // Watch for company changes and reload data
+                this.$watch('$store.auth.currentCompany', (newCompany) => {
+                    if (newCompany) {
+                        console.log('Company changed, reloading dashboard...');
+                        this.loadData();
+                    }
+                });
+            } else {
+                console.log('Not authenticated, redirecting to login...');
+                window.location.href = '/login';
+            }
         },
 
         async loadData() {
             if (!this.$store.auth.currentCompany) {
+                console.log('No company selected, skipping dashboard load');
                 return;
             }
 
@@ -270,8 +295,45 @@ function dashboardPage() {
                     silent: true
                 });
 
-                this.stats = response.data.stats || this.stats;
-                this.recentOrders = response.data.recent_orders || [];
+                // Map API response to frontend structure
+                const data = response.data;
+
+                if (data.summary) {
+                    // Map period-based data based on selected period
+                    let revenue = 0;
+                    let ordersCount = 0;
+
+                    if (this.period === 'today') {
+                        revenue = data.summary.sales_today || 0;
+                        ordersCount = data.summary.sales_today_count || 0;
+                    } else if (this.period === 'week') {
+                        revenue = data.summary.sales_week || 0;
+                        ordersCount = data.summary.sales_week_count || 0;
+                    } else if (this.period === 'month') {
+                        revenue = data.sales?.month_amount || 0;
+                        ordersCount = data.sales?.month_count || 0;
+                    }
+
+                    this.stats = {
+                        revenue: revenue,
+                        orders_count: ordersCount,
+                        today_orders: data.summary.sales_today_count || 0,
+                        today_revenue: data.summary.sales_today || 0,
+                        products_count: data.summary.products_total || 0,
+                        marketplace_accounts: data.summary.marketplaces_count || 0
+                    };
+                }
+
+                if (data.sales && data.sales.recent_orders) {
+                    this.recentOrders = data.sales.recent_orders.map(order => ({
+                        id: order.id,
+                        marketplace_order_id: order.order_number,
+                        marketplace: 'Uzum',
+                        total_price: order.amount,
+                        status: order.status,
+                        created_at: order.date
+                    }));
+                }
 
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
