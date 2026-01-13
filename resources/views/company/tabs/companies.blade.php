@@ -163,20 +163,13 @@ function companiesTab() {
         async loadCompanies() {
             this.loading = true;
             try {
-                const response = await fetch('/api/companies', {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    this.companies = data.companies || data.data || [];
-                }
+                const response = await window.api.get('/companies');
+                this.companies = response.data.companies || response.data.data || [];
             } catch (error) {
                 console.error('Error loading companies:', error);
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить компании');
+                }
             } finally {
                 this.loading = false;
             }
@@ -207,35 +200,36 @@ function companiesTab() {
         async saveCompany() {
             this.saving = true;
             try {
-                const url = this.editingCompany
-                    ? `/api/companies/${this.editingCompany.id}`
-                    : '/api/companies';
-
-                const method = this.editingCompany ? 'PUT' : 'POST';
-
-                const response = await fetch(url, {
-                    method: method,
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify(this.form)
-                });
-
-                if (response.ok) {
-                    this.closeModal();
-                    await this.loadCompanies();
-                    alert(this.editingCompany ? 'Компания обновлена' : 'Компания создана');
+                let response;
+                if (this.editingCompany) {
+                    // Update existing company
+                    response = await window.api.put(`/companies/${this.editingCompany.id}`, this.form);
                 } else {
-                    const error = await response.json();
-                    alert('Ошибка: ' + (error.message || 'Не удалось сохранить'));
+                    // Create new company
+                    response = await window.api.post('/companies', this.form);
+                }
+
+                this.closeModal();
+                await this.loadCompanies();
+
+                // Reload auth store companies to sync with rest of app
+                if (window.Alpine && window.Alpine.store('auth')) {
+                    await window.Alpine.store('auth').loadCompanies();
+                }
+
+                if (window.toast) {
+                    window.toast.success(this.editingCompany ? 'Компания обновлена' : 'Компания создана');
+                } else {
+                    alert(this.editingCompany ? 'Компания обновлена' : 'Компания создана');
                 }
             } catch (error) {
                 console.error('Error saving company:', error);
-                alert('Ошибка при сохранении компании');
+                const message = error.response?.data?.message || 'Не удалось сохранить';
+                if (window.toast) {
+                    window.toast.error('Ошибка: ' + message);
+                } else {
+                    alert('Ошибка: ' + message);
+                }
             } finally {
                 this.saving = false;
             }

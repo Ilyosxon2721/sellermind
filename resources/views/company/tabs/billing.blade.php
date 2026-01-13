@@ -338,25 +338,18 @@ function billingTab() {
 
         async loadCompanies() {
             try {
-                const response = await fetch('/api/companies', {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+                const response = await window.api.get('/companies');
+                this.companies = response.data.companies || response.data.data || [];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    this.companies = data.companies || data.data || [];
-
-                    if (this.companies.length > 0) {
-                        this.selectedCompanyId = this.companies[0].id;
-                        await this.loadBillingInfo();
-                    }
+                if (this.companies.length > 0) {
+                    this.selectedCompanyId = this.companies[0].id;
+                    await this.loadBillingInfo();
                 }
             } catch (error) {
                 console.error('Error loading companies:', error);
+                if (window.toast) {
+                    window.toast.error('Не удалось загрузить компании');
+                }
             }
         },
 
