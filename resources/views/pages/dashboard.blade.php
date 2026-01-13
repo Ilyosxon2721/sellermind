@@ -292,7 +292,7 @@ function dashboardPage() {
             this.loading = true;
 
             try {
-                const response = await window.api.get('/api/dashboard', {
+                const response = await window.api.get('/dashboard', {
                     params: {
                         period: this.period,
                         company_id: this.$store.auth.currentCompany.id

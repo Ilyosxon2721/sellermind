@@ -221,7 +221,7 @@ function analyticsPage() {
 
             this.loading = true;
             try {
-                const response = await window.api.get('/api/analytics/overview', {
+                const response = await window.api.get('/analytics/overview', {
                     params: {
                         period: this.period,
                         company_id: this.$store.auth.currentCompany.id
