@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-ab7TxmAU.css",
+    "file": "assets/app-M1cc2-tt.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -22,8 +22,17 @@
       "app.css"
     ]
   },
+  "resources/css/pwa-native.css": {
+    "file": "assets/pwa-native-BlcPDVU9.css",
+    "src": "resources/css/pwa-native.css",
+    "isEntry": true,
+    "name": "pwa-native",
+    "names": [
+      "pwa-native.css"
+    ]
+  },
   "resources/js/app.js": {
-    "file": "assets/app-B-zCtNtP.js",
+    "file": "assets/app-CA1tkqrO.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -31,6 +40,12 @@
       "_vendor-Dos3PyFQ.js",
       "_alpine-w3y3or6b.js"
     ]
+  },
+  "resources/js/pwa-detector.js": {
+    "file": "assets/pwa-detector-BOVFWlMk.js",
+    "name": "pwa-detector",
+    "src": "resources/js/pwa-detector.js",
+    "isEntry": true
   },
   "resources/js/pwa.js": {
     "file": "assets/pwa-BMeDGpla.js",

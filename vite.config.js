@@ -8,6 +8,8 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/pwa-native.css',
+                'resources/js/pwa-detector.js',
                 'resources/js/app.js',
                 'resources/js/pwa.js'
             ],
