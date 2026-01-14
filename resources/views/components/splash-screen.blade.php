@@ -117,6 +117,31 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Pure JS fallback - hide splash after 4 seconds regardless of Alpine.js
+(function() {
+    const hideSplash = () => {
+        const splash = document.getElementById('splash-screen');
+        if (splash && splash.style.display !== 'none') {
+            splash.style.transition = 'opacity 0.5s ease';
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                console.log('✅ Splash hidden via JS fallback');
+            }, 500);
+        }
+    };
+
+    // Fallback after 4 seconds
+    setTimeout(hideSplash, 4000);
+
+    // Also try when page loads
+    if (document.readyState === 'complete') {
+        setTimeout(hideSplash, 2000);
+    } else {
+        window.addEventListener('load', () => setTimeout(hideSplash, 2000));
+    }
+})();
 </script>
 
 <style>

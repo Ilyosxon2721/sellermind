@@ -86,7 +86,7 @@
     </x-pwa-header>
 
     {{-- Main Content --}}
-    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); min-height: 100vh;"
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(8px + env(safe-area-inset-left, 0px)); padding-right: calc(8px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
           x-data="{ refreshPage() { window.location.reload(); } }"
           x-pull-to-refresh="refreshPage">
 
