@@ -17,7 +17,7 @@ class WarehouseManageController extends Controller
      */
     private function getCompanyId(): ?int
     {
-        $user = auth('web')->user() ?? Auth::user();
+        $user = request()->user() ?? Auth::user();
         if (!$user) {
             return null;
         }

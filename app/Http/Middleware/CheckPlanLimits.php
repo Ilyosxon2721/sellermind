@@ -66,8 +66,11 @@ class CheckPlanLimits
      */
     protected function checkMarketplaceAccounts($company, $subscription, int $count): bool
     {
+        if (!$subscription->plan) {
+            return true; // Allow if plan not found (graceful degradation)
+        }
         $current = $company->marketplaceAccounts()->count();
-        return ($current + $count) <= $subscription->plan->max_marketplace_accounts;
+        return ($current + $count) <= ($subscription->plan->max_marketplace_accounts ?? PHP_INT_MAX);
     }
 
     /**
@@ -75,8 +78,11 @@ class CheckPlanLimits
      */
     protected function checkUsers($company, $subscription, int $count): bool
     {
+        if (!$subscription->plan) {
+            return true; // Allow if plan not found (graceful degradation)
+        }
         $current = $company->users()->count();
-        return ($current + $count) <= $subscription->plan->max_users;
+        return ($current + $count) <= ($subscription->plan->max_users ?? PHP_INT_MAX);
     }
 
     /**
@@ -84,8 +90,11 @@ class CheckPlanLimits
      */
     protected function checkWarehouses($company, $subscription, int $count): bool
     {
+        if (!$subscription->plan) {
+            return true; // Allow if plan not found (graceful degradation)
+        }
         $current = $company->warehouses()->count();
-        return ($current + $count) <= $subscription->plan->max_warehouses;
+        return ($current + $count) <= ($subscription->plan->max_warehouses ?? PHP_INT_MAX);
     }
 
     /**
