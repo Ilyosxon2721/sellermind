@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50">
+<div class="flex h-screen bg-gray-50 browser-only">
 
     <x-sidebar />
 
@@ -194,5 +194,121 @@
             </div>
         </main>
     </div>
+</div>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    logs: [],
+    loading: true,
+    filters: {
+        marketplace: '',
+        status: '',
+        type: ''
+    },
+    getToken() {
+        const t = localStorage.getItem('_x_auth_token');
+        if (t) try { return JSON.parse(t); } catch { return t; }
+        return localStorage.getItem('auth_token');
+    },
+    getAuthHeaders() {
+        return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json' };
+    },
+    async loadLogs() {
+        this.loading = true;
+        try {
+            const params = new URLSearchParams();
+            if (this.filters.marketplace) params.append('marketplace', this.filters.marketplace);
+            if (this.filters.status) params.append('status', this.filters.status);
+            if (this.filters.type) params.append('type', this.filters.type);
+            const res = await fetch('/marketplace/sync-logs/json?' + params, { headers: this.getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this.logs = data.logs || [];
+            }
+        } catch (e) { console.error(e); }
+        this.loading = false;
+    },
+    getStatusColor(status) {
+        return { success: 'bg-green-100 text-green-800', error: 'bg-red-100 text-red-800', running: 'bg-blue-100 text-blue-800', pending: 'bg-yellow-100 text-yellow-800' }[status] || 'bg-gray-100 text-gray-800';
+    },
+    getMpColor(mp) {
+        return { wb: 'bg-purple-100 text-purple-800', ozon: 'bg-blue-100 text-blue-800', uzum: 'bg-violet-100 text-violet-800', ym: 'bg-yellow-100 text-yellow-800' }[mp] || 'bg-gray-100 text-gray-800';
+    },
+    formatDate(d) {
+        if (!d) return '—';
+        return new Date(d).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+}" x-init="loadLogs()" style="background: #f2f2f7;">
+    <x-pwa-header title="Журнал интеграций" :backUrl="route('marketplace.index')">
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadLogs">
+
+        {{-- Filters --}}
+        <div class="native-card mb-3">
+            <div class="p-3 space-y-2">
+                <select x-model="filters.marketplace" @change="loadLogs()" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                    <option value="">Все маркетплейсы</option>
+                    <option value="wb">Wildberries</option>
+                    <option value="ozon">Ozon</option>
+                    <option value="uzum">Uzum</option>
+                    <option value="ym">Yandex Market</option>
+                </select>
+                <div class="flex gap-2">
+                    <select x-model="filters.status" @change="loadLogs()" class="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                        <option value="">Все статусы</option>
+                        <option value="success">Успешно</option>
+                        <option value="error">Ошибка</option>
+                        <option value="running">В процессе</option>
+                        <option value="pending">Ожидает</option>
+                    </select>
+                    <select x-model="filters.type" @change="loadLogs()" class="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                        <option value="">Все типы</option>
+                        <option value="orders">Заказы</option>
+                        <option value="products">Товары</option>
+                        <option value="stocks">Остатки</option>
+                        <option value="prices">Цены</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="flex justify-center py-8">
+            <div class="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        {{-- Logs list --}}
+        <div x-show="!loading" class="native-card">
+            <template x-if="logs.length === 0">
+                <div class="p-6 text-center">
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <p class="native-body text-gray-500">Записей пока нет</p>
+                </div>
+            </template>
+
+            <div class="divide-y divide-gray-100">
+                <template x-for="log in logs" :key="log.id">
+                    <div class="p-3">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="getMpColor(log.account?.marketplace)" x-text="(log.account?.marketplace || '—').toUpperCase()"></span>
+                                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="getStatusColor(log.status)" x-text="log.status_label || log.status"></span>
+                            </div>
+                            <span class="native-caption text-gray-500" x-text="formatDate(log.created_at)"></span>
+                        </div>
+                        <p class="native-body text-gray-900 font-medium" x-text="log.type_label || log.type"></p>
+                        <p x-show="log.message" class="native-caption text-gray-500 mt-1 line-clamp-2" x-text="log.message"></p>
+                        <p x-show="log.duration" class="native-caption text-gray-400 mt-1">
+                            Время: <span x-text="log.duration + 's'"></span>
+                        </p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
 </div>
 @endsection

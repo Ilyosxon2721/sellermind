@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50" x-data="replenishmentPage()">
+<div class="flex h-screen bg-gray-50 browser-only" x-data="replenishmentPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -136,6 +136,196 @@
         </main>
     </div>
 </div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen bg-gray-50" x-data="replenishmentPagePwa()">
+    <x-pwa-header title="Закупки" backUrl="/dashboard" />
+
+    <main class="pt-14 pb-20" style="padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);">
+        <div class="p-4 space-y-4" x-pull-to-refresh="load()">
+            <!-- Filters -->
+            <div class="native-card p-4 space-y-3">
+                <div>
+                    <label class="native-caption block mb-1">Склад</label>
+                    <select class="native-input w-full" x-model="filters.warehouse_id" @change="load()">
+                        <option value="">Выберите склад...</option>
+                        <template x-for="w in warehouses" :key="w.id">
+                            <option :value="w.id" x-text="w.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption block mb-1">Риск</label>
+                    <select class="native-input w-full" x-model="filters.risk" @change="load()">
+                        <option value="">Все</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="LOW">LOW</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption block mb-1">Поиск</label>
+                    <input type="text" class="native-input w-full" placeholder="SKU или товар" x-model="filters.query" @keydown.enter="load()">
+                </div>
+            </div>
+
+            <!-- Selected count and action -->
+            <div x-show="selectedIds.length > 0" class="native-card p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-blue-600 font-medium">Выбрано: <span x-text="selectedIds.length"></span> SKU</span>
+                    <button class="native-btn native-btn-primary text-sm py-1.5 px-3" @click="createDraft()">
+                        Создать PO
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <template x-if="error">
+                <div class="native-card p-4 bg-red-50 border border-red-200">
+                    <p class="text-red-600 text-sm" x-text="error"></p>
+                </div>
+            </template>
+
+            <!-- Items List -->
+            <div class="space-y-3">
+                <div class="native-caption px-1">Рекомендации</div>
+                <template x-if="items.length === 0">
+                    <div class="native-card p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                        <p class="native-body text-gray-500">Выберите склад для получения рекомендаций</p>
+                    </div>
+                </template>
+                <template x-for="row in items" :key="row.sku_id">
+                    <div class="native-card p-4" @click="toggle(row)">
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300"
+                                   :checked="selectedIds.includes(row.sku_id)"
+                                   @click.stop="toggle(row)">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="font-semibold text-gray-900" x-text="row.sku_code"></span>
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                          :class="{
+                                              'bg-red-100 text-red-700': row.risk_level === 'HIGH',
+                                              'bg-amber-100 text-amber-700': row.risk_level === 'MEDIUM',
+                                              'bg-green-100 text-green-700': row.risk_level === 'LOW'
+                                          }"
+                                          x-text="row.risk_level"></span>
+                                </div>
+                                <p class="text-xs text-gray-500 truncate mb-2" x-text="row.product_name"></p>
+                                <div class="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <span class="native-caption">Доступно</span>
+                                        <div class="font-medium" x-text="row.available.toFixed(0)"></div>
+                                    </div>
+                                    <div>
+                                        <span class="native-caption">Avg/day</span>
+                                        <div class="font-medium" x-text="row.avg_daily_demand.toFixed(1)"></div>
+                                    </div>
+                                    <div>
+                                        <span class="native-caption">Заказать</span>
+                                        <div class="font-bold text-blue-600" x-text="row.reorder_qty.toFixed(0)"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    function replenishmentPagePwa() {
+        return {
+            warehouses: [],
+            items: [],
+            selectedIds: [],
+            selectedRows: [],
+            filters: { warehouse_id: '', risk: '', query: '' },
+            error: '',
+            async load() {
+                this.error = '';
+                if (!this.filters.warehouse_id) {
+                    this.items = [];
+                    return;
+                }
+                const params = new URLSearchParams();
+                Object.entries(this.filters).forEach(([k, v]) => v ? params.append(k, v) : null);
+                try {
+                    const resp = await fetch(`/api/replenishment/recommendations?${params.toString()}`, {
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
+                    this.items = json.data?.items || [];
+                } catch (e) {
+                    this.error = e.message;
+                }
+            },
+            toggle(row) {
+                const idx = this.selectedIds.indexOf(row.sku_id);
+                if (idx >= 0) {
+                    this.selectedIds.splice(idx, 1);
+                    this.selectedRows = this.selectedRows.filter(r => r.sku_id !== row.sku_id);
+                } else {
+                    this.selectedIds.push(row.sku_id);
+                    this.selectedRows.push(row);
+                }
+            },
+            async loadWarehouses() {
+                try {
+                    const resp = await fetch('/api/warehouses', { headers: { 'Accept': 'application/json' } });
+                    const json = await resp.json();
+                    if (resp.ok && json.data) {
+                        this.warehouses = json.data;
+                        if (!this.filters.warehouse_id && this.warehouses.length) {
+                            this.filters.warehouse_id = this.warehouses[0].id;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('warehouses fetch fail');
+                }
+            },
+            async createDraft() {
+                if (this.selectedRows.length === 0) return;
+                const body = {
+                    warehouse_id: this.filters.warehouse_id,
+                    items: this.selectedRows.map(r => ({ sku_id: r.sku_id, qty: r.reorder_qty })),
+                };
+                try {
+                    const resp = await fetch('/api/replenishment/purchase-draft', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify(body),
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка создания заказа');
+                    alert('Черновик создан: ' + (json.data?.po_no || json.data?.id));
+                    this.selectedIds = [];
+                    this.selectedRows = [];
+                } catch (e) {
+                    alert(e.message);
+                }
+            },
+            async init() {
+                await this.loadWarehouses();
+                if (this.filters.warehouse_id) {
+                    this.load();
+                }
+            }
+        }
+    }
+</script>
 
 <script>
     function replenishmentPage() {

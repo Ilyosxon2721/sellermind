@@ -2,7 +2,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="vpcSessionsPage()" x-init="init()" class="min-h-screen bg-gray-50">
+<div x-data="vpcSessionsPage()" x-init="init()" class="min-h-screen bg-gray-50 browser-only">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -154,4 +154,54 @@ function vpcSessionsPage() {
     };
 }
 </script>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    sessions: @json($sessions->items()),
+    getStatusColor(status) {
+        return { creating: 'bg-gray-100 text-gray-800', ready: 'bg-blue-100 text-blue-800', running: 'bg-green-100 text-green-800', paused: 'bg-yellow-100 text-yellow-800', stopped: 'bg-gray-100 text-gray-800', error: 'bg-red-100 text-red-800' }[status] || 'bg-gray-100 text-gray-800';
+    },
+    getStatusLabel(status) {
+        return { creating: 'Создаётся', ready: 'Готов', running: 'Работает', paused: 'Пауза', stopped: 'Остановлен', error: 'Ошибка' }[status] || status;
+    },
+    getModeLabel(mode) {
+        return { AGENT_CONTROL: 'Агент', USER_CONTROL: 'Пользователь', PAUSED: 'Пауза' }[mode] || mode;
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Виртуальный ПК" backUrl="/agent">
+        <a href="{{ route('vpc_sessions.create') }}" class="text-blue-500 font-medium">Создать</a>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+
+        @if($sessions->isEmpty())
+            <div class="native-card p-6 text-center">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <p class="native-body text-gray-500 mb-3">Нет VPC-сессий</p>
+                <a href="{{ route('vpc_sessions.create') }}" class="native-btn native-btn-primary">Создать сессию</a>
+            </div>
+        @else
+            <div class="space-y-3">
+                <template x-for="session in sessions" :key="session.id">
+                    <a :href="'/vpc-sessions/' + session.id" class="native-card p-4 block">
+                        <div class="flex items-start justify-between mb-2">
+                            <div>
+                                <p class="font-semibold text-gray-900" x-text="session.name || 'VPC #' + session.id"></p>
+                                <p x-show="session.agent_task" class="native-caption text-gray-500" x-text="'Задача: ' + (session.agent_task?.title || '')"></p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusColor(session.status)" x-text="getStatusLabel(session.status)"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="native-caption text-gray-500" x-text="getModeLabel(session.control_mode)"></span>
+                            <span class="native-caption text-gray-400" x-text="session.last_activity_at ? new Date(session.last_activity_at).toLocaleDateString('ru-RU') : '—'"></span>
+                        </div>
+                    </a>
+                </template>
+            </div>
+        @endif
+    </main>
+</div>
 @endsection
