@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="{
+{{-- BROWSER MODE --}}
+<div class="browser-only" x-data="{
          account: null,
          logs: [],
          syncing: {
@@ -533,5 +534,84 @@
             </div>
         </main>
     </div>
+</div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+         account: null,
+         syncing: { all: false },
+         activeTab: 'overview',
+         getToken() {
+             if (this.$store.auth.token) return this.$store.auth.token;
+             const persistToken = localStorage.getItem('_x_auth_token');
+             if (persistToken) {
+                 try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
+             }
+             return localStorage.getItem('auth_token');
+         },
+         getAuthHeaders() {
+             return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json' };
+         },
+         async init() {
+             await this.$nextTick();
+             if (!this.getToken()) { window.location.href = '/login'; return; }
+             await this.loadAccount();
+         },
+         async loadAccount() {
+             const res = await fetch('/api/marketplace/accounts/{{ $accountId }}', { headers: this.getAuthHeaders() });
+             if (res.ok) { const data = await res.json(); this.account = data.account; }
+         },
+         async syncAll() {
+             this.syncing.all = true;
+             await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/all', { method: 'POST', headers: this.getAuthHeaders() });
+             this.syncing.all = false;
+         }
+     }" style="background: #f2f2f7;">
+    <x-pwa-header title="Аккаунт" :backUrl="'/marketplace'">
+        <button @click="syncAll()" :disabled="syncing.all" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!syncing.all">Синх</span>
+            <span x-show="syncing.all">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+        <div class="px-4 py-4 space-y-4">
+            {{-- Account Info --}}
+            <div class="native-card">
+                <p class="native-body font-bold text-lg" x-text="account?.marketplace_label || 'Загрузка...'"></p>
+                <p class="native-caption" x-text="account?.name || ''"></p>
+                <div class="mt-3 flex items-center space-x-2">
+                    <span class="px-2 py-1 text-xs rounded-full font-medium" :class="account?.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'" x-text="account?.is_active ? 'Активен' : 'Неактивен'"></span>
+                </div>
+            </div>
+
+            {{-- Stats --}}
+            <div class="grid grid-cols-2 gap-3">
+                <div class="native-card text-center py-4">
+                    <p class="text-2xl font-bold text-gray-900" x-text="account?.products_count || 0"></p>
+                    <p class="native-caption">Товаров</p>
+                </div>
+                <div class="native-card text-center py-4">
+                    <p class="text-2xl font-bold text-gray-900" x-text="account?.orders_count || 0"></p>
+                    <p class="native-caption">Заказов</p>
+                </div>
+            </div>
+
+            {{-- Quick Links --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">Быстрые действия</p>
+                <div class="space-y-2">
+                    <a :href="'/marketplace/' + {{ $accountId }} + '/products'" class="block p-3 bg-gray-50 rounded-xl flex items-center justify-between">
+                        <span class="native-body">Товары</span>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                    <a :href="'/marketplace/' + {{ $accountId }} + '/orders'" class="block p-3 bg-gray-50 rounded-xl flex items-center justify-between">
+                        <span class="native-body">Заказы</span>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
 @endsection

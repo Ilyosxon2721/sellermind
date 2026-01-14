@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="marketplaceDashboard()" class="flex h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="marketplaceDashboard()" class="browser-only flex h-screen bg-gray-50">
 
     <x-sidebar />
 
@@ -621,4 +622,88 @@ function marketplaceDashboard() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="marketplaceDashboard()" style="background: #f2f2f7;">
+    <x-pwa-header title="Dashboard" :backUrl="'/marketplace'">
+        <button @click="loadData()" :disabled="loading" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadData">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Период</label>
+                    <select class="native-input mt-1" x-model="filters.period" @change="loadData()">
+                        <option value="today">Сегодня</option>
+                        <option value="7d">7 дней</option>
+                        <option value="30d">30 дней</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Маркетплейс</label>
+                    <select class="native-input mt-1" x-model="filters.marketplace" @change="loadData()">
+                        <option value="all">Все</option>
+                        <option value="wb">Wildberries</option>
+                        <option value="ozon">Ozon</option>
+                        <option value="uzum">Uzum</option>
+                        <option value="ym">Yandex Market</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading && !data" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- KPI Stats --}}
+        <div x-show="data" class="px-4 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="native-card text-center py-4">
+                    <p class="text-xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.revenue || 0)"></p>
+                    <p class="native-caption">Выручка</p>
+                </div>
+                <div class="native-card text-center py-4">
+                    <p class="text-xl font-bold text-gray-900" x-text="data?.overall_kpi?.orders_count || 0"></p>
+                    <p class="native-caption">Заказов</p>
+                </div>
+                <div class="native-card text-center py-4">
+                    <p class="text-xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.avg_check || 0)"></p>
+                    <p class="native-caption">Средний чек</p>
+                </div>
+                <div class="native-card text-center py-4">
+                    <p class="text-xl font-bold" :class="(data?.overall_kpi?.return_rate || 0) > 5 ? 'text-red-600' : 'text-green-600'" x-text="(data?.overall_kpi?.return_rate || 0).toFixed(1) + '%'"></p>
+                    <p class="native-caption">Возвраты</p>
+                </div>
+            </div>
+
+            {{-- Accounts List --}}
+            <div x-show="data?.accounts?.length" class="native-card">
+                <p class="native-body font-semibold mb-3">По маркетплейсам</p>
+                <div class="space-y-2">
+                    <template x-for="account in data.accounts" :key="account.id">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <span class="native-body font-semibold" x-text="account.marketplace_label"></span>
+                                <span class="native-body font-bold" x-text="formatNumber(getAccountKpi(account.id)?.revenue || 0)"></span>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <span class="native-caption" x-text="(getAccountKpi(account.id)?.orders_count || 0) + ' заказов'"></span>
+                                <span class="native-caption" :class="(getAccountKpi(account.id)?.return_rate || 0) > 5 ? 'text-red-600' : ''" x-text="(getAccountKpi(account.id)?.return_rate || 0).toFixed(1) + '% возврат'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="warehouseEditPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="warehouseEditPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -266,4 +267,80 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="warehouseEditPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Редактирование" :backUrl="'/warehouse/list'">
+        <button @click="save()" :disabled="saving" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!saving">Сохранить</span>
+            <span x-show="saving">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+
+        {{-- Toast --}}
+        <div x-show="toast.show" x-transition class="fixed top-16 left-4 right-4 z-50">
+            <div :class="toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'" class="text-white px-4 py-3 rounded-xl shadow-lg text-center">
+                <span x-text="toast.message"></span>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-8">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        <div x-show="!loading" class="px-4 py-4 space-y-4">
+            {{-- Basic Info --}}
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Основная информация</p>
+                <div>
+                    <label class="native-caption">Название *</label>
+                    <input type="text" class="native-input mt-1" x-model="form.name" placeholder="Основной склад">
+                </div>
+                <div>
+                    <label class="native-caption">Код</label>
+                    <input type="text" class="native-input mt-1" x-model="form.code" placeholder="main">
+                </div>
+                <div>
+                    <label class="native-caption">Адрес</label>
+                    <input type="text" class="native-input mt-1" x-model="form.address" placeholder="ул. Примерная, д. 1">
+                </div>
+            </div>
+
+            {{-- Additional Info --}}
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Дополнительно</p>
+                <div>
+                    <label class="native-caption">Группа</label>
+                    <input type="text" class="native-input mt-1" x-model="form.group_name" placeholder="FBS / FBO">
+                </div>
+                <div>
+                    <label class="native-caption">Комментарий</label>
+                    <textarea class="native-input mt-1" rows="2" x-model="form.comment" placeholder="Любой комментарий"></textarea>
+                </div>
+            </div>
+
+            {{-- Settings --}}
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Настройки</p>
+                <label class="flex items-center space-x-3">
+                    <input type="checkbox" class="w-5 h-5 rounded border-gray-300 text-blue-600" x-model="form.is_default">
+                    <span class="native-body">Основной склад</span>
+                </label>
+                <label class="flex items-center space-x-3">
+                    <input type="checkbox" class="w-5 h-5 rounded border-gray-300 text-blue-600" x-model="form.is_active">
+                    <span class="native-body">Активен</span>
+                </label>
+            </div>
+
+            {{-- Save Button --}}
+            <button class="native-btn w-full" @click="save()" :disabled="saving">
+                <span x-show="!saving">Сохранить</span>
+                <span x-show="saving">Сохранение...</span>
+            </button>
+        </div>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inReceiptsPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inReceiptsPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -255,4 +256,96 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="inReceiptsPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Оприходование" :backUrl="'/warehouse'">
+        <button @click="load()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+        <a href="/warehouse/in/create" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </a>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Склад</label>
+                    <select class="native-input mt-1" x-model="filters.warehouse_id">
+                        <option value="">Все склады</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Статус</label>
+                    <select class="native-input mt-1" x-model="filters.status">
+                        <option value="">Все</option>
+                        <option value="DRAFT">Черновик</option>
+                        <option value="POSTED">Проведён</option>
+                    </select>
+                </div>
+                <button class="native-btn w-full" @click="load()">Применить</button>
+            </div>
+        </div>
+
+        {{-- Stats --}}
+        <div class="px-4 grid grid-cols-3 gap-2 mb-4">
+            <div class="native-card text-center py-3">
+                <p class="text-2xl font-bold text-gray-900" x-text="items.length">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-2xl font-bold text-green-600" x-text="items.filter(d => d.status === 'POSTED').length">0</p>
+                <p class="native-caption">Проведено</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-2xl font-bold text-amber-600" x-text="items.filter(d => d.status === 'DRAFT').length">0</p>
+                <p class="native-caption">Черновики</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Документов нет</p>
+                <a href="/warehouse/in/create" class="text-green-600 font-medium">Создать первый документ →</a>
+            </div>
+        </div>
+
+        {{-- Documents List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="doc in items" :key="doc.id">
+                <a :href="`/warehouse/documents/${doc.id}`" class="native-card block">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold text-green-600" x-text="doc.doc_no"></p>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="doc.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'" x-text="doc.status === 'POSTED' ? 'Проведён' : 'Черновик'"></span>
+                    </div>
+                    <p class="native-caption" x-text="doc.warehouse?.name || '—'"></p>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="native-caption" x-text="formatDate(doc.created_at)"></span>
+                        <span class="native-caption" x-text="doc.supplier?.name || ''"></span>
+                    </div>
+                </a>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

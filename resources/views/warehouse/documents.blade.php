@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentsPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentsPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -448,4 +449,81 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="documentsPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Документы" :backUrl="'/warehouse'">
+        <button @click="openCreate()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="native-caption">Склад</label>
+                        <select class="native-input mt-1" x-model="filters.warehouse_id">
+                            <option value="">Все</option>
+                            @foreach($warehouses as $wh)
+                                <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="native-caption">Тип</label>
+                        <select class="native-input mt-1" x-model="filters.type">
+                            <option value="">Все</option>
+                            <option value="IN">Приход</option>
+                            <option value="OUT">Отгрузка</option>
+                            <option value="MOVE">Перемещение</option>
+                            <option value="WRITE_OFF">Списание</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="native-btn w-full" @click="load()">Применить</button>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Документов нет</p>
+                <p class="native-caption">Создайте новый документ</p>
+            </div>
+        </div>
+
+        {{-- Documents List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="doc in items" :key="doc.id">
+                <div class="native-card native-pressable" @click="window.location.href = `/warehouse/documents/${doc.id}`">
+                    <div class="flex items-start justify-between mb-2">
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
+                            'bg-blue-100 text-blue-700': doc.type === 'IN',
+                            'bg-red-100 text-red-700': doc.type === 'OUT',
+                            'bg-amber-100 text-amber-700': doc.type === 'MOVE',
+                            'bg-gray-100 text-gray-700': doc.type === 'WRITE_OFF'
+                        }" x-text="doc.type"></span>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="doc.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'" x-text="doc.status === 'POSTED' ? 'Проведён' : 'Черновик'"></span>
+                    </div>
+                    <p class="native-body font-semibold" x-text="'#' + doc.id"></p>
+                    <p class="native-caption" x-text="doc.created_at ? new Date(doc.created_at).toLocaleDateString('ru-RU') : ''"></p>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

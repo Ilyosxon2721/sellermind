@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="createAgentTaskPage()" x-init="init()" class="min-h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="createAgentTaskPage()" x-init="init()" class="browser-only min-h-screen bg-gray-50">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -309,4 +310,80 @@ function createAgentTaskPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="createAgentTaskPage()" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Новая задача" :backUrl="'/agent'">
+        <button @click="createTask()" :disabled="submitting || !form.agent_id || !form.title" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!submitting">Создать</span>
+            <span x-show="submitting">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+        <div class="px-4 py-4 space-y-4">
+            {{-- Agent Selection --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">Выберите агента</p>
+                <div x-show="loadingAgents" class="text-center py-4">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                </div>
+                <div x-show="!loadingAgents" class="space-y-2">
+                    <template x-for="agent in agents" :key="agent.id">
+                        <div @click="form.agent_id = agent.id" :class="form.agent_id === agent.id ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'" class="border rounded-xl p-3 cursor-pointer">
+                            <p class="native-body font-semibold" x-text="agent.name"></p>
+                            <p class="native-caption" x-text="agent.description || 'Нет описания'"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Task Details --}}
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Детали задачи</p>
+                <div>
+                    <label class="native-caption">Название *</label>
+                    <input type="text" class="native-input mt-1" x-model="form.title" placeholder="Например: Проверить карточки">
+                </div>
+                <div>
+                    <label class="native-caption">Описание / Запрос</label>
+                    <textarea class="native-input mt-1" rows="3" x-model="form.description" placeholder="Опишите задачу..."></textarea>
+                </div>
+                <div>
+                    <label class="native-caption">Компания</label>
+                    <select class="native-input mt-1" x-model="form.company_id">
+                        <option value="">Без привязки</option>
+                        <template x-for="company in $store.auth.companies" :key="company.id">
+                            <option :value="company.id" x-text="company.name"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+
+            {{-- VPC Settings --}}
+            <div x-show="isVpcBrowserAgent()" class="native-card space-y-3">
+                <p class="native-body font-semibold">Настройки VPC браузера</p>
+                <div>
+                    <label class="native-caption">Ссылка на страницу</label>
+                    <input type="url" class="native-input mt-1" x-model="form.vpc_url" placeholder="https://uzum.uz/ru/product/...">
+                </div>
+                <div>
+                    <label class="native-caption">Маркетплейс</label>
+                    <select class="native-input mt-1" x-model="form.vpc_marketplace">
+                        <option value="">Авто</option>
+                        <option value="uzum">Uzum</option>
+                        <option value="wb">Wildberries</option>
+                        <option value="ozon">Ozon</option>
+                    </select>
+                </div>
+            </div>
+
+            {{-- Submit --}}
+            <button class="native-btn w-full" @click="createTask()" :disabled="submitting || !form.agent_id || !form.title">
+                <span x-show="!submitting">Создать задачу</span>
+                <span x-show="submitting">Создание...</span>
+            </button>
+        </div>
+    </main>
+</div>
 @endsection

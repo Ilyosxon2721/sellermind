@@ -62,7 +62,8 @@
 </div>
 @endif
 
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="productEditor()" x-cloak>
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="productEditor()" x-cloak>
 
     <x-sidebar />
 
@@ -888,4 +889,163 @@ function productEditor() {
     }
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="productEditor()" x-cloak style="background: #f2f2f7;">
+    <x-pwa-header title="{{ $product->id ? 'Редактирование' : 'Новый товар' }}" :backUrl="'/products'">
+        <button type="button" @click="submit()" class="native-header-btn text-blue-600 font-semibold" onclick="if(window.haptic) window.haptic.light()">
+            Сохранить
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+        <form x-ref="form"
+              method="POST"
+              action="{{ $product->id ? route('web.products.update', $product) : route('web.products.store') }}"
+              @submit.prevent="submit">
+            @csrf
+            @if($product->id) @method('PUT') @endif
+
+            <input type="hidden" name="options" x-ref="optionsInput">
+            <input type="hidden" name="variants" x-ref="variantsInput">
+            <input type="hidden" name="images" x-ref="imagesInput">
+            <input type="hidden" name="attributes_product" x-ref="attributesProductInput">
+            <input type="hidden" name="attributes_variants" x-ref="attributesVariantsInput">
+            <input type="hidden" name="channel_settings" x-ref="channelSettingsInput">
+            <input type="hidden" name="channel_variants" x-ref="channelVariantsInput">
+
+            {{-- Step Indicator --}}
+            <div class="px-4 py-4">
+                <div class="flex items-center justify-between mb-4">
+                    <template x-for="(stepName, idx) in ['Основное', 'Опции', 'Варианты', 'Изображения']" :key="idx">
+                        <button type="button" @click="currentStep = idx + 1"
+                                class="flex-1 py-2 text-xs font-medium text-center border-b-2 transition-colors"
+                                :class="currentStep === idx + 1 ? 'border-blue-600 text-blue-600' : 'border-gray-200 text-gray-500'"
+                                x-text="stepName"></button>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Step 1: Basic Info --}}
+            <div x-show="currentStep === 1" class="px-4 space-y-4">
+                <div class="native-card space-y-4">
+                    <div>
+                        <label class="native-caption">Название товара *</label>
+                        <input type="text" name="product[name]" x-model="product.name" class="native-input mt-1" placeholder="Введите название" required>
+                    </div>
+
+                    <div>
+                        <label class="native-caption">Артикул (SKU)</label>
+                        <input type="text" name="product[sku]" x-model="product.sku" class="native-input mt-1" placeholder="Артикул товара">
+                    </div>
+
+                    <div>
+                        <label class="native-caption">Описание</label>
+                        <textarea name="product[description]" x-model="product.description" class="native-input mt-1" rows="4" placeholder="Описание товара"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="native-caption">Цена</label>
+                            <input type="number" name="product[base_price]" x-model="product.base_price" class="native-input mt-1" step="0.01" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="native-caption">Старая цена</label>
+                            <input type="number" name="product[old_price]" x-model="product.old_price" class="native-input mt-1" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" @click="currentStep = 2" class="native-btn w-full">Далее →</button>
+            </div>
+
+            {{-- Step 2: Options (simplified) --}}
+            <div x-show="currentStep === 2" class="px-4 space-y-4">
+                <div class="native-card">
+                    <p class="native-body font-semibold mb-3">Размеры</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="size in globalSizes" :key="size.id">
+                            <label class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer transition-colors"
+                                   :class="selectedSizes.includes(size.code) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-white border-gray-200'">
+                                <input type="checkbox" class="sr-only" :value="size.code" x-model="selectedSizes">
+                                <span class="text-sm" x-text="size.value"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="native-card">
+                    <p class="native-body font-semibold mb-3">Цвета</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="color in globalColors" :key="color.id">
+                            <label class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer transition-colors"
+                                   :class="selectedColors.includes(color.code) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-white border-gray-200'">
+                                <input type="checkbox" class="sr-only" :value="color.code" x-model="selectedColors">
+                                <span class="w-4 h-4 rounded-full mr-2 border" :style="`background-color: ${color.hex || '#ccc'}`"></span>
+                                <span class="text-sm" x-text="color.value"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="button" @click="currentStep = 1" class="native-btn native-btn-secondary flex-1">← Назад</button>
+                    <button type="button" @click="generateVariants(); currentStep = 3" class="native-btn flex-1">Далее →</button>
+                </div>
+            </div>
+
+            {{-- Step 3: Variants --}}
+            <div x-show="currentStep === 3" class="px-4 space-y-4">
+                <div x-show="variants.length === 0" class="native-card text-center py-8">
+                    <p class="native-caption">Нет вариантов. Выберите размеры или цвета.</p>
+                </div>
+
+                <template x-for="(variant, idx) in variants" :key="idx">
+                    <div class="native-card">
+                        <p class="native-body font-semibold mb-3" x-text="variant.name || `Вариант ${idx + 1}`"></p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="native-caption">SKU</label>
+                                <input type="text" x-model="variant.sku" class="native-input mt-1">
+                            </div>
+                            <div>
+                                <label class="native-caption">Цена</label>
+                                <input type="number" x-model="variant.price_default" class="native-input mt-1" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="flex space-x-3">
+                    <button type="button" @click="currentStep = 2" class="native-btn native-btn-secondary flex-1">← Назад</button>
+                    <button type="button" @click="currentStep = 4" class="native-btn flex-1">Далее →</button>
+                </div>
+            </div>
+
+            {{-- Step 4: Images --}}
+            <div x-show="currentStep === 4" class="px-4 space-y-4">
+                <div class="native-card">
+                    <p class="native-body font-semibold mb-3">Изображения</p>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <template x-for="(img, idx) in images" :key="idx">
+                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+                                <img :src="img.file_path || '/images/placeholder.png'" class="w-full h-full object-cover">
+                                <button type="button" @click="images.splice(idx, 1)" class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full text-xs">×</button>
+                            </div>
+                        </template>
+                        <label class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300">
+                            <input type="file" accept="image/*" class="sr-only" @change="addImageFromFile($event.target.files[0])">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="button" @click="currentStep = 3" class="native-btn native-btn-secondary flex-1">← Назад</button>
+                    <button type="submit" class="native-btn flex-1">Сохранить</button>
+                </div>
+            </div>
+        </form>
+    </main>
+</div>
 @endsection

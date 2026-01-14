@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="reviewsPage()" x-init="init()" class="flex h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="reviewsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50">
 
     <x-sidebar></x-sidebar>
 
@@ -545,4 +546,81 @@ function reviewsPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="reviewsPage()" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Отзывы" :backUrl="'/'">
+        <button @click="loadReviews()" :disabled="loading" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadReviews">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Статус</label>
+                    <select class="native-input mt-1" x-model="filters.status" @change="loadReviews()">
+                        <option value="">Все</option>
+                        <option value="pending">Ожидают ответа</option>
+                        <option value="responded">Отвечено</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Оценка</label>
+                    <select class="native-input mt-1" x-model="filters.rating" @change="loadReviews()">
+                        <option value="">Все</option>
+                        <option value="5">5 звёзд</option>
+                        <option value="4">4 звезды</option>
+                        <option value="3">3 звезды</option>
+                        <option value="2">2 звезды</option>
+                        <option value="1">1 звезда</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading && reviews.length === 0" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && reviews.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <p class="native-body font-semibold">Отзывов не найдено</p>
+            </div>
+        </div>
+
+        {{-- Reviews List --}}
+        <div x-show="!loading && reviews.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="review in reviews" :key="review.id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <p class="native-body font-semibold" x-text="review.customer_name || 'Аноним'"></p>
+                            <p class="native-caption" x-text="formatDate(review.created_at)"></p>
+                        </div>
+                        <div x-html="renderStars(review.rating)" class="text-yellow-500"></div>
+                    </div>
+                    <p class="native-body text-gray-700 mb-2" x-text="review.review_text"></p>
+                    <div class="flex items-center space-x-2">
+                        <span :class="getSentimentBadgeClass(review.sentiment)" class="px-2 py-0.5 text-xs rounded-full font-medium" x-text="getSentimentLabel(review.sentiment)"></span>
+                        <span x-show="review.response_text" class="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Отвечено</span>
+                    </div>
+                    <div x-show="!review.response_text" class="mt-3">
+                        <button @click="generateResponse(review.id)" :disabled="generatingResponse === review.id" class="native-btn w-full text-sm py-2">
+                            <span x-show="generatingResponse !== review.id">Сгенерировать ответ</span>
+                            <span x-show="generatingResponse === review.id">Генерация...</span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection
