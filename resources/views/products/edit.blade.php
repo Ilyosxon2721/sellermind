@@ -135,14 +135,31 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Бренд</label>
                             <input type="text" name="product[brand_name]" x-model="product.brand_name" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
                         </div>
-                        <div>
+                        <div x-data="{ showNewCategory: false, newCategoryName: '' }">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Категория</label>
-                            <select name="product[category_id]" x-model="product.category_id" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                                <option value="">Не выбрано</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="flex gap-2">
+                                <template x-if="!showNewCategory">
+                                    <select name="product[category_id]" x-model="product.category_id" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                                        <option value="">Не выбрано</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </template>
+                                <template x-if="showNewCategory">
+                                    <input type="text"
+                                           x-model="newCategoryName"
+                                           name="product[new_category_name]"
+                                           class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                           placeholder="Введите название категории">
+                                </template>
+                                <button type="button"
+                                        @click="showNewCategory = !showNewCategory; if(!showNewCategory) newCategoryName = ''"
+                                        class="px-3 py-2 text-sm rounded-xl transition-colors"
+                                        :class="showNewCategory ? 'bg-gray-200 text-gray-700' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'">
+                                    <span x-text="showNewCategory ? 'Отмена' : '+ Новая'"></span>
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Страна происхождения</label>
@@ -230,10 +247,11 @@
                                 <span class="text-sm text-gray-500">Выбрано: <span class="font-semibold text-indigo-600" x-text="selectedSizes.length"></span></span>
                             </div>
                             <div class="flex flex-wrap gap-2">
+                                <!-- Predefined sizes -->
                                 <template x-for="size in globalSizes" :key="size.id">
                                     <label class="cursor-pointer">
-                                        <input type="checkbox" 
-                                               :value="size.code" 
+                                        <input type="checkbox"
+                                               :value="size.code"
                                                x-model="selectedSizes"
                                                class="peer hidden">
                                         <span class="inline-block px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
@@ -242,6 +260,34 @@
                                               x-text="size.value"></span>
                                     </label>
                                 </template>
+                                <!-- Custom sizes -->
+                                <template x-for="(size, idx) in customSizes" :key="'custom-size-' + idx">
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox"
+                                               :value="size.code"
+                                               x-model="selectedSizes"
+                                               class="peer hidden">
+                                        <span class="inline-flex items-center gap-1 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
+                                                     peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
+                                                     bg-amber-50 text-amber-700 border-amber-300 hover:border-amber-400">
+                                            <span x-text="size.value"></span>
+                                            <button type="button" @click.prevent="removeCustomSize(idx)" class="ml-1 text-amber-500 hover:text-red-600">&times;</button>
+                                        </span>
+                                    </label>
+                                </template>
+                            </div>
+                            <!-- Add custom size -->
+                            <div class="flex gap-2 items-center">
+                                <input type="text"
+                                       x-model="newSizeValue"
+                                       @keydown.enter.prevent="addCustomSize"
+                                       class="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                                       placeholder="Новый размер">
+                                <button type="button"
+                                        @click="addCustomSize"
+                                        class="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
+                                    + Добавить
+                                </button>
                             </div>
                         </div>
 
@@ -252,22 +298,57 @@
                                 <span class="text-sm text-gray-500">Выбрано: <span class="font-semibold text-indigo-600" x-text="selectedColors.length"></span></span>
                             </div>
                             <div class="flex flex-wrap gap-2">
+                                <!-- Predefined colors -->
                                 <template x-for="color in globalColors" :key="color.id">
                                     <label class="cursor-pointer">
-                                        <input type="checkbox" 
-                                               :value="color.code" 
+                                        <input type="checkbox"
+                                               :value="color.code"
                                                x-model="selectedColors"
                                                class="peer hidden">
                                         <span class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
                                                      peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
                                                      bg-white text-gray-700 border-gray-300 hover:border-indigo-300">
-                                            <span x-show="color.hex" 
+                                            <span x-show="color.hex"
                                                   class="w-4 h-4 rounded-full border border-gray-300"
                                                   :style="'background-color: ' + color.hex"></span>
                                             <span x-text="color.value"></span>
                                         </span>
                                     </label>
                                 </template>
+                                <!-- Custom colors -->
+                                <template x-for="(color, idx) in customColors" :key="'custom-color-' + idx">
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox"
+                                               :value="color.code"
+                                               x-model="selectedColors"
+                                               class="peer hidden">
+                                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
+                                                     peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
+                                                     bg-amber-50 text-amber-700 border-amber-300 hover:border-amber-400">
+                                            <span x-show="color.hex"
+                                                  class="w-4 h-4 rounded-full border border-gray-300"
+                                                  :style="'background-color: ' + color.hex"></span>
+                                            <span x-text="color.value"></span>
+                                            <button type="button" @click.prevent="removeCustomColor(idx)" class="ml-1 text-amber-500 hover:text-red-600">&times;</button>
+                                        </span>
+                                    </label>
+                                </template>
+                            </div>
+                            <!-- Add custom color -->
+                            <div class="flex gap-2 items-center">
+                                <input type="text"
+                                       x-model="newColorValue"
+                                       @keydown.enter.prevent="addCustomColor"
+                                       class="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                                       placeholder="Новый цвет">
+                                <input type="color"
+                                       x-model="newColorHex"
+                                       class="w-10 h-8 border border-gray-300 rounded cursor-pointer">
+                                <button type="button"
+                                        @click="addCustomColor"
+                                        class="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
+                                    + Добавить
+                                </button>
                             </div>
                         </div>
 
@@ -597,6 +678,55 @@ function productEditor() {
         selectedSizes: [],
         selectedColors: [],
 
+        // Custom sizes and colors (user-added)
+        customSizes: [],
+        customColors: [],
+        newSizeValue: '',
+        newColorValue: '',
+        newColorHex: '#6366f1',
+
+        // Add custom size
+        addCustomSize() {
+            const value = this.newSizeValue.trim();
+            if (!value) return;
+            const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            if (this.globalSizes.some(s => s.code === code) || this.customSizes.some(s => s.code === code)) {
+                alert('Такой размер уже существует');
+                return;
+            }
+            this.customSizes.push({ id: 'custom-' + Date.now(), value: value, code: code });
+            this.selectedSizes.push(code);
+            this.newSizeValue = '';
+        },
+
+        // Remove custom size
+        removeCustomSize(idx) {
+            const size = this.customSizes[idx];
+            this.selectedSizes = this.selectedSizes.filter(s => s !== size.code);
+            this.customSizes.splice(idx, 1);
+        },
+
+        // Add custom color
+        addCustomColor() {
+            const value = this.newColorValue.trim();
+            if (!value) return;
+            const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            if (this.globalColors.some(c => c.code === code) || this.customColors.some(c => c.code === code)) {
+                alert('Такой цвет уже существует');
+                return;
+            }
+            this.customColors.push({ id: 'custom-' + Date.now(), value: value, code: code, hex: this.newColorHex });
+            this.selectedColors.push(code);
+            this.newColorValue = '';
+        },
+
+        // Remove custom color
+        removeCustomColor(idx) {
+            const color = this.customColors[idx];
+            this.selectedColors = this.selectedColors.filter(c => c !== color.code);
+            this.customColors.splice(idx, 1);
+        },
+
         nextStep() { if (this.step < this.steps.length) this.step++; },
         prevStep() { if (this.step > 1) this.step--; },
         addOption() { this.options.push({name: '', code: '', type: 'select', is_variant_dimension: true, values: []}); },
@@ -610,25 +740,29 @@ function productEditor() {
             const article = this.product.article || 'SKU';
             const sizes = this.selectedSizes;
             const colors = this.selectedColors;
-            
+
             if (!sizes.length || !colors.length) {
                 alert('Выберите хотя бы один размер и один цвет');
                 return;
             }
-            
+
+            // Combine global and custom options for lookups
+            const allSizes = [...this.globalSizes, ...this.customSizes];
+            const allColors = [...this.globalColors, ...this.customColors];
+
             this.variants = [];
-            
+
             for (const sizeCode of sizes) {
-                const sizeObj = this.globalSizes.find(s => s.code === sizeCode);
+                const sizeObj = allSizes.find(s => s.code === sizeCode);
                 const sizeValue = sizeObj ? sizeObj.value : sizeCode;
-                
+
                 for (const colorCode of colors) {
-                    const colorObj = this.globalColors.find(c => c.code === colorCode);
+                    const colorObj = allColors.find(c => c.code === colorCode);
                     const colorValue = colorObj ? colorObj.value : colorCode;
-                    
+
                     // SKU format: Article-SizeCode-ColorCode
                     const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
-                    
+
                     this.variants.push({
                         sku: sku,
                         option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
@@ -643,7 +777,7 @@ function productEditor() {
                     });
                 }
             }
-            
+
             // Auto-advance to step 3 to show variants table
             this.step = 3;
         },
@@ -670,22 +804,23 @@ function productEditor() {
         async uploadImage(event, idx) {
             const file = event.target.files[0];
             if (!file) return;
-            
+
             // Show loading state
             const originalPath = this.images[idx].file_path;
             this.images[idx].file_path = 'Загрузка...';
-            
+
             const formData = new FormData();
             formData.append('image', file);
-            
-            // Get auth token from localStorage
-            const tokenRaw = localStorage.getItem('_x_auth_token');
-            const token = tokenRaw ? JSON.parse(tokenRaw) : null;
-            
+
+            // Get auth token from Alpine store or localStorage
+            const authStore = Alpine.store('auth');
+            const token = authStore?.token || localStorage.getItem('_x_auth_token');
+
             try {
                 const response = await fetch('/api/products/upload-image', {
                     method: 'POST',
                     body: formData,
+                    credentials: 'include', // Important: include session cookies
                     headers: {
                         'Accept': 'application/json',
                         'Authorization': token ? `Bearer ${token}` : '',
