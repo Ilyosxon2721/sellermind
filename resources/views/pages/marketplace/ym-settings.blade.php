@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="ymSettingsPage()" x-init="init()" class="flex h-screen bg-gray-50">
+<div x-data="ymSettingsPage()" x-init="init()" class="flex h-screen bg-gray-50 browser-only">
 
     <x-sidebar />
 
@@ -622,4 +622,169 @@ function ymSettingsPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    account: null,
+    loading: true,
+    testing: false,
+    saving: false,
+    connectionStatus: 'unknown',
+    testResult: null,
+    credentials: { api_key: '', campaign_id: '', business_id: '' },
+    activeTab: 'status',
+
+    async init() {
+        await this.$nextTick();
+        const authStore = this.$store?.auth;
+        if (!authStore || !authStore.token) { window.location.href = '/login'; return; }
+        if (!authStore.currentCompany) { alert('Нет активной компании'); window.location.href = '/profile/company'; return; }
+        await this.loadAccount();
+    },
+
+    async loadAccount() {
+        this.loading = true;
+        try {
+            const authStore = this.$store.auth;
+            const res = await fetch('/api/marketplace/accounts/{{ $accountId }}?company_id=' + authStore.currentCompany.id, {
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                this.account = data.account;
+                this.credentials = {
+                    api_key: this.account?.credentials?.api_key || '',
+                    campaign_id: this.account?.credentials?.campaign_id || '',
+                    business_id: this.account?.credentials?.business_id || ''
+                };
+            } else if (res.status === 401) { window.location.href = '/login'; }
+        } catch (e) { console.error('Error:', e); }
+        this.loading = false;
+    },
+
+    async testConnection() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.testing = true;
+        this.testResult = null;
+        try {
+            const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/ping?company_id=' + authStore.currentCompany.id, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            this.testResult = await res.json();
+            this.connectionStatus = this.testResult.success ? 'connected' : 'error';
+        } catch (e) { this.testResult = { success: false, message: 'Ошибка: ' + e.message }; this.connectionStatus = 'error'; }
+        this.testing = false;
+    },
+
+    async saveSettings() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.saving = true;
+        try {
+            const res = await fetch('/api/marketplace/yandex-market/accounts/{{ $accountId }}/settings', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: authStore.currentCompany.id, api_key: this.credentials.api_key, campaign_id: this.credentials.campaign_id, business_id: this.credentials.business_id })
+            });
+            if (res.ok) { alert('Настройки сохранены'); await this.loadAccount(); }
+            else { alert('Ошибка сохранения'); }
+        } catch (e) { alert('Ошибка: ' + e.message); }
+        this.saving = false;
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Настройки Yandex Market" :backUrl="'/marketplace/' . $accountId" />
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadAccount">
+
+        {{-- Tabs --}}
+        <div class="flex space-x-2 mb-3">
+            <button @click="activeTab = 'status'" :class="activeTab === 'status' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Статус</button>
+            <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-yellow-500 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Настройки</button>
+        </div>
+
+        {{-- Loading --}}
+        <template x-if="loading">
+            <div class="native-card">
+                <div class="flex items-center justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+        </template>
+
+        {{-- Status Tab --}}
+        <template x-if="!loading && activeTab === 'status'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Аккаунт</h3>
+                    <p class="native-body" x-text="account?.display_name || account?.name || 'Без названия'"></p>
+                </div>
+
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Статус подключения</h3>
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-3 h-3 rounded-full" :class="connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'error' ? 'bg-red-500' : 'bg-gray-300'"></div>
+                        <span class="native-body" x-text="connectionStatus === 'connected' ? 'Подключено' : connectionStatus === 'error' ? 'Ошибка' : 'Не проверено'"></span>
+                    </div>
+                    <button @click="testConnection()" :disabled="testing" class="native-btn w-full bg-gray-200 text-gray-800">
+                        <span x-text="testing ? 'Проверка...' : 'Проверить подключение'"></span>
+                    </button>
+                    <template x-if="testResult">
+                        <div class="mt-3 p-3 rounded-lg text-sm" :class="testResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
+                            <p x-text="testResult.message"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="native-card" x-show="account?.credentials_display">
+                    <h3 class="font-semibold text-gray-900 mb-3">Сохранённые данные</h3>
+                    <div class="native-list">
+                        <template x-for="item in (account?.credentials_display || [])" :key="item.label">
+                            <div class="native-list-item">
+                                <span class="native-caption" x-text="item.label"></span>
+                                <span class="native-body" x-text="item.value"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- Settings Tab --}}
+        <template x-if="!loading && activeTab === 'settings'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-4">API настройки</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">API-Key токен</label>
+                            <input type="password" x-model="credentials.api_key" placeholder="Введите API-Key" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Campaign ID</label>
+                            <input type="text" x-model="credentials.campaign_id" placeholder="ID кампании" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Business ID <span class="text-red-500">*</span></label>
+                            <input type="text" x-model="credentials.business_id" placeholder="ID бизнеса" class="native-input w-full">
+                        </div>
+                    </div>
+                    <button @click="saveSettings()" :disabled="saving" class="native-btn w-full bg-yellow-500 text-white mt-4">
+                        <span x-text="saving ? 'Сохранение...' : 'Сохранить'"></span>
+                    </button>
+                </div>
+
+                <div class="native-card bg-yellow-50">
+                    <p class="text-sm text-yellow-800">
+                        <strong>Получить API:</strong> ЛК Yandex Market → Настройки → Настройки API
+                    </p>
+                </div>
+            </div>
+        </template>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="wbProductsPage()" class="flex h-screen bg-gray-50">
+<div x-data="wbProductsPage()" class="flex h-screen bg-gray-50 browser-only">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -558,4 +558,146 @@
         }
     }
 </script>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    products: [],
+    loading: true,
+    searchQuery: '',
+    selectedProduct: null,
+    pagination: { current_page: 1, last_page: 1 },
+    getToken() {
+        const t = localStorage.getItem('_x_auth_token');
+        if (t) try { return JSON.parse(t); } catch { return t; }
+        return localStorage.getItem('auth_token');
+    },
+    getAuthHeaders() {
+        return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json' };
+    },
+    async loadProducts(page = 1) {
+        this.loading = true;
+        try {
+            const params = new URLSearchParams({ page, per_page: 20, search: this.searchQuery });
+            const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/products?' + params, { headers: this.getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this.products = data.products || [];
+                this.pagination = data.pagination || { current_page: 1, last_page: 1 };
+            }
+        } catch (e) { console.error(e); }
+        this.loading = false;
+    },
+    formatPrice(p) {
+        if (!p) return '—';
+        return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(p);
+    }
+}" x-init="loadProducts()" style="background: #f2f2f7;">
+    <x-pwa-header title="Товары WB" :backUrl="'/marketplace/' . $accountId">
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadProducts">
+
+        {{-- Search --}}
+        <div class="mb-3">
+            <input type="search" x-model="searchQuery" @input.debounce.500ms="loadProducts(1)" placeholder="Артикул, nmID, штрихкод..." class="w-full px-4 py-3 rounded-xl bg-white border-0 shadow-sm text-base">
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="flex justify-center py-8">
+            <div class="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        {{-- Products list --}}
+        <div x-show="!loading" class="space-y-3">
+            <template x-if="products.length === 0">
+                <div class="native-card p-6 text-center">
+                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </div>
+                    <p class="native-body text-gray-500">Товаров нет</p>
+                </div>
+            </template>
+
+            <template x-for="product in products" :key="product.id">
+                <div class="native-card p-3" @click="selectedProduct = product">
+                    <div class="flex gap-3">
+                        <div class="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
+                            <img x-show="product.primary_photo" :src="product.primary_photo" class="w-full h-full object-cover" alt="">
+                            <div x-show="!product.primary_photo" class="w-full h-full flex items-center justify-center text-gray-400 text-xs">—</div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-900 text-sm line-clamp-2" x-text="product.title || 'Без названия'"></p>
+                            <p class="native-caption text-gray-500 mt-1" x-text="product.brand || '—'"></p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="native-caption text-gray-500" x-text="'nmID: ' + (product.nm_id || '—')"></span>
+                                <span class="font-semibold text-purple-600" x-text="formatPrice(product.price_with_discount || product.price)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Pagination --}}
+            <div x-show="pagination.last_page > 1" class="flex justify-center gap-2 py-4">
+                <button @click="loadProducts(pagination.current_page - 1)" :disabled="pagination.current_page <= 1" class="px-4 py-2 bg-white rounded-lg text-sm disabled:opacity-50">Назад</button>
+                <span class="px-4 py-2 text-sm text-gray-500" x-text="pagination.current_page + ' / ' + pagination.last_page"></span>
+                <button @click="loadProducts(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page" class="px-4 py-2 bg-white rounded-lg text-sm disabled:opacity-50">Вперёд</button>
+            </div>
+        </div>
+    </main>
+
+    {{-- Product Detail Modal --}}
+    <div x-show="selectedProduct" x-cloak class="fixed inset-0 z-50" @click.self="selectedProduct = null">
+        <div class="absolute inset-0 bg-black/50" @click="selectedProduct = null"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto" style="padding-bottom: env(safe-area-inset-bottom, 20px);">
+            <div class="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
+                <h3 class="font-semibold text-lg">Товар</h3>
+                <button @click="selectedProduct = null" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-4 space-y-4">
+                {{-- Image --}}
+                <div class="w-full h-48 rounded-xl bg-gray-100 overflow-hidden">
+                    <img x-show="selectedProduct?.primary_photo" :src="selectedProduct?.primary_photo" class="w-full h-full object-cover" alt="">
+                    <div x-show="!selectedProduct?.primary_photo" class="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>
+                </div>
+                {{-- Info --}}
+                <div>
+                    <p class="font-semibold text-lg" x-text="selectedProduct?.title || 'Без названия'"></p>
+                    <p class="text-gray-500 mt-1" x-text="selectedProduct?.brand || '—'"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="native-caption text-gray-500">nmID</p>
+                        <p class="font-medium" x-text="selectedProduct?.nm_id || '—'"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="native-caption text-gray-500">Артикул</p>
+                        <p class="font-medium" x-text="selectedProduct?.vendor_code || selectedProduct?.supplier_article || '—'"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="native-caption text-gray-500">Штрихкод</p>
+                        <p class="font-medium" x-text="selectedProduct?.barcode || '—'"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="native-caption text-gray-500">Категория</p>
+                        <p class="font-medium" x-text="selectedProduct?.subject_name || '—'"></p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
+                    <div>
+                        <p class="native-caption text-gray-500">Цена</p>
+                        <p class="text-xl font-bold text-purple-600" x-text="formatPrice(selectedProduct?.price_with_discount || selectedProduct?.price)"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="native-caption text-gray-500">Остаток</p>
+                        <p class="text-xl font-bold" x-text="(selectedProduct?.stock_total || 0) + ' шт.'"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

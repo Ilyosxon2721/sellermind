@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="autopricingPage()">
+<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50 browser-only" x-data="autopricingPage()">
     <x-sidebar />
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
@@ -166,6 +166,253 @@
         </div>
     </div>
 </div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen bg-gray-50" x-data="autopricingPagePwa()">
+    <x-pwa-header title="Автопрайсинг" backUrl="/dashboard" />
+
+    <main class="pt-14 pb-20" style="padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);">
+        <div class="p-4 space-y-4" x-pull-to-refresh="loadProposals()">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="native-card p-4 text-center">
+                    <div class="text-2xl font-bold text-indigo-600" x-text="proposals.length">0</div>
+                    <div class="native-caption">Предложений</div>
+                </div>
+                <div class="native-card p-4 text-center">
+                    <div class="text-2xl font-bold text-amber-600" x-text="proposals.filter(p => p.status === 'NEW').length">0</div>
+                    <div class="native-caption">Новых</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="native-card p-4 space-y-3">
+                <div>
+                    <label class="native-caption block mb-1">Политика</label>
+                    <select class="native-input w-full" x-model="policyId" @change="loadProposals()">
+                        <template x-for="p in policies" :key="p.id">
+                            <option :value="p.id" x-text="p.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption block mb-1">Канал</label>
+                    <select class="native-input w-full" x-model="channelCode" @change="loadProposals()">
+                        <option value="UZUM">Uzum</option>
+                        <option value="WB">Wildberries</option>
+                        <option value="OZON">Ozon</option>
+                    </select>
+                </div>
+                <button class="native-btn native-btn-primary w-full" @click="showSimModal = true">
+                    Запустить симуляцию
+                </button>
+            </div>
+
+            <!-- Proposals List -->
+            <div class="space-y-3">
+                <div class="native-caption px-1">Предложения</div>
+                <template x-if="proposals.length === 0">
+                    <div class="native-card p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <p class="native-body text-gray-500">Нет предложений</p>
+                    </div>
+                </template>
+                <template x-for="pr in proposals" :key="pr.id">
+                    <div class="native-card p-4" @click="selectProposal(pr)">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold text-indigo-600" x-text="'SKU ' + pr.sku_id"></span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                  :class="{
+                                      'bg-green-100 text-green-700': pr.status === 'APPLIED' || pr.status === 'APPROVED',
+                                      'bg-amber-100 text-amber-700': pr.status === 'NEW',
+                                      'bg-red-100 text-red-700': pr.status === 'REJECTED' || pr.status === 'FAILED',
+                                      'bg-gray-100 text-gray-700': pr.status === 'SKIPPED'
+                                  }"
+                                  x-text="pr.status"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="native-caption">
+                                <span x-text="format(pr.current_price)"></span>
+                                <span class="mx-1">→</span>
+                                <span class="font-bold text-indigo-600" x-text="format(pr.proposed_price)"></span>
+                            </div>
+                            <div class="text-sm" :class="pr.delta_amount >= 0 ? 'text-green-600' : 'text-red-600'"
+                                 x-text="(pr.delta_amount >= 0 ? '+' : '') + (pr.delta_percent * 100).toFixed(1) + '%'"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Simulation Modal -->
+    <div x-show="showSimModal" x-cloak class="fixed inset-0 z-50" @click.self="showSimModal = false">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl" style="padding-bottom: env(safe-area-inset-bottom);">
+            <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold mb-4">Запустить симуляцию</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="native-caption block mb-1">SKU IDs (через запятую)</label>
+                        <input type="text" class="native-input w-full" x-model="skuInput" placeholder="101, 102, 103">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button class="native-btn flex-1" @click="showSimModal = false">Отмена</button>
+                    <button class="native-btn native-btn-primary flex-1" @click="runCalc()">Запустить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proposal Actions Modal -->
+    <div x-show="selectedProposal" x-cloak class="fixed inset-0 z-50" @click.self="selectedProposal = null">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl" style="padding-bottom: env(safe-area-inset-bottom);">
+            <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold mb-2">SKU <span x-text="selectedProposal?.sku_id"></span></h3>
+                <div class="native-body text-gray-600 mb-4">
+                    <div class="flex justify-between py-2 border-b">
+                        <span>Текущая цена:</span>
+                        <span x-text="format(selectedProposal?.current_price)"></span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span>Предложенная:</span>
+                        <span class="font-bold text-indigo-600" x-text="format(selectedProposal?.proposed_price)"></span>
+                    </div>
+                    <div class="flex justify-between py-2">
+                        <span>Изменение:</span>
+                        <span :class="selectedProposal?.delta_amount >= 0 ? 'text-green-600' : 'text-red-600'"
+                              x-text="format(selectedProposal?.delta_amount) + ' (' + ((selectedProposal?.delta_percent || 0) * 100).toFixed(1) + '%)'"></span>
+                    </div>
+                </div>
+                <template x-if="selectedProposal?.status === 'NEW'">
+                    <div class="flex gap-3">
+                        <button class="native-btn flex-1 bg-red-50 text-red-600" @click="reject(selectedProposal.id)">Отклонить</button>
+                        <button class="native-btn native-btn-primary flex-1" @click="approve(selectedProposal.id)">Одобрить</button>
+                    </div>
+                </template>
+                <template x-if="selectedProposal?.status !== 'NEW'">
+                    <button class="native-btn w-full" @click="selectedProposal = null">Закрыть</button>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-24 left-4 right-4 z-50">
+        <div class="px-4 py-3 rounded-xl shadow-lg text-center text-white"
+             :class="toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'"
+             x-text="toast.message"></div>
+    </div>
+</div>
+
+<script>
+    function autopricingPagePwa() {
+        return {
+            policies: [],
+            policyId: '',
+            channelCode: 'UZUM',
+            skuInput: '',
+            proposals: [],
+            showSimModal: false,
+            selectedProposal: null,
+            toast: { show: false, message: '', type: 'success' },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 3000);
+            },
+
+            format(v) { return v != null ? Number(v).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'; },
+
+            getAuthHeaders() {
+                const token = localStorage.getItem('_x_auth_token');
+                const parsed = token ? JSON.parse(token) : null;
+                return {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': parsed ? `Bearer ${parsed}` : ''
+                };
+            },
+
+            async loadPolicies() {
+                const resp = await fetch('/api/marketplace/autopricing/policies', { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.policies = json.data || [];
+                    if (!this.policyId && this.policies.length) this.policyId = this.policies[0].id;
+                }
+            },
+
+            async loadProposals() {
+                if (!this.policyId) return;
+                const params = new URLSearchParams({ policy_id: this.policyId, channel_code: this.channelCode });
+                const resp = await fetch('/api/marketplace/autopricing/proposals?' + params.toString(), { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) this.proposals = json.data || [];
+            },
+
+            selectProposal(pr) {
+                this.selectedProposal = pr;
+            },
+
+            async runCalc() {
+                if (!this.policyId || !this.channelCode || !this.skuInput) {
+                    this.showToast('Укажите SKU', 'error');
+                    return;
+                }
+                const sku_ids = this.skuInput.split(',').map(s => parseInt(s.trim())).filter(Boolean);
+                try {
+                    const resp = await fetch('/api/marketplace/autopricing/calc', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify({ policy_id: this.policyId, channel_code: this.channelCode, sku_ids })
+                    });
+                    const json = await resp.json();
+                    if (resp.ok && !json.errors) {
+                        this.showSimModal = false;
+                        this.showToast('Симуляция выполнена');
+                        await this.loadProposals();
+                    } else {
+                        this.showToast(json.errors?.[0]?.message || 'Ошибка', 'error');
+                    }
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка', 'error');
+                }
+            },
+
+            async approve(id) {
+                await fetch(`/api/marketplace/autopricing/proposals/${id}/approve`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                this.selectedProposal = null;
+                this.showToast('Одобрено');
+                this.loadProposals();
+            },
+
+            async reject(id) {
+                await fetch(`/api/marketplace/autopricing/proposals/${id}/reject`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                this.selectedProposal = null;
+                this.showToast('Отклонено');
+                this.loadProposals();
+            },
+
+            async init() {
+                await this.loadPolicies();
+                await this.loadProposals();
+            }
+        }
+    }
+</script>
 
 <script>
     function autopricingPage() {

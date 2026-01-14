@@ -2,7 +2,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="vpcCreatePage()" x-init="init()" class="min-h-screen bg-gray-50">
+<div x-data="vpcCreatePage()" x-init="init()" class="min-h-screen bg-gray-50 browser-only">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -121,4 +121,80 @@ function vpcCreatePage() {
     };
 }
 </script>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    form: {
+        name: '{{ old('name') }}',
+        company_id: '{{ old('company_id') }}',
+        agent_task_id: '{{ old('agent_task_id') }}'
+    },
+    submitting: false,
+    async submitForm() {
+        this.submitting = true;
+        document.getElementById('pwa-create-form').submit();
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Новая VPC-сессия" :backUrl="route('vpc_sessions.index')">
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+
+        <form id="pwa-create-form" action="{{ route('vpc_sessions.store') }}" method="POST">
+            @csrf
+
+            <div class="native-card mb-4">
+                <div class="p-4 border-b border-gray-100">
+                    <p class="font-medium text-gray-900">Настройки сессии</p>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div>
+                        <label class="native-caption text-gray-500 mb-1 block">Название сессии</label>
+                        <input type="text" name="name" x-model="form.name" placeholder="Например: Анализ карточек Uzum" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-0 text-base">
+                        @error('name')
+                            <p class="native-caption text-red-500 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500 mb-1 block">Компания (опционально)</label>
+                        <select name="company_id" x-model="form.company_id" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-0 text-base">
+                            <option value="">Без привязки</option>
+                            @foreach($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500 mb-1 block">Привязать к задаче агента</label>
+                        <select name="agent_task_id" x-model="form.agent_task_id" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-0 text-base">
+                            <option value="">Без привязки</option>
+                            @foreach($agentTasks as $task)
+                                <option value="{{ $task->id }}">{{ $task->title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Info Box --}}
+            <div class="native-card mb-4 bg-blue-50">
+                <div class="p-4 flex">
+                    <svg class="w-5 h-5 text-blue-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="font-medium text-blue-900">Виртуальный ПК</p>
+                        <p class="native-caption text-blue-700 mt-1">После создания сессии вы сможете управлять виртуальным ПК или передать управление ИИ-агенту.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" @click.prevent="submitForm()" :disabled="submitting" class="native-btn native-btn-primary w-full">
+                <span x-show="!submitting">Создать и запустить</span>
+                <span x-show="submitting">Создание...</span>
+            </button>
+        </form>
+    </main>
+</div>
 @endsection

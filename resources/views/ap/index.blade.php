@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="apPage()">
+<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50 browser-only" x-data="apPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -273,6 +273,336 @@
         <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-indigo-600 text-white' : 'bg-red-600 text-white'"><span x-text="toast.message"></span></div>
     </div>
 </div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen bg-gray-50" x-data="apPagePwa()">
+    <x-pwa-header title="Финансы (AP)" backUrl="/dashboard" />
+
+    <main class="pt-14 pb-20" style="padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);">
+        <div class="p-4 space-y-4">
+            <!-- Tabs -->
+            <div class="flex bg-white rounded-xl p-1 shadow-sm">
+                <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
+                        :class="activeTab === 'invoices' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600'"
+                        @click="activeTab = 'invoices'; loadInvoices()">
+                    Счета
+                </button>
+                <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
+                        :class="activeTab === 'payments' ? 'bg-green-100 text-green-700' : 'text-gray-600'"
+                        @click="activeTab = 'payments'; loadPayments()">
+                    Оплаты
+                </button>
+                <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
+                        :class="activeTab === 'reports' ? 'bg-amber-100 text-amber-700' : 'text-gray-600'"
+                        @click="activeTab = 'reports'; loadAging()">
+                    Отчёты
+                </button>
+            </div>
+
+            <!-- Invoices Tab -->
+            <div x-show="activeTab === 'invoices'" class="space-y-3" x-pull-to-refresh="loadInvoices()">
+                <div class="flex items-center justify-between">
+                    <div class="native-caption">Счета</div>
+                    <button class="native-btn native-btn-primary text-sm py-1.5 px-3" @click="showInvoiceForm = true">+ Создать</button>
+                </div>
+                <template x-if="invoices.length === 0">
+                    <div class="native-card p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="native-body text-gray-500">Нет счетов</p>
+                    </div>
+                </template>
+                <template x-for="inv in invoices" :key="inv.id">
+                    <div class="native-card p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold text-indigo-600" x-text="inv.invoice_no"></span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                  :class="{
+                                      'bg-green-100 text-green-700': inv.status === 'PAID',
+                                      'bg-amber-100 text-amber-700': inv.status === 'PARTIALLY_PAID' || inv.status === 'DRAFT',
+                                      'bg-blue-100 text-blue-700': inv.status === 'CONFIRMED'
+                                  }"
+                                  x-text="inv.status"></span>
+                        </div>
+                        <div class="native-caption mb-2" x-text="supplierName(inv.supplier_id)"></div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Срок: <span x-text="inv.due_date || '—'"></span></span>
+                            <div>
+                                <span class="text-gray-600" x-text="formatMoney(inv.amount_total)"></span>
+                                <template x-if="inv.amount_outstanding > 0">
+                                    <span class="text-red-600 font-semibold ml-2" x-text="'Долг: ' + formatMoney(inv.amount_outstanding)"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Payments Tab -->
+            <div x-show="activeTab === 'payments'" class="space-y-3" x-pull-to-refresh="loadPayments()">
+                <div class="flex items-center justify-between">
+                    <div class="native-caption">Оплаты</div>
+                    <button class="native-btn bg-green-600 text-white text-sm py-1.5 px-3" @click="showPaymentForm = true">+ Создать</button>
+                </div>
+                <template x-if="payments.length === 0">
+                    <div class="native-card p-8 text-center">
+                        <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        <p class="native-body text-gray-500">Нет платежей</p>
+                    </div>
+                </template>
+                <template x-for="pay in payments" :key="pay.id">
+                    <div class="native-card p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold text-green-600" x-text="pay.payment_no"></span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                  :class="{
+                                      'bg-green-100 text-green-700': pay.status === 'POSTED',
+                                      'bg-amber-100 text-amber-700': pay.status === 'DRAFT',
+                                      'bg-red-100 text-red-700': pay.status === 'CANCELLED'
+                                  }"
+                                  x-text="pay.status"></span>
+                        </div>
+                        <div class="native-caption mb-2" x-text="supplierName(pay.supplier_id)"></div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500" x-text="pay.paid_at"></span>
+                            <span class="font-bold text-gray-900" x-text="formatMoney(pay.amount_total)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Reports Tab -->
+            <div x-show="activeTab === 'reports'" class="space-y-4">
+                <div class="native-card p-4 space-y-3">
+                    <div class="native-caption">Дата отчёта</div>
+                    <input type="date" class="native-input w-full" x-model="reportFilters.as_of">
+                    <div class="flex gap-2">
+                        <button class="native-btn native-btn-primary flex-1" @click="loadAging()">Aging</button>
+                        <button class="native-btn bg-red-600 text-white flex-1" @click="loadOverdue()">Просрочено</button>
+                    </div>
+                </div>
+
+                <!-- Aging by Supplier -->
+                <div class="native-card p-4">
+                    <div class="native-caption mb-3">Aging по поставщикам</div>
+                    <template x-if="Object.keys(aging).length === 0">
+                        <p class="native-body text-gray-500 text-center py-4">Нет данных</p>
+                    </template>
+                    <div class="space-y-3">
+                        <template x-for="[supplierId, buckets] in Object.entries(aging)" :key="supplierId">
+                            <div class="p-3 bg-gray-50 rounded-lg">
+                                <div class="font-medium text-gray-900 mb-2" x-text="supplierName(supplierId)"></div>
+                                <div class="grid grid-cols-4 gap-1 text-xs">
+                                    <div class="text-center p-1.5 bg-green-100 rounded">
+                                        <div class="font-bold text-green-700" x-text="formatMoney(buckets['0-7'] || 0)"></div>
+                                        <div class="text-green-600">0-7</div>
+                                    </div>
+                                    <div class="text-center p-1.5 bg-amber-100 rounded">
+                                        <div class="font-bold text-amber-700" x-text="formatMoney(buckets['8-30'] || 0)"></div>
+                                        <div class="text-amber-600">8-30</div>
+                                    </div>
+                                    <div class="text-center p-1.5 bg-orange-100 rounded">
+                                        <div class="font-bold text-orange-700" x-text="formatMoney(buckets['31-60'] || 0)"></div>
+                                        <div class="text-orange-600">31-60</div>
+                                    </div>
+                                    <div class="text-center p-1.5 bg-red-100 rounded">
+                                        <div class="font-bold text-red-700" x-text="formatMoney(buckets['60+'] || 0)"></div>
+                                        <div class="text-red-600">60+</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Overdue -->
+                <template x-if="overdue.length > 0">
+                    <div class="native-card p-4">
+                        <div class="native-caption mb-3">Просроченные счета</div>
+                        <div class="space-y-2">
+                            <template x-for="inv in overdue" :key="inv.id">
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <div class="font-medium text-gray-900" x-text="inv.invoice_no + ' · ' + supplierName(inv.supplier_id)"></div>
+                                    <div class="text-sm text-gray-600">
+                                        Долг: <span class="font-bold text-red-600" x-text="formatMoney(inv.amount_outstanding)"></span>
+                                        · Срок: <span x-text="inv.due_date"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Invoice Form Modal -->
+    <div x-show="showInvoiceForm" x-cloak class="fixed inset-0 z-50" @click.self="showInvoiceForm = false">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl" style="padding-bottom: env(safe-area-inset-bottom);">
+            <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold mb-4">Новый счёт</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="native-caption block mb-1">Поставщик</label>
+                        <select class="native-input w-full" x-model="invoiceForm.supplier_id">
+                            <option value="">Выберите...</option>
+                            @foreach($suppliers as $sup)
+                                <option value="{{ $sup->id }}">{{ $sup->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">№ счёта</label>
+                        <input class="native-input w-full" x-model="invoiceForm.invoice_no">
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">Срок оплаты</label>
+                        <input type="date" class="native-input w-full" x-model="invoiceForm.due_date">
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">Сумма</label>
+                        <input type="number" step="0.01" class="native-input w-full" x-model="invoiceForm.amount_total">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button class="native-btn flex-1" @click="showInvoiceForm = false">Отмена</button>
+                    <button class="native-btn native-btn-primary flex-1" @click="createInvoice()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Form Modal -->
+    <div x-show="showPaymentForm" x-cloak class="fixed inset-0 z-50" @click.self="showPaymentForm = false">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl" style="padding-bottom: env(safe-area-inset-bottom);">
+            <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3"></div>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold mb-4">Новый платёж</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="native-caption block mb-1">Поставщик</label>
+                        <select class="native-input w-full" x-model="paymentForm.supplier_id">
+                            <option value="">Выберите...</option>
+                            @foreach($suppliers as $sup)
+                                <option value="{{ $sup->id }}">{{ $sup->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">№ платежа</label>
+                        <input class="native-input w-full" x-model="paymentForm.payment_no">
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">Дата</label>
+                        <input type="datetime-local" class="native-input w-full" x-model="paymentForm.paid_at">
+                    </div>
+                    <div>
+                        <label class="native-caption block mb-1">Сумма</label>
+                        <input type="number" step="0.01" class="native-input w-full" x-model="paymentForm.amount_total">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button class="native-btn flex-1" @click="showPaymentForm = false">Отмена</button>
+                    <button class="native-btn bg-green-600 text-white flex-1" @click="createPayment()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-24 left-4 right-4 z-50">
+        <div class="px-4 py-3 rounded-xl shadow-lg text-center text-white"
+             :class="toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'"
+             x-text="toast.message"></div>
+    </div>
+</div>
+
+<script>
+function apPagePwa() {
+    const suppliers = @json($suppliers);
+    return {
+        activeTab: 'invoices',
+        invoices: [], payments: [], aging: {}, overdue: [],
+        reportFilters: { as_of: new Date().toISOString().slice(0,10) },
+        showInvoiceForm: false, showPaymentForm: false,
+        invoiceForm: { supplier_id: '', invoice_no: '', due_date: '', amount_total: '' },
+        paymentForm: { supplier_id: '', payment_no: '', paid_at: new Date().toISOString().slice(0,16), amount_total: '' },
+        toast: { show: false, message: '', type: 'success' },
+
+        showToast(message, type = 'success') {
+            this.toast = { show: true, message, type };
+            setTimeout(() => { this.toast.show = false; }, 3000);
+        },
+
+        getAuthHeaders() {
+            const token = localStorage.getItem('_x_auth_token');
+            const parsed = token ? JSON.parse(token) : null;
+            return { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': parsed ? `Bearer ${parsed}` : '' };
+        },
+
+        supplierName(id) {
+            const s = suppliers.find(x => x.id == id);
+            return s ? s.name : '—';
+        },
+
+        formatMoney(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
+
+        async loadInvoices() {
+            const resp = await fetch('/api/marketplace/ap/invoices', { headers: this.getAuthHeaders() });
+            const json = await resp.json();
+            if (resp.ok && !json.errors) this.invoices = json.data || [];
+        },
+
+        async loadPayments() {
+            const resp = await fetch('/api/marketplace/ap/payments', { headers: this.getAuthHeaders() });
+            const json = await resp.json();
+            if (resp.ok && !json.errors) this.payments = json.data || [];
+        },
+
+        async loadAging() {
+            const resp = await fetch('/api/marketplace/ap/reports/aging?as_of=' + (this.reportFilters.as_of || ''), { headers: this.getAuthHeaders() });
+            const json = await resp.json();
+            if (resp.ok && !json.errors) this.aging = json.data || {};
+        },
+
+        async loadOverdue() {
+            const resp = await fetch('/api/marketplace/ap/reports/overdue?as_of=' + (this.reportFilters.as_of || ''), { headers: this.getAuthHeaders() });
+            const json = await resp.json();
+            if (resp.ok && !json.errors) this.overdue = json.data || [];
+        },
+
+        async createInvoice() {
+            try {
+                const resp = await fetch('/api/marketplace/ap/invoices', { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.invoiceForm) });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                this.showInvoiceForm = false;
+                this.showToast('Счёт создан');
+                this.loadInvoices();
+            } catch (e) { this.showToast(e.message, 'error'); }
+        },
+
+        async createPayment() {
+            try {
+                const resp = await fetch('/api/marketplace/ap/payments', { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.paymentForm) });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                this.showPaymentForm = false;
+                this.showToast('Платёж создан');
+                this.loadPayments();
+            } catch (e) { this.showToast(e.message, 'error'); }
+        },
+
+        init() { this.loadInvoices(); }
+    }
+}
+</script>
 
 <script>
 function apPage() {

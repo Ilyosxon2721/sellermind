@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8" x-data="plansPage()">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8 browser-only" x-data="plansPage()">
     <!-- Header -->
     <div class="max-w-7xl mx-auto text-center mb-12">
         <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
@@ -223,6 +223,168 @@
         </a>
     </div>
 </div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen bg-gray-50" x-data="plansPagePwa()">
+    <x-pwa-header title="Тарифы" backUrl="/" />
+
+    <main class="pt-14 pb-20" style="padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);">
+        <div class="p-4 space-y-4" x-pull-to-refresh="loadPlans()">
+            <!-- Billing Period Toggle -->
+            <div class="native-card p-2">
+                <div class="flex rounded-lg bg-gray-100 p-1">
+                    <button class="flex-1 py-2 text-xs font-medium rounded-md transition-colors"
+                            :class="billingPeriod === 'monthly' ? 'bg-white shadow text-indigo-600' : 'text-gray-600'"
+                            @click="billingPeriod = 'monthly'">
+                        Месяц
+                    </button>
+                    <button class="flex-1 py-2 text-xs font-medium rounded-md transition-colors"
+                            :class="billingPeriod === 'quarterly' ? 'bg-white shadow text-indigo-600' : 'text-gray-600'"
+                            @click="billingPeriod = 'quarterly'">
+                        Квартал -10%
+                    </button>
+                    <button class="flex-1 py-2 text-xs font-medium rounded-md transition-colors"
+                            :class="billingPeriod === 'yearly' ? 'bg-white shadow text-indigo-600' : 'text-gray-600'"
+                            @click="billingPeriod = 'yearly'">
+                        Год -20%
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <template x-if="loading">
+                <div class="native-card p-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-indigo-500 border-t-transparent"></div>
+                    <p class="mt-3 text-gray-500 text-sm">Загрузка тарифов...</p>
+                </div>
+            </template>
+
+            <!-- Plans List -->
+            <div x-show="!loading" class="space-y-4">
+                <template x-for="plan in plans" :key="plan.id">
+                    <div class="native-card overflow-hidden" :class="plan.is_popular ? 'ring-2 ring-indigo-500' : ''">
+                        <!-- Popular Badge -->
+                        <div x-show="plan.is_popular" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold text-center py-1">
+                            Популярный
+                        </div>
+                        <div class="p-4">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h3 class="font-bold text-gray-900 text-lg" x-text="plan.name"></h3>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="plan.description"></p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xl font-bold text-gray-900" x-text="formatPrice(calculatePrice(plan))"></div>
+                                    <div class="text-xs text-gray-500">/мес</div>
+                                </div>
+                            </div>
+
+                            <!-- Limits -->
+                            <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+                                <div class="flex items-center text-gray-700">
+                                    <svg class="w-4 h-4 text-green-500 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span x-text="plan.limits.products + ' товаров'"></span>
+                                </div>
+                                <div class="flex items-center text-gray-700">
+                                    <svg class="w-4 h-4 text-green-500 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span x-text="plan.limits.orders_per_month + ' заказов'"></span>
+                                </div>
+                                <div class="flex items-center text-gray-700">
+                                    <svg class="w-4 h-4 text-green-500 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span x-text="plan.limits.marketplace_accounts + ' маркетплейсов'"></span>
+                                </div>
+                                <div class="flex items-center text-gray-700">
+                                    <svg class="w-4 h-4 text-green-500 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span x-text="plan.limits.users + ' пользователей'"></span>
+                                </div>
+                            </div>
+
+                            <!-- Select Button -->
+                            <button @click="selectPlan(plan)"
+                                    :class="plan.is_popular ? 'native-btn-primary' : ''"
+                                    class="native-btn w-full">
+                                Выбрать
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- FAQ -->
+            <div class="space-y-3 mt-6">
+                <div class="native-caption">Часто задаваемые вопросы</div>
+                <div class="native-card p-4">
+                    <h4 class="font-medium text-gray-900 text-sm mb-1">Можно ли сменить тариф?</h4>
+                    <p class="text-xs text-gray-600">Да, вы можете повысить или понизить тариф в любой момент.</p>
+                </div>
+                <div class="native-card p-4">
+                    <h4 class="font-medium text-gray-900 text-sm mb-1">Есть ли пробный период?</h4>
+                    <p class="text-xs text-gray-600">Да, 14 дней бесплатного доступа ко всем функциям.</p>
+                </div>
+                <div class="native-card p-4">
+                    <h4 class="font-medium text-gray-900 text-sm mb-1">Методы оплаты</h4>
+                    <p class="text-xs text-gray-600">Click, Payme, банковский перевод и карты Visa/Mastercard.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+function plansPagePwa() {
+    return {
+        plans: [],
+        loading: true,
+        billingPeriod: 'monthly',
+
+        async init() {
+            await this.loadPlans();
+        },
+
+        async loadPlans() {
+            try {
+                const response = await fetch('/api/plans', { headers: { 'Accept': 'application/json' } });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.plans = data.plans || [];
+                }
+            } catch (error) {
+                console.error('Error loading plans:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        calculatePrice(plan) {
+            const basePrice = parseFloat(plan.price);
+            if (this.billingPeriod === 'quarterly') return (basePrice * 0.9).toFixed(0);
+            if (this.billingPeriod === 'yearly') return (basePrice * 0.8).toFixed(0);
+            return basePrice;
+        },
+
+        formatPrice(price) {
+            return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'UZS', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
+        },
+
+        selectPlan(plan) {
+            const token = localStorage.getItem('_x_auth_token');
+            if (!token) {
+                window.location.href = `/login?redirect=/plans&plan=${plan.slug}&period=${this.billingPeriod}`;
+            } else {
+                window.location.href = `/company/profile?tab=billing&plan=${plan.slug}&period=${this.billingPeriod}`;
+            }
+        }
+    }
+}
+</script>
 
 <script>
 function plansPage() {

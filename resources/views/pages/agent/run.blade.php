@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="agentRunPage({{ $runId }})" x-init="init()" class="min-h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="agentRunPage({{ $runId }})" x-init="init()" class="browser-only min-h-screen bg-gray-50">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -283,4 +284,128 @@ function agentRunPage(runId) {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="agentRunPage({{ $runId }})" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header :title="'Запуск #' . $runId" :backUrl="'/agent'">
+        <span :class="{
+            'text-green-600': run?.status === 'success',
+            'text-red-600': run?.status === 'failed',
+            'text-yellow-600': run?.status === 'running',
+            'text-gray-500': run?.status === 'pending'
+        }" class="text-sm font-medium" x-text="getStatusText(run?.status)"></span>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadRun">
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        <div x-show="!loading" class="px-4 py-4 space-y-4">
+            {{-- Status Card --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold" x-text="run?.task?.title || 'Задача'"></p>
+                    <span :class="{
+                        'bg-green-100 text-green-800': run?.status === 'success',
+                        'bg-red-100 text-red-800': run?.status === 'failed',
+                        'bg-yellow-100 text-yellow-800': run?.status === 'running',
+                        'bg-gray-100 text-gray-800': run?.status === 'pending'
+                    }" class="px-2 py-0.5 text-xs font-medium rounded-full" x-text="getStatusText(run?.status)"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 native-caption">
+                    <div>
+                        <span class="text-gray-400">Начало:</span>
+                        <span x-text="formatDate(run?.started_at) || 'Ещё не начат'"></span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Окончание:</span>
+                        <span x-text="formatDate(run?.finished_at) || 'В процессе'"></span>
+                    </div>
+                </div>
+
+                {{-- Summary --}}
+                <div x-show="run?.result_summary" class="mt-3 pt-3 border-t border-gray-200">
+                    <p class="native-caption text-gray-400 mb-1">Результат</p>
+                    <p class="native-body bg-gray-50 rounded-lg p-3" x-text="run?.result_summary"></p>
+                </div>
+
+                {{-- Error --}}
+                <div x-show="run?.error_message" class="mt-3 pt-3 border-t border-gray-200">
+                    <p class="native-caption text-red-500 mb-1">Ошибка</p>
+                    <p class="native-body text-red-600 bg-red-50 rounded-lg p-3" x-text="run?.error_message"></p>
+                </div>
+            </div>
+
+            {{-- Messages Log --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">Лог сообщений</p>
+
+                <div x-show="!run?.messages || run.messages.length === 0" class="text-center py-6 native-caption">
+                    <template x-if="run?.status === 'pending'">
+                        <p>Задача ожидает выполнения...</p>
+                    </template>
+                    <template x-if="run?.status === 'running'">
+                        <div>
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                            <p>Выполняется...</p>
+                        </div>
+                    </template>
+                    <template x-if="run?.status !== 'pending' && run?.status !== 'running'">
+                        <p>Нет сообщений</p>
+                    </template>
+                </div>
+
+                <div x-show="run?.messages && run.messages.length > 0" class="space-y-3">
+                    <template x-for="message in run?.messages" :key="message.id">
+                        <div :class="{
+                            'border-l-4 border-blue-500 bg-blue-50': message.role === 'system',
+                            'border-l-4 border-green-500 bg-green-50': message.role === 'user',
+                            'border-l-4 border-purple-500 bg-purple-50': message.role === 'assistant',
+                            'border-l-4 border-orange-500 bg-orange-50': message.role === 'tool'
+                        }" class="rounded-lg p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span :class="{
+                                    'text-blue-700': message.role === 'system',
+                                    'text-green-700': message.role === 'user',
+                                    'text-purple-700': message.role === 'assistant',
+                                    'text-orange-700': message.role === 'tool'
+                                }" class="text-xs font-medium uppercase" x-text="getRoleName(message.role)"></span>
+                                <span class="text-xs text-gray-400" x-text="formatTime(message.created_at)"></span>
+                            </div>
+                            <div x-show="message.tool_name" class="mb-2">
+                                <span class="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded" x-text="'Tool: ' + message.tool_name"></span>
+                            </div>
+                            <div class="text-sm text-gray-800 whitespace-pre-wrap" x-text="message.content"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Follow-up Message Input --}}
+            <div x-show="run?.status === 'success'" class="native-card">
+                <p class="native-body font-semibold mb-3">Продолжить диалог</p>
+                <form @submit.prevent="sendFollowUp()" class="space-y-3">
+                    <textarea x-model="followUpMessage"
+                              rows="3"
+                              placeholder="Введите ваш ответ..."
+                              class="native-input w-full"
+                              :disabled="sendingFollowUp"></textarea>
+                    <button type="submit"
+                            :disabled="!followUpMessage.trim() || sendingFollowUp"
+                            class="native-btn native-btn-primary w-full">
+                        <span x-text="sendingFollowUp ? 'Отправка...' : 'Отправить'"></span>
+                    </button>
+                </form>
+            </div>
+
+            {{-- Auto-refresh notice --}}
+            <div x-show="run?.status === 'running' || run?.status === 'pending'" class="text-center native-caption">
+                <p>Обновляется автоматически...</p>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection

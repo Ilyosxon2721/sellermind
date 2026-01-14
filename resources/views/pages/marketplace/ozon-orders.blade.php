@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="ozonOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5]">
+<div x-data="ozonOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only">
     
     <x-sidebar />
     
@@ -768,4 +768,172 @@ function ozonOrdersPage() {
 <style>
 [x-cloak] { display: none !important; }
 </style>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    orders: [],
+    loading: true,
+    syncing: false,
+    activeTab: 'all',
+    searchQuery: '',
+    selectedOrder: null,
+    tabs: [
+        { value: 'all', label: 'Все' },
+        { value: 'awaiting_packaging', label: 'Упаковка' },
+        { value: 'awaiting_deliver', label: 'Отгрузка' },
+        { value: 'delivering', label: 'Доставка' },
+        { value: 'delivered', label: 'Доставлены' },
+        { value: 'cancelled', label: 'Отменены' }
+    ],
+    getToken() {
+        const t = localStorage.getItem('_x_auth_token');
+        if (t) try { return JSON.parse(t); } catch { return t; }
+        return localStorage.getItem('auth_token');
+    },
+    getAuthHeaders() {
+        return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json', 'Content-Type': 'application/json' };
+    },
+    async loadOrders() {
+        this.loading = true;
+        try {
+            const params = new URLSearchParams({ search: this.searchQuery, status: this.activeTab === 'all' ? '' : this.activeTab });
+            const res = await fetch('/marketplace/{{ $accountId }}/ozon-orders/json?' + params, { headers: this.getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this.orders = data.orders || [];
+            }
+        } catch (e) { console.error(e); }
+        this.loading = false;
+    },
+    async syncOrders() {
+        this.syncing = true;
+        try {
+            await fetch('/api/marketplace/ozon/accounts/{{ $accountId }}/sync-orders', { method: 'POST', headers: this.getAuthHeaders() });
+            await this.loadOrders();
+        } catch (e) { console.error(e); }
+        this.syncing = false;
+    },
+    getStatusColor(status) {
+        return { awaiting_packaging: 'bg-yellow-100 text-yellow-800', awaiting_deliver: 'bg-orange-100 text-orange-800', delivering: 'bg-blue-100 text-blue-800', delivered: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' }[status] || 'bg-gray-100 text-gray-800';
+    },
+    getStatusLabel(status) {
+        return { awaiting_packaging: 'Упаковка', awaiting_deliver: 'Отгрузка', delivering: 'Доставка', delivered: 'Доставлен', cancelled: 'Отменён' }[status] || status || '—';
+    },
+    formatPrice(p) { return p ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(p) : '0 ₽'; },
+    formatDate(d) { return d ? new Date(d).toLocaleDateString('ru-RU') : '—'; }
+}" x-init="loadOrders()" style="background: #f2f2f7;">
+    <x-pwa-header title="Заказы Ozon" :backUrl="'/marketplace/' . $accountId">
+        <button @click="syncOrders()" :disabled="syncing" class="text-[#005BFF] font-medium">
+            <span x-show="!syncing">Синхр.</span>
+            <span x-show="syncing">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadOrders">
+
+        {{-- Search --}}
+        <div class="mb-3">
+            <input type="search" x-model="searchQuery" @input.debounce.500ms="loadOrders()" placeholder="Номер заказа, posting number..." class="w-full px-4 py-3 rounded-xl bg-white border-0 shadow-sm text-base">
+        </div>
+
+        {{-- Tabs --}}
+        <div class="flex gap-2 overflow-x-auto pb-3 hide-scrollbar">
+            <template x-for="tab in tabs" :key="tab.value">
+                <button @click="activeTab = tab.value; loadOrders()" :class="activeTab === tab.value ? 'bg-[#005BFF] text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0" x-text="tab.label"></button>
+            </template>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="flex justify-center py-8">
+            <div class="w-8 h-8 border-3 border-[#005BFF] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        {{-- Orders list --}}
+        <div x-show="!loading" class="space-y-3">
+            <template x-if="orders.length === 0">
+                <div class="native-card p-6 text-center">
+                    <div class="w-16 h-16 bg-[#005BFF]/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-8 h-8 text-[#005BFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <p class="native-body text-gray-500">Заказов нет</p>
+                </div>
+            </template>
+
+            <template x-for="order in orders" :key="order.id">
+                <div class="native-card p-4" @click="selectedOrder = order">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <p class="font-semibold text-gray-900" x-text="order.posting_number"></p>
+                            <p class="native-caption text-gray-500" x-text="formatDate(order.in_process_at)"></p>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusColor(order.status)" x-text="getStatusLabel(order.status)"></span>
+                    </div>
+                    {{-- Products --}}
+                    <template x-if="order.products && order.products.length > 0">
+                        <div class="mt-2 space-y-1">
+                            <template x-for="product in order.products.slice(0, 2)" :key="product.sku || product.offer_id">
+                                <p class="native-caption text-gray-600 line-clamp-1" x-text="product.name || product.offer_id"></p>
+                            </template>
+                            <p x-show="order.products.length > 2" class="native-caption text-gray-400" x-text="'+ ещё ' + (order.products.length - 2)"></p>
+                        </div>
+                    </template>
+                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                        <span class="native-caption text-gray-500" x-text="'ID: ' + order.order_id"></span>
+                        <span class="font-bold text-gray-900" x-text="formatPrice(order.total_price)"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+
+    {{-- Order Detail Modal --}}
+    <div x-show="selectedOrder" x-cloak class="fixed inset-0 z-50" @click.self="selectedOrder = null">
+        <div class="absolute inset-0 bg-black/50" @click="selectedOrder = null"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[80vh] overflow-y-auto" style="padding-bottom: env(safe-area-inset-bottom, 20px);">
+            <div class="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
+                <h3 class="font-semibold text-lg" x-text="'Заказ ' + selectedOrder?.posting_number"></h3>
+                <button @click="selectedOrder = null" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Статус</span>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusColor(selectedOrder?.status)" x-text="getStatusLabel(selectedOrder?.status)"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">ID заказа</span>
+                    <span class="font-medium" x-text="selectedOrder?.order_id"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Дата</span>
+                    <span class="font-medium" x-text="formatDate(selectedOrder?.in_process_at)"></span>
+                </div>
+                {{-- Products --}}
+                <div class="border-t border-gray-100 pt-4">
+                    <p class="text-gray-500 mb-2">Товары</p>
+                    <template x-if="selectedOrder?.products && selectedOrder.products.length > 0">
+                        <div class="space-y-2">
+                            <template x-for="product in selectedOrder.products" :key="product.sku || product.offer_id">
+                                <div class="bg-gray-50 rounded-lg p-3">
+                                    <p class="font-medium text-sm" x-text="product.name || product.offer_id"></p>
+                                    <div class="flex justify-between mt-1">
+                                        <span class="native-caption text-gray-500" x-text="(product.quantity || 1) + ' шт.'"></span>
+                                        <span class="font-medium" x-text="formatPrice(product.price)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <div class="border-t border-gray-100 pt-4 flex justify-between items-center">
+                    <span class="font-semibold text-lg">Итого:</span>
+                    <span class="font-bold text-xl text-[#005BFF]" x-text="formatPrice(selectedOrder?.total_price)"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

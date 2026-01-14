@@ -2,7 +2,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="vpcShowPage({{ $session->id }})" x-init="init()" class="min-h-screen bg-gray-50">
+<div x-data="vpcShowPage({{ $session->id }})" x-init="init()" class="min-h-screen bg-gray-50 browser-only">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -343,4 +343,164 @@ function vpcShowPage(sessionId) {
     };
 }
 </script>
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    session: @json($session),
+    actions: @json($actions->items()),
+    controlMode: '{{ $session->control_mode }}',
+    getStatusColor(status) {
+        return { creating: 'bg-gray-100 text-gray-800', ready: 'bg-blue-100 text-blue-800', running: 'bg-green-100 text-green-800', paused: 'bg-yellow-100 text-yellow-800', stopped: 'bg-gray-100 text-gray-800', error: 'bg-red-100 text-red-800' }[status] || 'bg-gray-100 text-gray-800';
+    },
+    getStatusLabel(status) {
+        return { creating: 'Создаётся', ready: 'Готов', running: 'Работает', paused: 'Пауза', stopped: 'Остановлен', error: 'Ошибка' }[status] || status;
+    },
+    getModeLabel(mode) {
+        return { AGENT_CONTROL: 'Агент', USER_CONTROL: 'Пользователь', PAUSED: 'Пауза' }[mode] || mode;
+    },
+    async setControlMode(mode) {
+        try {
+            await fetch('/vpc-sessions/{{ $session->id }}/control-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ mode })
+            });
+            location.reload();
+        } catch (e) { console.error(e); }
+    },
+    async startSession() {
+        document.getElementById('pwa-start-form').submit();
+    },
+    async stopSession() {
+        document.getElementById('pwa-stop-form').submit();
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header :title="$session->name ?? 'VPC #' . $session->id" :backUrl="route('vpc_sessions.index')">
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+
+        {{-- Status Card --}}
+        <div class="native-card mb-4">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="native-caption text-gray-500">Статус</span>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getStatusColor(session.status)" x-text="getStatusLabel(session.status)"></span>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="native-caption text-gray-500">Режим</span>
+                    <span class="font-medium" x-text="getModeLabel(session.control_mode)"></span>
+                </div>
+                @if($session->agentTask)
+                    <div class="flex items-center justify-between">
+                        <span class="native-caption text-gray-500">Задача</span>
+                        <span class="font-medium">{{ $session->agentTask->title }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- VPC Screen Placeholder --}}
+        <div class="native-card mb-4">
+            <div class="p-4 border-b border-gray-100">
+                <p class="font-medium text-gray-900">Экран VPC</p>
+            </div>
+            <div class="aspect-video bg-gray-900 flex items-center justify-center">
+                @if($session->status === 'running')
+                    <div class="text-center p-4">
+                        <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-gray-400 text-sm">Видео-поток VPC</p>
+                    </div>
+                @else
+                    <div class="text-center p-4">
+                        <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        </svg>
+                        <p class="text-gray-400 text-sm">Сессия не запущена</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Control Mode --}}
+        <div class="native-card mb-4">
+            <div class="p-4 border-b border-gray-100">
+                <p class="font-medium text-gray-900">Режим управления</p>
+            </div>
+            <div class="p-2 space-y-1">
+                <button @click="setControlMode('AGENT_CONTROL')" class="w-full p-3 rounded-xl flex items-center" :class="session.control_mode === 'AGENT_CONTROL' ? 'bg-purple-50' : 'bg-white'">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Агент</p>
+                        <p class="native-caption text-gray-500">ИИ управляет VPC</p>
+                    </div>
+                </button>
+                <button @click="setControlMode('USER_CONTROL')" class="w-full p-3 rounded-xl flex items-center" :class="session.control_mode === 'USER_CONTROL' ? 'bg-blue-50' : 'bg-white'">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Пользователь</p>
+                        <p class="native-caption text-gray-500">Ручное управление</p>
+                    </div>
+                </button>
+                <button @click="setControlMode('PAUSED')" class="w-full p-3 rounded-xl flex items-center" :class="session.control_mode === 'PAUSED' ? 'bg-gray-100' : 'bg-white'">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-medium text-gray-900">Пауза</p>
+                        <p class="native-caption text-gray-500">Никто не управляет</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div class="space-y-3 mb-4">
+            @if($session->status !== 'running')
+                <form id="pwa-start-form" action="{{ route('vpc_sessions.start', $session) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="native-btn w-full bg-green-500 text-white">Запустить</button>
+                </form>
+            @endif
+
+            @if($session->status === 'running')
+                <form id="pwa-stop-form" action="{{ route('vpc_sessions.stop', $session) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="native-btn w-full bg-red-500 text-white">Остановить</button>
+                </form>
+            @endif
+        </div>
+
+        {{-- Actions Log --}}
+        @if($actions->isNotEmpty())
+            <div class="native-card">
+                <div class="p-4 border-b border-gray-100">
+                    <p class="font-medium text-gray-900">Лог действий</p>
+                </div>
+                <div class="divide-y divide-gray-100">
+                    @foreach($actions as $action)
+                        <div class="p-3 flex items-start">
+                            <span class="w-2 h-2 rounded-full mt-1.5 mr-2 {{ $action->source === 'agent' ? 'bg-purple-500' : 'bg-blue-500' }}"></span>
+                            <div class="flex-1 min-w-0">
+                                <p class="native-caption text-gray-500">{{ $action->created_at->format('H:i:s') }} · {{ $action->source === 'agent' ? 'Агент' : 'User' }}</p>
+                                <p class="text-sm text-gray-900">{{ $action->action_type }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    </main>
+</div>
 @endsection

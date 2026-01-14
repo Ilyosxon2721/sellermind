@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50" x-data="counterpartiesPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gray-50" x-data="counterpartiesPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -765,4 +766,208 @@ function counterpartiesPage() {
     }
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="counterpartiesPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Контрагенты" backUrl="/">
+        <button @click="openCreateModal()" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadCounterparties">
+
+        {{-- Search --}}
+        <div class="px-4 py-4">
+            <div class="native-card">
+                <input type="text" class="native-input w-full" placeholder="Поиск..." x-model="filters.search" @keydown.enter="loadCounterparties()">
+                <div class="flex gap-2 mt-3">
+                    <select class="native-input flex-1" x-model="filters.type" @change="loadCounterparties()">
+                        <option value="">Все типы</option>
+                        <option value="individual">Физ. лица</option>
+                        <option value="legal">Юр. лица</option>
+                    </select>
+                    <button class="native-btn" @click="loadCounterparties()">Найти</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Stats --}}
+        <div class="px-4 grid grid-cols-2 gap-3 mb-4">
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-gray-900" x-text="stats.total">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-purple-600" x-text="stats.withContracts">0</p>
+                <p class="native-caption">С договорами</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && counterparties.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <p class="native-body font-semibold mb-2">Нет контрагентов</p>
+                <button @click="openCreateModal()" class="text-blue-600 font-medium">Добавить →</button>
+            </div>
+        </div>
+
+        {{-- List --}}
+        <div x-show="!loading && counterparties.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="item in counterparties" :key="item.id">
+                <div class="native-card" @click="viewCounterparty(item)">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <p class="native-body font-semibold" x-text="item.short_name || item.name"></p>
+                            <p class="native-caption" x-text="item.email || item.phone || '—'"></p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="item.type === 'legal' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'" x-text="item.type === 'legal' ? 'Юр.' : 'Физ.'"></span>
+                    </div>
+                    <div class="flex items-center justify-between native-caption">
+                        <span x-text="item.inn ? 'ИНН: ' + item.inn : '—'"></span>
+                        <template x-if="item.contracts && item.contracts.length > 0">
+                            <span class="text-orange-600 font-medium" x-text="item.contracts[0].commission_percent + '%'"></span>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Pagination --}}
+            <div x-show="totalPages > 1" class="flex items-center justify-between py-3">
+                <span class="native-caption" x-text="'Стр. ' + currentPage + ' из ' + totalPages"></span>
+                <div class="flex gap-2">
+                    <button class="native-btn" @click="prevPage()" :disabled="currentPage <= 1">←</button>
+                    <button class="native-btn" @click="nextPage()" :disabled="currentPage >= totalPages">→</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{-- Create/Edit Modal --}}
+    <div x-show="showFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl w-full max-h-[90vh] overflow-hidden" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="p-5 border-b border-gray-100">
+                <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                <h3 class="text-lg font-bold" x-text="isEditing ? 'Редактировать' : 'Новый контрагент'"></h3>
+            </div>
+            <div class="p-5 overflow-y-auto max-h-[60vh] space-y-3">
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2">
+                        <input type="radio" value="individual" x-model="form.type"> Физ. лицо
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" value="legal" x-model="form.type"> Юр. лицо
+                    </label>
+                </div>
+                <input type="text" class="native-input w-full" x-model="form.name" placeholder="Название / ФИО *">
+                <input type="text" class="native-input w-full" x-model="form.short_name" placeholder="Сокращённое название">
+                <input type="text" class="native-input w-full" x-model="form.inn" placeholder="ИНН">
+                <input type="text" class="native-input w-full" x-model="form.phone" placeholder="Телефон">
+                <input type="email" class="native-input w-full" x-model="form.email" placeholder="Email">
+                <textarea class="native-input w-full" rows="2" x-model="form.actual_address" placeholder="Адрес"></textarea>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" x-model="form.is_customer"> Покупатель
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" x-model="form.is_supplier"> Поставщик
+                    </label>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-100 flex gap-2">
+                <button @click="saveCounterparty()" class="native-btn native-btn-primary flex-1" :disabled="saving">
+                    <span x-show="!saving" x-text="isEditing ? 'Сохранить' : 'Создать'"></span>
+                    <span x-show="saving">...</span>
+                </button>
+                <button @click="showFormModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- View Modal --}}
+    <div x-show="showViewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl w-full max-h-[85vh] overflow-hidden" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="p-5 border-b border-gray-100">
+                <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold" x-text="selectedCounterparty?.name"></h3>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full mt-1 inline-block" :class="selectedCounterparty?.type === 'legal' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'" x-text="selectedCounterparty?.type === 'legal' ? 'Юр. лицо' : 'Физ. лицо'"></span>
+                    </div>
+                    <button @click="openEditModal(selectedCounterparty)" class="text-blue-600 font-medium text-sm">Ред.</button>
+                </div>
+            </div>
+            <div class="flex border-b border-gray-100">
+                <button class="flex-1 py-3 text-sm font-medium" :class="viewTab === 'info' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'" @click="viewTab = 'info'">Инфо</button>
+                <button class="flex-1 py-3 text-sm font-medium" :class="viewTab === 'contracts' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'" @click="viewTab = 'contracts'">Договоры</button>
+            </div>
+            <div class="p-5 overflow-y-auto max-h-[50vh]">
+                {{-- Info --}}
+                <div x-show="viewTab === 'info'" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><p class="native-caption">ИНН</p><p class="native-body" x-text="selectedCounterparty?.inn || '—'"></p></div>
+                        <div><p class="native-caption">Телефон</p><p class="native-body" x-text="selectedCounterparty?.phone || '—'"></p></div>
+                        <div><p class="native-caption">Email</p><p class="native-body" x-text="selectedCounterparty?.email || '—'"></p></div>
+                        <div><p class="native-caption">Контакт</p><p class="native-body" x-text="selectedCounterparty?.contact_person || '—'"></p></div>
+                    </div>
+                    <div><p class="native-caption">Адрес</p><p class="native-body" x-text="selectedCounterparty?.actual_address || '—'"></p></div>
+                </div>
+                {{-- Contracts --}}
+                <div x-show="viewTab === 'contracts'" class="space-y-3">
+                    <button @click="openContractModal()" class="native-btn native-btn-primary w-full">+ Добавить договор</button>
+                    <template x-for="contract in contracts" :key="contract.id">
+                        <div class="bg-gray-50 rounded-xl p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium" x-text="'№' + contract.number"></span>
+                                <span class="px-2 py-0.5 text-xs rounded-full" :class="contract.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" x-text="getContractStatusLabel(contract.status)"></span>
+                            </div>
+                            <p class="native-caption mt-1" x-text="formatDate(contract.date)"></p>
+                            <p class="text-sm font-medium text-orange-600 mt-1">Комиссия: <span x-text="contract.commission_percent"></span>%</p>
+                        </div>
+                    </template>
+                    <p x-show="contracts.length === 0" class="text-center py-4 native-caption">Нет договоров</p>
+                </div>
+            </div>
+            <div class="p-5 border-t border-gray-100">
+                <button @click="showViewModal = false" class="native-btn w-full">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Contract Modal --}}
+    <div x-show="showContractModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl p-5 w-full max-w-md" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold mb-4" x-text="contractForm.id ? 'Редактировать договор' : 'Новый договор'"></h3>
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" class="native-input" x-model="contractForm.number" placeholder="Номер *">
+                    <input type="date" class="native-input" x-model="contractForm.date">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" step="0.1" class="native-input" x-model="contractForm.commission_percent" placeholder="Комиссия %">
+                    <select class="native-input" x-model="contractForm.status">
+                        <option value="active">Действует</option>
+                        <option value="draft">Черновик</option>
+                        <option value="suspended">Приостановлен</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button @click="saveContract()" class="native-btn native-btn-primary flex-1">Сохранить</button>
+                <button @click="showContractModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

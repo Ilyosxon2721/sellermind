@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8 browser-only">
     <div class="max-w-2xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
@@ -128,5 +128,118 @@
             </a>
         </div>
     </div>
+</div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen bg-gray-50">
+    <x-pwa-header title="{{ $is_renewal ?? false ? 'Продление' : 'Оплата' }}" backUrl="{{ route('company.profile', ['tab' => 'billing']) }}" />
+
+    <main class="pt-14 pb-20" style="padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);">
+        <div class="p-4 space-y-4">
+            <!-- Subscription Details -->
+            <div class="native-card p-4">
+                <h2 class="font-semibold text-gray-900 mb-3">Детали подписки</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Тариф:</span>
+                        <span class="font-medium text-gray-900">{{ $plan->name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Период:</span>
+                        <span class="font-medium text-gray-900">
+                            @if($plan->billing_period === 'monthly')
+                                Ежемесячно
+                            @elseif($plan->billing_period === 'quarterly')
+                                Квартально
+                            @elseif($plan->billing_period === 'yearly')
+                                Годовой
+                            @endif
+                        </span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-gray-200">
+                        <span class="font-medium text-gray-900">К оплате:</span>
+                        <span class="text-xl font-bold text-indigo-600">
+                            {{ number_format($amount, 0, '.', ' ') }} {{ $currency }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div class="space-y-3">
+                <div class="native-caption px-1">Способ оплаты</div>
+
+                <!-- Click -->
+                <form action="{{ route('payment.initiate.click', $subscription) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="native-card p-4 w-full text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900">Click</h3>
+                                <p class="text-xs text-gray-500">Оплата картой через Click</p>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </button>
+                </form>
+
+                <!-- Payme -->
+                <form action="{{ route('payment.initiate.payme', $subscription) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="native-card p-4 w-full text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900">Payme</h3>
+                                <p class="text-xs text-gray-500">Оплата картой через Payme</p>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </button>
+                </form>
+
+                <!-- Bank Transfer (Coming Soon) -->
+                <div class="native-card p-4 opacity-50">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-gray-300 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <svg class="w-7 h-7 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M11.5 1L2 6v2h19V6m-5 4v7h3v-7M2 22h19v-3H2m8-9v7h3v-7m-9 0v7h3v-7H4z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-medium text-gray-600">Банковский перевод</h3>
+                            <p class="text-xs text-gray-400">Скоро будет доступно</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="native-card p-4 bg-blue-50 border border-blue-200">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm text-blue-800 font-medium">Безопасная оплата</p>
+                        <p class="text-xs text-blue-600 mt-1">Все платежи защищены. Мы не храним данные карты.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="suppliesManager({{ $accountId }})" x-init="init()" class="container mx-auto px-4 py-6">
+{{-- BROWSER MODE --}}
+<div x-data="suppliesManager({{ $accountId }})" x-init="init()" class="browser-only container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -401,4 +402,145 @@ function suppliesManager(accountId) {
 <style>
 [x-cloak] { display: none !important; }
 </style>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="suppliesManager({{ $accountId }})" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Поставки" :backUrl="'/marketplace/wb/' . $accountId">
+        <button @click="showCreateModal = true" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            + Создать
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadSupplies">
+
+        {{-- Stats --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-800" x-text="supplies.length">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-blue-600" x-text="activeSuppliesCount">0</p>
+                <p class="native-caption">Активных</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-green-600" x-text="deliveredSuppliesCount">0</p>
+                <p class="native-caption">Доставлено</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-purple-600" x-text="totalOrdersCount">0</p>
+                <p class="native-caption">Заказов</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        {{-- Supplies List --}}
+        <div x-show="!loading" class="px-4 space-y-3">
+            <template x-for="supply in supplies" :key="supply.id">
+                <div class="native-card" @click="viewSupply(supply)">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="native-body font-semibold" x-text="supply.name"></p>
+                        <span :class="{
+                            'bg-gray-100 text-gray-800': supply.status === 'draft',
+                            'bg-blue-100 text-blue-800': supply.status === 'in_assembly',
+                            'bg-green-100 text-green-800': supply.status === 'ready',
+                            'bg-purple-100 text-purple-800': supply.status === 'sent',
+                            'bg-emerald-100 text-emerald-800': supply.status === 'delivered',
+                            'bg-red-100 text-red-800': supply.status === 'cancelled'
+                        }" class="px-2 py-0.5 text-xs font-medium rounded-full" x-text="getStatusText(supply.status)"></span>
+                    </div>
+                    <div class="native-caption">
+                        <span class="text-gray-400">ID:</span> <span x-text="supply.id"></span>
+                        <span class="mx-2">•</span>
+                        <span x-text="(supply.orders_count || 0) + ' заказов'"></span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+                        <button x-show="!supply.external_supply_id || !supply.external_supply_id.startsWith('WB-')"
+                                @click.stop="syncWithWb(supply.id)" class="text-xs text-indigo-600 px-2 py-1 bg-indigo-50 rounded-lg">Sync WB</button>
+                        <button x-show="supply.external_supply_id && supply.external_supply_id.startsWith('WB-')"
+                                @click.stop="downloadBarcode(supply.id)" class="text-xs text-green-600 px-2 py-1 bg-green-50 rounded-lg">QR</button>
+                        <button x-show="!supply.closed_at"
+                                @click.stop="closeSupply(supply.id)" class="text-xs text-amber-600 px-2 py-1 bg-amber-50 rounded-lg">Закрыть</button>
+                        <button x-show="supply.status === 'ready'"
+                                @click.stop="markAsSent(supply.id)" class="text-xs text-purple-600 px-2 py-1 bg-purple-50 rounded-lg">Отправить</button>
+                        <button x-show="supply.orders_count === 0"
+                                @click.stop="deleteSupply(supply.id)" class="text-xs text-red-600 px-2 py-1 bg-red-50 rounded-lg">Удалить</button>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Empty State --}}
+            <div x-show="supplies.length === 0 && !loading" class="text-center py-12 native-caption">
+                <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p>Нет поставок</p>
+                <button @click="showCreateModal = true" class="native-btn native-btn-primary mt-4">
+                    Создать поставку
+                </button>
+            </div>
+        </div>
+    </main>
+
+    {{-- Create Modal --}}
+    <div x-show="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div @click.away="showCreateModal = false" class="bg-white rounded-t-2xl p-5 w-full max-w-md" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold mb-4">Создать поставку</h3>
+            <input type="text" x-model="newSupplyName" placeholder="Название поставки" class="native-input w-full mb-4">
+            <div class="flex gap-2">
+                <button @click="createSupply()" class="native-btn native-btn-primary flex-1">Создать</button>
+                <button @click="showCreateModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- View Supply Modal --}}
+    <div x-show="showSupplyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div @click.away="showSupplyModal = false" class="bg-white rounded-t-2xl w-full max-h-[80vh] overflow-hidden" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="p-5 border-b border-gray-100">
+                <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-bold" x-text="selectedSupply?.name"></h3>
+                    <span :class="{
+                        'bg-gray-100 text-gray-800': selectedSupply?.status === 'draft',
+                        'bg-blue-100 text-blue-800': selectedSupply?.status === 'in_assembly',
+                        'bg-green-100 text-green-800': selectedSupply?.status === 'ready',
+                        'bg-purple-100 text-purple-800': selectedSupply?.status === 'sent',
+                        'bg-emerald-100 text-emerald-800': selectedSupply?.status === 'delivered'
+                    }" class="px-2 py-0.5 text-xs font-medium rounded-full" x-text="getStatusText(selectedSupply?.status)"></span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-3 native-caption">
+                    <div><span class="text-gray-400">ID:</span> <span x-text="selectedSupply?.id"></span></div>
+                    <div><span class="text-gray-400">Заказов:</span> <span x-text="selectedSupply?.orders_count || 0"></span></div>
+                    <div><span class="text-gray-400">Сумма:</span> <span x-text="formatPrice(selectedSupply?.total_amount || 0)"></span></div>
+                </div>
+            </div>
+            <div class="p-5 overflow-y-auto max-h-[50vh]">
+                <h4 class="font-semibold mb-3">Заказы</h4>
+                <div class="space-y-2">
+                    <template x-for="order in supplyOrders" :key="order.id">
+                        <div class="bg-gray-50 rounded-xl p-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="native-body font-medium">#<span x-text="order.external_order_id"></span></p>
+                                    <p class="native-caption mt-1" x-show="order.wb_article">Артикул: <span x-text="order.wb_article"></span></p>
+                                </div>
+                                <p class="native-body font-semibold" x-text="formatPrice(order.wb_final_price)"></p>
+                            </div>
+                            <button @click="removeOrderFromSupply(order.id)" class="mt-2 text-xs text-red-600">Удалить</button>
+                        </div>
+                    </template>
+                    <div x-show="supplyOrders.length === 0" class="text-center py-6 native-caption">
+                        Нет заказов в поставке
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

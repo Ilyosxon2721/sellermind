@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="passesManager({{ $accountId }})" x-init="init()" class="container mx-auto px-4 py-6">
+{{-- BROWSER MODE --}}
+<div x-data="passesManager({{ $accountId }})" x-init="init()" class="browser-only container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -279,4 +280,113 @@ function passesManager(accountId) {
 <style>
 [x-cloak] { display: none !important; }
 </style>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="passesManager({{ $accountId }})" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Пропуски WB" :backUrl="'/marketplace/wb/' . $accountId">
+        <button @click="showCreateModal = true" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            + Создать
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadPasses">
+
+        {{-- Stats --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-800" x-text="passes.length">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-green-600" x-text="activePassesCount">0</p>
+                <p class="native-caption">Активных</p>
+            </div>
+        </div>
+
+        {{-- Expiring Warning --}}
+        <div x-show="expiringPassesCount > 0" class="px-4 mb-4">
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-3">
+                <p class="text-sm text-orange-700">⚠️ Истекают скоро: <span class="font-bold" x-text="expiringPassesCount"></span></p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        {{-- Passes List --}}
+        <div x-show="!loading" class="px-4 space-y-3">
+            <template x-for="pass in passes" :key="pass.id">
+                <div class="native-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="native-body font-semibold" x-text="`${pass.lastName} ${pass.firstName}`"></p>
+                        <span :class="{
+                            'bg-green-100 text-green-800': isPassActive(pass) && !isPassExpiringSoon(pass),
+                            'bg-orange-100 text-orange-800': isPassExpiringSoon(pass),
+                            'bg-gray-100 text-gray-800': isPassExpired(pass)
+                        }" class="px-2 py-0.5 text-xs font-medium rounded-full" x-text="getPassStatus(pass)"></span>
+                    </div>
+                    <div class="native-caption space-y-1">
+                        <p x-show="pass.carModel"><span class="text-gray-400">Авто:</span> <span x-text="`${pass.carModel} (${pass.carNumber})`"></span></p>
+                        <p><span class="text-gray-400">Склад:</span> <span x-text="pass.officeId"></span></p>
+                        <p><span class="text-gray-400">Период:</span> <span x-text="formatDate(pass.dateFrom)"></span> - <span x-text="formatDate(pass.dateTo)"></span></p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <button @click="deletePass(pass.id)" class="text-sm text-red-600">Удалить</button>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Empty State --}}
+            <div x-show="passes.length === 0 && !loading" class="text-center py-12 native-caption">
+                <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+                <p>Нет пропусков</p>
+                <button @click="showCreateModal = true" class="native-btn native-btn-primary mt-4">
+                    Создать пропуск
+                </button>
+            </div>
+        </div>
+    </main>
+
+    {{-- Create Modal (same for both modes) --}}
+    <div x-show="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div @click.away="showCreateModal = false" class="bg-white rounded-t-2xl p-5 w-full max-w-md" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold mb-4">Создать пропуск</h3>
+
+            <div class="space-y-3">
+                <input type="text" x-model="newPass.firstName" placeholder="Имя" class="native-input w-full">
+                <input type="text" x-model="newPass.lastName" placeholder="Фамилия" class="native-input w-full">
+
+                <select x-model="newPass.officeId" class="native-input w-full">
+                    <option value="">Выберите склад</option>
+                    <template x-for="office in offices" :key="office.id">
+                        <option :value="office.id" x-text="office.name"></option>
+                    </template>
+                </select>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="date" x-model="newPass.dateFrom" class="native-input">
+                    <input type="date" x-model="newPass.dateTo" class="native-input">
+                </div>
+
+                <details class="border border-gray-200 rounded-xl p-3">
+                    <summary class="cursor-pointer text-sm font-medium">Данные автомобиля</summary>
+                    <div class="mt-3 space-y-2">
+                        <input type="text" x-model="newPass.carModel" placeholder="Модель авто" class="native-input w-full">
+                        <input type="text" x-model="newPass.carNumber" placeholder="Номер авто" class="native-input w-full">
+                    </div>
+                </details>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+                <button @click="createPass()" class="native-btn native-btn-primary flex-1">Создать</button>
+                <button @click="showCreateModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
