@@ -284,17 +284,17 @@
             <div class="flex bg-white rounded-xl p-1 shadow-sm">
                 <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
                         :class="activeTab === 'invoices' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600'"
-                        @click="activeTab = 'invoices'; loadInvoices()">
+                        @click="activeTab = 'invoices'">
                     Счета
                 </button>
                 <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
                         :class="activeTab === 'payments' ? 'bg-green-100 text-green-700' : 'text-gray-600'"
-                        @click="activeTab = 'payments'; loadPayments()">
+                        @click="activeTab = 'payments'">
                     Оплаты
                 </button>
                 <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
                         :class="activeTab === 'reports' ? 'bg-amber-100 text-amber-700' : 'text-gray-600'"
-                        @click="activeTab = 'reports'; loadAging()">
+                        @click="activeTab = 'reports'">
                     Отчёты
                 </button>
             </div>
@@ -599,7 +599,14 @@ function apPagePwa() {
             } catch (e) { this.showToast(e.message, 'error'); }
         },
 
-        init() { this.loadInvoices(); }
+        async init() {
+            // Load all data at once for instant tab switching
+            await Promise.all([
+                this.loadInvoices(),
+                this.loadPayments(),
+                this.loadAging()
+            ]);
+        }
     }
 }
 </script>

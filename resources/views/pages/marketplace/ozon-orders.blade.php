@@ -771,7 +771,7 @@ function ozonOrdersPage() {
 
 {{-- PWA MODE --}}
 <div class="pwa-only min-h-screen" x-data="{
-    orders: [],
+    allOrders: [],
     loading: true,
     syncing: false,
     activeTab: 'all',
@@ -785,6 +785,20 @@ function ozonOrdersPage() {
         { value: 'delivered', label: 'Доставлены' },
         { value: 'cancelled', label: 'Отменены' }
     ],
+    get filteredOrders() {
+        let result = this.allOrders;
+        if (this.activeTab !== 'all') {
+            result = result.filter(o => o.status === this.activeTab);
+        }
+        if (this.searchQuery) {
+            const q = this.searchQuery.toLowerCase();
+            result = result.filter(o =>
+                (o.posting_number && o.posting_number.toLowerCase().includes(q)) ||
+                (o.order_id && String(o.order_id).includes(q))
+            );
+        }
+        return result;
+    },
     getToken() {
         const t = localStorage.getItem('_x_auth_token');
         if (t) try { return JSON.parse(t); } catch { return t; }
@@ -796,11 +810,10 @@ function ozonOrdersPage() {
     async loadOrders() {
         this.loading = true;
         try {
-            const params = new URLSearchParams({ search: this.searchQuery, status: this.activeTab === 'all' ? '' : this.activeTab });
-            const res = await fetch('/marketplace/{{ $accountId }}/ozon-orders/json?' + params, { headers: this.getAuthHeaders() });
+            const res = await fetch('/marketplace/{{ $accountId }}/ozon-orders/json', { headers: this.getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                this.orders = data.orders || [];
+                this.allOrders = data.orders || [];
             }
         } catch (e) { console.error(e); }
         this.loading = false;
@@ -833,24 +846,27 @@ function ozonOrdersPage() {
 
         {{-- Search --}}
         <div class="mb-3">
-            <input type="search" x-model="searchQuery" @input.debounce.500ms="loadOrders()" placeholder="Номер заказа, posting number..." class="w-full px-4 py-3 rounded-xl bg-white border-0 shadow-sm text-base">
+            <input type="search" x-model="searchQuery" placeholder="Номер заказа, posting number..." class="w-full px-4 py-3 rounded-xl bg-white border-0 shadow-sm text-base">
         </div>
 
         {{-- Tabs --}}
         <div class="flex gap-2 overflow-x-auto pb-3 hide-scrollbar">
             <template x-for="tab in tabs" :key="tab.value">
-                <button @click="activeTab = tab.value; loadOrders()" :class="activeTab === tab.value ? 'bg-[#005BFF] text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0" x-text="tab.label"></button>
+                <button @click="activeTab = tab.value" :class="activeTab === tab.value ? 'bg-[#005BFF] text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0">
+                    <span x-text="tab.label"></span>
+                    <span class="ml-1 opacity-70" x-text="'(' + allOrders.filter(o => tab.value === 'all' || o.status === tab.value).length + ')'"></span>
+                </button>
             </template>
         </div>
 
-        {{-- Loading --}}
-        <div x-show="loading" class="flex justify-center py-8">
+        {{-- Loading (only on initial load) --}}
+        <div x-show="loading && allOrders.length === 0" class="flex justify-center py-8">
             <div class="w-8 h-8 border-3 border-[#005BFF] border-t-transparent rounded-full animate-spin"></div>
         </div>
 
         {{-- Orders list --}}
-        <div x-show="!loading" class="space-y-3">
-            <template x-if="orders.length === 0">
+        <div x-show="!loading || allOrders.length > 0" class="space-y-3">
+            <template x-if="filteredOrders.length === 0">
                 <div class="native-card p-6 text-center">
                     <div class="w-16 h-16 bg-[#005BFF]/20 rounded-full flex items-center justify-center mx-auto mb-3">
                         <svg class="w-8 h-8 text-[#005BFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -861,7 +877,7 @@ function ozonOrdersPage() {
                 </div>
             </template>
 
-            <template x-for="order in orders" :key="order.id">
+            <template x-for="order in filteredOrders" :key="order.id">
                 <div class="native-card p-4" @click="selectedOrder = order">
                     <div class="flex items-start justify-between mb-2">
                         <div>
