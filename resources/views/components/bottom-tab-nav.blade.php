@@ -117,7 +117,7 @@ function bottomTabNav() {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-top: 0.5px solid rgba(0, 0, 0, 0.1);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .pwa-mode .native-tabs-container {
