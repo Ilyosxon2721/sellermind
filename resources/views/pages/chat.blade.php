@@ -29,7 +29,7 @@
     </x-pwa-header>
 
     {{-- Chat List View --}}
-    <div x-show="!$store.chat.currentDialog" class="native-scroll pb-20" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);">
+    <div x-show="!$store.chat.currentDialog" class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); min-height: 100vh;">
         <div class="px-4 py-4 space-y-3">
             {{-- New Chat Button --}}
             <button @click="$store.chat.newChat(); isPrivateMode = false" class="native-card w-full native-pressable" onclick="if(window.haptic) window.haptic.light()">
@@ -77,7 +77,7 @@
     </div>
 
     {{-- Chat View --}}
-    <div x-show="$store.chat.currentDialog" class="flex flex-col" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);">
+    <div x-show="$store.chat.currentDialog" class="flex flex-col" style="height: 100vh; padding-top: calc(44px + env(safe-area-inset-top, 0px));">
         {{-- Messages --}}
         <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4" style="padding-bottom: 80px;">
             <template x-for="message in $store.chat.messages" :key="message.id">
