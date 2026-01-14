@@ -236,6 +236,16 @@ class ProductWebController extends Controller
 
         $productData['company_id'] = $user?->company_id;
 
+        // Handle new category creation
+        $newCategoryName = $request->input('product.new_category_name');
+        if (!empty($newCategoryName) && $user?->company_id) {
+            $category = ProductCategory::firstOrCreate(
+                ['company_id' => $user->company_id, 'name' => trim($newCategoryName)],
+                ['name' => trim($newCategoryName), 'company_id' => $user->company_id]
+            );
+            $productData['category_id'] = $category->id;
+        }
+
         $attributesProduct = $this->decodeJsonArray($request->input('attributes_product'));
         $attributesVariants = $this->decodeJsonArray($request->input('attributes_variants'));
         $attributes = [];
