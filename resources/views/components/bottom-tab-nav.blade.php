@@ -117,7 +117,7 @@ function bottomTabNav() {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-top: 0.5px solid rgba(0, 0, 0, 0.1);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .pwa-mode .native-tabs-container {
@@ -125,7 +125,7 @@ function bottomTabNav() {
     align-items: center;
     justify-content: space-around;
     height: 50px;
-    padding: 0 calc(4px + env(safe-area-inset-right, 0px)) 0 calc(4px + env(safe-area-inset-left, 0px));
+    padding: 0 calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px));
 }
 
 .pwa-mode .native-tab-item {
