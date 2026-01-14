@@ -125,7 +125,7 @@ function bottomTabNav() {
     align-items: center;
     justify-content: space-around;
     height: 50px;
-    padding: 0 calc(4px + env(safe-area-inset-right, 0px)) 0 calc(4px + env(safe-area-inset-left, 0px));
+    padding: 0 calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px));
 }
 
 .pwa-mode .native-tab-item {
