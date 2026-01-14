@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50" x-data="companiesPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gray-50" x-data="companiesPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -283,4 +284,86 @@ function companiesPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="companiesPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Компании" backUrl="/">
+        <button @click="openCreateModal()" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadCompanies">
+
+        {{-- Search --}}
+        <div class="px-4 py-4">
+            <div class="native-card flex gap-2">
+                <input type="text" class="native-input flex-1" placeholder="Поиск..." x-model="search" @keydown.enter="loadCompanies()">
+                <button class="native-btn" @click="loadCompanies()">Найти</button>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && companies.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                <p class="native-body font-semibold mb-2">Нет компаний</p>
+                <button @click="openCreateModal()" class="text-blue-600 font-medium">Добавить →</button>
+            </div>
+        </div>
+
+        {{-- List --}}
+        <div x-show="!loading && companies.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="company in companies" :key="company.id">
+                <div class="native-card" @click="openEditModal(company)">
+                    <p class="native-body font-semibold" x-text="company.name"></p>
+                    <div class="grid grid-cols-2 gap-2 mt-2 native-caption">
+                        <div><span class="text-gray-400">ИНН:</span> <span x-text="company.inn || '—'"></span></div>
+                        <div><span class="text-gray-400">Тел:</span> <span x-text="company.phone || '—'"></span></div>
+                    </div>
+                    <p class="native-caption mt-2" x-show="company.address" x-text="company.address"></p>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <button @click.stop="deleteCompany(company)" class="text-sm text-red-600">Удалить</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+
+    {{-- Create/Edit Modal --}}
+    <div x-show="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl w-full max-h-[90vh] overflow-hidden" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="p-5 border-b border-gray-100">
+                <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                <h3 class="text-lg font-bold" x-text="editingCompany ? 'Редактировать' : 'Новая компания'"></h3>
+            </div>
+            <div class="p-5 overflow-y-auto max-h-[60vh] space-y-3">
+                <input type="text" class="native-input w-full" x-model="form.name" placeholder="Название компании *">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" class="native-input" x-model="form.inn" placeholder="ИНН">
+                    <input type="text" class="native-input" x-model="form.kpp" placeholder="КПП">
+                </div>
+                <input type="text" class="native-input w-full" x-model="form.ogrn" placeholder="ОГРН">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" class="native-input" x-model="form.phone" placeholder="Телефон">
+                    <input type="email" class="native-input" x-model="form.email" placeholder="Email">
+                </div>
+                <textarea class="native-input w-full" rows="2" x-model="form.address" placeholder="Адрес"></textarea>
+            </div>
+            <div class="p-5 border-t border-gray-100 flex gap-2">
+                <button @click="saveCompany()" class="native-btn native-btn-primary flex-1">Сохранить</button>
+                <button @click="closeModal()" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

@@ -1861,7 +1861,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             };
         }
     }"
-     class="flex h-screen bg-gray-50">
+     class="flex h-screen bg-gray-50 browser-only">
 
     <x-sidebar />
 
@@ -4157,6 +4157,369 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                             Закрыть
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    orders: [],
+    stats: null,
+    loading: true,
+    selectedOrder: null,
+    showOrderModal: false,
+    activeTab: 'new',
+    dateFrom: '',
+    dateTo: '',
+    searchQuery: '',
+    accountId: {{ $accountId }},
+    accountMarketplace: '{{ $accountMarketplace ?? 'wb' }}',
+    accountName: '{{ addslashes($accountName ?? '') }}',
+    defaultCurrency: '{{ ($accountMarketplace ?? 'wb') === 'uzum' ? 'UZS' : 'RUB' }}',
+
+    isWb() { return this.accountMarketplace === 'wb'; },
+    isUzum() { return this.accountMarketplace === 'uzum'; },
+
+    getToken() {
+        if (this.$store.auth.token) return this.$store.auth.token;
+        const persistToken = localStorage.getItem('_x_auth_token');
+        if (persistToken) {
+            try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
+        }
+        return localStorage.getItem('auth_token') || localStorage.getItem('token');
+    },
+    getAuthHeaders() {
+        return { 'Authorization': 'Bearer ' + this.getToken(), 'Accept': 'application/json' };
+    },
+
+    async init() {
+        await this.$nextTick();
+        if (!this.getToken()) { window.location.href = '/login'; return; }
+        const today = new Date();
+        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        this.dateTo = today.toLocaleDateString('en-CA');
+        this.dateFrom = monthAgo.toLocaleDateString('en-CA');
+        if (this.accountMarketplace === 'uzum') { this.dateFrom = ''; this.dateTo = ''; }
+        await Promise.all([this.loadOrders(), this.loadStats()]);
+    },
+
+    async loadOrders() {
+        this.loading = true;
+        let url = '/api/marketplace/orders?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+        if (this.dateFrom) url += '&from=' + this.dateFrom;
+        if (this.dateTo) url += '&to=' + this.dateTo;
+        const res = await fetch(url, { headers: this.getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            this.orders = data.orders || [];
+        } else if (res.status === 401) {
+            window.location.href = '/login';
+        }
+        this.loading = false;
+    },
+
+    async loadStats() {
+        let url = '/api/marketplace/orders/stats?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+        if (this.dateFrom) url += '&from=' + this.dateFrom;
+        if (this.dateTo) url += '&to=' + this.dateTo;
+        const res = await fetch(url, { headers: this.getAuthHeaders() });
+        if (res.ok) { this.stats = await res.json(); }
+    },
+
+    tabLabel(tab) {
+        if (this.accountMarketplace === 'uzum') {
+            const map = { 'new': 'Новые', 'in_assembly': 'В сборке', 'in_supply': 'В поставке', 'accepted_uzum': 'Приняты', 'waiting_pickup': 'Выдача', 'issued': 'Выданы', 'cancelled': 'Отменены', 'returns': 'Возвраты' };
+            return map[tab] || tab;
+        }
+        const map = { 'new': 'Новые', 'in_assembly': 'Сборка', 'in_delivery': 'Доставка', 'completed': 'Архив', 'cancelled': 'Отмена' };
+        return map[tab] || tab;
+    },
+
+    normalizeStatus(order) {
+        if (!order) return '';
+        const st = (order.status || '').toLowerCase();
+        if (this.accountMarketplace === 'uzum') {
+            const apiStatus = order.raw_payload?.status;
+            if (apiStatus === 10 || st === 'new' || st === 'awaiting_accept') return 'new';
+            if (apiStatus === 20 || st === 'in_assembly' || st === 'processing') return 'in_assembly';
+            if (apiStatus === 30 || st === 'in_supply' || st === 'awaiting_shipping') return 'in_supply';
+            if (apiStatus === 40 || st === 'accepted_uzum' || st === 'shipped_to_uzum') return 'accepted_uzum';
+            if (apiStatus === 50 || st === 'waiting_pickup') return 'waiting_pickup';
+            if (apiStatus === 60 || st === 'issued' || st === 'completed') return 'issued';
+            if (apiStatus === 70 || st === 'cancelled' || st === 'canceled') return 'cancelled';
+            if (st === 'return' || st === 'returned') return 'returns';
+            return st;
+        }
+        if (st === 'new' || st === 'pending') return 'new';
+        if (st === 'in_assembly' || st === 'confirm' || st === 'complete' || st === 'sorted' || st === 'receive') return 'in_assembly';
+        if (st === 'in_delivery' || st === 'send') return 'in_delivery';
+        if (st === 'completed' || st === 'delivered' || st === 'done') return 'completed';
+        if (st === 'cancelled' || st === 'canceled' || st === 'cancel') return 'cancelled';
+        return st;
+    },
+
+    tabs() {
+        if (this.accountMarketplace === 'uzum') {
+            return ['new', 'in_assembly', 'in_supply', 'accepted_uzum', 'waiting_pickup', 'issued', 'cancelled', 'returns'];
+        }
+        return ['new', 'in_assembly', 'in_delivery', 'completed', 'cancelled'];
+    },
+
+    filteredOrders() {
+        let result = this.orders.filter(o => this.normalizeStatus(o) === this.activeTab);
+        if (this.searchQuery.trim()) {
+            const q = this.searchQuery.toLowerCase().trim();
+            result = result.filter(o =>
+                (o.external_order_id || '').toLowerCase().includes(q) ||
+                (o.wb_article || '').toLowerCase().includes(q) ||
+                (o.product_name || '').toLowerCase().includes(q)
+            );
+        }
+        return result;
+    },
+
+    tabCount(tab) {
+        return this.orders.filter(o => this.normalizeStatus(o) === tab).length;
+    },
+
+    formatMoney(amount, currency = null) {
+        const cur = currency || this.defaultCurrency || 'RUB';
+        return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: cur }).format(amount || 0);
+    },
+
+    formatPrice(kopecks) {
+        return this.formatMoney((kopecks || 0) / 100);
+    },
+
+    formatDateTime(dateString) {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    },
+
+    getWbProductImageUrl(nmId, size = 'tm') {
+        if (!nmId) return null;
+        const vol = Math.floor(nmId / 100000);
+        const part = Math.floor(nmId / 1000);
+        const basket = ((nmId % 10) + 1).toString().padStart(2, '0');
+        return 'https://basket-' + basket + '.wbbasket.ru/vol' + vol + '/part' + part + '/' + nmId + '/images/' + size + '/1.jpg';
+    },
+
+    viewOrder(order) {
+        this.selectedOrder = order;
+        this.showOrderModal = true;
+        if(window.haptic) window.haptic.light();
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Заказы" :backUrl="'/marketplace/' . $accountId">
+        <button @click="loadOrders()" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadOrders">
+
+        {{-- Tabs --}}
+        <div class="mb-3 -mx-3 overflow-x-auto" style="scrollbar-width: none;">
+            <div class="flex space-x-2 px-3" style="min-width: max-content;">
+                <template x-for="tab in tabs()" :key="tab">
+                    <button @click="activeTab = tab; if(window.haptic) window.haptic.light()"
+                            :class="activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'"
+                            class="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap shadow-sm">
+                        <span x-text="tabLabel(tab)"></span>
+                        <span class="ml-1 opacity-75" x-text="'(' + tabCount(tab) + ')'"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        {{-- Search --}}
+        <div class="native-card mb-3">
+            <input type="text" x-model="searchQuery" placeholder="Поиск по номеру, артикулу..."
+                   class="native-input w-full">
+        </div>
+
+        {{-- Loading State --}}
+        <template x-if="loading">
+            <div class="native-card">
+                <div class="flex items-center justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+        </template>
+
+        {{-- Empty State --}}
+        <template x-if="!loading && filteredOrders().length === 0">
+            <div class="native-card">
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    <p class="native-body">Нет заказов</p>
+                </div>
+            </div>
+        </template>
+
+        {{-- Orders List --}}
+        <template x-if="!loading && filteredOrders().length > 0">
+            <div class="space-y-2">
+                <template x-for="order in filteredOrders()" :key="order.id">
+                    <div @click="viewOrder(order)" class="native-card active:bg-gray-50 cursor-pointer">
+                        <div class="flex items-start space-x-3">
+                            {{-- Product Image --}}
+                            <div class="w-14 h-14 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
+                                <template x-if="isWb() && order.raw_payload?.nmId">
+                                    <img :src="getWbProductImageUrl(order.raw_payload?.nmId)"
+                                         class="w-full h-full object-cover"
+                                         onerror="this.style.display='none'">
+                                </template>
+                                <template x-if="!isWb() || !order.raw_payload?.nmId">
+                                    <div class="w-full h-full flex items-center justify-center text-gray-400">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                        </svg>
+                                    </div>
+                                </template>
+                            </div>
+
+                            {{-- Order Info --}}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="font-semibold text-gray-900 text-sm" x-text="'#' + order.external_order_id"></span>
+                                    <span class="text-xs font-medium px-2 py-0.5 rounded-full"
+                                          :class="{
+                                              'bg-blue-100 text-blue-700': normalizeStatus(order) === 'new',
+                                              'bg-orange-100 text-orange-700': normalizeStatus(order) === 'in_assembly',
+                                              'bg-purple-100 text-purple-700': normalizeStatus(order) === 'in_delivery' || normalizeStatus(order) === 'in_supply',
+                                              'bg-green-100 text-green-700': normalizeStatus(order) === 'completed' || normalizeStatus(order) === 'issued',
+                                              'bg-red-100 text-red-700': normalizeStatus(order) === 'cancelled'
+                                          }"
+                                          x-text="tabLabel(normalizeStatus(order))"></span>
+                                </div>
+                                <p class="text-sm text-gray-600 truncate" x-text="order.product_name || order.wb_article || '-'"></p>
+                                <div class="flex items-center justify-between mt-1">
+                                    <span class="text-xs text-gray-500" x-text="formatDateTime(order.ordered_at || order.created_at)"></span>
+                                    <span class="text-sm font-medium text-gray-900" x-text="isWb() ? formatPrice(order.raw_payload?.convertedPrice || order.raw_payload?.price) : formatMoney(order.total_amount)"></span>
+                                </div>
+                            </div>
+
+                            {{-- Arrow --}}
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </main>
+
+    {{-- Order Detail Modal --}}
+    <div x-show="showOrderModal" x-cloak
+         class="fixed inset-0 z-50"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="absolute inset-0 bg-black/50" @click="showOrderModal = false"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto"
+             style="padding-bottom: env(safe-area-inset-bottom, 20px);"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-y-0"
+             x-transition:leave-end="translate-y-full">
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 rounded-t-2xl">
+                <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3"></div>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold" x-text="'Заказ #' + (selectedOrder?.external_order_id || '')"></h3>
+                    <button @click="showOrderModal = false" class="p-2 text-gray-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-4" x-show="selectedOrder">
+                {{-- Status Badge --}}
+                <div class="flex justify-center">
+                    <span class="px-4 py-2 rounded-full text-sm font-medium"
+                          :class="{
+                              'bg-blue-100 text-blue-700': normalizeStatus(selectedOrder) === 'new',
+                              'bg-orange-100 text-orange-700': normalizeStatus(selectedOrder) === 'in_assembly',
+                              'bg-purple-100 text-purple-700': normalizeStatus(selectedOrder) === 'in_delivery' || normalizeStatus(selectedOrder) === 'in_supply',
+                              'bg-green-100 text-green-700': normalizeStatus(selectedOrder) === 'completed' || normalizeStatus(selectedOrder) === 'issued',
+                              'bg-red-100 text-red-700': normalizeStatus(selectedOrder) === 'cancelled'
+                          }"
+                          x-text="tabLabel(normalizeStatus(selectedOrder))"></span>
+                </div>
+
+                {{-- Product Info --}}
+                <div class="native-card">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-20 h-20 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
+                            <template x-if="isWb() && selectedOrder?.raw_payload?.nmId">
+                                <img :src="getWbProductImageUrl(selectedOrder?.raw_payload?.nmId, 'c246x328')"
+                                     class="w-full h-full object-cover"
+                                     onerror="this.style.display='none'">
+                            </template>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-900" x-text="selectedOrder?.product_name || selectedOrder?.wb_article || '-'"></p>
+                            <p class="text-sm text-gray-500 mt-1" x-text="'Артикул: ' + (selectedOrder?.wb_article || selectedOrder?.raw_payload?.article || '-')"></p>
+                            <p class="text-lg font-semibold text-gray-900 mt-2" x-text="isWb() ? formatPrice(selectedOrder?.raw_payload?.convertedPrice || selectedOrder?.raw_payload?.price) : formatMoney(selectedOrder?.total_amount)"></p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Order Details --}}
+                <div class="native-card">
+                    <h4 class="font-semibold text-gray-900 mb-3">Детали заказа</h4>
+                    <div class="native-list">
+                        <div class="native-list-item">
+                            <span class="native-caption">Номер заказа</span>
+                            <span class="native-body" x-text="selectedOrder?.external_order_id || '-'"></span>
+                        </div>
+                        <div class="native-list-item">
+                            <span class="native-caption">Дата заказа</span>
+                            <span class="native-body" x-text="formatDateTime(selectedOrder?.ordered_at || selectedOrder?.created_at)"></span>
+                        </div>
+                        <template x-if="isWb()">
+                            <div class="native-list-item">
+                                <span class="native-caption">Склад</span>
+                                <span class="native-body" x-text="selectedOrder?.raw_payload?.warehouseName || '-'"></span>
+                            </div>
+                        </template>
+                        <template x-if="selectedOrder?.raw_payload?.deliveryType">
+                            <div class="native-list-item">
+                                <span class="native-caption">Тип доставки</span>
+                                <span class="native-body" x-text="selectedOrder?.raw_payload?.deliveryType?.toUpperCase() || '-'"></span>
+                            </div>
+                        </template>
+                        <template x-if="selectedOrder?.raw_payload?.address">
+                            <div class="native-list-item flex-col items-start">
+                                <span class="native-caption">Адрес доставки</span>
+                                <span class="native-body mt-1" x-text="selectedOrder?.raw_payload?.address || '-'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Actions --}}
+                <div class="space-y-2 pb-4">
+                    <button @click="showOrderModal = false" class="native-btn w-full bg-gray-200 text-gray-800">
+                        Закрыть
+                    </button>
                 </div>
             </div>
         </div>

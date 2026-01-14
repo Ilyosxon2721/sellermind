@@ -247,7 +247,7 @@
          }
      }"
      x-init="init()"
-     class="flex h-screen bg-gray-50">
+     class="flex h-screen bg-gray-50 browser-only">
 
     <x-sidebar />
 
@@ -652,5 +652,145 @@
             </div>
         </main>
     </div>
+</div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    account: null,
+    loading: true,
+    testing: false,
+    saving: false,
+    testResults: null,
+    form: { api_key: '' },
+    activeTab: 'status',
+
+    async init() {
+        await this.$nextTick();
+        const authStore = this.$store?.auth;
+        if (!authStore || !authStore.token) { window.location.href = '/login'; return; }
+        if (!authStore.currentCompany) { alert('Нет активной компании'); window.location.href = '/profile/company'; return; }
+        await this.loadSettings();
+    },
+
+    async loadSettings() {
+        this.loading = true;
+        try {
+            const authStore = this.$store.auth;
+            const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings?company_id=' + authStore.currentCompany.id, {
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            if (res.ok) { this.account = (await res.json()).account; }
+            else if (res.status === 401) { window.location.href = '/login'; }
+        } catch (e) { console.error('Error:', e); }
+        this.loading = false;
+    },
+
+    async saveSettings() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.saving = true;
+        try {
+            const payload = { company_id: authStore.currentCompany.id };
+            if (this.form.api_key) payload.api_key = this.form.api_key;
+            const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) { this.form.api_key = ''; await this.loadSettings(); alert('Токен сохранён'); }
+            else { alert('Ошибка сохранения'); }
+        } catch (e) { alert('Ошибка: ' + e.message); }
+        this.saving = false;
+    },
+
+    async testConnection() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.testing = true;
+        this.testResults = null;
+        try {
+            const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/test?company_id=' + authStore.currentCompany.id, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            this.testResults = await res.json();
+        } catch (e) { this.testResults = { success: false, message: 'Ошибка сети' }; }
+        this.testing = false;
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Настройки Uzum API" :backUrl="'/marketplace/' . $accountId" />
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadSettings">
+
+        {{-- Tabs --}}
+        <div class="flex space-x-2 mb-3">
+            <button @click="activeTab = 'status'" :class="activeTab === 'status' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Статус</button>
+            <button @click="activeTab = 'token'" :class="activeTab === 'token' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Токен</button>
+        </div>
+
+        {{-- Loading --}}
+        <template x-if="loading">
+            <div class="native-card">
+                <div class="flex items-center justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+        </template>
+
+        {{-- Status Tab --}}
+        <template x-if="!loading && activeTab === 'status'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Аккаунт</h3>
+                    <p class="native-body" x-text="account?.name || 'Без названия'"></p>
+                    <div class="mt-2">
+                        <span class="px-3 py-1 rounded-full text-sm font-medium" :class="account?.tokens?.api_key ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" x-text="account?.tokens?.api_key ? 'Токен указан' : 'Токен не указан'"></span>
+                    </div>
+                </div>
+
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Текущий токен</h3>
+                    <p class="native-body font-mono text-sm" x-text="account?.api_key_preview || 'Не указан'"></p>
+                </div>
+
+                <div class="native-card">
+                    <button @click="testConnection()" :disabled="testing" class="native-btn w-full bg-gray-200 text-gray-800">
+                        <span x-text="testing ? 'Проверка...' : 'Проверить API'"></span>
+                    </button>
+                    <template x-if="testResults">
+                        <div class="mt-3 p-3 rounded-lg text-sm" :class="testResults.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
+                            <p x-text="testResults.message || (testResults.success ? 'API доступен' : 'API недоступен')"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        {{-- Token Tab --}}
+        <template x-if="!loading && activeTab === 'token'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-4">Обновить токен</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key / Access Token</label>
+                        <input type="password" x-model="form.api_key" placeholder="Введите Uzum API токен" class="native-input w-full">
+                        <p class="text-xs text-gray-500 mt-1">Один токен для всех операций</p>
+                    </div>
+                    <button @click="saveSettings()" :disabled="saving" class="native-btn w-full bg-purple-600 text-white mt-4">
+                        <span x-text="saving ? 'Сохранение...' : 'Сохранить токен'"></span>
+                    </button>
+                </div>
+
+                <div class="native-card bg-purple-50">
+                    <p class="text-sm text-purple-800">
+                        <strong>Получить токен:</strong> ЛК Uzum Market → Настройки → API
+                    </p>
+                </div>
+            </div>
+        </template>
+    </main>
 </div>
 @endsection

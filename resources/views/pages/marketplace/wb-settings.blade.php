@@ -161,7 +161,7 @@
                  : 'bg-red-50 border-red-200 text-red-800';
          }
      }"
-     class="flex h-screen bg-gray-50">
+     class="flex h-screen bg-gray-50 browser-only">
 
     <x-sidebar />
 
@@ -1012,5 +1012,198 @@
             </div>
         </main>
     </div>
+</div>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="{
+    activeTab: 'status',
+    account: null,
+    loading: true,
+    saving: false,
+    testing: false,
+    testResults: null,
+    form: { api_key: '', wb_content_token: '', wb_marketplace_token: '', wb_prices_token: '', wb_statistics_token: '' },
+    showTokens: { api_key: false, content: false, marketplace: false, prices: false, statistics: false },
+
+    async init() {
+        await this.$nextTick();
+        const authStore = this.$store?.auth;
+        if (!authStore || !authStore.token) { window.location.href = '/login'; return; }
+        if (!authStore.currentCompany) { alert('Нет активной компании'); window.location.href = '/profile/company'; return; }
+        await this.loadSettings();
+    },
+
+    async loadSettings() {
+        this.loading = true;
+        try {
+            const authStore = this.$store.auth;
+            const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings?company_id=' + authStore.currentCompany.id, {
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            if (res.ok) { this.account = (await res.json()).account; }
+            else if (res.status === 401) { window.location.href = '/login'; }
+        } catch (e) { console.error('Error:', e); }
+        this.loading = false;
+    },
+
+    async saveSettings() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.saving = true;
+        try {
+            const payload = { company_id: authStore.currentCompany.id };
+            Object.keys(this.form).forEach(key => { if (this.form[key]) payload[key] = this.form[key]; });
+            const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/settings', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                this.form = { api_key: '', wb_content_token: '', wb_marketplace_token: '', wb_prices_token: '', wb_statistics_token: '' };
+                await this.loadSettings();
+                alert('Токены сохранены');
+            } else { alert('Ошибка сохранения'); }
+        } catch (e) { alert('Ошибка: ' + e.message); }
+        this.saving = false;
+    },
+
+    async testConnection() {
+        const authStore = this.$store.auth;
+        if (!authStore?.currentCompany) { alert('Нет активной компании'); return; }
+        this.testing = true;
+        this.testResults = null;
+        try {
+            const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/test?company_id=' + authStore.currentCompany.id, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            this.testResults = await res.json();
+            await this.loadSettings();
+        } catch (e) { this.testResults = { success: false, error: 'Network error' }; }
+        this.testing = false;
+    }
+}" style="background: #f2f2f7;">
+    <x-pwa-header title="Настройки WB API" :backUrl="'/marketplace/' . $accountId" />
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadSettings">
+
+        {{-- Tabs --}}
+        <div class="flex space-x-2 mb-3">
+            <button @click="activeTab = 'status'" :class="activeTab === 'status' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Статус</button>
+            <button @click="activeTab = 'tokens'" :class="activeTab === 'tokens' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Токены</button>
+        </div>
+
+        {{-- Loading --}}
+        <template x-if="loading">
+            <div class="native-card">
+                <div class="flex items-center justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+        </template>
+
+        {{-- Status Tab --}}
+        <template x-if="!loading && activeTab === 'status'">
+            <div class="space-y-3">
+                {{-- Account Info --}}
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Аккаунт</h3>
+                    <p class="native-body" x-text="account?.name || 'Без названия'"></p>
+                    <div class="mt-2">
+                        <span class="px-3 py-1 rounded-full text-sm font-medium" :class="account?.wb_tokens_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" x-text="account?.wb_tokens_valid ? 'Токены валидны' : 'Токены недействительны'"></span>
+                    </div>
+                </div>
+
+                {{-- Token Status --}}
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Статус токенов</h3>
+                    <div class="native-list">
+                        <div class="native-list-item">
+                            <span class="native-body">API Key</span>
+                            <span class="px-2 py-1 rounded-full text-xs" :class="account?.tokens?.api_key ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" x-text="account?.tokens?.api_key ? 'Настроен' : 'Нет'"></span>
+                        </div>
+                        <div class="native-list-item">
+                            <span class="native-body">Content</span>
+                            <span class="px-2 py-1 rounded-full text-xs" :class="account?.tokens?.content ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" x-text="account?.tokens?.content ? 'Настроен' : 'Основной'"></span>
+                        </div>
+                        <div class="native-list-item">
+                            <span class="native-body">Marketplace</span>
+                            <span class="px-2 py-1 rounded-full text-xs" :class="account?.tokens?.marketplace ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" x-text="account?.tokens?.marketplace ? 'Настроен' : 'Основной'"></span>
+                        </div>
+                        <div class="native-list-item">
+                            <span class="native-body">Prices</span>
+                            <span class="px-2 py-1 rounded-full text-xs" :class="account?.tokens?.prices ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" x-text="account?.tokens?.prices ? 'Настроен' : 'Основной'"></span>
+                        </div>
+                        <div class="native-list-item">
+                            <span class="native-body">Statistics</span>
+                            <span class="px-2 py-1 rounded-full text-xs" :class="account?.tokens?.statistics ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" x-text="account?.tokens?.statistics ? 'Настроен' : 'Основной'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Test Connection --}}
+                <div class="native-card">
+                    <button @click="testConnection()" :disabled="testing" class="native-btn w-full bg-gray-200 text-gray-800">
+                        <span x-text="testing ? 'Проверка...' : 'Проверить подключение'"></span>
+                    </button>
+                    <template x-if="testResults">
+                        <div class="mt-3 space-y-2">
+                            <template x-for="(result, category) in testResults?.results" :key="category">
+                                <div class="flex items-center justify-between py-2 px-3 rounded-lg text-sm" :class="result.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
+                                    <span class="capitalize" x-text="category"></span>
+                                    <span x-text="result.success ? '✓' : '✗'"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        {{-- Tokens Tab --}}
+        <template x-if="!loading && activeTab === 'tokens'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <p class="text-sm text-gray-600 mb-4">Введите токены для обновления. Оставьте пустым, чтобы сохранить текущий.</p>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                            <input :type="showTokens.api_key ? 'text' : 'password'" x-model="form.api_key" placeholder="Основной API Key" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Content Token <span class="text-red-500">*</span></label>
+                            <input :type="showTokens.content ? 'text' : 'password'" x-model="form.wb_content_token" placeholder="Для карточек товаров" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Marketplace Token <span class="text-red-500">*</span></label>
+                            <input :type="showTokens.marketplace ? 'text' : 'password'" x-model="form.wb_marketplace_token" placeholder="Для заказов и поставок" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Prices Token <span class="text-red-500">*</span></label>
+                            <input :type="showTokens.prices ? 'text' : 'password'" x-model="form.wb_prices_token" placeholder="Для управления ценами" class="native-input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Statistics Token <span class="text-red-500">*</span></label>
+                            <input :type="showTokens.statistics ? 'text' : 'password'" x-model="form.wb_statistics_token" placeholder="Для статистики" class="native-input w-full">
+                        </div>
+                    </div>
+
+                    <button @click="saveSettings()" :disabled="saving" class="native-btn w-full bg-blue-600 text-white mt-4">
+                        <span x-text="saving ? 'Сохранение...' : 'Сохранить токены'"></span>
+                    </button>
+                </div>
+
+                <div class="native-card bg-blue-50">
+                    <p class="text-sm text-blue-800">
+                        <strong>Получить токены:</strong> ЛК WB → Настройки → Доступ к API → Создать токен
+                    </p>
+                </div>
+            </div>
+        </template>
+    </main>
 </div>
 @endsection
