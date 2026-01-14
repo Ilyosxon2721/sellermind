@@ -216,7 +216,7 @@
 
         {{-- Main Native Content --}}
         <main class="native-scroll"
-              style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); min-height: 100vh;"
+              style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); min-height: 100vh;"
               x-pull-to-refresh="loadData">
 
             {{-- Loading State --}}

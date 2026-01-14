@@ -64,7 +64,7 @@
     align-items: center;
     justify-content: space-between;
     height: calc(44px + env(safe-area-inset-top, 0px));
-    padding: 0 12px;
+    padding: 0 calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px));
     padding-top: env(safe-area-inset-top, 0px);
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
