@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50" x-data="saleCreatePage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gray-50" x-data="saleCreatePage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -835,4 +836,248 @@ function saleCreatePage() {
     }
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="saleCreatePage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Новая продажа" backUrl="/sales">
+        <button @click="saveDraft()" :disabled="saving" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!saving">Сохранить</span>
+            <span x-show="saving">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+        <div class="px-4 py-4 space-y-4">
+            {{-- Status Badge --}}
+            <div class="flex items-center justify-between">
+                <span class="px-3 py-1 text-xs font-medium rounded-full" :class="getStatusBadgeClass() === 'badge-gray' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'" x-text="getStatusLabel()"></span>
+                <span class="native-caption" x-text="sale.sale_number"></span>
+            </div>
+
+            {{-- Основная информация --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">Основная информация</p>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="native-caption text-gray-500">Дата продажи</label>
+                        <input type="date" class="native-input w-full mt-1" x-model="sale.sale_date">
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Компания</label>
+                        <select class="native-input w-full mt-1" x-model="sale.company_id" @change="onCompanyChange()">
+                            <option value="">Выберите</option>
+                            <template x-for="company in companies" :key="company.id">
+                                <option :value="company.id" x-text="company.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Склад</label>
+                        <select class="native-input w-full mt-1" x-model="sale.warehouse_id" @change="onWarehouseChange()">
+                            <option value="">Выберите</option>
+                            <template x-for="wh in warehouses" :key="wh.id">
+                                <option :value="wh.id" x-text="wh.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Контрагент</label>
+                        <input type="text" class="native-input w-full mt-1" x-model="counterpartySearch"
+                               @input.debounce.300ms="searchCounterparties()" placeholder="Введите название...">
+                        <p class="native-caption mt-1 text-green-600" x-show="sale.counterparty_id">
+                            ✓ <span x-text="selectedCounterpartyName"></span>
+                        </p>
+                        {{-- Dropdown --}}
+                        <div x-show="showCounterpartyDropdown && counterparties.length > 0"
+                             class="mt-2 bg-white rounded-xl border border-gray-200 divide-y">
+                            <template x-for="cp in counterparties" :key="cp.id">
+                                <div class="p-3" @click="selectCounterparty(cp)">
+                                    <p class="native-body font-medium" x-text="cp.name"></p>
+                                    <p class="native-caption" x-show="cp.inn" x-text="'ИНН: ' + cp.inn"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Валюта</label>
+                        <select class="native-input w-full mt-1" x-model="sale.currency">
+                            <option value="UZS">UZS</option>
+                            <option value="USD">USD</option>
+                            <option value="RUB">RUB</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="native-caption text-gray-500">Комментарий</label>
+                        <textarea class="native-input w-full mt-1" rows="2" x-model="sale.notes" placeholder="Дополнительная информация..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Товары --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Товары</p>
+                    <button @click="showProductSearch = true" class="text-sm text-blue-600 font-medium">+ Добавить</button>
+                </div>
+
+                <div x-show="sale.items.length === 0" class="text-center py-6 native-caption">
+                    <p>Нет товаров</p>
+                </div>
+
+                <div x-show="sale.items.length > 0" class="space-y-3">
+                    <template x-for="(item, index) in sale.items" :key="index">
+                        <div class="bg-gray-50 rounded-xl p-3">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="native-body font-medium" x-text="item.product_name"></p>
+                                    <p class="native-caption" x-show="item.sku" x-text="'SKU: ' + item.sku"></p>
+                                </div>
+                                <button @click="removeItem(index)" class="text-red-500 p-1">✕</button>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-3">
+                                <div>
+                                    <label class="text-xs text-gray-400">Кол-во</label>
+                                    <input type="number" step="0.001" min="0.001" class="native-input w-full text-sm"
+                                           x-model.number="item.quantity" @input="recalculateItem(index)">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Цена</label>
+                                    <input type="number" step="0.01" min="0" class="native-input w-full text-sm"
+                                           x-model.number="item.unit_price" @input="recalculateItem(index)">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Итого</label>
+                                    <p class="native-body font-semibold mt-2" x-text="formatMoney(item.total)"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Расходы --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Расходы</p>
+                    <button @click="showAddExpenseModal = true" class="text-sm text-blue-600 font-medium">+ Добавить</button>
+                </div>
+
+                <div x-show="expenses.length === 0" class="text-center py-4 native-caption">
+                    <p>Нет расходов</p>
+                </div>
+
+                <div x-show="expenses.length > 0" class="space-y-2">
+                    <template x-for="(exp, index) in expenses" :key="index">
+                        <div class="flex items-center justify-between bg-orange-50 rounded-xl p-3">
+                            <span class="native-body" x-text="exp.name"></span>
+                            <div class="flex items-center gap-2">
+                                <span class="native-body font-semibold" x-text="formatMoney(exp.amount)"></span>
+                                <button @click="removeExpense(index)" class="text-red-500">✕</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Итого --}}
+            <div class="native-card bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="native-caption">Товары</p>
+                        <p class="native-body font-bold" x-text="formatMoney(totals.subtotal)"></p>
+                    </div>
+                    <div>
+                        <p class="native-caption">Расходы</p>
+                        <p class="native-body font-bold text-orange-600" x-text="formatMoney(totals.expenses)"></p>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-blue-200">
+                    <p class="native-caption">ИТОГО</p>
+                    <p class="text-2xl font-bold text-blue-600" x-text="formatMoney(totals.total) + ' ' + sale.currency"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{-- Bottom Action Bar --}}
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3" style="padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));">
+        <button @click="confirmSale()" :disabled="!canConfirm() || saving" class="native-btn native-btn-primary w-full"
+                :class="(!canConfirm() || saving) && 'opacity-50'">
+            Подтвердить и зарезервировать
+        </button>
+    </div>
+
+    {{-- Product Search Modal --}}
+    <div x-show="showProductSearch" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl w-full max-h-[90vh] overflow-hidden" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="p-5 border-b border-gray-100">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold">Поиск товара</h3>
+                    <button @click="showProductSearch = false" class="text-gray-500">✕</button>
+                </div>
+                <input type="text" class="native-input w-full" x-model="productSearch"
+                       @input.debounce.300ms="searchProducts()" placeholder="Название, SKU, штрихкод...">
+            </div>
+            <div class="p-5 overflow-y-auto max-h-[60vh] space-y-2">
+                <div x-show="searchingProducts" class="text-center py-6">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                </div>
+                <template x-for="product in products" :key="product.id">
+                    <div class="bg-gray-50 rounded-xl p-3" @click="addProduct(product)">
+                        <div class="flex justify-between">
+                            <div>
+                                <p class="native-body font-medium" x-text="product.product?.name || 'Без названия'"></p>
+                                <p class="native-caption" x-show="product.sku" x-text="'SKU: ' + product.sku"></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="native-body font-semibold" x-text="formatMoney(product.price_default)"></p>
+                                <p class="text-xs" :class="product.available_stock > 0 ? 'text-green-600' : 'text-red-600'"
+                                   x-text="'Дост: ' + product.available_stock"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- Add Expense Modal --}}
+    <div x-show="showAddExpenseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl p-5 w-full max-w-md" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold mb-4">Добавить расход</h3>
+            <div class="space-y-3">
+                <input type="text" class="native-input w-full" x-model="newExpense.name" placeholder="Название">
+                <input type="number" step="0.01" min="0" class="native-input w-full" x-model.number="newExpense.amount" placeholder="Сумма">
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button @click="addExpense()" class="native-btn native-btn-primary flex-1">Добавить</button>
+                <button @click="showAddExpenseModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Add Counterparty Modal --}}
+    <div x-show="showAddCounterpartyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" x-cloak>
+        <div class="bg-white rounded-t-2xl p-5 w-full max-w-md" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+            <h3 class="text-lg font-bold mb-4">Добавить контрагента</h3>
+            <div class="space-y-3">
+                <input type="text" class="native-input w-full" x-model="newCounterparty.name" placeholder="Название">
+                <input type="text" class="native-input w-full" x-model="newCounterparty.inn" placeholder="ИНН">
+                <input type="tel" class="native-input w-full" x-model="newCounterparty.phone" placeholder="Телефон">
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button @click="addCounterparty()" class="native-btn native-btn-primary flex-1">Добавить</button>
+                <button @click="showAddCounterpartyModal = false" class="native-btn flex-1">Отмена</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
