@@ -58,7 +58,8 @@
     window.marketplaceCredentialFields = {!! json_encode(config('marketplaces.credential_fields')) !!};
 </script>
 
-<div x-data="marketplacePage()" class="flex h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="marketplacePage()" class="browser-only flex h-screen bg-gray-50">
 
     <x-sidebar />
 
@@ -808,4 +809,98 @@ function marketplacePage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="marketplacePage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Маркетплейсы" :backUrl="'/dashboard'">
+        <button @click="showConnectModal = true" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadAccounts">
+
+        {{-- Stats --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-900" x-text="accounts.length">0</p>
+                <p class="native-caption">Подключено</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-green-600" x-text="accounts.filter(a => a.is_active).length">0</p>
+                <p class="native-caption">Активных</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 space-y-3">
+            <x-skeleton-card :rows="2" />
+            <x-skeleton-card :rows="2" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && accounts.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет подключений</p>
+                <p class="native-caption mb-4">Подключите маркетплейс</p>
+                <button @click="showConnectModal = true" class="native-btn">Подключить</button>
+            </div>
+        </div>
+
+        {{-- Accounts List --}}
+        <div x-show="!loading && accounts.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="account in accounts" :key="account.id">
+                <div class="native-card native-pressable" @click="window.location.href = `/marketplace/${account.id}`">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
+                            'bg-blue-100': account.marketplace === 'uzum',
+                            'bg-purple-100': account.marketplace === 'wildberries',
+                            'bg-blue-100': account.marketplace === 'ozon',
+                            'bg-red-100': account.marketplace === 'yandex_market'
+                        }">
+                            <span class="text-xl font-bold" :class="{
+                                'text-blue-600': account.marketplace === 'uzum',
+                                'text-purple-600': account.marketplace === 'wildberries',
+                                'text-blue-600': account.marketplace === 'ozon',
+                                'text-red-600': account.marketplace === 'yandex_market'
+                            }" x-text="account.marketplace.charAt(0).toUpperCase()"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="native-body font-semibold truncate" x-text="account.name"></p>
+                            <p class="native-caption capitalize" x-text="account.marketplace.replace('_', ' ')"></p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" :class="account.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {{-- Available Marketplaces --}}
+        <div class="px-4 pb-4">
+            <p class="native-caption px-2 mb-2">ДОСТУПНЫЕ МАРКЕТПЛЕЙСЫ</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button @click="selectedMarketplace = 'uzum'; showConnectModal = true" class="native-card native-pressable text-center py-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <span class="text-xl font-bold text-blue-600">U</span>
+                    </div>
+                    <p class="native-body font-semibold">Uzum</p>
+                </button>
+                <button @click="selectedMarketplace = 'wildberries'; showConnectModal = true" class="native-card native-pressable text-center py-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <span class="text-xl font-bold text-purple-600">W</span>
+                    </div>
+                    <p class="native-body font-semibold">Wildberries</p>
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection

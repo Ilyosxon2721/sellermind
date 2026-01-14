@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="pricingPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="pricingPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -257,4 +258,103 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="pricingPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Цены" :backUrl="'/'">
+        <button @click="loadCalculations()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadCalculations">
+
+        {{-- Controls --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Рассчитать цены</p>
+                <div>
+                    <label class="native-caption">Сценарий</label>
+                    <select class="native-input mt-1" x-model="scenarioId">
+                        <template x-for="sc in scenarios" :key="sc.id">
+                            <option :value="sc.id" x-text="sc.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Канал</label>
+                    <select class="native-input mt-1" x-model="channelCode">
+                        <option value="UZUM">Uzum</option>
+                        <option value="WB">Wildberries</option>
+                        <option value="OZON">Ozon</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">SKU IDs</label>
+                    <input type="text" class="native-input mt-1" placeholder="101, 102, 103" x-model="skuInput">
+                </div>
+                <button class="native-btn w-full" @click="calculate()">Рассчитать</button>
+            </div>
+        </div>
+
+        {{-- Stats --}}
+        <div class="px-4 grid grid-cols-3 gap-2 mb-4">
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-gray-900" x-text="calculations.length">0</p>
+                <p class="native-caption">Расчётов</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-gray-900" x-text="scenarios.length">0</p>
+                <p class="native-caption">Сценариев</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-green-600" x-text="calculations.filter(c => c.confidence > 0.8).length">0</p>
+                <p class="native-caption">Высокая</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && calculations.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <p class="native-body font-semibold mb-2">Нет расчётов</p>
+                <p class="native-caption">Укажите параметры</p>
+            </div>
+        </div>
+
+        {{-- Calculations List --}}
+        <div x-show="!loading && calculations.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="row in calculations" :key="row.sku_id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold text-indigo-600" x-text="'SKU: ' + row.sku_id"></p>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                              :class="row.confidence > 0.8 ? 'bg-green-100 text-green-700' : row.confidence > 0.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
+                              x-text="(row.confidence * 100).toFixed(0) + '%'"></span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                            <span class="native-caption">Себест.</span>
+                            <p class="font-medium" x-text="format(row.unit_cost)"></p>
+                        </div>
+                        <div>
+                            <span class="native-caption">Min</span>
+                            <p class="font-medium" x-text="format(row.min_price)"></p>
+                        </div>
+                        <div>
+                            <span class="native-caption">Рекоменд.</span>
+                            <p class="font-bold text-indigo-600" x-text="format(row.recommended_price)"></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-purple-50" x-data="reservationsPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-purple-50" x-data="reservationsPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -308,4 +309,82 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="reservationsPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Резервы" :backUrl="'/warehouse'">
+        <button @click="openCreate()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="native-caption">Склад</label>
+                        <select class="native-input mt-1" x-model="filters.warehouse_id">
+                            <option value="">Все</option>
+                            @foreach($warehouses as $wh)
+                                <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="native-caption">Статус</label>
+                        <select class="native-input mt-1" x-model="filters.status">
+                            <option value="">Все</option>
+                            <option value="ACTIVE">Активные</option>
+                            <option value="RELEASED">Отпущенные</option>
+                            <option value="CANCELLED">Отменённые</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="native-btn w-full" @click="load()">Применить</button>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Резервов нет</p>
+                <p class="native-caption">Создайте новый резерв</p>
+            </div>
+        </div>
+
+        {{-- Items List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="item in items" :key="item.id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold text-purple-600" x-text="item.sku?.code || 'SKU'"></p>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
+                            'bg-green-100 text-green-700': item.status === 'ACTIVE',
+                            'bg-blue-100 text-blue-700': item.status === 'RELEASED',
+                            'bg-gray-100 text-gray-600': item.status === 'CANCELLED'
+                        }" x-text="item.status"></span>
+                    </div>
+                    <p class="native-caption" x-text="item.sku?.product?.name || '—'"></p>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="native-body font-semibold" x-text="item.qty + ' шт'"></span>
+                        <span class="native-caption" x-text="item.reason"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

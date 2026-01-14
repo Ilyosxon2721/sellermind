@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="agentTasksPage()" x-init="init()" class="min-h-screen bg-gray-50 relative">
+{{-- BROWSER MODE --}}
+<div x-data="agentTasksPage()" x-init="init()" class="browser-only min-h-screen bg-gray-50 relative">
     <!-- Toast -->
     <div x-show="toast.show"
          x-transition
@@ -212,4 +213,57 @@ function agentTasksPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="agentTasksPage()" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Режим агента" :backUrl="'/chat'">
+        <a href="/agent/create" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </a>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadTasks">
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && tasks.length === 0" class="px-4 py-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет задач</p>
+                <a href="/agent/create" class="text-blue-600 font-medium">Создать задачу →</a>
+            </div>
+        </div>
+
+        {{-- Tasks List --}}
+        <div x-show="!loading && tasks.length > 0" class="px-4 py-4 space-y-3">
+            <template x-for="task in tasks" :key="task.id">
+                <a :href="'/agent/' + task.id" class="native-card block">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold flex-1" x-text="task.title"></p>
+                        <span :class="{
+                            'bg-green-100 text-green-800': task.latest_run?.status === 'success',
+                            'bg-red-100 text-red-800': task.latest_run?.status === 'failed',
+                            'bg-yellow-100 text-yellow-800': task.latest_run?.status === 'running',
+                            'bg-gray-100 text-gray-800': !task.latest_run || task.latest_run?.status === 'pending'
+                        }" class="px-2 py-0.5 text-xs font-medium rounded-full ml-2"
+                        x-text="getStatusText(task.latest_run?.status)"></span>
+                    </div>
+                    <p class="native-caption mb-2" x-text="task.description || 'Нет описания'"></p>
+                    <div class="flex items-center justify-between native-caption">
+                        <span x-text="task.agent?.name || 'Агент'"></span>
+                        <span x-text="formatDate(task.created_at)"></span>
+                    </div>
+                </a>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

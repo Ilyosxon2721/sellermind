@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="promotionsPage()" x-init="init()" class="flex h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="promotionsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50">
 
     <x-sidebar></x-sidebar>
 
@@ -245,4 +246,73 @@ function promotionsPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="promotionsPage()" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Акции" :backUrl="'/'">
+        <button @click="loadPromotions()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadPromotions">
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && promotions.length === 0" class="px-4 py-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет акций</p>
+                <p class="native-caption">Создайте акцию для увеличения продаж</p>
+            </div>
+        </div>
+
+        {{-- Promotions List --}}
+        <div x-show="!loading && promotions.length > 0" class="px-4 py-4 space-y-3">
+            <template x-for="promotion in promotions" :key="promotion.id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <div>
+                            <p class="native-body font-semibold" x-text="promotion.name"></p>
+                            <p class="native-caption" x-text="promotion.description"></p>
+                        </div>
+                        <span x-show="promotion.is_currently_active" class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Активна</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm mt-3">
+                        <div>
+                            <span class="native-caption">Скидка:</span>
+                            <span class="font-semibold text-indigo-600" x-text="promotion.discount_value + (promotion.type === 'percentage' ? '%' : ' ₽')"></span>
+                        </div>
+                        <div>
+                            <span class="native-caption">Товаров:</span>
+                            <span class="font-semibold" x-text="promotion.products_count"></span>
+                        </div>
+                        <div>
+                            <span class="native-caption">Продано:</span>
+                            <span class="font-semibold" x-text="promotion.stats?.total_units_sold || 0"></span>
+                        </div>
+                        <div>
+                            <span class="native-caption">Выручка:</span>
+                            <span class="font-semibold text-green-600" x-text="'₽' + (promotion.stats?.total_revenue || 0).toLocaleString()"></span>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between native-caption">
+                            <span x-text="'До ' + formatDate(promotion.end_date)"></span>
+                            <span :class="promotion.days_until_expiration <= 3 ? 'text-red-600' : ''" x-text="promotion.days_until_expiration + ' дней'"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

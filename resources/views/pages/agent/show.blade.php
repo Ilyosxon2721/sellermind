@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="agentTaskShowPage({{ $taskId }})" x-init="init()" class="min-h-screen bg-gray-50">
+{{-- BROWSER MODE --}}
+<div x-data="agentTaskShowPage({{ $taskId }})" x-init="init()" class="browser-only min-h-screen bg-gray-50">
     <!-- Header -->
     <header class="bg-white border-b border-gray-200">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -200,4 +201,60 @@ function agentTaskShowPage(taskId) {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="agentTaskShowPage({{ $taskId }})" x-init="init()" style="background: #f2f2f7;">
+    <x-pwa-header title="Задача" :backUrl="'/agent'">
+        <button @click="runTask()" :disabled="running" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!running">Запустить</span>
+            <span x-show="running">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadTask">
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        <div x-show="!loading" class="px-4 py-4 space-y-4">
+            {{-- Task Info --}}
+            <div class="native-card">
+                <p class="native-body font-bold text-lg" x-text="task?.title || 'Загрузка...'"></p>
+                <p class="native-caption mt-1" x-text="task?.agent?.name || ''"></p>
+                <p class="native-body mt-3" x-text="task?.description || 'Нет описания'"></p>
+                <div class="flex items-center justify-between mt-3 native-caption">
+                    <span x-text="'Создана: ' + formatDate(task?.created_at)"></span>
+                    <span x-text="(task?.runs_count || 0) + ' запусков'"></span>
+                </div>
+            </div>
+
+            {{-- Runs --}}
+            <div class="native-card">
+                <p class="native-body font-semibold mb-3">История запусков</p>
+                <div x-show="runs.length === 0" class="text-center py-8 native-caption">
+                    Ещё не было запусков
+                </div>
+                <div x-show="runs.length > 0" class="space-y-2">
+                    <template x-for="run in runs" :key="run.id">
+                        <a :href="'/agent/run/' + run.id" class="block p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <span class="native-caption" x-text="'Запуск #' + run.id"></span>
+                                <span :class="{
+                                    'bg-green-100 text-green-800': run.status === 'success',
+                                    'bg-red-100 text-red-800': run.status === 'failed',
+                                    'bg-yellow-100 text-yellow-800': run.status === 'running',
+                                    'bg-gray-100 text-gray-800': run.status === 'pending'
+                                }" class="px-2 py-0.5 text-xs font-medium rounded-full"
+                                x-text="getStatusText(run.status)"></span>
+                            </div>
+                            <p x-show="run.result_summary" class="native-caption mt-1 line-clamp-2" x-text="run.result_summary"></p>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection

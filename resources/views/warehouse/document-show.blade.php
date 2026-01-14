@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentPage({{ $documentId }})">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentPage({{ $documentId }})">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -218,4 +219,104 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="documentPage({{ $documentId }})" style="background: #f2f2f7;">
+    <x-pwa-header title="Документ" :backUrl="'/warehouse/documents'">
+        <button @click="load()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+        <button x-show="doc && doc.status === 'DRAFT'" @click="postDoc()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
+            Провести
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 py-8">
+            <x-skeleton-card :rows="4" />
+        </div>
+
+        {{-- Error --}}
+        <div x-show="error" class="px-4 py-4">
+            <div class="native-card bg-red-50 border border-red-200 text-red-600 text-center" x-text="error"></div>
+        </div>
+
+        <div x-show="!loading && doc" class="px-4 py-4 space-y-4">
+            {{-- Document Info --}}
+            <div class="native-card">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <p class="native-caption">Номер документа</p>
+                        <p class="native-body font-bold text-lg" x-text="doc?.doc_no"></p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-medium"
+                          :class="doc?.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                          x-text="doc?.status === 'POSTED' ? 'Проведён' : 'Черновик'"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="native-caption">Тип</p>
+                        <span class="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700" x-text="doc?.type"></span>
+                    </div>
+                    <div>
+                        <p class="native-caption">Склад</p>
+                        <p class="native-body" x-text="doc?.warehouse?.name || doc?.warehouse_id"></p>
+                    </div>
+                </div>
+                <div x-show="doc?.comment" class="mt-3">
+                    <p class="native-caption">Комментарий</p>
+                    <p class="native-body" x-text="doc?.comment"></p>
+                </div>
+            </div>
+
+            {{-- Lines --}}
+            <div x-show="lines.length" class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Строки документа</p>
+                    <span class="native-caption" x-text="`${lines.length} позиций`"></span>
+                </div>
+                <div class="space-y-2">
+                    <template x-for="line in lines" :key="line.id">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <p class="native-body font-semibold" x-text="line.sku?.sku_code || line.sku_id"></p>
+                                <p class="native-body" x-text="line.qty"></p>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <p class="native-caption" x-text="line.unit_cost ? `Цена: ${line.unit_cost}` : ''"></p>
+                                <p class="native-caption font-medium" x-text="line.total_cost ? `Сумма: ${line.total_cost}` : ''"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Ledger --}}
+            <div x-show="ledger.length" class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Проводки</p>
+                    <span class="native-caption" x-text="`${ledger.length} записей`"></span>
+                </div>
+                <div class="space-y-2">
+                    <template x-for="row in ledger" :key="row.id">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <p class="native-body font-semibold" x-text="row.sku?.sku_code || row.sku_id"></p>
+                                <p class="native-body font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></p>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <p class="native-caption" x-text="formatDate(row.occurred_at)"></p>
+                                <p class="native-caption" x-text="row.warehouse?.name || ''"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection

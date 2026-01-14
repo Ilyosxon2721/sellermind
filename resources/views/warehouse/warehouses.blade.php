@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="warehousesPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="warehousesPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -231,4 +232,79 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="warehousesPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Склады" :backUrl="'/warehouse'">
+        <a href="/warehouse/create" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </a>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Stats --}}
+        <div class="px-4 py-4 grid grid-cols-3 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-900" x-text="items.length">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-green-600" x-text="items.filter(i => i.is_active).length">0</p>
+                <p class="native-caption">Активных</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-lg font-bold text-indigo-600 truncate" x-text="items.find(i => i.is_default)?.name || '—'">—</p>
+                <p class="native-caption">Основной</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4 space-y-3">
+            <x-skeleton-card :rows="2" />
+            <x-skeleton-card :rows="2" />
+            <x-skeleton-card :rows="2" />
+        </div>
+
+        {{-- Empty State --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Складов пока нет</p>
+                <p class="native-caption mb-4">Создайте первый склад</p>
+                <a href="/warehouse/create" class="native-btn inline-block">Добавить склад</a>
+            </div>
+        </div>
+
+        {{-- Warehouses List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="wh in items" :key="wh.id">
+                <div class="native-card native-pressable" @click="window.location.href = `/warehouse/${wh.id}/edit`">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <p class="native-body font-semibold truncate" x-text="wh.name"></p>
+                                <template x-if="wh.is_default">
+                                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">Основной</span>
+                                </template>
+                            </div>
+                            <p class="native-caption" x-text="wh.code || 'Без кода'"></p>
+                            <template x-if="wh.address">
+                                <p class="native-caption mt-1 truncate" x-text="wh.address"></p>
+                            </template>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" :class="wh.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="ledgerPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="ledgerPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -195,4 +196,71 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="ledgerPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Журнал" :backUrl="'/warehouse'">
+        <button @click="load()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Склад</label>
+                    <select class="native-input mt-1" x-model="filters.warehouse_id">
+                        <option value="">Все склады</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">SKU / штрихкод</label>
+                    <input type="text" class="native-input mt-1" placeholder="Поиск..." x-model="filters.query">
+                </div>
+                <button class="native-btn w-full" @click="load()">Применить</button>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Записей нет</p>
+                <p class="native-caption">Примените фильтры</p>
+            </div>
+        </div>
+
+        {{-- Items List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="item in items" :key="item.id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold text-indigo-600" x-text="item.sku_code"></p>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty > 0 ? '+' : '') + item.qty"></span>
+                    </div>
+                    <p class="native-caption" x-text="item.product_name || '—'"></p>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="native-caption" x-text="item.posted_at ? new Date(item.posted_at).toLocaleDateString('ru-RU') : ''"></span>
+                        <span class="native-caption" x-text="'Док #' + (item.document_id || '—')"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

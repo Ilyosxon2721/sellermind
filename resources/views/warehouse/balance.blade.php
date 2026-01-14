@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="balancePage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-blue-50" x-data="balancePage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -180,4 +181,92 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="balancePage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Остатки" :backUrl="'/warehouse'">
+        <button @click="load()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        {{-- Filters --}}
+        <div class="px-4 py-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Склад</label>
+                    <select class="native-input mt-1" x-model="warehouseId">
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}" @selected($wh->id === $selectedWarehouseId)>{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Поиск SKU / штрихкода</label>
+                    <input type="text" class="native-input mt-1" placeholder="Введите SKU..." x-model="query" @keydown.enter.prevent="load()">
+                </div>
+                <button class="native-btn w-full" @click="load()">Загрузить</button>
+                <template x-if="error">
+                    <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="error"></div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Stats --}}
+        <div class="px-4 pb-4 grid grid-cols-3 gap-3">
+            <div class="native-card text-center">
+                <p class="text-xl font-bold text-gray-900" x-text="items.length">0</p>
+                <p class="native-caption">Позиций</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-xl font-bold text-green-600" x-text="totalOnHand.toFixed(0)">0</p>
+                <p class="native-caption">На складе</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-xl font-bold text-amber-600" x-text="totalReserved.toFixed(0)">0</p>
+                <p class="native-caption">Резерв</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p class="native-caption">Загрузка...</p>
+            </div>
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && items.length === 0" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет данных</p>
+                <p class="native-caption">Нажмите «Загрузить»</p>
+            </div>
+        </div>
+
+        {{-- Items List --}}
+        <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="row in items" :key="row.sku_id">
+                <div class="native-card">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold text-blue-600" x-text="row.sku_code"></p>
+                        <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium" x-text="row.available.toFixed(0) + ' шт'"></span>
+                    </div>
+                    <p class="native-caption truncate" x-text="row.product_name || '—'"></p>
+                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                        <span class="text-gray-500">На складе: <span class="font-medium" x-text="row.on_hand.toFixed(0)"></span></span>
+                        <span class="text-amber-600">Резерв: <span class="font-medium" x-text="row.reserved.toFixed(0)"></span></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50" x-data="inventoryPage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gray-50" x-data="inventoryPage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -566,4 +567,76 @@ function inventoryPage() {
     }
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="inventoryPage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Инвентаризация" :backUrl="'/warehouse'">
+        <button @click="loadInventories()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+        <button @click="openCreateModal()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadInventories">
+
+        {{-- Stats --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-gray-900" x-text="stats.total">0</p>
+                <p class="native-caption">Всего</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-yellow-600" x-text="stats.inProgress">0</p>
+                <p class="native-caption">В процессе</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-green-600" x-text="stats.completed">0</p>
+                <p class="native-caption">Завершено</p>
+            </div>
+            <div class="native-card text-center py-3">
+                <p class="text-xl font-bold text-red-600" x-text="stats.withDiscrepancy">0</p>
+                <p class="native-caption">Расхождения</p>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <x-skeleton-card :rows="3" />
+        </div>
+
+        {{-- Empty --}}
+        <div x-show="!loading && inventories.length === 0" class="px-4">
+            <div class="native-card text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Инвентаризаций нет</p>
+                <button class="text-green-600 font-medium" @click="openCreateModal()">Создать первую →</button>
+            </div>
+        </div>
+
+        {{-- Inventories List --}}
+        <div x-show="!loading && inventories.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="item in inventories" :key="item.id">
+                <div class="native-card" @click="openInventory(item)">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="native-body font-semibold" x-text="item.number"></p>
+                        <span class="px-2 py-0.5 text-xs rounded-full font-medium" :class="getStatusBadgeClass(item.status)" x-text="getStatusLabel(item.status)"></span>
+                    </div>
+                    <p class="native-caption" x-text="item.warehouse?.name || '—'"></p>
+                    <div class="flex items-center justify-between mt-2 native-caption">
+                        <span x-text="formatDate(item.date)"></span>
+                        <span x-text="item.total_items + ' позиций'"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </main>
+</div>
 @endsection

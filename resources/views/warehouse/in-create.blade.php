@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inCreatePage()">
+{{-- BROWSER MODE --}}
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inCreatePage()">
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -364,4 +365,115 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="inCreatePage()" style="background: #f2f2f7;">
+    <x-pwa-header title="Новый приход" :backUrl="'/warehouse/in'">
+        <button @click="save(false)" :disabled="saving" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            <span x-show="!saving">Сохранить</span>
+            <span x-show="saving">...</span>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
+
+        {{-- Toast --}}
+        <div x-show="toast.show" x-transition class="fixed top-16 left-4 right-4 z-50">
+            <div :class="toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'" class="text-white px-4 py-3 rounded-xl shadow-lg text-center">
+                <span x-text="toast.message"></span>
+            </div>
+        </div>
+
+        <div class="px-4 py-4 space-y-4">
+            {{-- Details --}}
+            <div class="native-card space-y-3">
+                <p class="native-body font-semibold">Реквизиты</p>
+                <div>
+                    <label class="native-caption">Склад</label>
+                    <select class="native-input mt-1" x-model="form.warehouse_id">
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Поставщик</label>
+                    <select class="native-input mt-1" x-model="form.supplier_id">
+                        <option value="">Выберите поставщика</option>
+                        @foreach($suppliers as $sup)
+                            <option value="{{ $sup->id }}">{{ $sup->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Комментарий</label>
+                    <input type="text" class="native-input mt-1" x-model="form.comment" placeholder="опционально">
+                </div>
+            </div>
+
+            {{-- Lines --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Строки</p>
+                    <button class="text-green-600 font-medium text-sm" @click="addLine()">+ Добавить</button>
+                </div>
+                <div class="space-y-3">
+                    <template x-for="(line, idx) in form.lines" :key="idx">
+                        <div class="p-3 bg-gray-50 rounded-xl space-y-2">
+                            <div class="relative">
+                                <input type="text" class="native-input"
+                                       :value="line.search || ''"
+                                       @input="line.search = $event.target.value; searchSku(idx)"
+                                       placeholder="SKU / штрихкод / название">
+                                <div class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto"
+                                     x-show="line.suggestions && line.suggestions.length" x-cloak>
+                                    <template x-for="item in line.suggestions" :key="item.sku_id">
+                                        <div class="px-4 py-3 hover:bg-green-50 cursor-pointer" @click="selectSku(idx, item)">
+                                            <div class="text-sm font-semibold" x-text="item.sku_code"></div>
+                                            <div class="text-xs text-gray-500" x-text="item.product_name"></div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="native-caption">Кол-во</label>
+                                    <input type="number" class="native-input mt-1" x-model="line.qty">
+                                </div>
+                                <div>
+                                    <label class="native-caption">Цена</label>
+                                    <input type="number" class="native-input mt-1" x-model="line.unit_cost">
+                                </div>
+                            </div>
+                            <button class="text-red-600 text-sm" @click="removeLine(idx)" :disabled="form.lines.length === 1">Удалить</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Summary --}}
+            <div class="native-card">
+                <div class="flex items-center justify-between">
+                    <p class="native-body font-semibold">Итого</p>
+                    <p class="native-body font-bold text-green-600" x-text="totalSum()"></p>
+                </div>
+            </div>
+
+            {{-- Error --}}
+            <div x-show="error" class="native-card bg-red-50 border border-red-200 text-red-600 text-center" x-text="error"></div>
+
+            {{-- Actions --}}
+            <div class="space-y-2">
+                <button class="native-btn w-full" @click="save(false)" :disabled="saving">
+                    <span x-show="!saving">Сохранить черновик</span>
+                    <span x-show="saving">Сохранение...</span>
+                </button>
+                <button class="native-btn w-full bg-green-600" @click="save(true)" :disabled="saving">
+                    <span x-show="!saving">Сохранить и провести</span>
+                    <span x-show="saving">Обработка...</span>
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
 @endsection
