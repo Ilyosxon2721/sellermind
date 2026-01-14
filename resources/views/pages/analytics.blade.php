@@ -46,7 +46,7 @@
         </button>
     </x-pwa-header>
 
-    <main class="native-scroll pb-20" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);" x-pull-to-refresh="loadData">
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); min-height: 100vh;" x-pull-to-refresh="loadData">
 
         {{-- Period Selector --}}
         <div class="px-4 pt-4 pb-3">

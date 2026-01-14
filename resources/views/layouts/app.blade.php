@@ -42,7 +42,26 @@
         .min-h-screen { min-height: 100vh; }
         .bg-gray-50 { background-color: #f9fafb; }
         [x-cloak] { display: none !important; }
+        /* PWA/Browser mode visibility - critical for preventing flash */
+        .pwa-only { display: none !important; }
+        .pwa-mode .pwa-only { display: block !important; }
+        .pwa-mode .browser-only { display: none !important; }
+        .browser-mode .browser-only { display: flex !important; }
     </style>
+
+    <!-- Early PWA detection to prevent flash of wrong content -->
+    <script>
+        (function() {
+            var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            var isIOSStandalone = window.navigator.standalone === true;
+            if (isStandalone || isIOSStandalone) {
+                document.documentElement.classList.add('pwa-mode');
+            } else {
+                document.documentElement.classList.add('browser-mode');
+            }
+            window.isPWAInstalled = isStandalone || isIOSStandalone;
+        })();
+    </script>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js'])

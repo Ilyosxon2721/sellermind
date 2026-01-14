@@ -530,13 +530,18 @@
     display: none !important;
 }
 
+/* Browser mode - ensure browser-only content is visible */
+.browser-mode .browser-only {
+    display: flex !important;
+}
+
 /* Show PWA-only elements */
 .pwa-only {
-    display: none;
+    display: none !important;
 }
 
 .pwa-mode .pwa-only {
-    display: block;
+    display: block !important;
 }
 
 /* ============================================

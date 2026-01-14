@@ -86,7 +86,7 @@
     </x-pwa-header>
 
     {{-- Main Content --}}
-    <main class="native-scroll pb-20" style="height: calc(100vh - 44px); padding-top: env(safe-area-inset-top);"
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); min-height: 100vh;"
           x-data="{ refreshPage() { window.location.reload(); } }"
           x-pull-to-refresh="refreshPage">
 

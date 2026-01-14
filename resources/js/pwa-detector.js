@@ -5,6 +5,17 @@
  * vs regular browser mode, and applies appropriate classes/behavior
  */
 
+// Run detection immediately before DOM is ready to prevent flash of wrong content
+(function() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const isIOSStandalone = window.navigator.standalone === true;
+    if (isStandalone || isIOSStandalone) {
+        document.documentElement.classList.add('pwa-mode');
+    } else {
+        document.documentElement.classList.add('browser-mode');
+    }
+})();
+
 class PWADetector {
     constructor() {
         this.isPWA = false;
