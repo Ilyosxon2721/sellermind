@@ -281,6 +281,17 @@ class MarketplaceAccountController extends Controller
 
         $result = $syncService->testConnection($account);
 
+        // If test successful, activate the account
+        if ($result['success'] ?? false) {
+            $wasInactive = !$account->is_active;
+            $account->markAsConnected();
+
+            if ($wasInactive) {
+                $result['account_activated'] = true;
+                $result['message'] = ($result['message'] ?? 'Подключение успешно') . ' Аккаунт активирован.';
+            }
+        }
+
         return response()->json($result);
     }
 
