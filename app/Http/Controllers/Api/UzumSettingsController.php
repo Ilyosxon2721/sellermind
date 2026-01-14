@@ -33,6 +33,7 @@ class UzumSettingsController extends Controller
                 'marketplace' => $account->marketplace,
                 'is_active' => $account->is_active,
                 'shop_id' => $account->shop_id,
+                'shop_ids' => $account->credentials_json['shop_ids'] ?? ($account->shop_id ? [$account->shop_id] : []),
                 'tokens' => [
                     'api_key' => !empty($account->api_key) || !empty($account->uzum_api_key) || !empty($account->uzum_access_token),
                 ],
@@ -56,6 +57,8 @@ class UzumSettingsController extends Controller
         $validated = $request->validate([
             'api_key' => ['nullable', 'string', 'max:4000'],
             'shop_id' => ['nullable', 'string', 'max:100'],
+            'shop_ids' => ['nullable', 'array'],
+            'shop_ids.*' => ['string'],
             'stock_sync_mode' => ['nullable', 'string', 'in:basic,aggregated'],
             'warehouse_id' => ['nullable', 'integer'],
             'source_warehouse_ids' => ['nullable', 'array'],
@@ -71,18 +74,32 @@ class UzumSettingsController extends Controller
             $updateData['shop_id'] = $validated['shop_id'];
         }
 
-        // Handle stock sync settings in credentials_json
-        if ($request->has('stock_sync_mode') || $request->has('warehouse_id') || $request->has('source_warehouse_ids')) {
-            $credentialsJson = $account->credentials_json ?? [];
-            if ($request->has('stock_sync_mode')) {
-                $credentialsJson['stock_sync_mode'] = $validated['stock_sync_mode'];
+        // Handle shop_ids and stock sync settings in credentials_json
+        $credentialsJson = $account->credentials_json ?? [];
+        $needsCredentialsUpdate = false;
+
+        if ($request->has('shop_ids')) {
+            $credentialsJson['shop_ids'] = $validated['shop_ids'] ?? [];
+            $needsCredentialsUpdate = true;
+            // Also set first shop_id for backwards compatibility
+            if (!empty($validated['shop_ids'])) {
+                $updateData['shop_id'] = $validated['shop_ids'][0];
             }
-            if ($request->has('warehouse_id')) {
-                $credentialsJson['warehouse_id'] = $validated['warehouse_id'];
-            }
-            if ($request->has('source_warehouse_ids')) {
-                $credentialsJson['source_warehouse_ids'] = $validated['source_warehouse_ids'];
-            }
+        }
+        if ($request->has('stock_sync_mode')) {
+            $credentialsJson['stock_sync_mode'] = $validated['stock_sync_mode'];
+            $needsCredentialsUpdate = true;
+        }
+        if ($request->has('warehouse_id')) {
+            $credentialsJson['warehouse_id'] = $validated['warehouse_id'];
+            $needsCredentialsUpdate = true;
+        }
+        if ($request->has('source_warehouse_ids')) {
+            $credentialsJson['source_warehouse_ids'] = $validated['source_warehouse_ids'];
+            $needsCredentialsUpdate = true;
+        }
+
+        if ($needsCredentialsUpdate) {
             $updateData['credentials_json'] = $credentialsJson;
         }
 
@@ -103,10 +120,11 @@ class UzumSettingsController extends Controller
         }
 
         return response()->json([
-            'message' => 'Токен обновлён.',
+            'message' => 'Настройки обновлены.',
             'account' => [
                 'id' => $account->id,
                 'shop_id' => $account->shop_id,
+                'shop_ids' => $account->credentials_json['shop_ids'] ?? ($account->shop_id ? [$account->shop_id] : []),
                 'tokens' => [
                     'api_key' => !empty($account->api_key),
                 ],
