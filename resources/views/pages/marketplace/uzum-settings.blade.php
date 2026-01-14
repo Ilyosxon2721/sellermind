@@ -8,10 +8,12 @@
          saving: false,
          testing: false,
          testResults: null,
-         form: { api_key: '', shop_id: '' },
+         form: { api_key: '', shop_ids: [] },
          showTokens: { api_key: false },
          shops: [],
          loadingShops: false,
+         savingShops: false,
+         shopSaveResult: null,
 
          // Warehouse integration
          warehouses: [],
@@ -61,7 +63,8 @@
                  if (res.ok) {
                      const data = await res.json();
                      this.account = data.account;
-                     this.form.shop_id = data.account?.shop_id || '';
+                     // Load shop_ids from account (array of selected shops)
+                     this.form.shop_ids = data.account?.shop_ids || [];
                      // Load stock sync settings if available
                      if (data.account?.credentials_json) {
                          this.stockSync.mode = data.account.credentials_json.stock_sync_mode || 'basic';
@@ -122,7 +125,6 @@
             try {
                 const payload = { company_id: authStore.currentCompany.id };
                 if (this.form.api_key !== '') payload.api_key = this.form.api_key;
-                payload.shop_id = this.form.shop_id;
                 const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
                     method: 'PUT',
                     headers: {
@@ -137,11 +139,58 @@
                     this.form.api_key = '';
                     await this.loadSettings();
                     await this.loadShops();
-                    alert('Настройки обновлены');
+                    alert('Токен обновлен');
                 }
                 else { alert(data.message || 'Ошибка сохранения'); }
              } catch (e) { alert('Ошибка сохранения: ' + e.message); }
              this.saving = false;
+         },
+         toggleShop(shopId) {
+             const id = String(shopId);
+             const index = this.form.shop_ids.indexOf(id);
+             if (index === -1) {
+                 this.form.shop_ids.push(id);
+             } else {
+                 this.form.shop_ids.splice(index, 1);
+             }
+         },
+         isShopSelected(shopId) {
+             return this.form.shop_ids.includes(String(shopId));
+         },
+         selectAllShops() {
+             this.form.shop_ids = this.shops.map(s => String(s.id));
+         },
+         deselectAllShops() {
+             this.form.shop_ids = [];
+         },
+         async saveShopSelection() {
+             this.savingShops = true;
+             this.shopSaveResult = null;
+             try {
+                 const authStore = this.$store.auth;
+                 const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
+                     method: 'PUT',
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({
+                         company_id: authStore.currentCompany.id,
+                         shop_ids: this.form.shop_ids
+                     })
+                 });
+                 if (res.ok) {
+                     this.shopSaveResult = { success: true, message: 'Выбор магазинов сохранен' };
+                     await this.loadSettings();
+                 } else {
+                     const data = await res.json();
+                     this.shopSaveResult = { success: false, message: data.message || 'Ошибка сохранения' };
+                 }
+             } catch (e) {
+                 this.shopSaveResult = { success: false, message: 'Ошибка: ' + e.message };
+             }
+             this.savingShops = false;
          },
          async testConnection() {
              const authStore = this.$store.auth;
@@ -165,9 +214,6 @@
                  await this.loadShops();
              } catch (e) { this.testResults = { success: false, message: 'Network error' }; }
              this.testing = false;
-         },
-         selectShop(shopId) {
-             this.form.shop_id = String(shopId);
          },
          async saveStockSettings() {
              this.savingStock = true;
@@ -280,8 +326,8 @@
                                 <p class="text-sm font-medium text-gray-900" x-text="account?.api_key_preview || 'Не указан'"></p>
                             </div>
                             <div class="p-3 rounded-lg bg-gray-50 border border-gray-200">
-                                <p class="text-xs text-gray-500 mb-1">Выбранный магазин</p>
-                                <p class="text-sm font-medium text-gray-900" x-text="form.shop_id || 'Не выбран'"></p>
+                                <p class="text-xs text-gray-500 mb-1">Выбрано магазинов</p>
+                                <p class="text-sm font-medium text-gray-900" x-text="form.shop_ids.length > 0 ? form.shop_ids.length + ' шт.' : 'Не выбрано'"></p>
                             </div>
                         </div>
 
@@ -354,7 +400,7 @@
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900">Магазины Uzum</h3>
-                                <p class="text-sm text-gray-500">Выберите магазин для синхронизации товаров и заказов</p>
+                                <p class="text-sm text-gray-500">Выберите магазины для синхронизации товаров и заказов</p>
                             </div>
                             <button @click="loadShops()" :disabled="loadingShops"
                                     class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition disabled:opacity-50 flex items-center space-x-2">
@@ -369,34 +415,53 @@
                             </button>
                         </div>
 
-                        <!-- Current Selection -->
-                        <div x-show="form.shop_id" class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                            <div class="flex items-center space-x-3">
-                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <div>
-                                    <p class="text-sm font-medium text-purple-800">Выбранный магазин</p>
-                                    <p class="text-xs text-purple-700">ID: <span class="font-mono font-semibold" x-text="form.shop_id"></span></p>
+                        <!-- Current Selection Summary -->
+                        <div x-show="form.shop_ids.length > 0" class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-medium text-purple-800">Выбрано магазинов: <span x-text="form.shop_ids.length"></span></p>
+                                        <p class="text-xs text-purple-700">ID: <span class="font-mono" x-text="form.shop_ids.join(', ')"></span></p>
+                                    </div>
                                 </div>
+                                <button @click="deselectAllShops()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">
+                                    Снять выбор
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Shops List -->
-                        <div x-show="shops.length > 0" class="space-y-2">
+                        <!-- Select All / Deselect All Buttons -->
+                        <div x-show="shops.length > 0" class="flex items-center space-x-3 mb-4">
+                            <button @click="selectAllShops()"
+                                    class="px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition">
+                                Выбрать все
+                            </button>
+                            <button @click="deselectAllShops()"
+                                    class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                                Снять все
+                            </button>
+                        </div>
+
+                        <!-- Shops List with Checkboxes -->
+                        <div x-show="shops.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
                             <template x-for="shop in shops" :key="shop.id">
-                                <div class="flex items-center justify-between p-4 border rounded-lg transition"
-                                     :class="form.shop_id == shop.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
-                                    <div>
+                                <label class="flex items-center p-4 border rounded-lg cursor-pointer transition hover:bg-gray-50"
+                                       :class="isShopSelected(shop.id) ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
+                                    <input type="checkbox"
+                                           :checked="isShopSelected(shop.id)"
+                                           @change="toggleShop(shop.id)"
+                                           class="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 border-gray-300">
+                                    <div class="ml-3 flex-1">
                                         <p class="font-medium text-gray-900" x-text="shop.name || 'Магазин'"></p>
                                         <p class="text-sm text-gray-500">ID: <span x-text="shop.id"></span></p>
                                     </div>
-                                    <button @click="selectShop(shop.id); saveSettings()"
-                                            class="px-4 py-2 rounded-lg font-medium transition"
-                                            :class="form.shop_id == shop.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                                        <span x-text="form.shop_id == shop.id ? 'Выбрано' : 'Выбрать'"></span>
-                                    </button>
-                                </div>
+                                    <span x-show="isShopSelected(shop.id)" class="px-2 py-1 text-xs bg-purple-600 text-white rounded-full">
+                                        Выбран
+                                    </span>
+                                </label>
                             </template>
                         </div>
 
@@ -415,6 +480,24 @@
                         </div>
                     </div>
 
+                    <!-- Save Button -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-6">
+                        <button @click="saveShopSelection()"
+                                :disabled="savingShops"
+                                class="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center space-x-2">
+                            <svg x-show="savingShops" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span x-text="savingShops ? 'Сохранение...' : 'Сохранить выбор магазинов'"></span>
+                        </button>
+
+                        <div x-show="shopSaveResult" class="mt-4 p-3 rounded-lg text-sm"
+                             :class="shopSaveResult?.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
+                            <span x-text="shopSaveResult?.message"></span>
+                        </div>
+                    </div>
+
                     <!-- Info -->
                     <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
                         <div class="flex items-start space-x-3">
@@ -424,9 +507,10 @@
                             <div class="text-sm text-purple-800">
                                 <p><strong>Важно:</strong></p>
                                 <ul class="list-disc list-inside mt-2 space-y-1">
-                                    <li>Выбранный магазин используется для синхронизации товаров и заказов</li>
+                                    <li>Вы можете выбрать несколько магазинов для синхронизации</li>
+                                    <li>Товары и заказы будут синхронизироваться со всех выбранных магазинов</li>
                                     <li>Если магазины не загружаются, проверьте API токен</li>
-                                    <li>После смены магазина рекомендуется пересинхронизировать данные</li>
+                                    <li>После изменения выбора рекомендуется пересинхронизировать данные</li>
                                 </ul>
                             </div>
                         </div>
