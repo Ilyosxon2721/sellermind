@@ -54,16 +54,20 @@ class YandexMarketController extends Controller
     public function saveSettings(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $validated = $request->validate([
             'api_key' => 'nullable|string',
             'campaign_id' => 'nullable|string',
             'business_id' => 'nullable|string',
+            'stock_sync_mode' => 'nullable|string|in:basic,aggregated',
+            'warehouse_id' => 'nullable|integer',
+            'source_warehouse_ids' => 'nullable|array',
+            'source_warehouse_ids.*' => 'integer',
         ]);
-        
+
         // Use getDecryptedCredentials() to get array, not the encrypted string
         $credentials = $account->getDecryptedCredentials();
-        
+
         // Only update api_key if it's a real token (not masked value)
         $apiKey = $validated['api_key'] ?? '';
         if (!empty($apiKey) && !str_starts_with($apiKey, '***') && !str_contains($apiKey, '...')) {
@@ -75,11 +79,26 @@ class YandexMarketController extends Controller
         if (isset($validated['business_id'])) {
             $credentials['business_id'] = $validated['business_id'];
         }
-        
+
         $account->update([
             'credentials' => $credentials,
         ]);
-        
+
+        // Handle stock sync settings in credentials_json
+        if ($request->has('stock_sync_mode') || $request->has('warehouse_id') || $request->has('source_warehouse_ids')) {
+            $credentialsJson = $account->credentials_json ?? [];
+            if ($request->has('stock_sync_mode')) {
+                $credentialsJson['stock_sync_mode'] = $validated['stock_sync_mode'];
+            }
+            if ($request->has('warehouse_id')) {
+                $credentialsJson['warehouse_id'] = $validated['warehouse_id'];
+            }
+            if ($request->has('source_warehouse_ids')) {
+                $credentialsJson['source_warehouse_ids'] = $validated['source_warehouse_ids'];
+            }
+            $account->update(['credentials_json' => $credentialsJson]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Настройки сохранены',

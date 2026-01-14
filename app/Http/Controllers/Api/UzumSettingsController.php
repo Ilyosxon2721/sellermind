@@ -38,11 +38,12 @@ class UzumSettingsController extends Controller
                 ],
                 'api_key_preview' => $preview,
                 'last_successful_call' => $account->wb_last_successful_call, // reuse field for now
+                'credentials_json' => $account->credentials_json,
             ],
         ]);
     }
 
-    public function update(Request $request, MarketplaceAccount $account): JsonResponse
+    public function update(Request $request, MarketplaceAccount $account, UzumClient $client): JsonResponse
     {
         if (!$request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки токенов.'], 403);
@@ -54,6 +55,11 @@ class UzumSettingsController extends Controller
 
         $validated = $request->validate([
             'api_key' => ['nullable', 'string', 'max:4000'],
+            'shop_id' => ['nullable', 'string', 'max:100'],
+            'stock_sync_mode' => ['nullable', 'string', 'in:basic,aggregated'],
+            'warehouse_id' => ['nullable', 'integer'],
+            'source_warehouse_ids' => ['nullable', 'array'],
+            'source_warehouse_ids.*' => ['integer'],
         ]);
 
         $updateData = [];
@@ -61,6 +67,25 @@ class UzumSettingsController extends Controller
             $value = $validated['api_key'];
             $updateData['api_key'] = $value === '' ? null : $value;
         }
+        if (array_key_exists('shop_id', $validated)) {
+            $updateData['shop_id'] = $validated['shop_id'];
+        }
+
+        // Handle stock sync settings in credentials_json
+        if ($request->has('stock_sync_mode') || $request->has('warehouse_id') || $request->has('source_warehouse_ids')) {
+            $credentialsJson = $account->credentials_json ?? [];
+            if ($request->has('stock_sync_mode')) {
+                $credentialsJson['stock_sync_mode'] = $validated['stock_sync_mode'];
+            }
+            if ($request->has('warehouse_id')) {
+                $credentialsJson['warehouse_id'] = $validated['warehouse_id'];
+            }
+            if ($request->has('source_warehouse_ids')) {
+                $credentialsJson['source_warehouse_ids'] = $validated['source_warehouse_ids'];
+            }
+            $updateData['credentials_json'] = $credentialsJson;
+        }
+
         if (!empty($updateData)) {
             $account->update($updateData);
         }
