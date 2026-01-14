@@ -16,7 +16,8 @@ class MarketplaceSyncLogController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $companyId = $user?->company_id;
+        // Try direct company_id first, then fallback to companies relationship
+        $companyId = $user?->company_id ?? $user?->companies()->first()?->id;
 
         // If no company, return empty results
         if (!$companyId) {

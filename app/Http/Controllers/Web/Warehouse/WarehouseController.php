@@ -15,7 +15,7 @@ class WarehouseController extends Controller
     public function balance(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
 
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
@@ -31,8 +31,8 @@ class WarehouseController extends Controller
 
     public function dashboard(Request $request): View
     {
-        $this->ensureUser($request);
-        $companyId = $request->user()?->company_id;
+        $user = $this->ensureUser($request);
+        $companyId = $this->getCompanyId($user);
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->orderByDesc('is_default')
@@ -48,7 +48,7 @@ class WarehouseController extends Controller
     public function receipts(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
 
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
@@ -65,7 +65,7 @@ class WarehouseController extends Controller
     public function createReceipt(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
 
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
@@ -94,7 +94,7 @@ class WarehouseController extends Controller
     public function documents(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
 
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
@@ -117,7 +117,7 @@ class WarehouseController extends Controller
     public function reservations(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->orderByDesc('is_default')
@@ -133,7 +133,7 @@ class WarehouseController extends Controller
     public function ledger(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $user?->company_id;
+        $companyId = $this->getCompanyId($user);
         $warehouses = Warehouse::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->orderByDesc('is_default')
@@ -160,5 +160,17 @@ class WarehouseController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(?User $user): ?int
+    {
+        if (!$user) {
+            return null;
+        }
+
+        return $user->company_id ?? $user->companies()->first()?->id;
     }
 }

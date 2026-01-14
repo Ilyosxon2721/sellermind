@@ -13,6 +13,18 @@ class StockController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+        return $user->company_id ?? $user->companies()->first()?->id;
+    }
+
     public function balance(Request $request)
     {
         $request->validate([
@@ -23,7 +35,7 @@ class StockController extends Controller
             'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -103,7 +115,7 @@ class StockController extends Controller
             'query' => ['nullable', 'string'],
         ]);
 
-        $companyId = Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }

@@ -12,9 +12,21 @@ class WarehouseManageController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company ID with fallback to companies relationship
+     */
+    private function getCompanyId(): ?int
+    {
+        $user = auth('web')->user() ?? Auth::user();
+        if (!$user) {
+            return null;
+        }
+        return $user->company_id ?? $user->companies()->first()?->id;
+    }
+
     public function index()
     {
-        $companyId = auth('web')->user()?->company_id ?? Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -30,7 +42,7 @@ class WarehouseManageController extends Controller
 
     public function show($id)
     {
-        $companyId = auth('web')->user()?->company_id ?? Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -42,7 +54,7 @@ class WarehouseManageController extends Controller
 
     public function store(Request $request)
     {
-        $companyId = auth('web')->user()?->company_id ?? Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -83,7 +95,7 @@ class WarehouseManageController extends Controller
 
     public function update($id, Request $request)
     {
-        $companyId = auth('web')->user()?->company_id ?? Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -113,7 +125,7 @@ class WarehouseManageController extends Controller
 
     public function makeDefault($id)
     {
-        $companyId = auth('web')->user()?->company_id ?? Auth::user()?->company_id;
+        $companyId = $this->getCompanyId();
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }

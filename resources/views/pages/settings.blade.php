@@ -270,10 +270,12 @@ function settingsPage() {
                     },
                 });
                 const data = await response.json();
+                // API returns { user: {...} }
+                const user = data.user || data;
                 this.profile = {
-                    name: data.name || '',
-                    email: data.email || '',
-                    locale: data.locale || 'ru',
+                    name: user.name || '',
+                    email: user.email || '',
+                    locale: user.locale || 'ru',
                 };
             } catch (error) {
                 console.error('Failed to load profile:', error);
