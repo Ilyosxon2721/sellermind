@@ -2,11 +2,18 @@
 
 namespace App\Services;
 
+use App\Models\UzumOrder;
+use App\Models\WbOrder;
+use App\Models\MarketplaceAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class SalesAnalyticsService
 {
+    /**
+     * Статусы отменённых заказов (исключаются из расчёта выручки)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
     /**
      * Get sales overview for a period.
      */
@@ -14,14 +21,17 @@ class SalesAnalyticsService
     {
         $dateRange = $this->getDateRange($period);
 
-        // Total sales
+        // Total sales (excluding cancelled)
         $totalSales = $this->getTotalSales($companyId, $dateRange);
 
-        // Total revenue
+        // Total revenue (excluding cancelled)
         $totalRevenue = $this->getTotalRevenue($companyId, $dateRange);
 
-        // Total orders
+        // Total orders (excluding cancelled)
         $totalOrders = $this->getTotalOrders($companyId, $dateRange);
+
+        // Cancelled orders separately
+        $cancelledStats = $this->getCancelledStats($companyId, $dateRange);
 
         // Average order value
         $avgOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
@@ -37,6 +47,8 @@ class SalesAnalyticsService
             'total_orders' => $totalOrders,
             'average_order_value' => round($avgOrderValue, 2),
             'revenue_growth_percentage' => round($revenueGrowth, 2),
+            'cancelled_orders' => $cancelledStats['count'],
+            'cancelled_amount' => round($cancelledStats['amount'], 2),
             'period' => $period,
             'date_from' => $dateRange['from']->toDateString(),
             'date_to' => $dateRange['to']->toDateString(),
@@ -314,40 +326,109 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get total sales count.
+     * Get total sales count (excluding cancelled orders).
      */
     protected function getTotalSales(int $companyId, array $dateRange): int
     {
-        return DB::table('marketplace_order_items')
-            ->join('marketplace_orders', 'marketplace_order_items.order_id', '=', 'marketplace_orders.id')
-            ->join('marketplace_accounts', 'marketplace_orders.marketplace_account_id', '=', 'marketplace_accounts.id')
-            ->where('marketplace_accounts.company_id', $companyId)
-            ->whereBetween('marketplace_orders.created_at', [$dateRange['from'], $dateRange['to']])
-            ->sum('marketplace_order_items.quantity');
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return 0;
+        }
+
+        // Uzum items
+        $uzumSales = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->with('items')
+            ->get()
+            ->flatMap(fn($o) => $o->items)
+            ->sum('quantity');
+
+        // WB items
+        $wbSales = WbOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->with('items')
+            ->get()
+            ->flatMap(fn($o) => $o->items)
+            ->sum('quantity');
+
+        return (int) ($uzumSales + $wbSales);
     }
 
     /**
-     * Get total revenue.
+     * Get total revenue (excluding cancelled orders).
      */
     protected function getTotalRevenue(int $companyId, array $dateRange): float
     {
-        return DB::table('marketplace_order_items')
-            ->join('marketplace_orders', 'marketplace_order_items.order_id', '=', 'marketplace_orders.id')
-            ->join('marketplace_accounts', 'marketplace_orders.marketplace_account_id', '=', 'marketplace_accounts.id')
-            ->where('marketplace_accounts.company_id', $companyId)
-            ->whereBetween('marketplace_orders.created_at', [$dateRange['from'], $dateRange['to']])
-            ->sum(DB::raw('marketplace_order_items.price * marketplace_order_items.quantity'));
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return 0.0;
+        }
+
+        // Uzum revenue
+        $uzumRevenue = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->sum('total_amount');
+
+        // WB revenue
+        $wbRevenue = WbOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->sum('total_amount');
+
+        return (float) ($uzumRevenue + $wbRevenue);
     }
 
     /**
-     * Get total orders count.
+     * Get total orders count (excluding cancelled).
      */
     protected function getTotalOrders(int $companyId, array $dateRange): int
     {
-        return DB::table('marketplace_orders')
-            ->join('marketplace_accounts', 'marketplace_orders.marketplace_account_id', '=', 'marketplace_accounts.id')
-            ->where('marketplace_accounts.company_id', $companyId)
-            ->whereBetween('marketplace_orders.created_at', [$dateRange['from'], $dateRange['to']])
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return 0;
+        }
+
+        $uzumCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
+
+        $wbCount = WbOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->count();
+
+        return $uzumCount + $wbCount;
+    }
+
+    /**
+     * Get cancelled orders stats.
+     */
+    protected function getCancelledStats(int $companyId, array $dateRange): array
+    {
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return ['count' => 0, 'amount' => 0.0];
+        }
+
+        $uzumCancelled = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('status_normalized', self::CANCELLED_STATUSES);
+
+        $wbCancelled = WbOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('status', self::CANCELLED_STATUSES);
+
+        return [
+            'count' => $uzumCancelled->count() + $wbCancelled->count(),
+            'amount' => (float) ($uzumCancelled->sum('total_amount') + $wbCancelled->sum('total_amount')),
+        ];
     }
 }

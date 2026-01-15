@@ -7,6 +7,7 @@ use App\Models\Inventory;
 use App\Models\MarketplaceAccount;
 use App\Models\Product;
 use App\Models\UzumOrder;
+use App\Models\WbOrder;
 use App\Models\Warehouse\ChannelOrder;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
@@ -79,28 +80,66 @@ class DashboardController extends Controller
     }
 
     /**
-     * Данные по продажам
+     * Статусы отменённых заказов (исключаются из расчёта выручки)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
+    /**
+     * Данные по продажам (Uzum + WB)
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
     {
-        // Uzum orders
-        $uzumOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId));
-        
-        $todayAmount = (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount');
-        $todayCount = (clone $uzumOrders)->whereDate('ordered_at', $today)->count();
-        
-        $weekAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
-        $weekCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->count();
-        
-        $monthAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount');
-        $monthCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->count();
+        // Uzum orders - исключаем отменённые из сумм выручки
+        $uzumOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES);
 
-        // По дням за неделю
-        $dailySales = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        // WB orders - исключаем отменённые
+        $wbOrders = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereNotIn('status', self::CANCELLED_STATUSES);
+
+        // Today
+        $todayAmount = (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount')
+            + (clone $wbOrders)->whereDate('ordered_at', $today)->sum('total_amount');
+        $todayCount = (clone $uzumOrders)->whereDate('ordered_at', $today)->count()
+            + (clone $wbOrders)->whereDate('ordered_at', $today)->count();
+
+        // Week
+        $weekAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
+            + (clone $wbOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+        $weekCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->count()
+            + (clone $wbOrders)->whereDate('ordered_at', '>=', $weekAgo)->count();
+
+        // Month
+        $monthAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount')
+            + (clone $wbOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount');
+        $monthCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->count()
+            + (clone $wbOrders)->whereDate('ordered_at', '>=', $monthAgo)->count();
+
+        // Отменённые заказы отдельно
+        $uzumCancelled = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status_normalized', self::CANCELLED_STATUSES);
+        $wbCancelled = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', self::CANCELLED_STATUSES);
+
+        $cancelledWeekAmount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
+            + (clone $wbCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+        $cancelledWeekCount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count()
+            + (clone $wbCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count();
+
+        // По дням за неделю (Uzum + WB, без отменённых)
+        $uzumDaily = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $weekAgo)
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->select(DB::raw('DATE(ordered_at) as date'), DB::raw('SUM(total_amount) as amount'), DB::raw('COUNT(*) as count'))
             ->groupBy('date')
-            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $wbDaily = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('ordered_at', '>=', $weekAgo)
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->select(DB::raw('DATE(ordered_at) as date'), DB::raw('SUM(total_amount) as amount'), DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
             ->get()
             ->keyBy('date');
 
@@ -109,29 +148,69 @@ class DashboardController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i)->format('Y-m-d');
             $chartLabels[] = Carbon::parse($date)->format('d.m');
-            $chartData[] = (float) ($dailySales[$date]->amount ?? 0);
+            $uzumAmount = (float) ($uzumDaily[$date]->amount ?? 0);
+            $wbAmount = (float) ($wbDaily[$date]->amount ?? 0);
+            $chartData[] = $uzumAmount + $wbAmount;
         }
 
-        // Последние заказы
-        $recentOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        // Последние заказы (Uzum + WB, объединённые и отсортированные)
+        $uzumRecent = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->orderByDesc('ordered_at')
-            ->limit(5)
+            ->limit(10)
             ->get()
             ->map(fn($o) => [
-                'id' => $o->id,
+                'id' => 'uzum_' . $o->id,
                 'order_number' => $o->external_order_id,
                 'amount' => (float) $o->total_amount,
                 'status' => $o->status_normalized ?? $o->status,
                 'date' => $o->ordered_at?->format('d.m.Y H:i'),
+                'ordered_at' => $o->ordered_at,
+                'marketplace' => 'uzum',
             ]);
 
-        // По статусам
-        $byStatus = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbRecent = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->orderByDesc('ordered_at')
+            ->limit(10)
+            ->get()
+            ->map(fn($o) => [
+                'id' => 'wb_' . $o->id,
+                'order_number' => $o->external_order_id ?? $o->rid,
+                'amount' => (float) ($o->total_amount ?? $o->price ?? 0),
+                'status' => $o->status,
+                'date' => $o->ordered_at?->format('d.m.Y H:i'),
+                'ordered_at' => $o->ordered_at,
+                'marketplace' => 'wb',
+            ]);
+
+        $recentOrders = $uzumRecent->concat($wbRecent)
+            ->sortByDesc('ordered_at')
+            ->take(5)
+            ->values()
+            ->map(fn($o) => collect($o)->except('ordered_at')->toArray());
+
+        // По статусам (Uzum + WB)
+        $uzumByStatus = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $weekAgo)
-            ->select('status_normalized', DB::raw('COUNT(*) as count'))
+            ->select('status_normalized as status', DB::raw('COUNT(*) as count'))
             ->groupBy('status_normalized')
-            ->pluck('count', 'status_normalized')
+            ->pluck('count', 'status')
             ->toArray();
+
+        $wbByStatus = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('ordered_at', '>=', $weekAgo)
+            ->select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Объединяем статусы
+        $byStatus = [];
+        foreach ($uzumByStatus as $status => $count) {
+            $byStatus[$status] = ($byStatus[$status] ?? 0) + $count;
+        }
+        foreach ($wbByStatus as $status => $count) {
+            $byStatus[$status] = ($byStatus[$status] ?? 0) + $count;
+        }
 
         return [
             'today_amount' => (float) $todayAmount,
@@ -140,6 +219,9 @@ class DashboardController extends Controller
             'week_count' => $weekCount,
             'month_amount' => (float) $monthAmount,
             'month_count' => $monthCount,
+            // Отменённые заказы (отдельно)
+            'cancelled_week_amount' => (float) $cancelledWeekAmount,
+            'cancelled_week_count' => $cancelledWeekCount,
             'chart_labels' => $chartLabels,
             'chart_data' => $chartData,
             'recent_orders' => $recentOrders,

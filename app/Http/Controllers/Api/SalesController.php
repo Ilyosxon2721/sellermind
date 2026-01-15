@@ -315,34 +315,44 @@ class SalesController extends Controller
             return collect();
         }
 
-        $query = ChannelOrder::query()
-            ->whereNull('channel_id') // Manual orders have no channel
-            ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->where(function($q) use ($companyId) {
-                $q->whereJsonContains('payload_json->company_id', $companyId)
-                  ->orWhereJsonContains('payload_json->is_manual', true);
-            });
-        
-        if ($status) {
-            $query->where('status', $status);
+        try {
+            // Check if table exists
+            if (!DB::getSchemaBuilder()->hasTable('channel_orders')) {
+                return collect();
+            }
+
+            $query = ChannelOrder::query()
+                ->whereNull('channel_id') // Manual orders have no channel
+                ->whereDate('created_at', '>=', $dateFrom)
+                ->whereDate('created_at', '<=', $dateTo)
+                ->where(function($q) use ($companyId) {
+                    $q->whereJsonContains('payload_json->company_id', $companyId)
+                      ->orWhereJsonContains('payload_json->is_manual', true);
+                });
+
+            if ($status) {
+                $query->where('status', $status);
+            }
+
+            if ($search) {
+                $query->where('external_order_id', 'like', "%{$search}%");
+            }
+
+            return $query->get()->map(fn($order) => [
+                'id' => 'manual_' . $order->id,
+                'order_number' => $order->external_order_id,
+                'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
+                'marketplace' => 'manual',
+                'customer_name' => $order->payload_json['customer_name'] ?? null,
+                'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
+                'currency' => $order->payload_json['currency'] ?? 'UZS',
+                'status' => $this->normalizeStatus($order->status),
+                'raw_status' => $order->status,
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('Manual orders fetch skipped: ' . $e->getMessage());
+            return collect();
         }
-        
-        if ($search) {
-            $query->where('external_order_id', 'like', "%{$search}%");
-        }
-        
-        return $query->get()->map(fn($order) => [
-            'id' => 'manual_' . $order->id,
-            'order_number' => $order->external_order_id,
-            'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
-            'marketplace' => 'manual',
-            'customer_name' => $order->payload_json['customer_name'] ?? null,
-            'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
-            'currency' => $order->payload_json['currency'] ?? 'UZS',
-            'status' => $this->normalizeStatus($order->status),
-            'raw_status' => $order->status,
-        ]);
     }
     
     /**
@@ -351,24 +361,42 @@ class SalesController extends Controller
     private function calculateStats(\Illuminate\Support\Collection $orders): array
     {
         $totalOrders = $orders->count();
-        $totalAmount = $orders->sum('total_amount');
-        
+
+        // Separate cancelled orders
+        $cancelledOrders = $orders->filter(fn($o) => $o['status'] === 'cancelled');
+        $validOrders = $orders->filter(fn($o) => $o['status'] !== 'cancelled');
+
+        $cancelledCount = $cancelledOrders->count();
+        $cancelledAmount = $cancelledOrders->sum('total_amount');
+
+        // Revenue excludes cancelled orders
+        $totalRevenue = $validOrders->sum('total_amount');
+        $totalAmount = $orders->sum('total_amount'); // Keep for backwards compatibility
+
         $marketplaceOrders = $orders->filter(fn($o) => $o['marketplace'] !== 'manual')->count();
         $manualOrders = $orders->filter(fn($o) => $o['marketplace'] === 'manual')->count();
-        
+
+        $avgOrderValue = $validOrders->count() > 0 ? round($totalRevenue / $validOrders->count()) : 0;
+
         $byMarketplace = $orders->groupBy('marketplace')->map(function($group, $mp) {
             $labels = ['uzum' => 'Uzum', 'wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'manual' => 'Ручные'];
+            $validGroup = $group->filter(fn($o) => $o['status'] !== 'cancelled');
             return [
                 'name' => $mp,
                 'label' => $labels[$mp] ?? $mp,
                 'count' => $group->count(),
-                'amount' => $group->sum('total_amount'),
+                'amount' => $validGroup->sum('total_amount'),
+                'cancelledCount' => $group->filter(fn($o) => $o['status'] === 'cancelled')->count(),
             ];
         })->values()->toArray();
-        
+
         return [
             'totalOrders' => $totalOrders,
             'totalAmount' => $totalAmount,
+            'totalRevenue' => $totalRevenue,
+            'cancelledOrders' => $cancelledCount,
+            'cancelledAmount' => $cancelledAmount,
+            'avgOrderValue' => $avgOrderValue,
             'marketplaceOrders' => $marketplaceOrders,
             'manualOrders' => $manualOrders,
             'byMarketplace' => $byMarketplace,

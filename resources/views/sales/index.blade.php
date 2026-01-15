@@ -42,8 +42,193 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding pwa-top-padding" x-pull-to-refresh="loadOrders">
-            <div class="bg-white rounded-lg shadow p-6">
-                <p class="text-gray-600">Browser mode for Sales page. Use PWA for full experience.</p>
+            {{-- Stats Cards --}}
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.totalRevenue)">0 сум</div>
+                        <div class="text-sm text-gray-500">Выручка</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
+                        <div class="text-sm text-gray-500">Заказов</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="stats.cancelledOrders || 0">0</div>
+                        <div class="text-sm text-gray-500">Отменено</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
+                        <div class="text-sm text-gray-500">Средний чек</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Filters --}}
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
+                    <button @click="resetFilters()" class="text-sm text-gray-500 hover:text-gray-700">Сбросить</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Период</label>
+                        <select x-model="filters.period" @change="loadOrders()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="today">Сегодня</option>
+                            <option value="yesterday">Вчера</option>
+                            <option value="week">7 дней</option>
+                            <option value="month">30 дней</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Маркетплейс</label>
+                        <select x-model="filters.marketplace" @change="loadOrders()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Все</option>
+                            <option value="uzum">Uzum</option>
+                            <option value="wb">Wildberries</option>
+                            <option value="ozon">Ozon</option>
+                            <option value="ym">Yandex Market</option>
+                            <option value="manual">Ручные</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                        <select x-model="filters.status" @change="loadOrders()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Все</option>
+                            <option value="new">Новый</option>
+                            <option value="processing">В обработке</option>
+                            <option value="shipped">Отправлен</option>
+                            <option value="delivered">Доставлен</option>
+                            <option value="cancelled">Отменён</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Поиск</label>
+                        <input type="text" x-model="filters.search" @input.debounce.300ms="loadOrders()"
+                               class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Номер заказа">
+                    </div>
+                    <div class="flex items-end">
+                        <button @click="loadOrders()" class="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium">
+                            Применить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Orders Table --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Номер</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {{-- Loading skeleton --}}
+                            <template x-if="loading">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-12 text-center">
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <svg class="animate-spin h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span class="text-gray-500">Загрузка...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+
+                            {{-- Orders rows --}}
+                            <template x-for="order in orders" :key="order.id">
+                                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" @click="viewOrder(order)">
+                                    <td class="px-6 py-4">
+                                        <div class="font-semibold text-gray-900" x-text="'#' + (order.marketplace_order_id || order.external_order_id || order.id)"></div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium"
+                                              :class="{
+                                                  'bg-blue-100 text-blue-700': order.marketplace === 'uzum',
+                                                  'bg-purple-100 text-purple-700': order.marketplace === 'wb',
+                                                  'bg-orange-100 text-orange-700': order.marketplace === 'ozon',
+                                                  'bg-red-100 text-red-700': order.marketplace === 'ym',
+                                                  'bg-gray-100 text-gray-700': order.marketplace === 'manual'
+                                              }"
+                                              x-text="getMarketplaceName(order.marketplace)"></span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium"
+                                              :class="{
+                                                  'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed',
+                                                  'bg-blue-100 text-blue-700': order.status === 'shipped' || order.status === 'in_delivery',
+                                                  'bg-yellow-100 text-yellow-700': order.status === 'processing' || order.status === 'in_assembly',
+                                                  'bg-gray-100 text-gray-700': order.status === 'new',
+                                                  'bg-red-100 text-red-700': order.status === 'cancelled' || order.status === 'canceled'
+                                              }"
+                                              x-text="getStatusName(order.status)"></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <span class="font-semibold text-gray-900" x-text="formatMoney(order.total_amount || order.total_price)"></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(order.created_at || order.ordered_at)"></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
+                                            Подробнее
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+
+                            {{-- Empty state --}}
+                            <template x-if="!loading && orders.length === 0">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-12 text-center">
+                                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="text-gray-500 mb-2">Нет продаж</div>
+                                        <div class="text-sm text-gray-400">Заказы появятся здесь автоматически</div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
@@ -250,10 +435,27 @@ function salesPage() {
         async loadOrders() {
             this.loading = true;
             try {
-                const params = new URLSearchParams(this.filters);
-                const response = await window.api.get(`/api/sales?${params}`);
+                // Convert period to date_from/date_to
+                const dates = this.periodToDates(this.filters.period);
+                const params = new URLSearchParams();
+                params.set('date_from', dates.date_from);
+                params.set('date_to', dates.date_to);
+                if (this.filters.marketplace) params.set('marketplace', this.filters.marketplace);
+                if (this.filters.status) params.set('status', this.filters.status);
+                if (this.filters.search) params.set('search', this.filters.search);
+
+                const response = await window.api.get(`/sales?${params}`);
                 this.orders = response.data.data || [];
-                this.stats = response.data.stats || this.stats;
+
+                // Map API stats to frontend stats
+                const apiStats = response.data.stats || {};
+                this.stats = {
+                    totalRevenue: apiStats.totalRevenue || 0,
+                    totalOrders: apiStats.totalOrders || 0,
+                    cancelledOrders: apiStats.cancelledOrders || 0,
+                    cancelledAmount: apiStats.cancelledAmount || 0,
+                    avgOrderValue: apiStats.avgOrderValue || 0
+                };
             } catch (error) {
                 console.error('Failed to load orders:', error);
             } finally {
@@ -261,8 +463,59 @@ function salesPage() {
             }
         },
 
+        periodToDates(period) {
+            const today = new Date();
+            let dateFrom, dateTo;
+
+            switch (period) {
+                case 'today':
+                    dateFrom = dateTo = this.formatDateForApi(today);
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    dateFrom = dateTo = this.formatDateForApi(yesterday);
+                    break;
+                case 'week':
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    dateFrom = this.formatDateForApi(weekAgo);
+                    dateTo = this.formatDateForApi(today);
+                    break;
+                case 'month':
+                    const monthAgo = new Date(today);
+                    monthAgo.setDate(monthAgo.getDate() - 30);
+                    dateFrom = this.formatDateForApi(monthAgo);
+                    dateTo = this.formatDateForApi(today);
+                    break;
+                default:
+                    dateFrom = dateTo = this.formatDateForApi(today);
+            }
+
+            return { date_from: dateFrom, date_to: dateTo };
+        },
+
+        formatDateForApi(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        },
+
         applyFilters() {
             this.showFilterSheet = false;
+            this.loadOrders();
+        },
+
+        resetFilters() {
+            this.filters = {
+                period: 'week',
+                marketplace: '',
+                status: '',
+                dateFrom: '',
+                dateTo: '',
+                search: ''
+            };
             this.loadOrders();
         },
 
@@ -296,9 +549,15 @@ function salesPage() {
             const names = {
                 new: 'Новый',
                 processing: 'В работе',
+                in_assembly: 'На сборке',
                 shipped: 'Отправлен',
+                in_delivery: 'В доставке',
                 delivered: 'Доставлен',
-                cancelled: 'Отменён'
+                completed: 'Завершён',
+                cancelled: 'Отменён',
+                canceled: 'Отменён',
+                CANCELED: 'Отменён',
+                issued: 'Выдан'
             };
             return names[status] || status;
         },
