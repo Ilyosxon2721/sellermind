@@ -579,3 +579,312 @@
         }
     }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="uzumProductsPwa({{ (int) $accountId }})" style="background: #f2f2f7;">
+    <x-pwa-header title="Товары Uzum" :backUrl="'/marketplace/' . $accountId">
+        <button @click="loadProducts()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
+          x-pull-to-refresh="loadProducts">
+
+        {{-- Stats Card --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-purple-600" x-text="total">0</p>
+                <p class="native-caption">Товаров</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-900" x-text="filtered.length">0</p>
+                <p class="native-caption">На странице</p>
+            </div>
+        </div>
+
+        {{-- Filters --}}
+        <div class="px-4 pb-4">
+            <div class="native-card space-y-3">
+                <div>
+                    <label class="native-caption">Поиск</label>
+                    <input type="text" class="native-input mt-1" x-model="search" @input.debounce.400ms="applyFilter()" placeholder="Название или ID товара...">
+                </div>
+                <div>
+                    <label class="native-caption">Магазин</label>
+                    <select class="native-input mt-1" x-model="shopFilter" @change="loadProducts(1)">
+                        <option value="">Все магазины</option>
+                        <template x-for="shop in shops" :key="shop.external_id">
+                            <option :value="shop.external_id" x-text="shop.name || shop.external_id"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p class="native-caption">Загрузка...</p>
+            </div>
+        </div>
+
+        {{-- Empty State --}}
+        <div x-show="!loading && filtered.length === 0" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет товаров</p>
+                <p class="native-caption">Запустите синхронизацию</p>
+            </div>
+        </div>
+
+        {{-- Products List --}}
+        <div x-show="!loading && filtered.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="item in filtered" :key="item.id">
+                <div class="native-card native-pressable" @click="openDetail(item)">
+                    <div class="flex space-x-3">
+                        <div class="w-16 h-20 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                            <img :src="item.preview_image || 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover" :alt="item.title">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="native-body font-semibold line-clamp-2 mb-1" x-text="item.title || 'Без названия'"></h3>
+                            <p class="native-caption" x-text="'ID: ' + item.external_product_id"></p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-sm font-medium text-gray-900" x-text="formatPrice(item)"></span>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                      :class="statusClass(item.status)"
+                                      x-text="statusLabel(item.status)"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Pagination --}}
+            <div x-show="lastPage > 1" class="flex items-center justify-between py-4">
+                <button @click="prevPage()" :disabled="page === 1"
+                        class="native-btn px-4 py-2 disabled:opacity-50">
+                    ← Назад
+                </button>
+                <span class="native-caption" x-text="page + ' / ' + lastPage"></span>
+                <button @click="nextPage()" :disabled="page === lastPage"
+                        class="native-btn px-4 py-2 disabled:opacity-50">
+                    Вперёд →
+                </button>
+            </div>
+        </div>
+    </main>
+
+    {{-- Product Detail Sheet --}}
+    <div x-show="detailOpen" class="fixed inset-0 z-50" x-cloak>
+        <div class="absolute inset-0 bg-black/50" @click="detailOpen = false"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto"
+             style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+                <div>
+                    <p class="native-caption" x-text="'ID: ' + (selected?.external_product_id || '-')"></p>
+                    <h3 class="native-body font-semibold" x-text="selected?.title || 'Без названия'"></h3>
+                </div>
+                <button @click="detailOpen = false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                {{-- Image --}}
+                <div class="w-full bg-gray-100 rounded-xl overflow-hidden" style="aspect-ratio: 3/4;">
+                    <img :src="selected?.preview_image || 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover">
+                </div>
+
+                {{-- Stats Grid --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="native-card text-center">
+                        <p class="native-caption">Цена</p>
+                        <p class="native-body font-bold text-purple-600" x-text="formatPrice(selected)"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Остаток</p>
+                        <p class="native-body font-bold" x-text="formatStock(selected)"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Статус</p>
+                        <p class="native-body font-medium" x-text="statusLabel(selected?.status)"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Магазин</p>
+                        <p class="native-body font-medium truncate" x-text="shopName(selected?.shop_id)"></p>
+                    </div>
+                </div>
+
+                {{-- SKU List --}}
+                <template x-if="selected?.raw_payload?.skuList?.length">
+                    <div>
+                        <p class="native-caption px-1 mb-2">SKU И ШТРИХКОДЫ</p>
+                        <div class="space-y-2">
+                            <template x-for="sku in selected.raw_payload.skuList" :key="sku.skuId">
+                                <div class="native-card">
+                                    <p class="native-body font-semibold" x-text="sku.skuFullTitle || sku.skuTitle || sku.skuId"></p>
+                                    <p class="native-caption mt-1" x-text="'Штрихкод: ' + (sku.barcode || '-')"></p>
+                                    <p class="native-caption" x-text="'Остаток: ' + ((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function uzumProductsPwa(accountId) {
+    return {
+        accountId,
+        loading: true,
+        products: [],
+        filtered: [],
+        search: '',
+        shopFilter: '',
+        shops: [],
+        detailOpen: false,
+        selected: null,
+        page: 1,
+        lastPage: 1,
+        total: 0,
+        perPage: 20,
+
+        getToken() {
+            if (this.$store?.auth?.token) return this.$store.auth.token;
+            const persistToken = localStorage.getItem('_x_auth_token');
+            if (persistToken) {
+                try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
+            }
+            return localStorage.getItem('auth_token') || localStorage.getItem('token');
+        },
+        getHeaders() {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            return {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken || '',
+                'Authorization': 'Bearer ' + this.getToken(),
+            };
+        },
+        async loadProducts(page = 1) {
+            this.loading = true;
+            this.page = page;
+            try {
+                let url = `/marketplace/${this.accountId}/products/json?per_page=${this.perPage}&page=${page}`;
+                if (this.shopFilter) url += `&shop_id=${this.shopFilter}`;
+
+                const res = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
+                if (!res.ok) throw new Error(`Ошибка загрузки (${res.status})`);
+                const data = await res.json();
+                this.products = data.products || [];
+                this.shops = data.shops || [];
+                if (data.pagination) {
+                    this.page = data.pagination.current_page || 1;
+                    this.lastPage = data.pagination.last_page || 1;
+                    this.total = data.pagination.total || 0;
+                }
+                this.applyFilter();
+            } catch (e) {
+                console.error('Failed to load products', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+        applyFilter() {
+            const term = this.search.toLowerCase();
+            this.filtered = this.products.filter(p => {
+                return !term || (p.title || '').toLowerCase().includes(term) ||
+                    (p.external_product_id || '').toString().includes(term);
+            });
+        },
+        statusClass(status) {
+            switch ((status || '').toLowerCase()) {
+                case 'active':
+                case 'in_stock': return 'bg-green-100 text-green-700';
+                case 'pending':
+                case 'on_moderation': return 'bg-amber-100 text-amber-700';
+                case 'archived':
+                case 'run_out': return 'bg-gray-100 text-gray-700';
+                case 'error':
+                case 'failed': return 'bg-red-100 text-red-700';
+                default: return 'bg-gray-100 text-gray-700';
+            }
+        },
+        statusLabel(status) {
+            const val = (status || '').toLowerCase();
+            const map = {
+                'in_stock': 'В продаже',
+                'ready_to_send': 'Готов',
+                'run_out': 'Закончился',
+                'pending': 'Ожидает',
+                'on_moderation': 'Модерация',
+                'blocked': 'Блокирован',
+                'error': 'Ошибка',
+                'archived': 'Архив',
+            };
+            return map[val] || status || '—';
+        },
+        formatPrice(item) {
+            if (!item) return '-';
+            const price = item.last_synced_price ?? null;
+            return price !== null ? price.toLocaleString('ru-RU') + ' сум' : '-';
+        },
+        formatStock(item) {
+            if (!item) return '-';
+            const stock = item.last_synced_stock ?? null;
+            return stock !== null ? stock + ' шт' : '-';
+        },
+        shopName(id) {
+            const found = this.shops.find(s => String(s.external_id) === String(id));
+            return found?.name || id || '-';
+        },
+        openDetail(item) {
+            this.selected = item;
+            this.detailOpen = true;
+            if (!item.raw_payload) this.loadRaw(item.id);
+        },
+        async loadRaw(id) {
+            try {
+                const res = await fetch(`/marketplace/${this.accountId}/products/${id}/json`, {
+                    headers: this.getHeaders(), credentials: 'include'
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                this.products = this.products.map(p => p.id === id ? {...p, ...(data.product || {})} : p);
+                if (this.selected && this.selected.id === id) {
+                    this.selected = this.products.find(p => p.id === id);
+                }
+                this.applyFilter();
+            } catch (e) {
+                console.error('Failed to load raw payload', e);
+            }
+        },
+        nextPage() {
+            if (this.page < this.lastPage) this.loadProducts(this.page + 1);
+        },
+        prevPage() {
+            if (this.page > 1) this.loadProducts(this.page - 1);
+        },
+        init() {
+            this.loadProducts();
+        }
+    }
+}
+</script>

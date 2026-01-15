@@ -643,3 +643,253 @@ function ymProductsPage() {
     };
 }
 </script>
+
+{{-- PWA MODE --}}
+<div class="pwa-only min-h-screen" x-data="ymProductsPwa({{ (int) $accountId }})" style="background: #f2f2f7;">
+    <x-pwa-header title="Товары YM" :backUrl="'/marketplace/' . $accountId">
+        <button @click="loadProducts()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+    </x-pwa-header>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
+          x-pull-to-refresh="loadProducts">
+
+        {{-- Stats Card --}}
+        <div class="px-4 py-4 grid grid-cols-2 gap-3">
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-yellow-600" x-text="total">0</p>
+                <p class="native-caption">Товаров</p>
+            </div>
+            <div class="native-card text-center">
+                <p class="text-2xl font-bold text-gray-900" x-text="filtered.length">0</p>
+                <p class="native-caption">На странице</p>
+            </div>
+        </div>
+
+        {{-- Filters --}}
+        <div class="px-4 pb-4">
+            <div class="native-card">
+                <label class="native-caption">Поиск</label>
+                <input type="text" class="native-input mt-1" x-model="search" @input.debounce.400ms="applyFilter()" placeholder="Название, SKU...">
+            </div>
+        </div>
+
+        {{-- Loading --}}
+        <div x-show="loading" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="animate-spin w-8 h-8 border-2 border-yellow-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p class="native-caption">Загрузка...</p>
+            </div>
+        </div>
+
+        {{-- Empty State --}}
+        <div x-show="!loading && filtered.length === 0" class="px-4">
+            <div class="native-card py-12 text-center">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                </div>
+                <p class="native-body font-semibold mb-2">Нет товаров</p>
+                <p class="native-caption">Синхронизируйте товары с Яндекс.Маркет</p>
+            </div>
+        </div>
+
+        {{-- Products List --}}
+        <div x-show="!loading && filtered.length > 0" class="px-4 space-y-3 pb-4">
+            <template x-for="product in filtered" :key="product.id">
+                <div class="native-card native-pressable" :class="product.linked_variant ? 'border-2 border-green-300' : ''" @click="openDetail(product)">
+                    <div class="flex space-x-3">
+                        <div class="w-16 h-20 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 relative">
+                            <template x-if="product.primary_image">
+                                <img :src="product.primary_image" class="w-full h-full object-cover">
+                            </template>
+                            <template x-if="!product.primary_image">
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            </template>
+                            <template x-if="product.linked_variant">
+                                <div class="absolute top-1 right-1 bg-green-500 text-white rounded-full p-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="native-body font-semibold line-clamp-2 mb-1" x-text="product.name || 'Без названия'"></h3>
+                            <p class="native-caption" x-text="'SKU: ' + (product.shopSku || product.external_product_id || '-')"></p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-sm font-medium text-gray-900" x-text="product.price ? product.price + ' ₽' : '-'"></span>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                      :class="product.availability === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                                      x-text="product.availability === 'ACTIVE' ? 'Активен' : 'Ожидает'"></span>
+                            </div>
+                            <template x-if="product.linked_variant">
+                                <div class="mt-2 p-2 bg-green-50 rounded-lg text-xs">
+                                    <p class="font-medium text-green-800">Связан: <span x-text="product.linked_variant.sku"></span></p>
+                                    <p class="text-green-700">Остаток: <span x-text="product.linked_variant.stock || 0"></span> шт</p>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Pagination --}}
+            <div x-show="lastPage > 1" class="flex items-center justify-between py-4">
+                <button @click="prevPage()" :disabled="page === 1" class="native-btn px-4 py-2 disabled:opacity-50">← Назад</button>
+                <span class="native-caption" x-text="page + ' / ' + lastPage"></span>
+                <button @click="nextPage()" :disabled="page === lastPage" class="native-btn px-4 py-2 disabled:opacity-50">Вперёд →</button>
+            </div>
+        </div>
+    </main>
+
+    {{-- Product Detail Sheet --}}
+    <div x-show="detailOpen" class="fixed inset-0 z-50" x-cloak>
+        <div class="absolute inset-0 bg-black/50" @click="detailOpen = false"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto"
+             style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+                <div>
+                    <p class="native-caption" x-text="'SKU: ' + (selectedProduct?.shopSku || '-')"></p>
+                    <h3 class="native-body font-semibold" x-text="selectedProduct?.name || 'Без названия'"></h3>
+                </div>
+                <button @click="detailOpen = false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                {{-- Image --}}
+                <div class="w-full bg-gray-100 rounded-xl overflow-hidden" style="aspect-ratio: 3/4;">
+                    <img :src="selectedProduct?.primary_image || 'https://placehold.co/300x400?text=IMG'" class="w-full h-full object-cover">
+                </div>
+
+                {{-- Stats Grid --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="native-card text-center">
+                        <p class="native-caption">Цена</p>
+                        <p class="native-body font-bold text-yellow-600" x-text="selectedProduct?.price ? selectedProduct.price + ' ₽' : '-'"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Остаток</p>
+                        <p class="native-body font-bold" x-text="selectedProduct?.stock || 0"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Статус</p>
+                        <p class="native-body font-medium" x-text="selectedProduct?.availability === 'ACTIVE' ? 'Активен' : 'Ожидает'"></p>
+                    </div>
+                    <div class="native-card text-center">
+                        <p class="native-caption">Категория</p>
+                        <p class="native-body font-medium truncate" x-text="selectedProduct?.category || '-'"></p>
+                    </div>
+                </div>
+
+                {{-- Linked Variant --}}
+                <template x-if="selectedProduct?.linked_variant">
+                    <div class="native-card bg-green-50 border-2 border-green-200">
+                        <p class="native-caption text-green-700">Связан с вариантом</p>
+                        <p class="native-body font-semibold text-green-800" x-text="selectedProduct.linked_variant.name || selectedProduct.linked_variant.sku"></p>
+                        <p class="native-caption text-green-700 mt-1">SKU: <span x-text="selectedProduct.linked_variant.sku"></span></p>
+                        <p class="native-caption text-green-700">Остаток: <span x-text="selectedProduct.linked_variant.stock || 0"></span> шт</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function ymProductsPwa(accountId) {
+    return {
+        accountId,
+        loading: true,
+        products: [],
+        filtered: [],
+        search: '',
+        page: 1,
+        lastPage: 1,
+        total: 0,
+        perPage: 20,
+        detailOpen: false,
+        selectedProduct: null,
+
+        getToken() {
+            const persistToken = localStorage.getItem('_x_auth_token');
+            if (persistToken) {
+                try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
+            }
+            return localStorage.getItem('auth_token') || localStorage.getItem('token');
+        },
+        getHeaders() {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            return {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken || '',
+                'Authorization': 'Bearer ' + this.getToken(),
+            };
+        },
+        async loadProducts() {
+            this.loading = true;
+            try {
+                const res = await fetch(`/api/marketplace/ym/accounts/${this.accountId}/products`, {
+                    headers: this.getHeaders(), credentials: 'include'
+                });
+                if (!res.ok) throw new Error(`Ошибка (${res.status})`);
+                const data = await res.json();
+
+                this.products = data.products || data.data || [];
+                this.total = this.products.length;
+                this.lastPage = Math.ceil(this.total / this.perPage) || 1;
+                this.applyFilter();
+            } catch (e) {
+                console.error('Failed to load products', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+        applyFilter() {
+            const term = this.search.toLowerCase();
+            const all = this.products.filter(p => {
+                return !term || (p.name || '').toLowerCase().includes(term) ||
+                    (p.shopSku || '').toLowerCase().includes(term);
+            });
+            const start = (this.page - 1) * this.perPage;
+            this.filtered = all.slice(start, start + this.perPage);
+            this.total = all.length;
+            this.lastPage = Math.ceil(this.total / this.perPage) || 1;
+        },
+        openDetail(product) {
+            this.selectedProduct = product;
+            this.detailOpen = true;
+        },
+        nextPage() {
+            if (this.page < this.lastPage) {
+                this.page++;
+                this.applyFilter();
+            }
+        },
+        prevPage() {
+            if (this.page > 1) {
+                this.page--;
+                this.applyFilter();
+            }
+        },
+        init() {
+            this.loadProducts();
+        }
+    }
+}
+</script>
