@@ -106,24 +106,50 @@ class CompanyController extends Controller
         }
 
         $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email'],
+            'name' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:owner,manager'],
         ]);
 
+        // Проверяем, существует ли пользователь с таким email
         $user = \App\Models\User::where('email', $request->email)->first();
 
-        if ($user->hasCompanyAccess($company->id)) {
-            return response()->json(['message' => 'Пользователь уже в компании.'], 422);
+        if ($user) {
+            // Пользователь существует - проверяем, не в компании ли он уже
+            if ($user->hasCompanyAccess($company->id)) {
+                return response()->json(['message' => 'Пользователь с таким email уже в компании.'], 422);
+            }
+        } else {
+            // Создаём нового пользователя
+            $user = \App\Models\User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => $request->password,
+                'company_id' => $company->id,
+                'locale' => 'ru',
+            ]);
         }
 
+        // Добавляем в компанию
         UserCompanyRole::create([
             'user_id' => $user->id,
             'company_id' => $company->id,
             'role' => $request->role,
         ]);
 
+        // Устанавливаем компанию как основную, если у пользователя её нет
+        if (!$user->company_id) {
+            $user->update(['company_id' => $company->id]);
+        }
+
         return response()->json([
-            'message' => 'Участник добавлен.',
+            'message' => 'Сотрудник добавлен.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
         ]);
     }
 

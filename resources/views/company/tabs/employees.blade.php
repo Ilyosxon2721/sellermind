@@ -123,10 +123,20 @@
                 <form @submit.prevent="inviteEmployee()">
                     <div class="space-y-4">
                         <div>
-                            <label class="form-label">Email сотрудника *</label>
+                            <label class="form-label">Имя сотрудника *</label>
+                            <input type="text" class="form-input" x-model="inviteForm.name" required
+                                   placeholder="Иван Иванов">
+                        </div>
+                        <div>
+                            <label class="form-label">Email *</label>
                             <input type="email" class="form-input" x-model="inviteForm.email" required
                                    placeholder="user@example.com">
-                            <p class="text-xs text-gray-500 mt-1">Сотрудник должен быть зарегистрирован в системе</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Пароль *</label>
+                            <input type="password" class="form-input" x-model="inviteForm.password" required
+                                   placeholder="Минимум 6 символов" minlength="6">
+                            <p class="text-xs text-gray-500 mt-1">Сообщите этот пароль сотруднику для входа в систему</p>
                         </div>
                         <div>
                             <label class="form-label">Роль *</label>
@@ -159,7 +169,9 @@ function employeesTab() {
         showInviteModal: false,
         inviting: false,
         inviteForm: {
+            name: '',
             email: '',
+            password: '',
             role: 'manager'
         },
 
@@ -212,7 +224,7 @@ function employeesTab() {
                 alert('Пожалуйста, выберите компанию');
                 return;
             }
-            this.inviteForm = { email: '', role: 'manager' };
+            this.inviteForm = { name: '', email: '', password: '', role: 'manager' };
             this.showInviteModal = true;
         },
 
