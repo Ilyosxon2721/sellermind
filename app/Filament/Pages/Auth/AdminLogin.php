@@ -35,7 +35,7 @@ class AdminLogin extends Login
     protected function throwFailureValidationException(): never
     {
         throw ValidationException::withMessages([
-            'data.login' => __('filament-panels::pages/auth/login.messages.failed'),
+            'data.login' => 'Неверный логин или пароль.',
         ]);
     }
 }
