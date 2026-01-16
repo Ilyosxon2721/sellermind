@@ -46,7 +46,7 @@ return [
         'base_url' => env('UZUM_API_BASE_URL', 'https://api-seller.uzum.uz/api/seller-openapi'),
         'auth_type' => 'api_key', // API key from seller cabinet
         'auth_header' => 'Authorization',
-        'auth_prefix' => 'Bearer',
+        'auth_prefix' => '', // Uzum API requires token WITHOUT Bearer prefix
         'rate_limit' => [
             'requests_per_minute' => 100,
         ],
