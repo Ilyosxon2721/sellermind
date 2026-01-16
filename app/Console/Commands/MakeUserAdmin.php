@@ -2,49 +2,51 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Models\Admin;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Hash;
 
 class MakeUserAdmin extends Command
 {
-    protected $signature = 'user:make-admin {email?}';
-    protected $description = 'Make a user admin by email';
+    protected $signature = 'admin:create {login?} {--password=}';
+    protected $description = 'Create a new admin user for Filament panel';
 
     public function handle(): int
     {
-        $email = $this->argument('email');
+        $login = $this->argument('login');
 
-        if (!$email) {
-            // Show list of users to choose from
-            $users = User::select('id', 'email', 'name', 'is_admin')->get();
-
-            if ($users->isEmpty()) {
-                $this->error('No users found in database.');
-                return 1;
-            }
-
-            $this->table(
-                ['ID', 'Email', 'Name', 'Admin?'],
-                $users->map(fn($u) => [$u->id, $u->email, $u->name, $u->is_admin ? 'Yes' : 'No'])
-            );
-
-            $email = $this->ask('Enter email of user to make admin');
+        if (!$login) {
+            $login = $this->ask('Enter login for admin');
         }
 
-        $user = User::where('email', $email)->first();
-
-        if (!$user) {
-            $this->error("User with email '{$email}' not found.");
+        if (Admin::where('login', $login)->exists()) {
+            $this->error("Admin with login '{$login}' already exists.");
             return 1;
         }
 
-        if ($user->is_admin) {
-            $this->info("User {$user->email} is already an admin.");
-            return 0;
+        $name = $this->ask('Enter name', $login);
+        $email = $this->ask('Enter email (optional, press Enter to skip)');
+
+        $password = $this->option('password');
+        if (!$password) {
+            $password = $this->secret('Enter password');
         }
 
-        $user->update(['is_admin' => true]);
-        $this->info("User {$user->email} ({$user->name}) is now an admin.");
+        if (strlen($password) < 6) {
+            $this->error('Password must be at least 6 characters.');
+            return 1;
+        }
+
+        $admin = Admin::create([
+            'name' => $name,
+            'login' => $login,
+            'email' => $email ?: null,
+            'password' => $password,
+            'is_active' => true,
+        ]);
+
+        $this->info("Admin '{$admin->login}' created successfully!");
+        $this->info("Login URL: /admin");
 
         return 0;
     }
