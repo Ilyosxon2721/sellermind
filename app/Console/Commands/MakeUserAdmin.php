@@ -8,15 +8,16 @@ use Illuminate\Support\Facades\Hash;
 
 class MakeUserAdmin extends Command
 {
-    protected $signature = 'admin:create {login?} {--password=}';
+    protected $signature = 'admin:create {login?} {--name=} {--email=} {--password=}';
     protected $description = 'Create a new admin user for Filament panel';
 
     public function handle(): int
     {
-        $login = $this->argument('login');
+        $login = $this->argument('login') ?: $this->ask('Enter login for admin');
 
         if (!$login) {
-            $login = $this->ask('Enter login for admin');
+            $this->error('Login is required.');
+            return 1;
         }
 
         if (Admin::where('login', $login)->exists()) {
@@ -24,8 +25,8 @@ class MakeUserAdmin extends Command
             return 1;
         }
 
-        $name = $this->ask('Enter name', $login);
-        $email = $this->ask('Enter email (optional, press Enter to skip)');
+        $name = $this->option('name') ?: $this->ask('Enter name', $login);
+        $email = $this->option('email') ?: $this->ask('Enter email (optional, press Enter to skip)');
 
         $password = $this->option('password');
         if (!$password) {
