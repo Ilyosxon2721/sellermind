@@ -207,8 +207,18 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <!-- Existing accounts -->
                                     <template x-for="account in getMarketplaceAccounts(marketplace.code)" :key="account.id">
-                                        <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition"
-                                             :class="{'slide-in-up': account.isNew}">
+                                        <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition relative"
+                                             :class="{'slide-in-up': account.isNew, 'opacity-50 pointer-events-none': account.isDeleting}">
+                                            <!-- Deleting overlay -->
+                                            <div x-show="account.isDeleting" class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-10">
+                                                <div class="flex items-center space-x-2 text-gray-600">
+                                                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span class="text-sm font-medium">Удаление...</span>
+                                                </div>
+                                            </div>
                                             <div class="flex items-start justify-between mb-4">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg"
@@ -628,24 +638,46 @@ function marketplacePage() {
                     return;
                 }
 
+                // Mark account as deleting for UI feedback
+                const accountToDelete = this.accounts.find(a => a.id === accountId);
+                if (accountToDelete) {
+                    accountToDelete.isDeleting = true;
+                }
+
                 const res = await fetch(`/api/marketplace/accounts/${accountId}?company_id=${this.$store.auth.currentCompany.id}`, {
                     method: 'DELETE',
                     headers: this.getAuthHeaders()
                 });
 
                 if (res.ok) {
+                    // Remove from local list immediately
                     this.accounts = this.accounts.filter(a => a.id !== accountId);
                     this.showNotification('success', 'Успешно', 'Аккаунт удалён');
+
+                    // Verify deletion by reloading with cache bypass
+                    // Small delay to ensure database transaction completed
+                    setTimeout(async () => {
+                        await this.loadAccounts(true);
+                    }, 500);
                 } else {
+                    // Remove deleting state on error
+                    if (accountToDelete) {
+                        accountToDelete.isDeleting = false;
+                    }
                     const data = await res.json();
                     this.showNotification('error', 'Ошибка', data.message || 'Не удалось удалить аккаунт');
                 }
             } catch (e) {
+                // Remove deleting state on error
+                const accountToDelete = this.accounts.find(a => a.id === accountId);
+                if (accountToDelete) {
+                    accountToDelete.isDeleting = false;
+                }
                 this.showNotification('error', 'Ошибка', 'Ошибка соединения: ' + e.message);
             }
         },
 
-        async loadAccounts() {
+        async loadAccounts(skipCache = false) {
             this.loading = true;
             try {
                 // Ensure companies are loaded
@@ -664,8 +696,11 @@ function marketplacePage() {
 
                 console.log('Loading accounts for company:', this.$store.auth.currentCompany.id);
 
-                const res = await fetch(`/api/marketplace/accounts?company_id=${this.$store.auth.currentCompany.id}`, {
-                    headers: this.getAuthHeaders()
+                // Add cache-busting parameter to force fresh data after create/delete
+                const cacheBuster = skipCache ? `&_t=${Date.now()}` : '';
+                const res = await fetch(`/api/marketplace/accounts?company_id=${this.$store.auth.currentCompany.id}${cacheBuster}`, {
+                    headers: this.getAuthHeaders(),
+                    cache: 'no-store' // Disable browser cache
                 });
 
                 if (res.ok) {
@@ -747,19 +782,27 @@ function marketplacePage() {
                     // Close modal
                     this.showConnectModal = false;
 
-                    // Reload accounts and mark new one
-                    const oldAccountIds = this.accounts.map(a => a.id);
-                    await this.loadAccounts();
+                    // If server returned the new account data, add it directly to the list
+                    if (data.account && data.account.id) {
+                        const newAccount = {
+                            ...data.account,
+                            marketplace_label: this.availableMarketplaces[data.account.marketplace] ||
+                                              this.defaultMarketplaces[data.account.marketplace] ||
+                                              data.account.marketplace,
+                            display_name: data.account.name || data.account.marketplace_label,
+                            isNew: true
+                        };
+                        this.accounts.push(newAccount);
 
-                    // Mark the new account with isNew flag for animation
-                    const newAccount = this.accounts.find(a => !oldAccountIds.includes(a.id));
-                    if (newAccount) {
-                        newAccount.isNew = true;
-                        // Remove flag after animation completes
+                        // Remove isNew flag after animation
                         setTimeout(() => {
-                            newAccount.isNew = false;
+                            const acc = this.accounts.find(a => a.id === newAccount.id);
+                            if (acc) acc.isNew = false;
                         }, 500);
                     }
+
+                    // Also reload from server to ensure consistency (with cache bypass)
+                    await this.loadAccounts(true);
                 } else {
                     const data = await res.json().catch(() => ({}));
 

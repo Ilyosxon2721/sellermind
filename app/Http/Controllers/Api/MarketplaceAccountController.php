@@ -25,7 +25,8 @@ class MarketplaceAccountController extends Controller
 
         $accounts = MarketplaceAccount::where('company_id', $request->company_id)->get();
 
-        $response = response()->json([
+        // No caching - always return fresh data to prevent stale reads after create/delete
+        return response()->json([
             'accounts' => $accounts->map(fn($a) => [
                 'id' => $a->id,
                 'marketplace' => $a->marketplace,
@@ -36,13 +37,9 @@ class MarketplaceAccountController extends Controller
                 'connected_at' => $a->connected_at,
             ]),
             'available_marketplaces' => MarketplaceAccount::getMarketplaceLabels(),
-        ]);
-
-        // Add cache headers for better performance
-        $response->header('Cache-Control', 'private, max-age=60');
-        $response->header('ETag', md5($response->getContent()));
-
-        return $response;
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
     public function store(Request $request): JsonResponse
