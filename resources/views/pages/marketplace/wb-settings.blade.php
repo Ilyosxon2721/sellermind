@@ -880,13 +880,21 @@
                 </div>
             </template>
 
-            <div x-show="warehouses.length === 0" class="text-center py-8 text-gray-500">
+            <div x-show="warehouses.length === 0 && !loadingWarehouses" class="text-center py-8 text-gray-500">
                 <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
-                <p>Склады не найдены</p>
-                <p class="text-sm mt-1">Проверьте Marketplace API токен</p>
+                <p class="font-medium">Склады не найдены</p>
+                <p class="text-sm mt-2">Возможные причины:</p>
+                <ul class="text-sm mt-1 text-left max-w-md mx-auto">
+                    <li>• Не настроен Marketplace API токен</li>
+                    <li>• У аккаунта нет FBS складов (только FBO)</li>
+                    <li>• Сначала синхронизируйте остатки во вкладке "Товары"</li>
+                </ul>
+                <button @click="loadWarehouses()" class="mt-4 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Обновить список складов
+                </button>
             </div>
         </div>
     </div>

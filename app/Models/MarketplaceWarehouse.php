@@ -43,7 +43,7 @@ class MarketplaceWarehouse extends Model
 
     /**
      * Get available WB warehouses for mapping (from Marketplace API)
-     * 
+     *
      * @param MarketplaceAccount $account
      * @return array
      */
@@ -53,16 +53,67 @@ class MarketplaceWarehouse extends Model
             return [];
         }
 
+        // Check if marketplace token is available
+        $marketplaceToken = $account->getWbToken('marketplace');
+        if (!$marketplaceToken) {
+            \Log::warning('WB warehouses: no marketplace token available', [
+                'account_id' => $account->id,
+                'has_api_key' => !empty($account->api_key),
+            ]);
+            // Try to get from DB cache first
+            return self::getWarehousesFromDb($account);
+        }
+
         try {
-            $stockService = app(WildberriesStockService::class, ['httpClient' => app(\App\Services\Marketplaces\Wildberries\WildberriesHttpClient::class, ['account' => $account])]);
-            return $stockService->getWarehouses($account);
+            $stockService = new WildberriesStockService();
+            $warehouses = $stockService->getWarehouses($account);
+
+            \Log::info('WB warehouses fetched', [
+                'account_id' => $account->id,
+                'count' => count($warehouses),
+            ]);
+
+            // If no warehouses from API, try to get from DB cache
+            if (empty($warehouses)) {
+                return self::getWarehousesFromDb($account);
+            }
+
+            return $warehouses;
         } catch (\Exception $e) {
             \Log::error('Failed to get WB warehouses', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
+            // Fallback to DB cache
+            return self::getWarehousesFromDb($account);
+        }
+    }
+
+    /**
+     * Get warehouses from database (WildberriesWarehouse table)
+     */
+    protected static function getWarehousesFromDb(MarketplaceAccount $account): array
+    {
+        $dbWarehouses = \App\Models\WildberriesWarehouse::where('marketplace_account_id', $account->id)
+            ->whereNotNull('warehouse_id')
+            ->get();
+
+        if ($dbWarehouses->isEmpty()) {
             return [];
         }
+
+        \Log::info('Using WB warehouses from DB cache', [
+            'account_id' => $account->id,
+            'count' => $dbWarehouses->count(),
+        ]);
+
+        return $dbWarehouses->map(function ($wh) {
+            return [
+                'id' => $wh->warehouse_id,
+                'name' => $wh->warehouse_name ?? 'Склад ' . $wh->warehouse_id,
+                'deliveryType' => $wh->warehouse_type === 'FBS' ? 1 : ($wh->warehouse_type === 'DBS' ? 2 : 1),
+            ];
+        })->toArray();
     }
 
     /**
