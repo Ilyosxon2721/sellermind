@@ -99,8 +99,8 @@ function companyProfilePage() {
     inviteForm: { email: '', role: 'manager' },
     tabs: [
         { key: 'companies', label: 'Компании', icon: 'building' },
-        { key: 'employees', label: 'Сотрудники', icon: 'users' },
-        { key: 'billing', label: 'Биллинг', icon: 'card' }
+        { key: 'employees', label: 'Сотрудники', icon: 'users' }
+        // { key: 'billing', label: 'Биллинг', icon: 'card' } - временно скрыт до завершения разработки
     ],
     getToken() {
         const t = localStorage.getItem('_x_auth_token');
@@ -246,33 +246,7 @@ function companyProfilePage() {
             </template>
         </div>
 
-        {{-- Billing Tab --}}
-        <div x-show="activeTab === 'billing'" class="space-y-3">
-            <div class="native-card bg-blue-50 p-4">
-                <div class="flex items-center">
-                    <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-blue-700 text-sm">Функция в разработке</p>
-                </div>
-            </div>
-
-            <div class="native-card p-4">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="native-caption text-gray-500">Текущий баланс</span>
-                    <span class="text-2xl font-bold">15 000 ₽</span>
-                </div>
-                <button class="native-btn native-btn-primary w-full mt-3">Пополнить</button>
-            </div>
-
-            <div class="native-card p-4">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="native-caption text-gray-500">Подписка</span>
-                    <span class="font-bold">Базовый</span>
-                </div>
-                <button class="native-btn w-full mt-3 bg-gray-100 text-gray-700">Изменить план</button>
-            </div>
-        </div>
+        {{-- Billing Tab - временно скрыт до завершения разработки --}}
     </main>
 
     {{-- Create Company Modal --}}
