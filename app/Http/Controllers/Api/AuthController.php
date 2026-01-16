@@ -130,4 +130,90 @@ class AuthController extends Controller
             'message' => 'Пароль успешно изменён.',
         ]);
     }
+
+    /**
+     * Регистрация клиента из Risment с автоматическим созданием Company
+     */
+    public function registerClient(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'company_name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            // Создать компанию в Sellermind
+            $company = \App\Models\Company::create([
+                'name' => $validated['company_name'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'is_fulfillment_client' => true,
+                'risment_subscription_plan' => 'basic',
+                'subscription_expires_at' => now()->addDays(30), // 30 дней trial
+            ]);
+
+            // Создать пользователя
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+                'company_id' => $company->id,
+            ]);
+
+            \DB::commit();
+
+            // Создать токен
+            $token = $user->createToken('risment-client')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => $user->only(['id', 'name', 'email']),
+                'company' => $company->only(['id', 'name']),
+            ], 201);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Login для клиентов Risment
+     */
+    public function loginClient(Request $request): JsonResponse
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (!Auth::attempt($credentials)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The provided credentials are incorrect.',
+            ], 401);
+        }
+
+        $user = Auth::user();
+
+        // Создать токен для Risment
+        $token = $user->createToken('risment-client')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'user' => $user->only(['id', 'name', 'email']),
+            'company' => $user->company ? $user->company->only(['id', 'name']) : null,
+        ]);
+    }
 }

@@ -641,3 +641,41 @@ Route::middleware('auth.any')->group(function () {
         Route::get('dialogs/stats', [DialogAdminController::class, 'stats']);
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Client API (для Risment)
+|--------------------------------------------------------------------------
+| API endpoints для клиентов фулфилмент-компании через Risment портал
+*/
+
+use App\Http\Controllers\Api\ClientApiController;
+
+// Регистрация и авторизация клиентов (без auth middleware)
+Route::prefix('client/auth')->group(function () {
+    Route::post('register', [AuthController::class, 'registerClient']);
+    Route::post('login', [AuthController::class, 'loginClient']);
+});
+
+// Client API endpoints (требуется auth:sanctum)
+Route::prefix('client')->middleware(['auth:sanctum'])->group(function () {
+    // Профиль
+    Route::get('/profile', [ClientApiController::class, 'getProfile']);
+    
+    // Товары (READ)
+    Route::get('/products', [ClientApiController::class, 'getProducts']);
+    
+    // Товары (WRITE)
+    Route::post('/products', [ClientApiController::class, 'createProduct']);
+    Route::put('/products/{id}', [ClientApiController::class, 'updateProduct']);
+    Route::delete('/products/{id}', [ClientApiController::class, 'deleteProduct']);
+    
+    // Заказы
+    Route::get('/orders', [ClientApiController::class, 'getOrders']);
+    
+    // Остатки
+    Route::get('/inventory', [ClientApiController::class, 'getInventory']);
+    
+    // Статистика
+    Route::get('/statistics', [ClientApiController::class, 'getStatistics']);
+});
