@@ -1382,6 +1382,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  return;
              }
 
+             console.log('🚀 Starting sync for account {{ $accountId }}');
              this.syncInProgress = true;
              this.syncProgress = 0;
              this.syncMessage = 'Запуск синхронизации...';
@@ -1390,6 +1391,10 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              try {
                  const url = '/api/marketplace/accounts/{{ $accountId }}/sync/orders';
                  const payload = { async: true };
+                 const token = this.getToken();
+                 console.log('📤 Sending sync request to:', url);
+                 console.log('🔑 Token present:', !!token);
+
                  const res = await fetch(url, {
                      method: 'POST',
                      headers: {
@@ -1399,16 +1404,19 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                      body: JSON.stringify(payload)
                  });
 
+                 console.log('📥 Response status:', res.status);
                  const data = await res.json();
+                 console.log('📥 Response data:', data);
 
                  if (!res.ok) {
                      throw new Error(data.message || 'Ошибка синхронизации');
                  }
 
-                 console.log('Sync response:', data);
+                 console.log('✅ Sync response:', data);
+                 this.showNotification('Синхронизация запущена в фоновом режиме');
                  // Прогресс и завершение будут обработаны через WebSocket события
              } catch (error) {
-                 console.error('Sync error:', error);
+                 console.error('❌ Sync error:', error);
                  this.syncInProgress = false;
                  this.syncProgress = 0;
                  this.syncMessage = 'Ошибка: ' + error.message;
