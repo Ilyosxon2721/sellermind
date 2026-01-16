@@ -226,7 +226,7 @@ Route::middleware('auth.any')->group(function () {
     })->name('marketplace.show');
 
 Route::get('/marketplace/{accountId}/products', function ($accountId) {
-    $account = MarketplaceAccount::findOrFail($accountId);
+    $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
     return view('pages.marketplace.products', [
         'accountId' => $accountId,
         'accountMarketplace' => $account->marketplace,
