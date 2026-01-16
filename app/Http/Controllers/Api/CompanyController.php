@@ -109,8 +109,16 @@ class CompanyController extends Controller
             'email' => ['required', 'email'],
             'name' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:owner,manager'],
+            'role' => ['required', 'string', 'max:100'],
         ]);
+
+        // Нельзя создавать второго владельца
+        $role = strtolower(trim($request->role));
+        if ($role === 'owner' || $role === 'владелец') {
+            return response()->json([
+                'message' => 'Нельзя назначить роль "владелец". Владелец может быть только один. Используйте функцию передачи владения.'
+            ], 422);
+        }
 
         // Проверяем, существует ли пользователь с таким email
         $user = \App\Models\User::where('email', $request->email)->first();
@@ -150,6 +158,41 @@ class CompanyController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
+        ]);
+    }
+
+    /**
+     * Передать владение компанией другому пользователю
+     */
+    public function transferOwnership(Request $request, Company $company): JsonResponse
+    {
+        if (!$request->user()->isOwnerOf($company->id)) {
+            return response()->json(['message' => 'Только владелец может передать владение.'], 403);
+        }
+
+        $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $newOwner = \App\Models\User::findOrFail($request->user_id);
+
+        // Проверяем, что новый владелец уже в компании
+        if (!$newOwner->hasCompanyAccess($company->id)) {
+            return response()->json(['message' => 'Пользователь должен быть сотрудником компании.'], 422);
+        }
+
+        // Меняем роль текущего владельца на менеджера
+        UserCompanyRole::where('company_id', $company->id)
+            ->where('user_id', $request->user()->id)
+            ->update(['role' => 'manager']);
+
+        // Назначаем нового владельца
+        UserCompanyRole::where('company_id', $company->id)
+            ->where('user_id', $newOwner->id)
+            ->update(['role' => 'owner']);
+
+        return response()->json([
+            'message' => 'Владение компанией передано пользователю ' . $newOwner->name,
         ]);
     }
 

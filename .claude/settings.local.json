@@ -18,7 +18,8 @@
       "Bash(npm install:*)",
       "Bash(php artisan tinker:*)",
       "Bash(git merge:*)",
-      "Bash(/Applications/MAMP/bin/php/php8.4.1/bin/php:*)"
+      "Bash(/Applications/MAMP/bin/php/php8.4.1/bin/php:*)",
+      "Bash(php artisan make:model:*)"
     ]
   }
 }
