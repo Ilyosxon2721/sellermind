@@ -302,7 +302,7 @@ Route::middleware('auth.any')->group(function () {
 
         // Accounts
         Route::get('accounts/requirements', [MarketplaceAccountController::class, 'requirements'])
-            ->withoutMiddleware('auth:sanctum'); // Публичный доступ для просмотра требований
+            ->withoutMiddleware('auth.any'); // Публичный доступ для просмотра требований
         Route::get('accounts', [MarketplaceAccountController::class, 'index']);
         Route::post('accounts', [MarketplaceAccountController::class, 'store'])
             ->middleware('plan.limits:marketplace_accounts,1');
@@ -311,7 +311,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('accounts/{account}/test', [MarketplaceAccountController::class, 'test']);
         Route::get('accounts/{account}/logs', [MarketplaceAccountController::class, 'syncLogs']);
         Route::get('accounts/{account}/logs/stream', [MarketplaceAccountController::class, 'syncLogsStream'])
-            ->withoutMiddleware('auth:sanctum'); // SSE авторизация токеном в query/bearer внутри контроллера
+            ->withoutMiddleware('auth.any'); // SSE авторизация токеном в query/bearer внутри контроллера
         Route::post('accounts/{account}/monitoring/start', [MarketplaceAccountController::class, 'startMonitoring']);
         Route::post('accounts/{account}/monitoring/stop', [MarketplaceAccountController::class, 'stopMonitoring']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
