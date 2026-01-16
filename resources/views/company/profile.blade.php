@@ -35,12 +35,14 @@
                     :class="activeTab === 'access' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
                     Доступы
                 </button>
+                {{-- Биллинг - временно скрыт до завершения разработки
                 <button
                     @click="activeTab = 'billing'"
                     class="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition"
                     :class="activeTab === 'billing' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
                     Биллинг
                 </button>
+                --}}
             </nav>
         </div>
 
@@ -60,10 +62,11 @@
                 @include('company.tabs.access')
             </div>
 
-            <!-- Billing Tab -->
+            {{-- Billing Tab - временно скрыт до завершения разработки
             <div x-show="activeTab === 'billing'">
                 @include('company.tabs.billing')
             </div>
+            --}}
         </main>
     </div>
 </div>
@@ -76,7 +79,7 @@ function companyProfilePage() {
         init() {
             // Get tab from URL hash if present
             const hash = window.location.hash.substring(1);
-            if (['companies', 'employees', 'access', 'billing'].includes(hash)) {
+            if (['companies', 'employees', 'access'].includes(hash)) {
                 this.activeTab = hash;
             }
         }
