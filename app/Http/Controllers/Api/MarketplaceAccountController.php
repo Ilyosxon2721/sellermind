@@ -1389,18 +1389,7 @@ class MarketplaceAccountController extends Controller
             ];
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
-            $userMessage = 'Не удалось подключиться к Uzum API.';
-
-            if (str_contains($errorMessage, '401') || str_contains($errorMessage, 'Unauthorized')) {
-                $userMessage = 'API токен Uzum недействителен или истёк. Получите новый токен в личном кабинете Uzum.';
-            } elseif (str_contains($errorMessage, '403') || str_contains($errorMessage, 'open-api-005') ||
-                      str_contains($errorMessage, 'Shops ids is not available')) {
-                $userMessage = 'API токен не имеет доступа к указанным магазинам. Проверьте права токена в личном кабинете Uzum.';
-            } elseif (str_contains($errorMessage, '429') || str_contains($errorMessage, 'Too Many Requests')) {
-                $userMessage = 'Превышен лимит запросов к API Uzum. Попробуйте через несколько минут.';
-            } elseif (str_contains($errorMessage, 'cURL error') || str_contains($errorMessage, 'Connection')) {
-                $userMessage = 'Не удалось подключиться к серверу Uzum. Проверьте подключение к интернету.';
-            }
+            $userMessage = $this->formatUzumError($errorMessage);
 
             return [
                 'success' => false,
@@ -1408,5 +1397,50 @@ class MarketplaceAccountController extends Controller
                 'technical_details' => $errorMessage
             ];
         }
+    }
+
+    /**
+     * Форматирует ошибку Uzum API в понятное сообщение
+     */
+    protected function formatUzumError(string $errorMessage): string
+    {
+        // Проверяем известные коды ошибок Uzum
+        $errorPatterns = [
+            // Ошибки токена
+            'open-api-001' => 'Неверный API токен. Проверьте, что вы скопировали токен полностью из личного кабинета Uzum.',
+            'Token not found' => 'Неверный API токен. Проверьте, что вы скопировали токен полностью из личного кабинета Uzum.',
+            'open-api-002' => 'API токен истёк. Создайте новый токен в личном кабинете Uzum (Настройки → API).',
+            'Token expired' => 'API токен истёк. Создайте новый токен в личном кабинете Uzum (Настройки → API).',
+            'open-api-003' => 'У токена нет необходимых прав. Создайте новый токен с полными правами в личном кабинете Uzum.',
+            'open-api-005' => 'API токен не имеет доступа к указанным магазинам. Проверьте права токена.',
+            'Shops ids is not available' => 'API токен не имеет доступа к магазинам. Создайте токен с правами на все магазины.',
+
+            // HTTP ошибки
+            '401' => 'API токен недействителен. Проверьте токен в личном кабинете Uzum (Настройки → API).',
+            'Unauthorized' => 'API токен недействителен. Проверьте токен в личном кабинете Uzum.',
+            '403' => 'Доступ запрещён. Проверьте, что токен активен и имеет необходимые права.',
+            'Forbidden' => 'Доступ запрещён. Проверьте права токена в личном кабинете Uzum.',
+            '404' => 'Ресурс не найден. Возможно, неверный токен или ID магазина.',
+            '429' => 'Превышен лимит запросов. Подождите минуту и попробуйте снова.',
+            'Too Many Requests' => 'Превышен лимит запросов. Подождите минуту и попробуйте снова.',
+
+            // Сетевые ошибки
+            'cURL error' => 'Ошибка сети. Проверьте подключение к интернету.',
+            'Connection' => 'Не удалось подключиться к серверу Uzum. Проверьте интернет.',
+            'timeout' => 'Сервер Uzum не ответил. Попробуйте позже.',
+        ];
+
+        foreach ($errorPatterns as $pattern => $userMessage) {
+            if (stripos($errorMessage, $pattern) !== false) {
+                return $userMessage;
+            }
+        }
+
+        // Если сообщение уже на русском (из formatUserFriendlyError), возвращаем его
+        if (preg_match('/[а-яА-ЯёЁ]/u', $errorMessage)) {
+            return $errorMessage;
+        }
+
+        return 'Не удалось подключиться к Uzum API. Проверьте правильность токена.';
     }
 }
