@@ -159,6 +159,19 @@ class MarketplaceHttpClient
                         ?? $credentials['uzum_api_key']
                         ?? $credentials['api_key']
                         ?? '';
+
+                    // Debug: log what we're sending
+                    \Log::debug('Uzum auth debug', [
+                        'account_id' => $account->id,
+                        'header' => $header,
+                        'prefix' => $prefix,
+                        'prefix_from_config' => $config['auth_prefix'] ?? 'NOT_SET',
+                        'api_key_length' => strlen($apiKey),
+                        'api_key_preview' => $apiKey ? (substr($apiKey, 0, 8) . '...' . substr($apiKey, -4)) : 'EMPTY',
+                        'has_uzum_access_token' => !empty($credentials['uzum_access_token']),
+                        'has_uzum_api_key' => !empty($credentials['uzum_api_key']),
+                        'has_api_key' => !empty($credentials['api_key']),
+                    ]);
                 } else {
                     $apiKey = $credentials['api_key'] ?? '';
                 }
