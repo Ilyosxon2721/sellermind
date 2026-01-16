@@ -93,8 +93,12 @@ class MarketplaceAccountController extends Controller
      */
     protected function processStoreRequest(Request $request): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($request->company_id)) {
-            return response()->json(['message' => 'Только владелец может подключать маркетплейсы.'], 403);
+        $companyId = (int) $request->company_id;
+
+        // Проверяем доступ - владелец или сотрудник с правами
+        $user = $request->user();
+        if (!$user->hasCompanyAccess($companyId)) {
+            return response()->json(['message' => 'У вас нет доступа к этой компании.'], 403);
         }
 
         // Валидация credentials в зависимости от маркетплейса
