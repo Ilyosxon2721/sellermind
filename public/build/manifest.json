@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-z4YG69lH.css",
+    "file": "assets/app-C8R6phWd.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-ZKE3rAVn.css",
+    "file": "assets/pwa-native-B3yElfqi.css",
     "src": "resources/css/pwa-native.css",
     "isEntry": true,
     "name": "pwa-native",
@@ -32,7 +32,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-W23_fIyA.js",
+    "file": "assets/app-DsS36klc.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -42,7 +42,7 @@
     ]
   },
   "resources/js/pwa-detector.js": {
-    "file": "assets/pwa-detector-BOVFWlMk.js",
+    "file": "assets/pwa-detector-D6Cllna4.js",
     "name": "pwa-detector",
     "src": "resources/js/pwa-detector.js",
     "isEntry": true

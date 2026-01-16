@@ -448,8 +448,12 @@ class MarketplaceAccountController extends Controller
             abort(401);
         }
 
+        // URL decode the token in case it was encoded (e.g., | becomes %7C)
+        $token = urldecode($token);
+
         $pat = PersonalAccessToken::findToken($token);
         if (!$pat || !$pat->tokenable) {
+            \Log::warning('SSE stream auth failed', ['token_prefix' => substr($token, 0, 10) . '...']);
             abort(401);
         }
 
