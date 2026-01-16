@@ -58,8 +58,41 @@ class MarketplaceAccountController extends Controller
                 'errors' => $e->errors(),
                 'error' => implode(', ', array_map(fn($errors) => implode(', ', $errors), $e->errors()))
             ], 422);
+        } catch (\Exception $e) {
+            \Log::error('MarketplaceAccountController@store validation error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Ошибка при создании аккаунта',
+                'error' => $e->getMessage(),
+            ], 500);
         }
 
+        try {
+            return $this->processStoreRequest($request);
+        } catch (\Exception $e) {
+            \Log::error('MarketplaceAccountController@store error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => [
+                    'company_id' => $request->company_id,
+                    'marketplace' => $request->marketplace,
+                    'name' => $request->name,
+                ],
+            ]);
+            return response()->json([
+                'message' => 'Ошибка при создании аккаунта',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Process store request (extracted for better error handling)
+     */
+    protected function processStoreRequest(Request $request): JsonResponse
+    {
         if (!$request->user()->isOwnerOf($request->company_id)) {
             return response()->json(['message' => 'Только владелец может подключать маркетплейсы.'], 403);
         }
