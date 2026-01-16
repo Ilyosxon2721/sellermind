@@ -208,12 +208,26 @@ class UzumClient implements MarketplaceClientInterface
      */
     protected function resolveShopIds(MarketplaceAccount $account, array $shopIds = []): array
     {
-        // from explicit argument or account->shop_id
+        // 1. from explicit argument
         $shopIds = $this->normalizeShopIds($shopIds);
         if (!empty($shopIds)) {
             return $shopIds;
         }
 
+        // 2. from credentials_json['shop_ids'] - user selected shops
+        $credentialsJson = $account->credentials_json ?? [];
+        if (!empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
+            $shopIds = $this->normalizeShopIds($credentialsJson['shop_ids']);
+            if (!empty($shopIds)) {
+                Log::info('Uzum resolveShopIds: using shop_ids from credentials_json', [
+                    'account_id' => $account->id,
+                    'shop_ids' => $shopIds,
+                ]);
+                return $shopIds;
+            }
+        }
+
+        // 3. from account->shop_id (legacy field, backwards compatibility)
         $shopIds = $this->normalizeShopIds(
             is_array($account->shop_id) ? $account->shop_id : explode(',', (string) $account->shop_id)
         );
@@ -221,7 +235,7 @@ class UzumClient implements MarketplaceClientInterface
             return $shopIds;
         }
 
-        // from DB cache
+        // 4. from DB cache
         $dbShops = MarketplaceShop::where('marketplace_account_id', $account->id)->get();
         if ($dbShops->isNotEmpty()) {
             return $this->normalizeShopIds($dbShops->pluck('external_id')->all());
@@ -247,7 +261,7 @@ class UzumClient implements MarketplaceClientInterface
             ]);
         }
 
-        throw new \RuntimeException('Не найдено ни одного магазина Uzum. Зайдите в настройки Uzum, обновите токен или выберите магазин.');
+        throw new \RuntimeException('Магазин не найден. Откройте настройки Uzum и выберите магазин из списка.');
     }
 
     /**
@@ -487,7 +501,7 @@ class UzumClient implements MarketplaceClientInterface
                 'error' => $e->getMessage(),
             ]);
             
-            throw new \RuntimeException("Ошибка обновления остатка Uzum SKU {$skuId}: {$e->getMessage()}");
+            throw new \RuntimeException("Не удалось обновить остаток товара. Попробуйте позже или проверьте настройки API.");
         }
     }
 
@@ -791,11 +805,7 @@ class UzumClient implements MarketplaceClientInterface
                     'Uzum API request'
                 );
 
-                $hint = 'Проверьте, что токен Uzum активен и имеет доступ к заказам/финансам. ' .
-                    'Uzum требует отправлять токен без Bearer-префикса.';
-
-                $message = $errorInfo ?: 'Access denied';
-                throw new \RuntimeException("Uzum API 403: {$message}. {$hint}");
+                throw new \RuntimeException("Доступ запрещён. Проверьте, что токен Uzum активен и имеет необходимые права.");
             }
 
             // 429 Too Many Requests - rate limit exceeded
@@ -805,11 +815,11 @@ class UzumClient implements MarketplaceClientInterface
                     'url' => $url,
                 ]);
 
-                throw new \RuntimeException("Uzum API rate limit (429): Превышен лимит запросов. Подождите минуту и попробуйте снова.");
+                throw new \RuntimeException("Слишком много запросов. Подождите минуту и попробуйте снова.");
             }
 
-            $message = $errorInfo ?: mb_substr(trim($rawBody), 0, 300);
-            throw new \RuntimeException("Uzum API error ({$status}): {$message}");
+            $message = $this->formatUserFriendlyError($status, $errorInfo, $rawBody);
+            throw new \RuntimeException($message);
         }
 
         $json = $response->json();
@@ -873,6 +883,55 @@ class UzumClient implements MarketplaceClientInterface
             return "{$code}: {$message}";
         }
         return $message ?? $code;
+    }
+
+    /**
+     * Форматирует сообщение об ошибке в понятном для пользователя виде
+     */
+    protected function formatUserFriendlyError(int $status, ?string $errorInfo, ?string $rawBody): string
+    {
+        // Известные коды ошибок Uzum API
+        $knownErrors = [
+            'open-api-001' => 'Неверный токен. Проверьте API-ключ в настройках.',
+            'open-api-002' => 'Токен истёк. Создайте новый API-ключ в личном кабинете Uzum.',
+            'open-api-003' => 'У токена нет прав для этой операции. Проверьте настройки доступа в Uzum.',
+            'open-api-004' => 'Магазин не найден. Проверьте ID магазина в настройках.',
+            'open-api-005' => 'Товар не найден.',
+            'open-api-006' => 'Заказ не найден.',
+        ];
+
+        // Проверяем известные коды ошибок
+        if ($errorInfo) {
+            foreach ($knownErrors as $code => $userMessage) {
+                if (stripos($errorInfo, $code) !== false) {
+                    return $userMessage;
+                }
+            }
+        }
+
+        // Ошибки по HTTP статусу
+        $statusMessages = [
+            400 => 'Неверный запрос. Проверьте данные и попробуйте снова.',
+            401 => 'Ошибка авторизации. Проверьте токен API в настройках Uzum.',
+            404 => 'Ресурс не найден. Возможно, неверный ID или токен.',
+            500 => 'Ошибка сервера Uzum. Попробуйте позже.',
+            502 => 'Сервер Uzum временно недоступен. Попробуйте через несколько минут.',
+            503 => 'Сервис Uzum на обслуживании. Попробуйте позже.',
+            504 => 'Сервер Uzum не ответил вовремя. Попробуйте позже.',
+        ];
+
+        if (isset($statusMessages[$status])) {
+            return $statusMessages[$status];
+        }
+
+        // Если ничего не подошло, показываем общее сообщение
+        if ($errorInfo) {
+            // Убираем технические детали для пользователя
+            $cleanMessage = preg_replace('/^[\w-]+:\s*/', '', $errorInfo);
+            return "Ошибка Uzum: {$cleanMessage}";
+        }
+
+        return "Ошибка соединения с Uzum ({$status}). Попробуйте позже.";
     }
 
     /**

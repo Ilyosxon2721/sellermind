@@ -260,7 +260,7 @@ class MarketplaceHttpClient
         ]);
 
         throw new \RuntimeException(
-            "Marketplace API error ({$statusCode}): " . mb_substr($body, 0, 500)
+            $this->formatUserFriendlyError($account->marketplace, $statusCode, $body)
         );
     }
 
@@ -281,6 +281,40 @@ class MarketplaceHttpClient
         });
 
         return $options;
+    }
+
+    /**
+     * Форматирует сообщение об ошибке в понятном для пользователя виде
+     */
+    protected function formatUserFriendlyError(string $marketplace, int $status, ?string $body): string
+    {
+        $marketplaceNames = [
+            'wb' => 'Wildberries',
+            'ozon' => 'Ozon',
+            'uzum' => 'Uzum',
+            'ym' => 'Яндекс.Маркет',
+        ];
+
+        $name = $marketplaceNames[$marketplace] ?? ucfirst($marketplace);
+
+        // Ошибки по HTTP статусу
+        $statusMessages = [
+            400 => "Неверный запрос к {$name}. Проверьте данные и попробуйте снова.",
+            401 => "Ошибка авторизации {$name}. Проверьте токен API в настройках.",
+            403 => "Доступ к {$name} запрещён. Проверьте права токена.",
+            404 => "Ресурс не найден в {$name}.",
+            429 => "Слишком много запросов к {$name}. Подождите минуту.",
+            500 => "Ошибка сервера {$name}. Попробуйте позже.",
+            502 => "Сервер {$name} временно недоступен. Попробуйте позже.",
+            503 => "Сервис {$name} на обслуживании. Попробуйте позже.",
+            504 => "Сервер {$name} не ответил вовремя. Попробуйте позже.",
+        ];
+
+        if (isset($statusMessages[$status])) {
+            return $statusMessages[$status];
+        }
+
+        return "Ошибка соединения с {$name} ({$status}). Попробуйте позже.";
     }
 
     /**
