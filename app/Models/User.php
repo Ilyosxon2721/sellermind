@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -40,6 +41,17 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Основная (текущая) компания пользователя
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Все компании, к которым пользователь имеет доступ
+     */
     public function companies(): BelongsToMany
     {
         return $this->belongsToMany(Company::class, 'user_company_roles')
