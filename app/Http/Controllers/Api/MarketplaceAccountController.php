@@ -1327,23 +1327,32 @@ class MarketplaceAccountController extends Controller
             $httpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'uzum');
             $client = new \App\Services\Marketplaces\UzumClient($httpClient, app(\App\Services\Marketplaces\IssueDetectorService::class));
 
-            // Пробуем получить информацию о магазинах
-            $shopIds = $account->credentials['shop_ids'] ?? [];
-            if (empty($shopIds)) {
+            // Используем ping() для проверки подключения (запрашивает /v1/shops)
+            $pingResult = $client->ping($account);
+
+            if ($pingResult['success']) {
+                $shops = $pingResult['data']['payload'] ?? $pingResult['data'] ?? [];
+                $shopCount = is_array($shops) ? count($shops) : 0;
+
+                $message = 'Подключение к Uzum API успешно проверено.';
+                if ($shopCount > 0) {
+                    $shopNames = array_map(fn($s) => $s['name'] ?? 'Shop', array_slice($shops, 0, 3));
+                    $message .= " Найдено магазинов: {$shopCount}. " . implode(', ', $shopNames);
+                    if ($shopCount > 3) {
+                        $message .= " и ещё " . ($shopCount - 3);
+                    }
+                }
+
                 return [
-                    'success' => false,
-                    'error' => 'Не указаны ID магазинов (shop_ids).'
+                    'success' => true,
+                    'message' => $message,
+                    'details' => $pingResult
                 ];
             }
 
-            // Делаем тестовый запрос к каталогу одного магазина
-            $testShopId = $shopIds[0];
-            $result = $client->fetchCatalog($account, $testShopId, 1, 0);
-
             return [
-                'success' => true,
-                'message' => 'Подключение к Uzum API успешно проверено.',
-                'details' => "Доступ к магазину {$testShopId} подтверждён. Товаров: " . count($result['products'] ?? [])
+                'success' => false,
+                'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения к Uzum API'
             ];
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
@@ -1353,7 +1362,7 @@ class MarketplaceAccountController extends Controller
                 $userMessage = 'API токен Uzum недействителен или истёк. Получите новый токен в личном кабинете Uzum.';
             } elseif (str_contains($errorMessage, '403') || str_contains($errorMessage, 'open-api-005') ||
                       str_contains($errorMessage, 'Shops ids is not available')) {
-                $userMessage = 'API токен не имеет доступа к указанным магазинам. Проверьте права токена и ID магазинов в личном кабинете Uzum.';
+                $userMessage = 'API токен не имеет доступа к указанным магазинам. Проверьте права токена в личном кабинете Uzum.';
             } elseif (str_contains($errorMessage, '429') || str_contains($errorMessage, 'Too Many Requests')) {
                 $userMessage = 'Превышен лимит запросов к API Uzum. Попробуйте через несколько минут.';
             } elseif (str_contains($errorMessage, 'cURL error') || str_contains($errorMessage, 'Connection')) {
