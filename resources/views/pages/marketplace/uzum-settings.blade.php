@@ -385,10 +385,10 @@
                             </button>
                         </div>
 
-                        <div x-show="testResults" class="space-y-3">
+                        <div x-show="testResults !== null" class="space-y-3">
                             <div class="px-4 py-3 rounded-lg border"
-                                 :class="testResults.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'">
-                                <p class="font-medium" x-text="testResults.message || (testResults.success ? 'API доступен' : 'API недоступен')"></p>
+                                 :class="testResults?.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'">
+                                <p class="font-medium" x-text="testResults?.message || (testResults?.success ? 'API доступен' : 'API недоступен')"></p>
                             </div>
                         </div>
                     </div>
@@ -760,9 +760,9 @@
                     <button @click="testConnection()" :disabled="testing" class="native-btn w-full bg-gray-200 text-gray-800">
                         <span x-text="testing ? 'Проверка...' : 'Проверить API'"></span>
                     </button>
-                    <template x-if="testResults">
-                        <div class="mt-3 p-3 rounded-lg text-sm" :class="testResults.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
-                            <p x-text="testResults.message || (testResults.success ? 'API доступен' : 'API недоступен')"></p>
+                    <template x-if="testResults !== null">
+                        <div class="mt-3 p-3 rounded-lg text-sm" :class="testResults?.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'">
+                            <p x-text="testResults?.message || (testResults?.success ? 'API доступен' : 'API недоступен')"></p>
                         </div>
                     </template>
                 </div>

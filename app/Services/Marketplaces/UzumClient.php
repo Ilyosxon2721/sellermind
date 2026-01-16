@@ -199,7 +199,8 @@ class UzumClient implements MarketplaceClientInterface
     public function fetchShops(MarketplaceAccount $account): array
     {
         $response = $this->request($account, 'GET', '/v1/shops');
-        return $response ?? [];
+        // Uzum API returns shops in payload array
+        return $response['payload'] ?? $response ?? [];
     }
 
     /**
