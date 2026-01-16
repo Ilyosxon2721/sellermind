@@ -287,16 +287,22 @@ class UzumClient implements MarketplaceClientInterface
      */
     public function ping(MarketplaceAccount $account): array
     {
-        $paths = array_unique(array_filter(array_merge(
-            [config('uzum.ping_path', '/v1/info')],
-            config('uzum.ping_candidates', [])
-        )));
+        // Always try /v1/shops first - it's the most reliable endpoint
+        $paths = ['/v1/shops'];
 
         foreach ($paths as $path) {
             $start = microtime(true);
             try {
                 $response = $this->request($account, 'GET', $path);
                 $duration = round((microtime(true) - $start) * 1000);
+
+                \Log::info('Uzum ping success', [
+                    'account_id' => $account->id,
+                    'path' => $path,
+                    'duration_ms' => $duration,
+                    'response_keys' => is_array($response) ? array_keys($response) : 'not_array',
+                ]);
+
                 return [
                     'success' => true,
                     'message' => 'Uzum Market API доступен',
@@ -306,6 +312,13 @@ class UzumClient implements MarketplaceClientInterface
                 ];
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
+
+                \Log::warning('Uzum ping failed', [
+                    'account_id' => $account->id,
+                    'path' => $path,
+                    'error' => $lastError,
+                ]);
+
                 continue;
             }
         }
