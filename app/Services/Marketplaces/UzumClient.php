@@ -798,6 +798,16 @@ class UzumClient implements MarketplaceClientInterface
                 throw new \RuntimeException("Uzum API 403: {$message}. {$hint}");
             }
 
+            // 429 Too Many Requests - rate limit exceeded
+            if ($status === 429) {
+                Log::warning('Uzum rate limit hit', [
+                    'account_id' => $account->id,
+                    'url' => $url,
+                ]);
+
+                throw new \RuntimeException("Uzum API rate limit (429): Превышен лимит запросов. Подождите минуту и попробуйте снова.");
+            }
+
             $message = $errorInfo ?: mb_substr(trim($rawBody), 0, 300);
             throw new \RuntimeException("Uzum API error ({$status}): {$message}");
         }
