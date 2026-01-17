@@ -67,10 +67,22 @@ class UzumClient implements MarketplaceClientInterface
     {
         $shopIds = $this->resolveShopIds($account);
         $synced = 0;
+        $created = 0;
+        $updated = 0;
+
+        Log::info('Uzum syncCatalog starting', [
+            'account_id' => $account->id,
+            'shop_ids' => $shopIds,
+        ]);
 
         foreach ($shopIds as $shopId) {
             $page = 0;
             do {
+                Log::info('Uzum syncCatalog fetching page', [
+                    'shop_id' => $shopId,
+                    'page' => $page,
+                ]);
+
                 $response = $this->request(
                     $account,
                     'GET',
@@ -86,6 +98,13 @@ class UzumClient implements MarketplaceClientInterface
 
                 $list = $response['payload']['productList'] ?? $response['productList'] ?? [];
 
+                Log::info('Uzum syncCatalog response', [
+                    'shop_id' => $shopId,
+                    'page' => $page,
+                    'products_count' => count($list),
+                    'response_keys' => array_keys($response),
+                ]);
+
                 foreach ($list as $product) {
                     $this->storeProduct($account, $shopId, $product);
                     $synced++;
@@ -95,7 +114,7 @@ class UzumClient implements MarketplaceClientInterface
             } while (!empty($list));
         }
 
-        return ['synced' => $synced, 'shops' => $shopIds];
+        return ['synced' => $synced, 'created' => $created, 'updated' => $updated, 'shops' => $shopIds];
     }
 
     protected function storeProduct(MarketplaceAccount $account, string|int $shopId, array $product): void
@@ -782,6 +801,18 @@ class UzumClient implements MarketplaceClientInterface
 
         if (!$response->successful()) {
             $errorInfo = $this->extractError($rawBody);
+
+            // 400 Bad Request - неверные параметры запроса
+            if ($status === 400) {
+                Log::error('Uzum 400 Bad Request', [
+                    'account_id' => $account->id,
+                    'url' => $url,
+                    'query' => $this->sanitizeForLog($query),
+                    'body' => $this->sanitizeForLog($body),
+                    'response_body' => mb_substr($rawBody, 0, 2000),
+                    'error_info' => $errorInfo,
+                ]);
+            }
 
             // 401 Unauthorized - проблема с токеном
             if ($status === 401) {
