@@ -168,6 +168,44 @@ class WildberriesOrder extends Model
     }
 
     /**
+     * Get currency code for this order
+     * Statistics API returns amounts in RUB, but we can detect country-based currency
+     *
+     * @return string 3-letter currency code
+     */
+    public function getCurrencyCode(): string
+    {
+        // Statistics API always returns amounts in RUB
+        // (WB converts all to RUB for reporting)
+        return 'RUB';
+    }
+
+    /**
+     * Get the original sale currency based on country
+     * This is informational - amounts in DB are already in RUB
+     *
+     * @return string|null Original currency code or null
+     */
+    public function getOriginalSaleCurrency(): ?string
+    {
+        $country = $this->country_name ?? ($this->raw_data['countryName'] ?? null);
+
+        if (!$country) {
+            return null;
+        }
+
+        return match ($country) {
+            'Россия' => 'RUB',
+            'Беларусь' => 'BYN',
+            'Казахстан' => 'KZT',
+            'Кыргызстан' => 'KGS',
+            'Армения' => 'AMD',
+            'Узбекистан' => 'UZS',
+            default => null,
+        };
+    }
+
+    /**
      * Check if order is completed sale
      */
     public function isCompletedSale(): bool

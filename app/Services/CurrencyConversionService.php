@@ -17,13 +17,45 @@ class CurrencyConversionService
 {
     /**
      * Default exchange rates (fallback values)
-     * RUB to other currencies
+     * Rates to UZS as base (approximate values, should be updated via API or settings)
      */
     protected const DEFAULT_RATES = [
-        'RUB_UZS' => 140.0,  // 1 RUB ≈ 140 UZS (approximate)
-        'RUB_KZT' => 5.2,    // 1 RUB ≈ 5.2 KZT
-        'USD_RUB' => 92.0,   // 1 USD ≈ 92 RUB
-        'EUR_RUB' => 100.0,  // 1 EUR ≈ 100 RUB
+        // RUB conversions
+        'RUB_UZS' => 140.0,   // 1 RUB ≈ 140 UZS
+        'RUB_KZT' => 5.2,     // 1 RUB ≈ 5.2 KZT
+
+        // BYN (Belarusian Ruble) conversions
+        'BYN_UZS' => 3900.0,  // 1 BYN ≈ 3900 UZS
+        'BYN_RUB' => 28.0,    // 1 BYN ≈ 28 RUB
+
+        // KZT (Kazakh Tenge) conversions
+        'KZT_UZS' => 27.0,    // 1 KZT ≈ 27 UZS
+
+        // USD conversions
+        'USD_UZS' => 12800.0, // 1 USD ≈ 12800 UZS
+        'USD_RUB' => 92.0,    // 1 USD ≈ 92 RUB
+
+        // EUR conversions
+        'EUR_UZS' => 13800.0, // 1 EUR ≈ 13800 UZS
+        'EUR_RUB' => 100.0,   // 1 EUR ≈ 100 RUB
+
+        // KGS (Kyrgyz Som) conversions
+        'KGS_UZS' => 145.0,   // 1 KGS ≈ 145 UZS
+    ];
+
+    /**
+     * ISO 4217 numeric codes to currency codes mapping
+     */
+    protected const ISO_NUMERIC_TO_CODE = [
+        '643' => 'RUB', // Russian Ruble
+        '933' => 'BYN', // Belarusian Ruble
+        '860' => 'UZS', // Uzbek Sum
+        '398' => 'KZT', // Kazakh Tenge
+        '417' => 'KGS', // Kyrgyz Som
+        '051' => 'AMD', // Armenian Dram
+        '944' => 'AZN', // Azerbaijani Manat
+        '840' => 'USD', // US Dollar
+        '978' => 'EUR', // Euro
     ];
 
     /**
@@ -123,6 +155,17 @@ class CurrencyConversionService
             return $fetchedRate;
         }
 
+        // Try cross-rate via RUB (common base currency for CIS)
+        if ($from !== 'RUB' && $to !== 'RUB') {
+            $fromToRub = $this->getRate($from, 'RUB');
+            $rubToTarget = $this->getRate('RUB', $to);
+            if ($fromToRub !== 1.0 || $rubToTarget !== 1.0) {
+                $crossRate = $fromToRub * $rubToTarget;
+                Cache::put("exchange_rate:{$rateKey}", $crossRate, self::RATE_CACHE_TTL);
+                return $crossRate;
+            }
+        }
+
         Log::warning("Exchange rate not found", ['from' => $from, 'to' => $to]);
         return 1.0;
     }
@@ -146,6 +189,61 @@ class CurrencyConversionService
     public function convertFromRub(float $amount): float
     {
         return $this->convert($amount, 'RUB', $this->getDisplayCurrency());
+    }
+
+    /**
+     * Convert amount from any currency to display currency
+     *
+     * @param float $amount The amount to convert
+     * @param string|int|null $fromCurrency Currency code (e.g., 'RUB', 'BYN') or ISO numeric code (e.g., 643, 933)
+     * @return float Converted amount in display currency
+     */
+    public function convertToDisplay(float $amount, $fromCurrency = null): float
+    {
+        if ($fromCurrency === null) {
+            return $amount; // No conversion needed
+        }
+
+        // Convert ISO numeric code to currency code if needed
+        $from = $this->normalizeCurrencyCode($fromCurrency);
+        $to = $this->getDisplayCurrency();
+
+        return $this->convert($amount, $from, $to);
+    }
+
+    /**
+     * Normalize currency code - convert ISO numeric to 3-letter code if needed
+     *
+     * @param string|int|null $code Currency code or ISO numeric code
+     * @return string 3-letter currency code
+     */
+    public function normalizeCurrencyCode($code): string
+    {
+        if ($code === null) {
+            return 'RUB'; // Default to RUB for WB orders without currency info
+        }
+
+        $code = (string) $code;
+
+        // Check if it's an ISO numeric code
+        if (isset(self::ISO_NUMERIC_TO_CODE[$code])) {
+            return self::ISO_NUMERIC_TO_CODE[$code];
+        }
+
+        // Already a 3-letter code
+        if (strlen($code) === 3) {
+            return strtoupper($code);
+        }
+
+        return 'RUB'; // Default fallback
+    }
+
+    /**
+     * Get currency code from ISO numeric code
+     */
+    public function getCurrencyCodeFromNumeric($numericCode): string
+    {
+        return self::ISO_NUMERIC_TO_CODE[(string) $numericCode] ?? 'RUB';
     }
 
     /**
@@ -174,6 +272,20 @@ class CurrencyConversionService
     public function convertAndFormat(float $amountRub, bool $withSymbol = true): string
     {
         $converted = $this->convertFromRub($amountRub);
+        return $this->format($converted, null, $withSymbol);
+    }
+
+    /**
+     * Convert from any currency and format in display currency
+     *
+     * @param float $amount Amount to convert
+     * @param string|int|null $fromCurrency Source currency code or ISO numeric code
+     * @param bool $withSymbol Include currency symbol
+     * @return string Formatted amount
+     */
+    public function convertToDisplayAndFormat(float $amount, $fromCurrency = null, bool $withSymbol = true): string
+    {
+        $converted = $this->convertToDisplay($amount, $fromCurrency);
         return $this->format($converted, null, $withSymbol);
     }
 
