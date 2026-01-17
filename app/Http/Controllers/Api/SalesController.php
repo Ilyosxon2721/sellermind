@@ -7,6 +7,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use App\Models\YandexMarketOrder;
 use App\Models\Warehouse\ChannelOrder;
 use Illuminate\Http\JsonResponse;
@@ -118,11 +119,20 @@ class SalesController extends Controller
                 break;
 
             case 'wb':
-                $order = WbOrder::with('account')
+                // Try WildberriesOrder first (has real data)
+                $order = WildberriesOrder::with('account')
                     ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->find($orderId);
                 if ($order) {
-                    $order = $this->formatWbOrderDetails($order);
+                    $order = $this->formatWildberriesOrderDetails($order);
+                } else {
+                    // Fallback to WbOrder
+                    $order = WbOrder::with('account')
+                        ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                        ->find($orderId);
+                    if ($order) {
+                        $order = $this->formatWbOrderDetails($order);
+                    }
                 }
                 break;
 
@@ -217,6 +227,50 @@ class SalesController extends Controller
             'subject' => $order->subject,
             'warehouse' => $order->warehouse_name,
             'supply_id' => $order->supply_id,
+        ];
+    }
+
+    /**
+     * Format WildberriesOrder for details view
+     */
+    private function formatWildberriesOrderDetails(WildberriesOrder $order): array
+    {
+        $status = $this->normalizeWildberriesStatus($order);
+
+        return [
+            'id' => 'wb_' . $order->id,
+            'order_number' => $order->srid ?? $order->order_id,
+            'marketplace' => 'wb',
+            'marketplace_label' => 'Wildberries',
+            'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
+            'status' => $status,
+            'status_label' => $this->getStatusLabel($status),
+            'raw_status' => $order->wb_status ?? $order->status,
+            'customer_name' => $order->region_name,
+            'delivery_address' => implode(', ', array_filter([
+                $order->country_name,
+                $order->oblast_okrug_name,
+                $order->region_name,
+            ])),
+            'total_amount' => (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0),
+            'currency' => 'RUB',
+            'created_at' => $order->order_date?->toIso8601String(),
+            'created_at_formatted' => $order->order_date?->format('d.m.Y H:i'),
+            'article' => $order->supplier_article,
+            'sku' => $order->barcode,
+            'brand' => $order->brand,
+            'subject' => $order->subject,
+            'category' => $order->category,
+            'warehouse' => $order->warehouse_name,
+            'warehouse_type' => $order->warehouse_type,
+            'supply_id' => $order->supply_id,
+            'is_cancel' => $order->is_cancel,
+            'is_return' => $order->is_return,
+            'is_realization' => $order->is_realization,
+            'price' => (float) $order->price,
+            'discount_percent' => $order->discount_percent,
+            'commission_percent' => (float) $order->commission_percent,
+            'spp' => (float) $order->spp,
         ];
     }
 
@@ -410,45 +464,104 @@ class SalesController extends Controller
      */
     private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
-        if (!$companyId || !class_exists(WbOrder::class)) {
+        if (!$companyId) {
             return collect();
         }
 
         try {
-            $query = WbOrder::query()
+            // Use WildberriesOrder model (wildberries_orders table) which has real data
+            $query = WildberriesOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate('ordered_at', '>=', $dateFrom)
-                ->whereDate('ordered_at', '<=', $dateTo);
-            
+                ->whereDate('order_date', '>=', $dateFrom)
+                ->whereDate('order_date', '<=', $dateTo);
+
             if ($status) {
+                // Map status filter to WildberriesOrder fields
                 $query->where(function($q) use ($status) {
-                    $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status))
-                      ->orWhereIn('status', $this->mapStatusToDbStatuses($status));
+                    $dbStatuses = $this->mapStatusToDbStatuses($status);
+                    $q->whereIn('status', $dbStatuses)
+                      ->orWhereIn('wb_status', $dbStatuses);
+
+                    // Handle cancelled status via is_cancel flag
+                    if ($status === 'cancelled') {
+                        $q->orWhere('is_cancel', true);
+                    }
+                    // Handle completed status
+                    if ($status === 'completed') {
+                        $q->orWhere(function($sub) {
+                            $sub->where('is_realization', true)
+                                ->where('is_cancel', false)
+                                ->where('is_return', false);
+                        });
+                    }
                 });
             }
 
             if ($search) {
                 $query->where(function($q) use ($search) {
-                    $q->where('external_order_id', 'like', "%{$search}%")
-                      ->orWhere('article', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%");
+                    $q->where('srid', 'like', "%{$search}%")
+                      ->orWhere('order_id', 'like', "%{$search}%")
+                      ->orWhere('supplier_article', 'like', "%{$search}%")
+                      ->orWhere('barcode', 'like', "%{$search}%");
                 });
             }
 
             return $query->get()->map(fn($order) => [
                 'id' => 'wb_' . $order->id,
-                'order_number' => $order->external_order_id ?? $order->rid ?? $order->id,
-                'created_at' => $order->ordered_at?->toIso8601String(),
+                'order_number' => $order->srid ?? $order->order_id ?? $order->id,
+                'created_at' => $order->order_date?->toIso8601String(),
                 'marketplace' => 'wb',
-                'customer_name' => $order->customer_name,
-                'total_amount' => (float) ($order->total_amount ?? $order->price ?? 0),
-                'currency' => $order->currency ?? 'RUB',
-                'status' => $this->normalizeStatus($order->status_normalized ?? $order->status),
-                'raw_status' => $order->status,
+                'customer_name' => $order->region_name,
+                'total_amount' => (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0),
+                'currency' => 'RUB',
+                'status' => $this->normalizeWildberriesStatus($order),
+                'raw_status' => $order->wb_status ?? $order->status,
             ]);
         } catch (\Exception $e) {
             return collect();
         }
+    }
+
+    /**
+     * Normalize WildberriesOrder status based on flags and status fields
+     */
+    private function normalizeWildberriesStatus(WildberriesOrder $order): string
+    {
+        // Check cancellation/return flags first
+        if ($order->is_cancel) {
+            return 'cancelled';
+        }
+        if ($order->is_return) {
+            return 'cancelled';
+        }
+
+        // Check if completed sale
+        if ($order->is_realization) {
+            return 'completed';
+        }
+
+        // Map wb_status
+        $wbStatus = $order->wb_status;
+        if ($wbStatus) {
+            $statusMap = [
+                'waiting' => 'new',
+                'sorted' => 'processing',
+                'sold' => 'completed',
+                'delivered' => 'completed',
+                'canceled' => 'cancelled',
+                'canceled_by_client' => 'cancelled',
+                'defect' => 'cancelled',
+                'ready_for_pickup' => 'processing',
+                'on_way_to_client' => 'processing',
+            ];
+
+            if (isset($statusMap[$wbStatus])) {
+                return $statusMap[$wbStatus];
+            }
+        }
+
+        // Fallback to status field
+        return $this->normalizeStatus($order->status ?? 'new');
     }
     
     /**
