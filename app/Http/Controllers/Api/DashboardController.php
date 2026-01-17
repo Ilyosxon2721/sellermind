@@ -410,6 +410,12 @@ class DashboardController extends Controller
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
+            // Setup currency service for company
+            $company = Company::find($companyId);
+            if ($company) {
+                $this->currencyService->forCompany($company);
+            }
+
             $today = Carbon::today();
             $weekAgo = Carbon::today()->subDays(7);
             $monthAgo = Carbon::today()->subDays(30);
@@ -428,8 +434,16 @@ class DashboardController extends Controller
             $suppliesData = $this->getSuppliesData($companyId);
             $reviewsData = $this->getReviewsData($companyId);
 
+            // Get currency info
+            $displayCurrency = $this->currencyService->getDisplayCurrency();
+            $currencySymbol = $this->currencyService->getCurrencySymbol();
+
             return response()->json([
                 'success' => true,
+                'currency' => [
+                    'code' => $displayCurrency,
+                    'symbol' => $currencySymbol,
+                ],
                 'summary' => [
                     'sales_today' => $salesData['today_amount'],
                     'sales_today_count' => $salesData['today_count'],
