@@ -629,6 +629,7 @@ class MarketplaceAccount extends Model
      */
     public function getWbToken(string $category): ?string
     {
+        // First try direct column attributes
         $token = match ($category) {
             'content'     => $this->wb_content_token,
             'marketplace' => $this->wb_marketplace_token,
@@ -637,8 +638,26 @@ class MarketplaceAccount extends Model
             default       => null,
         };
 
-        // Fallback to api_key if category-specific token is not set
-        return $token ?: $this->api_key;
+        // Fallback to credentials JSON if column is empty
+        if (!$token) {
+            $credentials = $this->getDecryptedCredentials();
+            $credKey = match ($category) {
+                'content'     => 'wb_content_token',
+                'marketplace' => 'wb_marketplace_token',
+                'prices'      => 'wb_prices_token',
+                'statistics'  => 'wb_statistics_token',
+                default       => null,
+            };
+            $token = $credKey ? ($credentials[$credKey] ?? null) : null;
+        }
+
+        // Final fallback to api_key/api_token
+        if (!$token) {
+            $credentials = $this->getDecryptedCredentials();
+            $token = $this->api_key ?: ($credentials['api_key'] ?? $credentials['api_token'] ?? null);
+        }
+
+        return $token;
     }
 
     /**
