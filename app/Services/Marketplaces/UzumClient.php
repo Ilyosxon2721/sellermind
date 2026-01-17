@@ -647,66 +647,72 @@ class UzumClient implements MarketplaceClientInterface
         ];
 
         foreach ($statuses as $status) {
-            $page = 0;
             $isActiveStatus = in_array($status, $activeStatuses);
 
-            try {
-                $stopStatus = false;
-                do {
-                    $query = [
-                        'page' => $page,
-                        'size' => $size,
-                        'status' => $status,
-                        'shopIds' => $shopIds,
-                    ];
+            // Делаем отдельные запросы для каждого магазина
+            foreach ($shopIds as $shopId) {
+                $page = 0;
 
-                    Log::info('Uzum API fetching orders for status', [
-                        'status' => $status,
-                        'page' => $page,
-                        'size' => $size,
-                        'shopIds_count' => count($shopIds),
-                        'is_active_status' => $isActiveStatus,
-                    ]);
+                try {
+                    $stopStatus = false;
+                    do {
+                        $query = [
+                            'page' => $page,
+                            'size' => $size,
+                            'status' => $status,
+                            'shopId' => $shopId, // Один магазин за раз
+                        ];
 
-                    $response = $this->request($account, 'GET', $path, $query);
-                    $payload = $response['payload'] ?? [];
-                    $list = $payload['orders'] ?? $payload['list'] ?? [];
+                        Log::info('Uzum API fetching orders for status', [
+                            'status' => $status,
+                            'shopId' => $shopId,
+                            'page' => $page,
+                            'size' => $size,
+                            'is_active_status' => $isActiveStatus,
+                        ]);
 
-                    Log::info('Uzum API response for status', [
-                        'status' => $status,
-                        'page' => $page,
-                        'orders_received' => count($list),
-                        'response_keys' => array_keys($response),
-                        'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
-                        'raw_response_sample' => mb_substr(json_encode($response), 0, 500),
-                    ]);
+                        $response = $this->request($account, 'GET', $path, $query);
+                        $payload = $response['payload'] ?? [];
+                        $list = $payload['orders'] ?? $payload['list'] ?? [];
 
-                    foreach ($list as $orderData) {
-                        // Для активных статусов загружаем все заказы без фильтрации по дате
-                        if (!$isActiveStatus) {
-                            $created = $orderData['dateCreated'] ?? null;
-                            if ($fromMs && $created && is_numeric($created) && $created < $fromMs) {
-                                $stopStatus = true;
-                                continue;
+                        Log::info('Uzum API response for status', [
+                            'status' => $status,
+                            'shopId' => $shopId,
+                            'page' => $page,
+                            'orders_received' => count($list),
+                            'response_keys' => array_keys($response),
+                            'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
+                            'raw_response_sample' => mb_substr(json_encode($response), 0, 500),
+                        ]);
+
+                        foreach ($list as $orderData) {
+                            // Для активных статусов загружаем все заказы без фильтрации по дате
+                            if (!$isActiveStatus) {
+                                $created = $orderData['dateCreated'] ?? null;
+                                if ($fromMs && $created && is_numeric($created) && $created < $fromMs) {
+                                    $stopStatus = true;
+                                    continue;
+                                }
+                                if ($toMs && $created && is_numeric($created) && $created > $toMs) {
+                                    // Слишком свежий — продолжаем, но не прерываем
+                                }
                             }
-                            if ($toMs && $created && is_numeric($created) && $created > $toMs) {
-                                // Слишком свежий — продолжаем, но не прерываем
-                            }
+                            $orders[] = $this->mapOrderData($orderData, 'fbs');
                         }
-                        $orders[] = $this->mapOrderData($orderData, 'fbs');
-                    }
 
-                    $page++;
-                } while (!$stopStatus && !empty($list) && count($list) === $size);
-            } catch (\Throwable $e) {
-                Log::warning('Uzum fetchOrders status failed', [
-                    'status' => $status,
-                    'path' => $path,
-                    'error' => $e->getMessage(),
-                ]);
-                // продолжим остальные статусы
-            }
-        }
+                        $page++;
+                    } while (!$stopStatus && !empty($list) && count($list) === $size);
+                } catch (\Throwable $e) {
+                    Log::warning('Uzum fetchOrders status failed', [
+                        'status' => $status,
+                        'shopId' => $shopId,
+                        'path' => $path,
+                        'error' => $e->getMessage(),
+                    ]);
+                    // продолжим остальные магазины/статусы
+                }
+            } // end foreach shopId
+        } // end foreach status
 
         Log::info('Uzum fetchOrdersByStatuses completed', [
             'account_id' => $account->id,
