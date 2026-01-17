@@ -120,45 +120,78 @@ class CompanyController extends Controller
             ], 422);
         }
 
-        // Проверяем, существует ли пользователь с таким email
-        $user = \App\Models\User::where('email', $request->email)->first();
+        try {
+            // Проверяем, существует ли пользователь с таким email
+            $user = \App\Models\User::where('email', $request->email)->first();
 
-        if ($user) {
-            // Пользователь существует - проверяем, не в компании ли он уже
-            if ($user->hasCompanyAccess($company->id)) {
-                return response()->json(['message' => 'Пользователь с таким email уже в компании.'], 422);
+            if ($user) {
+                // Пользователь существует - проверяем, не в компании ли он уже
+                if ($user->hasCompanyAccess($company->id)) {
+                    return response()->json(['message' => 'Пользователь с таким email уже в компании.'], 422);
+                }
+            } else {
+                // Создаём нового пользователя
+                $user = \App\Models\User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => $request->password,
+                    'company_id' => $company->id,
+                    'locale' => 'ru',
+                ]);
             }
-        } else {
-            // Создаём нового пользователя
-            $user = \App\Models\User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => $request->password,
+
+            // Проверяем, не добавлен ли уже пользователь в эту компанию
+            $existingRole = UserCompanyRole::where('user_id', $user->id)
+                ->where('company_id', $company->id)
+                ->first();
+
+            if ($existingRole) {
+                return response()->json(['message' => 'Пользователь уже добавлен в компанию.'], 422);
+            }
+
+            // Добавляем в компанию
+            UserCompanyRole::create([
+                'user_id' => $user->id,
                 'company_id' => $company->id,
-                'locale' => 'ru',
+                'role' => $request->role,
             ]);
+
+            // Устанавливаем компанию как основную, если у пользователя её нет
+            if (!$user->company_id) {
+                $user->update(['company_id' => $company->id]);
+            }
+
+            return response()->json([
+                'message' => 'Сотрудник добавлен.',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Failed to add company member', [
+                'company_id' => $company->id,
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            // Проверяем на дубликат email
+            if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate entry')) {
+                return response()->json(['message' => 'Пользователь с таким email уже существует.'], 422);
+            }
+
+            return response()->json(['message' => 'Ошибка при создании пользователя: ' . $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            \Log::error('Failed to add company member', [
+                'company_id' => $company->id,
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Ошибка: ' . $e->getMessage()], 500);
         }
-
-        // Добавляем в компанию
-        UserCompanyRole::create([
-            'user_id' => $user->id,
-            'company_id' => $company->id,
-            'role' => $request->role,
-        ]);
-
-        // Устанавливаем компанию как основную, если у пользователя её нет
-        if (!$user->company_id) {
-            $user->update(['company_id' => $company->id]);
-        }
-
-        return response()->json([
-            'message' => 'Сотрудник добавлен.',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-        ]);
     }
 
     /**
