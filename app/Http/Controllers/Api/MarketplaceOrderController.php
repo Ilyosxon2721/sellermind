@@ -655,52 +655,70 @@ class MarketplaceOrderController extends Controller
      */
     private function loadWbOrders(Request $request, MarketplaceAccount $account): array
     {
-        $query = \App\Models\WbOrder::query()->where('marketplace_account_id', $account->id);
+        $query = \App\Models\WildberriesOrder::query()->where('marketplace_account_id', $account->id);
 
         if ($request->status) {
             $query->where('status', $request->status);
         }
         if ($request->from) {
-            $query->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay());
+            $query->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
         }
         if ($request->to) {
-            $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
+            $query->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
         }
 
-        $orders = $query->with('items')->orderByDesc('ordered_at')->limit(1000)->get();
+        $orders = $query->orderByDesc('order_date')->limit(1000)->get();
 
         return $orders->map(function ($o) {
-            // Получаем название товара и характеристики из items или raw_payload
-            $productName = $o->product_name;
-            $brand = null;
-            $characteristics = null;
+            // Получаем данные из raw_data
+            $rawData = $o->raw_data ?? [];
+            $brand = $o->brand ?? $rawData['brand'] ?? null;
+            $productName = $o->subject ?? $rawData['subject'] ?? null;
+            $characteristics = $o->tech_size ?? null;
 
-            // Пытаемся извлечь бренд и характеристики из raw_payload
-            if ($o->raw_payload) {
-                $brand = $o->raw_payload['brand'] ?? null;
-                $characteristics = $o->raw_payload['characteristics'] ?? null;
-
-                // Если характеристик нет, пробуем собрать из других полей
-                if (!$characteristics && isset($o->raw_payload['colorCode']) && !empty($o->raw_payload['colorCode'])) {
-                    $characteristics = 'Цвет: ' . $o->raw_payload['colorCode'];
-                }
-            }
-
-            // Формируем метаинформацию (убираем пустые значения)
-            $meta = array_filter([$brand, $o->article, $characteristics], function($value) {
+            // Формируем метаинформацию
+            $meta = array_filter([$brand, $o->supplier_article, $characteristics], function($value) {
                 return !empty($value) && trim($value) !== '';
             });
             $metaString = implode(' - ', $meta);
+
+            // Генерируем URL фото по nm_id
+            $photoUrl = null;
+            if ($o->nm_id) {
+                $vol = intval($o->nm_id / 100000);
+                $part = intval($o->nm_id / 1000);
+                $host = match(true) {
+                    $vol <= 143 => '01',
+                    $vol <= 287 => '02',
+                    $vol <= 431 => '03',
+                    $vol <= 719 => '04',
+                    $vol <= 1007 => '05',
+                    $vol <= 1061 => '06',
+                    $vol <= 1115 => '07',
+                    $vol <= 1169 => '08',
+                    $vol <= 1313 => '09',
+                    $vol <= 1601 => '10',
+                    $vol <= 1655 => '11',
+                    $vol <= 1919 => '12',
+                    $vol <= 2045 => '13',
+                    $vol <= 2189 => '14',
+                    $vol <= 2405 => '15',
+                    $vol <= 2621 => '16',
+                    $vol <= 2837 => '17',
+                    default => '18',
+                };
+                $photoUrl = "https://basket-{$host}.wbbasket.ru/vol{$vol}/part{$part}/{$o->nm_id}/images/c246x328/1.webp";
+            }
 
             return [
                 // Основные поля для списка
                 'id' => $o->id,
                 'marketplace_account_id' => $o->marketplace_account_id,
-                'external_order_id' => $o->external_order_id,
+                'external_order_id' => $o->order_id ?? $o->srid,
 
                 // Информация о товаре
-                'photo_url' => $o->photo_url,
-                'article' => $o->article,
+                'photo_url' => $photoUrl,
+                'article' => $o->supplier_article,
                 'product_name' => $productName,
                 'meta_info' => $metaString,
                 'brand' => $brand,
@@ -708,46 +726,45 @@ class MarketplaceOrderController extends Controller
 
                 // Идентификаторы
                 'nm_id' => $o->nm_id,
-                'sku' => $o->sku,
+                'sku' => $o->barcode,
 
                 // Статусы
                 'status' => $o->status,
-                'status_normalized' => $o->status_normalized,
-                'wb_status_group' => $o->wb_status_group,
+                'status_normalized' => $o->status,
+                'wb_status_group' => $o->is_cancel ? 'canceled' : ($o->is_return ? 'return' : 'archive'),
 
                 // Логистика
                 'supply_id' => $o->supply_id,
 
                 // Финансы
-                'total_amount' => $o->total_amount,
-                'currency' => $o->currency,
+                'total_amount' => $o->total_price ?? $o->price,
+                'currency' => 'RUB',
 
                 // Время
-                'ordered_at' => $o->ordered_at,
-                'time_elapsed' => $o->time_elapsed,
+                'ordered_at' => $o->order_date,
+                'time_elapsed' => $o->order_date ? $o->order_date->diffForHumans() : null,
 
                 // Дополнительные поля (для детального просмотра)
                 'details' => [
                     'rid' => $o->rid,
-                    'order_uid' => $o->order_uid,
-                    'chrt_id' => $o->chrt_id,
+                    'srid' => $o->srid,
+                    'odid' => $o->odid,
                     'wb_status' => $o->wb_status,
-                    'wb_supplier_status' => $o->wb_supplier_status,
-                    'wb_delivery_type' => $o->wb_delivery_type,
-                    'cargo_type' => $o->cargo_type,
-                    'warehouse_id' => $o->warehouse_id,
-                    'office' => $o->office,
-                    'customer_name' => $o->customer_name,
-                    'customer_phone' => $o->customer_phone,
+                    'warehouse_name' => $o->warehouse_name,
+                    'warehouse_type' => $o->warehouse_type,
+                    'category' => $o->category,
+                    'region_name' => $o->region_name,
+                    'country_name' => $o->country_name,
                     'price' => $o->price,
-                    'scan_price' => $o->scan_price,
-                    'converted_price' => $o->converted_price,
-                    'currency_code' => $o->currency_code,
-                    'converted_currency_code' => $o->converted_currency_code,
-                    'is_b2b' => $o->is_b2b,
-                    'is_zero_order' => $o->is_zero_order,
-                    'delivered_at' => $o->delivered_at,
-                    'raw_payload' => $o->raw_payload,
+                    'total_price' => $o->total_price,
+                    'finished_price' => $o->finished_price,
+                    'for_pay' => $o->for_pay,
+                    'discount_percent' => $o->discount_percent,
+                    'spp' => $o->spp,
+                    'is_cancel' => $o->is_cancel,
+                    'is_return' => $o->is_return,
+                    'cancel_date' => $o->cancel_date,
+                    'raw_data' => $o->raw_data,
                 ],
             ];
         })->all();
