@@ -26,11 +26,25 @@ use Illuminate\Support\Facades\Log;
  */
 class WildberriesOrderService
 {
-    protected WildberriesHttpClient $httpClient;
+    protected ?WildberriesHttpClient $httpClient = null;
+    protected ?MarketplaceAccount $currentAccount = null;
 
-    public function __construct(WildberriesHttpClient $httpClient)
+    public function __construct(?WildberriesHttpClient $httpClient = null)
     {
         $this->httpClient = $httpClient;
+    }
+
+    /**
+     * Get HTTP client for the specified account
+     */
+    protected function getHttpClient(MarketplaceAccount $account): WildberriesHttpClient
+    {
+        // If account changed or no client, create new one
+        if (!$this->httpClient || $this->currentAccount?->id !== $account->id) {
+            $this->httpClient = new WildberriesHttpClient($account);
+            $this->currentAccount = $account;
+        }
+        return $this->httpClient;
     }
 
     /**
@@ -58,7 +72,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v3/orders/new
-            $response = $this->httpClient->get('marketplace', '/api/v3/orders/new');
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders/new');
 
             $orders = $response['orders'] ?? [];
 
@@ -157,7 +171,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v3/orders - получаем ВСЕ заказы (не только новые)
-            $response = $this->httpClient->get('marketplace', '/api/v3/orders', [
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders', [
                 'limit' => $limit,
                 'next' => $next,
             ]);
@@ -282,7 +296,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v1/supplier/orders
-            $response = $this->httpClient->get('statistics', '/api/v1/supplier/orders', [
+            $response = $this->getHttpClient($account)->get('statistics', '/api/v1/supplier/orders', [
                 'dateFrom' => $dateFrom->format('Y-m-d'),
                 'flag' => $flag,
             ]);
@@ -603,7 +617,7 @@ class WildberriesOrderService
     {
         try {
             // Получаем бинарные данные через GET запрос с параметром type
-            $fileContent = $this->httpClient->getBinary(
+            $fileContent = $this->getHttpClient($account)->getBinary(
                 'marketplace',
                 "/api/v3/supplies/{$supplyId}/barcode",
                 ['type' => $type]
@@ -675,7 +689,7 @@ class WildberriesOrderService
 
         try {
             // Use postBinary for sticker generation
-            $response = $this->httpClient->postBinary(
+            $response = $this->getHttpClient($account)->postBinary(
                 'marketplace',
                 '/api/v3/orders/stickers',
                 ['orders' => array_map('intval', $orderIds)],
@@ -739,7 +753,7 @@ class WildberriesOrderService
     public function createTare(MarketplaceAccount $account, string $supplyId, int $amount = 1): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx", [
+            $response = $this->getHttpClient($account)->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx", [
                 'amount' => $amount,
             ]);
 
@@ -776,7 +790,7 @@ class WildberriesOrderService
     public function addOrdersToTare(MarketplaceAccount $account, string $supplyId, string $trbxId, array $orderIds): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/supplies/{$supplyId}/trbx/{$trbxId}", [
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/supplies/{$supplyId}/trbx/{$trbxId}", [
                 'orderIds' => $orderIds,
             ]);
 
@@ -811,7 +825,7 @@ class WildberriesOrderService
     public function getTares(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}/trbx");
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/v3/supplies/{$supplyId}/trbx");
 
             Log::info('WB tares fetched', [
                 'account_id' => $account->id,
@@ -843,7 +857,7 @@ class WildberriesOrderService
     public function getTareStickers(MarketplaceAccount $account, string $supplyId, string $type = 'png'): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx/stickers", [
+            $response = $this->getHttpClient($account)->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx/stickers", [
                 'type' => $type,
             ]);
 
@@ -878,7 +892,7 @@ class WildberriesOrderService
     {
         try {
             // Получаем бинарные данные через GET запрос с параметром type
-            $fileContent = $this->httpClient->getBinary(
+            $fileContent = $this->getHttpClient($account)->getBinary(
                 'marketplace',
                 "/api/v3/supplies/{$supplyId}/tares/{$tareId}/barcode",
                 ['type' => $type]
@@ -959,7 +973,7 @@ class WildberriesOrderService
     public function removeOrderFromSupply(MarketplaceAccount $account, string $supplyId, int $orderId): bool
     {
         try {
-            $this->httpClient->delete('marketplace', "/api/v3/supplies/{$supplyId}/orders/{$orderId}");
+            $this->getHttpClient($account)->delete('marketplace', "/api/v3/supplies/{$supplyId}/orders/{$orderId}");
 
             Log::info('WB order removed from supply', [
                 'account_id' => $account->id,
@@ -989,7 +1003,7 @@ class WildberriesOrderService
     public function getReshipmentOrders(MarketplaceAccount $account): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', '/api/v3/supplies/orders/reshipment');
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/supplies/orders/reshipment');
 
             Log::info('WB reshipment orders fetched', [
                 'account_id' => $account->id,
@@ -1017,7 +1031,7 @@ class WildberriesOrderService
     public function getSupplyDetails(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}");
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/v3/supplies/{$supplyId}");
 
             Log::info('WB supply details fetched', [
                 'account_id' => $account->id,
@@ -1047,7 +1061,7 @@ class WildberriesOrderService
     {
         try {
             // New API endpoint (replaces deprecated GET /api/v3/supplies/{supplyId}/orders)
-            $response = $this->httpClient->get('marketplace', "/api/marketplace/v3/supplies/{$supplyId}/order-ids");
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/marketplace/v3/supplies/{$supplyId}/order-ids");
 
             $orderIds = $response['orderIds'] ?? [];
 
@@ -1489,7 +1503,7 @@ class WildberriesOrderService
     public function getOrdersStatus(MarketplaceAccount $account, array $orderIds): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', '/api/v3/orders/status', [
+            $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/status', [
                 'orders' => $orderIds,
             ]);
 
@@ -1529,7 +1543,7 @@ class WildberriesOrderService
         int $height = 40
     ): array {
         try {
-            $response = $this->httpClient->post('marketplace', '/api/v3/orders/stickers', [
+            $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/stickers', [
                 'orders' => $orderIds,
             ], [
                 'type' => $type,
@@ -1566,7 +1580,7 @@ class WildberriesOrderService
     public function cancelOrder(MarketplaceAccount $account, string $orderId): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/orders/{$orderId}/cancel");
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/orders/{$orderId}/cancel");
 
             Log::info('WB order cancelled', [
                 'account_id' => $account->id,
@@ -1596,7 +1610,7 @@ class WildberriesOrderService
     public function deliverSupply(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/supplies/{$supplyId}/deliver");
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/supplies/{$supplyId}/deliver");
 
             Log::info('WB supply delivered', [
                 'account_id' => $account->id,
