@@ -141,11 +141,20 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                     $updateData['supplier_status'] = $supplierStatus;
                 }
 
+                // Нормализуем статус на основе WB статусов
+                $normalizedStatus = $this->mapWbStatusToInternal($supplierStatus, $wbStatus);
+                $statusGroup = $this->mapWbStatusToGroup($supplierStatus, $wbStatus);
+
+                $updateData['status'] = $normalizedStatus;
+                $updateData['status_normalized'] = $normalizedStatus;
+                $updateData['wb_status_group'] = $statusGroup;
+
                 // Добавляем запись в историю статусов
                 $statusHistory = $order->status_history ?? [];
                 $statusHistory[] = [
                     'wb_status' => $wbStatus,
                     'supplier_status' => $supplierStatus,
+                    'status' => $normalizedStatus,
                     'updated_at' => now()->toIso8601String(),
                 ];
                 $updateData['status_history'] = $statusHistory;
@@ -191,5 +200,75 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
             'error' => $exception->getMessage(),
             'attempts' => $this->attempts(),
         ]);
+    }
+
+    /**
+     * Маппинг WB статусов в нормализованный внутренний статус
+     */
+    protected function mapWbStatusToInternal(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. CANCELLED (высший приоритет)
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'cancelled';
+        }
+
+        // 2. COMPLETED (доставлен клиенту)
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'completed';
+        }
+
+        // 3. IN_DELIVERY (продавец сделал, WB доставляет)
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'at_deliverypoint', 'at_sortcenter'])) {
+            return 'in_delivery';
+        }
+
+        // 4. IN_ASSEMBLY (продавец подтвердил и собирает)
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'in_assembly';
+        }
+
+        // 5. NEW (ожидает подтверждения)
+        if ($supplierStatus === 'new' || $wbStatus === 'waiting') {
+            return 'new';
+        }
+
+        return 'new'; // По умолчанию
+    }
+
+    /**
+     * Маппинг WB статусов в группу статусов
+     */
+    protected function mapWbStatusToGroup(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. Cancelled
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'canceled';
+        }
+
+        // 2. Archive/Completed
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'archive';
+        }
+
+        // 3. Shipping
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'at_deliverypoint', 'at_sortcenter'])) {
+            return 'shipping';
+        }
+
+        // 4. Assembling
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'assembling';
+        }
+
+        // 5. New
+        return 'new';
     }
 }

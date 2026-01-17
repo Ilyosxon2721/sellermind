@@ -146,16 +146,16 @@ class SalesController extends Controller
             ->whereDate('ordered_at', '<=', $dateTo);
         
         if ($status) {
-            $query->where('status_normalized', $this->mapStatus($status));
+            $query->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
         }
-        
+
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('external_order_id', 'like', "%{$search}%")
                   ->orWhere('customer_name', 'like', "%{$search}%");
             });
         }
-        
+
         return $query->get()->map(fn($order) => [
             'id' => 'uzum_' . $order->id,
             'order_number' => $order->external_order_id,
@@ -185,9 +185,12 @@ class SalesController extends Controller
                 ->whereDate('ordered_at', '<=', $dateTo);
             
             if ($status) {
-                $query->where('status_normalized', $this->mapStatus($status));
+                $query->where(function($q) use ($status) {
+                    $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status))
+                      ->orWhereIn('status', $this->mapStatusToDbStatuses($status));
+                });
             }
-            
+
             if ($search) {
                 $query->where(function($q) use ($search) {
                     $q->where('external_order_id', 'like', "%{$search}%")
@@ -195,7 +198,7 @@ class SalesController extends Controller
                       ->orWhere('sku', 'like', "%{$search}%");
                 });
             }
-            
+
             return $query->get()->map(fn($order) => [
                 'id' => 'wb_' . $order->id,
                 'order_number' => $order->external_order_id ?? $order->rid ?? $order->id,
@@ -228,7 +231,7 @@ class SalesController extends Controller
                 ->whereDate('created_at_ozon', '<=', $dateTo);
 
             if ($status) {
-                $query->where('status', $this->mapStatus($status));
+                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
             }
 
             if ($search) {
@@ -278,7 +281,7 @@ class SalesController extends Controller
                 ->whereDate('created_at_ym', '<=', $dateTo);
 
             if ($status) {
-                $query->where('status', $this->mapStatus($status));
+                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
             }
 
             if ($search) {
@@ -331,7 +334,7 @@ class SalesController extends Controller
                 });
 
             if ($status) {
-                $query->where('status', $status);
+                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
             }
 
             if ($search) {
@@ -421,17 +424,26 @@ class SalesController extends Controller
     /**
      * Map frontend status to DB status
      */
+    /**
+     * Get array of DB statuses that match the frontend filter status
+     */
+    private function mapStatusToDbStatuses(string $status): array
+    {
+        return match ($status) {
+            'new' => ['new', 'created', 'pending', 'waiting'],
+            'processing' => ['processing', 'accepted', 'confirmed', 'in_work', 'assembling', 'in_assembly', 'accepted_uzum', 'in_supply'],
+            'shipped' => ['shipped', 'sent', 'in_delivery', 'delivering', 'waiting_pickup'],
+            'delivered' => ['delivered', 'completed', 'done', 'received', 'issued'],
+            'cancelled' => ['cancelled', 'canceled', 'rejected', 'returned', 'returns'],
+            default => [$status],
+        };
+    }
+
     private function mapStatus(string $status): string
     {
-        $map = [
-            'new' => 'new',
-            'processing' => 'processing',
-            'shipped' => 'shipped',
-            'delivered' => 'delivered',
-            'cancelled' => 'cancelled',
-        ];
-        
-        return $map[$status] ?? $status;
+        // Keep for backwards compatibility - returns single status
+        $statuses = $this->mapStatusToDbStatuses($status);
+        return $statuses[0] ?? $status;
     }
     
     /**
