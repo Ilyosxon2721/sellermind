@@ -10,15 +10,21 @@ use App\Models\WbOrderItem;
 use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
 use App\Services\Marketplaces\MarketplaceClientFactory;
+use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrdersSyncService
 {
+    protected OrderStockService $orderStockService;
+
     public function __construct(
-        protected MarketplaceClientFactory $clientFactory
-    ) {}
+        protected MarketplaceClientFactory $clientFactory,
+        ?OrderStockService $orderStockService = null
+    ) {
+        $this->orderStockService = $orderStockService ?? new OrderStockService();
+    }
 
     /**
      * Sync orders for all active accounts (or filtered by marketplace)
@@ -164,6 +170,50 @@ class OrdersSyncService
     }
 
     /**
+     * Обработать изменение статуса заказа для остатков
+     */
+    protected function processOrderStockChange(
+        MarketplaceAccount $account,
+        $order,
+        ?string $oldStatus,
+        string $newStatus,
+        string $marketplace
+    ): void {
+        // Обрабатываем только если статус изменился или это новый заказ
+        if ($oldStatus === $newStatus) {
+            return;
+        }
+
+        try {
+            $items = $this->orderStockService->getOrderItems($order, $marketplace);
+
+            $stockResult = $this->orderStockService->processOrderStatusChange(
+                $account,
+                $order,
+                $oldStatus,
+                $newStatus,
+                $items
+            );
+
+            Log::info('Order stock processed', [
+                'marketplace' => $marketplace,
+                'order_id' => $order->id,
+                'external_order_id' => $order->external_order_id,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'stock_result' => $stockResult,
+            ]);
+        } catch (\Throwable $e) {
+            // Не прерываем синхронизацию из-за ошибки остатков
+            Log::error('Order stock processing failed', [
+                'marketplace' => $marketplace,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Persist WB order
      */
     protected function persistWbOrder(MarketplaceAccount $account, array $orderData): string
@@ -284,6 +334,8 @@ class OrdersSyncService
             ->where('external_order_id', $externalOrderId)
             ->first();
 
+        $oldStatus = $existingOrder?->status;
+
         // Parse ordered_at date with millisecond support
         $orderedAt = null;
         if (!empty($orderData['ordered_at'])) {
@@ -319,7 +371,7 @@ class OrdersSyncService
             'raw_payload' => $orderData['raw_payload'] ?? $orderData,
         ];
 
-        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+        $result = DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
             if ($existingOrder) {
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
@@ -347,8 +399,19 @@ class OrdersSyncService
             // Sync order items
             $this->syncUzumOrderItems($order, $orderData['items'] ?? []);
 
-            return $result;
+            return ['result' => $result, 'order' => $order];
         });
+
+        // Обрабатываем изменение статуса для остатков
+        $order = $result['order'];
+        $newStatus = $order->status;
+        $isCreated = $result['result'] === 'created';
+
+        if ($isCreated || $oldStatus !== $newStatus) {
+            $this->processOrderStockChange($account, $order, $oldStatus, $newStatus, 'uzum');
+        }
+
+        return $result['result'];
     }
 
     /**

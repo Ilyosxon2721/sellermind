@@ -30,6 +30,11 @@ class OzonOrder extends Model
         'shipment_date',
         'in_process_at',
         'created_at_ozon',
+        // Stock tracking fields
+        'stock_status',
+        'stock_reserved_at',
+        'stock_sold_at',
+        'stock_released_at',
     ];
 
     protected function casts(): array
@@ -42,6 +47,9 @@ class OzonOrder extends Model
             'cancelled_at' => 'datetime',
             'shipment_date' => 'datetime',
             'in_process_at' => 'datetime',
+            'stock_reserved_at' => 'datetime',
+            'stock_sold_at' => 'datetime',
+            'stock_released_at' => 'datetime',
         ];
     }
 

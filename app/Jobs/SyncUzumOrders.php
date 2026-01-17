@@ -2,29 +2,69 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HandlesMarketplaceRateLimiting;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncUzumOrders implements ShouldQueue
+class SyncUzumOrders implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, HandlesMarketplaceRateLimiting;
 
+    /**
+     * Таймаут выполнения job (5 минут)
+     */
     public int $timeout = 300;
-    public int $tries = 1;
 
-    public function __construct(protected int $accountId)
+    /**
+     * Количество попыток
+     */
+    public int $tries = 3;
+
+    /**
+     * Время уникальности job
+     */
+    public int $uniqueFor = 300; // 5 минут
+
+    protected int $accountId;
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(MarketplaceAccount $account)
     {
+        $this->accountId = $account->id;
+        $this->onQueue('marketplace-sync');
     }
 
+    /**
+     * Уникальный ID для предотвращения дублирования
+     */
+    public function uniqueId(): string
+    {
+        return 'sync-uzum-orders-' . $this->accountId;
+    }
+
+    /**
+     * Получить аккаунт
+     */
+    protected function getAccount(): ?MarketplaceAccount
+    {
+        return MarketplaceAccount::find($this->accountId);
+    }
+
+    /**
+     * Execute the job.
+     */
     public function handle(MarketplaceSyncService $syncService): void
     {
-        $account = MarketplaceAccount::find($this->accountId);
+        $account = $this->getAccount();
 
         if (!$account || !$account->isUzum()) {
             Log::warning('SyncUzumOrders skipped: account not found or not Uzum', [
@@ -38,7 +78,10 @@ class SyncUzumOrders implements ShouldQueue
             return;
         }
 
-        Log::info('SyncUzumOrders started', ['account_id' => $account->id]);
+        Log::info('SyncUzumOrders started', [
+            'account_id' => $account->id,
+            'attempt' => $this->attempts(),
+        ]);
 
         try {
             // Тянем последние 30 дней (по умолчанию внутри syncOrders)
@@ -48,8 +91,29 @@ class SyncUzumOrders implements ShouldQueue
             Log::error('SyncUzumOrders failed', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
+                'attempt' => $this->attempts(),
             ]);
+
+            // Проверяем, нужен ли retry
+            if ($this->shouldRetry($e)) {
+                $delay = $this->getRetryAfterSeconds($e) ?? $this->backoff()[$this->attempts() - 1] ?? 60;
+                $this->release($delay);
+                return;
+            }
+
             throw $e;
         }
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SyncUzumOrders: Job failed permanently', [
+            'account_id' => $this->accountId,
+            'error' => $exception->getMessage(),
+            'attempts' => $this->attempts(),
+        ]);
     }
 }

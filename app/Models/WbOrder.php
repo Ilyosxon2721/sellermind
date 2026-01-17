@@ -45,6 +45,11 @@ class WbOrder extends Model
         'ordered_at',
         'delivered_at',
         'raw_payload',
+        // Stock tracking fields
+        'stock_status',
+        'stock_reserved_at',
+        'stock_sold_at',
+        'stock_released_at',
     ];
 
     protected $casts = [
@@ -54,6 +59,9 @@ class WbOrder extends Model
         'total_amount' => 'decimal:2',
         'is_b2b' => 'boolean',
         'is_zero_order' => 'boolean',
+        'stock_reserved_at' => 'datetime',
+        'stock_sold_at' => 'datetime',
+        'stock_released_at' => 'datetime',
     ];
 
     public function account(): BelongsTo

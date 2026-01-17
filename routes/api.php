@@ -362,6 +362,16 @@ Route::middleware('auth.any')->group(function () {
         Route::post('orders/{order}/confirm', [MarketplaceOrderController::class, 'confirm']);
         Route::post('orders/{order}/cancel', [MarketplaceOrderController::class, 'cancel']);
 
+        // Order Stock Returns (для ручной обработки возвратов)
+        Route::prefix('returns')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'index']);
+            Route::get('/stats', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'stats']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'show']);
+            Route::post('/{id}/return-to-stock', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'returnToStock']);
+            Route::post('/{id}/write-off', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'writeOff']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'reject']);
+        });
+
         // Internal Supplies Management
         Route::get('supplies', [\App\Http\Controllers\Api\SupplyController::class, 'index']);
         Route::get('supplies/open', [\App\Http\Controllers\Api\SupplyController::class, 'open']);

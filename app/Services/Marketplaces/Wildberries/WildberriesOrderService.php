@@ -11,6 +11,7 @@ use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Services\Marketplaces\Sync\OrdersSyncService;
 use App\Services\Marketplaces\WildberriesClient;
+use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -28,10 +29,12 @@ class WildberriesOrderService
 {
     protected ?WildberriesHttpClient $httpClient = null;
     protected ?MarketplaceAccount $currentAccount = null;
+    protected OrderStockService $orderStockService;
 
-    public function __construct(?WildberriesHttpClient $httpClient = null)
+    public function __construct(?WildberriesHttpClient $httpClient = null, ?OrderStockService $orderStockService = null)
     {
         $this->httpClient = $httpClient;
+        $this->orderStockService = $orderStockService ?? new OrderStockService();
     }
 
     /**
@@ -203,16 +206,41 @@ class WildberriesOrderService
             // Помечаем заказы, которых нет в ответе API, как отменённые
             // Но только те, которые ещё не в статусе archive или canceled
             if (!empty($syncedOrderIds)) {
-                $archivedCount = WbOrder::where('marketplace_account_id', $account->id)
+                // Сначала получаем заказы для обработки остатков
+                $ordersToCancel = WbOrder::where('marketplace_account_id', $account->id)
                     ->whereNotIn('external_order_id', $syncedOrderIds)
-                    ->whereNotIn('status', ['archive', 'canceled'])
-                    ->update([
+                    ->whereNotIn('status', ['archive', 'canceled', 'completed'])
+                    ->get();
+
+                foreach ($ordersToCancel as $orderToCancel) {
+                    $oldStatus = $orderToCancel->status;
+
+                    // Обновляем статус
+                    $orderToCancel->update([
                         'status' => 'canceled',
                         'wb_status_group' => 'canceled',
                     ]);
 
-                if ($archivedCount > 0) {
-                    Log::info("Marked {$archivedCount} orders as canceled (not in API response)");
+                    // Обрабатываем остатки (отменяем резерв если был)
+                    try {
+                        $items = $this->orderStockService->getOrderItems($orderToCancel, 'wb');
+                        $this->orderStockService->processOrderStatusChange(
+                            $account,
+                            $orderToCancel,
+                            $oldStatus,
+                            'canceled',
+                            $items
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to process stock for cancelled order', [
+                            'order_id' => $orderToCancel->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                if ($ordersToCancel->count() > 0) {
+                    Log::info("Marked {$ordersToCancel->count()} orders as canceled (not in API response)");
                 }
             }
 
@@ -380,6 +408,12 @@ class WildberriesOrderService
             throw new \RuntimeException('Order data missing id');
         }
 
+        // Получаем существующий заказ для определения oldStatus
+        $existingOrder = WbOrder::where('marketplace_account_id', $account->id)
+            ->where('external_order_id', $orderId)
+            ->first();
+        $oldStatus = $existingOrder?->status;
+
         // Используем WildberriesClient для мапинга данных
         $marketplaceHttpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'wb');
         $client = new WildberriesClient($marketplaceHttpClient);
@@ -452,6 +486,42 @@ class WildberriesOrderService
         $order = WbOrder::where('marketplace_account_id', $account->id)
             ->where('external_order_id', $orderId)
             ->first();
+
+        // Обрабатываем изменение остатков
+        if ($order) {
+            $newStatus = $order->status;
+
+            // Обрабатываем только если статус изменился или это новый заказ
+            if ($created || $oldStatus !== $newStatus) {
+                try {
+                    // Получаем позиции заказа
+                    $items = $this->orderStockService->getOrderItems($order, 'wb');
+
+                    // Обрабатываем изменение статуса
+                    $stockResult = $this->orderStockService->processOrderStatusChange(
+                        $account,
+                        $order,
+                        $oldStatus,
+                        $newStatus,
+                        $items
+                    );
+
+                    Log::info('WB order stock processed', [
+                        'order_id' => $order->id,
+                        'external_order_id' => $orderId,
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'stock_result' => $stockResult,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Не прерываем синхронизацию из-за ошибки остатков
+                    Log::error('WB order stock processing failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         return ['order' => $order, 'created' => $created];
     }
