@@ -438,7 +438,7 @@ function salesPage() {
         showFilterSheet: false,
         showPeriodSheet: false,
         filters: {
-            period: 'week',
+            period: 'month',
             marketplace: '',
             status: '',
             dateFrom: '',

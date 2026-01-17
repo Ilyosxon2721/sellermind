@@ -22,17 +22,17 @@ class SalesController extends Controller
     public function index(Request $request): JsonResponse
     {
         $companyId = $this->getCompanyId($request);
-        
+
         $dateFrom = $request->get('date_from', now()->format('Y-m-d'));
         $dateTo = $request->get('date_to', now()->format('Y-m-d'));
         $marketplace = $request->get('marketplace');
         $status = $request->get('status');
         $search = $request->get('search');
         $perPage = min((int) $request->get('per_page', 20), 100);
-        
+
         // Build unified orders collection
         $orders = collect();
-        
+
         // Get Uzum orders
         if (!$marketplace || $marketplace === 'uzum') {
             $uzumOrders = $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search);
