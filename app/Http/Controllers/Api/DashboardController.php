@@ -637,7 +637,7 @@ class DashboardController extends Controller
         $newOrdersCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('status_normalized', 'new')
             ->count()
-            + WbOrder::whereIn('marketplace_account_id', $accountIds)
+            + WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('status', 'new')
             ->count();
 
