@@ -55,6 +55,55 @@
             newColorValue: '',
             newColorHex: '#6366f1',
 
+            // Initialize selected sizes/colors from existing variants on load
+            init() {
+                this.initSelectedFromVariants();
+            },
+
+            // Initialize selected sizes/colors from existing variants
+            initSelectedFromVariants() {
+                if (!this.variants || this.variants.length === 0) return;
+
+                const sizeCodes = new Set();
+                const colorCodes = new Set();
+
+                // Build lookup maps for global options by value (case-insensitive)
+                const sizeByValue = {};
+                const colorByValue = {};
+                this.globalSizes.forEach(s => { sizeByValue[s.value.toLowerCase()] = s.code; });
+                this.globalColors.forEach(c => { colorByValue[c.value.toLowerCase()] = c.code; });
+
+                this.variants.forEach(variant => {
+                    // Try to parse from option_values_summary: "Размер: M, Цвет: Белый"
+                    const summary = variant.option_values_summary || '';
+
+                    // Extract size value
+                    const sizeMatch = summary.match(/Размер:\s*([^,]+)/i);
+                    if (sizeMatch) {
+                        const sizeValue = sizeMatch[1].trim().toLowerCase();
+                        if (sizeByValue[sizeValue]) {
+                            sizeCodes.add(sizeByValue[sizeValue]);
+                        }
+                    }
+
+                    // Extract color value
+                    const colorMatch = summary.match(/Цвет:\s*(.+)$/i);
+                    if (colorMatch) {
+                        const colorValue = colorMatch[1].trim().toLowerCase();
+                        if (colorByValue[colorValue]) {
+                            colorCodes.add(colorByValue[colorValue]);
+                        }
+                    }
+
+                    // Also use size_code/color_code if stored on variant
+                    if (variant.size_code) sizeCodes.add(variant.size_code);
+                    if (variant.color_code) colorCodes.add(variant.color_code);
+                });
+
+                this.selectedSizes = Array.from(sizeCodes);
+                this.selectedColors = Array.from(colorCodes);
+            },
+
             // Add custom size
             addCustomSize() {
                 const value = this.newSizeValue.trim();
