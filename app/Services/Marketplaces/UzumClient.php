@@ -578,6 +578,9 @@ class UzumClient implements MarketplaceClientInterface
 
         Log::info('Uzum fetchOrdersByStatuses starting', [
             'account_id' => $account->id,
+            'shop_ids' => $shopIds,
+            'from' => $from->format('Y-m-d H:i:s'),
+            'to' => $to->format('Y-m-d H:i:s'),
             'internal_statuses' => $internalStatuses,
             'external_statuses_count' => count($statuses),
             'external_statuses' => $statuses,
@@ -627,6 +630,9 @@ class UzumClient implements MarketplaceClientInterface
                         'status' => $status,
                         'page' => $page,
                         'orders_received' => count($list),
+                        'response_keys' => array_keys($response),
+                        'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
+                        'raw_response_sample' => mb_substr(json_encode($response), 0, 500),
                     ]);
 
                     foreach ($list as $orderData) {
