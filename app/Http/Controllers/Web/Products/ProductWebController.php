@@ -162,6 +162,15 @@ class ProductWebController extends Controller
     {
         $user = $request->user();
 
+        // Debug: Log incoming variants count
+        $variantsJson = $request->input('variants');
+        $variants = json_decode($variantsJson, true) ?? [];
+        \Log::info('Product store request', [
+            'variants_json_length' => strlen($variantsJson ?? ''),
+            'variants_count' => count($variants),
+            'request_size' => strlen(serialize($request->all())),
+        ]);
+
         // Check if user has a company
         if (!$user?->company_id) {
             return back()

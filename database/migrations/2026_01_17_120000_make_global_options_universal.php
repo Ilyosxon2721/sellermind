@@ -9,28 +9,41 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Make company_id nullable in global_options
+        // First, drop foreign key constraints
         Schema::table('global_options', function (Blueprint $table) {
-            $table->foreignId('company_id')->nullable()->change();
+            $table->dropForeign(['company_id']);
         });
 
-        // Make company_id nullable in global_option_values
         Schema::table('global_option_values', function (Blueprint $table) {
-            $table->foreignId('company_id')->nullable()->change();
+            $table->dropForeign(['company_id']);
         });
 
-        // Drop unique constraint that includes company_id and create new one
+        // Drop unique constraint
         Schema::table('global_options', function (Blueprint $table) {
             $table->dropUnique(['company_id', 'code']);
         });
 
+        // Make company_id nullable in global_options
+        Schema::table('global_options', function (Blueprint $table) {
+            $table->unsignedBigInteger('company_id')->nullable()->change();
+        });
+
+        // Make company_id nullable in global_option_values
+        Schema::table('global_option_values', function (Blueprint $table) {
+            $table->unsignedBigInteger('company_id')->nullable()->change();
+        });
+
+        // Re-add foreign keys (now allowing NULL)
+        Schema::table('global_options', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+        });
+
+        Schema::table('global_option_values', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+        });
+
         // Create universal global options (company_id = NULL)
         $this->createUniversalOptions();
-
-        // Create new unique constraint for global options (allowing NULL company_id)
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->unique(['company_id', 'code'], 'global_options_company_code_unique');
-        });
     }
 
     public function down(): void
@@ -39,19 +52,32 @@ return new class extends Migration
         DB::table('global_option_values')->whereNull('company_id')->delete();
         DB::table('global_options')->whereNull('company_id')->delete();
 
-        // Restore unique constraint
+        // Drop foreign keys
         Schema::table('global_options', function (Blueprint $table) {
-            $table->dropUnique('global_options_company_code_unique');
-            $table->unique(['company_id', 'code']);
+            $table->dropForeign(['company_id']);
+        });
+
+        Schema::table('global_option_values', function (Blueprint $table) {
+            $table->dropForeign(['company_id']);
         });
 
         // Make company_id NOT NULL again
         Schema::table('global_options', function (Blueprint $table) {
-            $table->foreignId('company_id')->nullable(false)->change();
+            $table->unsignedBigInteger('company_id')->nullable(false)->change();
         });
 
         Schema::table('global_option_values', function (Blueprint $table) {
-            $table->foreignId('company_id')->nullable(false)->change();
+            $table->unsignedBigInteger('company_id')->nullable(false)->change();
+        });
+
+        // Restore unique constraint and foreign keys
+        Schema::table('global_options', function (Blueprint $table) {
+            $table->unique(['company_id', 'code']);
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+        });
+
+        Schema::table('global_option_values', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
         });
     }
 
