@@ -108,10 +108,12 @@ class MonitorOrdersJob implements ShouldQueue
                     $this->account->id,
                     'orders',
                     $changeType,
+                    $newOrders, // affectedCount
+                    null, // changes
                     [
                         'new_count' => $newOrders,
                         'total_count' => $ordersAfter,
-                    ]
+                    ] // metadata
                 ))->toOthers();
 
                 Log::info("Orders changed for account {$this->account->id}: {$changeType}, new: {$newOrders}, total: {$ordersAfter}");
