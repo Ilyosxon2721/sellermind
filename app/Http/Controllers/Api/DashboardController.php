@@ -161,6 +161,7 @@ class DashboardController extends Controller
 
         // Последние заказы (Uzum + WB, объединённые и отсортированные)
         $uzumRecent = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->with('account')
             ->orderByDesc('ordered_at')
             ->limit(10)
             ->get()
@@ -169,12 +170,15 @@ class DashboardController extends Controller
                 'order_number' => $o->external_order_id,
                 'amount' => (float) $o->total_amount,
                 'status' => $o->status_normalized ?? $o->status,
+                'status_label' => $this->getStatusLabel($o->status_normalized ?? $o->status),
                 'date' => $o->ordered_at?->format('d.m.Y H:i'),
                 'ordered_at' => $o->ordered_at,
                 'marketplace' => 'uzum',
+                'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Uzum',
             ]);
 
         $wbRecent = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->with('account')
             ->orderByDesc('ordered_at')
             ->limit(10)
             ->get()
@@ -183,9 +187,11 @@ class DashboardController extends Controller
                 'order_number' => $o->external_order_id ?? $o->rid,
                 'amount' => (float) ($o->total_amount ?? $o->price ?? 0),
                 'status' => $o->status,
+                'status_label' => $this->getStatusLabel($o->status),
                 'date' => $o->ordered_at?->format('d.m.Y H:i'),
                 'ordered_at' => $o->ordered_at,
                 'marketplace' => 'wb',
+                'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Wildberries',
             ]);
 
         $recentOrders = $uzumRecent->concat($wbRecent)
@@ -885,5 +891,34 @@ class DashboardController extends Controller
                 'negative' => ($byRating[2] ?? 0) + ($byRating[1] ?? 0),
             ],
         ];
+    }
+
+    /**
+     * Получить русский перевод статуса заказа
+     */
+    private function getStatusLabel(string $status): string
+    {
+        $labels = [
+            'new' => 'Новый',
+            'pending' => 'Ожидает',
+            'in_assembly' => 'В сборке',
+            'assembling' => 'В сборке',
+            'assembled' => 'Собран',
+            'in_delivery' => 'В доставке',
+            'delivering' => 'В доставке',
+            'delivered' => 'Доставлен',
+            'completed' => 'Выполнен',
+            'cancelled' => 'Отменён',
+            'canceled' => 'Отменён',
+            'returned' => 'Возврат',
+            'archive' => 'Архив',
+            'waiting' => 'Ожидание',
+            'sorted' => 'Отсортирован',
+            'sold' => 'Продан',
+            'defect' => 'Брак',
+            'ready_for_pickup' => 'Готов к выдаче',
+        ];
+
+        return $labels[$status] ?? $status;
     }
 }

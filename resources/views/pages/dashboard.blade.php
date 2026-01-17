@@ -227,7 +227,7 @@
                                         <thead class="bg-gray-50">
                                             <tr>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заказ</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Маркетплейс</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Магазин</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
@@ -240,14 +240,17 @@
                                                         <div class="text-sm font-medium text-gray-900" x-text="'#' + order.order_number"></div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
-                                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded"
-                                                              :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                                              x-text="order.marketplace === 'wb' ? 'Wildberries' : 'Uzum'"></span>
+                                                        <div class="flex items-center space-x-2">
+                                                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded"
+                                                                  :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                                                  x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                                            <span class="text-sm text-gray-600" x-text="order.account_name"></span>
+                                                        </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <span class="inline-flex px-2 py-1 text-xs font-medium rounded"
                                                               :class="getStatusClass(order.status)"
-                                                              x-text="order.status"></span>
+                                                              x-text="order.status_label || order.status"></span>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm font-semibold text-gray-900" x-text="formatMoney(order.amount)"></div>
@@ -654,14 +657,15 @@
                                                   x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
                                             <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.order_number"></p>
                                         </div>
-                                        <p class="text-xs text-gray-500" x-text="order.date"></p>
+                                        <p class="text-xs text-gray-500" x-text="order.account_name"></p>
+                                        <p class="text-xs text-gray-400" x-text="order.date"></p>
                                     </div>
                                     <div class="text-right flex items-center space-x-2">
                                         <div>
                                             <p class="text-sm font-bold text-gray-900" x-text="formatMoney(order.amount)"></p>
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium"
                                                   :class="getStatusClass(order.status)"
-                                                  x-text="order.status"></span>
+                                                  x-text="order.status_label || order.status"></span>
                                         </div>
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
