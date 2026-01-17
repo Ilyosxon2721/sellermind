@@ -90,6 +90,11 @@ Route::middleware(['web', 'auth.any'])->group(function () {
 
     // Dashboard API
     Route::get('dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index']);
+    Route::get('dashboard/full', [\App\Http\Controllers\Api\DashboardController::class, 'full']);
+    Route::get('dashboard/alerts', [\App\Http\Controllers\Api\DashboardController::class, 'alerts']);
+    Route::get('dashboard/ai-status', [\App\Http\Controllers\Api\DashboardController::class, 'aiStatus']);
+    Route::get('dashboard/subscription', [\App\Http\Controllers\Api\DashboardController::class, 'subscription']);
+    Route::get('dashboard/team', [\App\Http\Controllers\Api\DashboardController::class, 'team']);
     
     // Counterparties API
     Route::get('counterparties', [\App\Http\Controllers\Api\CounterpartyController::class, 'index']);
