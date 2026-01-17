@@ -315,6 +315,8 @@ Route::middleware('auth.any')->group(function () {
             ->withoutMiddleware('auth.any'); // SSE авторизация токеном в query/bearer внутри контроллера
         Route::post('accounts/{account}/monitoring/start', [MarketplaceAccountController::class, 'startMonitoring']);
         Route::post('accounts/{account}/monitoring/stop', [MarketplaceAccountController::class, 'stopMonitoring']);
+        Route::get('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'getSyncSettings']);
+        Route::put('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'updateSyncSettings']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
 
         // Sync operations

@@ -1405,6 +1405,48 @@ class MarketplaceAccountController extends Controller
     }
 
     /**
+     * Get sync settings for a marketplace account
+     */
+    public function getSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        return response()->json([
+            'sync_settings' => $account->getAllSyncSettings(),
+        ]);
+    }
+
+    /**
+     * Update sync settings for a marketplace account
+     */
+    public function updateSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $validated = $request->validate([
+            'sync_settings' => ['required', 'array'],
+            'sync_settings.stock_sync_enabled' => ['boolean'],
+            'sync_settings.auto_sync_stock_on_link' => ['boolean'],
+            'sync_settings.auto_sync_stock_on_change' => ['boolean'],
+        ]);
+
+        $currentSettings = $account->sync_settings ?? [];
+        $newSettings = array_merge($currentSettings, $validated['sync_settings']);
+
+        $account->sync_settings = $newSettings;
+        $account->save();
+
+        return response()->json([
+            'message' => 'Настройки синхронизации сохранены.',
+            'sync_settings' => $account->getAllSyncSettings(),
+        ]);
+    }
+
+    /**
      * Форматирует ошибку Uzum API в понятное сообщение
      */
     protected function formatUzumError(string $errorMessage): string

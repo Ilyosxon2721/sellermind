@@ -19,6 +19,363 @@
         hasId: {{ $product->id ? 'true' : 'false' }},
         publishUrl: '{{ $product->id ? route("web.products.publish", $product) : "" }}'
     };
+
+    function productEditor() {
+        const data = window.__productEditorData || {};
+        const initial = data.initialState || {};
+        const attributeDefs = data.attributesList || [];
+        const publishUrl = data.publishUrl || '';
+        const globalSizes = data.globalSizes || [];
+        const globalColors = data.globalColors || [];
+
+        return {
+            step: 1,
+            currentStep: 1,
+            steps: ['Основная информация', 'Размеры и цвета', 'Варианты', 'Характеристики', 'Медиа', 'Цены и остатки'],
+            product: initial.product || {},
+            options: initial.options || [],
+            variants: initial.variants || [],
+            images: initial.images || [],
+            attributes: initial.attributes || { product: [], variants: [] },
+            channelSettings: initial.channel_settings || [],
+            channelVariants: initial.channel_variants || [],
+            channels: [{code: 'wb', name: 'Wildberries'}, {code: 'ozon', name: 'Ozon'}, {code: 'ym', name: 'Yandex Market'}, {code: 'uzum', name: 'Uzum'}],
+            attributeDefs: attributeDefs,
+
+            // Global options
+            globalSizes: globalSizes,
+            globalColors: globalColors,
+            selectedSizes: [],
+            selectedColors: [],
+
+            // Custom sizes and colors (user-added)
+            customSizes: [],
+            customColors: [],
+            newSizeValue: '',
+            newColorValue: '',
+            newColorHex: '#6366f1',
+
+            // Add custom size
+            addCustomSize() {
+                const value = this.newSizeValue.trim();
+                if (!value) return;
+                const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                if (this.globalSizes.some(s => s.code === code) || this.customSizes.some(s => s.code === code)) {
+                    alert('Такой размер уже существует');
+                    return;
+                }
+                this.customSizes.push({ id: 'custom-' + Date.now(), value: value, code: code });
+                this.selectedSizes.push(code);
+                this.newSizeValue = '';
+            },
+
+            // Remove custom size
+            removeCustomSize(idx) {
+                const size = this.customSizes[idx];
+                this.selectedSizes = this.selectedSizes.filter(s => s !== size.code);
+                this.customSizes.splice(idx, 1);
+            },
+
+            // Add custom color
+            addCustomColor() {
+                const value = this.newColorValue.trim();
+                if (!value) return;
+                const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                if (this.globalColors.some(c => c.code === code) || this.customColors.some(c => c.code === code)) {
+                    alert('Такой цвет уже существует');
+                    return;
+                }
+                this.customColors.push({ id: 'custom-' + Date.now(), value: value, code: code, hex: this.newColorHex });
+                this.selectedColors.push(code);
+                this.newColorValue = '';
+            },
+
+            // Remove custom color
+            removeCustomColor(idx) {
+                const color = this.customColors[idx];
+                this.selectedColors = this.selectedColors.filter(c => c !== color.code);
+                this.customColors.splice(idx, 1);
+            },
+
+            nextStep() { if (this.step < this.steps.length) this.step++; },
+            prevStep() { if (this.step > 1) this.step--; },
+            addOption() { this.options.push({name: '', code: '', type: 'select', is_variant_dimension: true, values: []}); },
+            addOptionValue(idx) { this.options[idx].values.push({value: '', code: '', color_hex: null, sort_order: (this.options[idx].values.length || 0)}); },
+            removeOptionValue(oIdx, vIdx) { this.options[oIdx].values.splice(vIdx, 1); },
+            addVariant() { this.variants.push({sku: '', barcode: '', option_values_summary: '', is_active: true}); },
+            removeVariant(idx) { this.variants.splice(idx, 1); },
+
+            // Generate variants from selected sizes and colors
+            generateVariantsFromSelection() {
+                const article = this.product.article || 'SKU';
+                const sizes = this.selectedSizes;
+                const colors = this.selectedColors;
+
+                if (!sizes.length || !colors.length) {
+                    alert('Выберите хотя бы один размер и один цвет');
+                    return;
+                }
+
+                // Combine global and custom options for lookups
+                const allSizes = [...this.globalSizes, ...this.customSizes];
+                const allColors = [...this.globalColors, ...this.customColors];
+
+                this.variants = [];
+
+                for (const sizeCode of sizes) {
+                    const sizeObj = allSizes.find(s => s.code === sizeCode);
+                    const sizeValue = sizeObj ? sizeObj.value : sizeCode;
+
+                    for (const colorCode of colors) {
+                        const colorObj = allColors.find(c => c.code === colorCode);
+                        const colorValue = colorObj ? colorObj.value : colorCode;
+
+                        // SKU format: Article-SizeCode-ColorCode
+                        const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
+
+                        this.variants.push({
+                            sku: sku,
+                            option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
+                            barcode: '',
+                            weight_g: null,
+                            length_mm: null,
+                            width_mm: null,
+                            height_mm: null,
+                            is_active: true,
+                            size_code: sizeCode,
+                            color_code: colorCode
+                        });
+                    }
+                }
+
+                // Auto-advance to step 3 to show variants table
+                this.step = 3;
+            },
+
+            // Legacy generate from options (keeping for backwards compatibility)
+            generateVariants() {
+                if (!this.options.length) return;
+                const variantOptions = this.options.filter(o => o.is_variant_dimension && o.values && o.values.length);
+                if (!variantOptions.length) return;
+                const combos = variantOptions.reduce((acc, option) => {
+                    const vals = option.values;
+                    if (!acc.length) return vals.map(v => ({ids: [v.id], summary: `${option.name}: ${v.value}`}));
+                    const next = [];
+                    acc.forEach(c => { vals.forEach(v => { next.push({ids: [...c.ids, v.id], summary: `${c.summary}, ${option.name}: ${v.value}`}); }); });
+                    return next;
+                }, []);
+                this.variants = combos.map((c, idx) => ({option_values_summary: c.summary, sku: `VAR-${idx + 1}`, is_active: true, option_value_ids: c.ids.filter(Boolean)}));
+            },
+            addProductAttribute() { this.attributes.product.push({attribute_id: null, value_string: ''}); },
+            addVariantAttribute() { this.attributes.variants.push({product_variant_id: null, attribute_id: null, value_string: ''}); },
+
+            // Image management
+            maxImages: 10,
+            draggingIdx: null,
+
+            addImage() {
+                if (this.images.length >= this.maxImages) {
+                    alert('Максимум ' + this.maxImages + ' изображений');
+                    return;
+                }
+                this.images.push({file_path: '', alt_text: '', is_main: this.images.length === 0, sort_order: this.images.length, variant_id: '', uploading: false});
+            },
+
+            async addImageFromFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                if (this.images.length >= this.maxImages) {
+                    alert('Максимум ' + this.maxImages + ' изображений');
+                    return;
+                }
+                // Add new image slot
+                const idx = this.images.length;
+                this.images.push({file_path: '', alt_text: '', is_main: idx === 0, sort_order: idx, variant_id: '', uploading: true});
+                // Upload
+                await this.uploadImageAtIndex(file, idx);
+                // Clear input
+                event.target.value = '';
+            },
+
+            removeImage(idx) {
+                this.images.splice(idx, 1);
+                // Update sort orders
+                this.images.forEach((img, i) => img.sort_order = i);
+            },
+
+            setMainImage(idx) {
+                this.images.forEach((img, i) => img.is_main = (i === idx));
+            },
+
+            moveImage(idx, dir) {
+                const target = idx + dir;
+                if (target < 0 || target >= this.images.length) return;
+                const tmp = this.images[target];
+                this.images[target] = this.images[idx];
+                this.images[idx] = tmp;
+                // Update sort orders
+                this.images.forEach((img, i) => img.sort_order = i);
+            },
+
+            // Drag & Drop
+            dragStart(event, idx) {
+                this.draggingIdx = idx;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', idx);
+            },
+
+            dragOver(event, idx) {
+                if (this.draggingIdx === null || this.draggingIdx === idx) return;
+                // Reorder during drag
+                const draggedImage = this.images[this.draggingIdx];
+                this.images.splice(this.draggingIdx, 1);
+                this.images.splice(idx, 0, draggedImage);
+                this.draggingIdx = idx;
+            },
+
+            drop(event, idx) {
+                event.preventDefault();
+                // Update sort orders after drop
+                this.images.forEach((img, i) => img.sort_order = i);
+                this.draggingIdx = null;
+            },
+
+            dragEnd(event) {
+                this.draggingIdx = null;
+            },
+
+            // Image URL helper
+            getImageUrl(path) {
+                if (!path) return '';
+                // If already absolute URL
+                if (path.startsWith('http://') || path.startsWith('https://')) {
+                    return path;
+                }
+                // If storage path (starts with /storage)
+                if (path.startsWith('/storage')) {
+                    return path;
+                }
+                // If relative path, prepend /storage
+                if (path.startsWith('products/')) {
+                    return '/storage/' + path;
+                }
+                return path;
+            },
+
+            handleImageError(event, image) {
+                console.error('Image load error:', image.file_path);
+                // Hide broken image
+                event.target.style.display = 'none';
+            },
+
+            async uploadImageAtIndex(file, idx) {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Выберите файл изображения (jpg, png, gif, webp)');
+                    if (!this.images[idx].file_path) this.images.splice(idx, 1);
+                    return;
+                }
+
+                // Validate file size (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Максимальный размер файла 10 МБ');
+                    if (!this.images[idx].file_path) this.images.splice(idx, 1);
+                    return;
+                }
+
+                const originalPath = this.images[idx].file_path;
+                this.images[idx].uploading = true;
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                try {
+                    const response = await fetch('/api/products/upload-image', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        throw new Error('Сессия истекла. Перезагрузите страницу.');
+                    }
+                    if (response.status === 403) {
+                        throw new Error('Нет доступа.');
+                    }
+
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Ошибка сервера. Перезагрузите страницу.');
+                    }
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Ошибка загрузки');
+                    }
+
+                    this.images[idx].file_path = data.path || data.url;
+                    this.images[idx].alt_text = this.images[idx].alt_text || file.name.replace(/\.[^/.]+$/, '');
+                    this.images[idx].uploading = false;
+                } catch (e) {
+                    console.error('Upload error:', e);
+                    alert(e.message || 'Ошибка загрузки файла');
+                    this.images[idx].uploading = false;
+                    // Restore original or remove if it was new
+                    if (originalPath) {
+                        this.images[idx].file_path = originalPath;
+                    } else {
+                        this.images.splice(idx, 1);
+                    }
+                }
+            },
+            async uploadImage(event, idx) {
+                const file = event.target.files[0];
+                if (!file) return;
+                event.target.value = ''; // Clear input
+                await this.uploadImageAtIndex(file, idx);
+            },
+            settingFor(code) { let s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); if (!s) { s = {channel_code: code, is_enabled: false, status: 'draft'}; this.channelSettings.push(s); } return s; },
+            channelEnabled(code) { const s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); return s ? !!s.is_enabled : false; },
+            toggleChannel(code, value) { const s = this.settingFor(code); s.is_enabled = value; s.status = s.status || 'draft'; },
+            ensureChannelVariant(channelCode, variant) { let row = this.channelVariants.find(cv => (cv.channel_code === channelCode || cv.channel_id === channelCode) && ((variant.id && cv.product_variant_id === variant.id) || (!variant.id && cv.variant_sku === variant.sku))); if (!row) { row = {channel_code: channelCode, product_variant_id: variant.id, variant_sku: variant.sku, status: 'draft'}; this.channelVariants.push(row); } return row; },
+            channelVariantValue(channelCode, variant, field) { const row = this.ensureChannelVariant(channelCode, variant); if (row[field] === undefined) row[field] = field === 'status' ? 'draft' : null; return {get value() { return row[field]; }, set value(v) { row[field] = v; }}; },
+            copyBasePrices(channelCode) { this.variants.forEach(variant => { const row = this.ensureChannelVariant(channelCode, variant); row.price = variant.price_default; row.old_price = variant.old_price_default; }); },
+            submit(alsoPublish = false) {
+                // Serialize hidden inputs
+                this.$refs.optionsInput.value = JSON.stringify(this.options);
+                this.$refs.variantsInput.value = JSON.stringify(this.variants);
+                this.$refs.imagesInput.value = JSON.stringify(this.images);
+                this.$refs.attributesProductInput.value = JSON.stringify(this.attributes.product);
+                this.$refs.attributesVariantsInput.value = JSON.stringify(this.attributes.variants);
+                this.$refs.channelSettingsInput.value = JSON.stringify(this.channelSettings);
+                this.$refs.channelVariantsInput.value = JSON.stringify(this.channelVariants);
+
+                // Refresh CSRF token from meta tag
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const csrfInput = this.$refs.form.querySelector('input[name="_token"]');
+                if (csrfInput && csrfToken) {
+                    csrfInput.value = csrfToken;
+                }
+
+                // Publish if requested
+                if (alsoPublish && publishUrl) {
+                    const fd = new FormData();
+                    fd.append('_token', csrfToken);
+                    this.channels.forEach(c => fd.append('channels[]', c.code));
+                    navigator.sendBeacon(publishUrl, fd);
+                }
+
+                // Submit form
+                this.$refs.form.submit();
+            },
+            publish() { this.submit(true); }
+        }
+    }
 </script>
 
 <!-- Toast Notifications (outside x-cloak for immediate visibility) -->
@@ -672,365 +1029,6 @@
         </main>
     </div>
 </div>
-
-<script>
-function productEditor() {
-    const data = window.__productEditorData || {};
-    const initial = data.initialState || {};
-    const attributeDefs = data.attributesList || [];
-    const publishUrl = data.publishUrl || '';
-    const globalSizes = data.globalSizes || [];
-    const globalColors = data.globalColors || [];
-    
-    return {
-        step: 1,
-        currentStep: 1,
-        steps: ['Основная информация', 'Размеры и цвета', 'Варианты', 'Характеристики', 'Медиа', 'Цены и остатки'],
-        product: initial.product || {},
-        options: initial.options || [],
-        variants: initial.variants || [],
-        images: initial.images || [],
-        attributes: initial.attributes || { product: [], variants: [] },
-        channelSettings: initial.channel_settings || [],
-        channelVariants: initial.channel_variants || [],
-        channels: [{code: 'wb', name: 'Wildberries'}, {code: 'ozon', name: 'Ozon'}, {code: 'ym', name: 'Yandex Market'}, {code: 'uzum', name: 'Uzum'}],
-        attributeDefs: attributeDefs,
-        
-        // Global options
-        globalSizes: globalSizes,
-        globalColors: globalColors,
-        selectedSizes: [],
-        selectedColors: [],
-
-        // Custom sizes and colors (user-added)
-        customSizes: [],
-        customColors: [],
-        newSizeValue: '',
-        newColorValue: '',
-        newColorHex: '#6366f1',
-
-        // Add custom size
-        addCustomSize() {
-            const value = this.newSizeValue.trim();
-            if (!value) return;
-            const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            if (this.globalSizes.some(s => s.code === code) || this.customSizes.some(s => s.code === code)) {
-                alert('Такой размер уже существует');
-                return;
-            }
-            this.customSizes.push({ id: 'custom-' + Date.now(), value: value, code: code });
-            this.selectedSizes.push(code);
-            this.newSizeValue = '';
-        },
-
-        // Remove custom size
-        removeCustomSize(idx) {
-            const size = this.customSizes[idx];
-            this.selectedSizes = this.selectedSizes.filter(s => s !== size.code);
-            this.customSizes.splice(idx, 1);
-        },
-
-        // Add custom color
-        addCustomColor() {
-            const value = this.newColorValue.trim();
-            if (!value) return;
-            const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            if (this.globalColors.some(c => c.code === code) || this.customColors.some(c => c.code === code)) {
-                alert('Такой цвет уже существует');
-                return;
-            }
-            this.customColors.push({ id: 'custom-' + Date.now(), value: value, code: code, hex: this.newColorHex });
-            this.selectedColors.push(code);
-            this.newColorValue = '';
-        },
-
-        // Remove custom color
-        removeCustomColor(idx) {
-            const color = this.customColors[idx];
-            this.selectedColors = this.selectedColors.filter(c => c !== color.code);
-            this.customColors.splice(idx, 1);
-        },
-
-        nextStep() { if (this.step < this.steps.length) this.step++; },
-        prevStep() { if (this.step > 1) this.step--; },
-        addOption() { this.options.push({name: '', code: '', type: 'select', is_variant_dimension: true, values: []}); },
-        addOptionValue(idx) { this.options[idx].values.push({value: '', code: '', color_hex: null, sort_order: (this.options[idx].values.length || 0)}); },
-        removeOptionValue(oIdx, vIdx) { this.options[oIdx].values.splice(vIdx, 1); },
-        addVariant() { this.variants.push({sku: '', barcode: '', option_values_summary: '', is_active: true}); },
-        removeVariant(idx) { this.variants.splice(idx, 1); },
-        
-        // Generate variants from selected sizes and colors
-        generateVariantsFromSelection() {
-            const article = this.product.article || 'SKU';
-            const sizes = this.selectedSizes;
-            const colors = this.selectedColors;
-
-            if (!sizes.length || !colors.length) {
-                alert('Выберите хотя бы один размер и один цвет');
-                return;
-            }
-
-            // Combine global and custom options for lookups
-            const allSizes = [...this.globalSizes, ...this.customSizes];
-            const allColors = [...this.globalColors, ...this.customColors];
-
-            this.variants = [];
-
-            for (const sizeCode of sizes) {
-                const sizeObj = allSizes.find(s => s.code === sizeCode);
-                const sizeValue = sizeObj ? sizeObj.value : sizeCode;
-
-                for (const colorCode of colors) {
-                    const colorObj = allColors.find(c => c.code === colorCode);
-                    const colorValue = colorObj ? colorObj.value : colorCode;
-
-                    // SKU format: Article-SizeCode-ColorCode
-                    const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
-
-                    this.variants.push({
-                        sku: sku,
-                        option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
-                        barcode: '',
-                        weight_g: null,
-                        length_mm: null,
-                        width_mm: null,
-                        height_mm: null,
-                        is_active: true,
-                        size_code: sizeCode,
-                        color_code: colorCode
-                    });
-                }
-            }
-
-            // Auto-advance to step 3 to show variants table
-            this.step = 3;
-        },
-        
-        // Legacy generate from options (keeping for backwards compatibility)
-        generateVariants() {
-            if (!this.options.length) return;
-            const variantOptions = this.options.filter(o => o.is_variant_dimension && o.values && o.values.length);
-            if (!variantOptions.length) return;
-            const combos = variantOptions.reduce((acc, option) => {
-                const vals = option.values;
-                if (!acc.length) return vals.map(v => ({ids: [v.id], summary: `${option.name}: ${v.value}`}));
-                const next = [];
-                acc.forEach(c => { vals.forEach(v => { next.push({ids: [...c.ids, v.id], summary: `${c.summary}, ${option.name}: ${v.value}`}); }); });
-                return next;
-            }, []);
-            this.variants = combos.map((c, idx) => ({option_values_summary: c.summary, sku: `VAR-${idx + 1}`, is_active: true, option_value_ids: c.ids.filter(Boolean)}));
-        },
-        addProductAttribute() { this.attributes.product.push({attribute_id: null, value_string: ''}); },
-        addVariantAttribute() { this.attributes.variants.push({product_variant_id: null, attribute_id: null, value_string: ''}); },
-
-        // Image management
-        maxImages: 10,
-        draggingIdx: null,
-
-        addImage() {
-            if (this.images.length >= this.maxImages) {
-                alert('Максимум ' + this.maxImages + ' изображений');
-                return;
-            }
-            this.images.push({file_path: '', alt_text: '', is_main: this.images.length === 0, sort_order: this.images.length, variant_id: '', uploading: false});
-        },
-
-        async addImageFromFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (this.images.length >= this.maxImages) {
-                alert('Максимум ' + this.maxImages + ' изображений');
-                return;
-            }
-            // Add new image slot
-            const idx = this.images.length;
-            this.images.push({file_path: '', alt_text: '', is_main: idx === 0, sort_order: idx, variant_id: '', uploading: true});
-            // Upload
-            await this.uploadImageAtIndex(file, idx);
-            // Clear input
-            event.target.value = '';
-        },
-
-        removeImage(idx) {
-            this.images.splice(idx, 1);
-            // Update sort orders
-            this.images.forEach((img, i) => img.sort_order = i);
-        },
-
-        setMainImage(idx) {
-            this.images.forEach((img, i) => img.is_main = (i === idx));
-        },
-
-        moveImage(idx, dir) {
-            const target = idx + dir;
-            if (target < 0 || target >= this.images.length) return;
-            const tmp = this.images[target];
-            this.images[target] = this.images[idx];
-            this.images[idx] = tmp;
-            // Update sort orders
-            this.images.forEach((img, i) => img.sort_order = i);
-        },
-
-        // Drag & Drop
-        dragStart(event, idx) {
-            this.draggingIdx = idx;
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', idx);
-        },
-
-        dragOver(event, idx) {
-            if (this.draggingIdx === null || this.draggingIdx === idx) return;
-            // Reorder during drag
-            const draggedImage = this.images[this.draggingIdx];
-            this.images.splice(this.draggingIdx, 1);
-            this.images.splice(idx, 0, draggedImage);
-            this.draggingIdx = idx;
-        },
-
-        drop(event, idx) {
-            event.preventDefault();
-            // Update sort orders after drop
-            this.images.forEach((img, i) => img.sort_order = i);
-            this.draggingIdx = null;
-        },
-
-        dragEnd(event) {
-            this.draggingIdx = null;
-        },
-
-        // Image URL helper
-        getImageUrl(path) {
-            if (!path) return '';
-            // If already absolute URL
-            if (path.startsWith('http://') || path.startsWith('https://')) {
-                return path;
-            }
-            // If storage path (starts with /storage)
-            if (path.startsWith('/storage')) {
-                return path;
-            }
-            // If relative path, prepend /storage
-            if (path.startsWith('products/')) {
-                return '/storage/' + path;
-            }
-            return path;
-        },
-
-        handleImageError(event, image) {
-            console.error('Image load error:', image.file_path);
-            // Hide broken image
-            event.target.style.display = 'none';
-        },
-
-        async uploadImageAtIndex(file, idx) {
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                alert('Выберите файл изображения (jpg, png, gif, webp)');
-                if (!this.images[idx].file_path) this.images.splice(idx, 1);
-                return;
-            }
-
-            // Validate file size (max 10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                alert('Максимальный размер файла 10 МБ');
-                if (!this.images[idx].file_path) this.images.splice(idx, 1);
-                return;
-            }
-
-            const originalPath = this.images[idx].file_path;
-            this.images[idx].uploading = true;
-
-            const formData = new FormData();
-            formData.append('image', file);
-
-            try {
-                const response = await fetch('/api/products/upload-image', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    }
-                });
-
-                if (response.status === 401) {
-                    throw new Error('Сессия истекла. Перезагрузите страницу.');
-                }
-                if (response.status === 403) {
-                    throw new Error('Нет доступа.');
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Ошибка сервера. Перезагрузите страницу.');
-                }
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || 'Ошибка загрузки');
-                }
-
-                this.images[idx].file_path = data.path || data.url;
-                this.images[idx].alt_text = this.images[idx].alt_text || file.name.replace(/\.[^/.]+$/, '');
-                this.images[idx].uploading = false;
-            } catch (e) {
-                console.error('Upload error:', e);
-                alert(e.message || 'Ошибка загрузки файла');
-                this.images[idx].uploading = false;
-                // Restore original or remove if it was new
-                if (originalPath) {
-                    this.images[idx].file_path = originalPath;
-                } else {
-                    this.images.splice(idx, 1);
-                }
-            }
-        },
-        async uploadImage(event, idx) {
-            const file = event.target.files[0];
-            if (!file) return;
-            event.target.value = ''; // Clear input
-            await this.uploadImageAtIndex(file, idx);
-        },
-        settingFor(code) { let s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); if (!s) { s = {channel_code: code, is_enabled: false, status: 'draft'}; this.channelSettings.push(s); } return s; },
-        channelEnabled(code) { const s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); return s ? !!s.is_enabled : false; },
-        toggleChannel(code, value) { const s = this.settingFor(code); s.is_enabled = value; s.status = s.status || 'draft'; },
-        ensureChannelVariant(channelCode, variant) { let row = this.channelVariants.find(cv => (cv.channel_code === channelCode || cv.channel_id === channelCode) && ((variant.id && cv.product_variant_id === variant.id) || (!variant.id && cv.variant_sku === variant.sku))); if (!row) { row = {channel_code: channelCode, product_variant_id: variant.id, variant_sku: variant.sku, status: 'draft'}; this.channelVariants.push(row); } return row; },
-        channelVariantValue(channelCode, variant, field) { const row = this.ensureChannelVariant(channelCode, variant); if (row[field] === undefined) row[field] = field === 'status' ? 'draft' : null; return {get value() { return row[field]; }, set value(v) { row[field] = v; }}; },
-        copyBasePrices(channelCode) { this.variants.forEach(variant => { const row = this.ensureChannelVariant(channelCode, variant); row.price = variant.price_default; row.old_price = variant.old_price_default; }); },
-        submit(alsoPublish = false) {
-            // Serialize hidden inputs
-            this.$refs.optionsInput.value = JSON.stringify(this.options);
-            this.$refs.variantsInput.value = JSON.stringify(this.variants);
-            this.$refs.imagesInput.value = JSON.stringify(this.images);
-            this.$refs.attributesProductInput.value = JSON.stringify(this.attributes.product);
-            this.$refs.attributesVariantsInput.value = JSON.stringify(this.attributes.variants);
-            this.$refs.channelSettingsInput.value = JSON.stringify(this.channelSettings);
-            this.$refs.channelVariantsInput.value = JSON.stringify(this.channelVariants);
-            
-            // Refresh CSRF token from meta tag
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            const csrfInput = this.$refs.form.querySelector('input[name="_token"]');
-            if (csrfInput && csrfToken) {
-                csrfInput.value = csrfToken;
-            }
-            
-            // Publish if requested
-            if (alsoPublish && publishUrl) {
-                const fd = new FormData();
-                fd.append('_token', csrfToken);
-                this.channels.forEach(c => fd.append('channels[]', c.code));
-                navigator.sendBeacon(publishUrl, fd);
-            }
-            
-            // Submit form
-            this.$refs.form.submit();
-        },
-        publish() { this.submit(true); }
-    }
-}
-</script>
 
 {{-- PWA MODE --}}
 <div class="pwa-only min-h-screen" x-data="productEditor()" x-cloak style="background: #f2f2f7;">
