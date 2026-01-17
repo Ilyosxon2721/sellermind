@@ -42,7 +42,7 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding pwa-top-padding" x-pull-to-refresh="loadOrders">
-            {{-- Stats Cards --}}
+            {{-- Main Stats Cards --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -63,7 +63,7 @@
                     </div>
                     <div>
                         <div class="text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
-                        <div class="text-sm text-gray-500">Заказов</div>
+                        <div class="text-sm text-gray-500">Всего заказов</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
@@ -75,6 +75,7 @@
                     <div>
                         <div class="text-2xl font-bold text-gray-900" x-text="stats.cancelledOrders || 0">0</div>
                         <div class="text-sm text-gray-500">Отменено</div>
+                        <div class="text-xs text-red-500" x-show="stats.cancelledAmount > 0" x-text="'-' + formatMoney(stats.cancelledAmount)"></div>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
@@ -87,6 +88,28 @@
                         <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
                         <div class="text-sm text-gray-500">Средний чек</div>
                     </div>
+                </div>
+            </div>
+
+            {{-- Marketplace Stats --}}
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-show="stats.byMarketplace && stats.byMarketplace.length > 0">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Продажи по маркетплейсам</h2>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <template x-for="mp in stats.byMarketplace" :key="mp.name">
+                        <div class="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors cursor-pointer"
+                             @click="filters.marketplace = mp.name; loadOrders();"
+                             :class="filters.marketplace === mp.name ? 'border-indigo-500 bg-indigo-50' : ''">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                                      :class="getMarketplaceClass(mp.name)"
+                                      x-text="getMarketplaceShort(mp.name)"></span>
+                                <span class="text-sm font-medium text-gray-900" x-text="mp.label"></span>
+                            </div>
+                            <div class="text-lg font-bold text-gray-900" x-text="mp.count + ' шт'"></div>
+                            <div class="text-sm text-green-600 font-medium" x-text="formatMoney(mp.amount)"></div>
+                            <div class="text-xs text-red-500" x-show="mp.cancelledCount > 0" x-text="'Отмен: ' + mp.cancelledCount"></div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -424,7 +447,11 @@ function salesPage() {
         },
         stats: {
             totalRevenue: 0,
-            totalOrders: 0
+            totalOrders: 0,
+            cancelledOrders: 0,
+            cancelledAmount: 0,
+            avgOrderValue: 0,
+            byMarketplace: []
         },
         orders: [],
 
@@ -454,7 +481,8 @@ function salesPage() {
                     totalOrders: apiStats.totalOrders || 0,
                     cancelledOrders: apiStats.cancelledOrders || 0,
                     cancelledAmount: apiStats.cancelledAmount || 0,
-                    avgOrderValue: apiStats.avgOrderValue || 0
+                    avgOrderValue: apiStats.avgOrderValue || 0,
+                    byMarketplace: apiStats.byMarketplace || []
                 };
             } catch (error) {
                 console.error('Failed to load orders:', error);
@@ -576,6 +604,28 @@ function salesPage() {
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        },
+
+        getMarketplaceClass(marketplace) {
+            const classes = {
+                uzum: 'bg-blue-500 text-white',
+                wb: 'bg-purple-500 text-white',
+                ozon: 'bg-blue-600 text-white',
+                ym: 'bg-red-500 text-white',
+                manual: 'bg-gray-500 text-white'
+            };
+            return classes[marketplace] || 'bg-gray-500 text-white';
+        },
+
+        getMarketplaceShort(marketplace) {
+            const shorts = {
+                uzum: 'UZ',
+                wb: 'WB',
+                ozon: 'OZ',
+                ym: 'YM',
+                manual: 'М'
+            };
+            return shorts[marketplace] || marketplace?.substring(0, 2).toUpperCase();
         }
     };
 }

@@ -65,6 +65,7 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 Route::middleware(['web', 'auth.any'])->group(function () {
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
+    Route::get('sales/{id}', [\App\Http\Controllers\Api\SalesController::class, 'show']);
     Route::post('sales/manual', [\App\Http\Controllers\Api\SalesController::class, 'storeManual']);
 
     // Sales Management (CRUD for Sales model)

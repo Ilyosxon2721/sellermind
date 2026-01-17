@@ -168,6 +168,10 @@ Route::middleware('auth.any')->group(function () {
         return view('sales.create');
     })->name('sales.create');
 
+    Route::get('/sales/{id}', function ($id) {
+        return view('sales.show', ['orderId' => $id]);
+    })->name('sales.show');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');

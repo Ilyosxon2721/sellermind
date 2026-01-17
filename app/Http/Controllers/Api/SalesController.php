@@ -87,6 +87,242 @@ class SalesController extends Controller
     }
     
     /**
+     * Get single order details
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $companyId = $this->getCompanyId($request);
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Parse ID format: marketplace_id (e.g., uzum_1787, wb_123)
+        $parts = explode('_', $id, 2);
+        if (count($parts) !== 2) {
+            return response()->json(['error' => 'Invalid order ID format'], 400);
+        }
+
+        [$marketplace, $orderId] = $parts;
+
+        $order = null;
+
+        switch ($marketplace) {
+            case 'uzum':
+                $order = UzumOrder::with('account', 'items')
+                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatUzumOrderDetails($order);
+                }
+                break;
+
+            case 'wb':
+                $order = WbOrder::with('account')
+                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatWbOrderDetails($order);
+                }
+                break;
+
+            case 'ozon':
+                $order = OzonOrder::with('account', 'items')
+                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatOzonOrderDetails($order);
+                }
+                break;
+
+            case 'ym':
+                $order = YandexMarketOrder::with('account')
+                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatYmOrderDetails($order);
+                }
+                break;
+
+            case 'manual':
+                $order = ChannelOrder::whereNull('channel_id')->find($orderId);
+                if ($order) {
+                    $order = $this->formatManualOrderDetails($order);
+                }
+                break;
+        }
+
+        if (!$order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        return response()->json(['data' => $order]);
+    }
+
+    /**
+     * Format Uzum order for details view
+     */
+    private function formatUzumOrderDetails($order): array
+    {
+        return [
+            'id' => 'uzum_' . $order->id,
+            'order_number' => $order->external_order_id,
+            'marketplace' => 'uzum',
+            'marketplace_label' => 'Uzum Market',
+            'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
+            'status' => $this->normalizeStatus($order->status_normalized),
+            'status_label' => $this->getStatusLabel($order->status_normalized),
+            'raw_status' => $order->uzum_status ?? $order->status,
+            'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
+            'delivery_address' => $order->delivery_address,
+            'total_amount' => (float) $order->total_amount,
+            'currency' => $order->currency ?? 'UZS',
+            'created_at' => $order->ordered_at?->toIso8601String(),
+            'created_at_formatted' => $order->ordered_at?->format('d.m.Y H:i'),
+            'items' => $order->items?->map(fn($item) => [
+                'id' => $item->id,
+                'name' => $item->product_title ?? $item->name,
+                'sku' => $item->sku,
+                'quantity' => $item->quantity,
+                'price' => (float) $item->price,
+            ])->toArray() ?? [],
+        ];
+    }
+
+    /**
+     * Format WB order for details view
+     */
+    private function formatWbOrderDetails($order): array
+    {
+        return [
+            'id' => 'wb_' . $order->id,
+            'order_number' => $order->external_order_id ?? $order->rid,
+            'marketplace' => 'wb',
+            'marketplace_label' => 'Wildberries',
+            'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
+            'status' => $this->normalizeStatus($order->status_normalized ?? $order->status),
+            'status_label' => $this->getStatusLabel($order->status_normalized ?? $order->status),
+            'raw_status' => $order->wb_status,
+            'supplier_status' => $order->supplier_status,
+            'customer_name' => $order->customer_name,
+            'delivery_address' => $order->delivery_address,
+            'total_amount' => (float) ($order->total_amount ?? $order->price ?? 0),
+            'currency' => $order->currency ?? 'RUB',
+            'created_at' => $order->ordered_at?->toIso8601String(),
+            'created_at_formatted' => $order->ordered_at?->format('d.m.Y H:i'),
+            'article' => $order->article,
+            'sku' => $order->sku,
+            'brand' => $order->brand,
+            'subject' => $order->subject,
+            'warehouse' => $order->warehouse_name,
+            'supply_id' => $order->supply_id,
+        ];
+    }
+
+    /**
+     * Format Ozon order for details view
+     */
+    private function formatOzonOrderDetails($order): array
+    {
+        return [
+            'id' => 'ozon_' . $order->id,
+            'order_number' => $order->posting_number ?? $order->order_id,
+            'marketplace' => 'ozon',
+            'marketplace_label' => 'Ozon',
+            'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
+            'status' => $this->normalizeStatus($order->status),
+            'status_label' => $this->getStatusLabel($order->status),
+            'raw_status' => $order->status,
+            'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
+            'delivery_address' => $order->delivery_address,
+            'total_amount' => (float) $order->total_amount,
+            'currency' => 'RUB',
+            'created_at' => $order->created_at_ozon?->toIso8601String(),
+            'created_at_formatted' => $order->created_at_ozon?->format('d.m.Y H:i'),
+            'items' => $order->items?->map(fn($item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'sku' => $item->sku,
+                'quantity' => $item->quantity,
+                'price' => (float) $item->price,
+            ])->toArray() ?? [],
+        ];
+    }
+
+    /**
+     * Format YM order for details view
+     */
+    private function formatYmOrderDetails($order): array
+    {
+        return [
+            'id' => 'ym_' . $order->id,
+            'order_number' => $order->order_id,
+            'marketplace' => 'ym',
+            'marketplace_label' => 'Yandex Market',
+            'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
+            'status' => $this->normalizeStatus($order->status),
+            'status_label' => $this->getStatusLabel($order->status),
+            'raw_status' => $order->status,
+            'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
+            'delivery_address' => $order->delivery_address,
+            'total_amount' => (float) $order->total_amount,
+            'currency' => 'RUB',
+            'created_at' => $order->created_at_ym?->toIso8601String(),
+            'created_at_formatted' => $order->created_at_ym?->format('d.m.Y H:i'),
+        ];
+    }
+
+    /**
+     * Format manual order for details view
+     */
+    private function formatManualOrderDetails($order): array
+    {
+        return [
+            'id' => 'manual_' . $order->id,
+            'order_number' => $order->external_order_id,
+            'marketplace' => 'manual',
+            'marketplace_label' => 'Ручной заказ',
+            'status' => $this->normalizeStatus($order->status),
+            'status_label' => $this->getStatusLabel($order->status),
+            'raw_status' => $order->status,
+            'customer_name' => $order->payload_json['customer_name'] ?? null,
+            'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
+            'currency' => $order->payload_json['currency'] ?? 'UZS',
+            'notes' => $order->payload_json['notes'] ?? null,
+            'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
+            'created_at_formatted' => ($order->created_at_channel ?? $order->created_at)?->format('d.m.Y H:i'),
+        ];
+    }
+
+    /**
+     * Get status label in Russian
+     */
+    private function getStatusLabel(?string $status): string
+    {
+        if (!$status) return 'Неизвестно';
+
+        $labels = [
+            'new' => 'Новый',
+            'processing' => 'В обработке',
+            'shipped' => 'Отправлен',
+            'delivered' => 'Доставлен',
+            'cancelled' => 'Отменён',
+            'in_assembly' => 'В сборке',
+            'in_delivery' => 'В доставке',
+            'completed' => 'Выполнен',
+            'accepted_uzum' => 'Принят Uzum',
+            'in_supply' => 'В поставке',
+            'waiting_pickup' => 'Ждёт выдачи',
+            'issued' => 'Выдан',
+            'returns' => 'Возврат',
+        ];
+
+        return $labels[$status] ?? $status;
+    }
+
+    /**
      * Create manual order/sale
      */
     public function storeManual(Request $request): JsonResponse
