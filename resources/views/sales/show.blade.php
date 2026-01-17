@@ -266,8 +266,6 @@
             </div>
         </div>
     </main>
-
-    <x-pwa-navbar active="sales" />
 </div>
 
 <script>
