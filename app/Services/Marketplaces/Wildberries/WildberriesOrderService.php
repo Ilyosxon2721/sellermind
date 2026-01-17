@@ -1037,24 +1037,71 @@ class WildberriesOrderService
     }
 
     /**
-     * Get orders in supply
+     * Get order IDs in supply (new API method)
      *
      * @param MarketplaceAccount $account
      * @param string $supplyId Supply ID (UUID)
-     * @return array Orders in the supply
+     * @return array Order IDs in the supply
+     */
+    public function getSupplyOrderIds(MarketplaceAccount $account, string $supplyId): array
+    {
+        try {
+            // New API endpoint (replaces deprecated GET /api/v3/supplies/{supplyId}/orders)
+            $response = $this->httpClient->get('marketplace', "/api/marketplace/v3/supplies/{$supplyId}/order-ids");
+
+            $orderIds = $response['orderIds'] ?? [];
+
+            Log::info('WB supply order IDs fetched', [
+                'account_id' => $account->id,
+                'supply_id' => $supplyId,
+                'count' => count($orderIds),
+            ]);
+
+            return $orderIds;
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB supply order IDs', [
+                'account_id' => $account->id,
+                'supply_id' => $supplyId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get orders in supply with full details
+     *
+     * @param MarketplaceAccount $account
+     * @param string $supplyId Supply ID (UUID)
+     * @return array Orders in the supply with details
      */
     public function getSupplyOrders(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}/orders");
+            // Step 1: Get order IDs from the supply
+            $orderIds = $this->getSupplyOrderIds($account, $supplyId);
+
+            if (empty($orderIds)) {
+                Log::info('WB supply has no orders', [
+                    'account_id' => $account->id,
+                    'supply_id' => $supplyId,
+                ]);
+                return [];
+            }
+
+            // Step 2: Get order details via POST /api/v3/orders/status
+            $statusResponse = $this->getOrdersStatus($account, $orderIds);
+            $orders = $statusResponse['orders'] ?? [];
 
             Log::info('WB supply orders fetched', [
                 'account_id' => $account->id,
                 'supply_id' => $supplyId,
-                'count' => count($response['orders'] ?? []),
+                'order_ids_count' => count($orderIds),
+                'orders_fetched' => count($orders),
             ]);
 
-            return $response['orders'] ?? [];
+            return $orders;
         } catch (\Exception $e) {
             Log::error('Failed to get WB supply orders', [
                 'account_id' => $account->id,

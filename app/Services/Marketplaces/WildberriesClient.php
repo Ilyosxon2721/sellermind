@@ -362,16 +362,20 @@ class WildberriesClient implements MarketplaceClientInterface
                 $isScanned = !empty($supply['scanDt']);
 
                 try {
-                    $next = 0;
-                    do {
-                        $params = [
-                            'limit' => 1000,
-                            'next' => $next,
-                        ];
+                    // Step 1: Get order IDs from supply (new API endpoint)
+                    $orderIdsResponse = $this->http->get($account, "/api/marketplace/v3/supplies/{$supplyId}/order-ids");
+                    $orderIds = $orderIdsResponse['orderIds'] ?? [];
 
-                        $response = $this->http->get($account, "/api/v3/supplies/{$supplyId}/orders", $params);
+                    if (empty($orderIds)) {
+                        continue;
+                    }
 
-                        foreach ($response['orders'] ?? [] as $orderData) {
+                    // Step 2: Get order details via POST /api/v3/orders/status
+                    $chunks = array_chunk($orderIds, 1000);
+                    foreach ($chunks as $chunk) {
+                        $statusResponse = $this->http->post($account, '/api/v3/orders/status', ['orders' => $chunk]);
+
+                        foreach ($statusResponse['orders'] ?? [] as $orderData) {
                             $mapped = $this->mapOrderData($orderData);
                             $mapped['supply_id'] = $supplyId;
 
@@ -398,9 +402,7 @@ class WildberriesClient implements MarketplaceClientInterface
 
                             $orders[] = $mapped;
                         }
-
-                        $next = $response['next'] ?? 0;
-                    } while ($next > 0 && !empty($response['orders']));
+                    }
                 } catch (\Exception $e) {
                     \Log::warning("WB fetch orders from supply {$supplyId} error", ['error' => $e->getMessage()]);
                     continue;
