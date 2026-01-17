@@ -12,7 +12,7 @@ use App\Models\Product;
 use App\Models\Review;
 use App\Models\Subscription;
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use App\Models\WildberriesSupply;
 use App\Models\Warehouse\ChannelOrder;
 use App\Models\Warehouse\StockLedger;
@@ -99,38 +99,39 @@ class DashboardController extends Controller
         $uzumOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES);
 
-        // WB orders - исключаем отменённые
-        $wbOrders = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereNotIn('status', self::CANCELLED_STATUSES);
+        // WB orders - исключаем отменённые (используем WildberriesOrder)
+        $wbOrders = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where('is_cancel', false)
+            ->where('is_return', false);
 
         // Today
         $todayAmount = (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('ordered_at', $today)->sum('total_amount');
+            + (clone $wbOrders)->whereDate('order_date', $today)->sum('for_pay');
         $todayCount = (clone $uzumOrders)->whereDate('ordered_at', $today)->count()
-            + (clone $wbOrders)->whereDate('ordered_at', $today)->count();
+            + (clone $wbOrders)->whereDate('order_date', $today)->count();
 
         // Week
         $weekAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+            + (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
         $weekCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->count()
-            + (clone $wbOrders)->whereDate('ordered_at', '>=', $weekAgo)->count();
+            + (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->count();
 
         // Month
         $monthAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount');
+            + (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
         $monthCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->count()
-            + (clone $wbOrders)->whereDate('ordered_at', '>=', $monthAgo)->count();
+            + (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->count();
 
         // Отменённые заказы отдельно
         $uzumCancelled = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereIn('status_normalized', self::CANCELLED_STATUSES);
-        $wbCancelled = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereIn('status', self::CANCELLED_STATUSES);
+        $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
         $cancelledWeekAmount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
-            + (clone $wbCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
         $cancelledWeekCount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count()
-            + (clone $wbCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count();
+            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count();
 
         // По дням за неделю (Uzum + WB, без отменённых)
         $uzumDaily = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
@@ -141,10 +142,11 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
-        $wbDaily = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereDate('ordered_at', '>=', $weekAgo)
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->select(DB::raw('DATE(ordered_at) as date'), DB::raw('SUM(total_amount) as amount'), DB::raw('COUNT(*) as count'))
+        $wbDaily = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('order_date', '>=', $weekAgo)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->select(DB::raw('DATE(order_date) as date'), DB::raw('SUM(for_pay) as amount'), DB::raw('COUNT(*) as count'))
             ->groupBy('date')
             ->get()
             ->keyBy('date');
@@ -177,19 +179,19 @@ class DashboardController extends Controller
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Uzum',
             ]);
 
-        $wbRecent = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbRecent = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->with('account')
-            ->orderByDesc('ordered_at')
+            ->orderByDesc('order_date')
             ->limit(10)
             ->get()
             ->map(fn($o) => [
                 'id' => 'wb_' . $o->id,
-                'order_number' => $o->external_order_id ?? $o->rid,
-                'amount' => (float) ($o->total_amount ?? $o->price ?? 0),
-                'status' => $o->status,
-                'status_label' => $this->getStatusLabel($o->status),
-                'date' => $o->ordered_at?->format('d.m.Y H:i'),
-                'ordered_at' => $o->ordered_at,
+                'order_number' => $o->srid ?? $o->order_id,
+                'amount' => (float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0),
+                'status' => $this->normalizeWbStatus($o),
+                'status_label' => $this->getStatusLabel($this->normalizeWbStatus($o)),
+                'date' => $o->order_date?->format('d.m.Y H:i'),
+                'ordered_at' => $o->order_date,
                 'marketplace' => 'wb',
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Wildberries',
             ]);
@@ -208,12 +210,16 @@ class DashboardController extends Controller
             ->pluck('count', 'status')
             ->toArray();
 
-        $wbByStatus = WbOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereDate('ordered_at', '>=', $weekAgo)
-            ->select('status', DB::raw('COUNT(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
+        // WB orders by status - normalize from is_cancel/is_return/is_realization flags
+        $wbByStatusRaw = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('order_date', '>=', $weekAgo)
+            ->get();
+
+        $wbByStatus = [];
+        foreach ($wbByStatusRaw as $order) {
+            $status = $this->normalizeWbStatus($order);
+            $wbByStatus[$status] = ($wbByStatus[$status] ?? 0) + 1;
+        }
 
         // Объединяем статусы
         $byStatus = [];
@@ -896,6 +902,43 @@ class DashboardController extends Controller
     /**
      * Получить русский перевод статуса заказа
      */
+    /**
+     * Normalize WildberriesOrder status based on flags
+     */
+    private function normalizeWbStatus(WildberriesOrder $order): string
+    {
+        if ($order->is_cancel) {
+            return 'cancelled';
+        }
+        if ($order->is_return) {
+            return 'cancelled';
+        }
+        if ($order->is_realization) {
+            return 'completed';
+        }
+
+        $wbStatus = $order->wb_status;
+        if ($wbStatus) {
+            $statusMap = [
+                'waiting' => 'new',
+                'sorted' => 'processing',
+                'sold' => 'completed',
+                'delivered' => 'completed',
+                'canceled' => 'cancelled',
+                'canceled_by_client' => 'cancelled',
+                'defect' => 'cancelled',
+                'ready_for_pickup' => 'processing',
+                'on_way_to_client' => 'processing',
+            ];
+
+            if (isset($statusMap[$wbStatus])) {
+                return $statusMap[$wbStatus];
+            }
+        }
+
+        return 'new';
+    }
+
     private function getStatusLabel(string $status): string
     {
         $labels = [

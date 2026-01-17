@@ -8,7 +8,7 @@ use App\Models\MarketplaceReturn;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -123,14 +123,15 @@ class MarketplaceDashboardService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->get();
 
-        $wbOrders = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->get();
 
         $allOrders = $uzumOrders->concat($wbOrders);
 
-        $revenue = (float) $allOrders->sum('total_amount');
+        $revenue = (float) $uzumOrders->sum('total_amount') + (float) $wbOrders->sum('for_pay');
         $ordersCount = $allOrders->count();
         $avgCheck = $ordersCount > 0 ? $revenue / $ordersCount : 0.0;
 
@@ -140,13 +141,13 @@ class MarketplaceDashboardService
             ->whereIn('status_normalized', self::CANCELLED_STATUSES)
             ->get();
 
-        $cancelledWb = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to])
-            ->whereIn('status', self::CANCELLED_STATUSES)
+        $cancelledWb = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to])
+            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
             ->get();
 
         $cancelledOrders = $cancelledUzum->concat($cancelledWb);
-        $cancelledAmount = (float) $cancelledOrders->sum('total_amount');
+        $cancelledAmount = (float) $cancelledUzum->sum('total_amount') + (float) $cancelledWb->sum('for_pay');
         $cancelledCount = $cancelledOrders->count();
 
         // Возвраты за период (по всем заказам, включая отменённые)
@@ -254,13 +255,13 @@ class MarketplaceDashboardService
         }
 
         if ($marketplace === 'wb') {
-            $query = WbOrder::where('marketplace_account_id', $account->id)
-                ->whereBetween('ordered_at', [$from, $to]);
+            $query = WildberriesOrder::where('marketplace_account_id', $account->id)
+                ->whereBetween('order_date', [$from, $to]);
 
             if ($excludeCancelled) {
-                $query->whereNotIn('status', self::CANCELLED_STATUSES);
+                $query->where('is_cancel', false)->where('is_return', false);
             } elseif ($onlyCancelled) {
-                $query->whereIn('status', self::CANCELLED_STATUSES);
+                $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
             }
 
             return $query->get();

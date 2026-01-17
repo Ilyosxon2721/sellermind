@@ -5,7 +5,7 @@ namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceReturn;
 use App\Models\MarketplacePayout;
@@ -66,34 +66,34 @@ class MarketplaceInsightsService
             ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
             ->get();
 
-        $wbOrders = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
             ->get();
 
-        $allOrders = $uzumOrders->concat($wbOrders);
-
         // Фильтруем по статусам
-        $delivered = $allOrders->filter(function ($order) {
+        $uzumDelivered = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
             return in_array($status, ['delivered', 'completed', 'issued', 'DELIVERED']);
         });
+        $wbDelivered = $wbOrders->filter(fn($o) => $o->is_realization && !$o->is_cancel && !$o->is_return);
 
-        $cancelled = $allOrders->filter(function ($order) {
+        $uzumCancelled = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
             return in_array($status, self::CANCELLED_STATUSES);
         });
+        $wbCancelled = $wbOrders->filter(fn($o) => $o->is_cancel || $o->is_return);
 
         // Не отменённые заказы для расчёта выручки
-        $notCancelled = $allOrders->filter(function ($order) {
+        $uzumNotCancelled = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
             return !in_array($status, self::CANCELLED_STATUSES);
         });
+        $wbNotCancelled = $wbOrders->filter(fn($o) => !$o->is_cancel && !$o->is_return);
 
         // По маркетплейсам (только не отменённые)
         $byMarketplace = [];
 
         // Uzum
-        $uzumNotCancelled = $uzumOrders->filter(fn($o) => !in_array($o->status_normalized, self::CANCELLED_STATUSES));
         if ($uzumNotCancelled->isNotEmpty()) {
             $byMarketplace['uzum'] = [
                 'count' => $uzumNotCancelled->count(),
@@ -102,22 +102,25 @@ class MarketplaceInsightsService
         }
 
         // WB
-        $wbNotCancelled = $wbOrders->filter(fn($o) => !in_array($o->status, self::CANCELLED_STATUSES));
         if ($wbNotCancelled->isNotEmpty()) {
             $byMarketplace['wb'] = [
                 'count' => $wbNotCancelled->count(),
-                'revenue' => (float) $wbNotCancelled->sum('total_amount'),
+                'revenue' => (float) $wbNotCancelled->sum('for_pay'),
             ];
         }
 
+        $totalNotCancelledCount = $uzumNotCancelled->count() + $wbNotCancelled->count();
+        $totalRevenue = (float) $uzumNotCancelled->sum('total_amount') + (float) $wbNotCancelled->sum('for_pay');
+        $cancelledAmount = (float) $uzumCancelled->sum('total_amount') + (float) $wbCancelled->sum('for_pay');
+
         return [
-            'total_orders' => $notCancelled->count(),
-            'delivered_orders' => $delivered->count(),
-            'cancelled_orders' => $cancelled->count(),
-            'cancelled_amount' => round($cancelled->sum('total_amount'), 2),
-            'total_revenue' => round($notCancelled->sum('total_amount'), 2),
-            'average_order_value' => $notCancelled->count() > 0
-                ? round($notCancelled->sum('total_amount') / $notCancelled->count(), 2)
+            'total_orders' => $totalNotCancelledCount,
+            'delivered_orders' => $uzumDelivered->count() + $wbDelivered->count(),
+            'cancelled_orders' => $uzumCancelled->count() + $wbCancelled->count(),
+            'cancelled_amount' => round($cancelledAmount, 2),
+            'total_revenue' => round($totalRevenue, 2),
+            'average_order_value' => $totalNotCancelledCount > 0
+                ? round($totalRevenue / $totalNotCancelledCount, 2)
                 : 0,
             'by_marketplace' => $byMarketplace,
         ];
@@ -138,9 +141,10 @@ class MarketplaceInsightsService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
 
-        $wbOrdersCount = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+        $wbOrdersCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->count();
 
         $totalOrders = $uzumOrdersCount + $wbOrdersCount;
@@ -256,29 +260,27 @@ class MarketplaceInsightsService
             }
         }
 
-        // WB orders (excluding cancelled)
-        $wbOrders = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->with('items')
+        // WB orders (excluding cancelled) - each WildberriesOrder row is one item
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->get();
 
         foreach ($wbOrders as $order) {
-            foreach ($order->items as $item) {
-                $key = $item->external_offer_id ?? $item->name;
-                if (!isset($topProducts[$key])) {
-                    $topProducts[$key] = [
-                        'sku' => $item->external_offer_id,
-                        'name' => $item->name,
-                        'total_quantity' => 0,
-                        'total_revenue' => 0.0,
-                        'orders_count' => 0,
-                    ];
-                }
-                $topProducts[$key]['total_quantity'] += (int) $item->quantity;
-                $topProducts[$key]['total_revenue'] += (float) $item->total_price;
-                $topProducts[$key]['orders_count']++;
+            $key = $order->supplier_article ?? $order->barcode ?? $order->subject;
+            if (!isset($topProducts[$key])) {
+                $topProducts[$key] = [
+                    'sku' => $order->supplier_article ?? $order->barcode,
+                    'name' => $order->subject,
+                    'total_quantity' => 0,
+                    'total_revenue' => 0.0,
+                    'orders_count' => 0,
+                ];
             }
+            $topProducts[$key]['total_quantity'] += 1;
+            $topProducts[$key]['total_revenue'] += (float) ($order->for_pay ?? $order->finished_price ?? 0);
+            $topProducts[$key]['orders_count']++;
         }
 
         // Sort by revenue and limit

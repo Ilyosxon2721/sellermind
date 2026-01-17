@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use App\Models\MarketplaceAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -345,14 +345,12 @@ class SalesAnalyticsService
             ->flatMap(fn($o) => $o->items)
             ->sum('quantity');
 
-        // WB items
-        $wbSales = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->with('items')
-            ->get()
-            ->flatMap(fn($o) => $o->items)
-            ->sum('quantity');
+        // WB items (WildberriesOrder - each row is one item)
+        $wbSales = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->count();
 
         return (int) ($uzumSales + $wbSales);
     }
@@ -374,11 +372,12 @@ class SalesAnalyticsService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->sum('total_amount');
 
-        // WB revenue
-        $wbRevenue = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->sum('total_amount');
+        // WB revenue (using WildberriesOrder)
+        $wbRevenue = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->sum('for_pay');
 
         return (float) ($uzumRevenue + $wbRevenue);
     }
@@ -399,9 +398,10 @@ class SalesAnalyticsService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
 
-        $wbCount = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+        $wbCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->count();
 
         return $uzumCount + $wbCount;
@@ -422,13 +422,13 @@ class SalesAnalyticsService
             ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
             ->whereIn('status_normalized', self::CANCELLED_STATUSES);
 
-        $wbCancelled = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', self::CANCELLED_STATUSES);
+        $wbCancelled = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
         return [
             'count' => $uzumCancelled->count() + $wbCancelled->count(),
-            'amount' => (float) ($uzumCancelled->sum('total_amount') + $wbCancelled->sum('total_amount')),
+            'amount' => (float) ($uzumCancelled->sum('total_amount') + $wbCancelled->sum('for_pay')),
         ];
     }
 }

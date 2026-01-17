@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Models\WildberriesOrder;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplacePayout;
 use App\Models\MarketplaceReturn;
@@ -89,30 +89,30 @@ class MarketplaceDashboardController extends Controller
         $uzumWeekAll = UzumOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $weekAgo);
         $uzumMonthAll = UzumOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $monthAgo);
 
-        // WB orders
-        $wbTodayAll = WbOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $today);
-        $wbWeekAll = WbOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $weekAgo);
-        $wbMonthAll = WbOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $monthAgo);
+        // WB orders (using WildberriesOrder)
+        $wbTodayAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $today);
+        $wbWeekAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $weekAgo);
+        $wbMonthAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $monthAgo);
 
         // Not cancelled counts
         $todayCount = (clone $uzumTodayAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbTodayAll)->whereNotIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbTodayAll)->where('is_cancel', false)->where('is_return', false)->count();
 
         $weekCount = (clone $uzumWeekAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbWeekAll)->whereNotIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbWeekAll)->where('is_cancel', false)->where('is_return', false)->count();
 
         $monthCount = (clone $uzumMonthAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbMonthAll)->whereNotIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbMonthAll)->where('is_cancel', false)->where('is_return', false)->count();
 
         // Cancelled counts
         $cancelledToday = (clone $uzumTodayAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbTodayAll)->whereIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbTodayAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         $cancelledWeek = (clone $uzumWeekAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbWeekAll)->whereIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbWeekAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         $cancelledMonth = (clone $uzumMonthAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbMonthAll)->whereIn('status', self::CANCELLED_STATUSES)->count();
+            + (clone $wbMonthAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         // By status (for month)
         $uzumByStatus = UzumOrder::whereIn('marketplace_account_id', $accountIds)
@@ -122,12 +122,15 @@ class MarketplaceDashboardController extends Controller
             ->pluck('count', 'status_normalized')
             ->toArray();
 
-        $wbByStatus = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('ordered_at', '>=', $monthAgo)
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
+        // WB orders by status - calculate from flags
+        $wbByStatus = [];
+        $wbMonthOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('order_date', '>=', $monthAgo)
+            ->get();
+        foreach ($wbMonthOrders as $order) {
+            $status = $order->is_cancel || $order->is_return ? 'cancelled' : ($order->is_realization ? 'completed' : 'processing');
+            $wbByStatus[$status] = ($wbByStatus[$status] ?? 0) + 1;
+        }
 
         // Merge status counts
         $byStatus = [];
@@ -162,10 +165,11 @@ class MarketplaceDashboardController extends Controller
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->sum('total_amount');
 
-        $wbMonthRevenue = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('ordered_at', '>=', $monthAgo)
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->sum('total_amount');
+        $wbMonthRevenue = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('order_date', '>=', $monthAgo)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->sum('for_pay');
 
         $monthRevenue = (float) ($uzumMonthRevenue + $wbMonthRevenue);
 
@@ -175,10 +179,10 @@ class MarketplaceDashboardController extends Controller
             ->whereIn('status_normalized', self::CANCELLED_STATUSES)
             ->sum('total_amount');
 
-        $wbCancelledMonth = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('ordered_at', '>=', $monthAgo)
-            ->whereIn('status', self::CANCELLED_STATUSES)
-            ->sum('total_amount');
+        $wbCancelledMonth = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('order_date', '>=', $monthAgo)
+            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+            ->sum('for_pay');
 
         $cancelledMonthAmount = (float) ($uzumCancelledMonth + $wbCancelledMonth);
 
@@ -191,10 +195,11 @@ class MarketplaceDashboardController extends Controller
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->sum('total_amount');
 
-        $wbPrevRevenue = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$prevMonthStart, $prevMonthEnd])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->sum('total_amount');
+        $wbPrevRevenue = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$prevMonthStart, $prevMonthEnd])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->sum('for_pay');
 
         $prevMonthRevenue = (float) ($uzumPrevRevenue + $wbPrevRevenue);
 
@@ -223,9 +228,10 @@ class MarketplaceDashboardController extends Controller
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
 
-        $wbOrdersCount = WbOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('ordered_at', '>=', $monthAgo)
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+        $wbOrdersCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('order_date', '>=', $monthAgo)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->count();
 
         $ordersCount = $uzumOrdersCount + $wbOrdersCount;
