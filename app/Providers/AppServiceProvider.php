@@ -6,8 +6,10 @@ use App\Events\StockUpdated;
 use App\Listeners\SyncStockToMarketplaces;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
+use App\Models\WbOrder;
 use App\Observers\ProductVariantObserver;
 use App\Observers\UzumOrderObserver;
+use App\Observers\WbOrderObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         // Register observers
         ProductVariant::observe(ProductVariantObserver::class);
         UzumOrder::observe(UzumOrderObserver::class);
+        WbOrder::observe(WbOrderObserver::class);
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);

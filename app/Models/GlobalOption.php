@@ -40,16 +40,22 @@ class GlobalOption extends Model
         return $this->values()->where('is_active', true);
     }
 
-    public static function sizes(int $companyId)
+    /**
+     * Получить глобальную опцию размеров (без привязки к компании)
+     */
+    public static function sizes(?int $companyId = null)
     {
-        return static::where('company_id', $companyId)
+        return static::whereNull('company_id')
             ->where('code', 'size')
             ->first();
     }
 
-    public static function colors(int $companyId)
+    /**
+     * Получить глобальную опцию цветов (без привязки к компании)
+     */
+    public static function colors(?int $companyId = null)
     {
-        return static::where('company_id', $companyId)
+        return static::whereNull('company_id')
             ->where('code', 'color')
             ->first();
     }

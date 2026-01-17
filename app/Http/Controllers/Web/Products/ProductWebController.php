@@ -85,14 +85,18 @@ class ProductWebController extends Controller
         $user = $request->user();
         $companyId = $user?->company_id;
 
+        // Global options for sizes and colors (universal for all companies)
+        $globalSizes = \App\Models\GlobalOption::sizes()?->activeValues ?? collect();
+        $globalColors = \App\Models\GlobalOption::colors()?->activeValues ?? collect();
+
         // Redirect to company setup if no company
         if (!$companyId) {
             return view('products.edit', [
                 'product' => new Product(),
                 'categories' => collect(),
                 'attributesList' => collect(),
-                'globalSizes' => collect(),
-                'globalColors' => collect(),
+                'globalSizes' => $globalSizes,
+                'globalColors' => $globalColors,
                 'initialState' => $this->buildInitialState(null),
                 'noCompany' => true,
             ]);
@@ -104,10 +108,6 @@ class ProductWebController extends Controller
             ->get();
 
         $attributes = Attribute::orderBy('name')->get();
-
-        // Global options for sizes and colors
-        $globalSizes = \App\Models\GlobalOption::sizes($companyId)?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors($companyId)?->activeValues ?? collect();
 
         return view('products.edit', [
             'product' => new Product(['company_id' => $companyId]),
@@ -144,9 +144,9 @@ class ProductWebController extends Controller
 
         $attributes = Attribute::orderBy('name')->get();
 
-        // Global options for sizes and colors
-        $globalSizes = \App\Models\GlobalOption::sizes($companyId)?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors($companyId)?->activeValues ?? collect();
+        // Global options for sizes and colors (universal for all companies)
+        $globalSizes = \App\Models\GlobalOption::sizes()?->activeValues ?? collect();
+        $globalColors = \App\Models\GlobalOption::colors()?->activeValues ?? collect();
 
         return view('products.edit', [
             'product' => $product,
@@ -160,6 +160,15 @@ class ProductWebController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Check if user has a company
+        if (!$user?->company_id) {
+            return back()
+                ->withInput()
+                ->withErrors(['company' => 'Для создания товаров необходимо создать или выбрать компанию']);
+        }
+
         $dto = $this->buildDto($request);
 
         try {

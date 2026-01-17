@@ -17,11 +17,18 @@ class ProductVariantObserver
      */
     public function created(ProductVariant $variant): void
     {
-        $sku = $this->syncToWarehouseSku($variant);
+        try {
+            $sku = $this->syncToWarehouseSku($variant);
 
-        // If variant has initial stock, create stock ledger entry
-        if ($sku && $variant->stock_default > 0) {
-            $this->createInitialStock($variant, $sku);
+            // If variant has initial stock, create stock ledger entry
+            if ($sku && $variant->stock_default > 0) {
+                $this->createInitialStock($variant, $sku);
+            }
+        } catch (\Exception $e) {
+            Log::warning('ProductVariantObserver::created failed', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -36,25 +43,32 @@ class ProductVariantObserver
      */
     public function updated(ProductVariant $variant): void
     {
-        // Sync SKU/barcode changes to warehouse system
-        if ($variant->wasChanged(['sku', 'barcode', 'weight_g', 'length_mm', 'width_mm', 'height_mm', 'is_active'])) {
-            $this->syncToWarehouseSku($variant);
-        }
-
-        // Use wasChanged() to see if 'stock_default' was part of the update.
-        if ($variant->wasChanged('stock_default')) {
-            // getOriginal() provides the value before the update.
-            $oldStock = $variant->getOriginal('stock_default') ?? 0;
-            $newStock = $variant->stock_default ?? 0;
-
-            // Fire the event only if the stock value actually changed.
-            if ($oldStock !== $newStock) {
-                // Sync to warehouse stock_ledger
-                $this->syncStockToWarehouse($variant, $oldStock, $newStock);
-
-                // Fire event for marketplace sync
-                event(new StockUpdated($variant, $oldStock, $newStock));
+        try {
+            // Sync SKU/barcode changes to warehouse system
+            if ($variant->wasChanged(['sku', 'barcode', 'weight_g', 'length_mm', 'width_mm', 'height_mm', 'is_active'])) {
+                $this->syncToWarehouseSku($variant);
             }
+
+            // Use wasChanged() to see if 'stock_default' was part of the update.
+            if ($variant->wasChanged('stock_default')) {
+                // getOriginal() provides the value before the update.
+                $oldStock = $variant->getOriginal('stock_default') ?? 0;
+                $newStock = $variant->stock_default ?? 0;
+
+                // Fire the event only if the stock value actually changed.
+                if ($oldStock !== $newStock) {
+                    // Sync to warehouse stock_ledger
+                    $this->syncStockToWarehouse($variant, $oldStock, $newStock);
+
+                    // Fire event for marketplace sync
+                    event(new StockUpdated($variant, $oldStock, $newStock));
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('ProductVariantObserver::updated failed', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

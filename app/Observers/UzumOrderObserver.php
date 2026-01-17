@@ -14,8 +14,8 @@ class UzumOrderObserver
      */
     public function created(UzumOrder $uzumOrder): void
     {
-        broadcast(new UzumOrderUpdated($uzumOrder, 'created'))->toOthers();
-        
+        $this->safeBroadcast($uzumOrder, 'created');
+
         // Reduce internal stock for linked variants
         $this->reduceInternalStock($uzumOrder);
     }
@@ -27,7 +27,7 @@ class UzumOrderObserver
     {
         // Только если изменился статус или другие важные поля
         if ($uzumOrder->wasChanged(['status', 'total_amount', 'ordered_at'])) {
-            broadcast(new UzumOrderUpdated($uzumOrder, 'updated'))->toOthers();
+            $this->safeBroadcast($uzumOrder, 'updated');
         }
     }
 
@@ -36,7 +36,23 @@ class UzumOrderObserver
      */
     public function deleted(UzumOrder $uzumOrder): void
     {
-        broadcast(new UzumOrderUpdated($uzumOrder, 'deleted'))->toOthers();
+        $this->safeBroadcast($uzumOrder, 'deleted');
+    }
+
+    /**
+     * Safely broadcast event without breaking the main flow
+     */
+    protected function safeBroadcast(UzumOrder $uzumOrder, string $action): void
+    {
+        try {
+            broadcast(new UzumOrderUpdated($uzumOrder, $action))->toOthers();
+        } catch (\Exception $e) {
+            Log::debug('UzumOrderObserver broadcast failed', [
+                'order_id' => $uzumOrder->id,
+                'action' => $action,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
     
     /**
