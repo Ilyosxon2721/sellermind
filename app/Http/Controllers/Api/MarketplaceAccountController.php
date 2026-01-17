@@ -124,9 +124,10 @@ class MarketplaceAccountController extends Controller
                 $existing->name = $request->name;
             }
 
-            // For Wildberries: save category-specific tokens
+            // For Wildberries: save category-specific tokens and main API key
             if ($request->marketplace === 'wb') {
                 $creds = $request->credentials;
+                $existing->api_key = $creds['api_token'] ?? null;
                 $existing->wb_content_token = $creds['wb_content_token'] ?? null;
                 $existing->wb_marketplace_token = $creds['wb_marketplace_token'] ?? null;
                 $existing->wb_prices_token = $creds['wb_prices_token'] ?? null;
@@ -185,9 +186,10 @@ class MarketplaceAccountController extends Controller
             'credentials' => $request->credentials,
         ];
 
-        // For Wildberries: save category-specific tokens
+        // For Wildberries: save category-specific tokens and main API key
         if ($request->marketplace === 'wb') {
             $creds = $request->credentials;
+            $accountData['api_key'] = $creds['api_token'] ?? null;
             $accountData['wb_content_token'] = $creds['wb_content_token'] ?? null;
             $accountData['wb_marketplace_token'] = $creds['wb_marketplace_token'] ?? null;
             $accountData['wb_prices_token'] = $creds['wb_prices_token'] ?? null;

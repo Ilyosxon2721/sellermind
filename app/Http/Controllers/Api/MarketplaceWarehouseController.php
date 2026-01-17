@@ -36,18 +36,28 @@ class MarketplaceWarehouseController extends Controller
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 
+        // First, try syncing via WildberriesStockService (includes fallback to extractWarehousesFromStocks)
+        $syncResult = $service->syncWarehouses($account);
+
+        // Also update MarketplaceWarehouse records for mapping purposes
         $list = $service->getWarehouses($account);
 
         $created = 0;
         foreach ($list as $item) {
+            $warehouseId = $item['id'] ?? null;
+            if (!$warehouseId) {
+                continue;
+            }
+
             $mw = MarketplaceWarehouse::updateOrCreate(
                 [
                     'marketplace_account_id' => $account->id,
-                    'wildberries_warehouse_id' => $item['id'] ?? null,
+                    'marketplace_warehouse_id' => $warehouseId,
                 ],
                 [
-                    'name' => $item['name'] ?? ($item['officeId'] ?? 'WB склад'),
-                    'type' => $item['type'] ?? 'FBS',
+                    'wildberries_warehouse_id' => $warehouseId,
+                    'name' => $item['name'] ?? ('WB склад ' . $warehouseId),
+                    'type' => $this->getWarehouseType($item['deliveryType'] ?? null),
                     'is_active' => true,
                 ]
             );
@@ -56,10 +66,36 @@ class MarketplaceWarehouseController extends Controller
             }
         }
 
+        $totalCount = count($list);
+        $note = '';
+
+        // If no warehouses from direct API call, check syncResult for fallback data
+        if ($totalCount === 0 && ($syncResult['updated'] ?? 0) > 0) {
+            $totalCount = $syncResult['updated'];
+            $note = $syncResult['note'] ?? '';
+        }
+
         return response()->json([
-            'message' => 'Склады обновлены',
-            'count' => count($list),
-            'created' => $created,
+            'message' => 'Склады синхронизированы',
+            'count' => $totalCount,
+            'created' => $created + ($syncResult['created'] ?? 0),
+            'updated' => $syncResult['updated'] ?? 0,
+            'errors' => $syncResult['errors'] ?? [],
+            'note' => $note,
         ]);
+    }
+
+    /**
+     * Get warehouse type from WB deliveryType
+     */
+    protected function getWarehouseType(?int $deliveryType): string
+    {
+        return match ($deliveryType) {
+            1 => 'FBS',
+            2 => 'DBS',
+            6 => 'EDBS',
+            5 => 'C&C',
+            default => 'FBS',
+        };
     }
 }

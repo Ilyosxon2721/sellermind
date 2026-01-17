@@ -819,6 +819,28 @@
                     
                     isWbWarehouseMapped(wbWhId) {
                         return this.mappings.some(m => m.marketplace_warehouse_id === wbWhId);
+                    },
+
+                    async refreshWarehouses() {
+                        this.loadingWarehouses = true;
+                        try {
+                            const res = await fetch('/api/marketplace/wb/accounts/{{ $accountId }}/warehouses/sync', {
+                                method: 'POST',
+                                headers: this.getAuthHeaders()
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                alert(`Склады синхронизированы! Найдено: ${data.count || 0}, создано: ${data.created || 0}`);
+                                await this.loadWarehouses();
+                            } else {
+                                const data = await res.json();
+                                alert('Ошибка: ' + (data.message || 'Не удалось синхронизировать склады'));
+                            }
+                        } catch (e) {
+                            console.error('Error syncing warehouses:', e);
+                            alert('Ошибка синхронизации складов');
+                        }
+                        this.loadingWarehouses = false;
                     }
                 }" @load-settings.window="init()" class="space-y-6">
 
@@ -959,8 +981,9 @@
                     <li>• У аккаунта нет FBS складов (только FBO)</li>
                     <li>• Сначала синхронизируйте остатки во вкладке "Товары"</li>
                 </ul>
-                <button @click="loadWarehouses()" class="mt-4 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Обновить список складов
+                <button @click="refreshWarehouses()" :disabled="loadingWarehouses" class="mt-4 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    <span x-show="!loadingWarehouses">Синхронизировать склады с WB</span>
+                    <span x-show="loadingWarehouses">Синхронизация...</span>
                 </button>
             </div>
         </div>
