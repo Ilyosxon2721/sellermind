@@ -17,6 +17,7 @@ use App\Models\WildberriesSupply;
 use App\Models\Warehouse\ChannelOrder;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
+use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,13 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    protected CurrencyConversionService $currencyService;
+
+    public function __construct(CurrencyConversionService $currencyService)
+    {
+        $this->currencyService = $currencyService;
+    }
+
     /**
      * Общий dashboard с информацией по всем модулям
      */
@@ -31,13 +39,19 @@ class DashboardController extends Controller
     {
         try {
             $companyId = $request->input('company_id');
-            
+
             if (!$companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
             }
 
             if (!$request->user()->hasCompanyAccess($companyId)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+
+            // Setup currency service for company
+            $company = Company::find($companyId);
+            if ($company) {
+                $this->currencyService->forCompany($company);
             }
 
             $today = Carbon::today();
@@ -56,8 +70,16 @@ class DashboardController extends Controller
             // === ТОВАРЫ ===
             $productsData = $this->getProductsData($companyId);
 
+            // Get currency info
+            $displayCurrency = $this->currencyService->getDisplayCurrency();
+            $currencySymbol = $this->currencyService->getCurrencySymbol();
+
             return response()->json([
                 'success' => true,
+                'currency' => [
+                    'code' => $displayCurrency,
+                    'symbol' => $currencySymbol,
+                ],
                 'summary' => [
                     'sales_today' => $salesData['today_amount'],
                     'sales_today_count' => $salesData['today_count'],
@@ -92,33 +114,40 @@ class DashboardController extends Controller
 
     /**
      * Данные по продажам (Uzum + WB)
+     * WB суммы конвертируются из RUB в валюту отображения
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
     {
-        // Uzum orders - исключаем отменённые из сумм выручки
+        // Uzum orders - исключаем отменённые из сумм выручки (суммы уже в UZS)
         $uzumOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES);
 
-        // WB orders - исключаем отменённые (используем WildberriesOrder)
+        // WB orders - исключаем отменённые (суммы в RUB, нужна конвертация)
         $wbOrders = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->where('is_cancel', false)
             ->where('is_return', false);
 
-        // Today
-        $todayAmount = (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('order_date', $today)->sum('for_pay');
+        // Today - конвертируем WB суммы
+        $uzumTodayAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount');
+        $wbTodayAmountRub = (float) (clone $wbOrders)->whereDate('order_date', $today)->sum('for_pay');
+        $wbTodayAmount = $this->currencyService->convertFromRub($wbTodayAmountRub);
+        $todayAmount = $uzumTodayAmount + $wbTodayAmount;
         $todayCount = (clone $uzumOrders)->whereDate('ordered_at', $today)->count()
             + (clone $wbOrders)->whereDate('order_date', $today)->count();
 
         // Week
-        $weekAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $uzumWeekAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+        $wbWeekAmountRub = (float) (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekAmount = $this->currencyService->convertFromRub($wbWeekAmountRub);
+        $weekAmount = $uzumWeekAmount + $wbWeekAmount;
         $weekCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->count()
             + (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->count();
 
         // Month
-        $monthAmount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount')
-            + (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $uzumMonthAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount');
+        $wbMonthAmountRub = (float) (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $wbMonthAmount = $this->currencyService->convertFromRub($wbMonthAmountRub);
+        $monthAmount = $uzumMonthAmount + $wbMonthAmount;
         $monthCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->count()
             + (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->count();
 
@@ -128,8 +157,10 @@ class DashboardController extends Controller
         $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
-        $cancelledWeekAmount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount')
-            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $uzumCancelledWeekAmount = (float) (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
+        $wbCancelledWeekAmountRub = (float) (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbCancelledWeekAmount = $this->currencyService->convertFromRub($wbCancelledWeekAmountRub);
+        $cancelledWeekAmount = $uzumCancelledWeekAmount + $wbCancelledWeekAmount;
         $cancelledWeekCount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count()
             + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count();
 
@@ -157,7 +188,8 @@ class DashboardController extends Controller
             $date = Carbon::today()->subDays($i)->format('Y-m-d');
             $chartLabels[] = Carbon::parse($date)->format('d.m');
             $uzumAmount = (float) ($uzumDaily[$date]->amount ?? 0);
-            $wbAmount = (float) ($wbDaily[$date]->amount ?? 0);
+            $wbAmountRub = (float) ($wbDaily[$date]->amount ?? 0);
+            $wbAmount = $this->currencyService->convertFromRub($wbAmountRub);
             $chartData[] = $uzumAmount + $wbAmount;
         }
 
@@ -171,6 +203,7 @@ class DashboardController extends Controller
                 'id' => 'uzum_' . $o->id,
                 'order_number' => $o->external_order_id,
                 'amount' => (float) $o->total_amount,
+                'original_currency' => 'UZS',
                 'status' => $o->status_normalized ?? $o->status,
                 'status_label' => $this->getStatusLabel($o->status_normalized ?? $o->status),
                 'date' => $o->ordered_at?->format('d.m.Y H:i'),
@@ -187,7 +220,9 @@ class DashboardController extends Controller
             ->map(fn($o) => [
                 'id' => 'wb_' . $o->id,
                 'order_number' => $o->srid ?? $o->order_id,
-                'amount' => (float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0),
+                'amount' => $this->currencyService->convertFromRub((float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0)),
+                'amount_rub' => (float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0),
+                'original_currency' => 'RUB',
                 'status' => $this->normalizeWbStatus($o),
                 'status_label' => $this->getStatusLabel($this->normalizeWbStatus($o)),
                 'date' => $o->order_date?->format('d.m.Y H:i'),
@@ -244,6 +279,19 @@ class DashboardController extends Controller
             'chart_data' => $chartData,
             'recent_orders' => $recentOrders,
             'by_status' => $byStatus,
+            // Детали по маркетплейсам (для отладки)
+            'by_marketplace' => [
+                'uzum' => [
+                    'week_amount' => $uzumWeekAmount,
+                    'currency' => 'UZS',
+                ],
+                'wb' => [
+                    'week_amount_rub' => $wbWeekAmountRub,
+                    'week_amount_converted' => $wbWeekAmount,
+                    'currency' => 'RUB',
+                    'converted_to' => $this->currencyService->getDisplayCurrency(),
+                ],
+            ],
         ];
     }
 

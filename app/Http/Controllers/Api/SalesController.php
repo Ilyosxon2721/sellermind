@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
@@ -10,6 +11,7 @@ use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Models\YandexMarketOrder;
 use App\Models\Warehouse\ChannelOrder;
+use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -17,12 +19,26 @@ use Illuminate\Support\Facades\DB;
 
 class SalesController extends Controller
 {
+    protected CurrencyConversionService $currencyService;
+
+    public function __construct(CurrencyConversionService $currencyService)
+    {
+        $this->currencyService = $currencyService;
+    }
     /**
      * Get all sales from all sources with filters
      */
     public function index(Request $request): JsonResponse
     {
         $companyId = $this->getCompanyId($request);
+
+        // Setup currency service for company
+        if ($companyId) {
+            $company = Company::find($companyId);
+            if ($company) {
+                $this->currencyService->forCompany($company);
+            }
+        }
 
         $dateFrom = $request->get('date_from', now()->format('Y-m-d'));
         $dateTo = $request->get('date_to', now()->format('Y-m-d'));
@@ -40,7 +56,7 @@ class SalesController extends Controller
             $orders = $orders->merge($uzumOrders);
         }
 
-        // Get WB orders
+        // Get WB orders (RUB amounts will be converted)
         if (!$marketplace || $marketplace === 'wb') {
             $wbOrders = $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search);
             $orders = $orders->merge($wbOrders);
@@ -63,21 +79,29 @@ class SalesController extends Controller
             $manualOrders = $this->getManualOrders($companyId, $dateFrom, $dateTo, $status, $search);
             $orders = $orders->merge($manualOrders);
         }
-        
+
         // Sort by date descending
         $orders = $orders->sortByDesc('created_at')->values();
-        
+
         // Calculate stats before pagination
         $stats = $this->calculateStats($orders);
-        
+
         // Paginate
         $page = (int) $request->get('page', 1);
         $total = $orders->count();
         $paginatedOrders = $orders->forPage($page, $perPage)->values();
-        
+
+        // Get currency info
+        $displayCurrency = $this->currencyService->getDisplayCurrency();
+        $currencySymbol = $this->currencyService->getCurrencySymbol();
+
         return response()->json([
             'data' => $paginatedOrders,
             'stats' => $stats,
+            'currency' => [
+                'code' => $displayCurrency,
+                'symbol' => $currencySymbol,
+            ],
             'meta' => [
                 'current_page' => $page,
                 'per_page' => $perPage,
@@ -506,17 +530,24 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(fn($order) => [
-                'id' => 'wb_' . $order->id,
-                'order_number' => $order->srid ?? $order->order_id ?? $order->id,
-                'created_at' => $order->order_date?->toIso8601String(),
-                'marketplace' => 'wb',
-                'customer_name' => $order->region_name,
-                'total_amount' => (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0),
-                'currency' => 'RUB',
-                'status' => $this->normalizeWildberriesStatus($order),
-                'raw_status' => $order->wb_status ?? $order->status,
-            ]);
+            return $query->get()->map(function($order) {
+                $amountRub = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
+                $amountConverted = $this->currencyService->convertFromRub($amountRub);
+
+                return [
+                    'id' => 'wb_' . $order->id,
+                    'order_number' => $order->srid ?? $order->order_id ?? $order->id,
+                    'created_at' => $order->order_date?->toIso8601String(),
+                    'marketplace' => 'wb',
+                    'customer_name' => $order->region_name,
+                    'total_amount' => $amountConverted,
+                    'total_amount_rub' => $amountRub,
+                    'original_currency' => 'RUB',
+                    'currency' => $this->currencyService->getDisplayCurrency(),
+                    'status' => $this->normalizeWildberriesStatus($order),
+                    'raw_status' => $order->wb_status ?? $order->status,
+                ];
+            });
         } catch (\Exception $e) {
             return collect();
         }

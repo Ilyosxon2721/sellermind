@@ -96,6 +96,14 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     Route::get('dashboard/ai-status', [\App\Http\Controllers\Api\DashboardController::class, 'aiStatus']);
     Route::get('dashboard/subscription', [\App\Http\Controllers\Api\DashboardController::class, 'subscription']);
     Route::get('dashboard/team', [\App\Http\Controllers\Api\DashboardController::class, 'team']);
+
+    // Currency Settings API
+    Route::prefix('currency')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'index']);
+        Route::put('/display', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'updateDisplayCurrency']);
+        Route::put('/rate', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'updateRate']);
+        Route::post('/convert', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'convert']);
+    });
     
     // Counterparties API
     Route::get('counterparties', [\App\Http\Controllers\Api\CounterpartyController::class, 'index']);
