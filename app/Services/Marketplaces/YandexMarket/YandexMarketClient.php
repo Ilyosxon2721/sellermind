@@ -31,13 +31,17 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function ping(MarketplaceAccount $account): array
     {
         $start = microtime(true);
-        
+
         try {
             // Получаем информацию о кампаниях
             $response = $this->http->get($account, '/campaigns');
             $duration = round((microtime(true) - $start) * 1000);
 
             $campaigns = $response['campaigns'] ?? [];
+
+            // Также получим список бизнесов
+            $businesses = $this->getBusinesses($account);
+            $configuredBusinessId = $this->http->getBusinessId($account);
 
             return [
                 'success' => true,
@@ -48,6 +52,13 @@ class YandexMarketClient implements MarketplaceClientInterface
                     'id' => $c['id'] ?? null,
                     'name' => $c['domain'] ?? $c['clientId'] ?? 'Campaign',
                 ], array_slice($campaigns, 0, 5)),
+                'businesses_count' => count($businesses),
+                'businesses' => array_map(fn($b) => [
+                    'id' => $b['id'] ?? null,
+                    'name' => $b['name'] ?? 'Business',
+                ], array_slice($businesses, 0, 5)),
+                'configured_business_id' => $configuredBusinessId,
+                'business_id_valid' => $configuredBusinessId && in_array($configuredBusinessId, array_column($businesses, 'id')),
             ];
         } catch (\Exception $e) {
             return [
@@ -67,14 +78,44 @@ class YandexMarketClient implements MarketplaceClientInterface
     }
 
     /**
+     * Получить список бизнесов, доступных для API-ключа
+     */
+    public function getBusinesses(MarketplaceAccount $account): array
+    {
+        try {
+            $response = $this->http->get($account, '/businesses');
+            return $response['businesses'] ?? [];
+        } catch (\Exception $e) {
+            Log::warning('YandexMarket: Failed to fetch businesses', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
      * Загрузка товаров из Yandex Market
      */
     public function fetchProducts(MarketplaceAccount $account, array $shopIds = [], int $pageSize = 100): array
     {
         $businessId = $this->http->getBusinessId($account);
-        
+
         if (!$businessId) {
-            throw new \RuntimeException('Business ID не настроен для аккаунта');
+            // Попробуем получить business_id автоматически
+            $businesses = $this->getBusinesses($account);
+            if (!empty($businesses)) {
+                $businessId = $businesses[0]['id'] ?? null;
+                Log::info('YandexMarket: Auto-detected business_id', [
+                    'account_id' => $account->id,
+                    'business_id' => $businessId,
+                    'available_businesses' => count($businesses),
+                ]);
+            }
+
+            if (!$businessId) {
+                throw new \RuntimeException('Business ID не настроен для аккаунта и не удалось определить автоматически');
+            }
         }
 
         $all = [];
