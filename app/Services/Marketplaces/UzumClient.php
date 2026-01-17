@@ -632,9 +632,9 @@ class UzumClient implements MarketplaceClientInterface
             'external_statuses' => $statuses,
         ]);
 
-        // Активные статусы и отмены (заказы в работе + отмененные) - загружаем ВСЕ без фильтрации по дате
-        // ВАЖНО: CANCELED и PENDING_CANCELLATION тоже должны загружаться без фильтра по дате,
-        // чтобы обновлять старые заказы, которые были отменены
+        // Активные статусы и отмены/возвраты (заказы в работе + отмененные + возвраты) - загружаем ВСЕ без фильтрации по дате
+        // ВАЖНО: CANCELED, PENDING_CANCELLATION и RETURNED должны загружаться без фильтра по дате,
+        // чтобы обновлять старые заказы, которые были отменены или возвращены
         $activeStatuses = [
             'CREATED',
             'PACKING',
@@ -642,8 +642,9 @@ class UzumClient implements MarketplaceClientInterface
             'DELIVERING',
             'ACCEPTED_AT_DP',
             'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
-            'CANCELED',  // Добавлено для обновления отмененных заказов
-            'PENDING_CANCELLATION',  // Добавлено для обновления заказов в процессе отмены
+            'CANCELED',  // Для обновления отмененных заказов
+            'PENDING_CANCELLATION',  // Для обновления заказов в процессе отмены
+            'RETURNED',  // Для обновления возвращённых заказов
         ];
 
         foreach ($statuses as $status) {

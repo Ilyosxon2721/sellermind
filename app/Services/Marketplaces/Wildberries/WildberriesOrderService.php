@@ -424,7 +424,7 @@ class WildberriesOrderService
             $mapped['supply_id'] = $orderData['supplyId'];
         }
 
-        // Устанавливаем wb_status_group на основе статуса поставки
+        // Устанавливаем wb_status_group на основе статуса поставки или API статуса
         if (!empty($orderData['supply_status_group'])) {
             $mapped['wb_status_group'] = $orderData['supply_status_group'];
         } elseif (!empty($mapped['supply_id'])) {
@@ -436,19 +436,26 @@ class WildberriesOrderService
             if ($supply) {
                 // Определяем статус на основе статуса поставки
                 $mapped['wb_status_group'] = match($supply->status) {
-                    'draft' => 'assembling',
-                    'sent' => 'shipping',
+                    'draft', 'in_assembly' => 'assembling',
+                    'ready' => 'assembling',
+                    'sent', 'in_delivery' => 'shipping',
                     'delivered' => 'archive',
                     'cancelled' => 'canceled',
                     default => 'new'
                 };
             } else {
-                // Поставка не найдена - помещаем в доставку по умолчанию
-                $mapped['wb_status_group'] = 'shipping';
+                // Поставка не найдена - определяем по API статусу
+                $mapped['wb_status_group'] = $this->mapWbStatusToGroup(
+                    $mapped['wb_supplier_status'] ?? null,
+                    $mapped['wb_status'] ?? null
+                );
             }
         } else {
-            // Если нет поставки - помещаем в архив (старые заказы или FBO)
-            $mapped['wb_status_group'] = 'archive';
+            // Если нет поставки - определяем по API статусу (supplierStatus + wbStatus)
+            $mapped['wb_status_group'] = $this->mapWbStatusToGroup(
+                $mapped['wb_supplier_status'] ?? null,
+                $mapped['wb_status'] ?? null
+            );
         }
 
         if (!empty($orderData['supply_status'])) {
@@ -457,17 +464,21 @@ class WildberriesOrderService
         } elseif (!empty($mapped['wb_status_group'])) {
             // Устанавливаем status на основе wb_status_group
             $mapped['status'] = match($mapped['wb_status_group']) {
+                'new' => 'new',
                 'assembling' => 'in_assembly',
                 'shipping' => 'in_delivery',
                 'archive' => 'completed',
-                'canceled' => 'canceled',
+                'canceled' => 'cancelled',
                 default => 'new'
             };
             $mapped['status_normalized'] = $mapped['status'];
-        } elseif (empty($mapped['supply_id'])) {
-            // Заказы без поставки считаем завершёнными
-            $mapped['status'] = 'completed';
-            $mapped['status_normalized'] = 'completed';
+        } else {
+            // Если wb_status_group не установлен, вычисляем статус напрямую
+            $mapped['status'] = $this->mapWbStatusToInternal(
+                $mapped['wb_supplier_status'] ?? null,
+                $mapped['wb_status'] ?? null
+            );
+            $mapped['status_normalized'] = $mapped['status'];
         }
 
         // Используем OrdersSyncService для сохранения
@@ -635,6 +646,84 @@ class WildberriesOrderService
             'waiting', 'new' => 'new',
             default => 'new',
         };
+    }
+
+    /**
+     * Map WB API statuses to internal status
+     * Based on supplierStatus and wbStatus from WB API
+     */
+    protected function mapWbStatusToInternal(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. Отменённые (высший приоритет)
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'cancelled';
+        }
+
+        // 2. Завершённые (доставлено клиенту)
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'completed';
+        }
+
+        // 3. В доставке
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'accepted_by_carrier', 'sent_to_carrier'])) {
+            return 'in_delivery';
+        }
+
+        // 4. На сборке
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'in_assembly';
+        }
+
+        // 5. Новые
+        return 'new';
+    }
+
+    /**
+     * Map WB API statuses to status group
+     * Based on supplierStatus and wbStatus from WB API
+     *
+     * supplierStatus: new, confirm, complete, cancel
+     * wbStatus: waiting, sorted, sold, canceled, canceled_by_client, declined_by_client,
+     *           defect, ready_for_pickup, on_way_to_client, delivered, etc.
+     */
+    protected function mapWbStatusToGroup(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. Отменённые (высший приоритет)
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'canceled';
+        }
+
+        // 2. Завершённые/Архив (доставлено клиенту)
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'archive';
+        }
+
+        // 3. В доставке (поставка передана в WB, доставляется клиенту)
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'accepted_by_carrier', 'sent_to_carrier'])) {
+            return 'shipping';
+        }
+
+        // 4. На сборке (заказ подтверждён, собирается)
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'assembling';
+        }
+
+        // 5. Новые (ожидают подтверждения/добавления в поставку)
+        if ($supplierStatus === 'new' ||
+            $wbStatus === 'waiting') {
+            return 'new';
+        }
+
+        // По умолчанию - новые
+        return 'new';
     }
 
     /**

@@ -16,6 +16,7 @@ class UzumOrder extends Model
         'external_order_id',
         'status',
         'status_normalized',
+        'uzum_status', // Оригинальный статус из API Uzum
         'delivery_type',
         'shop_id',
         'customer_name',
