@@ -103,7 +103,7 @@
             </div>
 
             <!-- Lines -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
                 <div class="px-6 py-4 border-b flex items-center justify-between bg-gray-50">
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900">Строки оприходования</h2>
@@ -118,7 +118,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="max-h-[55vh] overflow-y-auto divide-y divide-gray-100">
+                <div class="divide-y divide-gray-100">
                     <template x-for="(line, idx) in form.lines" :key="idx">
                         <div class="grid grid-cols-1 md:grid-cols-6 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
                             <div class="relative md:col-span-2">
@@ -129,15 +129,42 @@
                                        @input="line.search = $event.target.value; searchSku(idx)"
                                        placeholder="Поиск по SKU, штрихкоду, названию">
                                 <input type="hidden" x-model="line.sku_id">
-                                <div class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto"
-                                     x-show="line.suggestions && line.suggestions.length" x-cloak>
+                                <!-- Suggestions dropdown -->
+                                <div class="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto"
+                                     x-show="line.suggestions && line.suggestions.length > 0" x-cloak>
                                     <template x-for="item in line.suggestions" :key="item.sku_id">
-                                        <div class="px-4 py-3 hover:bg-green-50 cursor-pointer transition-colors"
+                                        <div class="flex items-center gap-3 px-3 py-2 hover:bg-green-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
                                              @click="selectSku(idx, item)">
-                                            <div class="text-sm font-semibold text-gray-900" x-text="item.sku_code"></div>
-                                            <div class="text-xs text-gray-500" x-text="item.product_name || item.barcode"></div>
+                                            <!-- Product Image -->
+                                            <div class="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                                                <img x-show="item.image_url" :src="item.image_url" class="w-full h-full object-cover" alt="">
+                                                <div x-show="!item.image_url" class="w-full h-full flex items-center justify-center text-gray-400">
+                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <!-- Product Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-gray-900 truncate" x-text="item.product_name || 'Без названия'"></div>
+                                                <div class="flex items-center gap-2 mt-0.5">
+                                                    <span class="text-xs text-gray-500" x-text="'Арт: ' + item.sku_code"></span>
+                                                    <span x-show="item.options_summary" class="text-xs text-blue-600" x-text="item.options_summary"></span>
+                                                </div>
+                                                <div x-show="item.barcode" class="text-xs text-gray-400 mt-0.5" x-text="'ШК: ' + item.barcode"></div>
+                                            </div>
+                                            <!-- Stock Badge -->
+                                            <div class="flex-shrink-0 text-right">
+                                                <div class="text-sm font-semibold" :class="item.available > 0 ? 'text-green-600' : 'text-gray-400'" x-text="item.available || 0"></div>
+                                                <div class="text-xs text-gray-400">шт</div>
+                                            </div>
                                         </div>
                                     </template>
+                                </div>
+                                <!-- No results message -->
+                                <div class="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3"
+                                     x-show="line.noResults" x-cloak>
+                                    <div class="text-sm text-gray-500 text-center">Товары не найдены</div>
                                 </div>
                             </div>
                             <div>
@@ -220,7 +247,7 @@
                 postAfter: false,
                 expense: 0,
                 expenseAllocate: false,
-                lines: [{sku_id: '', qty: 1, unit_cost: '', search:'', suggestions: [], reason: '', country: ''}],
+                lines: [{sku_id: '', qty: 1, unit_cost: '', search:'', suggestions: [], noResults: false, reason: '', country: ''}],
                 supplier_id: '',
                 source_doc_no: '',
             },
@@ -231,14 +258,14 @@
             },
 
 
-            addLine() { 
-                this.form.lines.push({sku_id:'', qty:1, unit_cost:'', search:'', suggestions: [], reason: '', country: ''}); 
+            addLine() {
+                this.form.lines.push({sku_id:'', qty:1, unit_cost:'', search:'', suggestions: [], noResults: false, reason: '', country: ''});
             },
             removeLine(idx) { 
                 if (this.form.lines.length > 1) this.form.lines.splice(idx,1); 
             },
-            clearLines() { 
-                this.form.lines = [{sku_id:'', qty:1, unit_cost:'', search:'', suggestions: [], reason: '', country: ''}]; 
+            clearLines() {
+                this.form.lines = [{sku_id:'', qty:1, unit_cost:'', search:'', suggestions: [], noResults: false, reason: '', country: ''}];
             },
             back() { 
                 window.history.back(); 
@@ -327,39 +354,83 @@
             selectSku(idx, item) {
                 const line = this.form.lines[idx];
                 line.sku_id = item.sku_id;
-                line.search = item.sku_code || item.barcode || item.product_name || '';
+                // Show product name with SKU and options
+                let displayText = item.product_name || 'Без названия';
+                if (item.options_summary) {
+                    displayText += ` (${item.options_summary})`;
+                }
+                displayText += ` • ${item.sku_code}`;
+                line.search = displayText;
+                line.selectedItem = item; // Save full item for reference
                 line.suggestions = [];
+                line.noResults = false;
             },
 
             async searchSku(idx) {
                 const line = this.form.lines[idx];
+                line.noResults = false;
+
                 if (!line.search || line.search.length < 2) {
                     line.suggestions = [];
                     return;
                 }
+
+                if (!this.form.warehouse_id) {
+                    console.warn('Warehouse not selected');
+                    return;
+                }
+
+                // Get auth token from Alpine store
+                const authStore = this.$store.auth;
+                const headers = {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                };
+                if (authStore?.token) {
+                    headers['Authorization'] = `Bearer ${authStore.token}`;
+                }
+
                 const params = new URLSearchParams({
-                    search: line.search,
+                    query: line.search,
                     warehouse_id: this.form.warehouse_id
                 });
+
                 try {
-                    const resp = await fetch(`/api/sales-management/products?${params.toString()}`, {
+                    // Use warehouse stock balance endpoint which searches in skus table
+                    const resp = await fetch(`/api/marketplace/stock/balance?${params.toString()}`, {
                         credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
+                        headers: headers
                     });
                     if (resp.ok) {
                         const json = await resp.json();
-                        line.suggestions = (json.data || []).map(product => ({
-                            sku_id: product.id,
-                            sku_code: product.sku,
-                            product_name: product.product?.name || 'Без названия',
-                            barcode: product.barcode
-                        }));
+                        console.log('Search response:', json);
+
+                        // Get already selected SKU IDs in this document (exclude current line)
+                        const selectedSkuIds = this.form.lines
+                            .filter((l, i) => i !== idx && l.sku_id)
+                            .map(l => Number(l.sku_id));
+
+                        // Filter out already selected SKUs
+                        line.suggestions = (json.data?.items || [])
+                            .filter(item => !selectedSkuIds.includes(item.sku_id))
+                            .map(item => ({
+                                sku_id: item.sku_id,
+                                sku_code: item.sku_code,
+                                product_name: item.product_name || 'Без названия',
+                                barcode: item.barcode,
+                                image_url: item.image_url,
+                                options_summary: item.options_summary,
+                                available: item.available
+                            }));
+                        line.noResults = line.suggestions.length === 0;
+                        console.log('Suggestions:', line.suggestions);
+                    } else {
+                        console.warn('Search failed:', resp.status, await resp.text());
+                        line.noResults = true;
                     }
                 } catch (e) {
-                    console.warn('search sku', e);
+                    console.warn('search sku error', e);
+                    line.noResults = true;
                 }
             }
         }
@@ -425,14 +496,36 @@
                                        :value="line.search || ''"
                                        @input="line.search = $event.target.value; searchSku(idx)"
                                        placeholder="SKU / штрихкод / название">
-                                <div class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto"
-                                     x-show="line.suggestions && line.suggestions.length" x-cloak>
+                                <div class="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto"
+                                     x-show="line.suggestions && line.suggestions.length > 0" x-cloak>
                                     <template x-for="item in line.suggestions" :key="item.sku_id">
-                                        <div class="px-4 py-3 hover:bg-green-50 cursor-pointer" @click="selectSku(idx, item)">
-                                            <div class="text-sm font-semibold" x-text="item.sku_code"></div>
-                                            <div class="text-xs text-gray-500" x-text="item.product_name"></div>
+                                        <div class="flex items-center gap-2 px-3 py-2 hover:bg-green-50 cursor-pointer border-b border-gray-100 last:border-0" @click="selectSku(idx, item)">
+                                            <!-- Product Image -->
+                                            <div class="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                                                <img x-show="item.image_url" :src="item.image_url" class="w-full h-full object-cover" alt="">
+                                                <div x-show="!item.image_url" class="w-full h-full flex items-center justify-center text-gray-400">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <!-- Product Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-gray-900 truncate" x-text="item.product_name || 'Без названия'"></div>
+                                                <div class="text-xs text-gray-500" x-text="item.sku_code"></div>
+                                                <div x-show="item.options_summary" class="text-xs text-blue-600" x-text="item.options_summary"></div>
+                                            </div>
+                                            <!-- Stock Badge -->
+                                            <div class="flex-shrink-0 text-right">
+                                                <div class="text-sm font-semibold" :class="item.available > 0 ? 'text-green-600' : 'text-gray-400'" x-text="item.available || 0"></div>
+                                            </div>
                                         </div>
                                     </template>
+                                </div>
+                                <!-- No results message -->
+                                <div class="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3"
+                                     x-show="line.noResults" x-cloak>
+                                    <div class="text-sm text-gray-500 text-center">Товары не найдены</div>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2">

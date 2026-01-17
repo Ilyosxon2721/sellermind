@@ -498,6 +498,7 @@ class MarketplaceOrderController extends Controller
             // Обновляем заказ
             $order->update([
                 'status' => $data['status'] ?? $order->status,
+                'status_normalized' => $data['status_normalized'] ?? $data['status'] ?? $order->status,
                 'raw_payload' => $data['raw_payload'] ?? $order->raw_payload,
                 'ordered_at' => $orderedAtParsed,
                 'total_amount' => $data['total_amount'] ?? $order->total_amount,

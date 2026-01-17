@@ -277,6 +277,63 @@
                         <span x-text="syncResult?.message"></span>
                     </div>
                 </div>
+
+                <!-- Auto Sync Settings -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Автоматическая синхронизация</h2>
+                    <p class="text-sm text-gray-500 mb-6">
+                        Настройте автоматическую синхронизацию остатков при изменениях.
+                    </p>
+
+                    <div class="space-y-4">
+                        <!-- Main toggle -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900">Синхронизация остатков</p>
+                                <p class="text-sm text-gray-500">Включить или отключить всю синхронизацию остатков</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Auto sync on link -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900">Автосинхронизация при привязке</p>
+                                <p class="text-sm text-gray-500">Обновлять остатки при привязке товара к варианту</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_link" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+
+                        <!-- Auto sync on change -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900">Автосинхронизация при изменении</p>
+                                <p class="text-sm text-gray-500">Обновлять остатки при изменении на складе</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_change" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button @click="saveSyncSettings()" :disabled="savingSyncSettings"
+                                class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition flex items-center space-x-2">
+                            <svg x-show="savingSyncSettings" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span x-text="savingSyncSettings ? 'Сохранение...' : 'Сохранить настройки'"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -314,6 +371,12 @@ function ozonSettingsPage() {
         },
         savingStock: false,
         stockSyncResult: null,
+        syncSettings: {
+            stock_sync_enabled: true,
+            auto_sync_stock_on_link: true,
+            auto_sync_stock_on_change: true
+        },
+        savingSyncSettings: false,
 
         async init() {
             await this.$nextTick();
@@ -337,6 +400,7 @@ function ozonSettingsPage() {
             await this.loadWarehouses();
             await this.loadLocalWarehouses();
             await this.loadStockSettings();
+            await this.loadSyncSettings();
         },
 
         async loadAccount() {
@@ -592,6 +656,51 @@ function ozonSettingsPage() {
                 this.stockSyncResult = { success: false, message: 'Ошибка: ' + e.message };
             }
             this.savingStock = false;
+        },
+
+        async loadSyncSettings() {
+            try {
+                const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.syncSettings = data.sync_settings || {
+                        stock_sync_enabled: true,
+                        auto_sync_stock_on_link: true,
+                        auto_sync_stock_on_change: true
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to load sync settings:', e);
+            }
+        },
+
+        async saveSyncSettings() {
+            this.savingSyncSettings = true;
+            try {
+                const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${this.$store.auth.token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sync_settings: this.syncSettings })
+                });
+                if (res.ok) {
+                    alert('Настройки автосинхронизации сохранены');
+                } else {
+                    const data = await res.json();
+                    alert('Ошибка: ' + (data.message || 'Не удалось сохранить'));
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+            this.savingSyncSettings = false;
         }
     };
 }
@@ -607,6 +716,8 @@ function ozonSettingsPage() {
     testResult: null,
     credentials: { client_id: '', api_key: '' },
     activeTab: 'status',
+    syncSettings: { stock_sync_enabled: true, auto_sync_stock_on_link: true, auto_sync_stock_on_change: true },
+    savingSyncSettings: false,
 
     async init() {
         await this.$nextTick();
@@ -626,9 +737,36 @@ function ozonSettingsPage() {
             if (res.ok) {
                 const data = await res.json();
                 this.account = data.account;
+                await this.loadSyncSettings();
             } else if (res.status === 401) { window.location.href = '/login'; }
         } catch (e) { console.error('Error:', e); }
         this.loading = false;
+    },
+
+    async loadSyncSettings() {
+        try {
+            const authStore = this.$store.auth;
+            const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            if (res.ok) { this.syncSettings = (await res.json()).sync_settings || this.syncSettings; }
+        } catch (e) { console.error('Error loading sync settings:', e); }
+    },
+
+    async saveSyncSettings() {
+        const authStore = this.$store.auth;
+        if (!authStore?.token) { alert('Нет авторизации'); return; }
+        this.savingSyncSettings = true;
+        try {
+            const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sync_settings: this.syncSettings })
+            });
+            if (res.ok) { alert('Настройки сохранены'); }
+            else { alert('Ошибка сохранения'); }
+        } catch (e) { alert('Ошибка: ' + e.message); }
+        this.savingSyncSettings = false;
     },
 
     async testConnection() {
@@ -671,6 +809,7 @@ function ozonSettingsPage() {
         <div class="flex space-x-2 mb-3">
             <button @click="activeTab = 'status'" :class="activeTab === 'status' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Статус</button>
             <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Настройки</button>
+            <button @click="activeTab = 'sync'" :class="activeTab === 'sync' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Синх</button>
         </div>
 
         {{-- Loading --}}
@@ -747,6 +886,50 @@ function ozonSettingsPage() {
                     <p class="text-sm text-blue-800">
                         <strong>Получить API:</strong> ЛК Ozon → Настройки → Seller API
                     </p>
+                </div>
+            </div>
+        </template>
+
+        {{-- Sync Tab --}}
+        <template x-if="!loading && activeTab === 'sync'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Автосинхронизация остатков</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">Синхронизация остатков</p>
+                                <p class="text-xs text-gray-500">Вкл/выкл синхронизацию</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">При привязке товара</p>
+                                <p class="text-xs text-gray-500">Синхронизировать при привязке</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_link" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">При изменении остатков</p>
+                                <p class="text-xs text-gray-500">Синхронизировать при изменении</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_change" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <button @click="saveSyncSettings()" :disabled="savingSyncSettings" class="native-btn w-full bg-blue-600 text-white mt-4">
+                        <span x-text="savingSyncSettings ? 'Сохранение...' : 'Сохранить настройки'"></span>
+                    </button>
                 </div>
             </div>
         </template>

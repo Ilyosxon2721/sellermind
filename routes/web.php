@@ -5,6 +5,7 @@ use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Web\Products\ProductWebController;
 use App\Http\Controllers\Web\Warehouse\WarehouseController;
 use App\Models\AP\Supplier;
+use App\Models\MarketplaceAccount;
 use Illuminate\Support\Facades\Route;
 // VPC Sessions - DISABLED: Module not complete, enable via VPC_ENABLED=true in .env
 use App\Http\Controllers\VpcSessionController;

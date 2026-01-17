@@ -17,7 +17,7 @@ class SyncProductVariantsToWarehouse extends Command
      *
      * @var string
      */
-    protected $signature = 'warehouse:sync-variants {--company_id=} {--dry-run}';
+    protected $signature = 'warehouse:sync-variants {--company_id=} {--dry-run} {--sync-stock : Also sync stock_default for existing SKUs}';
 
     /**
      * The console command description.
@@ -86,6 +86,14 @@ class SyncProductVariantsToWarehouse extends Command
                             'height_mm' => $variant->height_mm,
                             'is_active' => $variant->is_active,
                         ]);
+
+                        // Sync stock if option is set and variant has stock but ledger doesn't
+                        if ($this->option('sync-stock') && $variant->stock_default > 0) {
+                            $currentLedgerStock = StockLedger::where('sku_id', $warehouseSku->id)->sum('qty_delta');
+                            if ($currentLedgerStock == 0) {
+                                $this->syncInitialStock($warehouseSku, $variant);
+                            }
+                        }
                     }
                     $updated++;
                     $this->line("   ✓ Обновлен: {$variant->sku}");

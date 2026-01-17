@@ -77,14 +77,16 @@ class UzumSyncStocks extends Command
         foreach ($links as $link) {
             $stock = $link->getCurrentStock();
 
-            // Для Uzum нужны productId и skuId
-            $productId = $link->external_offer_id; // или external_product_id
+            // Для Uzum нужны productId (из MarketplaceProduct) и skuId (из связи)
+            $productId = $link->marketplaceProduct?->external_product_id;
             $skuId = $link->external_sku_id;
 
             if (!$productId || !$skuId) {
-                $this->warn("  Пропуск связи #{$link->id}: отсутствует productId или skuId");
+                $this->warn("  Пропуск связи #{$link->id}: отсутствует productId ({$productId}) или skuId ({$skuId})");
                 continue;
             }
+
+            $this->line("    SKU {$skuId} (product {$productId}): остаток {$stock}");
 
             $stocksData[] = [
                 'productId' => $productId,

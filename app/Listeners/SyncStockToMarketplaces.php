@@ -20,7 +20,7 @@ class SyncStockToMarketplaces implements ShouldQueue
 
     public function handle(StockUpdated $event): void
     {
-        Log::info('Stock updated, syncing to marketplaces', [
+        Log::info('Stock updated, checking marketplace accounts for sync', [
             'variant_id' => $event->variant->id,
             'sku' => $event->variant->sku,
             'old_stock' => $event->oldStock,
@@ -28,11 +28,58 @@ class SyncStockToMarketplaces implements ShouldQueue
         ]);
 
         try {
-            $results = $this->stockSyncService->syncVariantStock($event->variant);
-            
+            // Получаем активные связи варианта с маркетплейсами
+            $links = $event->variant->marketplaceLinks()
+                ->where('is_active', true)
+                ->where('sync_stock_enabled', true)
+                ->with('account')
+                ->get();
+
+            if ($links->isEmpty()) {
+                Log::info('No active marketplace links for variant', [
+                    'variant_id' => $event->variant->id,
+                ]);
+                return;
+            }
+
+            $syncedAccounts = [];
+            $skippedAccounts = [];
+
+            foreach ($links as $link) {
+                $account = $link->account;
+
+                // Проверяем настройки аккаунта маркетплейса
+                if (!$account || !$account->isAutoSyncOnChangeEnabled()) {
+                    $skippedAccounts[] = [
+                        'account_id' => $account?->id,
+                        'account_name' => $account?->name,
+                        'reason' => 'auto_sync_on_change disabled',
+                    ];
+                    continue;
+                }
+
+                try {
+                    $result = $this->stockSyncService->syncLinkStock($link);
+                    $syncedAccounts[] = [
+                        'account_id' => $account->id,
+                        'marketplace' => $account->marketplace,
+                        'result' => $result,
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning('Failed to sync stock to account', [
+                        'link_id' => $link->id,
+                        'account_id' => $account->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             Log::info('Stock sync completed', [
                 'variant_id' => $event->variant->id,
-                'results' => $results,
+                'synced_count' => count($syncedAccounts),
+                'skipped_count' => count($skippedAccounts),
+                'synced_accounts' => $syncedAccounts,
+                'skipped_accounts' => $skippedAccounts,
             ]);
         } catch (\Exception $e) {
             Log::error('Stock sync failed', [

@@ -87,10 +87,29 @@ class VariantLinkController extends Controller
             ]
         );
 
+        // Автоматическая синхронизация остатков после привязки (если включена в настройках аккаунта)
+        $syncResult = null;
+        $autoSyncEnabled = $account->isAutoSyncOnLinkEnabled();
+
+        if ($link->sync_stock_enabled && $autoSyncEnabled) {
+            try {
+                $syncResult = $this->stockSyncService->syncLinkStock($link);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto stock sync after linking failed', [
+                    'link_id' => $link->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $warehouseStock = $variant->getTotalWarehouseStock();
+
         return response()->json([
             'success' => true,
-            'message' => 'Товар успешно привязан',
+            'message' => 'Товар успешно привязан' . ($syncResult ? ' и остатки синхронизированы' : ''),
             'link' => $link->load(['variant']),
+            'stock_synced' => $syncResult !== null,
+            'current_stock' => (int) $warehouseStock,
         ]);
     }
 
@@ -151,19 +170,24 @@ class VariantLinkController extends Controller
             ->where('is_active', true)
             ->with(['variant.product', 'variant.mainImage'])
             ->get()
-            ->map(fn($link) => [
-                'id' => $link->id,
-                'external_sku_id' => $link->external_sku_id,
-                'external_sku' => $link->external_sku,
-                'variant' => $link->variant ? [
-                    'id' => $link->variant->id,
-                    'sku' => $link->variant->sku,
-                    'name' => $link->variant->product?->name,
-                    'stock' => $link->variant->stock_default,
-                    'options' => $link->variant->option_values_summary,
-                    'barcode' => $link->variant->barcode,
-                ] : null,
-            ]);
+            ->map(function($link) {
+                $warehouseStock = $link->variant ? $link->variant->getTotalWarehouseStock() : 0;
+                return [
+                    'id' => $link->id,
+                    'external_sku_id' => $link->external_sku_id,
+                    'external_sku' => $link->external_sku,
+                    'variant' => $link->variant ? [
+                        'id' => $link->variant->id,
+                        'sku' => $link->variant->sku,
+                        'name' => $link->variant->product?->name,
+                        'stock' => (int) $warehouseStock,
+                        'warehouse_stock' => (int) $warehouseStock,
+                        'stock_default' => $link->variant->stock_default,
+                        'options' => $link->variant->option_values_summary,
+                        'barcode' => $link->variant->barcode,
+                    ] : null,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -301,23 +325,27 @@ class VariantLinkController extends Controller
 
         return response()->json([
             'success' => true,
-            'variants' => $variants->map(fn($v) => [
-                'id' => $v->id,
-                'sku' => $v->sku,
-                'barcode' => $v->barcode,
-                'name' => $v->product?->name,
-                'product' => $v->product ? [
-                    'id' => $v->product->id,
-                    'name' => $v->product->name,
-                ] : null,
-                'option_values_summary' => $v->option_values_summary,
-                'options' => $v->option_values_summary,
-                'stock' => $v->stock_default,
-                'stock_default' => $v->stock_default,
-                'price' => $v->price_default,
-                'price_default' => $v->price_default,
-                'image' => $v->mainImage?->url,
-            ]),
+            'variants' => $variants->map(function($v) {
+                $warehouseStock = $v->getTotalWarehouseStock();
+                return [
+                    'id' => $v->id,
+                    'sku' => $v->sku,
+                    'barcode' => $v->barcode,
+                    'name' => $v->product?->name,
+                    'product' => $v->product ? [
+                        'id' => $v->product->id,
+                        'name' => $v->product->name,
+                    ] : null,
+                    'option_values_summary' => $v->option_values_summary,
+                    'options' => $v->option_values_summary,
+                    'stock' => (int) $warehouseStock,
+                    'stock_default' => $v->stock_default,
+                    'warehouse_stock' => (int) $warehouseStock,
+                    'price' => $v->price_default,
+                    'price_default' => $v->price_default,
+                    'image' => $v->mainImage?->url,
+                ];
+            }),
         ]);
     }
 
@@ -336,12 +364,16 @@ class VariantLinkController extends Controller
             ->with(['account', 'marketplaceProduct'])
             ->get();
 
+        $warehouseStock = $variant->getTotalWarehouseStock();
+
         return response()->json([
             'success' => true,
             'variant' => [
                 'id' => $variant->id,
                 'sku' => $variant->sku,
-                'stock' => $variant->stock_default,
+                'stock' => (int) $warehouseStock,
+                'warehouse_stock' => (int) $warehouseStock,
+                'stock_default' => $variant->stock_default,
             ],
             'links' => $links,
         ]);

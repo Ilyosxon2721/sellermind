@@ -28,6 +28,14 @@
          savingStock: false,
          stockSyncResult: null,
 
+         // Sync settings
+         syncSettings: {
+             stock_sync_enabled: true,
+             auto_sync_stock_on_link: true,
+             auto_sync_stock_on_change: true
+         },
+         savingSyncSettings: false,
+
          async init() {
              await this.$nextTick();
 
@@ -48,6 +56,52 @@
              await this.loadSettings();
              await this.loadShops();
              await this.loadLocalWarehouses();
+             await this.loadSyncSettings();
+         },
+         async loadSyncSettings() {
+             try {
+                 const authStore = this.$store.auth;
+                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json'
+                     }
+                 });
+                 if (res.ok) {
+                     const data = await res.json();
+                     this.syncSettings = data.sync_settings || this.syncSettings;
+                 }
+             } catch (e) {
+                 console.error('Error loading sync settings:', e);
+             }
+         },
+         async saveSyncSettings() {
+             const authStore = this.$store.auth;
+             if (!authStore?.token) {
+                 alert('Нет авторизации');
+                 return;
+             }
+             this.savingSyncSettings = true;
+             try {
+                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                     method: 'PUT',
+                     headers: {
+                         'Authorization': `Bearer ${authStore.token}`,
+                         'Accept': 'application/json',
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({ sync_settings: this.syncSettings })
+                 });
+                 if (res.ok) {
+                     alert('Настройки синхронизации сохранены');
+                 } else {
+                     const data = await res.json();
+                     alert('Ошибка: ' + (data.message || 'Не удалось сохранить'));
+                 }
+             } catch (e) {
+                 alert('Ошибка: ' + e.message);
+             }
+             this.savingSyncSettings = false;
          },
          async loadSettings() {
              this.loading = true;
@@ -307,6 +361,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                 </svg>
                                 Склады
+                            </button>
+                            <button @click="activeTab = 'sync'"
+                                    :class="activeTab === 'sync' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition">
+                                <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                Синхронизация
                             </button>
                         </nav>
                     </div>
@@ -649,6 +711,77 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Sync Settings Tab -->
+                <div x-show="activeTab === 'sync'" class="space-y-6">
+                    <div class="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Автоматическая синхронизация остатков</h3>
+                        <p class="text-sm text-gray-500 mb-6">
+                            Настройте автоматическую синхронизацию остатков между вашим складом и Uzum.
+                        </p>
+
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-gray-900">Синхронизация остатков</p>
+                                    <p class="text-sm text-gray-500">Включить или отключить всю синхронизацию остатков</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" x-model="syncSettings.stock_sync_enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                                <div>
+                                    <p class="font-medium text-gray-900">Автосинхронизация при привязке товара</p>
+                                    <p class="text-sm text-gray-500">Автоматически обновлять остатки при привязке товара к варианту</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_link" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50"></div>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                                <div>
+                                    <p class="font-medium text-gray-900">Автосинхронизация при изменении остатков</p>
+                                    <p class="text-sm text-gray-500">Автоматически обновлять остатки при изменении на складе</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_change" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button @click="saveSyncSettings()" :disabled="savingSyncSettings"
+                                    class="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-50 flex items-center space-x-2">
+                                <svg x-show="savingSyncSettings" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span x-text="savingSyncSettings ? 'Сохранение...' : 'Сохранить настройки'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div class="flex items-start space-x-3">
+                            <svg class="w-5 h-5 text-purple-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="text-sm text-purple-800">
+                                <p><strong>Примечание:</strong></p>
+                                <ul class="list-disc list-inside mt-2 space-y-1">
+                                    <li>При отключении синхронизации, автоматические обновления будут приостановлены</li>
+                                    <li>Вы всегда можете вручную синхронизировать остатки на странице аккаунта</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -663,6 +796,8 @@
     testResults: null,
     form: { api_key: '' },
     activeTab: 'status',
+    syncSettings: { stock_sync_enabled: true, auto_sync_stock_on_link: true, auto_sync_stock_on_change: true },
+    savingSyncSettings: false,
 
     async init() {
         await this.$nextTick();
@@ -679,10 +814,36 @@
             const res = await fetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings?company_id=' + authStore.currentCompany.id, {
                 headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
             });
-            if (res.ok) { this.account = (await res.json()).account; }
+            if (res.ok) { this.account = (await res.json()).account; await this.loadSyncSettings(); }
             else if (res.status === 401) { window.location.href = '/login'; }
         } catch (e) { console.error('Error:', e); }
         this.loading = false;
+    },
+
+    async loadSyncSettings() {
+        try {
+            const authStore = this.$store.auth;
+            const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json' }
+            });
+            if (res.ok) { this.syncSettings = (await res.json()).sync_settings || this.syncSettings; }
+        } catch (e) { console.error('Error loading sync settings:', e); }
+    },
+
+    async saveSyncSettings() {
+        const authStore = this.$store.auth;
+        if (!authStore?.token) { alert('Нет авторизации'); return; }
+        this.savingSyncSettings = true;
+        try {
+            const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync-settings', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + authStore.token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sync_settings: this.syncSettings })
+            });
+            if (res.ok) { alert('Настройки сохранены'); }
+            else { alert('Ошибка сохранения'); }
+        } catch (e) { alert('Ошибка: ' + e.message); }
+        this.savingSyncSettings = false;
     },
 
     async saveSettings() {
@@ -726,6 +887,7 @@
         <div class="flex space-x-2 mb-3">
             <button @click="activeTab = 'status'" :class="activeTab === 'status' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Статус</button>
             <button @click="activeTab = 'token'" :class="activeTab === 'token' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Токен</button>
+            <button @click="activeTab = 'sync'" :class="activeTab === 'sync' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'" class="flex-1 py-2 rounded-lg text-sm font-medium">Синх</button>
         </div>
 
         {{-- Loading --}}
@@ -788,6 +950,50 @@
                     <p class="text-sm text-purple-800">
                         <strong>Получить токен:</strong> ЛК Uzum Market → Настройки → API
                     </p>
+                </div>
+            </div>
+        </template>
+
+        {{-- Sync Tab --}}
+        <template x-if="!loading && activeTab === 'sync'">
+            <div class="space-y-3">
+                <div class="native-card">
+                    <h3 class="font-semibold text-gray-900 mb-3">Автосинхронизация остатков</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">Синхронизация остатков</p>
+                                <p class="text-xs text-gray-500">Вкл/выкл синхронизацию</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">При привязке товара</p>
+                                <p class="text-xs text-gray-500">Синхронизировать при привязке</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_link" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg" :class="!syncSettings.stock_sync_enabled && 'opacity-50'">
+                            <div>
+                                <p class="font-medium text-gray-900 text-sm">При изменении остатков</p>
+                                <p class="text-xs text-gray-500">Синхронизировать при изменении</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" x-model="syncSettings.auto_sync_stock_on_change" :disabled="!syncSettings.stock_sync_enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <button @click="saveSyncSettings()" :disabled="savingSyncSettings" class="native-btn w-full bg-purple-600 text-white mt-4">
+                        <span x-text="savingSyncSettings ? 'Сохранение...' : 'Сохранить настройки'"></span>
+                    </button>
                 </div>
             </div>
         </template>

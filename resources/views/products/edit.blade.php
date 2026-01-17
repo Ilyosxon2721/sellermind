@@ -484,103 +484,153 @@
                     <div>
                         <div class="flex items-center justify-between">
                             <h2 class="text-lg font-semibold text-gray-900">Медиа</h2>
-                            <button type="button" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 flex items-center gap-2" @click="addImage">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                Добавить изображение
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm text-gray-500" x-text="images.length + ' / ' + maxImages + ' изображений'"></span>
+                                <button type="button"
+                                        class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        @click="addImage"
+                                        :disabled="images.length >= maxImages">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Добавить
+                                </button>
+                            </div>
                         </div>
-                        <div class="mt-2 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-                            <p class="font-medium mb-1">💡 Загрузка изображений</p>
-                            <p>Вы можете загрузить файл с компьютера или указать URL. Для каждого варианта (цвет/размер) можно добавить отдельные фото.</p>
+                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+                            <p class="font-medium mb-1">Загрузка изображений</p>
+                            <p>Максимум 10 фото на товар. Перетаскивайте для изменения порядка. Для вариантов можно указать отдельные фото.</p>
                         </div>
                     </div>
-                    
-                    <!-- Images per variant -->
-                    <div class="space-y-4">
+
+                    <!-- Images Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" x-ref="imagesGrid">
                         <template x-for="(image, idx) in images" :key="idx">
-                            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                                    <!-- File upload or URL -->
-                                    <div class="md:col-span-4 space-y-2">
-                                        <label class="text-xs font-medium text-gray-600">Изображение</label>
-                                        
-                                        <!-- Preview -->
-                                        <template x-if="image.file_path">
-                                            <div class="relative">
-                                                <img :src="image.file_path" class="w-full h-32 object-cover rounded-lg border" x-on:error="$el.style.display='none'">
+                            <div class="relative group bg-gray-50 rounded-xl border-2 border-gray-200 hover:border-indigo-400 transition-all overflow-hidden"
+                                 draggable="true"
+                                 @dragstart="dragStart($event, idx)"
+                                 @dragover.prevent="dragOver($event, idx)"
+                                 @drop="drop($event, idx)"
+                                 @dragend="dragEnd($event)"
+                                 :class="{'border-indigo-500 ring-2 ring-indigo-200': draggingIdx === idx}">
+
+                                <!-- Image Preview -->
+                                <div class="aspect-square relative">
+                                    <!-- Loading State -->
+                                    <template x-if="image.uploading">
+                                        <div class="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                                            <div class="text-center">
+                                                <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
                                             </div>
-                                        </template>
-                                        
-                                        <!-- File input -->
-                                        <div class="flex gap-2">
-                                            <label class="flex-1 cursor-pointer">
-                                                <input type="file" 
-                                                       accept="image/*" 
-                                                       class="hidden" 
-                                                       @change="uploadImage($event, idx)">
-                                                <div class="w-full px-3 py-2 border border-dashed border-indigo-300 bg-indigo-50 rounded-lg text-sm text-center text-indigo-600 hover:bg-indigo-100 transition">
-                                                    📁 Выбрать файл
-                                                </div>
-                                            </label>
                                         </div>
-                                        
-                                        <!-- URL input -->
-                                        <input type="text" 
-                                               class="w-full border rounded-lg px-3 py-2 text-sm" 
-                                               x-model="image.file_path" 
-                                               placeholder="или введите URL изображения">
-                                    </div>
-                                    
-                                    <!-- Variant selector -->
-                                    <div class="md:col-span-3">
-                                        <label class="text-xs font-medium text-gray-600">Для варианта</label>
-                                        <select class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500" x-model="image.variant_id">
-                                            <option value="">📦 Общий (все варианты)</option>
-                                            <template x-for="variant in variants" :key="variant.sku">
-                                                <option :value="variant.id ?? variant.sku" x-text="'🏷️ ' + (variant.option_values_summary || variant.sku)"></option>
+                                    </template>
+
+                                    <!-- Image or Upload Placeholder -->
+                                    <template x-if="!image.uploading">
+                                        <div class="absolute inset-0">
+                                            <template x-if="image.file_path">
+                                                <img :src="getImageUrl(image.file_path)"
+                                                     class="w-full h-full object-cover cursor-move"
+                                                     x-on:error="handleImageError($event, image)"
+                                                     :alt="image.alt_text || 'Изображение товара'">
                                             </template>
-                                        </select>
-                                        <p class="text-xs text-gray-500 mt-1">Выберите вариант (размер/цвет)</p>
+                                            <template x-if="!image.file_path">
+                                                <label class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer bg-gray-100 hover:bg-gray-200 transition">
+                                                    <input type="file" accept="image/*" class="hidden" @change="uploadImage($event, idx)">
+                                                    <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                    <span class="text-xs text-gray-500">Загрузить</span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <!-- Main Badge -->
+                                    <template x-if="image.is_main">
+                                        <div class="absolute top-2 left-2 px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded-lg shadow">
+                                            Главное
+                                        </div>
+                                    </template>
+
+                                    <!-- Order Number -->
+                                    <div class="absolute top-2 right-2 w-6 h-6 bg-black/50 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                        <span x-text="idx + 1"></span>
                                     </div>
-                                    
-                                    <!-- Alt text -->
-                                    <div class="md:col-span-3">
-                                        <label class="text-xs font-medium text-gray-600">Alt текст</label>
-                                        <input type="text" 
-                                               class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500" 
-                                               x-model="image.alt_text"
-                                               placeholder="Описание для SEO">
-                                    </div>
-                                    
-                                    <!-- Controls -->
-                                    <div class="md:col-span-2 flex flex-col gap-2 items-end">
-                                        <label class="inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" class="w-4 h-4 rounded text-indigo-600" x-model="image.is_main">
-                                            <span class="ml-2 text-sm">Главное</span>
-                                        </label>
-                                        <div class="flex items-center gap-1">
-                                            <button type="button" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded" @click="moveImage(idx, -1)" title="Вверх">▲</button>
-                                            <button type="button" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded" @click="moveImage(idx, 1)" title="Вниз">▼</button>
-                                            <button type="button" class="p-1.5 text-red-600 hover:bg-red-100 rounded" @click="removeImage(idx)" title="Удалить">×</button>
+
+                                    <!-- Hover Controls -->
+                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <div class="flex gap-2">
+                                            <button type="button"
+                                                    class="p-2 bg-white rounded-lg shadow hover:bg-gray-100 transition"
+                                                    @click="setMainImage(idx)"
+                                                    :class="{'ring-2 ring-yellow-400': image.is_main}"
+                                                    title="Сделать главным">
+                                                <svg class="w-4 h-4" :class="image.is_main ? 'text-yellow-500' : 'text-gray-600'" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                                </svg>
+                                            </button>
+                                            <label class="p-2 bg-white rounded-lg shadow hover:bg-gray-100 transition cursor-pointer" title="Заменить">
+                                                <input type="file" accept="image/*" class="hidden" @change="uploadImage($event, idx)">
+                                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                                </svg>
+                                            </label>
+                                            <button type="button"
+                                                    class="p-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition"
+                                                    @click="removeImage(idx)"
+                                                    title="Удалить">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Image Info -->
+                                <div class="p-2 space-y-1">
+                                    <!-- Variant selector -->
+                                    <select class="w-full border rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500" x-model="image.variant_id">
+                                        <option value="">Общий</option>
+                                        <template x-for="variant in variants" :key="variant.sku">
+                                            <option :value="variant.id ?? variant.sku" x-text="variant.option_values_summary || variant.sku"></option>
+                                        </template>
+                                    </select>
+                                </div>
                             </div>
                         </template>
-                        
-                        <!-- Empty state -->
-                        <template x-if="images.length === 0">
-                            <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-                                <svg class="mx-auto w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+
+                        <!-- Add Image Button (if not maxed) -->
+                        <template x-if="images.length < maxImages">
+                            <label class="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all">
+                                <input type="file" accept="image/*" class="hidden" @change="addImageFromFile($event)">
+                                <svg class="w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                <p class="mt-2 text-sm text-gray-500">Нет изображений</p>
-                                <button type="button" @click="addImage" class="mt-3 px-4 py-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                                    + Добавить первое изображение
-                                </button>
-                            </div>
+                                <span class="text-sm text-gray-500">Добавить фото</span>
+                            </label>
                         </template>
                     </div>
+
+                    <!-- Empty state -->
+                    <template x-if="images.length === 0">
+                        <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
+                            <svg class="mx-auto w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="mt-4 text-lg text-gray-500">Нет изображений</p>
+                            <p class="text-sm text-gray-400">Добавьте фотографии товара</p>
+                            <label class="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl cursor-pointer hover:bg-indigo-700 transition">
+                                <input type="file" accept="image/*" class="hidden" @change="addImageFromFile($event)">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                Загрузить первое фото
+                            </label>
+                        </div>
+                    </template>
                 </section>
 
 
@@ -605,35 +655,7 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                        <div class="flex items-center justify-between"><h2 class="text-lg font-semibold text-gray-900">Цены по каналам</h2>
-                            <div class="flex gap-2"><template x-for="channel in channels" :key="channel.code"><button type="button" class="text-xs text-indigo-600 underline" @click="copyBasePrices(channel.code)">Скопировать в <span x-text="channel.name"></span></button></template></div>
-                        </div>
-                        <template x-for="channel in channels" :key="channel.code">
-                            <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-medium text-gray-800" x-text="channel.name"></span>
-                                    <label class="inline-flex items-center"><input type="checkbox" class="w-4 h-4 rounded text-indigo-600" @change="toggleChannel(channel.code, $event.target.checked)" :checked="channelEnabled(channel.code)"><span class="ml-2 text-sm">Продавать</span></label>
-                                </div>
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full text-sm">
-                                        <thead><tr class="text-left text-xs text-gray-500"><th class="px-2 py-1">Вариант</th><th class="px-2 py-1">Цена</th><th class="px-2 py-1">Старая</th><th class="px-2 py-1">External ID</th><th class="px-2 py-1">Статус</th></tr></thead>
-                                        <tbody class="divide-y divide-gray-100">
-                                            <template x-for="variant in variants" :key="variant.sku">
-                                                <tr>
-                                                    <td class="px-2 py-1 text-sm" x-text="variant.option_values_summary || variant.sku || 'Вариант'"></td>
-                                                    <td class="px-2 py-1"><input type="number" step="0.01" class="w-20 border rounded px-2 py-1 text-sm" x-model="channelVariantValue(channel.code, variant, 'price')"></td>
-                                                    <td class="px-2 py-1"><input type="number" step="0.01" class="w-20 border rounded px-2 py-1 text-sm" x-model="channelVariantValue(channel.code, variant, 'old_price')"></td>
-                                                    <td class="px-2 py-1"><input type="text" class="w-24 border rounded px-2 py-1 text-sm" x-model="channelVariantValue(channel.code, variant, 'external_offer_id')"></td>
-                                                    <td class="px-2 py-1"><select class="w-24 border rounded px-2 py-1 text-sm" x-model="channelVariantValue(channel.code, variant, 'status')"><option value="draft">draft</option><option value="pending">pending</option><option value="published">published</option><option value="error">error</option></select></td>
-                                                </tr>
-                                            </template>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
+                    {{-- Цены по каналам - временно скрыто (функционал в разработке) --}}
                 </section>
 
 
@@ -662,6 +684,7 @@ function productEditor() {
     
     return {
         step: 1,
+        currentStep: 1,
         steps: ['Основная информация', 'Размеры и цвета', 'Варианты', 'Характеристики', 'Медиа', 'Цены и остатки'],
         product: initial.product || {},
         options: initial.options || [],
@@ -799,57 +822,176 @@ function productEditor() {
         },
         addProductAttribute() { this.attributes.product.push({attribute_id: null, value_string: ''}); },
         addVariantAttribute() { this.attributes.variants.push({product_variant_id: null, attribute_id: null, value_string: ''}); },
-        addImage() { this.images.push({file_path: '', alt_text: '', is_main: this.images.length === 0, sort_order: this.images.length, variant_id: ''}); },
-        removeImage(idx) { this.images.splice(idx, 1); },
-        moveImage(idx, dir) { const target = idx + dir; if (target < 0 || target >= this.images.length) return; const tmp = this.images[target]; this.images[target] = this.images[idx]; this.images[idx] = tmp; },
-        async uploadImage(event, idx) {
+
+        // Image management
+        maxImages: 10,
+        draggingIdx: null,
+
+        addImage() {
+            if (this.images.length >= this.maxImages) {
+                alert('Максимум ' + this.maxImages + ' изображений');
+                return;
+            }
+            this.images.push({file_path: '', alt_text: '', is_main: this.images.length === 0, sort_order: this.images.length, variant_id: '', uploading: false});
+        },
+
+        async addImageFromFile(event) {
             const file = event.target.files[0];
             if (!file) return;
+            if (this.images.length >= this.maxImages) {
+                alert('Максимум ' + this.maxImages + ' изображений');
+                return;
+            }
+            // Add new image slot
+            const idx = this.images.length;
+            this.images.push({file_path: '', alt_text: '', is_main: idx === 0, sort_order: idx, variant_id: '', uploading: true});
+            // Upload
+            await this.uploadImageAtIndex(file, idx);
+            // Clear input
+            event.target.value = '';
+        },
 
-            // Show loading state
+        removeImage(idx) {
+            this.images.splice(idx, 1);
+            // Update sort orders
+            this.images.forEach((img, i) => img.sort_order = i);
+        },
+
+        setMainImage(idx) {
+            this.images.forEach((img, i) => img.is_main = (i === idx));
+        },
+
+        moveImage(idx, dir) {
+            const target = idx + dir;
+            if (target < 0 || target >= this.images.length) return;
+            const tmp = this.images[target];
+            this.images[target] = this.images[idx];
+            this.images[idx] = tmp;
+            // Update sort orders
+            this.images.forEach((img, i) => img.sort_order = i);
+        },
+
+        // Drag & Drop
+        dragStart(event, idx) {
+            this.draggingIdx = idx;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', idx);
+        },
+
+        dragOver(event, idx) {
+            if (this.draggingIdx === null || this.draggingIdx === idx) return;
+            // Reorder during drag
+            const draggedImage = this.images[this.draggingIdx];
+            this.images.splice(this.draggingIdx, 1);
+            this.images.splice(idx, 0, draggedImage);
+            this.draggingIdx = idx;
+        },
+
+        drop(event, idx) {
+            event.preventDefault();
+            // Update sort orders after drop
+            this.images.forEach((img, i) => img.sort_order = i);
+            this.draggingIdx = null;
+        },
+
+        dragEnd(event) {
+            this.draggingIdx = null;
+        },
+
+        // Image URL helper
+        getImageUrl(path) {
+            if (!path) return '';
+            // If already absolute URL
+            if (path.startsWith('http://') || path.startsWith('https://')) {
+                return path;
+            }
+            // If storage path (starts with /storage)
+            if (path.startsWith('/storage')) {
+                return path;
+            }
+            // If relative path, prepend /storage
+            if (path.startsWith('products/')) {
+                return '/storage/' + path;
+            }
+            return path;
+        },
+
+        handleImageError(event, image) {
+            console.error('Image load error:', image.file_path);
+            // Hide broken image
+            event.target.style.display = 'none';
+        },
+
+        async uploadImageAtIndex(file, idx) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Выберите файл изображения (jpg, png, gif, webp)');
+                if (!this.images[idx].file_path) this.images.splice(idx, 1);
+                return;
+            }
+
+            // Validate file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Максимальный размер файла 10 МБ');
+                if (!this.images[idx].file_path) this.images.splice(idx, 1);
+                return;
+            }
+
             const originalPath = this.images[idx].file_path;
-            this.images[idx].file_path = 'Загрузка...';
+            this.images[idx].uploading = true;
 
             const formData = new FormData();
             formData.append('image', file);
-
-            // Get auth token from Alpine store or localStorage
-            const authStore = Alpine.store('auth');
-            const token = authStore?.token || localStorage.getItem('_x_auth_token');
 
             try {
                 const response = await fetch('/api/products/upload-image', {
                     method: 'POST',
                     body: formData,
-                    credentials: 'include', // Important: include session cookies
+                    credentials: 'include',
                     headers: {
                         'Accept': 'application/json',
-                        'Authorization': token ? `Bearer ${token}` : '',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                     }
                 });
-                
-                // Check if response is JSON
+
+                if (response.status === 401) {
+                    throw new Error('Сессия истекла. Перезагрузите страницу.');
+                }
+                if (response.status === 403) {
+                    throw new Error('Нет доступа.');
+                }
+
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 200));
-                    throw new Error('Сервер вернул неожиданный ответ. Попробуйте перезагрузить страницу.');
+                    throw new Error('Ошибка сервера. Перезагрузите страницу.');
                 }
-                
+
                 const data = await response.json();
-                
+
                 if (!response.ok) {
-                    throw new Error(data.message || data.error || 'Ошибка загрузки');
+                    throw new Error(data.message || 'Ошибка загрузки');
                 }
-                
+
                 this.images[idx].file_path = data.path || data.url;
-                this.images[idx].alt_text = file.name.replace(/\.[^/.]+$/, '');
+                this.images[idx].alt_text = this.images[idx].alt_text || file.name.replace(/\.[^/.]+$/, '');
+                this.images[idx].uploading = false;
             } catch (e) {
                 console.error('Upload error:', e);
-                this.images[idx].file_path = originalPath;
-                alert('❌ ' + (e.message || 'Ошибка загрузки файла'));
+                alert(e.message || 'Ошибка загрузки файла');
+                this.images[idx].uploading = false;
+                // Restore original or remove if it was new
+                if (originalPath) {
+                    this.images[idx].file_path = originalPath;
+                } else {
+                    this.images.splice(idx, 1);
+                }
             }
+        },
+        async uploadImage(event, idx) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Clear input
+            await this.uploadImageAtIndex(file, idx);
         },
         settingFor(code) { let s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); if (!s) { s = {channel_code: code, is_enabled: false, status: 'draft'}; this.channelSettings.push(s); } return s; },
         channelEnabled(code) { const s = this.channelSettings.find(c => c.channel_code === code || c.channel_id === code); return s ? !!s.is_enabled : false; },
@@ -899,10 +1041,7 @@ function productEditor() {
     </x-pwa-header>
 
     <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;">
-        <form x-ref="form"
-              method="POST"
-              action="{{ $product->id ? route('web.products.update', $product) : route('web.products.store') }}"
-              @submit.prevent="submit">
+        <form x-ref="form" method="POST" action="{{ $product->id ? route('web.products.update', $product) : route('web.products.store') }}" x-on:submit.prevent="submit">
             @csrf
             @if($product->id) @method('PUT') @endif
 

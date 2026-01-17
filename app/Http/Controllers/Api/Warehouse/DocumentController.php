@@ -65,7 +65,7 @@ class DocumentController extends Controller
 
         $doc = InventoryDocument::create([
             'company_id' => $companyId,
-            'doc_no' => $data['doc_no'] ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
+            'doc_no' => ($data['doc_no'] ?? null) ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
             'type' => $data['type'],
             'status' => InventoryDocument::STATUS_DRAFT,
             'warehouse_id' => $data['warehouse_id'],

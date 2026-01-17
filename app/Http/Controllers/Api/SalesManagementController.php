@@ -497,8 +497,18 @@ class SalesManagementController extends Controller
             ->limit(50)
             ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price', 'metadata']);
 
-        // Добавляем доступные остатки по складу
-        $products->each(function($variant) use ($warehouseId) {
+        // Получить все связанные SKU из складской системы
+        $variantIds = $products->pluck('id')->all();
+        $warehouseSkus = \App\Models\Warehouse\Sku::whereIn('product_variant_id', $variantIds)
+            ->get()
+            ->keyBy('product_variant_id');
+
+        // Добавляем доступные остатки по складу и warehouse_sku_id
+        $products->each(function($variant) use ($warehouseId, $warehouseSkus) {
+            // Добавить warehouse_sku_id для использования в документах оприходования
+            $warehouseSku = $warehouseSkus->get($variant->id);
+            $variant->warehouse_sku_id = $warehouseSku?->id;
+
             if ($warehouseId) {
                 $variant->available_stock = $this->reservationService->getAvailableStock($variant, $warehouseId);
             } else {

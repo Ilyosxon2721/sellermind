@@ -260,4 +260,58 @@ class CompanyController extends Controller
             'message' => 'Участник удалён.',
         ]);
     }
+
+    /**
+     * Получить настройки компании
+     */
+    public function getSettings(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $company = Company::find($user->company_id);
+
+        if (!$company) {
+            return response()->json(['message' => 'Компания не найдена.'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'settings' => $company->getAllSettings(),
+        ]);
+    }
+
+    /**
+     * Обновить настройки компании
+     */
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $company = Company::find($user->company_id);
+
+        if (!$company) {
+            return response()->json(['message' => 'Компания не найдена.'], 404);
+        }
+
+        if (!$user->isOwnerOf($company->id)) {
+            return response()->json(['message' => 'Только владелец может изменять настройки.'], 403);
+        }
+
+        $validated = $request->validate([
+            'auto_sync_stock_on_link' => 'boolean',
+            'auto_sync_stock_on_change' => 'boolean',
+            'stock_sync_enabled' => 'boolean',
+        ]);
+
+        $settings = $company->settings ?? [];
+        foreach ($validated as $key => $value) {
+            $settings[$key] = $value;
+        }
+        $company->settings = $settings;
+        $company->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Настройки сохранены',
+            'settings' => $company->getAllSettings(),
+        ]);
+    }
 }

@@ -70,17 +70,20 @@ class StockController extends Controller
         $limit = $request->integer('limit', 50);
         $query = \App\Models\Warehouse\Sku::query()
             ->byCompany($companyId)
-            ->with('product')
+            ->with(['product.images', 'productVariant.mainImage', 'productVariant.optionValues'])
             ->orderBy('sku_code');
 
         if ($search = $request->get('query')) {
             $query->where(function ($q) use ($search) {
                 $q->where('sku_code', 'like', '%' . $search . '%')
-                    ->orWhere('barcode_ean13', 'like', '%' . $search . '%');
+                    ->orWhere('barcode_ean13', 'like', '%' . $search . '%')
+                    ->orWhereHas('product', function ($pq) use ($search) {
+                        $pq->where('name', 'like', '%' . $search . '%');
+                    });
             });
         }
 
-        $skus = $query->limit($limit)->get(['id', 'sku_code', 'barcode_ean13', 'product_id', 'company_id']);
+        $skus = $query->limit($limit)->get();
         if ($skus->isEmpty()) {
             return $this->successResponse(['items' => []]);
         }
@@ -89,11 +92,30 @@ class StockController extends Controller
 
         $items = $skus->map(function ($sku) use ($balances) {
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
+
+            // Get image URL (variant image first, then product image)
+            $imageUrl = null;
+            if ($sku->productVariant?->mainImage) {
+                $imageUrl = $sku->productVariant->mainImage->url ?? $sku->productVariant->mainImage->path;
+            } elseif ($sku->product?->images?->first()) {
+                $imageUrl = $sku->product->images->first()->url ?? $sku->product->images->first()->path;
+            }
+
+            // Get variant options (e.g., "Размер: XL, Цвет: Красный")
+            $optionsSummary = $sku->productVariant?->option_values_summary;
+            if (!$optionsSummary && $sku->productVariant?->optionValues) {
+                $optionsSummary = $sku->productVariant->optionValues
+                    ->map(fn($ov) => $ov->value)
+                    ->join(', ');
+            }
+
             return [
                 'sku_id' => $sku->id,
                 'sku_code' => $sku->sku_code,
                 'barcode' => $sku->barcode_ean13,
                 'product_name' => $sku->product?->name,
+                'image_url' => $imageUrl,
+                'options_summary' => $optionsSummary,
                 'on_hand' => $balance['on_hand'] ?? 0,
                 'reserved' => $balance['reserved'] ?? 0,
                 'available' => $balance['available'] ?? 0,

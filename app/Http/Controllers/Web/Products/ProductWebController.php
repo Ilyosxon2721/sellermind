@@ -161,7 +161,14 @@ class ProductWebController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $dto = $this->buildDto($request);
-        $product = $this->productService->createProductFromDto($dto);
+
+        try {
+            $product = $this->productService->createProductFromDto($dto);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['article' => 'Товар с таким артикулом уже существует']);
+        }
 
         return redirect()
             ->route('web.products.index', ['saved' => 'created'])
