@@ -9,41 +9,71 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // First, drop foreign key constraints
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->dropForeign(['company_id']);
-        });
+        // Use raw SQL to handle foreign keys and indexes reliably
+        // MySQL requires dropping FK before dropping index that FK uses
 
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->dropForeign(['company_id']);
-        });
+        // Get foreign key names dynamically
+        $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
+        $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
 
-        // Drop unique constraint
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->dropUnique(['company_id', 'code']);
-        });
+        // Drop foreign keys first
+        if ($fkOptions) {
+            DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+        }
+        if ($fkValues) {
+            DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
+        }
 
-        // Make company_id nullable in global_options
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->unsignedBigInteger('company_id')->nullable()->change();
-        });
+        // Drop unique index
+        $indexName = $this->getIndexName('global_options', ['company_id', 'code']);
+        if ($indexName) {
+            DB::statement("ALTER TABLE `global_options` DROP INDEX `{$indexName}`");
+        }
 
-        // Make company_id nullable in global_option_values
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->unsignedBigInteger('company_id')->nullable()->change();
-        });
+        // Make company_id nullable
+        DB::statement("ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NULL");
+        DB::statement("ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NULL");
 
-        // Re-add foreign keys (now allowing NULL)
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
-
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
+        // Re-add foreign keys (allowing NULL)
+        DB::statement("ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
+        DB::statement("ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
 
         // Create universal global options (company_id = NULL)
         $this->createUniversalOptions();
+    }
+
+    protected function getForeignKeyName(string $table, string $column): ?string
+    {
+        $database = DB::getDatabaseName();
+        $result = DB::selectOne("
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = ?
+            AND TABLE_NAME = ?
+            AND COLUMN_NAME = ?
+            AND REFERENCED_TABLE_NAME IS NOT NULL
+        ", [$database, $table, $column]);
+
+        return $result?->CONSTRAINT_NAME;
+    }
+
+    protected function getIndexName(string $table, array $columns): ?string
+    {
+        $database = DB::getDatabaseName();
+        $columnsStr = implode(',', $columns);
+
+        $result = DB::selectOne("
+            SELECT INDEX_NAME
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = ?
+            AND TABLE_NAME = ?
+            AND NON_UNIQUE = 0
+            AND INDEX_NAME != 'PRIMARY'
+            GROUP BY INDEX_NAME
+            HAVING GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = ?
+        ", [$database, $table, $columnsStr]);
+
+        return $result?->INDEX_NAME;
     }
 
     public function down(): void
@@ -53,32 +83,24 @@ return new class extends Migration
         DB::table('global_options')->whereNull('company_id')->delete();
 
         // Drop foreign keys
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->dropForeign(['company_id']);
-        });
+        $fkOptions = $this->getForeignKeyName('global_options', 'company_id');
+        $fkValues = $this->getForeignKeyName('global_option_values', 'company_id');
 
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->dropForeign(['company_id']);
-        });
+        if ($fkOptions) {
+            DB::statement("ALTER TABLE `global_options` DROP FOREIGN KEY `{$fkOptions}`");
+        }
+        if ($fkValues) {
+            DB::statement("ALTER TABLE `global_option_values` DROP FOREIGN KEY `{$fkValues}`");
+        }
 
         // Make company_id NOT NULL again
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->unsignedBigInteger('company_id')->nullable(false)->change();
-        });
-
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->unsignedBigInteger('company_id')->nullable(false)->change();
-        });
+        DB::statement("ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NOT NULL");
+        DB::statement("ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NOT NULL");
 
         // Restore unique constraint and foreign keys
-        Schema::table('global_options', function (Blueprint $table) {
-            $table->unique(['company_id', 'code']);
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
-
-        Schema::table('global_option_values', function (Blueprint $table) {
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
+        DB::statement("ALTER TABLE `global_options` ADD UNIQUE INDEX `global_options_company_id_code_unique` (`company_id`, `code`)");
+        DB::statement("ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
+        DB::statement("ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
     }
 
     protected function createUniversalOptions(): void
