@@ -660,7 +660,7 @@ class UzumClient implements MarketplaceClientInterface
                             'page' => $page,
                             'size' => $size,
                             'status' => $status,
-                            'shopId' => $shopId, // Один магазин за раз
+                            'shopIds' => $shopId, // API expects 'shopIds' (plural)
                         ];
 
                         Log::info('Uzum API fetching orders for status', [
