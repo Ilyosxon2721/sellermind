@@ -236,9 +236,13 @@ class UzumClient implements MarketplaceClientInterface
         // 2. from credentials_json['shop_ids'] - user selected shops
         $credentialsJson = $account->credentials_json ?? [];
         if (!empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
+            Log::debug('Uzum resolveShopIds: raw shop_ids from credentials_json', [
+                'account_id' => $account->id,
+                'raw_shop_ids' => $credentialsJson['shop_ids'],
+            ]);
             $shopIds = $this->normalizeShopIds($credentialsJson['shop_ids']);
             if (!empty($shopIds)) {
-                Log::info('Uzum resolveShopIds: using shop_ids from credentials_json', [
+                Log::info('Uzum resolveShopIds: normalized shop_ids from credentials_json', [
                     'account_id' => $account->id,
                     'shop_ids' => $shopIds,
                 ]);
@@ -310,8 +314,31 @@ class UzumClient implements MarketplaceClientInterface
      */
     protected function normalizeShopIds(array $ids): array
     {
-        $ids = array_values(array_filter($ids, fn ($v) => $v !== null && $v !== ''));
-        return array_map(fn ($v) => is_numeric($v) ? (int) $v : (string) $v, $ids);
+        $normalized = [];
+
+        foreach ($ids as $id) {
+            if ($id === null || $id === '') {
+                continue;
+            }
+
+            // Handle comma-separated strings (e.g., "12697,16980,17490")
+            if (is_string($id) && str_contains($id, ',')) {
+                $parts = explode(',', $id);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if ($part !== '' && is_numeric($part)) {
+                        $normalized[] = (int) $part;
+                    }
+                }
+            } elseif (is_numeric($id)) {
+                $normalized[] = (int) $id;
+            } elseif (is_string($id) && $id !== '') {
+                $normalized[] = $id;
+            }
+        }
+
+        // Remove duplicates while preserving order
+        return array_values(array_unique($normalized));
     }
 
     /**
@@ -1063,22 +1090,4 @@ class UzumClient implements MarketplaceClientInterface
         };
     }
 
-    protected function extractShopIds(MarketplaceAccount $account): array
-    {
-        $shopIds = [];
-        // Приоритет: shop_id из аккаунта
-        if (!empty($account->shop_id)) {
-            $ids = is_array($account->shop_id) ? $account->shop_id : explode(',', (string) $account->shop_id);
-            $shopIds = array_values(array_filter(array_map('trim', $ids), fn ($v) => $v !== ''));
-        }
-        // Если shop_id не задан, пробуем взять из таблицы shops
-        if (empty($shopIds)) {
-            $shopIds = \App\Models\MarketplaceShop::where('marketplace_account_id', $account->id)
-                ->pluck('external_id')
-                ->filter()
-                ->values()
-                ->all();
-        }
-        return array_values(array_filter(array_map(fn ($v) => is_numeric($v) ? (int) $v : $v, $shopIds)));
-    }
 }
