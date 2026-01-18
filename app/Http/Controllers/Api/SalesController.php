@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
+use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
@@ -384,12 +385,13 @@ class SalesController extends Controller
         $labels = [
             'new' => 'Новый',
             'processing' => 'В обработке',
+            'transit' => 'В транзите',
             'shipped' => 'Отправлен',
-            'delivered' => 'Доставлен',
+            'delivered' => 'Продан',
+            'completed' => 'Продан',
             'cancelled' => 'Отменён',
             'in_assembly' => 'В сборке',
             'in_delivery' => 'В доставке',
-            'completed' => 'Выполнен',
             'accepted_uzum' => 'Принят Uzum',
             'in_supply' => 'В поставке',
             'waiting_pickup' => 'Ждёт выдачи',
@@ -446,7 +448,7 @@ class SalesController extends Controller
     }
     
     /**
-     * Get Uzum orders
+     * Get Uzum orders from Finance API (all types: FBO/FBS/DBS/EDBS)
      */
     private function getUzumOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
@@ -454,11 +456,23 @@ class SalesController extends Controller
             return collect();
         }
 
+        // Try UzumFinanceOrder first (contains all order types for analytics)
+        try {
+            $hasFinanceOrders = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->exists();
+
+            if ($hasFinanceOrders) {
+                return $this->getUzumFinanceOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            }
+        } catch (\Exception $e) {
+            // Table might not exist yet, fall back to UzumOrder
+        }
+
+        // Fallback to UzumOrder (FBS only)
         $query = UzumOrder::query()
             ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $dateFrom)
             ->whereDate('ordered_at', '<=', $dateTo);
-        
+
         if ($status) {
             $query->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
         }
@@ -481,6 +495,95 @@ class SalesController extends Controller
             'status' => $this->normalizeStatus($order->status_normalized),
             'raw_status' => $order->status,
         ]);
+    }
+
+    /**
+     * Get Uzum Finance orders (all types: FBO/FBS/DBS/EDBS)
+     *
+     * Статусы:
+     * - COMPLETED → delivered (это продажа, полноценный доход)
+     * - PROCESSING → transit (в транзите, ещё не доход)
+     * - CANCELED → cancelled (отменён)
+     */
+    private function getUzumFinanceOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    {
+        $query = UzumFinanceOrder::query()
+            ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('order_date', '>=', $dateFrom)
+            ->whereDate('order_date', '<=', $dateTo);
+
+        if ($status) {
+            // Map status filter to Uzum Finance API statuses
+            $query->where(function($q) use ($status) {
+                switch ($status) {
+                    case 'delivered':
+                    case 'completed':
+                        $q->where('status', 'COMPLETED');
+                        break;
+                    case 'transit':
+                    case 'processing':
+                        $q->where('status', 'PROCESSING');
+                        break;
+                    case 'cancelled':
+                        $q->whereIn('status', ['CANCELED', 'cancelled']);
+                        break;
+                    default:
+                        $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
+                }
+            });
+        }
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('order_id', 'like', "%{$search}%")
+                  ->orWhere('sku_title', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->get()->map(function($order) {
+            // Цены в UzumFinanceOrder хранятся в тийинах, конвертируем в сумы
+            $totalAmount = ($order->sell_price * $order->amount) / 100;
+            $sellerProfit = $order->seller_profit / 100;
+            $isCompleted = $order->status === 'COMPLETED';
+            $isCancelled = in_array($order->status, ['CANCELED', 'cancelled']);
+
+            return [
+                'id' => 'uzum_finance_' . $order->id,
+                'order_number' => $order->order_id,
+                'created_at' => $order->order_date?->toIso8601String(),
+                'marketplace' => 'uzum',
+                'customer_name' => $order->sku_title, // В finance API нет customer_name, показываем название товара
+                'total_amount' => $totalAmount,
+                'seller_profit' => $sellerProfit,
+                'currency' => 'UZS',
+                'status' => $this->normalizeUzumFinanceStatus($order->status),
+                'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                'is_revenue' => $isCompleted, // Только COMPLETED считается как доход
+                'raw_status' => $order->status,
+                'quantity' => $order->amount,
+                'returns' => $order->amount_returns,
+                'product_image' => $order->product_image_url,
+            ];
+        });
+    }
+
+    /**
+     * Normalize Uzum Finance order status
+     *
+     * COMPLETED → delivered (продажа)
+     * PROCESSING → transit (в транзите)
+     * CANCELED → cancelled
+     */
+    private function normalizeUzumFinanceStatus(?string $status): string
+    {
+        if (!$status) return 'transit';
+
+        return match (strtoupper($status)) {
+            'PROCESSING' => 'transit',
+            'COMPLETED' => 'delivered',
+            'CANCELED' => 'cancelled',
+            default => 'transit',
+        };
     }
     
     /**
@@ -534,6 +637,10 @@ class SalesController extends Controller
                 $amountRub = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
+                // Определяем категорию статуса
+                $isCompleted = $order->is_realization && !$order->is_cancel && !$order->is_return;
+                $isCancelled = $order->is_cancel || $order->is_return;
+
                 return [
                     'id' => 'wb_' . $order->id,
                     'order_number' => $order->srid ?? $order->order_id ?? $order->id,
@@ -545,6 +652,8 @@ class SalesController extends Controller
                     'original_currency' => 'RUB',
                     'currency' => $this->currencyService->getDisplayCurrency(),
                     'status' => $this->normalizeWildberriesStatus($order),
+                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                    'is_revenue' => $isCompleted, // Только реализованные заказы считаем как доход
                     'raw_status' => $order->wb_status ?? $order->status,
                 ];
             });
@@ -740,45 +849,89 @@ class SalesController extends Controller
     
     /**
      * Calculate statistics
+     *
+     * Категории:
+     * - completed (is_revenue=true): Продажи - полноценный доход
+     * - transit: В транзите - ещё не доход
+     * - cancelled: Отменённые - не считаем
      */
     private function calculateStats(\Illuminate\Support\Collection $orders): array
     {
         $totalOrders = $orders->count();
 
-        // Separate cancelled orders
-        $cancelledOrders = $orders->filter(fn($o) => $o['status'] === 'cancelled');
-        $validOrders = $orders->filter(fn($o) => $o['status'] !== 'cancelled');
+        // Фильтруем по категориям статуса
+        $completedOrders = $orders->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
+        $transitOrders = $orders->filter(fn($o) =>
+            ($o['is_revenue'] ?? false) === false &&
+            !in_array($o['status'], ['cancelled', 'canceled'])
+        );
+        $cancelledOrders = $orders->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
 
+        // Продажи (ДОХОД) - только завершённые
+        $salesCount = $completedOrders->count();
+        $salesAmount = $completedOrders->sum('total_amount');
+
+        // В транзите (ещё не доход)
+        $transitCount = $transitOrders->count();
+        $transitAmount = $transitOrders->sum('total_amount');
+
+        // Отменённые
         $cancelledCount = $cancelledOrders->count();
         $cancelledAmount = $cancelledOrders->sum('total_amount');
 
-        // Revenue excludes cancelled orders
-        $totalRevenue = $validOrders->sum('total_amount');
-        $totalAmount = $orders->sum('total_amount'); // Keep for backwards compatibility
+        // Общие суммы для обратной совместимости
+        $totalAmount = $orders->sum('total_amount');
+        $totalRevenue = $salesAmount; // Теперь доход = только завершённые
 
         $marketplaceOrders = $orders->filter(fn($o) => $o['marketplace'] !== 'manual')->count();
         $manualOrders = $orders->filter(fn($o) => $o['marketplace'] === 'manual')->count();
 
-        $avgOrderValue = $validOrders->count() > 0 ? round($totalRevenue / $validOrders->count()) : 0;
+        $avgOrderValue = $salesCount > 0 ? round($salesAmount / $salesCount) : 0;
 
         $byMarketplace = $orders->groupBy('marketplace')->map(function($group, $mp) {
             $labels = ['uzum' => 'Uzum', 'wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'manual' => 'Ручные'];
-            $validGroup = $group->filter(fn($o) => $o['status'] !== 'cancelled');
+            $completed = $group->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
+            $transit = $group->filter(fn($o) =>
+                ($o['is_revenue'] ?? false) === false &&
+                !in_array($o['status'], ['cancelled', 'canceled'])
+            );
+            $cancelled = $group->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
+
             return [
                 'name' => $mp,
                 'label' => $labels[$mp] ?? $mp,
                 'count' => $group->count(),
-                'amount' => $validGroup->sum('total_amount'),
-                'cancelledCount' => $group->filter(fn($o) => $o['status'] === 'cancelled')->count(),
+                // Продажи (доход)
+                'salesCount' => $completed->count(),
+                'salesAmount' => $completed->sum('total_amount'),
+                // В транзите
+                'transitCount' => $transit->count(),
+                'transitAmount' => $transit->sum('total_amount'),
+                // Отменённые
+                'cancelledCount' => $cancelled->count(),
+                'cancelledAmount' => $cancelled->sum('total_amount'),
+                // Для обратной совместимости
+                'amount' => $completed->sum('total_amount'),
             ];
         })->values()->toArray();
 
         return [
             'totalOrders' => $totalOrders,
             'totalAmount' => $totalAmount,
-            'totalRevenue' => $totalRevenue,
+
+            // Продажи (ДОХОД) - только завершённые
+            'salesCount' => $salesCount,
+            'salesAmount' => $salesAmount,
+            'totalRevenue' => $totalRevenue, // = salesAmount для обратной совместимости
+
+            // В транзите (ещё не доход)
+            'transitCount' => $transitCount,
+            'transitAmount' => $transitAmount,
+
+            // Отменённые
             'cancelledOrders' => $cancelledCount,
             'cancelledAmount' => $cancelledAmount,
+
             'avgOrderValue' => $avgOrderValue,
             'marketplaceOrders' => $marketplaceOrders,
             'manualOrders' => $manualOrders,
@@ -812,8 +965,10 @@ class SalesController extends Controller
         return match ($status) {
             'new' => ['new', 'created', 'pending', 'waiting'],
             'processing' => ['processing', 'accepted', 'confirmed', 'in_work', 'assembling', 'in_assembly', 'accepted_uzum', 'in_supply'],
+            'transit' => ['transit', 'processing', 'shipped', 'sent', 'in_delivery', 'delivering', 'waiting_pickup'], // В транзите
             'shipped' => ['shipped', 'sent', 'in_delivery', 'delivering', 'waiting_pickup'],
-            'delivered' => ['delivered', 'completed', 'done', 'received', 'issued'],
+            'delivered' => ['delivered', 'completed', 'done', 'received', 'issued'], // Продажи (доход)
+            'completed' => ['delivered', 'completed', 'done', 'received', 'issued'], // Алиас для delivered
             'cancelled' => ['cancelled', 'canceled', 'rejected', 'returned', 'returns'],
             default => [$status],
         };

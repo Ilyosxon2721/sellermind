@@ -43,18 +43,34 @@
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding pwa-top-padding" x-pull-to-refresh="loadOrders">
             {{-- Main Stats Cards --}}
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {{-- Продажи (Доход) --}}
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-200 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
                     <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.totalRevenue)">0 сум</div>
-                        <div class="text-sm text-gray-500">Выручка</div>
+                        <div class="text-2xl font-bold text-green-600" x-text="formatMoney(stats.salesAmount || stats.totalRevenue)">0 сум</div>
+                        <div class="text-sm text-gray-500">Продажи (доход)</div>
+                        <div class="text-xs text-green-600" x-text="(stats.salesCount || 0) + ' заказов'"></div>
                     </div>
                 </div>
+                {{-- В транзите --}}
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-yellow-200 flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-yellow-600" x-text="formatMoney(stats.transitAmount || 0)">0 сум</div>
+                        <div class="text-sm text-gray-500">В транзите</div>
+                        <div class="text-xs text-yellow-600" x-text="(stats.transitCount || 0) + ' заказов'"></div>
+                    </div>
+                </div>
+                {{-- Всего заказов --}}
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,18 +82,20 @@
                         <div class="text-sm text-gray-500">Всего заказов</div>
                     </div>
                 </div>
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
+                {{-- Отменено --}}
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </div>
                     <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="stats.cancelledOrders || 0">0</div>
+                        <div class="text-2xl font-bold text-red-600" x-text="stats.cancelledOrders || 0">0</div>
                         <div class="text-sm text-gray-500">Отменено</div>
                         <div class="text-xs text-red-500" x-show="stats.cancelledAmount > 0" x-text="'-' + formatMoney(stats.cancelledAmount)"></div>
                     </div>
                 </div>
+                {{-- Средний чек --}}
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +111,7 @@
 
             {{-- Marketplace Stats --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-show="stats.byMarketplace && stats.byMarketplace.length > 0">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Продажи по маркетплейсам</h2>
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">По маркетплейсам</h2>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <template x-for="mp in stats.byMarketplace" :key="mp.name">
                         <div class="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors cursor-pointer"
@@ -106,7 +124,11 @@
                                 <span class="text-sm font-medium text-gray-900" x-text="mp.label"></span>
                             </div>
                             <div class="text-lg font-bold text-gray-900" x-text="mp.count + ' шт'"></div>
-                            <div class="text-sm text-green-600 font-medium" x-text="formatMoney(mp.amount)"></div>
+                            {{-- Продажи (зелёный) --}}
+                            <div class="text-sm text-green-600 font-medium" x-text="'Продажи: ' + formatMoney(mp.salesAmount || mp.amount)"></div>
+                            {{-- В транзите (жёлтый) --}}
+                            <div class="text-xs text-yellow-600" x-show="mp.transitCount > 0" x-text="'В пути: ' + mp.transitCount + ' (' + formatMoney(mp.transitAmount) + ')'"></div>
+                            {{-- Отменённые (красный) --}}
                             <div class="text-xs text-red-500" x-show="mp.cancelledCount > 0" x-text="'Отмен: ' + mp.cancelledCount"></div>
                         </div>
                     </template>
@@ -119,15 +141,26 @@
                     <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
                     <button @click="resetFilters()" class="text-sm text-gray-500 hover:text-gray-700">Сбросить</button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Период</label>
-                        <select x-model="filters.period" @change="loadOrders()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <select x-model="filters.period" @change="onPeriodChange()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                             <option value="today">Сегодня</option>
                             <option value="yesterday">Вчера</option>
                             <option value="week">7 дней</option>
                             <option value="month">30 дней</option>
+                            <option value="custom">Произвольный период</option>
                         </select>
+                    </div>
+                    <div x-show="filters.period === 'custom'" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">С</label>
+                        <input type="date" x-model="filters.dateFrom" @change="loadOrders()"
+                               class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div x-show="filters.period === 'custom'" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">По</label>
+                        <input type="date" x-model="filters.dateTo" @change="loadOrders()"
+                               class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Маркетплейс</label>
@@ -144,10 +177,9 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
                         <select x-model="filters.status" @change="loadOrders()" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                             <option value="">Все</option>
-                            <option value="new">Новый</option>
+                            <option value="delivered">Продан (доход)</option>
+                            <option value="transit">В транзите</option>
                             <option value="processing">В обработке</option>
-                            <option value="shipped">Отправлен</option>
-                            <option value="delivered">Доставлен</option>
                             <option value="cancelled">Отменён</option>
                         </select>
                     </div>
@@ -216,15 +248,17 @@
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
                                               :class="{
                                                   'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed',
+                                                  'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing' || order.status === 'in_assembly',
                                                   'bg-blue-100 text-blue-700': order.status === 'shipped' || order.status === 'in_delivery',
-                                                  'bg-yellow-100 text-yellow-700': order.status === 'processing' || order.status === 'in_assembly',
                                                   'bg-gray-100 text-gray-700': order.status === 'new',
                                                   'bg-red-100 text-red-700': order.status === 'cancelled' || order.status === 'canceled'
                                               }"
                                               x-text="getStatusName(order.status)"></span>
+                                        {{-- Revenue indicator --}}
+                                        <span x-show="order.is_revenue" class="ml-1 text-xs text-green-600" title="Доход учтён">✓</span>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <span class="font-semibold text-gray-900" x-text="formatMoney(order.total_amount || order.total_price)"></span>
+                                        <span class="font-semibold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price)"></span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(order.created_at || order.ordered_at)"></td>
                                     <td class="px-6 py-4 text-right">
@@ -336,9 +370,9 @@
                                       x-text="getMarketplaceName(order.marketplace)"></span>
                                 <span class="text-xs px-2 py-1 rounded-full"
                                       :class="{
-                                          'bg-green-100 text-green-700': order.status === 'delivered',
+                                          'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed',
+                                          'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing',
                                           'bg-blue-100 text-blue-700': order.status === 'shipped',
-                                          'bg-yellow-100 text-yellow-700': order.status === 'processing',
                                           'bg-gray-100 text-gray-700': order.status === 'new',
                                           'bg-red-100 text-red-700': order.status === 'cancelled'
                                       }"
@@ -348,7 +382,8 @@
                             <p class="native-caption mt-1" x-text="formatDate(order.created_at)"></p>
                         </div>
                         <div class="text-right">
-                            <p class="native-body font-bold text-green-600" x-text="formatMoney(order.total_amount || order.total_price)"></p>
+                            <p class="native-body font-bold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price)"></p>
+                            <span x-show="order.is_revenue" class="text-xs text-green-600">Доход ✓</span>
                             <svg class="w-5 h-5 text-gray-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
@@ -393,10 +428,9 @@
                     <span class="native-caption">Статус</span>
                     <select x-model="filters.status" class="native-input mt-1">
                         <option value="">Все</option>
-                        <option value="new">Новый</option>
+                        <option value="delivered">Продан (доход)</option>
+                        <option value="transit">В транзите</option>
                         <option value="processing">В обработке</option>
-                        <option value="shipped">Отправлен</option>
-                        <option value="delivered">Доставлен</option>
                         <option value="cancelled">Отменён</option>
                     </select>
                 </label>
@@ -419,6 +453,31 @@
                 <button @click="filters.period = 'yesterday'; loadOrders(); showPeriodSheet = false" class="native-btn w-full" :class="filters.period === 'yesterday' ? '' : 'native-btn-secondary'">Вчера</button>
                 <button @click="filters.period = 'week'; loadOrders(); showPeriodSheet = false" class="native-btn w-full" :class="filters.period === 'week' ? '' : 'native-btn-secondary'">7 дней</button>
                 <button @click="filters.period = 'month'; loadOrders(); showPeriodSheet = false" class="native-btn w-full" :class="filters.period === 'month' ? '' : 'native-btn-secondary'">30 дней</button>
+                <button @click="filters.period = 'custom'; showPeriodSheet = false; showCustomDateSheet = true" class="native-btn w-full" :class="filters.period === 'custom' ? '' : 'native-btn-secondary'">Произвольный период</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Custom Date Sheet --}}
+    <div x-show="showCustomDateSheet" x-cloak @click.self="showCustomDateSheet = false" class="native-modal-overlay" style="display: none;">
+        <div class="native-sheet" @click.away="showCustomDateSheet = false">
+            <div class="native-sheet-handle"></div>
+            <h3 class="native-headline mb-4">Выберите даты</h3>
+
+            <div class="space-y-3">
+                <label class="block">
+                    <span class="native-caption">Дата начала</span>
+                    <input type="date" x-model="filters.dateFrom" class="native-input mt-1">
+                </label>
+
+                <label class="block">
+                    <span class="native-caption">Дата окончания</span>
+                    <input type="date" x-model="filters.dateTo" class="native-input mt-1">
+                </label>
+
+                <button @click="loadOrders(); showCustomDateSheet = false" class="native-btn w-full mt-4">
+                    Применить
+                </button>
             </div>
         </div>
     </div>
@@ -437,6 +496,7 @@ function salesPage() {
         loading: false,
         showFilterSheet: false,
         showPeriodSheet: false,
+        showCustomDateSheet: false,
         filters: {
             period: 'month',
             marketplace: '',
@@ -447,6 +507,10 @@ function salesPage() {
         },
         stats: {
             totalRevenue: 0,
+            salesAmount: 0,
+            salesCount: 0,
+            transitAmount: 0,
+            transitCount: 0,
             totalOrders: 0,
             cancelledOrders: 0,
             cancelledAmount: 0,
@@ -478,6 +542,10 @@ function salesPage() {
                 const apiStats = response.data.stats || {};
                 this.stats = {
                     totalRevenue: apiStats.totalRevenue || 0,
+                    salesAmount: apiStats.salesAmount || apiStats.totalRevenue || 0,
+                    salesCount: apiStats.salesCount || 0,
+                    transitAmount: apiStats.transitAmount || 0,
+                    transitCount: apiStats.transitCount || 0,
                     totalOrders: apiStats.totalOrders || 0,
                     cancelledOrders: apiStats.cancelledOrders || 0,
                     cancelledAmount: apiStats.cancelledAmount || 0,
@@ -516,11 +584,30 @@ function salesPage() {
                     dateFrom = this.formatDateForApi(monthAgo);
                     dateTo = this.formatDateForApi(today);
                     break;
+                case 'custom':
+                    // Use custom dates from filters
+                    dateFrom = this.filters.dateFrom || this.formatDateForApi(today);
+                    dateTo = this.filters.dateTo || this.formatDateForApi(today);
+                    break;
                 default:
                     dateFrom = dateTo = this.formatDateForApi(today);
             }
 
             return { date_from: dateFrom, date_to: dateTo };
+        },
+
+        onPeriodChange() {
+            if (this.filters.period === 'custom') {
+                // Set default dates if not set
+                if (!this.filters.dateFrom || !this.filters.dateTo) {
+                    const today = new Date();
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    this.filters.dateFrom = this.formatDateForApi(weekAgo);
+                    this.filters.dateTo = this.formatDateForApi(today);
+                }
+            }
+            this.loadOrders();
         },
 
         formatDateForApi(date) {
@@ -553,13 +640,23 @@ function salesPage() {
         },
 
         getPeriodLabel(period) {
+            if (period === 'custom' && this.filters.dateFrom && this.filters.dateTo) {
+                return this.formatDisplayDate(this.filters.dateFrom) + ' - ' + this.formatDisplayDate(this.filters.dateTo);
+            }
             const labels = {
                 today: 'Сегодня',
                 yesterday: 'Вчера',
                 week: 'За 7 дней',
-                month: 'За 30 дней'
+                month: 'За 30 дней',
+                custom: 'Произвольный период'
             };
             return labels[period] || 'За 7 дней';
+        },
+
+        formatDisplayDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
         },
 
         getMarketplaceName(marketplace) {
@@ -576,12 +673,13 @@ function salesPage() {
         getStatusName(status) {
             const names = {
                 new: 'Новый',
-                processing: 'В работе',
+                processing: 'В обработке',
+                transit: 'В транзите',
                 in_assembly: 'На сборке',
                 shipped: 'Отправлен',
                 in_delivery: 'В доставке',
-                delivered: 'Доставлен',
-                completed: 'Завершён',
+                delivered: 'Продан',
+                completed: 'Продан',
                 cancelled: 'Отменён',
                 canceled: 'Отменён',
                 CANCELED: 'Отменён',

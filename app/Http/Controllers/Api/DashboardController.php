@@ -11,6 +11,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Subscription;
+use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
 use App\Models\WildberriesOrder;
 use App\Models\WildberriesSupply;
@@ -114,67 +115,131 @@ class DashboardController extends Controller
 
     /**
      * Данные по продажам (Uzum + WB)
+     *
+     * Статусы заказов:
+     * - COMPLETED (Uzum) / is_realization=true (WB) → Продажи (полноценный доход)
+     * - PROCESSING (Uzum) / processing statuses (WB) → В транзите (ещё не доход)
+     * - CANCELED (Uzum) / is_cancel/is_return (WB) → Отменённые (не считаем)
+     *
+     * Uzum использует UzumFinanceOrder (Finance API) для всех типов заказов (FBO/FBS/DBS/EDBS)
      * WB суммы конвертируются из RUB в валюту отображения
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
     {
-        // Uzum orders - исключаем отменённые из сумм выручки (суммы уже в UZS)
-        $uzumOrders = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES);
+        // ===== UZUM: Только COMPLETED заказы считаем как продажи (доход) =====
+        $uzumCompleted = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where('status', 'COMPLETED');
 
-        // WB orders - исключаем отменённые (суммы в RUB, нужна конвертация)
-        $wbOrders = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        // Uzum: PROCESSING = в транзите (ещё не доход)
+        $uzumTransit = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where('status', 'PROCESSING');
+
+        // Uzum: CANCELED = отменённые
+        $uzumCancelled = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', ['CANCELED', 'cancelled']);
+
+        // ===== WB: is_realization=true считаем как продажи (доход) =====
+        $wbCompleted = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where('is_realization', true)
             ->where('is_cancel', false)
             ->where('is_return', false);
 
-        // Today - конвертируем WB суммы
-        $uzumTodayAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', $today)->sum('total_amount');
-        $wbTodayAmountRub = (float) (clone $wbOrders)->whereDate('order_date', $today)->sum('for_pay');
-        $wbTodayAmount = $this->currencyService->convertFromRub($wbTodayAmountRub);
-        $todayAmount = $uzumTodayAmount + $wbTodayAmount;
-        $todayCount = (clone $uzumOrders)->whereDate('ordered_at', $today)->count()
-            + (clone $wbOrders)->whereDate('order_date', $today)->count();
+        // WB: В транзите - не реализовано, но и не отменено
+        $wbTransit = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->where('is_realization', false)
+            ->where('is_cancel', false)
+            ->where('is_return', false);
 
-        // Week
-        $uzumWeekAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
-        $wbWeekAmountRub = (float) (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
-        $wbWeekAmount = $this->currencyService->convertFromRub($wbWeekAmountRub);
-        $weekAmount = $uzumWeekAmount + $wbWeekAmount;
-        $weekCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $weekAgo)->count()
-            + (clone $wbOrders)->whereDate('order_date', '>=', $weekAgo)->count();
-
-        // Month
-        $uzumMonthAmount = (float) (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->sum('total_amount');
-        $wbMonthAmountRub = (float) (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
-        $wbMonthAmount = $this->currencyService->convertFromRub($wbMonthAmountRub);
-        $monthAmount = $uzumMonthAmount + $wbMonthAmount;
-        $monthCount = (clone $uzumOrders)->whereDate('ordered_at', '>=', $monthAgo)->count()
-            + (clone $wbOrders)->whereDate('order_date', '>=', $monthAgo)->count();
-
-        // Отменённые заказы отдельно
-        $uzumCancelled = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereIn('status_normalized', self::CANCELLED_STATUSES);
+        // WB: Отменённые
         $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
-        $uzumCancelledWeekAmount = (float) (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->sum('total_amount');
-        $wbCancelledWeekAmountRub = (float) (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
-        $wbCancelledWeekAmount = $this->currencyService->convertFromRub($wbCancelledWeekAmountRub);
-        $cancelledWeekAmount = $uzumCancelledWeekAmount + $wbCancelledWeekAmount;
-        $cancelledWeekCount = (clone $uzumCancelled)->whereDate('ordered_at', '>=', $weekAgo)->count()
-            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count();
+        // ========== ПРОДАЖИ (ДОХОД) - только завершённые ==========
 
-        // По дням за неделю (Uzum + WB, без отменённых)
-        $uzumDaily = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereDate('ordered_at', '>=', $weekAgo)
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->select(DB::raw('DATE(ordered_at) as date'), DB::raw('SUM(total_amount) as amount'), DB::raw('COUNT(*) as count'))
+        // Today - ПРОДАЖИ
+        $uzumTodaySalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', $today)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumTodaySales = $uzumTodaySalesTiyin / 100;
+        $wbTodaySalesRub = (float) (clone $wbCompleted)->whereDate('order_date', $today)->sum('for_pay');
+        $wbTodaySales = $this->currencyService->convertFromRub($wbTodaySalesRub);
+        $todaySalesAmount = $uzumTodaySales + $wbTodaySales;
+        $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', $today)->sum('amount')
+            + (clone $wbCompleted)->whereDate('order_date', $today)->count());
+
+        // Week - ПРОДАЖИ
+        $uzumWeekSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumWeekSales = $uzumWeekSalesTiyin / 100;
+        $wbWeekSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekSales = $this->currencyService->convertFromRub($wbWeekSalesRub);
+        $weekSalesAmount = $uzumWeekSales + $wbWeekSales;
+        $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+            + (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->count());
+
+        // Month - ПРОДАЖИ
+        $uzumMonthSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumMonthSales = $uzumMonthSalesTiyin / 100;
+        $wbMonthSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $wbMonthSales = $this->currencyService->convertFromRub($wbMonthSalesRub);
+        $monthSalesAmount = $uzumMonthSales + $wbMonthSales;
+        $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
+            + (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->count());
+
+        // ========== В ТРАНЗИТЕ (ещё не доход) ==========
+
+        // Week - В ТРАНЗИТЕ
+        $uzumWeekTransitTiyin = (float) (clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumWeekTransit = $uzumWeekTransitTiyin / 100;
+        $wbWeekTransitRub = (float) (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekTransit = $this->currencyService->convertFromRub($wbWeekTransitRub);
+        $weekTransitAmount = $uzumWeekTransit + $wbWeekTransit;
+        $weekTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+            + (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->count());
+
+        // Month - В ТРАНЗИТЕ
+        $uzumMonthTransitTiyin = (float) (clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumMonthTransit = $uzumMonthTransitTiyin / 100;
+        $wbMonthTransitRub = (float) (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $wbMonthTransit = $this->currencyService->convertFromRub($wbMonthTransitRub);
+        $monthTransitAmount = $uzumMonthTransit + $wbMonthTransit;
+        $monthTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
+            + (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->count());
+
+        // ========== ОТМЕНЁННЫЕ ==========
+
+        // Week - ОТМЕНЁННЫЕ
+        $uzumWeekCancelledTiyin = (float) (clone $uzumCancelled)->whereDate('order_date', '>=', $weekAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumWeekCancelled = $uzumWeekCancelledTiyin / 100;
+        $wbWeekCancelledRub = (float) (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekCancelled = $this->currencyService->convertFromRub($wbWeekCancelledRub);
+        $weekCancelledAmount = $uzumWeekCancelled + $wbWeekCancelled;
+        $weekCancelledCount = (int) ((clone $uzumCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count());
+
+        // ========== ВСЕГО ЗАКАЗОВ (для общей статистики) ==========
+        $todayTotalCount = $todaySalesCount
+            + (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
+            + (clone $wbTransit)->whereDate('order_date', $today)->count());
+
+        $weekTotalCount = $weekSalesCount + $weekTransitCount;
+        $monthTotalCount = $monthSalesCount + $monthTransitCount;
+
+        // ========== ГРАФИК ПО ДНЯМ - только ПРОДАЖИ (завершённые) ==========
+        $uzumDailySales = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('order_date', '>=', $weekAgo)
+            ->where('status', 'COMPLETED')
+            ->select(DB::raw('DATE(order_date) as date'), DB::raw('SUM(sell_price * amount) as amount_tiyin'), DB::raw('SUM(amount) as count'))
             ->groupBy('date')
             ->get()
             ->keyBy('date');
 
-        $wbDaily = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbDailySales = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
+            ->where('is_realization', true)
             ->where('is_cancel', false)
             ->where('is_return', false)
             ->select(DB::raw('DATE(order_date) as date'), DB::raw('SUM(for_pay) as amount'), DB::raw('COUNT(*) as count'))
@@ -187,29 +252,32 @@ class DashboardController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i)->format('Y-m-d');
             $chartLabels[] = Carbon::parse($date)->format('d.m');
-            $uzumAmount = (float) ($uzumDaily[$date]->amount ?? 0);
-            $wbAmountRub = (float) ($wbDaily[$date]->amount ?? 0);
+            // Только ПРОДАЖИ (завершённые заказы)
+            $uzumAmount = (float) ($uzumDailySales[$date]->amount_tiyin ?? 0) / 100;
+            $wbAmountRub = (float) ($wbDailySales[$date]->amount ?? 0);
             $wbAmount = $this->currencyService->convertFromRub($wbAmountRub);
             $chartData[] = $uzumAmount + $wbAmount;
         }
 
-        // Последние заказы (Uzum + WB, объединённые и отсортированные)
-        $uzumRecent = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        // ========== ПОСЛЕДНИЕ ЗАКАЗЫ ==========
+        $uzumRecent = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->with('account')
-            ->orderByDesc('ordered_at')
+            ->orderByDesc('order_date')
             ->limit(10)
             ->get()
             ->map(fn($o) => [
                 'id' => 'uzum_' . $o->id,
-                'order_number' => $o->external_order_id,
-                'amount' => (float) $o->total_amount,
+                'order_number' => (string) $o->order_id,
+                'amount' => ($o->sell_price * $o->amount) / 100,
                 'original_currency' => 'UZS',
-                'status' => $o->status_normalized ?? $o->status,
-                'status_label' => $this->getStatusLabel($o->status_normalized ?? $o->status),
-                'date' => $o->ordered_at?->format('d.m.Y H:i'),
-                'ordered_at' => $o->ordered_at,
+                'status' => $this->normalizeUzumFinanceStatus($o->status),
+                'status_label' => $this->getStatusLabel($this->normalizeUzumFinanceStatus($o->status)),
+                'is_revenue' => $o->status === 'COMPLETED', // Это доход только если завершён
+                'date' => $o->order_date?->format('d.m.Y H:i'),
+                'ordered_at' => $o->order_date,
                 'marketplace' => 'uzum',
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Uzum',
+                'product_title' => $o->sku_title,
             ]);
 
         $wbRecent = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
@@ -225,6 +293,7 @@ class DashboardController extends Controller
                 'original_currency' => 'RUB',
                 'status' => $this->normalizeWbStatus($o),
                 'status_label' => $this->getStatusLabel($this->normalizeWbStatus($o)),
+                'is_revenue' => $o->is_realization && !$o->is_cancel && !$o->is_return, // Доход только если реализовано
                 'date' => $o->order_date?->format('d.m.Y H:i'),
                 'ordered_at' => $o->order_date,
                 'marketplace' => 'wb',
@@ -237,62 +306,115 @@ class DashboardController extends Controller
             ->values()
             ->map(fn($o) => collect($o)->except('ordered_at')->toArray());
 
-        // По статусам (Uzum + WB)
-        $uzumByStatus = UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereDate('ordered_at', '>=', $weekAgo)
-            ->select('status_normalized as status', DB::raw('COUNT(*) as count'))
-            ->groupBy('status_normalized')
-            ->pluck('count', 'status')
-            ->toArray();
+        // ========== ПО СТАТУСАМ ==========
+        $uzumByStatusRaw = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('order_date', '>=', $weekAgo)
+            ->select('status', DB::raw('SUM(amount) as count'), DB::raw('SUM(sell_price * amount) as amount_tiyin'))
+            ->groupBy('status')
+            ->get();
 
-        // WB orders by status - normalize from is_cancel/is_return/is_realization flags
+        $byStatus = [
+            'completed' => ['count' => 0, 'amount' => 0.0],
+            'transit' => ['count' => 0, 'amount' => 0.0],
+            'cancelled' => ['count' => 0, 'amount' => 0.0],
+        ];
+
+        foreach ($uzumByStatusRaw as $row) {
+            $amount = ($row->amount_tiyin ?? 0) / 100;
+            if ($row->status === 'COMPLETED') {
+                $byStatus['completed']['count'] += (int) $row->count;
+                $byStatus['completed']['amount'] += $amount;
+            } elseif ($row->status === 'PROCESSING') {
+                $byStatus['transit']['count'] += (int) $row->count;
+                $byStatus['transit']['amount'] += $amount;
+            } else {
+                $byStatus['cancelled']['count'] += (int) $row->count;
+                $byStatus['cancelled']['amount'] += $amount;
+            }
+        }
+
+        // WB orders by status
         $wbByStatusRaw = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
             ->get();
 
-        $wbByStatus = [];
         foreach ($wbByStatusRaw as $order) {
-            $status = $this->normalizeWbStatus($order);
-            $wbByStatus[$status] = ($wbByStatus[$status] ?? 0) + 1;
-        }
-
-        // Объединяем статусы
-        $byStatus = [];
-        foreach ($uzumByStatus as $status => $count) {
-            $byStatus[$status] = ($byStatus[$status] ?? 0) + $count;
-        }
-        foreach ($wbByStatus as $status => $count) {
-            $byStatus[$status] = ($byStatus[$status] ?? 0) + $count;
+            $amount = $this->currencyService->convertFromRub((float) ($order->for_pay ?? 0));
+            if ($order->is_cancel || $order->is_return) {
+                $byStatus['cancelled']['count']++;
+                $byStatus['cancelled']['amount'] += $amount;
+            } elseif ($order->is_realization) {
+                $byStatus['completed']['count']++;
+                $byStatus['completed']['amount'] += $amount;
+            } else {
+                $byStatus['transit']['count']++;
+                $byStatus['transit']['amount'] += $amount;
+            }
         }
 
         return [
-            'today_amount' => (float) $todayAmount,
-            'today_count' => $todayCount,
-            'week_amount' => (float) $weekAmount,
-            'week_count' => $weekCount,
-            'month_amount' => (float) $monthAmount,
-            'month_count' => $monthCount,
-            // Отменённые заказы (отдельно)
-            'cancelled_week_amount' => (float) $cancelledWeekAmount,
-            'cancelled_week_count' => $cancelledWeekCount,
+            // Продажи (ДОХОД) - только завершённые заказы
+            'today_amount' => (float) $todaySalesAmount,
+            'today_count' => $todaySalesCount,
+            'week_amount' => (float) $weekSalesAmount,
+            'week_count' => $weekSalesCount,
+            'month_amount' => (float) $monthSalesAmount,
+            'month_count' => $monthSalesCount,
+
+            // В транзите (ещё не доход)
+            'transit_week_amount' => (float) $weekTransitAmount,
+            'transit_week_count' => $weekTransitCount,
+            'transit_month_amount' => (float) $monthTransitAmount,
+            'transit_month_count' => $monthTransitCount,
+
+            // Отменённые
+            'cancelled_week_amount' => (float) $weekCancelledAmount,
+            'cancelled_week_count' => $weekCancelledCount,
+
+            // Всего заказов (для информации)
+            'total_today_count' => $todayTotalCount,
+            'total_week_count' => $weekTotalCount,
+            'total_month_count' => $monthTotalCount,
+
             'chart_labels' => $chartLabels,
             'chart_data' => $chartData,
             'recent_orders' => $recentOrders,
             'by_status' => $byStatus,
-            // Детали по маркетплейсам (для отладки)
+
+            // Детали по маркетплейсам
             'by_marketplace' => [
                 'uzum' => [
-                    'week_amount' => $uzumWeekAmount,
+                    'week_sales' => $uzumWeekSales,
+                    'week_transit' => $uzumWeekTransit,
                     'currency' => 'UZS',
                 ],
                 'wb' => [
-                    'week_amount_rub' => $wbWeekAmountRub,
-                    'week_amount_converted' => $wbWeekAmount,
+                    'week_sales_rub' => $wbWeekSalesRub,
+                    'week_sales_converted' => $wbWeekSales,
+                    'week_transit_rub' => $wbWeekTransitRub,
+                    'week_transit_converted' => $wbWeekTransit,
                     'currency' => 'RUB',
                     'converted_to' => $this->currencyService->getDisplayCurrency(),
                 ],
             ],
         ];
+    }
+
+    /**
+     * Normalize Uzum Finance Order status
+     */
+    private function normalizeUzumFinanceStatus(?string $status): string
+    {
+        if (!$status) {
+            return 'processing';
+        }
+
+        return match (strtoupper($status)) {
+            'PROCESSING' => 'processing',
+            'COMPLETED' => 'delivered',
+            'CANCELED' => 'cancelled',
+            default => strtolower($status),
+        };
     }
 
     /**
@@ -633,10 +755,11 @@ class DashboardController extends Controller
             ];
         }
 
-        // 4. Заказы требующие сборки (новые)
-        $newOrdersCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('status_normalized', 'new')
-            ->count()
+        // 4. Заказы требующие сборки (новые/в обработке)
+        // Uzum Finance Orders: PROCESSING = требует обработки
+        $newOrdersCount = UzumFinanceOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('status', 'PROCESSING')
+            ->sum('amount')
             + WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('status', 'new')
             ->count();
@@ -1006,13 +1129,15 @@ class DashboardController extends Controller
         $labels = [
             'new' => 'Новый',
             'pending' => 'Ожидает',
+            'processing' => 'В обработке',
+            'transit' => 'В транзите',
             'in_assembly' => 'В сборке',
             'assembling' => 'В сборке',
             'assembled' => 'Собран',
             'in_delivery' => 'В доставке',
             'delivering' => 'В доставке',
             'delivered' => 'Доставлен',
-            'completed' => 'Выполнен',
+            'completed' => 'Продан',
             'cancelled' => 'Отменён',
             'canceled' => 'Отменён',
             'returned' => 'Возврат',

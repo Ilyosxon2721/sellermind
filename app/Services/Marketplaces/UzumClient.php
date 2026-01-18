@@ -1097,4 +1097,214 @@ class UzumClient implements MarketplaceClientInterface
         };
     }
 
+    // ========== Finance Orders API (для аналитики) ==========
+
+    /**
+     * Fetch finance orders from Uzum Finance API
+     * Используется для аналитики, дашборда, отчётов
+     * Содержит все типы заказов: FBO/FBS/DBS/EDBS
+     *
+     * @param MarketplaceAccount $account
+     * @param array $shopIds Shop IDs to fetch orders for
+     * @param int $page Page number (0-based)
+     * @param int $size Page size (max 100)
+     * @param bool $group Group by order (false = individual items)
+     * @return array ['orderItems' => [...], 'totalElements' => int]
+     */
+    public function fetchFinanceOrders(
+        MarketplaceAccount $account,
+        array $shopIds = [],
+        int $page = 0,
+        int $size = 100,
+        bool $group = false
+    ): array {
+        $shopIds = $this->resolveShopIds($account, $shopIds);
+
+        if (empty($shopIds)) {
+            Log::warning('Uzum fetchFinanceOrders: no shop IDs', ['account_id' => $account->id]);
+            return ['orderItems' => [], 'totalElements' => 0];
+        }
+
+        $allItems = [];
+        $totalElements = 0;
+
+        foreach ($shopIds as $shopId) {
+            try {
+                $query = [
+                    'page' => $page,
+                    'size' => min($size, 100),
+                    'group' => $group ? 'true' : 'false',
+                    'shopIds' => $shopId,
+                ];
+
+                $response = $this->request($account, 'GET', '/v1/finance/orders', $query);
+
+                $items = $response['orderItems'] ?? [];
+                $total = $response['totalElements'] ?? 0;
+
+                Log::info('Uzum fetchFinanceOrders response', [
+                    'account_id' => $account->id,
+                    'shop_id' => $shopId,
+                    'page' => $page,
+                    'items_count' => count($items),
+                    'total_elements' => $total,
+                ]);
+
+                $allItems = array_merge($allItems, $items);
+                $totalElements = max($totalElements, $total);
+            } catch (\Throwable $e) {
+                Log::warning('Uzum fetchFinanceOrders failed for shop', [
+                    'account_id' => $account->id,
+                    'shop_id' => $shopId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return [
+            'orderItems' => $allItems,
+            'totalElements' => $totalElements,
+        ];
+    }
+
+    /**
+     * Fetch all finance orders with pagination
+     * Автоматически обходит все страницы
+     *
+     * @param MarketplaceAccount $account
+     * @param array $shopIds Shop IDs
+     * @param int $maxPages Max pages to fetch (0 = unlimited)
+     * @return array All order items
+     */
+    public function fetchAllFinanceOrders(
+        MarketplaceAccount $account,
+        array $shopIds = [],
+        int $maxPages = 0
+    ): array {
+        $shopIds = $this->resolveShopIds($account, $shopIds);
+        $allItems = [];
+        $size = 100;
+
+        foreach ($shopIds as $shopId) {
+            $page = 0;
+            $pagesLoaded = 0;
+
+            do {
+                try {
+                    $response = $this->fetchFinanceOrders($account, [$shopId], $page, $size);
+                    $items = $response['orderItems'] ?? [];
+                    $totalElements = $response['totalElements'] ?? 0;
+
+                    $allItems = array_merge($allItems, $items);
+                    $pagesLoaded++;
+                    $page++;
+
+                    // Добавим небольшую задержку чтобы не превысить rate limit
+                    if (!empty($items)) {
+                        usleep(200000); // 200ms
+                    }
+
+                    // Проверка лимита страниц
+                    if ($maxPages > 0 && $pagesLoaded >= $maxPages) {
+                        break;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Uzum fetchAllFinanceOrders page failed', [
+                        'account_id' => $account->id,
+                        'shop_id' => $shopId,
+                        'page' => $page,
+                        'error' => $e->getMessage(),
+                    ]);
+                    break;
+                }
+            } while (!empty($items) && count($items) === $size);
+        }
+
+        Log::info('Uzum fetchAllFinanceOrders completed', [
+            'account_id' => $account->id,
+            'total_items' => count($allItems),
+        ]);
+
+        return $allItems;
+    }
+
+    /**
+     * Map finance order item to model data
+     *
+     * @param array $item Raw order item from API
+     * @return array Mapped data for UzumFinanceOrder model
+     */
+    public function mapFinanceOrderData(array $item): array
+    {
+        // Дата из миллисекунд в timestamp
+        $orderDate = isset($item['date']) ? $this->convertTimestamp($item['date']) : null;
+        $dateIssued = isset($item['dateIssued']) ? $this->convertTimestamp($item['dateIssued']) : null;
+
+        // Получаем URL изображения (берём первый доступный размер)
+        $imageUrl = null;
+        $photo = $item['productImage']['photo'] ?? [];
+        foreach (['540', '480', '240', '800', '720'] as $size) {
+            if (isset($photo[$size]['high'])) {
+                $imageUrl = $photo[$size]['high'];
+                break;
+            }
+        }
+
+        return [
+            'uzum_id' => $item['id'] ?? null,
+            'order_id' => $item['orderId'] ?? null,
+            'shop_id' => $item['shopId'] ?? null,
+            'product_id' => $item['productId'] ?? null,
+            'sku_title' => $item['skuTitle'] ?? $item['productTitle'] ?? null,
+            'product_image_url' => $imageUrl,
+            'status' => $item['status'] ?? null,
+            'status_normalized' => $this->mapFinanceOrderStatus($item['status'] ?? null),
+            'sell_price' => $item['sellPrice'] ?? 0,
+            'purchase_price' => $item['purchasePrice'] ?? null,
+            'commission' => $item['commission'] ?? 0,
+            'seller_profit' => $item['sellerProfit'] ?? 0,
+            'logistic_delivery_fee' => $item['logisticDeliveryFee'] ?? 0,
+            'withdrawn_profit' => $item['withdrawnProfit'] ?? 0,
+            'amount' => $item['amount'] ?? 0,
+            'amount_returns' => $item['amountReturns'] ?? 0,
+            'order_date' => $orderDate,
+            'date_issued' => $dateIssued,
+            'comment' => $item['comment'] ?? null,
+            'return_cause' => $item['returnCause'] ?? null,
+            'raw_data' => $item,
+        ];
+    }
+
+    /**
+     * Map finance order status to normalized status
+     */
+    protected function mapFinanceOrderStatus(?string $status): ?string
+    {
+        if (!$status) {
+            return null;
+        }
+
+        return match (strtoupper($status)) {
+            'PROCESSING' => 'processing',
+            'COMPLETED' => 'delivered',
+            'CANCELED' => 'cancelled',
+            default => strtolower($status),
+        };
+    }
+
+    /**
+     * Convert Uzum timestamp (milliseconds) to Carbon datetime
+     */
+    protected function convertTimestamp($timestamp): ?\Carbon\Carbon
+    {
+        if (!$timestamp) {
+            return null;
+        }
+
+        // Uzum returns timestamps in milliseconds
+        $seconds = $timestamp > 9999999999 ? $timestamp / 1000 : $timestamp;
+
+        return \Carbon\Carbon::createFromTimestamp((int) $seconds);
+    }
+
 }
