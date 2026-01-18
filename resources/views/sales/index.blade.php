@@ -205,6 +205,7 @@
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Номер</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Магазин</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
@@ -215,7 +216,7 @@
                             {{-- Loading skeleton --}}
                             <template x-if="loading">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="7" class="px-6 py-12 text-center">
                                         <div class="flex items-center justify-center space-x-2">
                                             <svg class="animate-spin h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -231,7 +232,7 @@
                             <template x-for="order in orders" :key="order.id">
                                 <tr class="hover:bg-gray-50 transition-colors cursor-pointer" @click="viewOrder(order)">
                                     <td class="px-6 py-4">
-                                        <div class="font-semibold text-gray-900" x-text="'#' + (order.marketplace_order_id || order.external_order_id || order.id)"></div>
+                                        <div class="font-semibold text-gray-900" x-text="'#' + (order.order_number || order.id)"></div>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
@@ -243,6 +244,9 @@
                                                   'bg-gray-100 text-gray-700': order.marketplace === 'manual'
                                               }"
                                               x-text="getMarketplaceName(order.marketplace)"></span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="text-sm text-gray-700 truncate max-w-[150px] inline-block" x-text="order.account_name || '-'" :title="order.account_name"></span>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
@@ -272,7 +276,7 @@
                             {{-- Empty state --}}
                             <template x-if="!loading && orders.length === 0">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="7" class="px-6 py-12 text-center">
                                         <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -415,7 +419,8 @@
                                       }"
                                       x-text="getStatusName(order.status)"></span>
                             </div>
-                            <p class="native-body font-semibold truncate" x-text="'Заказ #' + (order.marketplace_order_id || order.id)"></p>
+                            <p class="native-body font-semibold truncate" x-text="'Заказ #' + (order.order_number || order.id)"></p>
+                            <p class="native-caption mt-0.5" x-text="order.account_name" x-show="order.account_name"></p>
                             <p class="native-caption mt-1" x-text="formatDate(order.created_at)"></p>
                         </div>
                         <div class="text-right">

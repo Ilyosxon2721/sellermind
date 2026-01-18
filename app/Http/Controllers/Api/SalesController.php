@@ -557,7 +557,7 @@ class SalesController extends Controller
             });
         }
 
-        return $query->get()->map(function($order) {
+        return $query->with('account')->get()->map(function($order) {
             // Цены в UzumFinanceOrder хранятся в тийинах, конвертируем в сумы
             $totalAmount = ($order->sell_price * $order->amount) / 100;
             $sellerProfit = $order->seller_profit / 100;
@@ -568,9 +568,10 @@ class SalesController extends Controller
 
             return [
                 'id' => 'uzum_finance_' . $order->id,
-                'order_number' => $order->order_id,
+                'order_number' => (string) $order->order_id,
                 'created_at' => $order->order_date?->toIso8601String(),
                 'marketplace' => 'uzum',
+                'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Uzum',
                 'customer_name' => $order->sku_title, // В finance API нет customer_name, показываем название товара
                 'total_amount' => $totalAmount,
                 'seller_profit' => $sellerProfit,
@@ -653,7 +654,7 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(function($order) {
+            return $query->with('account')->get()->map(function($order) {
                 $amountRub = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -663,9 +664,10 @@ class SalesController extends Controller
 
                 return [
                     'id' => 'wb_' . $order->id,
-                    'order_number' => $order->srid ?? $order->order_id ?? $order->id,
+                    'order_number' => (string) ($order->srid ?? $order->order_id ?? $order->id),
                     'created_at' => $order->order_date?->toIso8601String(),
                     'marketplace' => 'wb',
+                    'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Wildberries',
                     'customer_name' => $order->region_name,
                     'total_amount' => $amountConverted,
                     'total_amount_rub' => $amountRub,
@@ -777,7 +779,7 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(function($order) {
+            return $query->with('account')->get()->map(function($order) {
                 $amountRub = (float) ($order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -798,10 +800,11 @@ class SalesController extends Controller
 
                 return [
                     'id' => 'ozon_' . $order->id,
-                    'order_number' => $order->posting_number ?? $order->order_id,
+                    'order_number' => (string) ($order->posting_number ?? $order->order_id),
                     'created_at' => $order->created_at_ozon?->toIso8601String(),
                     'completion_date' => $order->stock_sold_at?->toIso8601String(),
                     'marketplace' => 'ozon',
+                    'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Ozon',
                     'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
                     'total_amount' => $amountConverted,
                     'total_amount_rub' => $amountRub,
@@ -875,7 +878,7 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(function($order) {
+            return $query->with('account')->get()->map(function($order) {
                 $amountRub = (float) ($order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -896,10 +899,11 @@ class SalesController extends Controller
 
                 return [
                     'id' => 'ym_' . $order->id,
-                    'order_number' => $order->order_id,
+                    'order_number' => (string) $order->order_id,
                     'created_at' => $order->created_at_ym?->toIso8601String(),
                     'completion_date' => $order->stock_sold_at?->toIso8601String(),
                     'marketplace' => 'ym',
+                    'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Yandex Market',
                     'customer_name' => $order->customer_name,
                     'total_amount' => $amountConverted,
                     'total_amount_rub' => $amountRub,
@@ -953,13 +957,15 @@ class SalesController extends Controller
 
             return $query->get()->map(fn($order) => [
                 'id' => 'manual_' . $order->id,
-                'order_number' => $order->external_order_id,
+                'order_number' => (string) $order->external_order_id,
                 'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
                 'marketplace' => 'manual',
+                'account_name' => 'Ручной заказ',
                 'customer_name' => $order->payload_json['customer_name'] ?? null,
                 'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
                 'currency' => $order->payload_json['currency'] ?? 'UZS',
                 'status' => $this->normalizeStatus($order->status),
+                'is_revenue' => true, // Ручные заказы всегда считаем как доход
                 'raw_status' => $order->status,
             ]);
         } catch (\Exception $e) {
@@ -1025,8 +1031,15 @@ class SalesController extends Controller
 
         $avgOrderValue = $salesCount > 0 ? round($salesAmount / $salesCount) : 0;
 
-        $byMarketplace = $orders->groupBy('marketplace')->map(function($group, $mp) {
-            $labels = ['uzum' => 'Uzum', 'wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'manual' => 'Ручные'];
+        // Все маркетплейсы - всегда показываем все 5, даже с 0 заказами
+        $allMarketplaces = ['uzum', 'wb', 'ozon', 'ym', 'manual'];
+        $labels = ['uzum' => 'Uzum', 'wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'manual' => 'Ручные'];
+
+        $ordersByMarketplace = $orders->groupBy('marketplace');
+
+        $byMarketplace = collect($allMarketplaces)->map(function($mp) use ($ordersByMarketplace, $labels) {
+            $group = $ordersByMarketplace->get($mp, collect());
+
             $completed = $group->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
             $awaitingPickup = $group->filter(fn($o) =>
                 ($o['is_awaiting_pickup'] ?? false) === true ||
