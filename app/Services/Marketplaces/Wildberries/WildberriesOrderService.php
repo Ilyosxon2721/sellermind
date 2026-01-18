@@ -572,12 +572,13 @@ class WildberriesOrderService
             'subject' => $orderData['subject'] ?? null,
             'category' => $orderData['category'] ?? null,
             'warehouse_name' => $orderData['warehouseName'] ?? null,
-            'warehouse_type' => $orderData['isSupply'] ?? false ? 'FBS' : 'FBO',
+            'warehouse_type' => !empty($orderData['isSupply']) ? 'FBS' : 'FBO',
             'status' => $this->mapStatisticsStatus($orderData),
-            'wb_status' => $orderData['orderType'] ?? null,
+            'wb_status' => $orderData['orderType'] ?? $orderData['warehouseType'] ?? null,
             'is_cancel' => (bool)($orderData['isCancel'] ?? false),
             'is_return' => (bool)($orderData['isReturn'] ?? false),
-            'is_realization' => ($orderData['orderType'] ?? null) === 'Продажа',
+            // isRealization - boolean field from Statistics API indicating completed sale
+            'is_realization' => (bool)($orderData['isRealization'] ?? false),
             'price' => $orderData['priceWithDisc'] ?? null,
             'discount_percent' => $orderData['discountPercent'] ?? null,
             'total_price' => $orderData['totalPrice'] ?? null,
@@ -728,6 +729,10 @@ class WildberriesOrderService
 
     /**
      * Map Statistics API order to internal status
+     *
+     * isRealization = true means item was sold and money received (completed sale)
+     * isCancel = true means order was cancelled
+     * isReturn = true means item was returned
      */
     protected function mapStatisticsStatus(array $orderData): string
     {
@@ -739,7 +744,8 @@ class WildberriesOrderService
             return 'returned';
         }
 
-        if (($orderData['orderType'] ?? null) === 'Продажа') {
+        // isRealization = true означает завершённую продажу (деньги получены)
+        if ($orderData['isRealization'] ?? false) {
             return 'delivered';
         }
 

@@ -132,11 +132,11 @@ class UzumFinanceOrder extends Model
     }
 
     /**
-     * Check if order is completed
+     * Check if order is completed (including TO_WITHDRAW = money withdrawn)
      */
     public function isCompleted(): bool
     {
-        return $this->status === 'COMPLETED';
+        return in_array($this->status, ['COMPLETED', 'TO_WITHDRAW']);
     }
 
     /**
@@ -173,6 +173,7 @@ class UzumFinanceOrder extends Model
 
     /**
      * Get normalized status
+     * TO_WITHDRAW = деньги выведены (завершённая продажа)
      */
     public function getNormalizedStatus(): string
     {
@@ -182,7 +183,7 @@ class UzumFinanceOrder extends Model
 
         return match ($this->status) {
             'PROCESSING' => 'processing',
-            'COMPLETED' => 'delivered',
+            'COMPLETED', 'TO_WITHDRAW' => 'delivered',
             'CANCELED' => 'cancelled',
             default => strtolower($this->status),
         };
@@ -207,7 +208,7 @@ class UzumFinanceOrder extends Model
 
     public function scopeCompleted($query)
     {
-        return $query->where('status', 'COMPLETED');
+        return $query->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
     }
 
     public function scopeProcessing($query)

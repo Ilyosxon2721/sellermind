@@ -286,6 +286,43 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Pagination --}}
+                <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between" x-show="pagination.total > pagination.perPage">
+                    <div class="text-sm text-gray-500">
+                        Показано <span x-text="((pagination.currentPage - 1) * pagination.perPage) + 1"></span>-<span x-text="Math.min(pagination.currentPage * pagination.perPage, pagination.total)"></span> из <span x-text="pagination.total"></span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        {{-- Previous --}}
+                        <button @click="prevPage()"
+                                :disabled="pagination.currentPage === 1"
+                                :class="pagination.currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                class="px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+
+                        {{-- Page numbers --}}
+                        <template x-for="page in getVisiblePages()" :key="page">
+                            <button @click="goToPage(page)"
+                                    :class="page === pagination.currentPage ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
+                                    class="w-10 h-10 rounded-lg text-sm font-medium transition-colors"
+                                    x-text="page">
+                            </button>
+                        </template>
+
+                        {{-- Next --}}
+                        <button @click="nextPage()"
+                                :disabled="pagination.currentPage === pagination.lastPage"
+                                :class="pagination.currentPage === pagination.lastPage ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+                                class="px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -401,6 +438,32 @@
                 </div>
                 <p class="native-body text-gray-500 mb-2">Нет продаж</p>
                 <p class="native-caption">Заказы появятся здесь автоматически</p>
+            </div>
+
+            {{-- Mobile Pagination --}}
+            <div x-show="pagination.total > pagination.perPage" class="native-card mt-4">
+                <div class="flex items-center justify-between">
+                    <button @click="prevPage()"
+                            :disabled="pagination.currentPage === 1"
+                            :class="pagination.currentPage === 1 ? 'opacity-50' : ''"
+                            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <div class="text-center">
+                        <span class="native-body font-semibold" x-text="pagination.currentPage + ' / ' + pagination.lastPage"></span>
+                        <p class="native-caption" x-text="'Всего: ' + pagination.total + ' заказов'"></p>
+                    </div>
+                    <button @click="nextPage()"
+                            :disabled="pagination.currentPage === pagination.lastPage"
+                            :class="pagination.currentPage === pagination.lastPage ? 'opacity-50' : ''"
+                            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -518,12 +581,18 @@ function salesPage() {
             byMarketplace: []
         },
         orders: [],
+        pagination: {
+            currentPage: 1,
+            lastPage: 1,
+            perPage: 20,
+            total: 0
+        },
 
         init() {
             this.loadOrders();
         },
 
-        async loadOrders() {
+        async loadOrders(page = 1) {
             this.loading = true;
             try {
                 // Convert period to date_from/date_to
@@ -531,12 +600,23 @@ function salesPage() {
                 const params = new URLSearchParams();
                 params.set('date_from', dates.date_from);
                 params.set('date_to', dates.date_to);
+                params.set('page', page);
+                params.set('per_page', this.pagination.perPage);
                 if (this.filters.marketplace) params.set('marketplace', this.filters.marketplace);
                 if (this.filters.status) params.set('status', this.filters.status);
                 if (this.filters.search) params.set('search', this.filters.search);
 
                 const response = await window.api.get(`/sales?${params}`);
                 this.orders = response.data.data || [];
+
+                // Update pagination
+                const meta = response.data.meta || {};
+                this.pagination = {
+                    currentPage: meta.current_page || 1,
+                    lastPage: meta.last_page || 1,
+                    perPage: meta.per_page || 20,
+                    total: meta.total || 0
+                };
 
                 // Map API stats to frontend stats
                 const apiStats = response.data.stats || {};
@@ -557,6 +637,37 @@ function salesPage() {
             } finally {
                 this.loading = false;
             }
+        },
+
+        goToPage(page) {
+            if (page >= 1 && page <= this.pagination.lastPage) {
+                this.loadOrders(page);
+            }
+        },
+
+        prevPage() {
+            if (this.pagination.currentPage > 1) {
+                this.loadOrders(this.pagination.currentPage - 1);
+            }
+        },
+
+        nextPage() {
+            if (this.pagination.currentPage < this.pagination.lastPage) {
+                this.loadOrders(this.pagination.currentPage + 1);
+            }
+        },
+
+        getVisiblePages() {
+            const current = this.pagination.currentPage;
+            const last = this.pagination.lastPage;
+            const delta = 2;
+            const pages = [];
+
+            for (let i = Math.max(1, current - delta); i <= Math.min(last, current + delta); i++) {
+                pages.push(i);
+            }
+
+            return pages;
         },
 
         periodToDates(period) {

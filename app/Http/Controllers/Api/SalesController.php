@@ -544,7 +544,9 @@ class SalesController extends Controller
             // Цены в UzumFinanceOrder хранятся в тийинах, конвертируем в сумы
             $totalAmount = ($order->sell_price * $order->amount) / 100;
             $sellerProfit = $order->seller_profit / 100;
-            $isCompleted = $order->status === 'COMPLETED';
+            // TO_WITHDRAW = деньги выведены (завершённая продажа)
+            // COMPLETED = также завершённая продажа
+            $isCompleted = in_array($order->status, ['COMPLETED', 'TO_WITHDRAW']);
             $isCancelled = in_array($order->status, ['CANCELED', 'cancelled']);
 
             return [
@@ -570,6 +572,7 @@ class SalesController extends Controller
     /**
      * Normalize Uzum Finance order status
      *
+     * TO_WITHDRAW → delivered (продажа, деньги выведены)
      * COMPLETED → delivered (продажа)
      * PROCESSING → transit (в транзите)
      * CANCELED → cancelled
@@ -580,7 +583,7 @@ class SalesController extends Controller
 
         return match (strtoupper($status)) {
             'PROCESSING' => 'transit',
-            'COMPLETED' => 'delivered',
+            'COMPLETED', 'TO_WITHDRAW' => 'delivered',
             'CANCELED' => 'cancelled',
             default => 'transit',
         };

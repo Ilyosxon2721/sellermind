@@ -126,9 +126,10 @@ class DashboardController extends Controller
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
     {
-        // ===== UZUM: Только COMPLETED заказы считаем как продажи (доход) =====
+        // ===== UZUM: COMPLETED и TO_WITHDRAW считаем как продажи (доход) =====
+        // TO_WITHDRAW = деньги выведены (завершённая продажа)
         $uzumCompleted = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where('status', 'COMPLETED');
+            ->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
 
         // Uzum: PROCESSING = в транзите (ещё не доход)
         $uzumTransit = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
@@ -231,7 +232,7 @@ class DashboardController extends Controller
         // ========== ГРАФИК ПО ДНЯМ - только ПРОДАЖИ (завершённые) ==========
         $uzumDailySales = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
-            ->where('status', 'COMPLETED')
+            ->whereIn('status', ['COMPLETED', 'TO_WITHDRAW'])
             ->select(DB::raw('DATE(order_date) as date'), DB::raw('SUM(sell_price * amount) as amount_tiyin'), DB::raw('SUM(amount) as count'))
             ->groupBy('date')
             ->get()
@@ -272,7 +273,7 @@ class DashboardController extends Controller
                 'original_currency' => 'UZS',
                 'status' => $this->normalizeUzumFinanceStatus($o->status),
                 'status_label' => $this->getStatusLabel($this->normalizeUzumFinanceStatus($o->status)),
-                'is_revenue' => $o->status === 'COMPLETED', // Это доход только если завершён
+                'is_revenue' => in_array($o->status, ['COMPLETED', 'TO_WITHDRAW']), // Это доход только если завершён
                 'date' => $o->order_date?->format('d.m.Y H:i'),
                 'ordered_at' => $o->order_date,
                 'marketplace' => 'uzum',
@@ -321,13 +322,14 @@ class DashboardController extends Controller
 
         foreach ($uzumByStatusRaw as $row) {
             $amount = ($row->amount_tiyin ?? 0) / 100;
-            if ($row->status === 'COMPLETED') {
+            if (in_array($row->status, ['COMPLETED', 'TO_WITHDRAW'])) {
                 $byStatus['completed']['count'] += (int) $row->count;
                 $byStatus['completed']['amount'] += $amount;
             } elseif ($row->status === 'PROCESSING') {
                 $byStatus['transit']['count'] += (int) $row->count;
                 $byStatus['transit']['amount'] += $amount;
             } else {
+                // CANCELED и другие статусы
                 $byStatus['cancelled']['count'] += (int) $row->count;
                 $byStatus['cancelled']['amount'] += $amount;
             }
@@ -402,6 +404,7 @@ class DashboardController extends Controller
 
     /**
      * Normalize Uzum Finance Order status
+     * TO_WITHDRAW = деньги выведены (завершённая продажа)
      */
     private function normalizeUzumFinanceStatus(?string $status): string
     {
@@ -411,7 +414,7 @@ class DashboardController extends Controller
 
         return match (strtoupper($status)) {
             'PROCESSING' => 'processing',
-            'COMPLETED' => 'delivered',
+            'COMPLETED', 'TO_WITHDRAW' => 'delivered',
             'CANCELED' => 'cancelled',
             default => strtolower($status),
         };
