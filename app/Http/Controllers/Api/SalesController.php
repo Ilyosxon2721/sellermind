@@ -28,6 +28,8 @@ class SalesController extends Controller
     }
     /**
      * Get all sales from all sources with filters
+     *
+     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function index(Request $request): JsonResponse
     {
@@ -46,6 +48,7 @@ class SalesController extends Controller
         $marketplace = $request->get('marketplace');
         $status = $request->get('status');
         $search = $request->get('search');
+        $dateMode = $request->get('date_mode', 'order_date'); // order_date | completion_date
         $perPage = min((int) $request->get('per_page', 20), 100);
 
         // Build unified orders collection
@@ -53,25 +56,25 @@ class SalesController extends Controller
 
         // Get Uzum orders
         if (!$marketplace || $marketplace === 'uzum') {
-            $uzumOrders = $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            $uzumOrders = $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($uzumOrders);
         }
 
         // Get WB orders (RUB amounts will be converted)
         if (!$marketplace || $marketplace === 'wb') {
-            $wbOrders = $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            $wbOrders = $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($wbOrders);
         }
 
         // Get OZON orders
         if (!$marketplace || $marketplace === 'ozon') {
-            $ozonOrders = $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            $ozonOrders = $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($ozonOrders);
         }
 
         // Get Yandex Market orders
         if (!$marketplace || $marketplace === 'ym') {
-            $ymOrders = $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            $ymOrders = $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($ymOrders);
         }
 
@@ -99,6 +102,7 @@ class SalesController extends Controller
         return response()->json([
             'data' => $paginatedOrders,
             'stats' => $stats,
+            'date_mode' => $dateMode,
             'currency' => [
                 'code' => $displayCurrency,
                 'symbol' => $currencySymbol,
@@ -407,6 +411,7 @@ class SalesController extends Controller
             'accepted_uzum' => 'Принят Uzum',
             'in_supply' => 'В поставке',
             'waiting_pickup' => 'Ждёт выдачи',
+            'awaiting_pickup' => 'В ПВЗ',
             'issued' => 'Выдан',
             'returns' => 'Возврат',
         ];
@@ -462,7 +467,7 @@ class SalesController extends Controller
     /**
      * Get Uzum orders from Finance API (all types: FBO/FBS/DBS/EDBS)
      */
-    private function getUzumOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    private function getUzumOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
         if (!$companyId) {
             return collect();
@@ -604,7 +609,7 @@ class SalesController extends Controller
     /**
      * Get WB orders
      */
-    private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
         if (!$companyId) {
             return collect();
@@ -725,19 +730,23 @@ class SalesController extends Controller
      * Статусы:
      * - isSold() = true → delivered (продажа, доход)
      * - isInTransit() = true → transit (в транзите, ещё не доход)
+     * - isAwaitingPickup() = true → awaiting_pickup (в ПВЗ)
      * - isCancelled() = true → cancelled
      */
-    private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
         if (!$companyId) {
             return collect();
         }
 
         try {
+            // Выбираем поле даты в зависимости от режима
+            $dateField = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ozon';
+
             $query = OzonOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate('created_at_ozon', '>=', $dateFrom)
-                ->whereDate('created_at_ozon', '<=', $dateTo);
+                ->whereDate($dateField, '>=', $dateFrom)
+                ->whereDate($dateField, '<=', $dateTo);
 
             // Apply status filter using scopes
             if ($status) {
@@ -749,6 +758,9 @@ class SalesController extends Controller
                     case 'transit':
                     case 'processing':
                         $query->inTransit();
+                        break;
+                    case 'awaiting_pickup':
+                        $query->awaitingPickup();
                         break;
                     case 'cancelled':
                         $query->cancelled();
@@ -772,11 +784,23 @@ class SalesController extends Controller
                 // Определяем категорию статуса через методы модели
                 $isCompleted = $order->isSold();
                 $isCancelled = $order->isCancelled();
+                $isAwaitingPickup = $order->isAwaitingPickup();
+
+                // Определяем status_category
+                $statusCategory = 'transit';
+                if ($isCompleted) {
+                    $statusCategory = 'completed';
+                } elseif ($isCancelled) {
+                    $statusCategory = 'cancelled';
+                } elseif ($isAwaitingPickup) {
+                    $statusCategory = 'awaiting_pickup';
+                }
 
                 return [
                     'id' => 'ozon_' . $order->id,
                     'order_number' => $order->posting_number ?? $order->order_id,
                     'created_at' => $order->created_at_ozon?->toIso8601String(),
+                    'completion_date' => $order->stock_sold_at?->toIso8601String(),
                     'marketplace' => 'ozon',
                     'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
                     'total_amount' => $amountConverted,
@@ -784,8 +808,9 @@ class SalesController extends Controller
                     'original_currency' => 'RUB',
                     'currency' => $this->currencyService->getDisplayCurrency(),
                     'status' => $order->getNormalizedStatus(),
-                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                    'status_category' => $statusCategory,
                     'is_revenue' => $isCompleted, // Только sold заказы считаем как доход
+                    'is_awaiting_pickup' => $isAwaitingPickup,
                     'raw_status' => $order->status,
                     'stock_status' => $order->stock_status,
                 ];
@@ -802,19 +827,23 @@ class SalesController extends Controller
      * Статусы:
      * - isSold() = true → delivered (продажа, доход)
      * - isInTransit() = true → transit (в транзите, ещё не доход)
+     * - isAwaitingPickup() = true → awaiting_pickup (в ПВЗ)
      * - isCancelled() = true → cancelled
      */
-    private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
+    private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
         if (!$companyId) {
             return collect();
         }
 
         try {
+            // Выбираем поле даты в зависимости от режима
+            $dateField = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ym';
+
             $query = YandexMarketOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate('created_at_ym', '>=', $dateFrom)
-                ->whereDate('created_at_ym', '<=', $dateTo);
+                ->whereDate($dateField, '>=', $dateFrom)
+                ->whereDate($dateField, '<=', $dateTo);
 
             // Apply status filter using scopes
             if ($status) {
@@ -826,6 +855,9 @@ class SalesController extends Controller
                     case 'transit':
                     case 'processing':
                         $query->inTransit();
+                        break;
+                    case 'awaiting_pickup':
+                        $query->awaitingPickup();
                         break;
                     case 'cancelled':
                         $query->cancelled();
@@ -850,11 +882,23 @@ class SalesController extends Controller
                 // Определяем категорию статуса через методы модели
                 $isCompleted = $order->isSold();
                 $isCancelled = $order->isCancelled();
+                $isAwaitingPickup = $order->isAwaitingPickup();
+
+                // Определяем status_category
+                $statusCategory = 'transit';
+                if ($isCompleted) {
+                    $statusCategory = 'completed';
+                } elseif ($isCancelled) {
+                    $statusCategory = 'cancelled';
+                } elseif ($isAwaitingPickup) {
+                    $statusCategory = 'awaiting_pickup';
+                }
 
                 return [
                     'id' => 'ym_' . $order->id,
                     'order_number' => $order->order_id,
                     'created_at' => $order->created_at_ym?->toIso8601String(),
+                    'completion_date' => $order->stock_sold_at?->toIso8601String(),
                     'marketplace' => 'ym',
                     'customer_name' => $order->customer_name,
                     'total_amount' => $amountConverted,
@@ -862,8 +906,9 @@ class SalesController extends Controller
                     'original_currency' => 'RUB',
                     'currency' => $this->currencyService->getDisplayCurrency(),
                     'status' => $order->getNormalizedStatus(),
-                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                    'status_category' => $statusCategory,
                     'is_revenue' => $isCompleted, // Только sold заказы считаем как доход
+                    'is_awaiting_pickup' => $isAwaitingPickup,
                     'raw_status' => $order->status,
                     'stock_status' => $order->stock_status,
                 ];
@@ -929,6 +974,7 @@ class SalesController extends Controller
      * Категории:
      * - completed (is_revenue=true): Продажи - полноценный доход
      * - transit: В транзите - ещё не доход
+     * - awaiting_pickup: В ПВЗ - ожидает выкупа
      * - cancelled: Отменённые - не считаем
      */
     private function calculateStats(\Illuminate\Support\Collection $orders): array
@@ -937,8 +983,14 @@ class SalesController extends Controller
 
         // Фильтруем по категориям статуса
         $completedOrders = $orders->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
+        $awaitingPickupOrders = $orders->filter(fn($o) =>
+            ($o['is_awaiting_pickup'] ?? false) === true ||
+            ($o['status_category'] ?? '') === 'awaiting_pickup'
+        );
         $transitOrders = $orders->filter(fn($o) =>
             ($o['is_revenue'] ?? false) === false &&
+            ($o['is_awaiting_pickup'] ?? false) === false &&
+            ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
             !in_array($o['status'], ['cancelled', 'canceled'])
         );
         $cancelledOrders = $orders->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
@@ -951,6 +1003,10 @@ class SalesController extends Controller
         $transitCount = $transitOrders->count();
         $transitAmount = $transitOrders->sum('total_amount');
 
+        // В ПВЗ (ожидает выкупа)
+        $awaitingPickupCount = $awaitingPickupOrders->count();
+        $awaitingPickupAmount = $awaitingPickupOrders->sum('total_amount');
+
         // Отменённые
         $cancelledCount = $cancelledOrders->count();
         $cancelledAmount = $cancelledOrders->sum('total_amount');
@@ -958,6 +1014,11 @@ class SalesController extends Controller
         // Общие суммы для обратной совместимости
         $totalAmount = $orders->sum('total_amount');
         $totalRevenue = $salesAmount; // Теперь доход = только завершённые
+
+        // Потенциальный доход (в пути + в ПВЗ)
+        $potentialRevenue = $transitAmount + $awaitingPickupAmount;
+        // Подтверждённый доход (выкуплено)
+        $confirmedRevenue = $salesAmount;
 
         $marketplaceOrders = $orders->filter(fn($o) => $o['marketplace'] !== 'manual')->count();
         $manualOrders = $orders->filter(fn($o) => $o['marketplace'] === 'manual')->count();
@@ -967,8 +1028,14 @@ class SalesController extends Controller
         $byMarketplace = $orders->groupBy('marketplace')->map(function($group, $mp) {
             $labels = ['uzum' => 'Uzum', 'wb' => 'WB', 'ozon' => 'Ozon', 'ym' => 'YM', 'manual' => 'Ручные'];
             $completed = $group->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
+            $awaitingPickup = $group->filter(fn($o) =>
+                ($o['is_awaiting_pickup'] ?? false) === true ||
+                ($o['status_category'] ?? '') === 'awaiting_pickup'
+            );
             $transit = $group->filter(fn($o) =>
                 ($o['is_revenue'] ?? false) === false &&
+                ($o['is_awaiting_pickup'] ?? false) === false &&
+                ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
                 !in_array($o['status'], ['cancelled', 'canceled'])
             );
             $cancelled = $group->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
@@ -983,6 +1050,9 @@ class SalesController extends Controller
                 // В транзите
                 'transitCount' => $transit->count(),
                 'transitAmount' => $transit->sum('total_amount'),
+                // В ПВЗ
+                'awaitingPickupCount' => $awaitingPickup->count(),
+                'awaitingPickupAmount' => $awaitingPickup->sum('total_amount'),
                 // Отменённые
                 'cancelledCount' => $cancelled->count(),
                 'cancelledAmount' => $cancelled->sum('total_amount'),
@@ -1003,6 +1073,14 @@ class SalesController extends Controller
             // В транзите (ещё не доход)
             'transitCount' => $transitCount,
             'transitAmount' => $transitAmount,
+
+            // В ПВЗ (ожидает выкупа)
+            'awaitingPickupCount' => $awaitingPickupCount,
+            'awaitingPickupAmount' => $awaitingPickupAmount,
+
+            // Потенциальный / Подтверждённый доход
+            'potentialRevenue' => $potentialRevenue,
+            'confirmedRevenue' => $confirmedRevenue,
 
             // Отменённые
             'cancelledOrders' => $cancelledCount,

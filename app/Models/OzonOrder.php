@@ -82,7 +82,18 @@ class OzonOrder extends Model
      */
     public function isInTransit(): bool
     {
-        return in_array($this->status, ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress'])
+        return in_array($this->status, ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress', 'delivering'])
+            && !$this->isCancelled()
+            && !$this->isSold();
+    }
+
+    /**
+     * Check if order is awaiting pickup at delivery point (ПВЗ)
+     * driver_pickup = у водителя/в ПВЗ
+     */
+    public function isAwaitingPickup(): bool
+    {
+        return in_array($this->status, ['driver_pickup'])
             && !$this->isCancelled()
             && !$this->isSold();
     }
@@ -123,7 +134,16 @@ class OzonOrder extends Model
 
     public function scopeInTransit($query)
     {
-        return $query->whereIn('status', ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress'])
+        return $query->whereIn('status', ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress', 'delivering'])
+            ->whereNotIn('status', ['cancelled', 'canceled'])
+            ->where(function ($q) {
+                $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');
+            });
+    }
+
+    public function scopeAwaitingPickup($query)
+    {
+        return $query->whereIn('status', ['driver_pickup'])
             ->whereNotIn('status', ['cancelled', 'canceled'])
             ->where(function ($q) {
                 $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');

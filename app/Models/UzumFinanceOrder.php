@@ -230,4 +230,32 @@ class UzumFinanceOrder extends Model
     {
         return $query->where('shop_id', $shopId);
     }
+
+    /**
+     * Scope: Sold orders (confirmed revenue)
+     */
+    public function scopeSold($query)
+    {
+        return $query->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
+    }
+
+    /**
+     * Scope: Orders in transit
+     */
+    public function scopeInTransit($query)
+    {
+        return $query->where('status', 'PROCESSING');
+    }
+
+    /**
+     * Scope: Orders awaiting pickup at ПВЗ
+     * Uzum doesn't have a separate "awaiting pickup" status in Finance API
+     * PROCESSING covers all active orders
+     */
+    public function scopeAwaitingPickup($query)
+    {
+        // Uzum does not have a separate status for awaiting pickup
+        // Return empty result set - all transit orders are in PROCESSING
+        return $query->whereRaw('1 = 0');
+    }
 }

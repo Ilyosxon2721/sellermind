@@ -37,11 +37,14 @@ class DashboardController extends Controller
 
     /**
      * Общий dashboard с информацией по всем модулям
+     *
+     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function index(Request $request): JsonResponse
     {
         try {
             $companyId = $request->input('company_id');
+            $dateMode = $request->input('date_mode', 'order_date'); // order_date | completion_date
 
             if (!$companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
@@ -62,7 +65,7 @@ class DashboardController extends Controller
             $monthAgo = Carbon::today()->subDays(30);
 
             // === ПРОДАЖИ ===
-            $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo);
+            $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo, $dateMode);
 
             // === МАРКЕТПЛЕЙСЫ ===
             $marketplaceData = $this->getMarketplaceData($companyId);
@@ -79,6 +82,7 @@ class DashboardController extends Controller
 
             return response()->json([
                 'success' => true,
+                'date_mode' => $dateMode,
                 'currency' => [
                     'code' => $displayCurrency,
                     'symbol' => $currencySymbol,
@@ -93,6 +97,9 @@ class DashboardController extends Controller
                     'warehouse_value' => $warehouseData['total_value'],
                     'warehouse_items' => $warehouseData['total_items'],
                     'marketplaces_count' => $marketplaceData['accounts_count'],
+                    // Новые поля для гибридного режима
+                    'potential_revenue' => $salesData['potential_revenue'] ?? 0,
+                    'confirmed_revenue' => $salesData['confirmed_revenue'] ?? 0,
                 ],
                 'sales' => $salesData,
                 'marketplace' => $marketplaceData,
@@ -121,103 +128,101 @@ class DashboardController extends Controller
      * Статусы заказов:
      * - COMPLETED (Uzum) / is_realization=true (WB) / isSold (Ozon/YM) → Продажи (полноценный доход)
      * - PROCESSING (Uzum) / processing statuses (WB) / isInTransit (Ozon/YM) → В транзите (ещё не доход)
+     * - awaiting_pickup → В ПВЗ (ожидает выкупа)
      * - CANCELED (Uzum) / is_cancel/is_return (WB) / isCancelled (Ozon/YM) → Отменённые (не считаем)
      *
      * Uzum использует UzumFinanceOrder (Finance API) для всех типов заказов (FBO/FBS/DBS/EDBS)
      * WB/Ozon/YM суммы конвертируются из RUB в валюту отображения
+     *
+     * @param string $dateMode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
-    private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
+    private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo, string $dateMode = 'order_date'): array
     {
+        // Определяем поля дат для каждого маркетплейса
+        // order_date - по дате создания заказа
+        // completion_date - по дате выкупа (stock_sold_at)
+        $dateFieldUzum = 'order_date';  // Uzum всегда по order_date (Finance API не имеет stock_sold_at)
+        $dateFieldWb = 'order_date';    // WB: order_date или last_change_date для выкупа
+        $dateFieldOzon = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ozon';
+        $dateFieldYm = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ym';
+
         // ===== UZUM: COMPLETED и TO_WITHDRAW считаем как продажи (доход) =====
         // TO_WITHDRAW = деньги выведены (завершённая продажа)
-        $uzumCompleted = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
-
-        // Uzum: PROCESSING = в транзите (ещё не доход)
-        $uzumTransit = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where('status', 'PROCESSING');
-
-        // Uzum: CANCELED = отменённые
-        $uzumCancelled = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereIn('status', ['CANCELED', 'cancelled']);
+        $uzumCompleted = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
+        $uzumTransit = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $uzumAwaitingPickup = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $uzumCancelled = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== WB: is_realization=true считаем как продажи (доход) =====
-        $wbCompleted = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where('is_realization', true)
-            ->where('is_cancel', false)
-            ->where('is_return', false);
-
-        // WB: В транзите - не реализовано, но и не отменено
-        $wbTransit = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where('is_realization', false)
-            ->where('is_cancel', false)
-            ->where('is_return', false);
-
-        // WB: Отменённые
-        $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+        $wbCompleted = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
+        $wbTransit = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $wbAwaitingPickup = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== OZON: stock_status='sold' считаем как продажи (доход) =====
         $ozonCompleted = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
         $ozonTransit = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $ozonAwaitingPickup = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
         $ozonCancelled = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== YM: stock_status='sold' считаем как продажи (доход) =====
         $ymCompleted = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
         $ymTransit = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $ymAwaitingPickup = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
         $ymCancelled = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ========== ПРОДАЖИ (ДОХОД) - только завершённые ==========
 
-        // Today - ПРОДАЖИ
-        $uzumTodaySalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', $today)
+        // Today - ПРОДАЖИ (используем правильное поле даты в зависимости от режима)
+        $uzumTodaySalesTiyin = (float) (clone $uzumCompleted)->whereDate($dateFieldUzum, $today)
             ->selectRaw('SUM(sell_price * amount) as total')->value('total');
         $uzumTodaySales = $uzumTodaySalesTiyin / 100;
-        $wbTodaySalesRub = (float) (clone $wbCompleted)->whereDate('order_date', $today)->sum('for_pay');
+        $wbTodaySalesRub = (float) (clone $wbCompleted)->whereDate($dateFieldWb, $today)->sum('for_pay');
         $wbTodaySales = $this->currencyService->convertFromRub($wbTodaySalesRub);
-        $ozonTodaySalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', $today)->sum('total_price');
+        $ozonTodaySalesRub = (float) (clone $ozonCompleted)->whereDate($dateFieldOzon, $today)->sum('total_price');
         $ozonTodaySales = $this->currencyService->convertFromRub($ozonTodaySalesRub);
-        $ymTodaySalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', $today)->sum('total_price');
+        $ymTodaySalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, $today)->sum('total_price');
         $ymTodaySales = $this->currencyService->convertFromRub($ymTodaySalesRub);
         $todaySalesAmount = $uzumTodaySales + $wbTodaySales + $ozonTodaySales + $ymTodaySales;
-        $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', $today)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', $today)->count()
-            + (clone $ozonCompleted)->whereDate('created_at_ozon', $today)->count()
-            + (clone $ymCompleted)->whereDate('created_at_ym', $today)->count());
+        $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, $today)->sum('amount')
+            + (clone $wbCompleted)->whereDate($dateFieldWb, $today)->count()
+            + (clone $ozonCompleted)->whereDate($dateFieldOzon, $today)->count()
+            + (clone $ymCompleted)->whereDate($dateFieldYm, $today)->count());
 
         // Week - ПРОДАЖИ
-        $uzumWeekSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)
+        $uzumWeekSalesTiyin = (float) (clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $weekAgo)
             ->selectRaw('SUM(sell_price * amount) as total')->value('total');
         $uzumWeekSales = $uzumWeekSalesTiyin / 100;
-        $wbWeekSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekSalesRub = (float) (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $weekAgo)->sum('for_pay');
         $wbWeekSales = $this->currencyService->convertFromRub($wbWeekSalesRub);
-        $ozonWeekSalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $weekAgo)->sum('total_price');
+        $ozonWeekSalesRub = (float) (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $weekAgo)->sum('total_price');
         $ozonWeekSales = $this->currencyService->convertFromRub($ozonWeekSalesRub);
-        $ymWeekSalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
+        $ymWeekSalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $weekAgo)->sum('total_price');
         $ymWeekSales = $this->currencyService->convertFromRub($ymWeekSalesRub);
         $weekSalesAmount = $uzumWeekSales + $wbWeekSales + $ozonWeekSales + $ymWeekSales;
-        $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->count()
-            + (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
-            + (clone $ymCompleted)->whereDate('created_at_ym', '>=', $weekAgo)->count());
+        $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $weekAgo)->sum('amount')
+            + (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $weekAgo)->count()
+            + (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $weekAgo)->count()
+            + (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $weekAgo)->count());
 
         // Month - ПРОДАЖИ
-        $uzumMonthSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)
+        $uzumMonthSalesTiyin = (float) (clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $monthAgo)
             ->selectRaw('SUM(sell_price * amount) as total')->value('total');
         $uzumMonthSales = $uzumMonthSalesTiyin / 100;
-        $wbMonthSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $wbMonthSalesRub = (float) (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $monthAgo)->sum('for_pay');
         $wbMonthSales = $this->currencyService->convertFromRub($wbMonthSalesRub);
-        $ozonMonthSalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $monthAgo)->sum('total_price');
+        $ozonMonthSalesRub = (float) (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $monthAgo)->sum('total_price');
         $ozonMonthSales = $this->currencyService->convertFromRub($ozonMonthSalesRub);
-        $ymMonthSalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
+        $ymMonthSalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $monthAgo)->sum('total_price');
         $ymMonthSales = $this->currencyService->convertFromRub($ymMonthSalesRub);
         $monthSalesAmount = $uzumMonthSales + $wbMonthSales + $ozonMonthSales + $ymMonthSales;
-        $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->count()
-            + (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
-            + (clone $ymCompleted)->whereDate('created_at_ym', '>=', $monthAgo)->count());
+        $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $monthAgo)->sum('amount')
+            + (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $monthAgo)->count()
+            + (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $monthAgo)->count()
+            + (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $monthAgo)->count());
 
-        // ========== В ТРАНЗИТЕ (ещё не доход) ==========
+        // ========== В ТРАНЗИТЕ (ещё не доход, в пути к ПВЗ) ==========
+        // Для транзита всегда используем order_date (заказ оформлен, но ещё не доставлен)
 
         // Week - В ТРАНЗИТЕ
         $uzumWeekTransitTiyin = (float) (clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)
@@ -251,6 +256,41 @@ class DashboardController extends Controller
             + (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
             + (clone $ymTransit)->whereDate('created_at_ym', '>=', $monthAgo)->count());
 
+        // ========== ОЖИДАЕТ ВЫКУПА В ПВЗ ==========
+        // Заказы, которые уже доставлены в ПВЗ и ждут, когда клиент их заберёт
+
+        // Week - В ПВЗ
+        $uzumWeekAwaitingTiyin = (float) (clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumWeekAwaiting = $uzumWeekAwaitingTiyin / 100;
+        $wbWeekAwaitingRub = (float) (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
+        $wbWeekAwaiting = $this->currencyService->convertFromRub($wbWeekAwaitingRub);
+        $ozonWeekAwaitingRub = (float) (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $weekAgo)->sum('total_price');
+        $ozonWeekAwaiting = $this->currencyService->convertFromRub($ozonWeekAwaitingRub);
+        $ymWeekAwaitingRub = (float) (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
+        $ymWeekAwaiting = $this->currencyService->convertFromRub($ymWeekAwaitingRub);
+        $weekAwaitingAmount = $uzumWeekAwaiting + $wbWeekAwaiting + $ozonWeekAwaiting + $ymWeekAwaiting;
+        $weekAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+            + (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->count()
+            + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
+            + (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $weekAgo)->count());
+
+        // Month - В ПВЗ
+        $uzumMonthAwaitingTiyin = (float) (clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $uzumMonthAwaiting = $uzumMonthAwaitingTiyin / 100;
+        $wbMonthAwaitingRub = (float) (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
+        $wbMonthAwaiting = $this->currencyService->convertFromRub($wbMonthAwaitingRub);
+        $ozonMonthAwaitingRub = (float) (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $monthAgo)->sum('total_price');
+        $ozonMonthAwaiting = $this->currencyService->convertFromRub($ozonMonthAwaitingRub);
+        $ymMonthAwaitingRub = (float) (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
+        $ymMonthAwaiting = $this->currencyService->convertFromRub($ymMonthAwaitingRub);
+        $monthAwaitingAmount = $uzumMonthAwaiting + $wbMonthAwaiting + $ozonMonthAwaiting + $ymMonthAwaiting;
+        $monthAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
+            + (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->count()
+            + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
+            + (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $monthAgo)->count());
+
         // ========== ОТМЕНЁННЫЕ ==========
 
         // Week - ОТМЕНЁННЫЕ
@@ -274,10 +314,22 @@ class DashboardController extends Controller
             + (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
             + (clone $wbTransit)->whereDate('order_date', $today)->count()
             + (clone $ozonTransit)->whereDate('created_at_ozon', $today)->count()
-            + (clone $ymTransit)->whereDate('created_at_ym', $today)->count());
+            + (clone $ymTransit)->whereDate('created_at_ym', $today)->count())
+            + (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', $today)->sum('amount')
+            + (clone $wbAwaitingPickup)->whereDate('order_date', $today)->count()
+            + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', $today)->count()
+            + (clone $ymAwaitingPickup)->whereDate('created_at_ym', $today)->count());
 
-        $weekTotalCount = $weekSalesCount + $weekTransitCount;
-        $monthTotalCount = $monthSalesCount + $monthTransitCount;
+        $weekTotalCount = $weekSalesCount + $weekTransitCount + $weekAwaitingCount;
+        $monthTotalCount = $monthSalesCount + $monthTransitCount + $monthAwaitingCount;
+
+        // ========== ПОТЕНЦИАЛЬНЫЙ / ПОДТВЕРЖДЁННЫЙ ДОХОД ==========
+        // Потенциальный доход = в пути + в ПВЗ (может стать доходом)
+        // Подтверждённый доход = выкуплено (уже доход)
+        $weekPotentialRevenue = $weekTransitAmount + $weekAwaitingAmount;
+        $weekConfirmedRevenue = $weekSalesAmount;
+        $monthPotentialRevenue = $monthTransitAmount + $monthAwaitingAmount;
+        $monthConfirmedRevenue = $monthSalesAmount;
 
         // ========== ГРАФИК ПО ДНЯМ - только ПРОДАЖИ (завершённые) ==========
         $uzumDailySales = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
@@ -427,6 +479,7 @@ class DashboardController extends Controller
         $byStatus = [
             'completed' => ['count' => 0, 'amount' => 0.0],
             'transit' => ['count' => 0, 'amount' => 0.0],
+            'awaiting_pickup' => ['count' => 0, 'amount' => 0.0],
             'cancelled' => ['count' => 0, 'amount' => 0.0],
         ];
 
@@ -458,6 +511,9 @@ class DashboardController extends Controller
             } elseif ($order->is_realization) {
                 $byStatus['completed']['count']++;
                 $byStatus['completed']['amount'] += $amount;
+            } elseif ($order->wb_status === 'ready_for_pickup') {
+                $byStatus['awaiting_pickup']['count']++;
+                $byStatus['awaiting_pickup']['amount'] += $amount;
             } else {
                 $byStatus['transit']['count']++;
                 $byStatus['transit']['amount'] += $amount;
@@ -477,6 +533,9 @@ class DashboardController extends Controller
             } elseif ($order->isSold()) {
                 $byStatus['completed']['count']++;
                 $byStatus['completed']['amount'] += $amount;
+            } elseif ($order->isAwaitingPickup()) {
+                $byStatus['awaiting_pickup']['count']++;
+                $byStatus['awaiting_pickup']['amount'] += $amount;
             } else {
                 $byStatus['transit']['count']++;
                 $byStatus['transit']['amount'] += $amount;
@@ -496,6 +555,9 @@ class DashboardController extends Controller
             } elseif ($order->isSold()) {
                 $byStatus['completed']['count']++;
                 $byStatus['completed']['amount'] += $amount;
+            } elseif ($order->isAwaitingPickup()) {
+                $byStatus['awaiting_pickup']['count']++;
+                $byStatus['awaiting_pickup']['amount'] += $amount;
             } else {
                 $byStatus['transit']['count']++;
                 $byStatus['transit']['amount'] += $amount;
@@ -503,7 +565,7 @@ class DashboardController extends Controller
         }
 
         return [
-            // Продажи (ДОХОД) - только завершённые заказы
+            // Продажи (ДОХОД) - только завершённые заказы (выкуплено)
             'today_amount' => (float) $todaySalesAmount,
             'today_count' => $todaySalesCount,
             'week_amount' => (float) $weekSalesAmount,
@@ -511,11 +573,17 @@ class DashboardController extends Controller
             'month_amount' => (float) $monthSalesAmount,
             'month_count' => $monthSalesCount,
 
-            // В транзите (ещё не доход)
+            // В транзите (в пути к ПВЗ)
             'transit_week_amount' => (float) $weekTransitAmount,
             'transit_week_count' => $weekTransitCount,
             'transit_month_amount' => (float) $monthTransitAmount,
             'transit_month_count' => $monthTransitCount,
+
+            // Ожидает выкупа в ПВЗ
+            'awaiting_pickup_week_amount' => (float) $weekAwaitingAmount,
+            'awaiting_pickup_week_count' => $weekAwaitingCount,
+            'awaiting_pickup_month_amount' => (float) $monthAwaitingAmount,
+            'awaiting_pickup_month_count' => $monthAwaitingCount,
 
             // Отменённые
             'cancelled_week_amount' => (float) $weekCancelledAmount,
@@ -525,6 +593,12 @@ class DashboardController extends Controller
             'total_today_count' => $todayTotalCount,
             'total_week_count' => $weekTotalCount,
             'total_month_count' => $monthTotalCount,
+
+            // Потенциальный доход (в пути + в ПВЗ) vs Подтверждённый доход (выкуплено)
+            'potential_revenue' => (float) $weekPotentialRevenue,
+            'confirmed_revenue' => (float) $weekConfirmedRevenue,
+            'potential_revenue_month' => (float) $monthPotentialRevenue,
+            'confirmed_revenue_month' => (float) $monthConfirmedRevenue,
 
             'chart_labels' => $chartLabels,
             'chart_data' => $chartData,
@@ -536,6 +610,7 @@ class DashboardController extends Controller
                 'uzum' => [
                     'week_sales' => $uzumWeekSales,
                     'week_transit' => $uzumWeekTransit,
+                    'week_awaiting_pickup' => $uzumWeekAwaiting,
                     'currency' => 'UZS',
                 ],
                 'wb' => [
@@ -543,6 +618,8 @@ class DashboardController extends Controller
                     'week_sales_converted' => $wbWeekSales,
                     'week_transit_rub' => $wbWeekTransitRub,
                     'week_transit_converted' => $wbWeekTransit,
+                    'week_awaiting_pickup_rub' => $wbWeekAwaitingRub,
+                    'week_awaiting_pickup_converted' => $wbWeekAwaiting,
                     'currency' => 'RUB',
                     'converted_to' => $this->currencyService->getDisplayCurrency(),
                 ],
@@ -551,6 +628,8 @@ class DashboardController extends Controller
                     'week_sales_converted' => $ozonWeekSales,
                     'week_transit_rub' => $ozonWeekTransitRub,
                     'week_transit_converted' => $ozonWeekTransit,
+                    'week_awaiting_pickup_rub' => $ozonWeekAwaitingRub,
+                    'week_awaiting_pickup_converted' => $ozonWeekAwaiting,
                     'currency' => 'RUB',
                     'converted_to' => $this->currencyService->getDisplayCurrency(),
                 ],
@@ -559,6 +638,8 @@ class DashboardController extends Controller
                     'week_sales_converted' => $ymWeekSales,
                     'week_transit_rub' => $ymWeekTransitRub,
                     'week_transit_converted' => $ymWeekTransit,
+                    'week_awaiting_pickup_rub' => $ymWeekAwaitingRub,
+                    'week_awaiting_pickup_converted' => $ymWeekAwaiting,
                     'currency' => 'RUB',
                     'converted_to' => $this->currencyService->getDisplayCurrency(),
                 ],
@@ -685,11 +766,14 @@ class DashboardController extends Controller
 
     /**
      * Полная информация для комплексного дашборда
+     *
+     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function full(Request $request): JsonResponse
     {
         try {
             $companyId = $request->input('company_id');
+            $dateMode = $request->input('date_mode', 'order_date'); // order_date | completion_date
 
             if (!$companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
@@ -710,7 +794,7 @@ class DashboardController extends Controller
             $monthAgo = Carbon::today()->subDays(30);
 
             // Базовые данные
-            $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo);
+            $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo, $dateMode);
             $marketplaceData = $this->getMarketplaceData($companyId);
             $warehouseData = $this->getWarehouseData($companyId);
             $productsData = $this->getProductsData($companyId);
@@ -729,6 +813,7 @@ class DashboardController extends Controller
 
             return response()->json([
                 'success' => true,
+                'date_mode' => $dateMode,
                 'currency' => [
                     'code' => $displayCurrency,
                     'symbol' => $currencySymbol,
@@ -746,6 +831,9 @@ class DashboardController extends Controller
                     'warehouse_items' => $warehouseData['total_items'],
                     'marketplaces_count' => $marketplaceData['accounts_count'],
                     'alerts_count' => $alertsData['total_count'],
+                    // Новые поля для гибридного режима
+                    'potential_revenue' => $salesData['potential_revenue'] ?? 0,
+                    'confirmed_revenue' => $salesData['confirmed_revenue'] ?? 0,
                 ],
                 'sales' => $salesData,
                 'marketplace' => $marketplaceData,

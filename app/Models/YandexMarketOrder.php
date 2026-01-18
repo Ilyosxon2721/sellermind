@@ -61,7 +61,18 @@ class YandexMarketOrder extends Model
      */
     public function isInTransit(): bool
     {
-        return in_array($this->status, ['PROCESSING', 'DELIVERY', 'PICKUP', 'RESERVED'])
+        return in_array($this->status, ['PROCESSING', 'DELIVERY', 'RESERVED'])
+            && !$this->isCancelled()
+            && !$this->isSold();
+    }
+
+    /**
+     * Check if order is awaiting pickup at delivery point (ПВЗ)
+     * PICKUP = ожидает самовывоз в ПВЗ
+     */
+    public function isAwaitingPickup(): bool
+    {
+        return $this->status === 'PICKUP'
             && !$this->isCancelled()
             && !$this->isSold();
     }
@@ -115,7 +126,16 @@ class YandexMarketOrder extends Model
 
     public function scopeInTransit($query)
     {
-        return $query->whereIn('status', ['PROCESSING', 'DELIVERY', 'PICKUP', 'RESERVED'])
+        return $query->whereIn('status', ['PROCESSING', 'DELIVERY', 'RESERVED'])
+            ->whereNotIn('status', ['CANCELLED', 'RETURNED'])
+            ->where(function ($q) {
+                $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');
+            });
+    }
+
+    public function scopeAwaitingPickup($query)
+    {
+        return $query->where('status', 'PICKUP')
             ->whereNotIn('status', ['CANCELLED', 'RETURNED'])
             ->where(function ($q) {
                 $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');

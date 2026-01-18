@@ -239,4 +239,47 @@ class WildberriesOrder extends Model
     {
         return $query->where('status', $status);
     }
+
+    /**
+     * Scope: completed sales (is_realization=true)
+     */
+    public function scopeSold($query)
+    {
+        return $query->where('is_realization', true)
+            ->where('is_cancel', false)
+            ->where('is_return', false);
+    }
+
+    /**
+     * Scope: orders in transit (not realized, not cancelled)
+     */
+    public function scopeInTransit($query)
+    {
+        return $query->where('is_realization', false)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->where(function ($q) {
+                $q->whereNull('wb_status')
+                  ->orWhereNotIn('wb_status', ['ready_for_pickup']);
+            });
+    }
+
+    /**
+     * Scope: orders awaiting pickup at ПВЗ
+     */
+    public function scopeAwaitingPickup($query)
+    {
+        return $query->where('is_realization', false)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->where('wb_status', 'ready_for_pickup');
+    }
+
+    /**
+     * Scope: cancelled orders
+     */
+    public function scopeCancelled($query)
+    {
+        return $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+    }
 }
