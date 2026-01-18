@@ -588,9 +588,11 @@ class WildberriesOrderService
             'region_name' => $orderData['regionName'] ?? null,
             'oblast_okrug_name' => $orderData['oblastOkrugName'] ?? null,
             'country_name' => $orderData['countryName'] ?? null,
-            'order_date' => isset($orderData['date']) ? Carbon::parse($orderData['date']) : null,
-            'cancel_date' => isset($orderData['cancelDt']) ? Carbon::parse($orderData['cancelDt']) : null,
-            'last_change_date' => isset($orderData['lastChangeDate']) ? Carbon::parse($orderData['lastChangeDate']) : now(),
+            // WB API возвращает время в московском часовом поясе (UTC+3)
+            // Конвертируем в ташкентское время (UTC+5)
+            'order_date' => isset($orderData['date']) ? Carbon::parse($orderData['date'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : null,
+            'cancel_date' => isset($orderData['cancelDt']) ? Carbon::parse($orderData['cancelDt'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : null,
+            'last_change_date' => isset($orderData['lastChangeDate']) ? Carbon::parse($orderData['lastChangeDate'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : now(),
             'income_id' => $orderData['incomeID'] ?? null,
             'raw_data' => $orderData,
         ]);
