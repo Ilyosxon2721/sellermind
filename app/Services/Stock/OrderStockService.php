@@ -28,6 +28,7 @@ class OrderStockService
         'wb' => ['new', 'confirm', 'assembly', 'in_assembly'],
         'uzum' => ['new', 'in_assembly', 'CREATED', 'PACKING'],
         'ozon' => ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress'],
+        'ym' => ['PROCESSING', 'RESERVED'],
     ];
 
     /**
@@ -37,6 +38,7 @@ class OrderStockService
         'wb' => ['in_delivery', 'delivered', 'completed', 'complete'],
         'uzum' => ['in_supply', 'accepted_uzum', 'waiting_pickup', 'issued', 'PENDING_DELIVERY', 'DELIVERING', 'ACCEPTED_AT_DP', 'DELIVERED_TO_CUSTOMER_DELIVERY_POINT', 'DELIVERED', 'COMPLETED'],
         'ozon' => ['delivering', 'delivered', 'driver_pickup'],
+        'ym' => ['DELIVERY', 'PICKUP', 'DELIVERED'],
     ];
 
     /**
@@ -46,6 +48,7 @@ class OrderStockService
         'wb' => ['cancelled', 'canceled', 'cancel'],
         'uzum' => ['cancelled', 'CANCELLED', 'CANCELED', 'PENDING_CANCELLATION'],
         'ozon' => ['cancelled', 'canceled'],
+        'ym' => ['CANCELLED'],
     ];
 
     /**
@@ -55,6 +58,7 @@ class OrderStockService
         'wb' => ['returned', 'return'],
         'uzum' => ['returns', 'RETURNED'],
         'ozon' => ['returned'],
+        'ym' => ['RETURNED'],
     ];
 
     /**
@@ -648,6 +652,24 @@ class OrderStockService
                     'barcode' => $item['barcode'] ?? null,
                     'quantity' => $item['amount'] ?? 1,
                     'name' => $item['skuTitle'] ?? $item['title'] ?? null,
+                ];
+            }, $items);
+        }
+
+        // YandexMarket specific - items are in order_data
+        if ($marketplace === 'ym') {
+            $orderData = $order->order_data ?? [];
+            if (is_string($orderData)) {
+                $orderData = json_decode($orderData, true) ?? [];
+            }
+            $items = $orderData['items'] ?? [];
+            return array_map(function ($item) {
+                return [
+                    'sku_id' => $item['shopSku'] ?? $item['offerId'] ?? null,
+                    'offer_id' => $item['offerId'] ?? $item['shopSku'] ?? null,
+                    'barcode' => $item['barcode'] ?? null,
+                    'quantity' => $item['count'] ?? 1,
+                    'name' => $item['offerName'] ?? null,
                 ];
             }, $items);
         }

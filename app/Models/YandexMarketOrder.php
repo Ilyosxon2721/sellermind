@@ -25,6 +25,11 @@ class YandexMarketOrder extends Model
         'items_count',
         'created_at_ym',
         'updated_at_ym',
+        // Stock tracking fields
+        'stock_status',
+        'stock_reserved_at',
+        'stock_sold_at',
+        'stock_released_at',
     ];
 
     protected function casts(): array
@@ -34,12 +39,97 @@ class YandexMarketOrder extends Model
             'total_price' => 'decimal:2',
             'created_at_ym' => 'datetime',
             'updated_at_ym' => 'datetime',
+            'stock_reserved_at' => 'datetime',
+            'stock_sold_at' => 'datetime',
+            'stock_released_at' => 'datetime',
         ];
+    }
+
+    // ========== Stock Status Methods ==========
+
+    /**
+     * Check if order is a completed sale (revenue)
+     * stock_sold_at is set when order reaches DELIVERED status
+     */
+    public function isSold(): bool
+    {
+        return $this->stock_status === 'sold' && $this->stock_sold_at !== null;
+    }
+
+    /**
+     * Check if order is in transit (not yet completed)
+     */
+    public function isInTransit(): bool
+    {
+        return in_array($this->status, ['PROCESSING', 'DELIVERY', 'PICKUP', 'RESERVED'])
+            && !$this->isCancelled()
+            && !$this->isSold();
+    }
+
+    /**
+     * Check if order is cancelled
+     */
+    public function isCancelled(): bool
+    {
+        return in_array($this->status, ['CANCELLED', 'RETURNED']);
+    }
+
+    /**
+     * Get normalized status for unified reporting
+     */
+    public function getNormalizedStatus(): string
+    {
+        if ($this->isCancelled()) {
+            return 'cancelled';
+        }
+        if ($this->isSold()) {
+            return 'delivered';
+        }
+        return 'processing';
     }
 
     public function marketplaceAccount(): BelongsTo
     {
         return $this->belongsTo(MarketplaceAccount::class);
+    }
+
+    /**
+     * Alias for marketplaceAccount for consistency with other models
+     */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(MarketplaceAccount::class, 'marketplace_account_id');
+    }
+
+    // ========== Scopes ==========
+
+    public function scopeForAccount($query, int $accountId)
+    {
+        return $query->where('marketplace_account_id', $accountId);
+    }
+
+    public function scopeSold($query)
+    {
+        return $query->where('stock_status', 'sold')->whereNotNull('stock_sold_at');
+    }
+
+    public function scopeInTransit($query)
+    {
+        return $query->whereIn('status', ['PROCESSING', 'DELIVERY', 'PICKUP', 'RESERVED'])
+            ->whereNotIn('status', ['CANCELLED', 'RETURNED'])
+            ->where(function ($q) {
+                $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');
+            });
+    }
+
+    public function scopeCancelled($query)
+    {
+        return $query->whereIn('status', ['CANCELLED', 'RETURNED']);
+    }
+
+    public function scopeInPeriod($query, $from, $to)
+    {
+        return $query->whereBetween('created_at_ym', [$from, $to]);
     }
 
     /**

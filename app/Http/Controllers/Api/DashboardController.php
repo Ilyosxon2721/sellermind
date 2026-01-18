@@ -8,6 +8,8 @@ use App\Models\AgentTaskRun;
 use App\Models\Company;
 use App\Models\Inventory;
 use App\Models\MarketplaceAccount;
+use App\Models\OzonOrder;
+use App\Models\YandexMarketOrder;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Subscription;
@@ -114,15 +116,15 @@ class DashboardController extends Controller
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
-     * Данные по продажам (Uzum + WB)
+     * Данные по продажам (Uzum + WB + Ozon + YM)
      *
      * Статусы заказов:
-     * - COMPLETED (Uzum) / is_realization=true (WB) → Продажи (полноценный доход)
-     * - PROCESSING (Uzum) / processing statuses (WB) → В транзите (ещё не доход)
-     * - CANCELED (Uzum) / is_cancel/is_return (WB) → Отменённые (не считаем)
+     * - COMPLETED (Uzum) / is_realization=true (WB) / isSold (Ozon/YM) → Продажи (полноценный доход)
+     * - PROCESSING (Uzum) / processing statuses (WB) / isInTransit (Ozon/YM) → В транзите (ещё не доход)
+     * - CANCELED (Uzum) / is_cancel/is_return (WB) / isCancelled (Ozon/YM) → Отменённые (не считаем)
      *
      * Uzum использует UzumFinanceOrder (Finance API) для всех типов заказов (FBO/FBS/DBS/EDBS)
-     * WB суммы конвертируются из RUB в валюту отображения
+     * WB/Ozon/YM суммы конвертируются из RUB в валюту отображения
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo): array
     {
@@ -155,6 +157,16 @@ class DashboardController extends Controller
         $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
+        // ===== OZON: stock_status='sold' считаем как продажи (доход) =====
+        $ozonCompleted = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
+        $ozonTransit = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $ozonCancelled = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+
+        // ===== YM: stock_status='sold' считаем как продажи (доход) =====
+        $ymCompleted = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
+        $ymTransit = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
+        $ymCancelled = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+
         // ========== ПРОДАЖИ (ДОХОД) - только завершённые ==========
 
         // Today - ПРОДАЖИ
@@ -163,9 +175,15 @@ class DashboardController extends Controller
         $uzumTodaySales = $uzumTodaySalesTiyin / 100;
         $wbTodaySalesRub = (float) (clone $wbCompleted)->whereDate('order_date', $today)->sum('for_pay');
         $wbTodaySales = $this->currencyService->convertFromRub($wbTodaySalesRub);
-        $todaySalesAmount = $uzumTodaySales + $wbTodaySales;
+        $ozonTodaySalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', $today)->sum('total_price');
+        $ozonTodaySales = $this->currencyService->convertFromRub($ozonTodaySalesRub);
+        $ymTodaySalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', $today)->sum('total_price');
+        $ymTodaySales = $this->currencyService->convertFromRub($ymTodaySalesRub);
+        $todaySalesAmount = $uzumTodaySales + $wbTodaySales + $ozonTodaySales + $ymTodaySales;
         $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', $today)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', $today)->count());
+            + (clone $wbCompleted)->whereDate('order_date', $today)->count()
+            + (clone $ozonCompleted)->whereDate('created_at_ozon', $today)->count()
+            + (clone $ymCompleted)->whereDate('created_at_ym', $today)->count());
 
         // Week - ПРОДАЖИ
         $uzumWeekSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)
@@ -173,9 +191,15 @@ class DashboardController extends Controller
         $uzumWeekSales = $uzumWeekSalesTiyin / 100;
         $wbWeekSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
         $wbWeekSales = $this->currencyService->convertFromRub($wbWeekSalesRub);
-        $weekSalesAmount = $uzumWeekSales + $wbWeekSales;
+        $ozonWeekSalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $weekAgo)->sum('total_price');
+        $ozonWeekSales = $this->currencyService->convertFromRub($ozonWeekSalesRub);
+        $ymWeekSalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
+        $ymWeekSales = $this->currencyService->convertFromRub($ymWeekSalesRub);
+        $weekSalesAmount = $uzumWeekSales + $wbWeekSales + $ozonWeekSales + $ymWeekSales;
         $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->count());
+            + (clone $wbCompleted)->whereDate('order_date', '>=', $weekAgo)->count()
+            + (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
+            + (clone $ymCompleted)->whereDate('created_at_ym', '>=', $weekAgo)->count());
 
         // Month - ПРОДАЖИ
         $uzumMonthSalesTiyin = (float) (clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)
@@ -183,9 +207,15 @@ class DashboardController extends Controller
         $uzumMonthSales = $uzumMonthSalesTiyin / 100;
         $wbMonthSalesRub = (float) (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
         $wbMonthSales = $this->currencyService->convertFromRub($wbMonthSalesRub);
-        $monthSalesAmount = $uzumMonthSales + $wbMonthSales;
+        $ozonMonthSalesRub = (float) (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $monthAgo)->sum('total_price');
+        $ozonMonthSales = $this->currencyService->convertFromRub($ozonMonthSalesRub);
+        $ymMonthSalesRub = (float) (clone $ymCompleted)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
+        $ymMonthSales = $this->currencyService->convertFromRub($ymMonthSalesRub);
+        $monthSalesAmount = $uzumMonthSales + $wbMonthSales + $ozonMonthSales + $ymMonthSales;
         $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
-            + (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->count());
+            + (clone $wbCompleted)->whereDate('order_date', '>=', $monthAgo)->count()
+            + (clone $ozonCompleted)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
+            + (clone $ymCompleted)->whereDate('created_at_ym', '>=', $monthAgo)->count());
 
         // ========== В ТРАНЗИТЕ (ещё не доход) ==========
 
@@ -195,9 +225,15 @@ class DashboardController extends Controller
         $uzumWeekTransit = $uzumWeekTransitTiyin / 100;
         $wbWeekTransitRub = (float) (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
         $wbWeekTransit = $this->currencyService->convertFromRub($wbWeekTransitRub);
-        $weekTransitAmount = $uzumWeekTransit + $wbWeekTransit;
+        $ozonWeekTransitRub = (float) (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $weekAgo)->sum('total_price');
+        $ozonWeekTransit = $this->currencyService->convertFromRub($ozonWeekTransitRub);
+        $ymWeekTransitRub = (float) (clone $ymTransit)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
+        $ymWeekTransit = $this->currencyService->convertFromRub($ymWeekTransitRub);
+        $weekTransitAmount = $uzumWeekTransit + $wbWeekTransit + $ozonWeekTransit + $ymWeekTransit;
         $weekTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
-            + (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->count());
+            + (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->count()
+            + (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
+            + (clone $ymTransit)->whereDate('created_at_ym', '>=', $weekAgo)->count());
 
         // Month - В ТРАНЗИТЕ
         $uzumMonthTransitTiyin = (float) (clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)
@@ -205,9 +241,15 @@ class DashboardController extends Controller
         $uzumMonthTransit = $uzumMonthTransitTiyin / 100;
         $wbMonthTransitRub = (float) (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->sum('for_pay');
         $wbMonthTransit = $this->currencyService->convertFromRub($wbMonthTransitRub);
-        $monthTransitAmount = $uzumMonthTransit + $wbMonthTransit;
+        $ozonMonthTransitRub = (float) (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $monthAgo)->sum('total_price');
+        $ozonMonthTransit = $this->currencyService->convertFromRub($ozonMonthTransitRub);
+        $ymMonthTransitRub = (float) (clone $ymTransit)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
+        $ymMonthTransit = $this->currencyService->convertFromRub($ymMonthTransitRub);
+        $monthTransitAmount = $uzumMonthTransit + $wbMonthTransit + $ozonMonthTransit + $ymMonthTransit;
         $monthTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
-            + (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->count());
+            + (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->count()
+            + (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
+            + (clone $ymTransit)->whereDate('created_at_ym', '>=', $monthAgo)->count());
 
         // ========== ОТМЕНЁННЫЕ ==========
 
@@ -217,14 +259,22 @@ class DashboardController extends Controller
         $uzumWeekCancelled = $uzumWeekCancelledTiyin / 100;
         $wbWeekCancelledRub = (float) (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('for_pay');
         $wbWeekCancelled = $this->currencyService->convertFromRub($wbWeekCancelledRub);
-        $weekCancelledAmount = $uzumWeekCancelled + $wbWeekCancelled;
+        $ozonWeekCancelledRub = (float) (clone $ozonCancelled)->whereDate('created_at_ozon', '>=', $weekAgo)->sum('total_price');
+        $ozonWeekCancelled = $this->currencyService->convertFromRub($ozonWeekCancelledRub);
+        $ymWeekCancelledRub = (float) (clone $ymCancelled)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
+        $ymWeekCancelled = $this->currencyService->convertFromRub($ymWeekCancelledRub);
+        $weekCancelledAmount = $uzumWeekCancelled + $wbWeekCancelled + $ozonWeekCancelled + $ymWeekCancelled;
         $weekCancelledCount = (int) ((clone $uzumCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
-            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count());
+            + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count()
+            + (clone $ozonCancelled)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
+            + (clone $ymCancelled)->whereDate('created_at_ym', '>=', $weekAgo)->count());
 
         // ========== ВСЕГО ЗАКАЗОВ (для общей статистики) ==========
         $todayTotalCount = $todaySalesCount
             + (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
-            + (clone $wbTransit)->whereDate('order_date', $today)->count());
+            + (clone $wbTransit)->whereDate('order_date', $today)->count()
+            + (clone $ozonTransit)->whereDate('created_at_ozon', $today)->count()
+            + (clone $ymTransit)->whereDate('created_at_ym', $today)->count());
 
         $weekTotalCount = $weekSalesCount + $weekTransitCount;
         $monthTotalCount = $monthSalesCount + $monthTransitCount;
@@ -248,6 +298,22 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
+        $ozonDailySales = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('created_at_ozon', '>=', $weekAgo)
+            ->where('stock_status', 'sold')
+            ->select(DB::raw('DATE(created_at_ozon) as date'), DB::raw('SUM(total_price) as amount'), DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $ymDailySales = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('created_at_ym', '>=', $weekAgo)
+            ->where('stock_status', 'sold')
+            ->select(DB::raw('DATE(created_at_ym) as date'), DB::raw('SUM(total_price) as amount'), DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
         $chartLabels = [];
         $chartData = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -257,7 +323,11 @@ class DashboardController extends Controller
             $uzumAmount = (float) ($uzumDailySales[$date]->amount_tiyin ?? 0) / 100;
             $wbAmountRub = (float) ($wbDailySales[$date]->amount ?? 0);
             $wbAmount = $this->currencyService->convertFromRub($wbAmountRub);
-            $chartData[] = $uzumAmount + $wbAmount;
+            $ozonAmountRub = (float) ($ozonDailySales[$date]->amount ?? 0);
+            $ozonAmount = $this->currencyService->convertFromRub($ozonAmountRub);
+            $ymAmountRub = (float) ($ymDailySales[$date]->amount ?? 0);
+            $ymAmount = $this->currencyService->convertFromRub($ymAmountRub);
+            $chartData[] = $uzumAmount + $wbAmount + $ozonAmount + $ymAmount;
         }
 
         // ========== ПОСЛЕДНИЕ ЗАКАЗЫ ==========
@@ -301,7 +371,47 @@ class DashboardController extends Controller
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Wildberries',
             ]);
 
-        $recentOrders = $uzumRecent->concat($wbRecent)
+        $ozonRecent = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->with('account')
+            ->orderByDesc('created_at_ozon')
+            ->limit(10)
+            ->get()
+            ->map(fn($o) => [
+                'id' => 'ozon_' . $o->id,
+                'order_number' => $o->posting_number ?? $o->order_id,
+                'amount' => $this->currencyService->convertFromRub((float) ($o->total_price ?? 0)),
+                'amount_rub' => (float) ($o->total_price ?? 0),
+                'original_currency' => 'RUB',
+                'status' => $o->getNormalizedStatus(),
+                'status_label' => $o->getStatusLabel(),
+                'is_revenue' => $o->isSold(),
+                'date' => $o->created_at_ozon?->format('d.m.Y H:i'),
+                'ordered_at' => $o->created_at_ozon,
+                'marketplace' => 'ozon',
+                'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Ozon',
+            ]);
+
+        $ymRecent = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->with('account')
+            ->orderByDesc('created_at_ym')
+            ->limit(10)
+            ->get()
+            ->map(fn($o) => [
+                'id' => 'ym_' . $o->id,
+                'order_number' => $o->order_id,
+                'amount' => $this->currencyService->convertFromRub((float) ($o->total_price ?? 0)),
+                'amount_rub' => (float) ($o->total_price ?? 0),
+                'original_currency' => 'RUB',
+                'status' => $o->getNormalizedStatus(),
+                'status_label' => $o->getStatusLabel(),
+                'is_revenue' => $o->isSold(),
+                'date' => $o->created_at_ym?->format('d.m.Y H:i'),
+                'ordered_at' => $o->created_at_ym,
+                'marketplace' => 'ym',
+                'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Yandex Market',
+            ]);
+
+        $recentOrders = $uzumRecent->concat($wbRecent)->concat($ozonRecent)->concat($ymRecent)
             ->sortByDesc('ordered_at')
             ->take(5)
             ->values()
@@ -354,6 +464,44 @@ class DashboardController extends Controller
             }
         }
 
+        // Ozon orders by status
+        $ozonByStatusRaw = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('created_at_ozon', '>=', $weekAgo)
+            ->get();
+
+        foreach ($ozonByStatusRaw as $order) {
+            $amount = $this->currencyService->convertFromRub((float) ($order->total_price ?? 0));
+            if ($order->isCancelled()) {
+                $byStatus['cancelled']['count']++;
+                $byStatus['cancelled']['amount'] += $amount;
+            } elseif ($order->isSold()) {
+                $byStatus['completed']['count']++;
+                $byStatus['completed']['amount'] += $amount;
+            } else {
+                $byStatus['transit']['count']++;
+                $byStatus['transit']['amount'] += $amount;
+            }
+        }
+
+        // YM orders by status
+        $ymByStatusRaw = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+            ->whereDate('created_at_ym', '>=', $weekAgo)
+            ->get();
+
+        foreach ($ymByStatusRaw as $order) {
+            $amount = $this->currencyService->convertFromRub((float) ($order->total_price ?? 0));
+            if ($order->isCancelled()) {
+                $byStatus['cancelled']['count']++;
+                $byStatus['cancelled']['amount'] += $amount;
+            } elseif ($order->isSold()) {
+                $byStatus['completed']['count']++;
+                $byStatus['completed']['amount'] += $amount;
+            } else {
+                $byStatus['transit']['count']++;
+                $byStatus['transit']['amount'] += $amount;
+            }
+        }
+
         return [
             // Продажи (ДОХОД) - только завершённые заказы
             'today_amount' => (float) $todaySalesAmount,
@@ -395,6 +543,22 @@ class DashboardController extends Controller
                     'week_sales_converted' => $wbWeekSales,
                     'week_transit_rub' => $wbWeekTransitRub,
                     'week_transit_converted' => $wbWeekTransit,
+                    'currency' => 'RUB',
+                    'converted_to' => $this->currencyService->getDisplayCurrency(),
+                ],
+                'ozon' => [
+                    'week_sales_rub' => $ozonWeekSalesRub,
+                    'week_sales_converted' => $ozonWeekSales,
+                    'week_transit_rub' => $ozonWeekTransitRub,
+                    'week_transit_converted' => $ozonWeekTransit,
+                    'currency' => 'RUB',
+                    'converted_to' => $this->currencyService->getDisplayCurrency(),
+                ],
+                'ym' => [
+                    'week_sales_rub' => $ymWeekSalesRub,
+                    'week_sales_converted' => $ymWeekSales,
+                    'week_transit_rub' => $ymWeekTransitRub,
+                    'week_transit_converted' => $ymWeekTransit,
                     'currency' => 'RUB',
                     'converted_to' => $this->currencyService->getDisplayCurrency(),
                 ],

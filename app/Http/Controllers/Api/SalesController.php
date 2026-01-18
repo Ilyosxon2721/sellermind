@@ -304,28 +304,29 @@ class SalesController extends Controller
      */
     private function formatOzonOrderDetails($order): array
     {
+        $isCompleted = $order->isSold();
+        $isCancelled = $order->isCancelled();
+
         return [
             'id' => 'ozon_' . $order->id,
             'order_number' => $order->posting_number ?? $order->order_id,
             'marketplace' => 'ozon',
             'marketplace_label' => 'Ozon',
             'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
-            'status' => $this->normalizeStatus($order->status),
-            'status_label' => $this->getStatusLabel($order->status),
+            'status' => $order->getNormalizedStatus(),
+            'status_label' => $order->getStatusLabel(),
+            'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+            'is_revenue' => $isCompleted,
             'raw_status' => $order->status,
+            'stock_status' => $order->stock_status,
             'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
             'delivery_address' => $order->delivery_address,
-            'total_amount' => (float) $order->total_amount,
+            'total_amount' => (float) ($order->total_price ?? 0),
             'currency' => 'RUB',
             'created_at' => $order->created_at_ozon?->toIso8601String(),
             'created_at_formatted' => $order->created_at_ozon?->format('d.m.Y H:i'),
-            'items' => $order->items?->map(fn($item) => [
-                'id' => $item->id,
-                'name' => $item->name,
-                'sku' => $item->sku,
-                'quantity' => $item->quantity,
-                'price' => (float) $item->price,
-            ])->toArray() ?? [],
+            'stock_sold_at' => $order->stock_sold_at?->toIso8601String(),
+            'products' => $order->getProductsList(),
         ];
     }
 
@@ -334,22 +335,33 @@ class SalesController extends Controller
      */
     private function formatYmOrderDetails($order): array
     {
+        $isCompleted = $order->isSold();
+        $isCancelled = $order->isCancelled();
+
         return [
             'id' => 'ym_' . $order->id,
             'order_number' => $order->order_id,
             'marketplace' => 'ym',
             'marketplace_label' => 'Yandex Market',
             'account_name' => $order->account?->name ?? $order->account?->getDisplayName(),
-            'status' => $this->normalizeStatus($order->status),
-            'status_label' => $this->getStatusLabel($order->status),
+            'status' => $order->getNormalizedStatus(),
+            'status_label' => $order->getStatusLabel(),
+            'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+            'is_revenue' => $isCompleted,
             'raw_status' => $order->status,
+            'substatus' => $order->substatus,
+            'substatus_label' => $order->getSubstatusLabel(),
+            'stock_status' => $order->stock_status,
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
-            'delivery_address' => $order->delivery_address,
-            'total_amount' => (float) $order->total_amount,
+            'delivery_type' => $order->delivery_type,
+            'delivery_service' => $order->delivery_service,
+            'total_amount' => (float) ($order->total_price ?? 0),
             'currency' => 'RUB',
             'created_at' => $order->created_at_ym?->toIso8601String(),
             'created_at_formatted' => $order->created_at_ym?->format('d.m.Y H:i'),
+            'stock_sold_at' => $order->stock_sold_at?->toIso8601String(),
+            'items_count' => $order->items_count,
         ];
     }
 
@@ -709,6 +721,11 @@ class SalesController extends Controller
     
     /**
      * Get OZON orders
+     *
+     * Статусы:
+     * - isSold() = true → delivered (продажа, доход)
+     * - isInTransit() = true → transit (в транзите, ещё не доход)
+     * - isCancelled() = true → cancelled
      */
     private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
@@ -722,8 +739,23 @@ class SalesController extends Controller
                 ->whereDate('created_at_ozon', '>=', $dateFrom)
                 ->whereDate('created_at_ozon', '<=', $dateTo);
 
+            // Apply status filter using scopes
             if ($status) {
-                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
+                switch ($status) {
+                    case 'delivered':
+                    case 'completed':
+                        $query->sold();
+                        break;
+                    case 'transit':
+                    case 'processing':
+                        $query->inTransit();
+                        break;
+                    case 'cancelled':
+                        $query->cancelled();
+                        break;
+                    default:
+                        $query->whereIn('status', $this->mapStatusToDbStatuses($status));
+                }
             }
 
             if ($search) {
@@ -733,24 +765,31 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(fn($order) => [
-                'id' => 'ozon_' . $order->id,
-                'order_number' => $order->posting_number ?? $order->order_id,
-                'created_at' => $order->created_at_ozon?->toIso8601String(),
-                'marketplace' => 'ozon',
-                'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
-                'total_amount' => (float) $order->total_amount,
-                'currency' => 'RUB',
-                'status' => $this->normalizeStatus($order->status),
-                'raw_status' => $order->status,
-                'items' => $order->items ? $order->items->map(fn($item) => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'sku' => $item->sku,
-                    'quantity' => $item->quantity,
-                    'price' => $item->price,
-                ])->toArray() : [],
-            ]);
+            return $query->get()->map(function($order) {
+                $amountRub = (float) ($order->total_price ?? 0);
+                $amountConverted = $this->currencyService->convertFromRub($amountRub);
+
+                // Определяем категорию статуса через методы модели
+                $isCompleted = $order->isSold();
+                $isCancelled = $order->isCancelled();
+
+                return [
+                    'id' => 'ozon_' . $order->id,
+                    'order_number' => $order->posting_number ?? $order->order_id,
+                    'created_at' => $order->created_at_ozon?->toIso8601String(),
+                    'marketplace' => 'ozon',
+                    'customer_name' => $order->customer_name ?? ($order->customer_data['name'] ?? null),
+                    'total_amount' => $amountConverted,
+                    'total_amount_rub' => $amountRub,
+                    'original_currency' => 'RUB',
+                    'currency' => $this->currencyService->getDisplayCurrency(),
+                    'status' => $order->getNormalizedStatus(),
+                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                    'is_revenue' => $isCompleted, // Только sold заказы считаем как доход
+                    'raw_status' => $order->status,
+                    'stock_status' => $order->stock_status,
+                ];
+            });
         } catch (\Exception $e) {
             \Log::error('OZON orders fetch error: ' . $e->getMessage());
             return collect();
@@ -759,6 +798,11 @@ class SalesController extends Controller
 
     /**
      * Get Yandex Market orders
+     *
+     * Статусы:
+     * - isSold() = true → delivered (продажа, доход)
+     * - isInTransit() = true → transit (в транзите, ещё не доход)
+     * - isCancelled() = true → cancelled
      */
     private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
@@ -772,8 +816,23 @@ class SalesController extends Controller
                 ->whereDate('created_at_ym', '>=', $dateFrom)
                 ->whereDate('created_at_ym', '<=', $dateTo);
 
+            // Apply status filter using scopes
             if ($status) {
-                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
+                switch ($status) {
+                    case 'delivered':
+                    case 'completed':
+                        $query->sold();
+                        break;
+                    case 'transit':
+                    case 'processing':
+                        $query->inTransit();
+                        break;
+                    case 'cancelled':
+                        $query->cancelled();
+                        break;
+                    default:
+                        $query->whereIn('status', $this->mapStatusToDbStatuses($status));
+                }
             }
 
             if ($search) {
@@ -784,17 +843,31 @@ class SalesController extends Controller
                 });
             }
 
-            return $query->get()->map(fn($order) => [
-                'id' => 'ym_' . $order->id,
-                'order_number' => $order->order_id,
-                'created_at' => $order->created_at_ym?->toIso8601String(),
-                'marketplace' => 'ym',
-                'customer_name' => $order->customer_name,
-                'total_amount' => (float) $order->total_amount,
-                'currency' => 'RUB',
-                'status' => $this->normalizeStatus($order->status),
-                'raw_status' => $order->status,
-            ]);
+            return $query->get()->map(function($order) {
+                $amountRub = (float) ($order->total_price ?? 0);
+                $amountConverted = $this->currencyService->convertFromRub($amountRub);
+
+                // Определяем категорию статуса через методы модели
+                $isCompleted = $order->isSold();
+                $isCancelled = $order->isCancelled();
+
+                return [
+                    'id' => 'ym_' . $order->id,
+                    'order_number' => $order->order_id,
+                    'created_at' => $order->created_at_ym?->toIso8601String(),
+                    'marketplace' => 'ym',
+                    'customer_name' => $order->customer_name,
+                    'total_amount' => $amountConverted,
+                    'total_amount_rub' => $amountRub,
+                    'original_currency' => 'RUB',
+                    'currency' => $this->currencyService->getDisplayCurrency(),
+                    'status' => $order->getNormalizedStatus(),
+                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
+                    'is_revenue' => $isCompleted, // Только sold заказы считаем как доход
+                    'raw_status' => $order->status,
+                    'stock_status' => $order->stock_status,
+                ];
+            });
         } catch (\Exception $e) {
             \Log::error('Yandex Market orders fetch error: ' . $e->getMessage());
             return collect();
