@@ -97,7 +97,7 @@
                 <!-- ========== ИТОГОВЫЙ БАЛАНС КОМПАНИИ ========== -->
                 <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold text-white">Баланс компании</h2>
+                        <h2 class="text-lg font-semibold" style="color: #ffffff !important;">Баланс компании</h2>
                         <div class="flex items-center space-x-2">
                             <span class="px-3 py-1 rounded-full text-xs font-medium"
                                   :class="{
