@@ -208,6 +208,9 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
     // Products
+    // IMPORTANT: upload-image must be before apiResource to avoid being caught by {product} param
+    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
+
     Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
     Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
     Route::post('products/{product}/publish', [ProductController::class, 'publish']);
@@ -234,9 +237,6 @@ Route::middleware('auth.any')->group(function () {
     Route::post('products/{product}/images/generate', [ProductImageController::class, 'generate']);
     Route::put('products/{product}/images/{image}/primary', [ProductImageController::class, 'setPrimary']);
     Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
-    
-    // Generic image upload (for new products without ID)
-    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
 
     // Promotions (Smart Promotions)
     Route::prefix('promotions')->group(function () {
