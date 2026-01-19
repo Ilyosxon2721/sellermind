@@ -36,6 +36,28 @@ Route::get('/en', function (Illuminate\Http\Request $request) {
     return view('welcome', compact('plans'));
 })->name('home.en');
 
+// Localized auth routes
+Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function () {
+    Route::get('/login', function ($locale) {
+        App::setLocale($locale);
+        return view('auth.login');
+    })->name('login.localized');
+    
+    Route::get('/register', function ($locale) {
+        App::setLocale($locale);
+        return view('auth.register');
+    })->name('register.localized');
+});
+
+// Root redirect to Uzbek
+Route::get('/', function () {
+    if (request()->header('X-Requested-With') === 'com.sellermind.pwa') {
+        $plans = \App\Models\Plan::where('is_active', true)->orderBy('sort_order')->get();
+        return view('welcome', compact('plans'));
+    }
+    return redirect('/uz');
+});
+
 // Public pages - Smart routing based on PWA mode
 Route::get('/', function (Illuminate\Http\Request $request) {
     // Check if PWA is installed (standalone mode)

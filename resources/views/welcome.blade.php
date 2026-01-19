@@ -199,8 +199,8 @@
                         </div>
                     </div>
                     
-                    <a href="/login" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_login') }}</a>
-                    <a href="/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">{{ __('landing.nav_register') }}</a>
+                    <a href="/{{ app()->getLocale() }}/login" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_login') }}</a>
+                    <a href="/{{ app()->getLocale() }}/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">{{ __('landing.nav_register') }}</a>
                 </nav>
                 
                 
@@ -222,8 +222,8 @@
                 <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
                 <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
                 <div class="flex gap-2 mt-4">
-                    <a href="/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
-                    <a href="/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
+                    <a href="/{{ app()->getLocale() }}/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
+                    <a href="/{{ app()->getLocale() }}/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
                 </div>
             </div>
         </div>
