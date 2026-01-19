@@ -10,6 +10,47 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Scroll Reveal Animations */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Stagger animation for cards */
+        .scroll-reveal-card {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        
+        .scroll-reveal-card.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Stagger delays for children */
+        .scroll-reveal-card:nth-child(1).revealed { transition-delay: 0.1s; }
+        .scroll-reveal-card:nth-child(2).revealed { transition-delay: 0.2s; }
+        .scroll-reveal-card:nth-child(3).revealed { transition-delay: 0.3s; }
+        .scroll-reveal-card:nth-child(4).revealed { transition-delay: 0.4s; }
+        .scroll-reveal-card:nth-child(5).revealed { transition-delay: 0.5s; }
+        .scroll-reveal-card:nth-child(6).revealed { transition-delay: 0.6s; }
+        
+        /* Smooth hover effects */
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
     </style>
 </head>
 <body class="antialiased bg-white text-gray-900" x-data="{ mobileMenuOpen: false, faqOpen: null }">
@@ -107,8 +148,8 @@
                     <div class="text-gray-600">Товаров</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">2M+ сум</div>
-                    <div class="text-gray-600">Обработано продаж</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
+                    <div class="text-gray-600">Обработано платежей</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
@@ -129,23 +170,23 @@
     <!-- Features Section -->
     <section id="features" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Возможности</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Всё для управления продажами</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Полный набор инструментов для работы с маркетплейсами в одной платформе</p>
             </div>
             
             <!-- Product Management -->
-            <div class="mb-12">
+            <div class="mb-12 scroll-reveal">
                 <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Управление товарами</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
                         <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Массовые операции</h3>
                         <p class="text-gray-600">80% экономия времени на рутине. Bulk обновление цен, остатков, статусов. Экспорт/импорт Excel.</p>
@@ -377,14 +418,14 @@
     <!-- Business Impact Section - NEW -->
     <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Результаты клиентов</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Конкретные результаты вашего бизнеса</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Цифры, которые говорят сами за себя</p>
             </div>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-green-600">+40%</div>
                         <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
@@ -444,14 +485,14 @@
     <!-- Automation Showcase Section - NEW -->
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Автоматизация</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Система работает за вас 24/7</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Настройте один раз — получайте результат постоянно</p>
             </div>
             
             <div class="max-w-4xl mx-auto">
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12">
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12 scroll-reveal">
                     <div class="space-y-6">
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
@@ -759,7 +800,7 @@
     <!-- Comparison Section - NEW -->
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Почему SellerMind — лучший выбор</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Сравните наши возможности с другими решениями на рынке</p>
@@ -931,6 +972,27 @@
             </div>
         </div>
     </footer>
+
+<script>
+// Intersection Observer for scroll reveal animations
+document.addEventListener('DOMContentLoaded', function() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+            }
+        });
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    });
+    
+    // Observe all elements with scroll-reveal classes
+    document.querySelectorAll('.scroll-reveal, .scroll-reveal-card').forEach(el => {
+        observer.observe(el);
+    });
+});
+</script>
 
 </body>
 </html>
