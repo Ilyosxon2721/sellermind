@@ -477,9 +477,9 @@
     <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Результаты клиентов</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Конкретные результаты вашего бизнеса</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Цифры, которые говорят сами за себя</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.testimonials_title') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.impact_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.impact_subtitle') }}</p>
             </div>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -488,53 +488,53 @@
                         <div class="text-5xl font-bold text-green-600">+40%</div>
                         <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Рост продаж</h3>
-                    <p class="text-gray-600">В среднем у наших клиентов после внедрения платформы</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_sales') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_sales_desc') }}</p>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-blue-600">-70%</div>
                         <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">⏱️</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Экономия времени</h3>
-                    <p class="text-gray-600">на рутинные задачи благодаря автоматизации</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_time') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_time_desc') }}</p>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-purple-600">0</div>
                         <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">✅</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Пересортов</h3>
-                    <p class="text-gray-600">благодаря синхронизации остатков в реальном времени</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_oversells') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_oversells_desc') }}</p>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-orange-600">-25%</div>
                         <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl">📦</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Неликвида</h3>
-                    <p class="text-gray-600">сокращение медленно движущихся товаров с умными промо</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_dead_stock') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_dead_stock_desc') }}</p>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-indigo-600">24/7</div>
                         <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl">🔔</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Мониторинг</h3>
-                    <p class="text-gray-600">автоматический контроль и уведомления круглосуточно</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_monitoring') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_monitoring_desc') }}</p>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="text-5xl font-bold text-pink-600">80%</div>
-                        <div class="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">⚡</div>
+                        <div class="text-5xl font-bold text-teal-600">80%</div>
+                        <div class="w-14 h-14 bg-teal-100 rounded-2xl flex items-center justify-center text-2xl">⚡</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Эффективность</h3>
-                    <p class="text-gray-600">экономия на массовых операциях с товарами</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_efficiency') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_efficiency_desc') }}</p>
                 </div>
             </div>
         </div>
@@ -544,9 +544,9 @@
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Автоматизация</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Система работает за вас 24/7</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Настройте один раз — получайте результат постоянно</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.automation_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.automation_subtitle') }}</p>
             </div>
             
             <div class="max-w-4xl mx-auto">
@@ -554,45 +554,45 @@
                     <div class="space-y-6">
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-blue-600">Каждые<br>10 минут</div>
+                                <div class="text-sm font-semibold text-blue-600">{!! __('landing.automation_10min') !!}</div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">Синхронизация заказов и остатков</h3>
-                                <p class="text-gray-600">Автоматическое обновление данных со всех маркетплейсов</p>
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_10min_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_10min_desc') }}</p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-green-600">Каждый<br>час</div>
+                                <div class="text-sm font-semibold text-green-600">{!! __('landing.automation_hour') !!}</div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-green-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">Кэширование аналитики</h3>
-                                <p class="text-gray-600">Обновление дашбордов и графиков для быстрого доступа</p>
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_hour_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_hour_desc') }}</p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-orange-600">Ежедневно<br>10:00</div>
+                                <div class="text-sm font-semibold text-orange-600">{!! __('landing.automation_daily') !!}</div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-orange-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">Проверка истекающих промо</h3>
-                                <p class="text-gray-600">Уведомления о промо-акциях, которые скоро закончатся</p>
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_daily_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_daily_desc') }}</p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-purple-600">Понедельник<br>9:00</div>
+                                <div class="text-sm font-semibold text-purple-600">{!! __('landing.automation_weekly') !!}</div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-purple-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">Автосоздание промо для неликвида</h3>
-                                <p class="text-gray-600">AI определяет медленно движущиеся товары и создаёт выгодные акции</p>
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_weekly_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_weekly_desc') }}</p>
                             </div>
                         </div>
                     </div>
@@ -600,8 +600,8 @@
                     <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-900 mb-1">Полная автоматизация процессов</h4>
-                                <p class="text-sm text-gray-600">Система работает сама — вы только контролируете результаты</p>
+                                <h4 class="font-bold text-gray-900 mb-1">{{ __('landing.automation_tech') }}</h4>
+                                <p class="text-sm text-gray-600">{{ __('landing.automation_tech_desc') }}</p>
                             </div>
                             <div class="text-4xl">⚙️</div>
                         </div>
@@ -860,8 +860,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Почему SellerMind — лучший выбор</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Сравните наши возможности с другими решениями на рынке</p>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.comparison_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.comparison_subtitle') }}</p>
             </div>
             
             <div class="overflow-x-auto">
