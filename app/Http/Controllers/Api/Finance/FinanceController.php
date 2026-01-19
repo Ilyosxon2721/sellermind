@@ -379,9 +379,15 @@ class FinanceController extends Controller
     /**
      * Рассчитать итоговый баланс компании
      *
-     * Активы = Остатки на складах + Товары в пути + Дебиторка
+     * ВАЖНО: Товары в транзите НЕ включаются в активы!
+     * Транзит — это потенциальный доход, не гарантированный.
+     * Клиент может отказаться, не забрать или вернуть товар.
+     *
+     * Активы = Остатки на складах + Дебиторка (подтверждённые)
      * Пассивы = Кредиторка + Неоплаченные налоги + Неоплаченная зарплата
      * Чистый баланс = Активы - Пассивы
+     *
+     * Транзит показывается отдельно как "ожидаемые поступления"
      */
     protected function calculateCompanyBalance(
         array $stockData,
@@ -391,10 +397,10 @@ class FinanceController extends Controller
         float $unpaidTaxes,
         ?SalaryCalculation $currentSalary
     ): array {
-        // Активы
+        // Активы (только подтверждённые, БЕЗ транзитов!)
         $stockValue = $stockData['total_cost'] ?? 0;
         $transitValue = $transitData['total_amount'] ?? 0;
-        $totalAssets = $stockValue + $transitValue + $debtsReceivable;
+        $totalAssets = $stockValue + $debtsReceivable; // Транзит НЕ включён
 
         // Пассивы
         $unpaidSalary = 0;
@@ -409,7 +415,6 @@ class FinanceController extends Controller
         return [
             'assets' => [
                 'stock_value' => $stockValue,
-                'transit_value' => $transitValue,
                 'receivables' => $debtsReceivable,
                 'total' => $totalAssets,
             ],
@@ -420,6 +425,11 @@ class FinanceController extends Controller
                 'total' => $totalLiabilities,
             ],
             'net_balance' => $netBalance,
+            // Транзит показываем отдельно — это потенциальный, не гарантированный доход
+            'pending_income' => [
+                'transit_orders' => $transitValue,
+                'note' => 'Ожидаемые поступления (не гарантированы)',
+            ],
             'health' => $this->getBalanceHealth($netBalance, $totalAssets, $totalLiabilities),
         ];
     }

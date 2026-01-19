@@ -83,15 +83,11 @@
                          x-text="formatMoney(overview.balance?.net_balance || 0) + ' сум'"></div>
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <div class="text-sm text-slate-400 mb-2">Активы</div>
+                            <div class="text-sm text-slate-400 mb-2">Активы (подтверждённые)</div>
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-slate-300">Остатки на складах</span>
                                     <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.stock_value || 0)"></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-slate-300">Товары в пути</span>
-                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.transit_value || 0)"></span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-slate-300">Дебиторка</span>
@@ -124,6 +120,17 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <!-- Ожидаемые поступления (транзит) — отдельно -->
+                    <div x-show="overview.balance?.pending_income?.transit_orders > 0" class="mt-4 pt-4 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-sm text-slate-400">Ожидаемые поступления (не гарантированы)</span>
+                            </div>
+                            <span class="text-amber-400 font-medium" x-text="formatMoney(overview.balance?.pending_income?.transit_orders || 0)"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">Заказы в пути — клиент может отказаться или вернуть товар</p>
                     </div>
                 </div>
 

@@ -1,10 +1,10 @@
 <!-- Sidebar Component -->
-<div class="w-72 bg-white border-r border-gray-200 flex flex-col h-full">
+<div class="w-72 bg-white border-r border-gray-200 flex flex-col h-full" role="complementary">
     <!-- Logo -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
-        <a href="/home" class="flex items-center space-x-3">
+        <a href="/home" class="flex items-center space-x-3" aria-label="SellerMind - Главная страница">
             <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                 </svg>
             </div>
@@ -16,10 +16,12 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="p-4 space-y-1 flex-shrink-0">
+    <nav class="p-4 space-y-1 flex-shrink-0" role="navigation" aria-label="Главная навигация">
         <a href="/home"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('home') || request()->is('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('home') || request()->is('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Главная"
+           {{ request()->is('home') || request()->is('dashboard') ? 'aria-current="page"' : '' }}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
             </svg>
             <span class="font-medium">Главная</span>
@@ -31,55 +33,65 @@
         <div x-data="{open: {{ request()->is('warehouse*') ? 'true' : 'false' }}}">
             <button type="button"
                     class="flex items-center justify-between w-full px-3 py-2 rounded-lg transition text-gray-700 hover:bg-gray-100"
-                    @click="open = !open">
+                    @click="open = !open"
+                    aria-label="Меню склада и документов"
+                    :aria-expanded="open.toString()">
                 <div class="flex items-center space-x-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
                     </svg>
                     <span class="font-medium">Остатки/док-ты</span>
                 </div>
-                <svg class="w-4 h-4 text-gray-500 transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-gray-500 transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </button>
             <div class="ml-6 space-y-1" x-show="open" x-cloak>
                 <a href="/warehouse"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Дашборд</span>
                 </a>
                 <a href="/warehouse/balance"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/balance*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/balance*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/balance*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Остатки</span>
                 </a>
                 <a href="/warehouse/in"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/in*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/in*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/in*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Оприходование</span>
                 </a>
                 <a href="/warehouse/list"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/list*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/list*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/list*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Склады</span>
                 </a>
                 <a href="/warehouse/documents"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/documents*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/documents*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/documents*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Документы</span>
                 </a>
                 <a href="/warehouse/reservations"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/reservations*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/reservations*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/reservations*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Резервы</span>
                 </a>
                 <a href="/warehouse/ledger"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/ledger*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/ledger*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('warehouse/ledger*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Журнал движений</span>
                 </a>
                 <a href="/products"
-                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                   class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   {{ request()->is('products*') ? 'aria-current="page"' : '' }}>
                     <span class="text-xs">•</span>
                     <span class="text-sm">Товары</span>
                 </a>
@@ -87,15 +99,19 @@
         </div>
 
         <a href="/marketplace"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('marketplace') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('marketplace') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Маркетплейсы"
+           {{ request()->is('marketplace') ? 'aria-current="page"' : '' }}>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
             <span class="font-medium">Маркетплейсы</span>
         </a>
 
         <a href="/sales"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('sales*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('sales*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Продажи"
+           {{ request()->is('sales*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
@@ -103,7 +119,9 @@
         </a>
 
         <a href="/counterparties"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('counterparties*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('counterparties*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Контрагенты"
+           {{ request()->is('counterparties*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
             </svg>
@@ -111,7 +129,9 @@
         </a>
 
         <a href="/inventory"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('inventory*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('inventory*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Инвентаризация"
+           {{ request()->is('inventory*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
             </svg>
@@ -120,7 +140,9 @@
 
 
         <a href="/marketplace/sync-logs"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('marketplace/sync-logs') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('marketplace/sync-logs') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Журнал логов"
+           {{ request()->is('marketplace/sync-logs') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
@@ -172,7 +194,9 @@
         <hr class="my-2 border-gray-200">
 
         <a href="/company/profile"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('company/*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('company/*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Профиль компании"
+           {{ request()->is('company/*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
             </svg>
@@ -191,7 +215,7 @@
     @endif
 
     <!-- User Menu -->
-    <div class="p-4 border-t border-gray-200 flex-shrink-0">
+    <div class="p-4 border-t border-gray-200 flex-shrink-0" role="region" aria-label="Меню пользователя">
         <div class="flex items-center space-x-3">
             <div class="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium"
                  x-text="($store.auth.user?.name || $store.auth.user?.email || '?')[0].toUpperCase()">
