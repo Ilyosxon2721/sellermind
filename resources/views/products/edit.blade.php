@@ -1215,7 +1215,7 @@
                     <div class="grid grid-cols-3 gap-2 mb-3">
                         <template x-for="(img, idx) in images" :key="idx">
                             <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
-                                <img :src="img.file_path || '/images/placeholder.png'" class="w-full h-full object-cover">
+                                <img :src="img.file_path || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%23f3f4f6%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22 font-size=%2214%22%3ENo image%3C/text%3E%3C/svg%3E'" class="w-full h-full object-cover">
                                 <button type="button" @click="images.splice(idx, 1)" class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full text-xs">×</button>
                             </div>
                         </template>
