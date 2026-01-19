@@ -803,8 +803,8 @@
                         @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> API доступ</li>@endif
                         @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li>@endif
                     </ul>
-                    <a href="/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
-                        Выбрать план
+                    <a href="/{{ app()->getLocale() }}/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                        {{ __('landing.pricing_cta') }}
                     </a>
                 </div>
                 @else
@@ -835,8 +835,8 @@
                         @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li>@endif
                         @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li>@endif
                     </ul>
-                    <a href="{{ $plan->slug === 'enterprise' ? '#' : '/register' }}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        {{ $plan->slug === 'enterprise' ? 'Связаться' : 'Выбрать план' }}
+                    <a href="/{{ app()->getLocale() }}/{{ $plan->slug === 'enterprise' ? 'contact' : 'register' }}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                        {{ $plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta') }}
                     </a>
                 </div>
                 @endif
