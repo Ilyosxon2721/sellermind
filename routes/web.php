@@ -40,12 +40,12 @@ Route::get('/en', function (Illuminate\Http\Request $request) {
 Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function () {
     Route::get('/login', function ($locale) {
         App::setLocale($locale);
-        return view('auth.login');
+        return view('pages.login');
     })->name('login.localized');
     
     Route::get('/register', function ($locale) {
         App::setLocale($locale);
-        return view('auth.register');
+        return view('pages.register');
     })->name('register.localized');
 });
 

@@ -199,8 +199,8 @@
                         </div>
                     </div>
                     
-                    <a href="/login" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_login')); ?></a>
-                    <a href="/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"><?php echo e(__('landing.nav_register')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/login" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_login')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"><?php echo e(__('landing.nav_register')); ?></a>
                 </nav>
                 
                 
@@ -222,8 +222,8 @@
                 <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
                 <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
                 <div class="flex gap-2 mt-4">
-                    <a href="/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700"><?php echo e(__('landing.nav_login')); ?></a>
-                    <a href="/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium"><?php echo e(__('landing.nav_register')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700"><?php echo e(__('landing.nav_login')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium"><?php echo e(__('landing.nav_register')); ?></a>
                 </div>
             </div>
         </div>
@@ -808,8 +808,9 @@
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="mr-2">✓</span> API доступ</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </ul>
-                    <a href="/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
-                        Выбрать план
+                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                        <?php echo e(__('landing.pricing_cta')); ?>
+
                     </a>
                 </div>
                 <?php else: ?>
@@ -841,8 +842,8 @@
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </ul>
-                    <a href="<?php echo e($plan->slug === 'enterprise' ? '#' : '/register'); ?>" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        <?php echo e($plan->slug === 'enterprise' ? 'Связаться' : 'Выбрать план'); ?>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/<?php echo e($plan->slug === 'enterprise' ? 'contact' : 'register'); ?>" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                        <?php echo e($plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta')); ?>
 
                     </a>
                 </div>
