@@ -517,31 +517,46 @@ class SalesController extends Controller
     /**
      * Get Uzum Finance orders (all types: FBO/FBS/DBS/EDBS)
      *
-     * Логика определения статуса:
-     * - date_issued NOT NULL и статус НЕ CANCELED → delivered (продажа, полноценный доход)
-     * - date_issued NOT NULL и статус CANCELED → returned (возврат)
-     * - date_issued NULL → transit (в транзите, ещё не доход)
+     * Логика определения статуса по данным из БД:
+     * - TO_WITHDRAW → delivered (продажа, деньги выведены = полноценный доход)
+     * - PROCESSING + date_issued NOT NULL → awaiting_pickup (выкуплен, ожидает вывода)
+     * - PROCESSING + date_issued NULL → transit (в транзите)
+     * - CANCELED + date_issued NOT NULL → returned (возврат после выкупа)
+     * - CANCELED + date_issued NULL → cancelled (отмена до выкупа)
      *
      * Логика фильтрации по дате:
-     * - Для проданных/возвращённых (date_issued NOT NULL): по date_issued
-     * - Для остальных (в транзите): по order_date
+     * - Для TO_WITHDRAW: по date_issued (дата продажи)
+     * - Для CANCELED с date_issued: по date_issued (дата возврата)
+     * - Для остальных: по order_date (дата заказа)
      */
     private function getUzumFinanceOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
         $query = UzumFinanceOrder::query()
             ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
             ->where(function($q) use ($dateFrom, $dateTo) {
-                // Завершённые (date_issued не null) - фильтруем по date_issued
+                // Продажи (TO_WITHDRAW) - фильтруем по date_issued
                 $q->where(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->whereNotNull('date_issued')
+                    $sub->where('status', 'TO_WITHDRAW')
                         ->whereDate('date_issued', '>=', $dateFrom)
                         ->whereDate('date_issued', '<=', $dateTo);
                 })
-                // В транзите (date_issued null) - по дате заказа
+                // Возвраты (CANCELED с date_issued) - по date_issued
                 ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->whereNull('date_issued')
-                        ->whereDate('order_date', '>=', $dateFrom)
-                        ->whereDate('order_date', '<=', $dateTo);
+                    $sub->where('status', 'CANCELED')
+                        ->whereNotNull('date_issued')
+                        ->whereDate('date_issued', '>=', $dateFrom)
+                        ->whereDate('date_issued', '<=', $dateTo);
+                })
+                // Остальные (PROCESSING, CANCELED без date_issued) - по дате заказа
+                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                    $sub->where(function($inner) {
+                        $inner->where('status', 'PROCESSING')
+                            ->orWhere(function($c) {
+                                $c->where('status', 'CANCELED')->whereNull('date_issued');
+                            });
+                    })
+                    ->whereDate('order_date', '>=', $dateFrom)
+                    ->whereDate('order_date', '<=', $dateTo);
                 });
             });
 
@@ -551,25 +566,29 @@ class SalesController extends Controller
                 switch ($status) {
                     case 'delivered':
                     case 'completed':
-                        // Продажа: date_issued есть И статус НЕ CANCELED
-                        $q->whereNotNull('date_issued')
-                          ->whereNotIn('status', ['CANCELED', 'cancelled']);
+                        // Продажа: статус TO_WITHDRAW (деньги выведены)
+                        $q->where('status', 'TO_WITHDRAW');
                         break;
                     case 'transit':
                     case 'processing':
-                        // В транзите: date_issued нет И статус НЕ CANCELED
-                        $q->whereNull('date_issued')
-                          ->whereNotIn('status', ['CANCELED', 'cancelled']);
+                        // В транзите: PROCESSING без date_issued
+                        $q->where('status', 'PROCESSING')
+                          ->whereNull('date_issued');
+                        break;
+                    case 'awaiting_pickup':
+                        // Ожидает вывода: PROCESSING с date_issued (выкуплен)
+                        $q->where('status', 'PROCESSING')
+                          ->whereNotNull('date_issued');
                         break;
                     case 'returned':
-                        // Возврат (после выкупа): date_issued есть И статус CANCELED
-                        $q->whereNotNull('date_issued')
-                          ->whereIn('status', ['CANCELED', 'cancelled']);
+                        // Возврат: CANCELED с date_issued (был выкуплен, потом вернули)
+                        $q->where('status', 'CANCELED')
+                          ->whereNotNull('date_issued');
                         break;
                     case 'cancelled':
-                        // Отмена (до выкупа): date_issued нет И статус CANCELED
-                        $q->whereNull('date_issued')
-                          ->whereIn('status', ['CANCELED', 'cancelled']);
+                        // Отмена: CANCELED без date_issued (отменили до выкупа)
+                        $q->where('status', 'CANCELED')
+                          ->whereNull('date_issued');
                         break;
                     default:
                         $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
@@ -585,44 +604,62 @@ class SalesController extends Controller
         }
 
         return $query->with('account')->get()->map(function($order) {
-            // Цены в UzumFinanceOrder хранятся в сумах (API Uzum возвращает суммы в сумах)
+            // Цены в UzumFinanceOrder хранятся в сумах
             $totalAmount = $order->sell_price * $order->amount;
             $sellerProfit = $order->seller_profit;
 
-            // Логика определения статуса:
-            // - date_issued NOT NULL и статус НЕ CANCELED → продажа (delivered)
-            // - date_issued NOT NULL и статус CANCELED → возврат (returned) — был выкуплен, потом вернули
-            // - date_issued NULL и статус CANCELED → отмена (cancelled) — отменили до выкупа
-            // - date_issued NULL и статус НЕ CANCELED → в транзите (transit)
+            // Логика определения статуса по реальным данным:
+            // - TO_WITHDRAW → продажа (delivered) - деньги выведены
+            // - PROCESSING + date_issued → ожидает вывода (awaiting_pickup) - выкуплен
+            // - PROCESSING + no date_issued → в транзите (transit)
+            // - CANCELED + date_issued → возврат (returned) - был выкуплен, потом вернули
+            // - CANCELED + no date_issued → отмена (cancelled)
+            $isToWithdraw = $order->status === 'TO_WITHDRAW';
+            $isProcessing = $order->status === 'PROCESSING';
+            $isCanceled = $order->status === 'CANCELED';
             $hasDateIssued = $order->date_issued !== null;
-            $isCanceledStatus = in_array($order->status, ['CANCELED', 'cancelled']);
 
-            $isCompleted = $hasDateIssued && !$isCanceledStatus;  // Продажа
-            $isReturned = $hasDateIssued && $isCanceledStatus;    // Возврат (после выкупа)
-            $isCancelled = !$hasDateIssued && $isCanceledStatus;  // Отмена (до выкупа)
-            $isTransit = !$hasDateIssued && !$isCanceledStatus;   // В транзите
+            $isCompleted = $isToWithdraw;                           // Продажа (деньги выведены)
+            $isAwaitingPickup = $isProcessing && $hasDateIssued;    // Выкуплен, ожидает вывода
+            $isTransit = $isProcessing && !$hasDateIssued;          // В транзите
+            $isReturned = $isCanceled && $hasDateIssued;            // Возврат (после выкупа)
+            $isCancelled = $isCanceled && !$hasDateIssued;          // Отмена (до выкупа)
 
             // Для возвратов сумма = sell_price * amount_returns
             $displayAmount = $isReturned
                 ? $order->sell_price * $order->amount_returns
                 : $totalAmount;
 
+            // Определяем нормализованный статус
+            $normalizedStatus = 'transit';
+            if ($isCompleted) $normalizedStatus = 'delivered';
+            elseif ($isAwaitingPickup) $normalizedStatus = 'awaiting_pickup';
+            elseif ($isReturned) $normalizedStatus = 'returned';
+            elseif ($isCancelled) $normalizedStatus = 'cancelled';
+
+            // Определяем категорию статуса
+            $statusCategory = 'transit';
+            if ($isCompleted) $statusCategory = 'completed';
+            elseif ($isAwaitingPickup) $statusCategory = 'awaiting_pickup';
+            elseif ($isReturned || $isCancelled) $statusCategory = 'cancelled';
+
             return [
                 'id' => 'uzum_finance_' . $order->id,
                 'order_number' => (string) $order->order_id,
                 'created_at' => $order->order_date?->toIso8601String(),
-                'completion_date' => $order->date_issued?->toIso8601String(), // Дата выкупа/продажи/возврата
+                'completion_date' => $order->date_issued?->toIso8601String(),
                 'marketplace' => 'uzum',
                 'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Uzum',
-                'customer_name' => $order->sku_title, // В finance API нет customer_name, показываем название товара
+                'customer_name' => $order->sku_title,
                 'total_amount' => $displayAmount,
                 'seller_profit' => $sellerProfit,
                 'currency' => 'UZS',
-                'status' => $isCompleted ? 'delivered' : ($isReturned ? 'returned' : ($isCancelled ? 'cancelled' : 'transit')),
-                'status_category' => $isCompleted ? 'completed' : (($isReturned || $isCancelled) ? 'cancelled' : 'transit'),
-                'is_revenue' => $isCompleted, // Только продажи считаются как доход
-                'is_return' => $isReturned,   // Флаг возврата (после выкупа)
-                'is_cancelled' => $isCancelled, // Флаг отмены (до выкупа)
+                'status' => $normalizedStatus,
+                'status_category' => $statusCategory,
+                'is_revenue' => $isCompleted,           // Только TO_WITHDRAW = доход
+                'is_awaiting_pickup' => $isAwaitingPickup,
+                'is_return' => $isReturned,
+                'is_cancelled' => $isCancelled,
                 'raw_status' => $order->status,
                 'quantity' => $order->amount,
                 'returns' => $order->amount_returns,
@@ -654,9 +691,16 @@ class SalesController extends Controller
     /**
      * Get WB orders
      *
+     * Логика определения статуса по данным WB:
+     * - is_realization=true AND is_cancel=false → completed (продажа)
+     * - is_realization=true AND is_cancel=true → returned (возврат после выкупа)
+     * - is_realization=false AND is_cancel=true → cancelled (отмена до выкупа)
+     * - is_realization=false AND is_cancel=false → transit (в транзите)
+     *
      * Логика фильтрации по дате:
-     * - Для проданных (is_realization=true): по last_change_date (дата продажи)
-     * - Для остальных: по order_date (дата заказа)
+     * - Для продаж (is_realization=true, is_cancel=false): по last_change_date
+     * - Для возвратов (is_realization=true, is_cancel=true): по last_change_date
+     * - Для остальных: по order_date
      */
     private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
@@ -665,48 +709,67 @@ class SalesController extends Controller
         }
 
         try {
-            // Use WildberriesOrder model (wildberries_orders table) which has real data
             $query = WildberriesOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
                 ->where(function($q) use ($dateFrom, $dateTo) {
-                    // Проданные товары - фильтруем по дате продажи (last_change_date)
+                    // Продажи (is_realization=true, is_cancel=false) - по last_change_date
                     $q->where(function($sub) use ($dateFrom, $dateTo) {
                         $sub->where('is_realization', true)
                             ->where('is_cancel', false)
-                            ->where('is_return', false)
                             ->whereDate('last_change_date', '>=', $dateFrom)
                             ->whereDate('last_change_date', '<=', $dateTo);
                     })
-                    // Остальные (в транзите, отменённые) - по дате заказа
+                    // Возвраты (is_realization=true, is_cancel=true) - по last_change_date
                     ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where(function($inner) {
-                            $inner->where('is_realization', false)
-                                ->orWhere('is_cancel', true)
-                                ->orWhere('is_return', true);
-                        })
-                        ->whereDate('order_date', '>=', $dateFrom)
-                        ->whereDate('order_date', '<=', $dateTo);
+                        $sub->where('is_realization', true)
+                            ->where('is_cancel', true)
+                            ->whereDate('last_change_date', '>=', $dateFrom)
+                            ->whereDate('last_change_date', '<=', $dateTo);
+                    })
+                    // В транзите (is_realization=false, is_cancel=false) - по order_date
+                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('is_realization', false)
+                            ->where('is_cancel', false)
+                            ->whereDate('order_date', '>=', $dateFrom)
+                            ->whereDate('order_date', '<=', $dateTo);
+                    })
+                    // Отмены (is_realization=false, is_cancel=true) - по order_date
+                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('is_realization', false)
+                            ->where('is_cancel', true)
+                            ->whereDate('order_date', '>=', $dateFrom)
+                            ->whereDate('order_date', '<=', $dateTo);
                     });
                 });
 
             if ($status) {
-                // Map status filter to WildberriesOrder fields
                 $query->where(function($q) use ($status) {
-                    $dbStatuses = $this->mapStatusToDbStatuses($status);
-                    $q->whereIn('status', $dbStatuses)
-                      ->orWhereIn('wb_status', $dbStatuses);
-
-                    // Handle cancelled status via is_cancel flag
-                    if ($status === 'cancelled') {
-                        $q->orWhere('is_cancel', true);
-                    }
-                    // Handle completed status
-                    if ($status === 'completed') {
-                        $q->orWhere(function($sub) {
-                            $sub->where('is_realization', true)
-                                ->where('is_cancel', false)
-                                ->where('is_return', false);
-                        });
+                    switch ($status) {
+                        case 'delivered':
+                        case 'completed':
+                            // Продажа: is_realization=true AND is_cancel=false
+                            $q->where('is_realization', true)
+                              ->where('is_cancel', false);
+                            break;
+                        case 'returned':
+                            // Возврат: is_realization=true AND is_cancel=true
+                            $q->where('is_realization', true)
+                              ->where('is_cancel', true);
+                            break;
+                        case 'cancelled':
+                            // Отмена + Возврат для общего фильтра "отменённые"
+                            $q->where('is_cancel', true);
+                            break;
+                        case 'transit':
+                        case 'processing':
+                            // В транзите: is_realization=false AND is_cancel=false
+                            $q->where('is_realization', false)
+                              ->where('is_cancel', false);
+                            break;
+                        default:
+                            $dbStatuses = $this->mapStatusToDbStatuses($status);
+                            $q->whereIn('status', $dbStatuses)
+                              ->orWhereIn('wb_status', $dbStatuses);
                     }
                 });
             }
@@ -724,15 +787,32 @@ class SalesController extends Controller
                 $amountRub = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
-                // Определяем категорию статуса
-                $isCompleted = $order->is_realization && !$order->is_cancel && !$order->is_return;
-                $isCancelled = $order->is_cancel || $order->is_return;
+                // Определяем статус по флагам:
+                // - is_realization=true, is_cancel=false → продажа (completed)
+                // - is_realization=true, is_cancel=true → возврат (returned)
+                // - is_realization=false, is_cancel=true → отмена (cancelled)
+                // - is_realization=false, is_cancel=false → в транзите (transit)
+                $isCompleted = $order->is_realization && !$order->is_cancel;
+                $isReturned = $order->is_realization && $order->is_cancel;
+                $isCancelled = !$order->is_realization && $order->is_cancel;
+                $isTransit = !$order->is_realization && !$order->is_cancel;
+
+                // Нормализованный статус
+                $normalizedStatus = 'transit';
+                if ($isCompleted) $normalizedStatus = 'completed';
+                elseif ($isReturned) $normalizedStatus = 'returned';
+                elseif ($isCancelled) $normalizedStatus = 'cancelled';
+
+                // Категория статуса
+                $statusCategory = 'transit';
+                if ($isCompleted) $statusCategory = 'completed';
+                elseif ($isReturned || $isCancelled) $statusCategory = 'cancelled';
 
                 return [
                     'id' => 'wb_' . $order->id,
                     'order_number' => (string) ($order->srid ?? $order->order_id ?? $order->id),
                     'created_at' => $order->order_date?->toIso8601String(),
-                    'completion_date' => $isCompleted ? $order->last_change_date?->toIso8601String() : null, // Дата продажи
+                    'completion_date' => ($isCompleted || $isReturned) ? $order->last_change_date?->toIso8601String() : null,
                     'marketplace' => 'wb',
                     'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Wildberries',
                     'customer_name' => $order->region_name,
@@ -740,9 +820,11 @@ class SalesController extends Controller
                     'total_amount_rub' => $amountRub,
                     'original_currency' => 'RUB',
                     'currency' => $this->currencyService->getDisplayCurrency(),
-                    'status' => $this->normalizeWildberriesStatus($order),
-                    'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
-                    'is_revenue' => $isCompleted, // Только реализованные заказы считаем как доход
+                    'status' => $normalizedStatus,
+                    'status_category' => $statusCategory,
+                    'is_revenue' => $isCompleted,           // Только продажи = доход
+                    'is_return' => $isReturned,             // Возврат после выкупа
+                    'is_cancelled' => $isCancelled,         // Отмена до выкупа
                     'raw_status' => $order->wb_status ?? $order->status,
                 ];
             });
