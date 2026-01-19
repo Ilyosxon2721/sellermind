@@ -11,15 +11,16 @@
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         
-        /* Fullpage Scroll Snap */
+        /* Improved Fullpage Scroll Snap */
         html {
             scroll-behavior: smooth;
         }
         
         body {
-            scroll-snap-type: y proximity;
+            scroll-snap-type: y mandatory;
             overflow-y: scroll;
             overflow-x: hidden;
+            scroll-padding-top: 0;
         }
         
         section {
@@ -27,11 +28,12 @@
             scroll-snap-stop: normal;
         }
         
-        /* Scroll Reveal Animations */
+        /* Scroll Reveal Animations - Faster */
         .scroll-reveal {
             opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            transform: translateY(20px);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .scroll-reveal.revealed {
@@ -39,11 +41,12 @@
             transform: translateY(0);
         }
         
-        /* Stagger animation for cards */
+        /* Stagger animation for cards - Shorter delays */
         .scroll-reveal-card {
             opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transform: translateY(20px);
+            transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .scroll-reveal-card.revealed {
@@ -51,24 +54,25 @@
             transform: translateY(0);
         }
         
-        /* Stagger delays for children */
-        .scroll-reveal-card:nth-child(1).revealed { transition-delay: 0.1s; }
-        .scroll-reveal-card:nth-child(2).revealed { transition-delay: 0.2s; }
-        .scroll-reveal-card:nth-child(3).revealed { transition-delay: 0.3s; }
-        .scroll-reveal-card:nth-child(4).revealed { transition-delay: 0.4s; }
-        .scroll-reveal-card:nth-child(5).revealed { transition-delay: 0.5s; }
-        .scroll-reveal-card:nth-child(6).revealed { transition-delay: 0.6s; }
+        /* Faster stagger delays */
+        .scroll-reveal-card:nth-child(1).revealed { transition-delay: 0.05s; }
+        .scroll-reveal-card:nth-child(2).revealed { transition-delay: 0.1s; }
+        .scroll-reveal-card:nth-child(3).revealed { transition-delay: 0.15s; }
+        .scroll-reveal-card:nth-child(4).revealed { transition-delay: 0.2s; }
+        .scroll-reveal-card:nth-child(5).revealed { transition-delay: 0.25s; }
+        .scroll-reveal-card:nth-child(6).revealed { transition-delay: 0.3s; }
         
         /* Smooth hover effects */
         .hover-lift {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .hover-lift:hover {
             transform: translateY(-5px);
         }
         
-        /* Section Indicators */
+        /* Section Indicators - Smoother */
         .section-indicators {
             position: fixed;
             right: 2rem;
@@ -86,7 +90,7 @@
             border-radius: 50%;
             background: #cbd5e1;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 2px solid transparent;
         }
         
@@ -949,6 +953,18 @@
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50 bg-blue-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">
+                                <div class="flex items-center gap-2">
+                                    <span>Интеграция с 4+ маркетплейсами</span>
+                                    <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">ТОЛЬКО У НАС</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
                             <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
@@ -972,10 +988,10 @@
                         </tr>
                         <tr class="bg-blue-50">
                             <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">8/8</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/8</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/8</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">9/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/9</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1063,7 +1079,7 @@
 </div>
 
 <script>
-// Intersection Observer for scroll reveal animations
+// Intersection Observer for scroll reveal animations - Optimized
 document.addEventListener('DOMContentLoaded', function() {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -1072,8 +1088,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }, {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.15,
+        rootMargin: '0px 0px -30px 0px'
     });
     
     // Observe all elements with scroll-reveal classes
@@ -1081,14 +1097,14 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(el);
     });
     
-    // Section Indicators
+    // Section Indicators - Optimized
     const sections = {
         'hero': document.querySelector('section:first-of-type'),
         'features': document.querySelector('#features'),
-        'impact': document.querySelectorAll('section')[5], // Business Impact
-        'automation': document.querySelectorAll('section')[6], // Automation
+        'impact': document.querySelectorAll('section')[5],
+        'automation': document.querySelectorAll('section')[6],
         'integrations': document.querySelector('#integrations'),
-        'comparison': document.querySelectorAll('section')[9], // Comparison
+        'comparison': document.querySelectorAll('section')[9],
         'pricing': document.querySelector('#pricing'),
         'faq': document.querySelector('#faq')
     };
@@ -1106,25 +1122,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Update active indicator on scroll
+    // Debounce для производительности
+    let ticking = false;
+    
+    // Update active indicator on scroll - Faster response
     const sectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                // Find which section this is
-                for (const [name, section] of Object.entries(sections)) {
-                    if (section === entry.target) {
-                        indicators.forEach(ind => ind.classList.remove('active'));
-                        const activeIndicator = document.querySelector(`.section-indicator[data-section="${name}"]`);
-                        if (activeIndicator) {
-                            activeIndicator.classList.add('active');
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+                        for (const [name, section] of Object.entries(sections)) {
+                            if (section === entry.target) {
+                                indicators.forEach(ind => ind.classList.remove('active'));
+                                const activeIndicator = document.querySelector(`.section-indicator[data-section="${name}"]`);
+                                if (activeIndicator) {
+                                    activeIndicator.classList.add('active');
+                                }
+                                break;
+                            }
                         }
-                        break;
                     }
-                }
-            }
-        });
+                });
+                ticking = false;
+            });
+            ticking = true;
+        }
     }, {
-        threshold: 0.5
+        threshold: [0.3, 0.6, 0.9],
+        rootMargin: '-10% 0px -10% 0px'
     });
     
     // Observe all sections
