@@ -14,6 +14,8 @@ use App\Models\Warehouse\InventoryDocument;
 use App\Models\AP\SupplierInvoice;
 use App\Services\Finance\FinanceReportService;
 use App\Services\Marketplaces\UzumClient;
+use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
+use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
 use App\Models\MarketplaceAccount;
 use App\Support\ApiResponder;
 use Carbon\Carbon;
@@ -741,8 +743,66 @@ class FinanceController extends Controller
             }
         }
 
-        // WB expenses (from реализация reports if available)
-        // TODO: Add WB expenses from supplier-stats API
+        // WB expenses (from detailed report / реализация)
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $rubToUzs = $financeSettings->rub_rate ?? 140;
+
+        $wbAccounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'wildberries')
+            ->where('is_active', true)
+            ->get();
+
+        $wbTotalExpenses = [
+            'commission' => 0,
+            'logistics' => 0,
+            'storage' => 0,
+            'advertising' => 0,
+            'penalties' => 0,
+            'returns' => 0,
+            'other' => 0,
+            'total' => 0,
+            'currency' => 'RUB',
+            'total_uzs' => 0,
+        ];
+
+        foreach ($wbAccounts as $account) {
+            try {
+                $httpClient = new WildberriesHttpClient($account);
+                $financeService = new WildberriesFinanceService($httpClient);
+
+                $reportData = $financeService->getFullDetailedReport($account, $from, $to);
+                $summary = $financeService->calculateSummary($reportData);
+
+                // Map WB fields to standard expense categories (all in RUB)
+                $wbTotalExpenses['commission'] += $summary['total_commission'] ?? 0;
+                $wbTotalExpenses['logistics'] += $summary['total_logistics'] ?? 0;
+                $wbTotalExpenses['penalties'] += $summary['total_penalty'] ?? 0;
+                $wbTotalExpenses['returns'] += $summary['total_returns'] ?? 0;
+
+                $accountTotal = ($summary['total_commission'] ?? 0)
+                    + ($summary['total_logistics'] ?? 0)
+                    + ($summary['total_penalty'] ?? 0);
+
+                $wbTotalExpenses['total'] += $accountTotal;
+            } catch (\Exception $e) {
+                if (!isset($result['wb']['error'])) {
+                    $result['wb'] = ['error' => $e->getMessage()];
+                }
+            }
+        }
+
+        // Convert WB totals to UZS and add to result
+        if ($wbTotalExpenses['total'] > 0 || !isset($result['wb']['error'])) {
+            $wbTotalExpenses['total_uzs'] = $wbTotalExpenses['total'] * $rubToUzs;
+            $result['wb'] = $wbTotalExpenses;
+
+            // Add WB expenses to totals (convert RUB to UZS)
+            $result['total']['commission'] += $wbTotalExpenses['commission'] * $rubToUzs;
+            $result['total']['logistics'] += $wbTotalExpenses['logistics'] * $rubToUzs;
+            $result['total']['penalties'] += $wbTotalExpenses['penalties'] * $rubToUzs;
+            $result['total']['returns'] += $wbTotalExpenses['returns'] * $rubToUzs;
+            $result['total']['total'] += $wbTotalExpenses['total_uzs'];
+        }
 
         // Ozon expenses (from finance reports if available)
         // TODO: Add Ozon expenses from finance API

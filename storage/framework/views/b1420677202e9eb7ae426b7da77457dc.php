@@ -11,6 +11,13 @@
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         
+        /* Force white text on blue buttons */
+        .bg-blue-600 a,
+        .bg-blue-600,
+        a.bg-blue-600 {
+            color: white !important;
+        }
+        
         /* Improved Fullpage Scroll Snap */
         html {
             scroll-behavior: smooth;
