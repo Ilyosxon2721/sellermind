@@ -65,18 +65,146 @@
                     </div>
                 </div>
 
-                <!-- Summary Cards -->
+                <!-- ========== ИТОГОВЫЙ БАЛАНС КОМПАНИИ ========== -->
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold opacity-90">Баланс компании</h2>
+                        <div class="flex items-center space-x-2">
+                            <span class="px-3 py-1 rounded-full text-xs font-medium"
+                                  :class="{
+                                      'bg-green-500/20 text-green-300': overview.balance?.health?.status === 'good' || overview.balance?.health?.status === 'excellent',
+                                      'bg-amber-500/20 text-amber-300': overview.balance?.health?.status === 'warning',
+                                      'bg-red-500/20 text-red-300': overview.balance?.health?.status === 'critical'
+                                  }"
+                                  x-text="overview.balance?.health?.message || 'Загрузка...'"></span>
+                        </div>
+                    </div>
+                    <div class="text-4xl font-bold mb-6" :class="(overview.balance?.net_balance || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
+                         x-text="formatMoney(overview.balance?.net_balance || 0) + ' сум'"></div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <div class="text-sm text-slate-400 mb-2">Активы</div>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Остатки на складах</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.stock_value || 0)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Товары в пути</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.transit_value || 0)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Дебиторка</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.receivables || 0)"></span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t border-slate-700">
+                                    <span class="text-emerald-400 font-medium">Итого активы</span>
+                                    <span class="text-emerald-400 font-bold" x-text="formatMoney(overview.balance?.assets?.total || 0)"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-slate-400 mb-2">Обязательства</div>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Кредиторка</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.liabilities?.payables || 0)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Налоги</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.liabilities?.unpaid_taxes || 0)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300">Зарплата</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.liabilities?.unpaid_salary || 0)"></span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t border-slate-700">
+                                    <span class="text-red-400 font-medium">Итого обязательства</span>
+                                    <span class="text-red-400 font-bold" x-text="formatMoney(overview.balance?.liabilities?.total || 0)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== ОСТАТКИ НА СКЛАДАХ И ТОВАРЫ В ПУТИ ========== -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Остатки на складах -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Остатки на складах</h3>
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="bg-indigo-50 rounded-xl p-4">
+                                <div class="text-sm text-indigo-600">Количество</div>
+                                <div class="text-2xl font-bold text-indigo-700" x-text="formatNumber(overview.stock?.total_qty || 0) + ' шт'"></div>
+                            </div>
+                            <div class="bg-indigo-50 rounded-xl p-4">
+                                <div class="text-sm text-indigo-600">Себестоимость</div>
+                                <div class="text-2xl font-bold text-indigo-700" x-text="formatMoney(overview.stock?.total_cost || 0)"></div>
+                            </div>
+                        </div>
+                        <template x-if="overview.stock?.by_warehouse?.length">
+                            <div class="space-y-2">
+                                <div class="text-sm text-gray-500">По складам:</div>
+                                <template x-for="wh in overview.stock.by_warehouse" :key="wh.id">
+                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm">
+                                        <span class="text-gray-700" x-text="wh.name"></span>
+                                        <span class="font-medium text-gray-900" x-text="formatNumber(wh.qty) + ' шт / ' + formatMoney(wh.cost)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Товары в транзитах -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Товары в пути</h3>
+                            <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="bg-amber-50 rounded-xl p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-amber-700">Заказы клиентов в пути</span>
+                                    <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.orders_in_transit?.count + ' шт'"></span>
+                                </div>
+                                <div class="text-xl font-bold text-amber-700" x-text="formatMoney(overview.transit?.orders_in_transit?.amount || 0)"></div>
+                            </div>
+                            <div class="bg-blue-50 rounded-xl p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm text-blue-700">Закупки в пути</span>
+                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.purchases_in_transit?.count + ' шт'"></span>
+                                </div>
+                                <div class="text-xl font-bold text-blue-700" x-text="formatMoney(overview.transit?.purchases_in_transit?.amount || 0)"></div>
+                            </div>
+                            <div class="border-t pt-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600 font-medium">Всего в транзите</span>
+                                    <span class="text-lg font-bold text-gray-900" x-text="formatMoney(overview.transit?.total_amount || 0)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards (Доходы/Расходы за период) -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Доходы</div>
+                        <div class="text-sm opacity-80">Доходы за период</div>
                         <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                     </div>
                     <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Расходы</div>
+                        <div class="text-sm opacity-80">Расходы за период</div>
                         <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
                     </div>
                     <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Прибыль</div>
+                        <div class="text-sm opacity-80">Прибыль за период</div>
                         <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
                     </div>
                     <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white">
@@ -89,16 +217,18 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Дебиторская задолженность</h3>
+                        <p class="text-xs text-gray-500 mb-2">Нам должны</p>
                         <div class="text-3xl font-bold text-green-600" x-text="formatMoney(overview.debts?.receivable || 0)"></div>
                         <template x-if="overview.debts?.overdue_receivable > 0">
-                            <div class="text-sm text-red-500 mt-2">Просрочено: <span x-text="formatMoney(overview.debts.overdue_receivable)"></span></div>
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_receivable)"></span></div>
                         </template>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Кредиторская задолженность</h3>
+                        <p class="text-xs text-gray-500 mb-2">Мы должны</p>
                         <div class="text-3xl font-bold text-red-600" x-text="formatMoney(overview.debts?.payable || 0)"></div>
                         <template x-if="overview.debts?.overdue_payable > 0">
-                            <div class="text-sm text-red-500 mt-2">Просрочено: <span x-text="formatMoney(overview.debts.overdue_payable)"></span></div>
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_payable)"></span></div>
                         </template>
                     </div>
                 </div>
@@ -114,7 +244,7 @@
                             </div>
                         </template>
                         <template x-if="!overview.expenses_by_category?.length">
-                            <p class="text-gray-500 text-center py-4">Нет данных</p>
+                            <p class="text-gray-500 text-center py-4">Нет данных о расходах</p>
                         </template>
                     </div>
                 </div>
@@ -141,6 +271,9 @@
                                          x-text="(tx.type === 'income' ? '+' : '-') + formatMoney(tx.amount)"></div>
                                 </div>
                             </div>
+                        </template>
+                        <template x-if="!overview.recent_transactions?.length">
+                            <p class="text-gray-500 text-center py-4">Нет транзакций</p>
                         </template>
                     </div>
                 </div>
@@ -1049,6 +1182,8 @@ function financePage() {
         },
 
         formatMoney(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
+
+        formatNumber(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
 
         statusClass(st) {
             return {

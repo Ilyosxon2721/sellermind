@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Warehouse;
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
+use App\Models\Warehouse\Unit;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -104,11 +105,18 @@ class DocumentController extends Controller
         DB::transaction(function () use ($doc, $lines) {
             $doc->lines()->delete();
             foreach ($lines as $line) {
+                // Ensure unit exists (auto-create default if missing)
+                $unitId = $line['unit_id'];
+                if (!Unit::find($unitId)) {
+                    $unit = Unit::firstOrCreate(['code' => 'pcs'], ['name' => 'Шт']);
+                    $unitId = $unit->id;
+                }
+
                 InventoryDocumentLine::create([
                     'document_id' => $doc->id,
                     'sku_id' => $line['sku_id'],
                     'qty' => $line['qty'],
-                    'unit_id' => $line['unit_id'],
+                    'unit_id' => $unitId,
                     'unit_cost' => $line['unit_cost'] ?? null,
                     'total_cost' => isset($line['unit_cost']) ? $line['unit_cost'] * $line['qty'] : null,
                     'location_id' => $line['location_id'] ?? null,
