@@ -11,6 +11,22 @@
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         
+        /* Fullpage Scroll Snap */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            scroll-snap-type: y proximity;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+        
+        section {
+            scroll-snap-align: start;
+            scroll-snap-stop: normal;
+        }
+        
         /* Scroll Reveal Animations */
         .scroll-reveal {
             opacity: 0;
@@ -50,6 +66,45 @@
         
         .hover-lift:hover {
             transform: translateY(-5px);
+        }
+        
+        /* Section Indicators */
+        .section-indicators {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .section-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .section-indicator:hover {
+            background: #94a3b8;
+            transform: scale(1.2);
+        }
+        
+        .section-indicator.active {
+            background: #2563eb;
+            transform: scale(1.3);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .section-indicators {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -866,13 +921,6 @@
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
                         </tr>
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-4 font-medium text-gray-900">Интеграция с 4+ маркетплейсами</td>
-                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
-                        </tr>
-                        <tr class="border-b border-gray-100 hover:bg-gray-50">
                             <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
                             <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
@@ -895,10 +943,10 @@
                         </tr>
                         <tr class="bg-blue-50">
                             <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">9/9</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
-                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">8/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/8</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -973,6 +1021,18 @@
         </div>
     </footer>
 
+<!-- Section Indicators -->
+<div class="section-indicators">
+    <div class="section-indicator" data-section="hero" title="Главная"></div>
+    <div class="section-indicator" data-section="features" title="Возможности"></div>
+    <div class="section-indicator" data-section="impact" title="Результаты"></div>
+    <div class="section-indicator" data-section="automation" title="Автоматизация"></div>
+    <div class="section-indicator" data-section="integrations" title="Интеграции"></div>
+    <div class="section-indicator" data-section="comparison" title="Сравнение"></div>
+    <div class="section-indicator" data-section="pricing" title="Тарифы"></div>
+    <div class="section-indicator" data-section="faq" title="FAQ"></div>
+</div>
+
 <script>
 // Intersection Observer for scroll reveal animations
 document.addEventListener('DOMContentLoaded', function() {
@@ -990,6 +1050,57 @@ document.addEventListener('DOMContentLoaded', function() {
     // Observe all elements with scroll-reveal classes
     document.querySelectorAll('.scroll-reveal, .scroll-reveal-card').forEach(el => {
         observer.observe(el);
+    });
+    
+    // Section Indicators
+    const sections = {
+        'hero': document.querySelector('section:first-of-type'),
+        'features': document.querySelector('#features'),
+        'impact': document.querySelectorAll('section')[5], // Business Impact
+        'automation': document.querySelectorAll('section')[6], // Automation
+        'integrations': document.querySelector('#integrations'),
+        'comparison': document.querySelectorAll('section')[9], // Comparison
+        'pricing': document.querySelector('#pricing'),
+        'faq': document.querySelector('#faq')
+    };
+    
+    const indicators = document.querySelectorAll('.section-indicator');
+    
+    // Click handler for indicators
+    indicators.forEach(indicator => {
+        indicator.addEventListener('click', () => {
+            const sectionName = indicator.dataset.section;
+            const section = sections[sectionName];
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+    
+    // Update active indicator on scroll
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Find which section this is
+                for (const [name, section] of Object.entries(sections)) {
+                    if (section === entry.target) {
+                        indicators.forEach(ind => ind.classList.remove('active'));
+                        const activeIndicator = document.querySelector(`.section-indicator[data-section="${name}"]`);
+                        if (activeIndicator) {
+                            activeIndicator.classList.add('active');
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+    }, {
+        threshold: 0.5
+    });
+    
+    // Observe all sections
+    Object.values(sections).forEach(section => {
+        if (section) sectionObserver.observe(section);
     });
 });
 </script>
