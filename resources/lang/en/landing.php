@@ -197,7 +197,7 @@ return [
     'footer_blog' => 'Blog',
     'footer_contacts' => 'Contacts',
     'footer_copyright' => '© 2025 SellerMind. All rights reserved.',
-];
-
-// Missing translations
+    
+    // Missing translations
     'nav_register' => 'Register',
+];

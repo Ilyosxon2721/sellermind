@@ -197,7 +197,7 @@ return [
     'footer_blog' => 'Блог',
     'footer_contacts' => 'Контакты',
     'footer_copyright' => '© 2025 SellerMind. Все права защищены.',
-];
-
-// Missing translations
+    
+    // Missing translations
     'nav_register' => 'Регистрация',
+];

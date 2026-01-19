@@ -197,7 +197,7 @@ return [
     'footer_blog' => 'Blog',
     'footer_contacts' => 'Kontaktlar',
     'footer_copyright' => '© 2025 SellerMind. Barcha huquqlar himoyalangan.',
-];
-
-// Missing translations
+    
+    // Missing translations
     'nav_register' => 'Ro\'yxatdan o\'tish',
+];
