@@ -41,6 +41,9 @@ class FinanceController extends Controller
         $from = $request->from ? Carbon::parse($request->from) : now()->startOfMonth();
         $to = $request->to ? Carbon::parse($request->to) : now()->endOfMonth();
 
+        // Получаем настройки финансов для курсов валют
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+
         $transactions = FinanceTransaction::byCompany($companyId)
             ->confirmed()
             ->inPeriod($from, $to);
@@ -49,7 +52,7 @@ class FinanceController extends Controller
         $totalExpense = (clone $transactions)->expense()->sum('amount');
 
         // ========== ПРОДАЖИ МАРКЕТПЛЕЙСОВ ==========
-        $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to);
+        $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
         $totalIncome += $marketplaceSales['total_revenue'];
 
         $netProfit = $totalIncome - $totalExpense;
@@ -66,7 +69,7 @@ class FinanceController extends Controller
         $stockData = $this->getStockSummary($companyId);
 
         // ========== ТОВАРЫ В ТРАНЗИТАХ ==========
-        $transitData = $this->getTransitSummary($companyId);
+        $transitData = $this->getTransitSummary($companyId, $financeSettings);
 
         // Зарплата текущего месяца
         $currentSalary = SalaryCalculation::byCompany($companyId)
@@ -104,6 +107,15 @@ class FinanceController extends Controller
                 'from' => $from->format('Y-m-d'),
                 'to' => $to->format('Y-m-d'),
             ],
+            'currency' => [
+                'base' => $financeSettings->base_currency_code ?? 'UZS',
+                'rates' => [
+                    'USD' => $financeSettings->usd_rate,
+                    'RUB' => $financeSettings->rub_rate,
+                    'EUR' => $financeSettings->eur_rate,
+                ],
+                'rates_updated_at' => $financeSettings->rates_updated_at?->format('Y-m-d H:i:s'),
+            ],
             'summary' => [
                 'total_income' => $totalIncome,
                 'total_expense' => $totalExpense,
@@ -136,12 +148,14 @@ class FinanceController extends Controller
     /**
      * Получить продажи маркетплейсов за период
      */
-    protected function getMarketplaceSales(int $companyId, Carbon $from, Carbon $to): array
+    protected function getMarketplaceSales(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
     {
+        $rubToUzs = $settings->rub_rate ?? 140;
+
         $result = [
             'uzum' => ['orders' => 0, 'revenue' => 0, 'profit' => 0],
-            'wb' => ['orders' => 0, 'revenue' => 0, 'profit' => 0],
-            'ozon' => ['orders' => 0, 'revenue' => 0, 'profit' => 0],
+            'wb' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
+            'ozon' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
             'total_orders' => 0,
             'total_revenue' => 0,
             'total_profit' => 0,
@@ -186,11 +200,11 @@ class FinanceController extends Controller
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, 0)) as revenue')
                     ->first();
 
-                // WB суммы в рублях, конвертируем в сумы (курс ~140)
-                $rubToUzs = 140;
+                $revenueRub = (float) ($wbSales?->revenue ?? 0);
                 $result['wb'] = [
                     'orders' => (int) ($wbSales?->cnt ?? 0),
-                    'revenue' => (float) (($wbSales?->revenue ?? 0) * $rubToUzs),
+                    'revenue' => $revenueRub * $rubToUzs,
+                    'revenue_rub' => $revenueRub,
                     'profit' => 0,
                 ];
             }
@@ -206,11 +220,11 @@ class FinanceController extends Controller
                     ->selectRaw('COUNT(*) as cnt, SUM(total_price) as revenue')
                     ->first();
 
-                // Ozon суммы в рублях
-                $rubToUzs = 140;
+                $revenueRub = (float) ($ozonSales?->revenue ?? 0);
                 $result['ozon'] = [
                     'orders' => (int) ($ozonSales?->cnt ?? 0),
-                    'revenue' => (float) (($ozonSales?->revenue ?? 0) * $rubToUzs),
+                    'revenue' => $revenueRub * $rubToUzs,
+                    'revenue_rub' => $revenueRub,
                     'profit' => 0,
                 ];
             }
@@ -266,9 +280,9 @@ class FinanceController extends Controller
      * Получить сводку по товарам в транзитах
      * Все суммы конвертируются в UZS
      */
-    protected function getTransitSummary(int $companyId): array
+    protected function getTransitSummary(int $companyId, FinanceSettings $settings): array
     {
-        $rubToUzs = 140; // Курс рубля к суму
+        $rubToUzs = $settings->rub_rate ?? 140;
 
         $result = [
             'orders_in_transit' => [
@@ -528,6 +542,9 @@ class FinanceController extends Controller
 
         $data = $request->validate([
             'base_currency_code' => ['nullable', 'string', 'max:8'],
+            'usd_rate' => ['nullable', 'numeric', 'min:0'],
+            'rub_rate' => ['nullable', 'numeric', 'min:0'],
+            'eur_rate' => ['nullable', 'numeric', 'min:0'],
             'tax_system' => ['nullable', 'in:simplified,general,both'],
             'vat_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'income_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -536,6 +553,12 @@ class FinanceController extends Controller
         ]);
 
         $settings = FinanceSettings::getForCompany($companyId);
+
+        // If currency rates are being updated, set the rates_updated_at timestamp
+        if (isset($data['usd_rate']) || isset($data['rub_rate']) || isset($data['eur_rate'])) {
+            $data['rates_updated_at'] = now();
+        }
+
         $settings->update(array_filter($data, fn($v) => $v !== null));
 
         return $this->successResponse($settings->fresh());

@@ -19,6 +19,9 @@ class InventoryDocumentLine extends Model
         'location_to_id',
         'unit_cost',
         'total_cost',
+        'currency_code',
+        'exchange_rate',
+        'total_cost_base',
         'meta_json',
     ];
 
@@ -26,6 +29,8 @@ class InventoryDocumentLine extends Model
         'qty' => 'decimal:3',
         'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
+        'exchange_rate' => 'decimal:4',
+        'total_cost_base' => 'decimal:2',
         'meta_json' => 'array',
     ];
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Finance\FinanceSettings;
 use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
@@ -169,8 +170,17 @@ class SyncProductVariantsToWarehouse extends Command
         }
 
         if ($defaultWarehouse && $variant->stock_default > 0) {
-            // Рассчитываем общую себестоимость (кол-во * закупочная цена)
-            $totalCost = $variant->stock_default * ($variant->purchase_price ?? 0);
+            // Get finance settings for currency conversion
+            $financeSettings = FinanceSettings::getForCompany($variant->company_id);
+
+            // Рассчитываем общую себестоимость в оригинальной валюте (кол-во * закупочная цена)
+            $totalCostOriginal = $variant->stock_default * ($variant->purchase_price ?? 0);
+
+            // Определяем валюту (если есть в варианте, иначе USD по умолчанию для импортных товаров)
+            $currency = $variant->currency_code ?? 'USD';
+
+            // Конвертируем в базовую валюту (UZS)
+            $totalCostBase = $financeSettings->convertToBase($totalCostOriginal, $currency);
 
             // Создаем запись в stock_ledger как начальное оприходование
             StockLedger::create([
@@ -180,7 +190,8 @@ class SyncProductVariantsToWarehouse extends Command
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $variant->stock_default,
-                'cost_delta' => $totalCost,
+                'cost_delta' => $totalCostBase,
+                'currency_code' => 'UZS', // Храним в базовой валюте
                 'document_id' => null,
                 'document_line_id' => null,
                 'source_type' => 'INITIAL_SYNC',
@@ -188,7 +199,10 @@ class SyncProductVariantsToWarehouse extends Command
                 'created_by' => null,
             ]);
 
-            $costInfo = $totalCost > 0 ? ", себестоимость: " . number_format($totalCost, 0, '.', ' ') : '';
+            $costInfo = $totalCostBase > 0 ? ", себестоимость: " . number_format($totalCostBase, 0, '.', ' ') . " UZS" : '';
+            if ($currency !== 'UZS' && $totalCostOriginal > 0) {
+                $costInfo .= " ({$totalCostOriginal} {$currency})";
+            }
             $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'{$costInfo}");
         }
     }

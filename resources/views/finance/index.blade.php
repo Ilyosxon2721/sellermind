@@ -55,13 +55,42 @@
 
             <!-- Overview Tab -->
             <section x-show="activeTab === 'overview'" class="space-y-6">
-                <!-- Period Filter -->
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-4">
-                        <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodFrom">
-                        <span class="text-gray-500">—</span>
-                        <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodTo">
-                        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="loadOverview()">Применить</button>
+                <!-- Period Filter & Currency Rates -->
+                <div class="flex flex-wrap gap-4">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-1">
+                        <div class="flex items-center space-x-4">
+                            <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodFrom">
+                            <span class="text-gray-500">—</span>
+                            <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodTo">
+                            <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="loadOverview()">Применить</button>
+                        </div>
+                    </div>
+
+                    <!-- Currency Rates Card -->
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-600">Курсы валют</span>
+                            <button @click="showCurrencyModal = true" class="text-xs text-emerald-600 hover:text-emerald-700">
+                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-4 text-sm">
+                            <div class="flex items-center space-x-1">
+                                <span class="text-green-600 font-bold">$</span>
+                                <span class="text-gray-900" x-text="formatMoney(overview.currency?.rates?.USD || 12700)"></span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-blue-600 font-bold">₽</span>
+                                <span class="text-gray-900" x-text="formatMoney(overview.currency?.rates?.RUB || 140)"></span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-amber-600 font-bold">€</span>
+                                <span class="text-gray-900" x-text="formatMoney(overview.currency?.rates?.EUR || 13800)"></span>
+                            </div>
+                        </div>
+                        <template x-if="overview.currency?.rates_updated_at">
+                            <div class="text-xs text-gray-400 mt-1" x-text="'Обновлено: ' + overview.currency.rates_updated_at"></div>
+                        </template>
                     </div>
                 </div>
 
@@ -1086,6 +1115,43 @@
         </div>
     </div>
 
+    <!-- Currency Rates Modal -->
+    <div x-show="showCurrencyModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCurrencyModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Курсы валют</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showCurrencyModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="text-sm text-gray-500">Установите текущие курсы валют для расчёта себестоимости и отчётов</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-green-600 font-bold">$</span> Доллар США (USD → UZS)
+                    </label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="currencyForm.usd_rate" placeholder="12700">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-blue-600 font-bold">₽</span> Российский рубль (RUB → UZS)
+                    </label>
+                    <input type="number" step="0.0001" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="currencyForm.rub_rate" placeholder="140">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-amber-600 font-bold">€</span> Евро (EUR → UZS)
+                    </label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="currencyForm.eur_rate" placeholder="13800">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCurrencyModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="saveCurrencyRates()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
         <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'"><span x-text="toast.message"></span></div>
@@ -1334,8 +1400,10 @@ function financePage() {
         showEmployeeForm: false,
         showCalculateSalaryForm: false,
         showCalculateTaxForm: false,
+        showCurrencyModal: false,
 
         transactionForm: { type: 'expense', amount: '', transaction_date: '', description: '', category_id: '' },
+        currencyForm: { usd_rate: 12700, rub_rate: 140, eur_rate: 13800 },
         debtForm: { type: 'payable', original_amount: '', debt_date: '', description: '', due_date: '' },
         debtPaymentForm: { amount: '', payment_date: new Date().toISOString().slice(0,10), payment_method: 'cash' },
         employeeForm: { first_name: '', last_name: '', position: '', base_salary: '', hire_date: '' },
@@ -1414,7 +1482,17 @@ function financePage() {
             const params = new URLSearchParams({ from: this.periodFrom, to: this.periodTo });
             const resp = await fetch('/api/finance/overview?' + params, { headers: this.getAuthHeaders() });
             const json = await resp.json();
-            if (resp.ok && !json.errors) this.overview = json.data || {};
+            if (resp.ok && !json.errors) {
+                this.overview = json.data || {};
+                // Update currency form with current rates
+                if (this.overview.currency?.rates) {
+                    this.currencyForm = {
+                        usd_rate: this.overview.currency.rates.USD || 12700,
+                        rub_rate: this.overview.currency.rates.RUB || 140,
+                        eur_rate: this.overview.currency.rates.EUR || 13800,
+                    };
+                }
+            }
             // Also load marketplace expenses
             this.loadMarketplaceExpenses();
         },
@@ -1492,6 +1570,21 @@ function financePage() {
             const resp = await fetch('/api/finance/reports?' + params, { headers: this.getAuthHeaders() });
             const json = await resp.json();
             if (resp.ok && !json.errors) this.reportData = json.data || {};
+        },
+
+        async saveCurrencyRates() {
+            try {
+                const resp = await fetch('/api/finance/settings', {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.currencyForm)
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка сохранения');
+                this.showCurrencyModal = false;
+                this.showToast('Курсы валют обновлены');
+                this.loadOverview();
+            } catch (e) { this.showToast(e.message, 'error'); }
         },
 
         async createTransaction() {

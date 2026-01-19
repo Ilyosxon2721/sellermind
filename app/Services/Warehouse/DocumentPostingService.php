@@ -3,6 +3,7 @@
 namespace App\Services\Warehouse;
 
 use App\Models\CompanySetting;
+use App\Models\Finance\FinanceSettings;
 use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
 use App\Models\Warehouse\StockLedger;
@@ -25,20 +26,26 @@ class DocumentPostingService
 
             $allowNegative = CompanySetting::where('company_id', $companyId)->value('allow_negative_stock') ?? false;
 
+            // Get finance settings for currency conversion
+            $financeSettings = FinanceSettings::getForCompany($companyId);
+
             $ledgerCreated = [];
             foreach ($document->lines as $line) {
                 $this->validateLine($line);
 
+                // Calculate total cost in base currency (UZS)
+                $totalCostBase = $this->calculateTotalCostBase($line, $financeSettings);
+
                 switch ($document->type) {
                     case InventoryDocument::TYPE_IN:
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $line->unit_cost ?? 0, $userId);
+                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $totalCostBase, $userId);
                         break;
                     case InventoryDocument::TYPE_OUT:
                     case InventoryDocument::TYPE_WRITE_OFF:
                         if (!$allowNegative) {
                             $this->ensureAvailable($companyId, $document->warehouse_id, $line->sku_id, (float) $line->qty);
                         }
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, -($line->unit_cost ?? 0), $userId);
+                        $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, -$totalCostBase, $userId);
                         break;
                     case InventoryDocument::TYPE_MOVE:
                         if (!$allowNegative) {
@@ -56,7 +63,7 @@ class DocumentPostingService
                         break;
                     case InventoryDocument::TYPE_REVERSAL:
                         // already inverted when created; just write ledger
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $line->unit_cost ?? 0, $userId);
+                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $totalCostBase, $userId);
                         break;
                     default:
                         throw new RuntimeException('Unsupported document type');
@@ -116,5 +123,25 @@ class DocumentPostingService
         if ($available < $qty) {
             throw new RuntimeException('Not enough available stock');
         }
+    }
+
+    /**
+     * Calculate total cost in base currency (UZS)
+     * Formula: qty × unit_cost × exchange_rate
+     */
+    protected function calculateTotalCostBase(InventoryDocumentLine $line, FinanceSettings $settings): float
+    {
+        $unitCost = (float) ($line->unit_cost ?? 0);
+        $qty = (float) $line->qty;
+        $totalCostOriginal = $unitCost * $qty;
+
+        // If line has explicit exchange rate, use it
+        if ($line->exchange_rate && $line->exchange_rate > 0) {
+            return $totalCostOriginal * $line->exchange_rate;
+        }
+
+        // Otherwise convert using finance settings
+        $currency = $line->currency_code ?? 'UZS';
+        return $settings->convertToBase($totalCostOriginal, $currency);
     }
 }
