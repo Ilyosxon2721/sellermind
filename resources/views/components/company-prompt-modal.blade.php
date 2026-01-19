@@ -4,11 +4,15 @@
      x-cloak
      @keydown.escape.window="$store.auth.showCompanyPrompt && !saving && ($store.auth.showCompanyPrompt = false)"
      class="fixed inset-0 z-50 overflow-y-auto"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="company-modal-title"
      style="display: none;">
 
     <!-- Backdrop -->
     <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"
-         @click="!saving && ($store.auth.showCompanyPrompt = false)"></div>
+         @click="!saving && ($store.auth.showCompanyPrompt = false)"
+         aria-hidden="true"></div>
 
     <!-- Modal -->
     <div class="flex min-h-screen items-center justify-center p-4">
@@ -18,14 +22,15 @@
             <!-- Close button - только если не сохраняем -->
             <button v-show="!saving"
                     @click="$store.auth.showCompanyPrompt = false"
-                    class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Закрыть">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
 
             <!-- Icon -->
-            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 mb-4">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 mb-4" aria-hidden="true">
                 <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -34,7 +39,7 @@
 
             <!-- Content -->
             <div class="text-center mb-6">
-                <h3 class="text-2xl font-bold text-gray-900 mb-2">Создайте компанию</h3>
+                <h3 id="company-modal-title" class="text-2xl font-bold text-gray-900 mb-2">Создайте компанию</h3>
                 <p class="text-gray-600">
                     Для работы с системой необходимо создать компанию. Это займет всего минуту!
                 </p>

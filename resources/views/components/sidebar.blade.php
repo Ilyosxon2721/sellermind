@@ -1,5 +1,7 @@
 <!-- Sidebar Component -->
-<div class="w-72 bg-white border-r border-gray-200 flex flex-col h-full" role="complementary">
+<div class="w-72 bg-white border-r border-gray-200 flex flex-col h-full"
+     :class="sidebarOpen ? 'open' : ''"
+     role="complementary">
     <!-- Logo -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
         <a href="/home" class="flex items-center space-x-3" aria-label="SellerMind - Главная страница">
@@ -152,7 +154,9 @@
         {{-- AI Агенты - временно скрыт до завершения разработки --}}
 
         <a href="/tasks"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('tasks*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('tasks*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Задачи"
+           {{ request()->is('tasks*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
             </svg>
@@ -160,7 +164,9 @@
         </a>
 
         <a href="/replenishment"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('replenishment*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('replenishment*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Планирование"
+           {{ request()->is('replenishment*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
@@ -168,7 +174,9 @@
         </a>
 
         <a href="/finance"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('finance*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('finance*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Финансы"
+           {{ request()->is('finance*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2zm0 0V3m0 5c-2.761 0-5 1.79-5 4v1h10v-1c0-2.21-2.239-4-5-4zm-5 6h10v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2z"/>
             </svg>
@@ -176,7 +184,9 @@
         </a>
 
         <a href="/ap"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('ap*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('ap*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Счета (AP)"
+           {{ request()->is('ap*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
@@ -184,7 +194,9 @@
         </a>
 
         <a href="/pricing"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('pricing*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('pricing*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           aria-label="Цены"
+           {{ request()->is('pricing*') ? 'aria-current="page"' : '' }}>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M3 10h18M3 16h18"/>
             </svg>
@@ -225,6 +237,7 @@
             </div>
             <button @click="$store.auth.logout(); window.location.href='/login'"
                     class="text-gray-400 hover:text-gray-600"
+                    aria-label="Выйти из системы"
                     title="Выйти">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
