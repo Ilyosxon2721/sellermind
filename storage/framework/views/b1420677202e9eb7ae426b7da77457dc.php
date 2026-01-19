@@ -113,28 +113,6 @@
     </style>
 </head>
 <body class="antialiased bg-white text-gray-900" x-data="{ mobileMenuOpen: false, faqOpen: null }">
-    
-    <!-- Language Switcher -->
-    <?php if (isset($component)) { $__componentOriginal8d3bff7d7383a45350f7495fc470d934 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal8d3bff7d7383a45350f7495fc470d934 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.language-switcher','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('language-switcher'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes([]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal8d3bff7d7383a45350f7495fc470d934)): ?>
-<?php $attributes = $__attributesOriginal8d3bff7d7383a45350f7495fc470d934; ?>
-<?php unset($__attributesOriginal8d3bff7d7383a45350f7495fc470d934); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal8d3bff7d7383a45350f7495fc470d934)): ?>
-<?php $component = $__componentOriginal8d3bff7d7383a45350f7495fc470d934; ?>
-<?php unset($__componentOriginal8d3bff7d7383a45350f7495fc470d934); ?>
-<?php endif; ?>
 
     <!-- Header - White -->
     <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -149,21 +127,75 @@
                     <span class="font-bold text-xl text-gray-900">SellerMind</span>
                 </div>
                 
-                <nav class="hidden lg:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Возможности</a>
-                    <a href="#how-it-works" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Как работает</a>
-                    <a href="#integrations" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Интеграции</a>
-                    <a href="#testimonials" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Отзывы</a>
-                    <a href="#pricing" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Тарифы</a>
-                    <a href="#faq" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">FAQ</a>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition">Возможности</a>
+                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition">Интеграции</a>
+                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">Тарифы</a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition">FAQ</a>
+                    
+                    <!-- Language Switcher in Navbar -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button 
+                            @click="open = !open" 
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
+                        >
+                            <span class="text-lg">
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(app()->getLocale() === 'uz'): ?> 🇺🇿
+                                <?php elseif(app()->getLocale() === 'ru'): ?> 🇷🇺
+                                <?php else: ?> 🇬🇧
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div 
+                            x-show="open" 
+                            @click.away="open = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden"
+                            style="display: none;"
+                        >
+                            <a href="<?php echo e(route('home.uz')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'uz' ? 'bg-blue-50' : ''); ?>">
+                                <span class="text-2xl">🇺🇿</span>
+                                <span class="font-medium text-gray-700">O'zbekcha</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(app()->getLocale() === 'uz'): ?>
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </a>
+                            <a href="<?php echo e(route('home.ru')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'ru' ? 'bg-blue-50' : ''); ?>">
+                                <span class="text-2xl">🇷🇺</span>
+                                <span class="font-medium text-gray-700">Русский</span>
+                                <?php if(app()->getLocale() === 'ru'): ?>
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </a>
+                            <a href="<?php echo e(route('home.en')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'en' ? 'bg-blue-50' : ''); ?>">
+                                <span class="text-2xl">🇬🇧</span>
+                                <span class="font-medium text-gray-700">English</span>
+                                <?php if(app()->getLocale() === 'en'): ?>
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <a href="/login" class="text-gray-600 hover:text-blue-600 transition">Вход</a>
+                    <a href="/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">Начать бесплатно</a>
                 </nav>
                 
-                <div class="hidden md:flex items-center space-x-4">
-                    <a href="/login" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Вход</a>
-                    <a href="/register" class="px-5 py-2.5 bg-blue-600 text-sm font-semibold rounded-lg hover:bg-blue-700 transition" style="color: white !important;">
-                        Попробовать бесплатно
-                    </a>
-                </div>
                 
                 <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
