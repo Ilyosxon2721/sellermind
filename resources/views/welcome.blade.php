@@ -97,7 +97,7 @@
     <!-- Stats Section -->
     <section class="py-16 bg-white border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
                     <div class="text-gray-600">Компаний</div>
@@ -114,6 +114,14 @@
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
                     <div class="text-gray-600">Uptime</div>
                 </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-green-600 mb-2">70%</div>
+                    <div class="text-gray-600">Экономия времени</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-orange-600 mb-2">-25%</div>
+                    <div class="text-gray-600">Неликвида</div>
+                </div>
             </div>
         </div>
     </section>
@@ -127,41 +135,129 @@
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Полный набор инструментов для работы с маркетплейсами в одной платформе</p>
             </div>
             
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
-                    <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
+            <!-- Product Management -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Управление товарами</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
+                        <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Массовые операции</h3>
+                        <p class="text-gray-600">80% экономия времени на рутине. Bulk обновление цен, остатков, статусов. Экспорт/импорт Excel.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">📋</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление каталогом</h3>
+                        <p class="text-gray-600">Единый каталог для всех маркетплейсов. Варианты товаров (SKU), управление изображениями.</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Управление ценами</h3>
-                    <p class="text-gray-600">Централизованное управление ценами. Массовое изменение и формулы автоматического расчёта.</p>
+            </div>
+
+            <!-- Pricing -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Ценообразование</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Умное ценообразование</h3>
+                        <p class="text-gray-600">Централизованное управление ценами. Массовое изменение и формулы автоматического расчёта.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🎯</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Автоматические промо</h3>
+                        <p class="text-gray-600">AI определяет медленно движущиеся товары. Умные скидки 15-50%. Автозапуск каждый понедельник.</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">📊</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Аналитика и отчёты</h3>
-                    <p class="text-gray-600">Детальная статистика продаж, прибыли и рентабельности по каждому товару и площадке.</p>
+            </div>
+
+            <!-- Warehouse -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Складской учёт</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-orange-600 group-hover:text-white transition">🏭</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">WMS-система</h3>
+                        <p class="text-gray-600">Полноценный учёт товаров: поступления, списания, перемещения, инвентаризации.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-teal-600 group-hover:text-white transition">📊</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Журнал движений</h3>
+                        <p class="text-gray-600">Полная история операций. Резервы товаров. Документооборот. Контроль в реальном времени.</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-orange-600 group-hover:text-white transition">🏭</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Складской учёт (WMS)</h3>
-                    <p class="text-gray-600">Полноценный учёт товаров: поступления, списания, перемещения, инвентаризации.</p>
+            </div>
+
+            <!-- Orders & Analytics -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Заказы и аналитика</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">📋</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление заказами</h3>
+                        <p class="text-gray-600">Все заказы со всех маркетплейсов в едином интерфейсе с фильтрами и поиском.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">📈</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Аналитика продаж</h3>
+                        <p class="text-gray-600">Дашборды с визуализацией, топ/худшие товары, сравнение маркетплейсов. Chart.js графики.</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🤖</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">AI-помощник</h3>
-                    <p class="text-gray-600">Генерация описаний товаров, ответы на отзывы, создание промо-фото с помощью ИИ.</p>
+            </div>
+
+            <!-- AI Features -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">AI-функции</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🤖</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">AI-помощник</h3>
+                        <p class="text-gray-600">Генерация описаний товаров, ответы на отзывы, создание промо-фото с помощью ИИ.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">💬</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">AI-ответы на отзывы</h3>
+                        <p class="text-gray-600">70% экономия времени. 14 шаблонов ответов. Анализ тональности. Массовая генерация.</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">📋</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Управление заказами</h3>
-                    <p class="text-gray-600">Все заказы со всех маркетплейсов в едином интерфейсе с фильтрами и поиском.</p>
+            </div>
+
+            <!-- Additional Features -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Дополнительные возможности</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">📱</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Telegram-боты</h3>
+                        <p class="text-gray-600">Уведомления о заказах, остатках, ценах в реальном времени.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">💵</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Финансовый учёт</h3>
+                        <p class="text-gray-600">Доходы и расходы. Счета (AP). Отчёты по прибыли.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">🔮</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Прогнозирование</h3>
+                        <p class="text-gray-600">Расчёт потребности в товарах. Оптимизация закупок.</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">👥</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление командой</h3>
+                        <p class="text-gray-600">Роли и права доступа. Пр иглашение сотрудников.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -271,6 +367,144 @@
                                 <div class="text-3xl font-bold text-orange-600">24/7</div>
                                 <div class="text-sm text-gray-600">Мониторинг</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Business Impact Section - NEW -->
+    <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Результаты клиентов</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Конкретные результаты вашего бизнеса</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Цифры, которые говорят сами за себя</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-green-600">+40%</div>
+                        <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Рост продаж</h3>
+                    <p class="text-gray-600">В среднем у наших клиентов после внедрения платформы</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-blue-600">-70%</div>
+                        <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">⏱️</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Экономия времени</h3>
+                    <p class="text-gray-600">на рутинные задачи благодаря автоматизации</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-purple-600">0</div>
+                        <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">✅</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Пересортов</h3>
+                    <p class="text-gray-600">благодаря синхронизации остатков в реальном времени</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-orange-600">-25%</div>
+                        <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl">📦</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Неликвида</h3>
+                    <p class="text-gray-600">сокращение медленно движущихся товаров с умными промо</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-indigo-600">24/7</div>
+                        <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl">🔔</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Мониторинг</h3>
+                    <p class="text-gray-600">автоматический контроль и уведомления круглосуточно</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-pink-600">80%</div>
+                        <div class="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl">⚡</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Эффективность</h3>
+                    <p class="text-gray-600">экономия на массовых операциях с товарами</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Automation Showcase Section - NEW -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Автоматизация</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Система работает за вас 24/7</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Настройте один раз — получайте результат постоянно</p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12">
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-blue-600">Каждые<br>10 минут</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">Синхронизация заказов и остатков</h3>
+                                <p class="text-gray-600">Автоматическое обновление данных со всех маркетплейсов</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-green-600">Каждый<br>час</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-green-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">Кэширование аналитики</h3>
+                                <p class="text-gray-600">Обновление дашбордов и графиков для быстрого доступа</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-orange-600">Ежедневно<br>10:00</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-orange-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">Проверка истекающих промо</h3>
+                                <p class="text-gray-600">Уведомления о промо-акциях, которые скоро закончатся</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-purple-600">Понедельник<br>9:00</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-purple-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">Автосоздание промо для неликвида</h3>
+                                <p class="text-gray-600">AI определяет медленно движущиеся товары и создаёт выгодные акции</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-gray-900 mb-1">Laravel Scheduler + Queue Workers</h4>
+                                <p class="text-sm text-gray-600">Надёжный стек автоматизации для вашего бизнеса</p>
+                            </div>
+                            <div class="text-4xl">⚙️</div>
                         </div>
                     </div>
                 </div>
