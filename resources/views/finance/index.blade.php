@@ -112,8 +112,12 @@
                          x-text="formatMoney(overview.balance?.net_balance || 0) + ' сум'"></div>
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <div class="text-sm text-slate-400 mb-2">Активы (подтверждённые)</div>
+                            <div class="text-sm text-slate-400 mb-2">Активы</div>
                             <div class="space-y-2 text-sm">
+                                <div class="flex justify-between" x-show="overview.balance?.assets?.cash > 0">
+                                    <span class="text-slate-300">Денежные средства</span>
+                                    <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.cash || 0)"></span>
+                                </div>
                                 <div class="flex justify-between">
                                     <span class="text-slate-300">Остатки на складах</span>
                                     <span class="text-white font-medium" x-text="formatMoney(overview.balance?.assets?.stock_value || 0)"></span>
@@ -150,6 +154,25 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Прибыль за период -->
+                    <div class="mt-4 pt-4 border-t border-slate-700">
+                        <div class="text-sm text-slate-400 mb-2">Прибыль за период</div>
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <span class="text-slate-400">Доходы</span>
+                                <div class="text-emerald-400 font-medium" x-text="formatMoney(overview.balance?.period_profit?.total_income || 0)"></div>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">Расходы</span>
+                                <div class="text-red-400 font-medium" x-text="formatMoney(overview.balance?.period_profit?.total_expense || 0)"></div>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">Чистая прибыль</span>
+                                <div class="font-bold" :class="(overview.balance?.period_profit?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
+                                     x-text="formatMoney(overview.balance?.period_profit?.net_profit || 0)"></div>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Ожидаемые поступления (транзит) — отдельно -->
                     <div x-show="overview.balance?.pending_income?.transit_orders > 0" class="mt-4 pt-4 border-t border-slate-700">
                         <div class="flex items-center justify-between">
@@ -160,6 +183,21 @@
                             <span class="text-amber-400 font-medium" x-text="formatMoney(overview.balance?.pending_income?.transit_orders || 0)"></span>
                         </div>
                         <p class="text-xs text-slate-500 mt-1">Заказы в пути — клиент может отказаться или вернуть товар</p>
+                    </div>
+                    <!-- Денежные счета -->
+                    <div x-show="overview.balance?.cash_accounts?.length > 0" class="mt-4 pt-4 border-t border-slate-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-slate-400">Денежные счета</span>
+                            <button @click="showCashAccountsModal = true" class="text-xs text-blue-400 hover:text-blue-300">Управление</button>
+                        </div>
+                        <div class="space-y-1 text-sm">
+                            <template x-for="acc in overview.balance?.cash_accounts || []" :key="acc.id">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-300" x-text="acc.name"></span>
+                                    <span class="text-white font-medium" x-text="formatMoney(acc.balance) + ' ' + acc.currency_code"></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
 

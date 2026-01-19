@@ -92,6 +92,12 @@ class FinanceController extends Controller
             ->limit(10)
             ->get();
 
+        // ========== ПРИБЫЛЬ ЗА ПЕРИОД ==========
+        $periodProfit = $this->getPeriodProfit($companyId, $from, $to, $financeSettings);
+
+        // ========== ОСТАТКИ НА СЧЕТАХ (касса, банк) ==========
+        $cashBalance = $this->getCashBalance($companyId);
+
         // ========== ИТОГОВЫЙ БАЛАНС КОМПАНИИ ==========
         $balance = $this->calculateCompanyBalance(
             $stockData,
@@ -99,7 +105,9 @@ class FinanceController extends Controller
             $debtsReceivable,
             $debtsPayable,
             $unpaidTaxes,
-            $currentSalary
+            $currentSalary,
+            $periodProfit,
+            $cashBalance
         );
 
         return $this->successResponse([
@@ -417,12 +425,15 @@ class FinanceController extends Controller
         float $debtsReceivable,
         float $debtsPayable,
         float $unpaidTaxes,
-        ?SalaryCalculation $currentSalary
+        ?SalaryCalculation $currentSalary,
+        array $accumulatedProfit,
+        array $cashBalance
     ): array {
-        // Активы (только подтверждённые, БЕЗ транзитов!)
+        // Активы
         $stockValue = $stockData['total_cost'] ?? 0;
         $transitValue = $transitData['total_amount'] ?? 0;
-        $totalAssets = $stockValue + $debtsReceivable; // Транзит НЕ включён
+        $cashTotal = $cashBalance['total'] ?? 0;
+        $totalAssets = $stockValue + $debtsReceivable + $cashTotal;
 
         // Пассивы
         $unpaidSalary = 0;
@@ -436,6 +447,7 @@ class FinanceController extends Controller
 
         return [
             'assets' => [
+                'cash' => $cashTotal,
                 'stock_value' => $stockValue,
                 'receivables' => $debtsReceivable,
                 'total' => $totalAssets,
@@ -446,6 +458,8 @@ class FinanceController extends Controller
                 'unpaid_salary' => $unpaidSalary,
                 'total' => $totalLiabilities,
             ],
+            'cash_accounts' => $cashBalance['accounts'] ?? [],
+            'period_profit' => $accumulatedProfit,
             'net_balance' => $netBalance,
             // Транзит показываем отдельно — это потенциальный, не гарантированный доход
             'pending_income' => [
@@ -482,6 +496,74 @@ class FinanceController extends Controller
             'ratio' => round($ratio, 2),
             'message' => $message,
         ];
+    }
+
+    /**
+     * Получить прибыль за указанный период
+     * Включает: транзакции + продажи маркетплейсов
+     */
+    protected function getPeriodProfit(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
+    {
+        // Прибыль из транзакций за период
+        $transactionIncome = FinanceTransaction::byCompany($companyId)
+            ->confirmed()
+            ->inPeriod($from, $to)
+            ->income()
+            ->sum('amount');
+
+        $transactionExpense = FinanceTransaction::byCompany($companyId)
+            ->confirmed()
+            ->inPeriod($from, $to)
+            ->expense()
+            ->sum('amount');
+
+        // Продажи маркетплейсов за период (уже передаётся в overview)
+        $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $settings);
+
+        $totalIncome = $transactionIncome + $marketplaceSales['total_revenue'];
+        $totalExpense = $transactionExpense;
+        $netProfit = $totalIncome - $totalExpense;
+
+        return [
+            'total_income' => $totalIncome,
+            'total_expense' => $totalExpense,
+            'transaction_income' => $transactionIncome,
+            'transaction_expense' => $transactionExpense,
+            'marketplace_revenue' => $marketplaceSales['total_revenue'],
+            'net_profit' => $netProfit,
+        ];
+    }
+
+    /**
+     * Получить остатки на денежных счетах (касса, банк)
+     */
+    protected function getCashBalance(int $companyId): array
+    {
+        try {
+            // Проверяем есть ли модель CashAccount
+            if (!class_exists(\App\Models\Finance\CashAccount::class)) {
+                return ['total' => 0, 'accounts' => []];
+            }
+
+            $accounts = \App\Models\Finance\CashAccount::where('company_id', $companyId)
+                ->where('is_active', true)
+                ->get();
+
+            $total = $accounts->sum('balance');
+
+            return [
+                'total' => $total,
+                'accounts' => $accounts->map(fn($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'type' => $a->type,
+                    'balance' => $a->balance,
+                    'currency_code' => $a->currency_code,
+                ])->toArray(),
+            ];
+        } catch (\Exception $e) {
+            return ['total' => 0, 'accounts' => []];
+        }
     }
 
     public function categories(Request $request)

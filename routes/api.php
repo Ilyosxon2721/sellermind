@@ -719,6 +719,17 @@ Route::middleware('auth.any')->group(function () {
         // Marketplace Expenses
         Route::get('marketplace-expenses', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceExpenses']);
         Route::post('marketplace-expenses/sync-uzum', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'syncUzumExpenses']);
+
+        // Cash Accounts (касса, банк)
+        Route::get('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'index']);
+        Route::post('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'store']);
+        Route::get('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'show']);
+        Route::put('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'update']);
+        Route::delete('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'destroy']);
+        Route::get('cash-accounts/{id}/transactions', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transactions']);
+        Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
+        Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
+        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
     });
 
     // Admin Routes
