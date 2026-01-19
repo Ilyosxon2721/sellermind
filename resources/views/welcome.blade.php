@@ -128,10 +128,10 @@
                 </div>
                 
                 <nav class="hidden md:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition">Возможности</a>
-                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition">Интеграции</a>
-                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">Тарифы</a>
-                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition">FAQ</a>
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_features') }}</a>
+                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_integrations') }}</a>
+                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_pricing') }}</a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_faq') }}</a>
                     
                     <!-- Language Switcher in Navbar -->
                     <div class="relative" x-data="{ open: false }">
@@ -192,8 +192,8 @@
                         </div>
                     </div>
                     
-                    <a href="/login" class="text-gray-600 hover:text-blue-600 transition">Вход</a>
-                    <a href="/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">Начать бесплатно</a>
+                    <a href="/login" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_login') }}</a>
+                    <a href="/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">{{ __('landing.nav_register') }}</a>
                 </nav>
                 
                 
@@ -1024,7 +1024,7 @@
             
             <div class="mt-12 text-center">
                 <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
-                    Попробовать бесплатно →
+                    {{ __('landing.comparison_cta') }}
                 </a>
             </div>
         </div>

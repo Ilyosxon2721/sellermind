@@ -198,3 +198,6 @@ return [
     'footer_contacts' => 'Contacts',
     'footer_copyright' => '© 2025 SellerMind. All rights reserved.',
 ];
+
+// Missing translations
+    'nav_register' => 'Register',
