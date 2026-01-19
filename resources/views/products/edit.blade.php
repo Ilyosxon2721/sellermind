@@ -903,7 +903,12 @@
                         </div>
                         <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
                             <p class="font-medium mb-1">Загрузка изображений</p>
-                            <p>Максимум 10 фото на товар. Перетаскивайте для изменения порядка. Для вариантов можно указать отдельные фото.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Максимум <strong>10 фото</strong> на товар</li>
+                                <li>Максимальный размер файла: <strong>10 МБ</strong></li>
+                                <li>Форматы: JPG, PNG, GIF, WebP</li>
+                                <li>Перетаскивайте для изменения порядка</li>
+                            </ul>
                         </div>
                     </div>
 

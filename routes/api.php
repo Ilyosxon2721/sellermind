@@ -209,7 +209,8 @@ Route::middleware('auth.any')->group(function () {
 
     // Products
     // IMPORTANT: upload-image must be before apiResource to avoid being caught by {product} param
-    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
+    // Uses web middleware for session-based auth from product edit page
+    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
 
     Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
     Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
