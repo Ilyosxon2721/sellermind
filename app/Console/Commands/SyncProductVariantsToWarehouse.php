@@ -169,6 +169,9 @@ class SyncProductVariantsToWarehouse extends Command
         }
 
         if ($defaultWarehouse && $variant->stock_default > 0) {
+            // Рассчитываем общую себестоимость (кол-во * закупочная цена)
+            $totalCost = $variant->stock_default * ($variant->purchase_price ?? 0);
+
             // Создаем запись в stock_ledger как начальное оприходование
             StockLedger::create([
                 'company_id' => $variant->company_id,
@@ -177,7 +180,7 @@ class SyncProductVariantsToWarehouse extends Command
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $variant->stock_default,
-                'cost_delta' => 0,
+                'cost_delta' => $totalCost,
                 'document_id' => null,
                 'document_line_id' => null,
                 'source_type' => 'INITIAL_SYNC',
@@ -185,7 +188,8 @@ class SyncProductVariantsToWarehouse extends Command
                 'created_by' => null,
             ]);
 
-            $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'");
+            $costInfo = $totalCost > 0 ? ", себестоимость: " . number_format($totalCost, 0, '.', ' ') : '';
+            $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'{$costInfo}");
         }
     }
 }

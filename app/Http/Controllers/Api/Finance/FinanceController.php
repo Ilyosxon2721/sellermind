@@ -235,10 +235,10 @@ class FinanceController extends Controller
                 ->selectRaw('SUM(qty_delta) as total_qty, SUM(cost_delta) as total_cost')
                 ->first();
 
-            // Группировка по складам
-            $byWarehouse = StockLedger::byCompany($companyId)
+            // Группировка по складам (явно указываем таблицу для company_id)
+            $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->selectRaw('warehouses.id, warehouses.name, SUM(qty_delta) as qty, SUM(cost_delta) as cost')
+                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.cost_delta) as cost')
                 ->groupBy('warehouses.id', 'warehouses.name')
                 ->having('qty', '>', 0)
                 ->get();
