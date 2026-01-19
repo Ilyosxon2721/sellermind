@@ -229,133 +229,133 @@
     <section id="features" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Возможности</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Всё для управления продажами</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Полный набор инструментов для работы с маркетплейсами в одной платформе</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.features_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.features_subtitle') }}</p>
             </div>
             
             <!-- Product Management -->
             <div class="mb-12 scroll-reveal">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Управление товарами</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_products') }}</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
-                        <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_sync_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_sync_desc') }}</p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Массовые операции</h3>
-                        <p class="text-gray-600">80% экономия времени на рутине. Bulk обновление цен, остатков, статусов. Экспорт/импорт Excel.</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_bulk_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_bulk_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">📋</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление каталогом</h3>
-                        <p class="text-gray-600">Единый каталог для всех маркетплейсов. Варианты товаров (SKU), управление изображениями.</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_catalog_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_catalog_desc') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Pricing -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Ценообразование</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_pricing') }}</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Умное ценообразование</h3>
-                        <p class="text-gray-600">Централизованное управление ценами. Массовое изменение и формулы автоматического расчёта.</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_pricing_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_pricing_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🎯</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Автоматические промо</h3>
-                        <p class="text-gray-600">AI определяет медленно движущиеся товары. Умные скидки 15-50%. Автозапуск каждый понедельник.</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_promo_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_promo_desc') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Warehouse -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Складской учёт</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_warehouse') }}</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-orange-600 group-hover:text-white transition">🏭</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">WMS-система</h3>
-                        <p class="text-gray-600">Полноценный учёт товаров: поступления, списания, перемещения, инвентаризации.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">📊</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_wms_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_wms_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-teal-600 group-hover:text-white transition">📊</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Журнал движений</h3>
-                        <p class="text-gray-600">Полная история операций. Резервы товаров. Документооборот. Контроль в реальном времени.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-red-600 group-hover:text-white transition">📝</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_movements_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_movements_desc') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Orders & Analytics -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Заказы и аналитика</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_orders') }}</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">📋</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление заказами</h3>
-                        <p class="text-gray-600">Все заказы со всех маркетплейсов в едином интерфейсе с фильтрами и поиском.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">🛒</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_orders_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_orders_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">📈</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Аналитика продаж</h3>
-                        <p class="text-gray-600">Дашборды с визуализацией, топ/худшие товары, сравнение маркетплейсов. Chart.js графики.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-teal-600 group-hover:text-white transition">📈</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_analytics_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_analytics_desc') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- AI Features -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">AI-функции</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_ai') }}</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🤖</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">AI-помощник</h3>
-                        <p class="text-gray-600">Генерация описаний товаров, ответы на отзывы, создание промо-фото с помощью ИИ.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-violet-100 text-violet-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-violet-600 group-hover:text-white transition">🤖</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_ai_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">💬</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">AI-ответы на отзывы</h3>
-                        <p class="text-gray-600">70% экономия времени. 14 шаблонов ответов. Анализ тональности. Массовая генерация.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-fuchsia-100 text-fuchsia-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-fuchsia-600 group-hover:text-white transition">💬</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_reviews_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_ai_reviews_desc') }}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Additional Features -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Дополнительные возможности</h3>
-                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">📱</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Telegram-боты</h3>
-                        <p class="text-gray-600">Уведомления о заказах, остатках, ценах в реальном времени.</p>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_additional') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-sky-600 group-hover:text-white transition">📱</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_telegram_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_telegram_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">💵</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Финансовый учёт</h3>
-                        <p class="text-gray-600">Доходы и расходы. Счета (AP). Отчёты по прибыли.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-emerald-600 group-hover:text-white transition">💳</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_finance_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_finance_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">🔮</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Прогнозирование</h3>
-                        <p class="text-gray-600">Расчёт потребности в товарах. Оптимизация закупок.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-amber-600 group-hover:text-white transition">🔮</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_forecast_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_forecast_desc') }}</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">👥</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Управление командой</h3>
-                        <p class="text-gray-600">Роли и права доступа. Пр иглашение сотрудников.</p>
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-rose-600 group-hover:text-white transition">👥</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_team_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_team_desc') }}</p>
                     </div>
                 </div>
             </div>
