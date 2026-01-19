@@ -79,6 +79,59 @@
     </div>
 </div>
 
+<!-- Currency Rates Tab -->
+<div x-show="activeTab === 'currency'" x-data="currencySettings()">
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">Курсы валют</h2>
+    <p class="text-sm text-gray-500 mb-6">Установите текущие курсы валют для расчёта себестоимости и отчётов. Эти курсы используются во всех разделах системы.</p>
+
+    <div class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                <span class="text-green-600 font-bold">$</span> Доллар США (USD → UZS)
+            </label>
+            <input type="number" step="0.01"
+                   x-model="currencyForm.usd_rate"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                   placeholder="12700">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                <span class="text-blue-600 font-bold">₽</span> Российский рубль (RUB → UZS)
+            </label>
+            <input type="number" step="0.0001"
+                   x-model="currencyForm.rub_rate"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                   placeholder="140">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                <span class="text-amber-600 font-bold">€</span> Евро (EUR → UZS)
+            </label>
+            <input type="number" step="0.01"
+                   x-model="currencyForm.eur_rate"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                   placeholder="13800">
+        </div>
+
+        <div class="pt-4 flex items-center space-x-4">
+            <button @click="saveCurrencyRates()"
+                    :disabled="saving"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                <span x-show="!saving">Сохранить</span>
+                <span x-show="saving">Сохранение...</span>
+            </button>
+            <span x-show="saveStatus === 'success'" x-transition class="text-green-600 text-sm">✓ Сохранено</span>
+            <span x-show="saveStatus === 'error'" x-transition class="text-red-600 text-sm">Ошибка сохранения</span>
+        </div>
+
+        <template x-if="lastUpdated">
+            <div class="text-xs text-gray-400 mt-2" x-text="'Последнее обновление: ' + lastUpdated"></div>
+        </template>
+    </div>
+</div>
+
 <!-- Sync Settings Tab -->
 <div x-show="activeTab === 'sync'" x-data="syncSettings()">
     <h2 class="text-lg font-semibold text-gray-900 mb-4">Настройки синхронизации остатков</h2>
@@ -131,6 +184,80 @@
 </div>
 
 <script>
+function currencySettings() {
+    return {
+        currencyForm: {
+            usd_rate: 12700,
+            rub_rate: 140,
+            eur_rate: 13800,
+        },
+        saving: false,
+        saveStatus: null,
+        lastUpdated: null,
+
+        init() {
+            this.loadCurrencyRates();
+        },
+
+        getAuthHeaders() {
+            const token = window.api?.getToken() || localStorage.getItem('auth_token');
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            };
+        },
+
+        async loadCurrencyRates() {
+            try {
+                const response = await fetch('/api/finance/settings', {
+                    credentials: 'include',
+                    headers: this.getAuthHeaders(),
+                });
+                const data = await response.json();
+                if (response.ok && data.data) {
+                    this.currencyForm = {
+                        usd_rate: data.data.usd_rate || 12700,
+                        rub_rate: data.data.rub_rate || 140,
+                        eur_rate: data.data.eur_rate || 13800,
+                    };
+                    if (data.data.updated_at) {
+                        this.lastUpdated = new Date(data.data.updated_at).toLocaleString('ru-RU');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load currency rates:', error);
+            }
+        },
+
+        async saveCurrencyRates() {
+            this.saving = true;
+            this.saveStatus = null;
+            try {
+                const response = await fetch('/api/finance/settings', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.currencyForm),
+                });
+
+                if (response.ok) {
+                    this.saveStatus = 'success';
+                    this.lastUpdated = new Date().toLocaleString('ru-RU');
+                    setTimeout(() => this.saveStatus = null, 3000);
+                } else {
+                    this.saveStatus = 'error';
+                }
+            } catch (error) {
+                console.error('Failed to save currency rates:', error);
+                this.saveStatus = 'error';
+            }
+            this.saving = false;
+        }
+    };
+}
+
 function syncSettings() {
     return {
         settings: {

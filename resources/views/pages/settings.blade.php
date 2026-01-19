@@ -44,6 +44,11 @@
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                             Синхронизация
                         </button>
+                        <button @click="activeTab = 'currency'"
+                                :class="activeTab === 'currency' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Валюты
+                        </button>
                     </nav>
                 </div>
 
@@ -159,6 +164,21 @@
             </div>
         </div>
 
+        {{-- Currency Rates Section --}}
+        <div class="px-4 pb-3">
+            <p class="native-caption px-4 mb-2">КУРСЫ ВАЛЮТ</p>
+            <div class="native-list">
+                <div class="native-list-item native-list-item-chevron"
+                     @click="showCurrencySheet = true"
+                     onclick="if(window.haptic) window.haptic.light()">
+                    <div class="flex-1">
+                        <p class="native-body font-semibold">Настроить курсы</p>
+                        <p class="native-caption mt-1">USD, RUB, EUR → UZS</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Actions Section --}}
         <div class="px-4 pb-4">
             <div class="native-list">
@@ -243,6 +263,51 @@
             </div>
         </div>
     </div>
+
+    {{-- Currency Rates Sheet --}}
+    <div x-show="showCurrencySheet"
+         x-cloak
+         @click.self="showCurrencySheet = false"
+         class="native-modal-overlay"
+         style="display: none;">
+        <div class="native-sheet" @click.away="showCurrencySheet = false">
+            <div class="native-sheet-handle"></div>
+            <h3 class="native-headline mb-2">Курсы валют</h3>
+            <p class="native-caption mb-4">Установите курсы для расчётов</p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="native-caption mb-1 block">
+                        <span class="text-green-600 font-bold">$</span> Доллар США (USD → UZS)
+                    </label>
+                    <input type="number" step="0.01" x-model="currencyForm.usd_rate" class="native-input" placeholder="12700">
+                </div>
+                <div>
+                    <label class="native-caption mb-1 block">
+                        <span class="text-blue-600 font-bold">₽</span> Рубль (RUB → UZS)
+                    </label>
+                    <input type="number" step="0.0001" x-model="currencyForm.rub_rate" class="native-input" placeholder="140">
+                </div>
+                <div>
+                    <label class="native-caption mb-1 block">
+                        <span class="text-amber-600 font-bold">€</span> Евро (EUR → UZS)
+                    </label>
+                    <input type="number" step="0.01" x-model="currencyForm.eur_rate" class="native-input" placeholder="13800">
+                </div>
+
+                <button @click="saveCurrencyRates()"
+                        :disabled="savingCurrency"
+                        class="native-btn w-full mt-4">
+                    <span x-show="!savingCurrency">Сохранить</span>
+                    <span x-show="savingCurrency">Сохранение...</span>
+                </button>
+                <button @click="showCurrencySheet = false"
+                        class="native-btn native-btn-secondary w-full">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -251,6 +316,7 @@ function settingsPage() {
         activeTab: 'telegram', // Default to Telegram tab
         showEditSheet: false,
         showPasswordSheet: false,
+        showCurrencySheet: false,
         editField: null,
         profile: {
             name: '',
@@ -262,9 +328,16 @@ function settingsPage() {
             new: '',
             confirm: '',
         },
+        currencyForm: {
+            usd_rate: 12700,
+            rub_rate: 140,
+            eur_rate: 13800,
+        },
+        savingCurrency: false,
 
         init() {
             this.loadProfile();
+            this.loadCurrencyRates();
         },
 
         async loadProfile() {
@@ -399,6 +472,71 @@ function settingsPage() {
                 'en': 'English'
             };
             return names[locale] || 'Русский';
+        },
+
+        async loadCurrencyRates() {
+            try {
+                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const response = await fetch('/api/finance/settings', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    },
+                });
+                const data = await response.json();
+                if (response.ok && data.data) {
+                    this.currencyForm = {
+                        usd_rate: data.data.usd_rate || 12700,
+                        rub_rate: data.data.rub_rate || 140,
+                        eur_rate: data.data.eur_rate || 13800,
+                    };
+                }
+            } catch (error) {
+                console.error('Failed to load currency rates:', error);
+            }
+        },
+
+        async saveCurrencyRates() {
+            this.savingCurrency = true;
+            try {
+                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const response = await fetch('/api/finance/settings', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(this.currencyForm),
+                });
+
+                if (response.ok) {
+                    this.showCurrencySheet = false;
+                    if (window.toast) {
+                        window.toast.success('Курсы валют обновлены');
+                    } else {
+                        alert('Курсы валют обновлены');
+                    }
+                } else {
+                    if (window.toast) {
+                        window.toast.error('Ошибка сохранения');
+                    } else {
+                        alert('Ошибка сохранения');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to save currency rates:', error);
+                if (window.toast) {
+                    window.toast.error('Ошибка сохранения');
+                } else {
+                    alert('Ошибка сохранения');
+                }
+            }
+            this.savingCurrency = false;
         },
 
         async logout() {
