@@ -214,9 +214,9 @@
                 <a href="#testimonials" class="block py-2 text-gray-600">Отзывы</a>
                 <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
                 <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
-                <div class="pt-4 border-t border-gray-100 flex gap-3">
-                    <a href="/login" class="flex-1 py-2 text-center text-gray-600 border border-gray-200 rounded-lg">Вход</a>
-                    <a href="/register" class="flex-1 py-2 text-center bg-blue-600 rounded-lg font-medium" style="color: white !important;">Регистрация</a>
+                <div class="flex gap-2 mt-4">
+                    <a href="/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
+                    <a href="/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
                 </div>
             </div>
         </div>
@@ -236,14 +236,14 @@
                 <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
                     {{ __('landing.hero_subtitle') }}
                 </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                    <a href="/register" class="px-8 py-4 bg-blue-600 font-semibold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30" style="color: white !important;">
-                        {{ __('landing.hero_cta_primary') }}
-                    </a>
-                    <a href="#demo" class="px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition text-lg border border-gray-200">
-                        {{ __('landing.hero_cta_secondary') }}
-                    </a>
-                </div>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/register" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    {{ __('landing.cta_primary') }}
+                </a>
+                <a href="#pricing" class="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition text-lg border-2 border-gray-200">
+                    {{ __('landing.cta_secondary') }}
+                </a>
+            </div>
             </div>
         </div>
     </section>
