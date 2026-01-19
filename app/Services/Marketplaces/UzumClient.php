@@ -1318,4 +1318,241 @@ class UzumClient implements MarketplaceClientInterface
         return \Carbon\Carbon::createFromTimestamp((int) $seconds);
     }
 
+    // ========== Finance Expenses API ==========
+
+    /**
+     * Fetch finance expenses from Uzum Finance API
+     * Расходы маркетплейса: комиссии, логистика, штрафы и т.д.
+     *
+     * @param MarketplaceAccount $account
+     * @param array $shopIds Shop IDs to fetch expenses for
+     * @param int|null $dateFromMs Start date in milliseconds
+     * @param int|null $dateToMs End date in milliseconds
+     * @param int $page Page number (0-based)
+     * @param int $size Page size (max 100)
+     * @return array ['expenses' => [...], 'totalElements' => int]
+     */
+    public function fetchFinanceExpenses(
+        MarketplaceAccount $account,
+        array $shopIds = [],
+        ?int $dateFromMs = null,
+        ?int $dateToMs = null,
+        int $page = 0,
+        int $size = 100
+    ): array {
+        $shopIds = $this->resolveShopIds($account, $shopIds);
+
+        if (empty($shopIds)) {
+            Log::warning('Uzum fetchFinanceExpenses: no shop IDs', ['account_id' => $account->id]);
+            return ['expenses' => [], 'totalElements' => 0];
+        }
+
+        $allExpenses = [];
+        $totalElements = 0;
+
+        foreach ($shopIds as $shopId) {
+            try {
+                $query = [
+                    'page' => $page,
+                    'size' => min($size, 100),
+                    'shopIds' => [$shopId],
+                ];
+
+                if ($dateFromMs !== null) {
+                    $query['dateFrom'] = $dateFromMs;
+                }
+                if ($dateToMs !== null) {
+                    $query['dateTo'] = $dateToMs;
+                }
+
+                $response = $this->request($account, 'GET', '/v1/finance/expenses', $query);
+
+                $expenses = $response['expenses'] ?? $response['payload'] ?? [];
+                $total = $response['totalElements'] ?? count($expenses);
+
+                Log::info('Uzum fetchFinanceExpenses response', [
+                    'account_id' => $account->id,
+                    'shop_id' => $shopId,
+                    'page' => $page,
+                    'expenses_count' => count($expenses),
+                    'total_elements' => $total,
+                ]);
+
+                $allExpenses = array_merge($allExpenses, $expenses);
+                $totalElements = max($totalElements, $total);
+            } catch (\Throwable $e) {
+                Log::warning('Uzum fetchFinanceExpenses failed for shop', [
+                    'account_id' => $account->id,
+                    'shop_id' => $shopId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return [
+            'expenses' => $allExpenses,
+            'totalElements' => $totalElements,
+        ];
+    }
+
+    /**
+     * Fetch all finance expenses with pagination
+     * Автоматически обходит все страницы
+     *
+     * @param MarketplaceAccount $account
+     * @param array $shopIds Shop IDs
+     * @param int|null $dateFromMs Start date in milliseconds
+     * @param int|null $dateToMs End date in milliseconds
+     * @param int $maxPages Max pages to fetch (0 = unlimited)
+     * @return array All expense items
+     */
+    public function fetchAllFinanceExpenses(
+        MarketplaceAccount $account,
+        array $shopIds = [],
+        ?int $dateFromMs = null,
+        ?int $dateToMs = null,
+        int $maxPages = 0
+    ): array {
+        $shopIds = $this->resolveShopIds($account, $shopIds);
+        $allExpenses = [];
+        $size = 100;
+
+        foreach ($shopIds as $shopId) {
+            $page = 0;
+            $pagesLoaded = 0;
+
+            do {
+                try {
+                    $response = $this->fetchFinanceExpenses($account, [$shopId], $dateFromMs, $dateToMs, $page, $size);
+                    $expenses = $response['expenses'] ?? [];
+
+                    $allExpenses = array_merge($allExpenses, $expenses);
+                    $pagesLoaded++;
+                    $page++;
+
+                    // Rate limit protection
+                    if (!empty($expenses)) {
+                        usleep(200000); // 200ms
+                    }
+
+                    if ($maxPages > 0 && $pagesLoaded >= $maxPages) {
+                        break;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Uzum fetchAllFinanceExpenses page failed', [
+                        'account_id' => $account->id,
+                        'shop_id' => $shopId,
+                        'page' => $page,
+                        'error' => $e->getMessage(),
+                    ]);
+                    break;
+                }
+            } while (!empty($expenses) && count($expenses) === $size);
+        }
+
+        Log::info('Uzum fetchAllFinanceExpenses completed', [
+            'account_id' => $account->id,
+            'total_expenses' => count($allExpenses),
+        ]);
+
+        return $allExpenses;
+    }
+
+    /**
+     * Map finance expense item to structured data
+     *
+     * @param array $expense Raw expense item from API
+     * @return array Mapped expense data
+     */
+    public function mapFinanceExpenseData(array $expense): array
+    {
+        $expenseDate = isset($expense['date']) ? $this->convertTimestamp($expense['date']) : null;
+
+        return [
+            'expense_id' => $expense['id'] ?? null,
+            'shop_id' => $expense['shopId'] ?? null,
+            'type' => $expense['type'] ?? null,
+            'type_label' => $this->mapExpenseTypeLabel($expense['type'] ?? null),
+            'category' => $expense['category'] ?? null,
+            'amount' => $expense['amount'] ?? 0,
+            'expense_date' => $expenseDate,
+            'description' => $expense['description'] ?? null,
+            'order_id' => $expense['orderId'] ?? null,
+            'product_id' => $expense['productId'] ?? null,
+            'raw_data' => $expense,
+        ];
+    }
+
+    /**
+     * Map expense type to Russian label
+     */
+    protected function mapExpenseTypeLabel(?string $type): string
+    {
+        if (!$type) {
+            return 'Прочее';
+        }
+
+        return match (strtoupper($type)) {
+            'COMMISSION' => 'Комиссия маркетплейса',
+            'LOGISTICS', 'DELIVERY' => 'Логистика',
+            'STORAGE' => 'Хранение',
+            'ADVERTISING', 'ADS' => 'Реклама',
+            'PENALTY' => 'Штраф',
+            'RETURN' => 'Возврат',
+            'SERVICE' => 'Услуги',
+            'FEE' => 'Сбор',
+            default => $type,
+        };
+    }
+
+    /**
+     * Get expenses summary for a period
+     *
+     * @param MarketplaceAccount $account
+     * @param \DateTimeInterface $from
+     * @param \DateTimeInterface $to
+     * @return array Summary of expenses by type
+     */
+    public function getExpensesSummary(
+        MarketplaceAccount $account,
+        \DateTimeInterface $from,
+        \DateTimeInterface $to
+    ): array {
+        $dateFromMs = $from->getTimestamp() * 1000;
+        $dateToMs = $to->getTimestamp() * 1000;
+
+        $expenses = $this->fetchAllFinanceExpenses($account, [], $dateFromMs, $dateToMs);
+
+        $summary = [
+            'total' => 0,
+            'commission' => 0,
+            'logistics' => 0,
+            'storage' => 0,
+            'advertising' => 0,
+            'penalties' => 0,
+            'returns' => 0,
+            'other' => 0,
+            'items_count' => count($expenses),
+        ];
+
+        foreach ($expenses as $expense) {
+            $amount = (float) ($expense['amount'] ?? 0);
+            $type = strtoupper($expense['type'] ?? '');
+
+            $summary['total'] += $amount;
+
+            match ($type) {
+                'COMMISSION' => $summary['commission'] += $amount,
+                'LOGISTICS', 'DELIVERY' => $summary['logistics'] += $amount,
+                'STORAGE' => $summary['storage'] += $amount,
+                'ADVERTISING', 'ADS' => $summary['advertising'] += $amount,
+                'PENALTY' => $summary['penalties'] += $amount,
+                'RETURN' => $summary['returns'] += $amount,
+                default => $summary['other'] += $amount,
+            };
+        }
+
+        return $summary;
+    }
+
 }

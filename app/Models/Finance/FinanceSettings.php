@@ -37,6 +37,14 @@ class FinanceSettings extends Model
         return $this->belongsTo(Company::class);
     }
 
+    /**
+     * Get or create finance settings for company.
+     * Default rates are for Uzbekistan:
+     * - VAT: 12% (standard rate)
+     * - Income tax (profit tax): 15% (general rate, 20% for banks/telecom)
+     * - Simplified tax (turnover tax): 4% for trade, 25% for other
+     * - Social tax (INPS): 12% (employer contribution)
+     */
     public static function getForCompany(int $companyId): self
     {
         return self::firstOrCreate(
@@ -44,9 +52,9 @@ class FinanceSettings extends Model
             [
                 'base_currency_code' => 'UZS',
                 'tax_system' => self::TAX_SYSTEM_SIMPLIFIED,
-                'vat_rate' => 12.00,
-                'income_tax_rate' => 15.00,
-                'social_tax_rate' => 12.00,
+                'vat_rate' => 12.00,           // НДС 12%
+                'income_tax_rate' => 4.00,     // Упрощёнка 4% от оборота (торговля)
+                'social_tax_rate' => 12.00,    // ИНПС 12% (работодатель)
                 'auto_import_marketplace_fees' => true,
             ]
         );

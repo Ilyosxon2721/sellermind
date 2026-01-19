@@ -715,6 +715,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('taxes/summary', [\App\Http\Controllers\Api\Finance\TaxController::class, 'summary']);
         Route::get('taxes/{id}', [\App\Http\Controllers\Api\Finance\TaxController::class, 'show']);
         Route::post('taxes/{id}/pay', [\App\Http\Controllers\Api\Finance\TaxController::class, 'pay']);
+
+        // Marketplace Expenses
+        Route::get('marketplace-expenses', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceExpenses']);
+        Route::post('marketplace-expenses/sync-uzum', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'syncUzumExpenses']);
     });
 
     // Admin Routes

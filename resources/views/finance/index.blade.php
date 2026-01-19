@@ -68,7 +68,7 @@
                 <!-- ========== ИТОГОВЫЙ БАЛАНС КОМПАНИИ ========== -->
                 <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold opacity-90">Баланс компании</h2>
+                        <h2 class="text-lg font-semibold text-white">Баланс компании</h2>
                         <div class="flex items-center space-x-2">
                             <span class="px-3 py-1 rounded-full text-xs font-medium"
                                   :class="{
@@ -211,6 +211,101 @@
                         <div class="text-sm opacity-80">Неоплаченные налоги</div>
                         <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.taxes?.unpaid_total || 0)"></div>
                     </div>
+                </div>
+
+                <!-- Marketplace Sales -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Продажи на маркетплейсах</h3>
+                        <span class="text-sm text-gray-500" x-text="'За период: ' + periodFrom + ' — ' + periodTo"></span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Uzum -->
+                        <div class="bg-purple-50 rounded-xl p-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                <span class="font-medium text-purple-700">Uzum</span>
+                            </div>
+                            <div class="text-xl font-bold text-purple-700" x-text="formatMoney(overview.marketplace_sales?.uzum?.revenue || 0) + ' сум'"></div>
+                            <div class="text-sm text-purple-600" x-text="(overview.marketplace_sales?.uzum?.orders || 0) + ' заказов'"></div>
+                        </div>
+                        <!-- WB -->
+                        <div class="bg-pink-50 rounded-xl p-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                <span class="font-medium text-pink-700">Wildberries</span>
+                            </div>
+                            <div class="text-xl font-bold text-pink-700" x-text="formatMoney(overview.marketplace_sales?.wb?.revenue || 0) + ' сум'"></div>
+                            <div class="text-sm text-pink-600" x-text="(overview.marketplace_sales?.wb?.orders || 0) + ' заказов'"></div>
+                        </div>
+                        <!-- Ozon -->
+                        <div class="bg-blue-50 rounded-xl p-4">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                <span class="font-medium text-blue-700">Ozon</span>
+                            </div>
+                            <div class="text-xl font-bold text-blue-700" x-text="formatMoney(overview.marketplace_sales?.ozon?.revenue || 0) + ' сум'"></div>
+                            <div class="text-sm text-blue-600" x-text="(overview.marketplace_sales?.ozon?.orders || 0) + ' заказов'"></div>
+                        </div>
+                        <!-- Total -->
+                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white">
+                            <div class="text-sm opacity-80 mb-2">Всего продаж</div>
+                            <div class="text-xl font-bold" x-text="formatMoney(overview.marketplace_sales?.total_revenue || 0) + ' сум'"></div>
+                            <div class="text-sm opacity-80" x-text="(overview.marketplace_sales?.total_orders || 0) + ' заказов'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Marketplace Expenses -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Расходы маркетплейсов</h3>
+                        <template x-if="loadingExpenses">
+                            <span class="text-sm text-gray-400">Загрузка...</span>
+                        </template>
+                    </div>
+                    <template x-if="marketplaceExpenses && !marketplaceExpenses.uzum?.error">
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                            <div class="bg-red-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-red-600 mb-1">Комиссия</div>
+                                <div class="text-lg font-bold text-red-700" x-text="formatMoney(marketplaceExpenses.total?.commission || 0)"></div>
+                            </div>
+                            <div class="bg-orange-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-orange-600 mb-1">Логистика</div>
+                                <div class="text-lg font-bold text-orange-700" x-text="formatMoney(marketplaceExpenses.total?.logistics || 0)"></div>
+                            </div>
+                            <div class="bg-amber-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-amber-600 mb-1">Хранение</div>
+                                <div class="text-lg font-bold text-amber-700" x-text="formatMoney(marketplaceExpenses.total?.storage || 0)"></div>
+                            </div>
+                            <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-blue-600 mb-1">Реклама</div>
+                                <div class="text-lg font-bold text-blue-700" x-text="formatMoney(marketplaceExpenses.total?.advertising || 0)"></div>
+                            </div>
+                            <div class="bg-rose-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-rose-600 mb-1">Штрафы</div>
+                                <div class="text-lg font-bold text-rose-700" x-text="formatMoney(marketplaceExpenses.total?.penalties || 0)"></div>
+                            </div>
+                            <div class="bg-purple-50 rounded-xl p-3 text-center">
+                                <div class="text-xs text-purple-600 mb-1">Возвраты</div>
+                                <div class="text-lg font-bold text-purple-700" x-text="formatMoney(marketplaceExpenses.total?.returns || 0)"></div>
+                            </div>
+                            <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 text-center text-white">
+                                <div class="text-xs opacity-80 mb-1">Всего</div>
+                                <div class="text-lg font-bold" x-text="formatMoney(marketplaceExpenses.total?.total || 0)"></div>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="!marketplaceExpenses || marketplaceExpenses.uzum?.error">
+                        <div class="text-center py-4 text-gray-500">
+                            <template x-if="marketplaceExpenses?.uzum?.error">
+                                <p class="text-sm text-red-500" x-text="marketplaceExpenses.uzum.error"></p>
+                            </template>
+                            <template x-if="!marketplaceExpenses">
+                                <p class="text-sm">Данные о расходах маркетплейсов недоступны</p>
+                            </template>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Debts Summary -->
@@ -437,23 +532,29 @@
                 <!-- Employees Section -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Сотрудники</h2>
-                        <button class="px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white rounded-xl transition-all flex items-center space-x-2"
-                                @click="showEmployeeForm = true; employeeForm = { first_name: '', last_name: '', position: '', base_salary: '', hire_date: '' }">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                            <span>Добавить сотрудника</span>
-                        </button>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Сотрудники</h2>
+                            <p class="text-sm text-gray-500">Пользователи, прикреплённые к компании</p>
+                        </div>
+                        <a href="/settings" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m9 5.197v1"/></svg>
+                            <span>Управление командой</span>
+                        </a>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         <template x-for="emp in employees" :key="emp.id">
                             <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="font-semibold text-gray-900" x-text="emp.last_name + ' ' + emp.first_name"></div>
-                                <div class="text-sm text-gray-500" x-text="emp.position || 'Без должности'"></div>
-                                <div class="text-lg font-bold text-purple-600 mt-2" x-text="formatMoney(emp.base_salary) + ' ' + (emp.currency_code || 'UZS')"></div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="font-semibold text-gray-900" x-text="emp.name || (emp.last_name + ' ' + emp.first_name)"></div>
+                                    <span x-show="emp.is_owner" class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Владелец</span>
+                                </div>
+                                <div class="text-sm text-gray-500" x-text="emp.position || 'Сотрудник'"></div>
+                                <div class="text-xs text-gray-400 mt-1" x-text="emp.email"></div>
+                                <div class="text-lg font-bold text-purple-600 mt-2" x-text="formatMoney(emp.base_salary || 0) + ' ' + (emp.currency_code || 'UZS')"></div>
                             </div>
                         </template>
                         <template x-if="employees.length === 0">
-                            <div class="col-span-full text-center py-8 text-gray-500">Нет сотрудников</div>
+                            <div class="col-span-full text-center py-8 text-gray-500">Нет сотрудников в компании</div>
                         </template>
                     </div>
                 </div>
@@ -507,6 +608,7 @@
                     </div>
                     <div class="flex items-center space-x-4 mb-4">
                         <select class="border border-gray-300 rounded-xl px-4 py-2" x-model="filtersTaxes.year">
+                            <option value="2026">2026</option>
                             <option value="2025">2025</option>
                             <option value="2024">2024</option>
                         </select>
@@ -574,7 +676,7 @@
             <section x-show="activeTab === 'reports'" class="space-y-6">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчёты</h2>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex flex-wrap items-center gap-4">
                         <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="reportFrom">
                         <span class="text-gray-500">—</span>
                         <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="reportTo">
@@ -589,73 +691,135 @@
                 </div>
 
                 <!-- Report Content -->
-                <template x-if="reportData">
-                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4" x-text="reportTypeLabel(reportType)"></h3>
+                <div x-show="reportData && reportData.data" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4" x-text="reportTypeLabel(reportType)"></h3>
 
-                        <!-- P&L Report -->
-                        <template x-if="reportType === 'pnl' && reportData.data">
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div class="p-4 bg-green-50 rounded-xl">
-                                        <div class="text-sm text-green-600">Доходы</div>
-                                        <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData.data.income?.total || 0)"></div>
-                                    </div>
-                                    <div class="p-4 bg-red-50 rounded-xl">
-                                        <div class="text-sm text-red-600">Расходы</div>
-                                        <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData.data.expenses?.total || 0)"></div>
-                                    </div>
-                                    <div class="p-4 bg-blue-50 rounded-xl">
-                                        <div class="text-sm text-blue-600">Прибыль</div>
-                                        <div class="text-xl font-bold" :class="reportData.data.gross_profit >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(reportData.data.gross_profit || 0)"></div>
-                                    </div>
-                                </div>
+                    <!-- P&L Report -->
+                    <div x-show="reportType === 'pnl'" class="space-y-4">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="p-4 bg-green-50 rounded-xl">
+                                <div class="text-sm text-green-600">Доходы</div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.income?.total || 0)"></div>
                             </div>
-                        </template>
+                            <div class="p-4 bg-red-50 rounded-xl">
+                                <div class="text-sm text-red-600">Расходы</div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.expenses?.total || 0)"></div>
+                            </div>
+                            <div class="p-4 bg-blue-50 rounded-xl">
+                                <div class="text-sm text-blue-600">Прибыль</div>
+                                <div class="text-xl font-bold" :class="(reportData?.data?.gross_profit || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(reportData?.data?.gross_profit || 0)"></div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 text-center" x-text="'Маржа: ' + (reportData?.data?.profit_margin || 0) + '%'"></div>
+                    </div>
 
-                        <!-- Cash Flow Report -->
-                        <template x-if="reportType === 'cash_flow' && reportData.data">
-                            <div class="space-y-2">
-                                <template x-for="item in reportData.data" :key="item.date">
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                        <span class="font-medium" x-text="item.period"></span>
+                    <!-- Cash Flow Report -->
+                    <div x-show="reportType === 'cash_flow'" class="space-y-2">
+                        <template x-if="Array.isArray(reportData?.data) && reportData.data.length > 0">
+                            <div>
+                                <template x-for="(item, idx) in reportData.data" :key="idx">
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-2">
+                                        <span class="font-medium" x-text="item.period || item.date"></span>
                                         <div class="flex items-center space-x-4">
-                                            <span class="text-green-600" x-text="'+' + formatMoney(item.income)"></span>
-                                            <span class="text-red-600" x-text="'-' + formatMoney(item.expense)"></span>
-                                            <span class="font-bold" :class="item.net >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net)"></span>
+                                            <span class="text-green-600" x-text="'+' + formatMoney(item.income || 0)"></span>
+                                            <span class="text-red-600" x-text="'-' + formatMoney(item.expense || 0)"></span>
+                                            <span class="font-bold" :class="(item.net || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net || 0)"></span>
                                         </div>
                                     </div>
                                 </template>
                             </div>
                         </template>
-
-                        <!-- Debts Aging Report -->
-                        <template x-if="reportType === 'debts_aging' && reportData.data">
-                            <div class="grid grid-cols-5 gap-4">
-                                <div class="p-3 bg-green-100 rounded-xl text-center">
-                                    <div class="text-xs text-green-600">Текущие</div>
-                                    <div class="font-bold text-green-700" x-text="formatMoney(reportData.data.summary?.current?.amount || 0)"></div>
-                                </div>
-                                <div class="p-3 bg-yellow-100 rounded-xl text-center">
-                                    <div class="text-xs text-yellow-600">1-30 дней</div>
-                                    <div class="font-bold text-yellow-700" x-text="formatMoney(reportData.data.summary?.['1_30']?.amount || 0)"></div>
-                                </div>
-                                <div class="p-3 bg-orange-100 rounded-xl text-center">
-                                    <div class="text-xs text-orange-600">31-60 дней</div>
-                                    <div class="font-bold text-orange-700" x-text="formatMoney(reportData.data.summary?.['31_60']?.amount || 0)"></div>
-                                </div>
-                                <div class="p-3 bg-red-100 rounded-xl text-center">
-                                    <div class="text-xs text-red-600">61-90 дней</div>
-                                    <div class="font-bold text-red-700" x-text="formatMoney(reportData.data.summary?.['61_90']?.amount || 0)"></div>
-                                </div>
-                                <div class="p-3 bg-red-200 rounded-xl text-center">
-                                    <div class="text-xs text-red-700">90+ дней</div>
-                                    <div class="font-bold text-red-800" x-text="formatMoney(reportData.data.summary?.['over_90']?.amount || 0)"></div>
-                                </div>
-                            </div>
+                        <template x-if="!Array.isArray(reportData?.data) || reportData.data.length === 0">
+                            <p class="text-gray-500 text-center py-4">Нет данных за выбранный период</p>
                         </template>
                     </div>
-                </template>
+
+                    <!-- By Category Report -->
+                    <div x-show="reportType === 'by_category'" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Income -->
+                            <div>
+                                <h4 class="font-medium text-green-700 mb-3">Доходы по категориям</h4>
+                                <template x-if="reportData?.data?.income?.length > 0">
+                                    <div class="space-y-2">
+                                        <template x-for="(cat, idx) in reportData.data.income" :key="'inc-' + idx">
+                                            <div class="p-3 bg-green-50 rounded-xl">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-green-800" x-text="cat.category"></span>
+                                                    <span class="font-bold text-green-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!reportData?.data?.income?.length">
+                                    <p class="text-gray-500 text-sm">Нет данных</p>
+                                </template>
+                            </div>
+                            <!-- Expense -->
+                            <div>
+                                <h4 class="font-medium text-red-700 mb-3">Расходы по категориям</h4>
+                                <template x-if="reportData?.data?.expense?.length > 0">
+                                    <div class="space-y-2">
+                                        <template x-for="(cat, idx) in reportData.data.expense" :key="'exp-' + idx">
+                                            <div class="p-3 bg-red-50 rounded-xl">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="text-red-800" x-text="cat.category"></span>
+                                                    <span class="font-bold text-red-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!reportData?.data?.expense?.length">
+                                    <p class="text-gray-500 text-sm">Нет данных</p>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debts Aging Report -->
+                    <div x-show="reportType === 'debts_aging'" class="space-y-4">
+                        <div class="grid grid-cols-5 gap-4">
+                            <div class="p-3 bg-green-100 rounded-xl text-center">
+                                <div class="text-xs text-green-600">Текущие</div>
+                                <div class="font-bold text-green-700" x-text="formatMoney(reportData?.data?.summary?.current?.amount || 0)"></div>
+                            </div>
+                            <div class="p-3 bg-yellow-100 rounded-xl text-center">
+                                <div class="text-xs text-yellow-600">1-30 дней</div>
+                                <div class="font-bold text-yellow-700" x-text="formatMoney(reportData?.data?.summary?.['1_30']?.amount || 0)"></div>
+                            </div>
+                            <div class="p-3 bg-orange-100 rounded-xl text-center">
+                                <div class="text-xs text-orange-600">31-60 дней</div>
+                                <div class="font-bold text-orange-700" x-text="formatMoney(reportData?.data?.summary?.['31_60']?.amount || 0)"></div>
+                            </div>
+                            <div class="p-3 bg-red-100 rounded-xl text-center">
+                                <div class="text-xs text-red-600">61-90 дней</div>
+                                <div class="font-bold text-red-700" x-text="formatMoney(reportData?.data?.summary?.['61_90']?.amount || 0)"></div>
+                            </div>
+                            <div class="p-3 bg-red-200 rounded-xl text-center">
+                                <div class="text-xs text-red-700">90+ дней</div>
+                                <div class="font-bold text-red-800" x-text="formatMoney(reportData?.data?.summary?.over_90?.amount || 0)"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-4">
+                            <div class="p-4 bg-green-50 rounded-xl">
+                                <div class="text-sm text-green-600">Всего дебиторки</div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.total_receivable || 0)"></div>
+                            </div>
+                            <div class="p-4 bg-red-50 rounded-xl">
+                                <div class="text-sm text-red-600">Всего кредиторки</div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.total_payable || 0)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- No data message -->
+                <div x-show="!reportData" class="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <p class="text-gray-500">Выберите период и нажмите "Сформировать" для генерации отчёта</p>
+                </div>
             </section>
         </main>
     </div>
@@ -827,6 +991,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Год</label>
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="salaryCalcForm.year">
+                            <option value="2026">2026</option>
                             <option value="2025">2025</option>
                             <option value="2024">2024</option>
                         </select>
@@ -865,10 +1030,10 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Тип налога</label>
                     <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="taxCalcForm.tax_type">
-                        <option value="simplified">Упрощёнка</option>
-                        <option value="income_tax">Налог на прибыль</option>
-                        <option value="vat">НДС</option>
-                        <option value="social_tax">Социальный налог</option>
+                        <option value="simplified">Оборотный налог (4%)</option>
+                        <option value="income_tax">Налог на прибыль (15%)</option>
+                        <option value="vat">НДС (12%)</option>
+                        <option value="social_tax">ИНПС (12%)</option>
                     </select>
                 </div>
                 <div>
@@ -883,6 +1048,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Год</label>
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="taxCalcForm.year">
+                            <option value="2026">2026</option>
                             <option value="2025">2025</option>
                             <option value="2024">2024</option>
                         </select>
@@ -1142,6 +1308,8 @@ function financePage() {
         categories: [],
         filteredCategories: [],
         reportData: null,
+        marketplaceExpenses: null,
+        loadingExpenses: false,
 
         periodFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10),
         periodTo: new Date().toISOString().slice(0,10),
@@ -1240,6 +1408,8 @@ function financePage() {
             const resp = await fetch('/api/finance/overview?' + params, { headers: this.getAuthHeaders() });
             const json = await resp.json();
             if (resp.ok && !json.errors) this.overview = json.data || {};
+            // Also load marketplace expenses
+            this.loadMarketplaceExpenses();
         },
 
         async loadTransactions() {
@@ -1283,6 +1453,21 @@ function financePage() {
             const summaryResp = await fetch('/api/finance/taxes/summary?' + params, { headers: this.getAuthHeaders() });
             const summaryJson = await summaryResp.json();
             if (summaryResp.ok && !summaryJson.errors) this.taxSummary = summaryJson.data || {};
+        },
+
+        async loadMarketplaceExpenses() {
+            this.loadingExpenses = true;
+            try {
+                const params = new URLSearchParams({ from: this.periodFrom, to: this.periodTo });
+                const resp = await fetch('/api/finance/marketplace-expenses?' + params, { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.marketplaceExpenses = json.data || null;
+                }
+            } catch (e) {
+                console.error('Failed to load marketplace expenses:', e);
+            }
+            this.loadingExpenses = false;
         },
 
         async loadCategories() {

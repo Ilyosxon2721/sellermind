@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Finance\Employee;
+use App\Models\UserCompanyRole;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,9 @@ class EmployeeController extends Controller
 {
     use ApiResponder;
 
+    /**
+     * Get company employees (users attached to the company via UserCompanyRole)
+     */
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
@@ -19,25 +23,60 @@ class EmployeeController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $query = Employee::byCompany($companyId);
+        // Get users from UserCompanyRole (including owner)
+        $companyUsers = UserCompanyRole::with('user')
+            ->where('company_id', $companyId)
+            ->get()
+            ->map(function ($role) {
+                $user = $role->user;
+                if (!$user) return null;
 
-        if ($request->active_only) {
-            $query->active();
-        }
-        if ($search = $request->get('query')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', '%' . $search . '%')
-                    ->orWhere('last_name', 'like', '%' . $search . '%')
-                    ->orWhere('phone', 'like', '%' . $search . '%')
-                    ->orWhere('position', 'like', '%' . $search . '%');
-            });
-        }
+                // Parse name into first_name and last_name
+                $nameParts = explode(' ', $user->name ?? '', 2);
+                $firstName = $nameParts[0] ?? '';
+                $lastName = $nameParts[1] ?? '';
 
-        $employees = $query->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
+                // Get employee record if exists (for salary info)
+                $employee = Employee::where('user_id', $user->id)->first();
 
-        return $this->successResponse($employees);
+                return [
+                    'id' => $user->id,
+                    'user_id' => $user->id,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => null,
+                    'position' => $this->getRoleLabel($role->role),
+                    'role' => $role->role,
+                    'is_owner' => $role->role === 'owner',
+                    'base_salary' => $employee?->base_salary ?? 0,
+                    'currency_code' => $employee?->currency_code ?? 'UZS',
+                    'hire_date' => $employee?->hire_date ?? $user->created_at?->toDateString(),
+                    'is_active' => true,
+                    'employee_id' => $employee?->id, // Link to Employee record if exists
+                ];
+            })
+            ->filter()
+            ->sortBy('name')
+            ->values();
+
+        return $this->successResponse($companyUsers);
+    }
+
+    /**
+     * Get role label in Russian
+     */
+    protected function getRoleLabel(string $role): string
+    {
+        return match ($role) {
+            'owner' => 'Владелец',
+            'admin' => 'Администратор',
+            'manager' => 'Менеджер',
+            'employee' => 'Сотрудник',
+            'viewer' => 'Просмотр',
+            default => ucfirst($role),
+        };
     }
 
     public function show($id)
@@ -112,9 +151,13 @@ class EmployeeController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $total = Employee::byCompany($companyId)->count();
-        $active = Employee::byCompany($companyId)->active()->count();
-        $totalSalary = Employee::byCompany($companyId)->active()->sum('base_salary');
+        // Count company users from UserCompanyRole
+        $total = UserCompanyRole::where('company_id', $companyId)->count();
+        $active = $total; // All company users are active
+
+        // Get total salary from Employee records linked to company users
+        $userIds = UserCompanyRole::where('company_id', $companyId)->pluck('user_id');
+        $totalSalary = Employee::whereIn('user_id', $userIds)->sum('base_salary');
 
         return $this->successResponse([
             'total_employees' => $total,

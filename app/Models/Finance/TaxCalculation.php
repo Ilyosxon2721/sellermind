@@ -15,10 +15,11 @@ class TaxCalculation extends Model
     public const PERIOD_QUARTER = 'quarter';
     public const PERIOD_YEAR = 'year';
 
-    public const TYPE_INCOME_TAX = 'income_tax';    // Налог на прибыль / Упрощёнка
-    public const TYPE_VAT = 'vat';                   // НДС
-    public const TYPE_SOCIAL_TAX = 'social_tax';    // Социальный налог
-    public const TYPE_SIMPLIFIED = 'simplified';     // Упрощённая система
+    // Uzbekistan tax types
+    public const TYPE_INCOME_TAX = 'income_tax';    // Налог на прибыль (15%)
+    public const TYPE_VAT = 'vat';                   // НДС (12%)
+    public const TYPE_SOCIAL_TAX = 'social_tax';    // ИНПС - работодатель платит 12% от ФОТ
+    public const TYPE_SIMPLIFIED = 'simplified';     // Оборотный налог (4% для торговли)
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_CALCULATED = 'calculated';
@@ -88,10 +89,10 @@ class TaxCalculation extends Model
     public function getTaxTypeLabelAttribute(): string
     {
         return match ($this->tax_type) {
-            self::TYPE_INCOME_TAX => 'Налог на прибыль',
-            self::TYPE_VAT => 'НДС',
-            self::TYPE_SOCIAL_TAX => 'Социальный налог',
-            self::TYPE_SIMPLIFIED => 'Упрощёнка',
+            self::TYPE_INCOME_TAX => 'Налог на прибыль (15%)',
+            self::TYPE_VAT => 'НДС (12%)',
+            self::TYPE_SOCIAL_TAX => 'ИНПС (12%)',
+            self::TYPE_SIMPLIFIED => 'Оборотный налог (4%)',
             default => $this->tax_type,
         };
     }
