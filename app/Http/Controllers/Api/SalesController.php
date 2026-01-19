@@ -519,13 +519,14 @@ class SalesController extends Controller
      *
      * Логика определения статуса по данным из БД:
      * - TO_WITHDRAW → delivered (продажа, деньги выведены = полноценный доход)
-     * - PROCESSING + date_issued NOT NULL → awaiting_pickup (выкуплен, ожидает вывода)
+     * - PROCESSING + date_issued NOT NULL → delivered (продажа, товар выкуплен = доход)
      * - PROCESSING + date_issued NULL → transit (в транзите)
      * - CANCELED + date_issued NOT NULL → returned (возврат после выкупа)
      * - CANCELED + date_issued NULL → cancelled (отмена до выкупа)
      *
      * Логика фильтрации по дате:
-     * - Для TO_WITHDRAW: по date_issued (дата продажи)
+     * - Для TO_WITHDRAW: по date_issued (дата вывода денег)
+     * - Для PROCESSING + date_issued: по date_issued (дата выкупа)
      * - Для CANCELED с date_issued: по date_issued (дата возврата)
      * - Для остальных: по order_date (дата заказа)
      */
@@ -540,6 +541,13 @@ class SalesController extends Controller
                         ->whereDate('date_issued', '>=', $dateFrom)
                         ->whereDate('date_issued', '<=', $dateTo);
                 })
+                // Продажи (PROCESSING с date_issued) - фильтруем по date_issued (дата выкупа)
+                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                    $sub->where('status', 'PROCESSING')
+                        ->whereNotNull('date_issued')
+                        ->whereDate('date_issued', '>=', $dateFrom)
+                        ->whereDate('date_issued', '<=', $dateTo);
+                })
                 // Возвраты (CANCELED с date_issued) - по date_issued
                 ->orWhere(function($sub) use ($dateFrom, $dateTo) {
                     $sub->where('status', 'CANCELED')
@@ -547,16 +555,19 @@ class SalesController extends Controller
                         ->whereDate('date_issued', '>=', $dateFrom)
                         ->whereDate('date_issued', '<=', $dateTo);
                 })
-                // Остальные (PROCESSING, CANCELED без date_issued) - по дате заказа
+                // В транзите (PROCESSING без date_issued) - по дате заказа
                 ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->where(function($inner) {
-                        $inner->where('status', 'PROCESSING')
-                            ->orWhere(function($c) {
-                                $c->where('status', 'CANCELED')->whereNull('date_issued');
-                            });
-                    })
-                    ->whereDate('order_date', '>=', $dateFrom)
-                    ->whereDate('order_date', '<=', $dateTo);
+                    $sub->where('status', 'PROCESSING')
+                        ->whereNull('date_issued')
+                        ->whereDate('order_date', '>=', $dateFrom)
+                        ->whereDate('order_date', '<=', $dateTo);
+                })
+                // Отмены (CANCELED без date_issued) - по дате заказа
+                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                    $sub->where('status', 'CANCELED')
+                        ->whereNull('date_issued')
+                        ->whereDate('order_date', '>=', $dateFrom)
+                        ->whereDate('order_date', '<=', $dateTo);
                 });
             });
 
@@ -566,19 +577,18 @@ class SalesController extends Controller
                 switch ($status) {
                     case 'delivered':
                     case 'completed':
-                        // Продажа: статус TO_WITHDRAW (деньги выведены)
-                        $q->where('status', 'TO_WITHDRAW');
+                        // Продажа: TO_WITHDRAW или PROCESSING с date_issued
+                        $q->where('status', 'TO_WITHDRAW')
+                          ->orWhere(function($sub) {
+                              $sub->where('status', 'PROCESSING')
+                                  ->whereNotNull('date_issued');
+                          });
                         break;
                     case 'transit':
                     case 'processing':
                         // В транзите: PROCESSING без date_issued
                         $q->where('status', 'PROCESSING')
                           ->whereNull('date_issued');
-                        break;
-                    case 'awaiting_pickup':
-                        // Ожидает вывода: PROCESSING с date_issued (выкуплен)
-                        $q->where('status', 'PROCESSING')
-                          ->whereNotNull('date_issued');
                         break;
                     case 'returned':
                         // Возврат: CANCELED с date_issued (был выкуплен, потом вернули)
@@ -609,8 +619,8 @@ class SalesController extends Controller
             $sellerProfit = $order->seller_profit;
 
             // Логика определения статуса по реальным данным:
-            // - TO_WITHDRAW → продажа (delivered) - деньги выведены
-            // - PROCESSING + date_issued → ожидает вывода (awaiting_pickup) - выкуплен
+            // - TO_WITHDRAW → продажа (delivered) - деньги выведены = ДОХОД
+            // - PROCESSING + date_issued → продажа (delivered) - товар выкуплен = ДОХОД
             // - PROCESSING + no date_issued → в транзите (transit)
             // - CANCELED + date_issued → возврат (returned) - был выкуплен, потом вернули
             // - CANCELED + no date_issued → отмена (cancelled)
@@ -619,8 +629,8 @@ class SalesController extends Controller
             $isCanceled = $order->status === 'CANCELED';
             $hasDateIssued = $order->date_issued !== null;
 
-            $isCompleted = $isToWithdraw;                           // Продажа (деньги выведены)
-            $isAwaitingPickup = $isProcessing && $hasDateIssued;    // Выкуплен, ожидает вывода
+            // Продажа = TO_WITHDRAW или (PROCESSING + date_issued)
+            $isCompleted = $isToWithdraw || ($isProcessing && $hasDateIssued);
             $isTransit = $isProcessing && !$hasDateIssued;          // В транзите
             $isReturned = $isCanceled && $hasDateIssued;            // Возврат (после выкупа)
             $isCancelled = $isCanceled && !$hasDateIssued;          // Отмена (до выкупа)
@@ -633,14 +643,12 @@ class SalesController extends Controller
             // Определяем нормализованный статус
             $normalizedStatus = 'transit';
             if ($isCompleted) $normalizedStatus = 'delivered';
-            elseif ($isAwaitingPickup) $normalizedStatus = 'awaiting_pickup';
             elseif ($isReturned) $normalizedStatus = 'returned';
             elseif ($isCancelled) $normalizedStatus = 'cancelled';
 
             // Определяем категорию статуса
             $statusCategory = 'transit';
             if ($isCompleted) $statusCategory = 'completed';
-            elseif ($isAwaitingPickup) $statusCategory = 'awaiting_pickup';
             elseif ($isReturned || $isCancelled) $statusCategory = 'cancelled';
 
             return [
@@ -656,8 +664,7 @@ class SalesController extends Controller
                 'currency' => 'UZS',
                 'status' => $normalizedStatus,
                 'status_category' => $statusCategory,
-                'is_revenue' => $isCompleted,           // Только TO_WITHDRAW = доход
-                'is_awaiting_pickup' => $isAwaitingPickup,
+                'is_revenue' => $isCompleted,           // TO_WITHDRAW или PROCESSING+date_issued = доход
                 'is_return' => $isReturned,
                 'is_cancelled' => $isCancelled,
                 'raw_status' => $order->status,
@@ -673,15 +680,19 @@ class SalesController extends Controller
      *
      * TO_WITHDRAW → delivered (продажа, деньги выведены)
      * COMPLETED → delivered (продажа)
-     * PROCESSING → transit (в транзите)
+     * PROCESSING + date_issued → delivered (продажа, товар выкуплен)
+     * PROCESSING без date_issued → transit (в транзите)
      * CANCELED → cancelled
+     *
+     * NOTE: Эта функция не учитывает date_issued, поэтому для точного
+     * определения статуса используйте логику в getUzumFinanceOrders()
      */
     private function normalizeUzumFinanceStatus(?string $status): string
     {
         if (!$status) return 'transit';
 
         return match (strtoupper($status)) {
-            'PROCESSING' => 'transit',
+            'PROCESSING' => 'transit', // Может быть продажей если есть date_issued
             'COMPLETED', 'TO_WITHDRAW' => 'delivered',
             'CANCELED' => 'cancelled',
             default => 'transit',
