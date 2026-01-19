@@ -107,7 +107,7 @@
                     <div class="text-gray-600">Товаров</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">₸2M+</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">2M+ сум</div>
                     <div class="text-gray-600">Обработано продаж</div>
                 </div>
                 <div class="text-center">
@@ -501,8 +501,8 @@
                     <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-900 mb-1">Laravel Scheduler + Queue Workers</h4>
-                                <p class="text-sm text-gray-600">Надёжный стек автоматизации для вашего бизнеса</p>
+                                <h4 class="font-bold text-gray-900 mb-1">Полная автоматизация процессов</h4>
+                                <p class="text-sm text-gray-600">Система работает сама — вы только контролируете результаты</p>
                             </div>
                             <div class="text-4xl">⚙️</div>
                         </div>
@@ -535,12 +535,12 @@
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">O</div>
                     <div class="font-bold text-gray-900 text-lg">Ozon</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">Я</div>
                     <div class="font-bold text-gray-900 text-lg">Яндекс Маркет</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
             </div>
         </div>
@@ -756,6 +756,121 @@
         </div>
     </section>
 
+    <!-- Comparison Section - NEW -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Почему SellerMind — лучший выбор</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Сравните наши возможности с другими решениями на рынке</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="py-4 px-4 text-left text-gray-900 font-bold">Функция</th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-blue-600 font-bold text-lg mb-1">SellerMind</div>
+                                <div class="text-xs text-gray-500">Наша система</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 1</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 2</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 3</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Синхронизация остатков</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">AI-помощник</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Складской учёт (WMS)</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Автоматические промо-акции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Умное ценообразование</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Интеграция с 4+ маркетплейсами</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Telegram уведомления</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Массовые операции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="bg-blue-50">
+                            <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">9/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/9</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-12 text-center">
+                <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    Попробовать бесплатно →
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA -->
     <section class="py-20 bg-blue-600">
         <div class="max-w-4xl mx-auto px-4 text-center">
@@ -773,7 +888,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-gray-400 py-12">
+    <footer class="bg-gray-900 py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid md:grid-cols-4 gap-8">
                 <div>
@@ -790,28 +905,28 @@
                 <div>
                     <h4 class="text-white font-semibold mb-4">Продукт</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#features" class="text-gray-500 hover:text-white transition">Возможности</a></li>
-                        <li><a href="#pricing" class="text-gray-500 hover:text-white transition">Тарифы</a></li>
-                        <li><a href="#integrations" class="text-gray-500 hover:text-white transition">Интеграции</a></li>
+                        <li><a href="#features" class="text-gray-300 hover:text-white transition">Возможности</a></li>
+                        <li><a href="#pricing" class="text-gray-300 hover:text-white transition">Тарифы</a></li>
+                        <li><a href="#integrations" class="text-gray-300 hover:text-white transition">Интеграции</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Ресурсы</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Документация</a></li>
-                        <li><a href="#faq" class="text-gray-500 hover:text-white transition">FAQ</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Блог</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Документация</a></li>
+                        <li><a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Блог</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Контакты</h4>
-                    <ul class="space-y-2 text-sm text-gray-500">
+                    <ul class="space-y-2 text-sm text-gray-300">
                         <li>info@sellermind.uz</li>
                         <li>+998 90 123 45 67</li>
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-600">
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
                 © 2025 SellerMind. Все права защищены.
             </div>
         </div>
