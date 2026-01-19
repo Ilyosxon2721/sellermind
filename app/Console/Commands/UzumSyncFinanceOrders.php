@@ -12,16 +12,27 @@ class UzumSyncFinanceOrders extends Command
 {
     protected $signature = 'uzum:sync-finance-orders
                             {--account= : Specific account ID to sync}
-                            {--pages=10 : Max pages to fetch per shop (0 = unlimited)}
-                            {--force : Force full sync even if recently synced}';
+                            {--days=90 : Sync orders for last N days (0 = all time)}
+                            {--pages=0 : Max pages to fetch per shop (0 = unlimited)}
+                            {--full : Full sync - ignore days limit, fetch all orders}';
 
     protected $description = 'Sync Uzum finance orders for analytics (all order types: FBO/FBS/DBS/EDBS)';
 
     public function handle(UzumClient $client): int
     {
         $accountId = $this->option('account');
+        $days = (int) $this->option('days');
         $maxPages = (int) $this->option('pages');
-        $force = $this->option('force');
+        $fullSync = $this->option('full');
+
+        // Если --full, игнорируем days
+        $dateFrom = null;
+        if (!$fullSync && $days > 0) {
+            $dateFrom = now()->subDays($days)->startOfDay();
+            $this->info("Syncing orders from last {$days} days (since {$dateFrom->format('Y-m-d')})");
+        } else {
+            $this->info("Full sync mode - fetching all orders");
+        }
 
         $query = MarketplaceAccount::where('marketplace', 'uzum')
             ->where('is_active', true);
@@ -48,7 +59,7 @@ class UzumSyncFinanceOrders extends Command
             $this->info("Processing account: {$account->name} (ID: {$account->id})");
 
             try {
-                $result = $this->syncAccountFinanceOrders($client, $account, $maxPages);
+                $result = $this->syncAccountFinanceOrders($client, $account, $maxPages, $dateFrom);
 
                 $totalCreated += $result['created'];
                 $totalUpdated += $result['updated'];
@@ -72,60 +83,123 @@ class UzumSyncFinanceOrders extends Command
         return Command::SUCCESS;
     }
 
-    protected function syncAccountFinanceOrders(UzumClient $client, MarketplaceAccount $account, int $maxPages): array
+    protected function syncAccountFinanceOrders(UzumClient $client, MarketplaceAccount $account, int $maxPages, ?\Carbon\Carbon $dateFrom = null): array
     {
         $created = 0;
         $updated = 0;
         $errors = 0;
+        $totalProcessed = 0;
 
-        // Fetch all finance orders
-        $items = $client->fetchAllFinanceOrders($account, [], $maxPages);
-        $itemsCount = count($items);
+        // Получаем список магазинов
+        $shops = $client->fetchShops($account);
+        $shopIds = array_column($shops, 'id');
 
-        $this->line("  Fetched {$itemsCount} order items from API");
+        $this->line("  Found " . count($shopIds) . " shops");
 
-        $bar = $this->output->createProgressBar(count($items));
-        $bar->start();
+        // Конвертируем дату в timestamp (миллисекунды) для API
+        $dateFromMs = $dateFrom ? $dateFrom->getTimestampMs() : null;
 
-        foreach ($items as $item) {
-            try {
-                $data = $client->mapFinanceOrderData($item);
+        foreach ($shopIds as $shopId) {
+            $page = 0;
+            $pagesLoaded = 0;
+            $shopCreated = 0;
+            $shopUpdated = 0;
+            $itemsCount = 0;
 
-                if (!$data['uzum_id']) {
-                    $errors++;
-                    $bar->advance();
-                    continue;
+            do {
+                try {
+                    $response = $client->fetchFinanceOrders($account, [$shopId], $page, 100, false, $dateFromMs);
+                    $items = $response['orderItems'] ?? [];
+                    $totalElements = $response['totalElements'] ?? 0;
+
+                    if ($page === 0 && $totalElements > 0) {
+                        $shopName = collect($shops)->firstWhere('id', $shopId)['name'] ?? $shopId;
+                        $this->line("  Shop {$shopName}: {$totalElements} orders");
+                    }
+
+                    // Обрабатываем пачку сразу, не накапливая в памяти
+                    foreach ($items as $item) {
+                        try {
+                            $data = $client->mapFinanceOrderData($item);
+
+                            if (!$data['uzum_id']) {
+                                $errors++;
+                                continue;
+                            }
+
+                            $order = UzumFinanceOrder::updateOrCreate(
+                                [
+                                    'marketplace_account_id' => $account->id,
+                                    'uzum_id' => $data['uzum_id'],
+                                ],
+                                array_merge($data, [
+                                    'marketplace_account_id' => $account->id,
+                                ])
+                            );
+
+                            if ($order->wasRecentlyCreated) {
+                                $shopCreated++;
+                            } else {
+                                $shopUpdated++;
+                            }
+                            $totalProcessed++;
+                        } catch (\Throwable $e) {
+                            $errors++;
+                            Log::warning('UzumSyncFinanceOrders item failed', [
+                                'account_id' => $account->id,
+                                'shop_id' => $shopId,
+                                'item_id' => $item['id'] ?? null,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    $pagesLoaded++;
+                    $page++;
+
+                    // Показываем прогресс каждые 10 страниц
+                    if ($pagesLoaded % 10 === 0) {
+                        $this->line("    Page {$page}, processed: {$totalProcessed}");
+                    }
+
+                    // Задержка чтобы не превысить rate limit
+                    if (!empty($items)) {
+                        usleep(200000); // 200ms
+                    }
+
+                    // Проверка лимита страниц
+                    if ($maxPages > 0 && $pagesLoaded >= $maxPages) {
+                        break;
+                    }
+
+                    // Сохраняем количество для проверки продолжения
+                    $itemsCount = count($items);
+
+                    // Освобождаем память
+                    unset($items, $response);
+                    gc_collect_cycles();
+
+                } catch (\Throwable $e) {
+                    Log::warning('UzumSyncFinanceOrders page failed', [
+                        'account_id' => $account->id,
+                        'shop_id' => $shopId,
+                        'page' => $page,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $this->warn("    Error on page {$page}: " . $e->getMessage());
+                    break;
                 }
+            } while ($itemsCount === 100);
 
-                $order = UzumFinanceOrder::updateOrCreate(
-                    [
-                        'marketplace_account_id' => $account->id,
-                        'uzum_id' => $data['uzum_id'],
-                    ],
-                    array_merge($data, [
-                        'marketplace_account_id' => $account->id,
-                    ])
-                );
+            $created += $shopCreated;
+            $updated += $shopUpdated;
 
-                if ($order->wasRecentlyCreated) {
-                    $created++;
-                } else {
-                    $updated++;
-                }
-            } catch (\Throwable $e) {
-                $errors++;
-                Log::warning('UzumSyncFinanceOrders item failed', [
-                    'account_id' => $account->id,
-                    'item_id' => $item['id'] ?? null,
-                    'error' => $e->getMessage(),
-                ]);
+            if ($shopCreated > 0 || $shopUpdated > 0) {
+                $this->info("    Completed: +{$shopCreated} new, ~{$shopUpdated} updated");
             }
-
-            $bar->advance();
         }
 
-        $bar->finish();
-        $this->line('');
+        $this->line("  Total processed: {$totalProcessed}");
 
         return [
             'created' => $created,

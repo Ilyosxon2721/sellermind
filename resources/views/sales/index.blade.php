@@ -42,6 +42,70 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pwa-content-padding pwa-top-padding" x-pull-to-refresh="loadOrders">
+            {{-- Sync Progress Indicator --}}
+            <div x-show="syncStatus" x-transition class="bg-white rounded-2xl p-4 shadow-sm border border-blue-200">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center space-x-3">
+                        <div class="relative">
+                            <svg x-show="syncStatus?.status === 'running'" class="w-6 h-6 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <svg x-show="syncStatus?.status === 'completed'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <svg x-show="syncStatus?.status === 'failed'" class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <svg x-show="syncStatus?.status === 'rate_limited'" class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900">
+                                <span x-show="syncStatus?.status === 'running'">Синхронизация Uzum Market</span>
+                                <span x-show="syncStatus?.status === 'completed'">Синхронизация завершена</span>
+                                <span x-show="syncStatus?.status === 'failed'">Ошибка синхронизации</span>
+                                <span x-show="syncStatus?.status === 'rate_limited'">Ожидание (лимит запросов)</span>
+                            </div>
+                            <div class="text-sm text-gray-500" x-text="syncStatus?.message"></div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-blue-600" x-show="syncStatus?.percent > 0" x-text="syncStatus?.percent + '%'"></div>
+                        <div class="text-xs text-gray-400" x-show="syncStatus?.estimated_seconds_remaining" x-text="formatTimeRemaining(syncStatus?.estimated_seconds_remaining)"></div>
+                    </div>
+                </div>
+
+                {{-- Progress bar --}}
+                <div x-show="syncStatus?.status === 'running' && syncStatus?.percent > 0" class="mt-2">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                             :style="'width: ' + (syncStatus?.percent || 0) + '%'"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span x-text="(syncStatus?.processed || 0) + ' из ' + (syncStatus?.total || 0) + ' заказов'"></span>
+                        <span x-show="syncStatus?.current_shop" x-text="syncStatus?.current_shop"></span>
+                    </div>
+                </div>
+
+                {{-- Stats --}}
+                <div x-show="syncStatus?.status === 'running' || syncStatus?.status === 'completed'" class="flex space-x-4 mt-3 text-xs">
+                    <span class="text-green-600" x-show="syncStatus?.created > 0">
+                        <span class="font-medium" x-text="'+' + syncStatus?.created"></span> новых
+                    </span>
+                    <span class="text-blue-600" x-show="syncStatus?.updated > 0">
+                        <span class="font-medium" x-text="syncStatus?.updated"></span> обновлено
+                    </span>
+                    <span class="text-red-500" x-show="syncStatus?.errors > 0">
+                        <span class="font-medium" x-text="syncStatus?.errors"></span> ошибок
+                    </span>
+                    <span class="text-gray-500" x-show="syncStatus?.items_per_second">
+                        <span class="font-medium" x-text="syncStatus?.items_per_second"></span> зап/сек
+                    </span>
+                </div>
+            </div>
+
             {{-- Main Stats Cards --}}
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {{-- Продажи (Доход) --}}
@@ -114,22 +178,26 @@
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">По маркетплейсам</h2>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <template x-for="mp in stats.byMarketplace" :key="mp.name">
-                        <div class="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors cursor-pointer"
+                        <div class="border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-colors cursor-pointer h-40 overflow-y-auto"
                              @click="filters.marketplace = mp.name; loadOrders();"
                              :class="filters.marketplace === mp.name ? 'border-indigo-500 bg-indigo-50' : ''">
                             <div class="flex items-center space-x-2 mb-2">
-                                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                                       :class="getMarketplaceClass(mp.name)"
                                       x-text="getMarketplaceShort(mp.name)"></span>
                                 <span class="text-sm font-medium text-gray-900" x-text="mp.label"></span>
                             </div>
                             <div class="text-lg font-bold text-gray-900" x-text="mp.count + ' шт'"></div>
+                            {{-- Выручка (синий) = заказы - отмены --}}
+                            <div class="text-sm text-blue-600 font-medium" x-text="'Выручка: ' + (mp.count - (mp.cancelledCount || 0)) + ' шт / ' + formatMoney((mp.salesAmount || 0) + (mp.transitAmount || 0) + (mp.awaitingPickupAmount || 0))"></div>
                             {{-- Продажи (зелёный) --}}
-                            <div class="text-sm text-green-600 font-medium" x-text="'Продажи: ' + formatMoney(mp.salesAmount || mp.amount)"></div>
+                            <div class="text-xs text-green-600" x-text="'Продажи: ' + (mp.salesCount || 0) + ' (' + formatMoney(mp.salesAmount || 0) + ')'"></div>
                             {{-- В транзите (жёлтый) --}}
                             <div class="text-xs text-yellow-600" x-show="mp.transitCount > 0" x-text="'В пути: ' + mp.transitCount + ' (' + formatMoney(mp.transitAmount) + ')'"></div>
+                            {{-- В ПВЗ (оранжевый) --}}
+                            <div class="text-xs text-orange-500" x-show="mp.awaitingPickupCount > 0" x-text="'В ПВЗ: ' + mp.awaitingPickupCount + ' (' + formatMoney(mp.awaitingPickupAmount) + ')'"></div>
                             {{-- Отменённые (красный) --}}
-                            <div class="text-xs text-red-500" x-show="mp.cancelledCount > 0" x-text="'Отмен: ' + mp.cancelledCount"></div>
+                            <div class="text-xs text-red-500" x-show="mp.cancelledCount > 0" x-text="'Отмен: ' + mp.cancelledCount + ' (' + formatMoney(mp.cancelledAmount || 0) + ')'"></div>
                         </div>
                     </template>
                 </div>
@@ -565,6 +633,8 @@ function salesPage() {
         showFilterSheet: false,
         showPeriodSheet: false,
         showCustomDateSheet: false,
+        syncStatus: null,
+        syncPollingInterval: null,
         filters: {
             period: 'month',
             marketplace: '',
@@ -595,6 +665,70 @@ function salesPage() {
 
         init() {
             this.loadOrders();
+            this.checkSyncStatus();
+        },
+
+        async checkSyncStatus() {
+            try {
+                const response = await window.api.get('/sales/sync-status');
+                const data = response.data;
+
+                if (data.has_active_sync && data.syncs.length > 0) {
+                    // Берём первый активный процесс синхронизации
+                    const activeSync = data.syncs.find(s => s.status === 'running' || s.status === 'rate_limited') || data.syncs[0];
+                    this.syncStatus = activeSync;
+
+                    // Продолжаем опрашивать каждые 2 секунды
+                    if (!this.syncPollingInterval) {
+                        this.syncPollingInterval = setInterval(() => this.checkSyncStatus(), 2000);
+                    }
+                } else if (data.syncs.length > 0 && data.syncs[0].status === 'completed') {
+                    // Показываем завершённую синхронизацию на 5 секунд
+                    this.syncStatus = data.syncs[0];
+                    setTimeout(() => {
+                        this.syncStatus = null;
+                        this.loadOrders(); // Обновляем данные после завершения
+                    }, 5000);
+
+                    // Останавливаем опрос
+                    if (this.syncPollingInterval) {
+                        clearInterval(this.syncPollingInterval);
+                        this.syncPollingInterval = null;
+                    }
+                } else {
+                    this.syncStatus = null;
+                    // Останавливаем опрос если нет активной синхронизации
+                    if (this.syncPollingInterval) {
+                        clearInterval(this.syncPollingInterval);
+                        this.syncPollingInterval = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to check sync status:', error);
+            }
+        },
+
+        async triggerSync(fullSync = false) {
+            try {
+                const response = await window.api.post('/sales/trigger-sync', { full_sync: fullSync });
+                if (response.data.success) {
+                    // Начинаем опрос статуса
+                    setTimeout(() => this.checkSyncStatus(), 1000);
+                }
+            } catch (error) {
+                console.error('Failed to trigger sync:', error);
+            }
+        },
+
+        formatTimeRemaining(seconds) {
+            if (!seconds || seconds <= 0) return '';
+            if (seconds < 60) return `~${seconds} сек`;
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            if (minutes < 60) return `~${minutes} мин ${secs > 0 ? secs + ' сек' : ''}`;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `~${hours} ч ${mins > 0 ? mins + ' мин' : ''}`;
         },
 
         async loadOrders(page = 1) {

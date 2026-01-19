@@ -65,6 +65,8 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 Route::middleware(['web', 'auth.any'])->group(function () {
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
+    Route::get('sales/sync-status', [\App\Http\Controllers\Api\SalesController::class, 'syncStatus']);
+    Route::post('sales/trigger-sync', [\App\Http\Controllers\Api\SalesController::class, 'triggerSync']);
     Route::get('sales/{id}', [\App\Http\Controllers\Api\SalesController::class, 'show']);
     Route::post('sales/manual', [\App\Http\Controllers\Api\SalesController::class, 'storeManual']);
 

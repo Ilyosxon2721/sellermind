@@ -391,7 +391,7 @@ class DashboardController extends Controller
             ->map(fn($o) => [
                 'id' => 'uzum_' . $o->id,
                 'order_number' => (string) $o->order_id,
-                'amount' => ($o->sell_price * $o->amount) / 100,
+                'amount' => $o->sell_price * $o->amount,
                 'original_currency' => 'UZS',
                 'status' => $this->normalizeUzumFinanceStatus($o->status),
                 'status_label' => $this->getStatusLabel($this->normalizeUzumFinanceStatus($o->status)),

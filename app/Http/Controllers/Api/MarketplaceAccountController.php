@@ -261,6 +261,10 @@ class MarketplaceAccountController extends Controller
                     if (count($shops) > 3) {
                         $shopsInfo .= '...';
                     }
+
+                    // Запускаем полную синхронизацию финансовых заказов в фоне
+                    \App\Jobs\SyncUzumFinanceOrdersJob::dispatch($account, true)->delay(now()->addSeconds(5));
+                    $shopsInfo .= ' Синхронизация финансовых данных запущена.';
                 }
             } catch (\Exception $e) {
                 \Log::warning('Failed to auto-fetch Uzum shops', [

@@ -1116,7 +1116,9 @@ class UzumClient implements MarketplaceClientInterface
         array $shopIds = [],
         int $page = 0,
         int $size = 100,
-        bool $group = false
+        bool $group = false,
+        ?int $dateFromMs = null,
+        ?int $dateToMs = null
     ): array {
         $shopIds = $this->resolveShopIds($account, $shopIds);
 
@@ -1130,12 +1132,21 @@ class UzumClient implements MarketplaceClientInterface
 
         foreach ($shopIds as $shopId) {
             try {
+                // shopIds должен быть массивом согласно API документации
                 $query = [
                     'page' => $page,
                     'size' => min($size, 100),
                     'group' => $group ? 'true' : 'false',
-                    'shopIds' => $shopId,
+                    'shopIds' => [$shopId],
                 ];
+
+                // Добавляем фильтр по дате если указан
+                if ($dateFromMs !== null) {
+                    $query['dateFrom'] = $dateFromMs;
+                }
+                if ($dateToMs !== null) {
+                    $query['dateTo'] = $dateToMs;
+                }
 
                 $response = $this->request($account, 'GET', '/v1/finance/orders', $query);
 

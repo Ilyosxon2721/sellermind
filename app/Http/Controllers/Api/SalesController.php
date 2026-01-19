@@ -517,32 +517,59 @@ class SalesController extends Controller
     /**
      * Get Uzum Finance orders (all types: FBO/FBS/DBS/EDBS)
      *
-     * Статусы:
-     * - COMPLETED → delivered (это продажа, полноценный доход)
-     * - PROCESSING → transit (в транзите, ещё не доход)
-     * - CANCELED → cancelled (отменён)
+     * Логика определения статуса:
+     * - date_issued NOT NULL и статус НЕ CANCELED → delivered (продажа, полноценный доход)
+     * - date_issued NOT NULL и статус CANCELED → returned (возврат)
+     * - date_issued NULL → transit (в транзите, ещё не доход)
+     *
+     * Логика фильтрации по дате:
+     * - Для проданных/возвращённых (date_issued NOT NULL): по date_issued
+     * - Для остальных (в транзите): по order_date
      */
     private function getUzumFinanceOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
         $query = UzumFinanceOrder::query()
             ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->whereDate('order_date', '>=', $dateFrom)
-            ->whereDate('order_date', '<=', $dateTo);
+            ->where(function($q) use ($dateFrom, $dateTo) {
+                // Завершённые (date_issued не null) - фильтруем по date_issued
+                $q->where(function($sub) use ($dateFrom, $dateTo) {
+                    $sub->whereNotNull('date_issued')
+                        ->whereDate('date_issued', '>=', $dateFrom)
+                        ->whereDate('date_issued', '<=', $dateTo);
+                })
+                // В транзите (date_issued null) - по дате заказа
+                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                    $sub->whereNull('date_issued')
+                        ->whereDate('order_date', '>=', $dateFrom)
+                        ->whereDate('order_date', '<=', $dateTo);
+                });
+            });
 
         if ($status) {
-            // Map status filter to Uzum Finance API statuses
+            // Map status filter
             $query->where(function($q) use ($status) {
                 switch ($status) {
                     case 'delivered':
                     case 'completed':
-                        $q->where('status', 'COMPLETED');
+                        // Продажа: date_issued есть И статус НЕ CANCELED
+                        $q->whereNotNull('date_issued')
+                          ->whereNotIn('status', ['CANCELED', 'cancelled']);
                         break;
                     case 'transit':
                     case 'processing':
-                        $q->where('status', 'PROCESSING');
+                        // В транзите: date_issued нет И статус НЕ CANCELED
+                        $q->whereNull('date_issued')
+                          ->whereNotIn('status', ['CANCELED', 'cancelled']);
+                        break;
+                    case 'returned':
+                        // Возврат (после выкупа): date_issued есть И статус CANCELED
+                        $q->whereNotNull('date_issued')
+                          ->whereIn('status', ['CANCELED', 'cancelled']);
                         break;
                     case 'cancelled':
-                        $q->whereIn('status', ['CANCELED', 'cancelled']);
+                        // Отмена (до выкупа): date_issued нет И статус CANCELED
+                        $q->whereNull('date_issued')
+                          ->whereIn('status', ['CANCELED', 'cancelled']);
                         break;
                     default:
                         $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
@@ -558,27 +585,44 @@ class SalesController extends Controller
         }
 
         return $query->with('account')->get()->map(function($order) {
-            // Цены в UzumFinanceOrder хранятся в тийинах, конвертируем в сумы
-            $totalAmount = ($order->sell_price * $order->amount) / 100;
-            $sellerProfit = $order->seller_profit / 100;
-            // TO_WITHDRAW = деньги выведены (завершённая продажа)
-            // COMPLETED = также завершённая продажа
-            $isCompleted = in_array($order->status, ['COMPLETED', 'TO_WITHDRAW']);
-            $isCancelled = in_array($order->status, ['CANCELED', 'cancelled']);
+            // Цены в UzumFinanceOrder хранятся в сумах (API Uzum возвращает суммы в сумах)
+            $totalAmount = $order->sell_price * $order->amount;
+            $sellerProfit = $order->seller_profit;
+
+            // Логика определения статуса:
+            // - date_issued NOT NULL и статус НЕ CANCELED → продажа (delivered)
+            // - date_issued NOT NULL и статус CANCELED → возврат (returned) — был выкуплен, потом вернули
+            // - date_issued NULL и статус CANCELED → отмена (cancelled) — отменили до выкупа
+            // - date_issued NULL и статус НЕ CANCELED → в транзите (transit)
+            $hasDateIssued = $order->date_issued !== null;
+            $isCanceledStatus = in_array($order->status, ['CANCELED', 'cancelled']);
+
+            $isCompleted = $hasDateIssued && !$isCanceledStatus;  // Продажа
+            $isReturned = $hasDateIssued && $isCanceledStatus;    // Возврат (после выкупа)
+            $isCancelled = !$hasDateIssued && $isCanceledStatus;  // Отмена (до выкупа)
+            $isTransit = !$hasDateIssued && !$isCanceledStatus;   // В транзите
+
+            // Для возвратов сумма = sell_price * amount_returns
+            $displayAmount = $isReturned
+                ? $order->sell_price * $order->amount_returns
+                : $totalAmount;
 
             return [
                 'id' => 'uzum_finance_' . $order->id,
                 'order_number' => (string) $order->order_id,
                 'created_at' => $order->order_date?->toIso8601String(),
+                'completion_date' => $order->date_issued?->toIso8601String(), // Дата выкупа/продажи/возврата
                 'marketplace' => 'uzum',
                 'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Uzum',
                 'customer_name' => $order->sku_title, // В finance API нет customer_name, показываем название товара
-                'total_amount' => $totalAmount,
+                'total_amount' => $displayAmount,
                 'seller_profit' => $sellerProfit,
                 'currency' => 'UZS',
-                'status' => $this->normalizeUzumFinanceStatus($order->status),
-                'status_category' => $isCompleted ? 'completed' : ($isCancelled ? 'cancelled' : 'transit'),
-                'is_revenue' => $isCompleted, // Только COMPLETED считается как доход
+                'status' => $isCompleted ? 'delivered' : ($isReturned ? 'returned' : ($isCancelled ? 'cancelled' : 'transit')),
+                'status_category' => $isCompleted ? 'completed' : (($isReturned || $isCancelled) ? 'cancelled' : 'transit'),
+                'is_revenue' => $isCompleted, // Только продажи считаются как доход
+                'is_return' => $isReturned,   // Флаг возврата (после выкупа)
+                'is_cancelled' => $isCancelled, // Флаг отмены (до выкупа)
                 'raw_status' => $order->status,
                 'quantity' => $order->amount,
                 'returns' => $order->amount_returns,
@@ -609,6 +653,10 @@ class SalesController extends Controller
     
     /**
      * Get WB orders
+     *
+     * Логика фильтрации по дате:
+     * - Для проданных (is_realization=true): по last_change_date (дата продажи)
+     * - Для остальных: по order_date (дата заказа)
      */
     private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
@@ -620,8 +668,26 @@ class SalesController extends Controller
             // Use WildberriesOrder model (wildberries_orders table) which has real data
             $query = WildberriesOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate('order_date', '>=', $dateFrom)
-                ->whereDate('order_date', '<=', $dateTo);
+                ->where(function($q) use ($dateFrom, $dateTo) {
+                    // Проданные товары - фильтруем по дате продажи (last_change_date)
+                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('is_realization', true)
+                            ->where('is_cancel', false)
+                            ->where('is_return', false)
+                            ->whereDate('last_change_date', '>=', $dateFrom)
+                            ->whereDate('last_change_date', '<=', $dateTo);
+                    })
+                    // Остальные (в транзите, отменённые) - по дате заказа
+                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where(function($inner) {
+                            $inner->where('is_realization', false)
+                                ->orWhere('is_cancel', true)
+                                ->orWhere('is_return', true);
+                        })
+                        ->whereDate('order_date', '>=', $dateFrom)
+                        ->whereDate('order_date', '<=', $dateTo);
+                    });
+                });
 
             if ($status) {
                 // Map status filter to WildberriesOrder fields
@@ -666,6 +732,7 @@ class SalesController extends Controller
                     'id' => 'wb_' . $order->id,
                     'order_number' => (string) ($order->srid ?? $order->order_id ?? $order->id),
                     'created_at' => $order->order_date?->toIso8601String(),
+                    'completion_date' => $isCompleted ? $order->last_change_date?->toIso8601String() : null, // Дата продажи
                     'marketplace' => 'wb',
                     'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Wildberries',
                     'customer_name' => $order->region_name,
@@ -734,6 +801,10 @@ class SalesController extends Controller
      * - isInTransit() = true → transit (в транзите, ещё не доход)
      * - isAwaitingPickup() = true → awaiting_pickup (в ПВЗ)
      * - isCancelled() = true → cancelled
+     *
+     * Логика фильтрации по дате:
+     * - Для проданных: по stock_sold_at (дата продажи)
+     * - Для остальных: по created_at_ozon (дата заказа)
      */
     private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
@@ -742,13 +813,26 @@ class SalesController extends Controller
         }
 
         try {
-            // Выбираем поле даты в зависимости от режима
-            $dateField = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ozon';
-
             $query = OzonOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate($dateField, '>=', $dateFrom)
-                ->whereDate($dateField, '<=', $dateTo);
+                ->where(function($q) use ($dateFrom, $dateTo) {
+                    // Проданные товары - фильтруем по дате продажи (stock_sold_at)
+                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->whereIn('stock_status', ['sold'])
+                            ->whereNotNull('stock_sold_at')
+                            ->whereDate('stock_sold_at', '>=', $dateFrom)
+                            ->whereDate('stock_sold_at', '<=', $dateTo);
+                    })
+                    // Остальные - по дате заказа
+                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where(function($inner) {
+                            $inner->whereNull('stock_status')
+                                ->orWhereNotIn('stock_status', ['sold']);
+                        })
+                        ->whereDate('created_at_ozon', '>=', $dateFrom)
+                        ->whereDate('created_at_ozon', '<=', $dateTo);
+                    });
+                });
 
             // Apply status filter using scopes
             if ($status) {
@@ -832,6 +916,10 @@ class SalesController extends Controller
      * - isInTransit() = true → transit (в транзите, ещё не доход)
      * - isAwaitingPickup() = true → awaiting_pickup (в ПВЗ)
      * - isCancelled() = true → cancelled
+     *
+     * Логика фильтрации по дате:
+     * - Для проданных: по stock_sold_at (дата продажи)
+     * - Для остальных: по created_at_ym (дата заказа)
      */
     private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
@@ -840,13 +928,26 @@ class SalesController extends Controller
         }
 
         try {
-            // Выбираем поле даты в зависимости от режима
-            $dateField = $dateMode === 'completion_date' ? 'stock_sold_at' : 'created_at_ym';
-
             $query = YandexMarketOrder::query()
                 ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->whereDate($dateField, '>=', $dateFrom)
-                ->whereDate($dateField, '<=', $dateTo);
+                ->where(function($q) use ($dateFrom, $dateTo) {
+                    // Проданные товары - фильтруем по дате продажи (stock_sold_at)
+                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->whereIn('stock_status', ['sold'])
+                            ->whereNotNull('stock_sold_at')
+                            ->whereDate('stock_sold_at', '>=', $dateFrom)
+                            ->whereDate('stock_sold_at', '<=', $dateTo);
+                    })
+                    // Остальные - по дате заказа
+                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
+                        $sub->where(function($inner) {
+                            $inner->whereNull('stock_status')
+                                ->orWhereNotIn('stock_status', ['sold']);
+                        })
+                        ->whereDate('created_at_ym', '>=', $dateFrom)
+                        ->whereDate('created_at_ym', '<=', $dateTo);
+                    });
+                });
 
             // Apply status filter using scopes
             if ($status) {
@@ -995,11 +1096,17 @@ class SalesController extends Controller
         );
         $transitOrders = $orders->filter(fn($o) =>
             ($o['is_revenue'] ?? false) === false &&
+            ($o['is_return'] ?? false) === false &&
+            ($o['is_cancelled'] ?? false) === false &&
             ($o['is_awaiting_pickup'] ?? false) === false &&
             ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
-            !in_array($o['status'], ['cancelled', 'canceled'])
+            !in_array($o['status'], ['cancelled', 'canceled', 'returned'])
         );
-        $cancelledOrders = $orders->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
+        $cancelledOrders = $orders->filter(fn($o) =>
+            in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
+            ($o['is_return'] ?? false) === true ||
+            ($o['is_cancelled'] ?? false) === true
+        );
 
         // Продажи (ДОХОД) - только завершённые
         $salesCount = $completedOrders->count();
@@ -1047,11 +1154,17 @@ class SalesController extends Controller
             );
             $transit = $group->filter(fn($o) =>
                 ($o['is_revenue'] ?? false) === false &&
+                ($o['is_return'] ?? false) === false &&
+                ($o['is_cancelled'] ?? false) === false &&
                 ($o['is_awaiting_pickup'] ?? false) === false &&
                 ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
-                !in_array($o['status'], ['cancelled', 'canceled'])
+                !in_array($o['status'], ['cancelled', 'canceled', 'returned'])
             );
-            $cancelled = $group->filter(fn($o) => in_array($o['status'], ['cancelled', 'canceled']));
+            $cancelled = $group->filter(fn($o) =>
+                in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
+                ($o['is_return'] ?? false) === true ||
+                ($o['is_cancelled'] ?? false) === true
+            );
 
             return [
                 'name' => $mp,
@@ -1175,5 +1288,99 @@ class SalesController extends Controller
         }
         
         return 'processing'; // Default to processing instead of new
+    }
+
+    /**
+     * Получить статус синхронизации финансовых заказов Uzum
+     */
+    public function syncStatus(Request $request): JsonResponse
+    {
+        $companyId = $this->getCompanyId($request);
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Получаем все аккаунты Uzum для компании
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'uzum')
+            ->where('is_active', true)
+            ->get();
+
+        $syncStatuses = [];
+        $hasActiveSync = false;
+
+        foreach ($accounts as $account) {
+            $status = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
+
+            if ($status) {
+                $syncStatuses[] = array_merge($status, [
+                    'account_name' => $account->name ?? $account->getDisplayName(),
+                ]);
+
+                if (in_array($status['status'] ?? '', ['running', 'rate_limited'])) {
+                    $hasActiveSync = true;
+                }
+            }
+        }
+
+        return response()->json([
+            'has_active_sync' => $hasActiveSync,
+            'syncs' => $syncStatuses,
+        ]);
+    }
+
+    /**
+     * Запустить синхронизацию финансовых заказов Uzum вручную
+     */
+    public function triggerSync(Request $request): JsonResponse
+    {
+        $companyId = $this->getCompanyId($request);
+
+        if (!$companyId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $fullSync = $request->boolean('full_sync', false);
+        $days = (int) $request->get('days', 90);
+        $accountId = $request->get('account_id');
+
+        // Получаем аккаунты Uzum для компании
+        $query = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'uzum')
+            ->where('is_active', true);
+
+        if ($accountId) {
+            $query->where('id', $accountId);
+        }
+
+        $accounts = $query->get();
+
+        if ($accounts->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Нет активных аккаунтов Uzum',
+            ], 404);
+        }
+
+        $dispatched = 0;
+        foreach ($accounts as $account) {
+            // Проверяем, нет ли уже активной синхронизации
+            $status = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
+            if ($status && in_array($status['status'] ?? '', ['running', 'rate_limited'])) {
+                continue; // Пропускаем, уже синхронизируется
+            }
+
+            \App\Jobs\SyncUzumFinanceOrdersJob::dispatch($account, $fullSync, $days);
+            $dispatched++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $dispatched > 0
+                ? "Синхронизация запущена для {$dispatched} аккаунтов"
+                : 'Синхронизация уже выполняется',
+            'dispatched' => $dispatched,
+        ]);
     }
 }

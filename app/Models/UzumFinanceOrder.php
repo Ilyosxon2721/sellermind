@@ -64,45 +64,46 @@ class UzumFinanceOrder extends Model
     }
 
     // ========== Accessors for UZS amounts ==========
+    // Note: Uzum API returns amounts in UZS (not tiyin), so no division needed
 
     /**
-     * Get sell price in UZS (from tiyin)
+     * Get sell price in UZS
      */
     public function getSellPriceUzsAttribute(): float
     {
-        return $this->sell_price / 100;
+        return (float) $this->sell_price;
     }
 
     /**
-     * Get purchase price in UZS (from tiyin)
+     * Get purchase price in UZS
      */
     public function getPurchasePriceUzsAttribute(): ?float
     {
-        return $this->purchase_price !== null ? $this->purchase_price / 100 : null;
+        return $this->purchase_price !== null ? (float) $this->purchase_price : null;
     }
 
     /**
-     * Get commission in UZS (from tiyin)
+     * Get commission in UZS
      */
     public function getCommissionUzsAttribute(): float
     {
-        return $this->commission / 100;
+        return (float) $this->commission;
     }
 
     /**
-     * Get seller profit in UZS (from tiyin)
+     * Get seller profit in UZS
      */
     public function getSellerProfitUzsAttribute(): float
     {
-        return $this->seller_profit / 100;
+        return (float) $this->seller_profit;
     }
 
     /**
-     * Get delivery fee in UZS (from tiyin)
+     * Get delivery fee in UZS
      */
     public function getDeliveryFeeUzsAttribute(): float
     {
-        return $this->logistic_delivery_fee / 100;
+        return (float) $this->logistic_delivery_fee;
     }
 
     /**
@@ -110,7 +111,7 @@ class UzumFinanceOrder extends Model
      */
     public function getTotalRevenueAttribute(): float
     {
-        return ($this->sell_price * $this->amount) / 100;
+        return (float) ($this->sell_price * $this->amount);
     }
 
     /**
@@ -118,7 +119,7 @@ class UzumFinanceOrder extends Model
      */
     public function getTotalProfitAttribute(): float
     {
-        return $this->seller_profit / 100;
+        return (float) $this->seller_profit;
     }
 
     // ========== Helpers ==========
