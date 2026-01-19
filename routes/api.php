@@ -660,6 +660,60 @@ Route::middleware('auth.any')->group(function () {
         });
     });
 
+    // Finance Module
+    Route::prefix('finance')->group(function () {
+        // Overview and reports
+        Route::get('overview', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'overview']);
+        Route::get('categories', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'categories']);
+        Route::get('categories/all', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'allCategories']);
+        Route::get('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'settings']);
+        Route::put('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateSettings']);
+        Route::get('reports', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'reports']);
+
+        // Transactions
+        Route::get('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'index']);
+        Route::post('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'store']);
+        Route::get('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'show']);
+        Route::put('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'update']);
+        Route::delete('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'destroy']);
+        Route::post('transactions/{id}/confirm', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'confirm']);
+        Route::post('transactions/{id}/cancel', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'cancel']);
+
+        // Debts
+        Route::get('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'index']);
+        Route::post('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'store']);
+        Route::get('debts/summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'summary']);
+        Route::get('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'show']);
+        Route::put('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'update']);
+        Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);
+        Route::post('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'addPayment']);
+        Route::post('debts/{id}/write-off', [\App\Http\Controllers\Api\Finance\DebtController::class, 'writeOff']);
+
+        // Employees
+        Route::get('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'index']);
+        Route::post('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'store']);
+        Route::get('employees/summary', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'summary']);
+        Route::get('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'show']);
+        Route::put('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'update']);
+        Route::delete('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'destroy']);
+
+        // Salary
+        Route::get('salary/calculations', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'calculations']);
+        Route::post('salary/calculate', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'calculate']);
+        Route::get('salary/calculations/{id}', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'showCalculation']);
+        Route::put('salary/calculations/{id}/items/{itemId}', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'updateItem']);
+        Route::post('salary/calculations/{id}/approve', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'approveCalculation']);
+        Route::post('salary/calculations/{id}/pay', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'payCalculation']);
+        Route::post('salary/calculations/{id}/items/{itemId}/pay', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'payItem']);
+
+        // Taxes
+        Route::get('taxes', [\App\Http\Controllers\Api\Finance\TaxController::class, 'index']);
+        Route::post('taxes/calculate', [\App\Http\Controllers\Api\Finance\TaxController::class, 'calculate']);
+        Route::get('taxes/summary', [\App\Http\Controllers\Api\Finance\TaxController::class, 'summary']);
+        Route::get('taxes/{id}', [\App\Http\Controllers\Api\Finance\TaxController::class, 'show']);
+        Route::post('taxes/{id}/pay', [\App\Http\Controllers\Api\Finance\TaxController::class, 'pay']);
+    });
+
     // Admin Routes
     Route::prefix('admin')->group(function () {
         Route::get('dialogs/hidden', [DialogAdminController::class, 'hiddenDialogs']);

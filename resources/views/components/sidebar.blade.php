@@ -145,12 +145,20 @@
             <span class="font-medium">Планирование</span>
         </a>
 
+        <a href="/finance"
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('finance*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2zm0 0V3m0 5c-2.761 0-5 1.79-5 4v1h10v-1c0-2.21-2.239-4-5-4zm-5 6h10v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2z"/>
+            </svg>
+            <span class="font-medium">Финансы</span>
+        </a>
+
         <a href="/ap"
            class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('ap*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3-1.343-3-3s1.343-3 3-3 3 1.343 3 3-1.343 3-3 3zm0 0v5m0 0a4 4 0 100 8 4 4 0 000-8z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            <span class="font-medium">Финансы (AP)</span>
+            <span class="font-medium">Счета (AP)</span>
         </a>
 
         <a href="/pricing"

@@ -204,6 +204,10 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('ap.index');
 
+    Route::get('/finance', function () {
+        return view('finance.index');
+    })->name('finance.index');
+
     Route::get('/pricing', function () {
         return view('pricing.index');
     })->name('pricing.index');
