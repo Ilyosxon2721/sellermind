@@ -66,7 +66,7 @@ class FinanceController extends Controller
         $overduePayable = FinanceDebt::byCompany($companyId)->payable()->overdue()->sum('amount_outstanding');
 
         // ========== ОСТАТКИ НА СКЛАДАХ ==========
-        $stockData = $this->getStockSummary($companyId);
+        $stockData = $this->getStockSummary($companyId, $financeSettings);
 
         // ========== ТОВАРЫ В ТРАНЗИТАХ ==========
         $transitData = $this->getTransitSummary($companyId, $financeSettings);
@@ -240,31 +240,39 @@ class FinanceController extends Controller
 
     /**
      * Получить сводку по остаткам на складах
+     * cost_delta хранит закупочную цену за единицу в USD
+     * Себестоимость рассчитывается: qty × cost_delta × usd_rate
      */
-    protected function getStockSummary(int $companyId): array
+    protected function getStockSummary(int $companyId, FinanceSettings $settings): array
     {
+        $usdRate = $settings->usd_rate ?? 12700;
+
         // Суммируем все движения по складам для получения текущих остатков
+        // cost_delta - это закупочная цена за единицу в USD
+        // Себестоимость = SUM(qty_delta * cost_delta) * usd_rate
         try {
             $stockSummary = StockLedger::byCompany($companyId)
-                ->selectRaw('SUM(qty_delta) as total_qty, SUM(cost_delta) as total_cost')
+                ->selectRaw('SUM(qty_delta) as total_qty, SUM(qty_delta * cost_delta) as total_cost_usd')
                 ->first();
+
+            $totalCostUzs = ((float) ($stockSummary?->total_cost_usd ?? 0)) * $usdRate;
 
             // Группировка по складам (явно указываем таблицу для company_id)
             $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.cost_delta) as cost')
+                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.qty_delta * stock_ledger.cost_delta) as cost_usd')
                 ->groupBy('warehouses.id', 'warehouses.name')
                 ->having('qty', '>', 0)
                 ->get();
 
             return [
                 'total_qty' => (float) ($stockSummary?->total_qty ?? 0),
-                'total_cost' => (float) ($stockSummary?->total_cost ?? 0),
+                'total_cost' => $totalCostUzs,
                 'by_warehouse' => $byWarehouse->map(fn($w) => [
                     'id' => $w->id,
                     'name' => $w->name,
                     'qty' => (float) $w->qty,
-                    'cost' => (float) $w->cost,
+                    'cost' => ((float) $w->cost_usd) * $usdRate,
                 ])->toArray(),
             ];
         } catch (\Exception $e) {
