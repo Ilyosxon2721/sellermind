@@ -109,6 +109,9 @@
     </style>
 </head>
 <body class="antialiased bg-white text-gray-900" x-data="{ mobileMenuOpen: false, faqOpen: null }">
+    
+    <!-- Language Switcher -->
+    <x-language-switcher />
 
     <!-- Header - White -->
     <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -173,17 +176,17 @@
                     Uzum • Wildberries • Ozon • Yandex Market
                 </div>
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                    Управляйте продажами на <span class="text-blue-600">всех маркетплейсах</span> из одного окна
+                    {{ __('landing.hero_title') }} <span class="text-blue-600">{{ __('landing.hero_title_highlight') }}</span> {{ __('landing.hero_title_end') }}
                 </h1>
                 <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-                    Синхронизация остатков, умное ценообразование, складской учёт и AI-помощник для масштабирования вашего бизнеса
+                    {{ __('landing.hero_subtitle') }}
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                     <a href="/register" class="px-8 py-4 bg-blue-600 font-semibold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30" style="color: white !important;">
-                        Начать бесплатно →
+                        {{ __('landing.hero_cta_primary') }}
                     </a>
                     <a href="#demo" class="px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition text-lg border border-gray-200">
-                        Смотреть демо
+                        {{ __('landing.hero_cta_secondary') }}
                     </a>
                 </div>
             </div>
@@ -196,27 +199,27 @@
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
-                    <div class="text-gray-600">Компаний</div>
+                    <div class="text-gray-600">{{ __('landing.stat_companies') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">50K+</div>
-                    <div class="text-gray-600">Товаров</div>
+                    <div class="text-gray-600">{{ __('landing.stat_products') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
-                    <div class="text-gray-600">Обработано платежей</div>
+                    <div class="text-gray-600">{{ __('landing.stat_processed') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
-                    <div class="text-gray-600">Uptime</div>
+                    <div class="text-gray-600">{{ __('landing.stat_uptime') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-green-600 mb-2">70%</div>
-                    <div class="text-gray-600">Экономия времени</div>
+                    <div class="text-gray-600">{{ __('landing.stat_time_saved') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-orange-600 mb-2">-25%</div>
-                    <div class="text-gray-600">Неликвида</div>
+                    <div class="text-gray-600">{{ __('landing.stat_dead_stock') }}</div>
                 </div>
             </div>
         </div>

@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add security headers globally
         $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
+        
+        // Add locale middleware globally
+        $middleware->append(\App\Http\Middleware\SetLocale::class);
 
         // Configure API rate limiting
         $middleware->throttleApi('api');
@@ -36,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.any' => \App\Http\Middleware\AuthenticateAnyGuard::class,
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
+            'setlocale' => \App\Http\Middleware\SetLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

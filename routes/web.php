@@ -11,6 +11,31 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\VpcSessionController;
 use App\Http\Controllers\VpcControlApiController;
 
+// Localized Landing Pages
+Route::get('/uz', function (Illuminate\Http\Request $request) {
+    App::setLocale('uz');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.uz');
+
+Route::get('/ru', function (Illuminate\Http\Request $request) {
+    App::setLocale('ru');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.ru');
+
+Route::get('/en', function (Illuminate\Http\Request $request) {
+    App::setLocale('en');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.en');
+
 // Public pages - Smart routing based on PWA mode
 Route::get('/', function (Illuminate\Http\Request $request) {
     // Check if PWA is installed (standalone mode)
@@ -27,12 +52,10 @@ Route::get('/', function (Illuminate\Http\Request $request) {
         }
     }
 
-    // Browser Mode: Show landing page for marketing
-    $plans = \App\Models\Plan::where('is_active', true)
-        ->orderBy('sort_order')
-        ->get();
-    return view('welcome', compact('plans'));
+    // Browser Mode: Redirect to Uzbek landing by default
+    return redirect('/uz');
 })->name('home');
+
 
 Route::get('/login', function () {
     return view('pages.login');

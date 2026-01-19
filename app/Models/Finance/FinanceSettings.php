@@ -18,6 +18,10 @@ class FinanceSettings extends Model
     protected $fillable = [
         'company_id',
         'base_currency_code',
+        'usd_rate',
+        'rub_rate',
+        'eur_rate',
+        'rates_updated_at',
         'tax_system',
         'vat_rate',
         'income_tax_rate',
@@ -26,11 +30,48 @@ class FinanceSettings extends Model
     ];
 
     protected $casts = [
+        'usd_rate' => 'float',
+        'rub_rate' => 'float',
+        'eur_rate' => 'float',
+        'rates_updated_at' => 'datetime',
         'vat_rate' => 'float',
         'income_tax_rate' => 'float',
         'social_tax_rate' => 'float',
         'auto_import_marketplace_fees' => 'boolean',
     ];
+
+    /**
+     * Конвертировать сумму из указанной валюты в базовую (UZS)
+     */
+    public function convertToBase(float $amount, string $currency): float
+    {
+        $currency = strtoupper($currency);
+
+        if ($currency === 'UZS' || $currency === $this->base_currency_code) {
+            return $amount;
+        }
+
+        return match ($currency) {
+            'USD' => $amount * $this->usd_rate,
+            'RUB' => $amount * $this->rub_rate,
+            'EUR' => $amount * $this->eur_rate,
+            default => $amount,
+        };
+    }
+
+    /**
+     * Получить курс для валюты
+     */
+    public function getRate(string $currency): float
+    {
+        return match (strtoupper($currency)) {
+            'USD' => $this->usd_rate,
+            'RUB' => $this->rub_rate,
+            'EUR' => $this->eur_rate,
+            'UZS' => 1.0,
+            default => 1.0,
+        };
+    }
 
     public function company(): BelongsTo
     {
@@ -51,6 +92,9 @@ class FinanceSettings extends Model
             ['company_id' => $companyId],
             [
                 'base_currency_code' => 'UZS',
+                'usd_rate' => 12700.00,        // Курс доллара
+                'rub_rate' => 140.00,          // Курс рубля
+                'eur_rate' => 13800.00,        // Курс евро
                 'tax_system' => self::TAX_SYSTEM_SIMPLIFIED,
                 'vat_rate' => 12.00,           // НДС 12%
                 'income_tax_rate' => 4.00,     // Упрощёнка 4% от оборота (торговля)

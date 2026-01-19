@@ -10,9 +10,127 @@
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Fullpage Scroll Snap */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            scroll-snap-type: y proximity;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+        
+        section {
+            scroll-snap-align: start;
+            scroll-snap-stop: normal;
+        }
+        
+        /* Scroll Reveal Animations */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Stagger animation for cards */
+        .scroll-reveal-card {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        
+        .scroll-reveal-card.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Stagger delays for children */
+        .scroll-reveal-card:nth-child(1).revealed { transition-delay: 0.1s; }
+        .scroll-reveal-card:nth-child(2).revealed { transition-delay: 0.2s; }
+        .scroll-reveal-card:nth-child(3).revealed { transition-delay: 0.3s; }
+        .scroll-reveal-card:nth-child(4).revealed { transition-delay: 0.4s; }
+        .scroll-reveal-card:nth-child(5).revealed { transition-delay: 0.5s; }
+        .scroll-reveal-card:nth-child(6).revealed { transition-delay: 0.6s; }
+        
+        /* Smooth hover effects */
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Section Indicators */
+        .section-indicators {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .section-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .section-indicator:hover {
+            background: #94a3b8;
+            transform: scale(1.2);
+        }
+        
+        .section-indicator.active {
+            background: #2563eb;
+            transform: scale(1.3);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .section-indicators {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="antialiased bg-white text-gray-900" x-data="{ mobileMenuOpen: false, faqOpen: null }">
+    
+    <!-- Language Switcher -->
+    <?php if (isset($component)) { $__componentOriginal8d3bff7d7383a45350f7495fc470d934 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal8d3bff7d7383a45350f7495fc470d934 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.language-switcher','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('language-switcher'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal8d3bff7d7383a45350f7495fc470d934)): ?>
+<?php $attributes = $__attributesOriginal8d3bff7d7383a45350f7495fc470d934; ?>
+<?php unset($__attributesOriginal8d3bff7d7383a45350f7495fc470d934); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal8d3bff7d7383a45350f7495fc470d934)): ?>
+<?php $component = $__componentOriginal8d3bff7d7383a45350f7495fc470d934; ?>
+<?php unset($__componentOriginal8d3bff7d7383a45350f7495fc470d934); ?>
+<?php endif; ?>
 
     <!-- Header - White -->
     <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -77,17 +195,21 @@
                     Uzum • Wildberries • Ozon • Yandex Market
                 </div>
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                    Управляйте продажами на <span class="text-blue-600">всех маркетплейсах</span> из одного окна
+                    <?php echo e(__('landing.hero_title')); ?> <span class="text-blue-600"><?php echo e(__('landing.hero_title_highlight')); ?></span> <?php echo e(__('landing.hero_title_end')); ?>
+
                 </h1>
                 <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-                    Синхронизация остатков, умное ценообразование, складской учёт и AI-помощник для масштабирования вашего бизнеса
+                    <?php echo e(__('landing.hero_subtitle')); ?>
+
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                     <a href="/register" class="px-8 py-4 bg-blue-600 font-semibold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30" style="color: white !important;">
-                        Начать бесплатно →
+                        <?php echo e(__('landing.hero_cta_primary')); ?>
+
                     </a>
                     <a href="#demo" class="px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition text-lg border border-gray-200">
-                        Смотреть демо
+                        <?php echo e(__('landing.hero_cta_secondary')); ?>
+
                     </a>
                 </div>
             </div>
@@ -100,27 +222,27 @@
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
-                    <div class="text-gray-600">Компаний</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_companies')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">50K+</div>
-                    <div class="text-gray-600">Товаров</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_products')); ?></div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">₸2M+</div>
-                    <div class="text-gray-600">Обработано продаж</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_processed')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
-                    <div class="text-gray-600">Uptime</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_uptime')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-green-600 mb-2">70%</div>
-                    <div class="text-gray-600">Экономия времени</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_time_saved')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-orange-600 mb-2">-25%</div>
-                    <div class="text-gray-600">Неликвида</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_dead_stock')); ?></div>
                 </div>
             </div>
         </div>
@@ -129,23 +251,23 @@
     <!-- Features Section -->
     <section id="features" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Возможности</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Всё для управления продажами</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Полный набор инструментов для работы с маркетплейсами в одной платформе</p>
             </div>
             
             <!-- Product Management -->
-            <div class="mb-12">
+            <div class="mb-12 scroll-reveal">
                 <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">Управление товарами</h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
                         <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Массовые операции</h3>
                         <p class="text-gray-600">80% экономия времени на рутине. Bulk обновление цен, остатков, статусов. Экспорт/импорт Excel.</p>
@@ -377,14 +499,14 @@
     <!-- Business Impact Section - NEW -->
     <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Результаты клиентов</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Конкретные результаты вашего бизнеса</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Цифры, которые говорят сами за себя</p>
             </div>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-5xl font-bold text-green-600">+40%</div>
                         <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
@@ -444,14 +566,14 @@
     <!-- Automation Showcase Section - NEW -->
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Автоматизация</div>
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Система работает за вас 24/7</h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">Настройте один раз — получайте результат постоянно</p>
             </div>
             
             <div class="max-w-4xl mx-auto">
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12">
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12 scroll-reveal">
                     <div class="space-y-6">
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
@@ -501,8 +623,8 @@
                     <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-900 mb-1">Laravel Scheduler + Queue Workers</h4>
-                                <p class="text-sm text-gray-600">Надёжный стек автоматизации для вашего бизнеса</p>
+                                <h4 class="font-bold text-gray-900 mb-1">Полная автоматизация процессов</h4>
+                                <p class="text-sm text-gray-600">Система работает сама — вы только контролируете результаты</p>
                             </div>
                             <div class="text-4xl">⚙️</div>
                         </div>
@@ -535,12 +657,12 @@
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">O</div>
                     <div class="font-bold text-gray-900 text-lg">Ozon</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">Я</div>
                     <div class="font-bold text-gray-900 text-lg">Яндекс Маркет</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
             </div>
         </div>
@@ -759,6 +881,114 @@
         </div>
     </section>
 
+    <!-- Comparison Section - NEW -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 scroll-reveal">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Почему SellerMind — лучший выбор</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Сравните наши возможности с другими решениями на рынке</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="py-4 px-4 text-left text-gray-900 font-bold">Функция</th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-blue-600 font-bold text-lg mb-1">SellerMind</div>
+                                <div class="text-xs text-gray-500">Наша система</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 1</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 2</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 3</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Синхронизация остатков</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">AI-помощник</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Складской учёт (WMS)</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Автоматические промо-акции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Умное ценообразование</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Telegram уведомления</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Массовые операции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="bg-blue-50">
+                            <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">8/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/8</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/8</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-12 text-center">
+                <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    Попробовать бесплатно →
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA -->
     <section class="py-20 bg-blue-600">
         <div class="max-w-4xl mx-auto px-4 text-center">
@@ -776,7 +1006,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-gray-400 py-12">
+    <footer class="bg-gray-900 py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid md:grid-cols-4 gap-8">
                 <div>
@@ -793,32 +1023,116 @@
                 <div>
                     <h4 class="text-white font-semibold mb-4">Продукт</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#features" class="text-gray-500 hover:text-white transition">Возможности</a></li>
-                        <li><a href="#pricing" class="text-gray-500 hover:text-white transition">Тарифы</a></li>
-                        <li><a href="#integrations" class="text-gray-500 hover:text-white transition">Интеграции</a></li>
+                        <li><a href="#features" class="text-gray-300 hover:text-white transition">Возможности</a></li>
+                        <li><a href="#pricing" class="text-gray-300 hover:text-white transition">Тарифы</a></li>
+                        <li><a href="#integrations" class="text-gray-300 hover:text-white transition">Интеграции</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Ресурсы</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Документация</a></li>
-                        <li><a href="#faq" class="text-gray-500 hover:text-white transition">FAQ</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Блог</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Документация</a></li>
+                        <li><a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Блог</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Контакты</h4>
-                    <ul class="space-y-2 text-sm text-gray-500">
+                    <ul class="space-y-2 text-sm text-gray-300">
                         <li>info@sellermind.uz</li>
                         <li>+998 90 123 45 67</li>
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-600">
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
                 © 2025 SellerMind. Все права защищены.
             </div>
         </div>
     </footer>
+
+<!-- Section Indicators -->
+<div class="section-indicators">
+    <div class="section-indicator" data-section="hero" title="Главная"></div>
+    <div class="section-indicator" data-section="features" title="Возможности"></div>
+    <div class="section-indicator" data-section="impact" title="Результаты"></div>
+    <div class="section-indicator" data-section="automation" title="Автоматизация"></div>
+    <div class="section-indicator" data-section="integrations" title="Интеграции"></div>
+    <div class="section-indicator" data-section="comparison" title="Сравнение"></div>
+    <div class="section-indicator" data-section="pricing" title="Тарифы"></div>
+    <div class="section-indicator" data-section="faq" title="FAQ"></div>
+</div>
+
+<script>
+// Intersection Observer for scroll reveal animations
+document.addEventListener('DOMContentLoaded', function() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+            }
+        });
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    });
+    
+    // Observe all elements with scroll-reveal classes
+    document.querySelectorAll('.scroll-reveal, .scroll-reveal-card').forEach(el => {
+        observer.observe(el);
+    });
+    
+    // Section Indicators
+    const sections = {
+        'hero': document.querySelector('section:first-of-type'),
+        'features': document.querySelector('#features'),
+        'impact': document.querySelectorAll('section')[5], // Business Impact
+        'automation': document.querySelectorAll('section')[6], // Automation
+        'integrations': document.querySelector('#integrations'),
+        'comparison': document.querySelectorAll('section')[9], // Comparison
+        'pricing': document.querySelector('#pricing'),
+        'faq': document.querySelector('#faq')
+    };
+    
+    const indicators = document.querySelectorAll('.section-indicator');
+    
+    // Click handler for indicators
+    indicators.forEach(indicator => {
+        indicator.addEventListener('click', () => {
+            const sectionName = indicator.dataset.section;
+            const section = sections[sectionName];
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+    
+    // Update active indicator on scroll
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Find which section this is
+                for (const [name, section] of Object.entries(sections)) {
+                    if (section === entry.target) {
+                        indicators.forEach(ind => ind.classList.remove('active'));
+                        const activeIndicator = document.querySelector(`.section-indicator[data-section="${name}"]`);
+                        if (activeIndicator) {
+                            activeIndicator.classList.add('active');
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+    }, {
+        threshold: 0.5
+    });
+    
+    // Observe all sections
+    Object.values(sections).forEach(section => {
+        if (section) sectionObserver.observe(section);
+    });
+});
+</script>
 
 </body>
 </html>
