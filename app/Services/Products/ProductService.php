@@ -100,7 +100,17 @@ class ProductService
                 $variant = $existing->get($variantId);
                 $variant->update($payload);
             } else {
-                $variant = $product->variants()->create($payload);
+                // Check if variant with this SKU already exists for this product
+                $existingBySku = $product->variants()
+                    ->where('sku', $payload['sku'] ?? null)
+                    ->first();
+
+                if ($existingBySku) {
+                    $existingBySku->update($payload);
+                    $variant = $existingBySku;
+                } else {
+                    $variant = $product->variants()->create($payload);
+                }
             }
 
             $keptIds[] = $variant->id;

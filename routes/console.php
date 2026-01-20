@@ -156,6 +156,16 @@ Schedule::command('uzum:sync-finance-orders --days=90')
     })
     ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
 
+// Uzum Market: Синхронизация расходов маркетплейса (для модуля финансов)
+// Запускаем каждые 4 часа, синхронизируем данные за последние 365 дней
+Schedule::command('uzum:sync-expenses --days=365')
+    ->everyFourHours()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Uzum expenses sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Quick Wins Scheduled Tasks

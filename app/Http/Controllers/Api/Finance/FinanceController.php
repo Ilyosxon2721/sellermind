@@ -735,8 +735,8 @@ class FinanceController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $from = $request->from ? Carbon::parse($request->from) : now()->startOfMonth();
-        $to = $request->to ? Carbon::parse($request->to) : now()->endOfMonth();
+        $from = $request->from ? Carbon::parse($request->from)->startOfDay() : now()->startOfMonth();
+        $to = $request->to ? Carbon::parse($request->to)->endOfDay() : now()->endOfMonth();
 
         $result = [
             'period' => [
@@ -758,55 +758,127 @@ class FinanceController extends Controller
             ],
         ];
 
-        // Uzum expenses (from local DB - uzum_finance_orders contains commission and logistics)
-        try {
-            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                $uzumExpenses = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
-                    ->where('status', '!=', 'CANCELED')
-                    ->where(function($q) use ($from, $to) {
-                        $q->where(function($sub) use ($from, $to) {
-                            $sub->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
-                    })
-                    ->selectRaw('
-                        SUM(commission) as total_commission,
-                        SUM(logistic_delivery_fee) as total_logistics,
-                        COUNT(*) as orders_count
-                    ')
-                    ->first();
+        // Uzum expenses - first try local DB (uzum_expenses), fallback to API
+        // API returns detailed expense breakdown by source: commission, logistics, storage, advertising, etc.
+        $uzumAccounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'uzum')
+            ->where('is_active', true)
+            ->get();
 
-                $commission = (float) ($uzumExpenses->total_commission ?? 0);
-                $logistics = (float) ($uzumExpenses->total_logistics ?? 0);
-                $total = $commission + $logistics;
+        $uzumTotalExpenses = [
+            'commission' => 0,
+            'logistics' => 0,
+            'storage' => 0,
+            'advertising' => 0,
+            'penalties' => 0,
+            'returns' => 0,
+            'other' => 0,
+            'total' => 0,
+            'currency' => 'UZS',
+            'items_count' => 0,
+            'source' => 'none',
+            'accounts_db' => 0,
+            'accounts_api' => 0,
+        ];
 
-                $result['uzum'] = [
-                    'commission' => $commission,
-                    'logistics' => $logistics,
-                    'storage' => 0,
-                    'advertising' => 0,
-                    'penalties' => 0,
-                    'returns' => 0,
-                    'other' => 0,
-                    'total' => $total,
-                    'orders_count' => (int) ($uzumExpenses->orders_count ?? 0),
-                    'currency' => 'UZS',
-                ];
+        foreach ($uzumAccounts as $account) {
+            // First try: local DB (UzumExpense table - synced data)
+            if (class_exists(\App\Models\UzumExpense::class)) {
+                $dbExpenses = \App\Models\UzumExpense::getSummaryForAccount($account->id, $from, $to);
 
-                // Add to totals
-                $result['total']['commission'] += $commission;
-                $result['total']['logistics'] += $logistics;
-                $result['total']['total'] += $total;
+                if ($dbExpenses['total'] > 0) {
+                    $uzumTotalExpenses['commission'] += $dbExpenses['commission'] ?? 0;
+                    $uzumTotalExpenses['logistics'] += $dbExpenses['logistics'] ?? 0;
+                    $uzumTotalExpenses['storage'] += $dbExpenses['storage'] ?? 0;
+                    $uzumTotalExpenses['advertising'] += $dbExpenses['advertising'] ?? 0;
+                    $uzumTotalExpenses['penalties'] += $dbExpenses['penalties'] ?? 0;
+                    $uzumTotalExpenses['other'] += $dbExpenses['other'] ?? 0;
+                    $uzumTotalExpenses['total'] += $dbExpenses['total'] ?? 0;
+                    $uzumTotalExpenses['items_count'] += $dbExpenses['items_count'] ?? 0;
+                    $uzumTotalExpenses['accounts_db']++;
+                    continue;
+                }
             }
-        } catch (\Exception $e) {
-            $result['uzum'] = ['error' => $e->getMessage()];
+
+            // Second try: API (if DB is empty)
+            try {
+                $expenses = $this->uzumClient->getExpensesSummary($account, $from, $to);
+
+                // Accumulate all expense categories
+                $uzumTotalExpenses['commission'] += $expenses['commission'] ?? 0;
+                $uzumTotalExpenses['logistics'] += $expenses['logistics'] ?? 0;
+                $uzumTotalExpenses['storage'] += $expenses['storage'] ?? 0;
+                $uzumTotalExpenses['advertising'] += $expenses['advertising'] ?? 0;
+                $uzumTotalExpenses['penalties'] += $expenses['penalties'] ?? 0;
+                $uzumTotalExpenses['returns'] += $expenses['returns'] ?? 0;
+                $uzumTotalExpenses['other'] += $expenses['other'] ?? 0;
+                $uzumTotalExpenses['total'] += $expenses['total'] ?? 0;
+                $uzumTotalExpenses['items_count'] += $expenses['items_count'] ?? 0;
+                $uzumTotalExpenses['accounts_api']++;
+            } catch (\Exception $e) {
+                \Log::warning('Uzum expenses API failed, falling back to orders calculation', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                // Third fallback: calculate from local orders if API fails
+                if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                    $uzumExpenses = \App\Models\UzumFinanceOrder::where('marketplace_account_id', $account->id)
+                        ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
+                        ->where('status', '!=', 'CANCELED')
+                        ->where(function($q) use ($from, $to) {
+                            $q->where(function($sub) use ($from, $to) {
+                                $sub->whereNotNull('date_issued')
+                                    ->whereDate('date_issued', '>=', $from)
+                                    ->whereDate('date_issued', '<=', $to);
+                            })
+                            ->orWhere(function($sub) use ($from, $to) {
+                                $sub->whereNull('date_issued')
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
+                        })
+                        ->selectRaw('
+                            SUM(commission) as total_commission,
+                            SUM(logistic_delivery_fee) as total_logistics,
+                            COUNT(*) as orders_count
+                        ')
+                        ->first();
+
+                    $commission = (float) ($uzumExpenses->total_commission ?? 0);
+                    $logistics = (float) ($uzumExpenses->total_logistics ?? 0);
+
+                    $uzumTotalExpenses['commission'] += $commission;
+                    $uzumTotalExpenses['logistics'] += $logistics;
+                    $uzumTotalExpenses['total'] += $commission + $logistics;
+                    $uzumTotalExpenses['items_count'] += (int) ($uzumExpenses->orders_count ?? 0);
+                }
+            }
+        }
+
+        // Set source indicator based on which sources were used
+        if ($uzumTotalExpenses['accounts_db'] > 0 && $uzumTotalExpenses['accounts_api'] === 0) {
+            $uzumTotalExpenses['source'] = 'database';
+        } elseif ($uzumTotalExpenses['accounts_db'] === 0 && $uzumTotalExpenses['accounts_api'] > 0) {
+            $uzumTotalExpenses['source'] = 'api';
+        } elseif ($uzumTotalExpenses['accounts_db'] > 0 && $uzumTotalExpenses['accounts_api'] > 0) {
+            $uzumTotalExpenses['source'] = 'mixed';
+        }
+        unset($uzumTotalExpenses['accounts_db'], $uzumTotalExpenses['accounts_api']);
+
+        // Add Uzum expenses to result and totals
+        if ($uzumTotalExpenses['total'] > 0 || !empty($uzumAccounts)) {
+            $result['uzum'] = $uzumTotalExpenses;
+
+            // Add Uzum expenses to totals (already in UZS)
+            $result['total']['commission'] += $uzumTotalExpenses['commission'];
+            $result['total']['logistics'] += $uzumTotalExpenses['logistics'];
+            $result['total']['storage'] += $uzumTotalExpenses['storage'];
+            $result['total']['advertising'] += $uzumTotalExpenses['advertising'];
+            $result['total']['penalties'] += $uzumTotalExpenses['penalties'];
+            $result['total']['returns'] += $uzumTotalExpenses['returns'];
+            $result['total']['other'] += $uzumTotalExpenses['other'];
+            $result['total']['total'] += $uzumTotalExpenses['total'];
         }
 
         // WB expenses (from detailed realization report API - accurate breakdown)
