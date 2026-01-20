@@ -911,6 +911,13 @@ class FinanceController extends Controller
                 // Get full expense summary including storage fees
                 $expenses = $financeService->getExpensesSummary($account, $from, $to);
 
+                // IMPORTANT: WB API returns amounts in seller's account currency
+                // For Uzbekistan sellers, currency is UZS (not RUB despite field names)
+                $expenseCurrency = $expenses['currency'] ?? 'RUB';
+                if ($expenseCurrency === 'UZS') {
+                    $wbTotalExpenses['currency'] = 'UZS';
+                }
+
                 // Accumulate all expense categories
                 $wbTotalExpenses['commission'] += $expenses['commission'] ?? 0;
                 $wbTotalExpenses['logistics'] += $expenses['logistics'] ?? 0;
@@ -959,15 +966,19 @@ class FinanceController extends Controller
 
         // Convert and add WB expenses to result and totals
         if ($wbTotalExpenses['total'] > 0) {
-            $wbTotalExpenses['total_uzs'] = $wbTotalExpenses['total'] * $rubToUzs;
+            // Check if amounts are already in UZS (for Uzbekistan sellers)
+            $isUzs = ($wbTotalExpenses['currency'] ?? 'RUB') === 'UZS';
+            $conversionRate = $isUzs ? 1 : $rubToUzs;
+
+            $wbTotalExpenses['total_uzs'] = $wbTotalExpenses['total'] * $conversionRate;
             $result['wb'] = $wbTotalExpenses;
 
-            // Add WB expenses to totals (convert RUB to UZS)
-            $result['total']['commission'] += $wbTotalExpenses['commission'] * $rubToUzs;
-            $result['total']['logistics'] += $wbTotalExpenses['logistics'] * $rubToUzs;
-            $result['total']['storage'] += $wbTotalExpenses['storage'] * $rubToUzs;
-            $result['total']['penalties'] += $wbTotalExpenses['penalties'] * $rubToUzs;
-            $result['total']['returns'] += $wbTotalExpenses['returns'] * $rubToUzs;
+            // Add WB expenses to totals (convert only if in RUB)
+            $result['total']['commission'] += $wbTotalExpenses['commission'] * $conversionRate;
+            $result['total']['logistics'] += $wbTotalExpenses['logistics'] * $conversionRate;
+            $result['total']['storage'] += $wbTotalExpenses['storage'] * $conversionRate;
+            $result['total']['penalties'] += $wbTotalExpenses['penalties'] * $conversionRate;
+            $result['total']['returns'] += $wbTotalExpenses['returns'] * $conversionRate;
             $result['total']['total'] += $wbTotalExpenses['total_uzs'];
         }
 
