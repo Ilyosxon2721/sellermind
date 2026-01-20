@@ -292,7 +292,8 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return null;
+            // If decryption fails, return original value (unencrypted token)
+            return $value;
         }
     }
 
@@ -310,7 +311,7 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return null;
+            return $value;
         }
     }
 
