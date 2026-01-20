@@ -791,10 +791,25 @@ class UzumClient implements MarketplaceClientInterface
     ): array {
         $baseUrl = config('uzum.base_url', config('marketplaces.uzum.base_url'));
         $timeout = (int) config('uzum.timeout', 30);
+
+        $authHeaders = $account->getUzumAuthHeaders();
+        $authToken = $authHeaders['Authorization'] ?? null;
+
+        // DEBUG: Log exact token being sent
+        Log::warning('Uzum API DEBUG - Token being sent', [
+            'account_id' => $account->id,
+            'path' => $path,
+            'has_auth_header' => !empty($authToken),
+            'token_length' => $authToken ? strlen($authToken) : 0,
+            'token_first_20' => $authToken ? substr($authToken, 0, 20) : null,
+            'token_last_10' => $authToken ? substr($authToken, -10) : null,
+            'token_looks_encrypted' => $authToken && str_starts_with($authToken, 'eyJ'),
+        ]);
+
         $headers = array_merge([
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
-        ], $this->trimHeaders($account->getUzumAuthHeaders()));
+        ], $this->trimHeaders($authHeaders));
 
         $url = rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
 
