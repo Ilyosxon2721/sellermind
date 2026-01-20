@@ -7,7 +7,7 @@
     <meta name="description" content="Профессиональная платформа для управления продажами на маркетплейсах. Автоматизация, аналитика, складской учёт.">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         
@@ -135,10 +135,10 @@
                 </div>
                 
                 <nav class="hidden md:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_features') }}</a>
-                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_integrations') }}</a>
-                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_pricing') }}</a>
-                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_faq') }}</a>
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_features')); ?></a>
+                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_integrations')); ?></a>
+                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_pricing')); ?></a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_faq')); ?></a>
                     
                     <!-- Language Switcher in Navbar -->
                     <div class="relative" x-data="{ open: false }">
@@ -147,10 +147,10 @@
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
                         >
                             <span class="text-lg">
-                                @if(app()->getLocale() === 'uz') 🇺🇿
-                                @elseif(app()->getLocale() === 'ru') 🇷🇺
-                                @else 🇬🇧
-                                @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(app()->getLocale() === 'uz'): ?> 🇺🇿
+                                <?php elseif(app()->getLocale() === 'ru'): ?> 🇷🇺
+                                <?php else: ?> 🇬🇧
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </span>
                             <svg class="w-4 h-4 text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -169,38 +169,38 @@
                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden"
                             style="display: none;"
                         >
-                            <a href="{{ route('home.uz') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'uz' ? 'bg-blue-50' : '' }}">
+                            <a href="<?php echo e(route('home.uz')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'uz' ? 'bg-blue-50' : ''); ?>">
                                 <span class="text-2xl">🇺🇿</span>
                                 <span class="font-medium text-gray-700">O'zbekcha</span>
-                                @if(app()->getLocale() === 'uz')
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(app()->getLocale() === 'uz'): ?>
                                     <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </a>
-                            <a href="{{ route('home.ru') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'ru' ? 'bg-blue-50' : '' }}">
+                            <a href="<?php echo e(route('home.ru')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'ru' ? 'bg-blue-50' : ''); ?>">
                                 <span class="text-2xl">🇷🇺</span>
                                 <span class="font-medium text-gray-700">Русский</span>
-                                @if(app()->getLocale() === 'ru')
+                                <?php if(app()->getLocale() === 'ru'): ?>
                                     <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </a>
-                            <a href="{{ route('home.en') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'en' ? 'bg-blue-50' : '' }}">
+                            <a href="<?php echo e(route('home.en')); ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition <?php echo e(app()->getLocale() === 'en' ? 'bg-blue-50' : ''); ?>">
                                 <span class="text-2xl">🇬🇧</span>
                                 <span class="font-medium text-gray-700">English</span>
-                                @if(app()->getLocale() === 'en')
+                                <?php if(app()->getLocale() === 'en'): ?>
                                     <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                     </svg>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </a>
                         </div>
                     </div>
                     
-                    <a href="/{{ app()->getLocale() }}/login" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_login') }}</a>
-                    <a href="/{{ app()->getLocale() }}/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">{{ __('landing.nav_register') }}</a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/login" class="text-gray-600 hover:text-blue-600 transition"><?php echo e(__('landing.nav_login')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"><?php echo e(__('landing.nav_register')); ?></a>
                 </nav>
                 
                 
@@ -222,8 +222,8 @@
                 <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
                 <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
                 <div class="flex gap-2 mt-4">
-                    <a href="/{{ app()->getLocale() }}/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
-                    <a href="/{{ app()->getLocale() }}/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700"><?php echo e(__('landing.nav_login')); ?></a>
+                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium"><?php echo e(__('landing.nav_register')); ?></a>
                 </div>
             </div>
         </div>
@@ -238,17 +238,21 @@
                     Uzum • Wildberries • Ozon • Yandex Market
                 </div>
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                    {{ __('landing.hero_title') }} <span class="text-blue-600">{{ __('landing.hero_title_highlight') }}</span> {{ __('landing.hero_title_end') }}
+                    <?php echo e(__('landing.hero_title')); ?> <span class="text-blue-600"><?php echo e(__('landing.hero_title_highlight')); ?></span> <?php echo e(__('landing.hero_title_end')); ?>
+
                 </h1>
                 <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-                    {{ __('landing.hero_subtitle') }}
+                    <?php echo e(__('landing.hero_subtitle')); ?>
+
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="/register" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
-                    {{ __('landing.cta_primary') }}
+                    <?php echo e(__('landing.cta_primary')); ?>
+
                 </a>
                 <a href="#pricing" class="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition text-lg border-2 border-gray-200">
-                    {{ __('landing.cta_secondary') }}
+                    <?php echo e(__('landing.cta_secondary')); ?>
+
                 </a>
             </div>
             </div>
@@ -261,27 +265,27 @@
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
-                    <div class="text-gray-600">{{ __('landing.stat_companies') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_companies')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">50K+</div>
-                    <div class="text-gray-600">{{ __('landing.stat_products') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_products')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
-                    <div class="text-gray-600">{{ __('landing.stat_processed') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_processed')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
-                    <div class="text-gray-600">{{ __('landing.stat_uptime') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_uptime')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-green-600 mb-2">70%</div>
-                    <div class="text-gray-600">{{ __('landing.stat_time_saved') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_time_saved')); ?></div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-orange-600 mb-2">-25%</div>
-                    <div class="text-gray-600">{{ __('landing.stat_dead_stock') }}</div>
+                    <div class="text-gray-600"><?php echo e(__('landing.stat_dead_stock')); ?></div>
                 </div>
             </div>
         </div>
@@ -291,133 +295,133 @@
     <section id="features" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.features_title') }}</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.features_subtitle') }}</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2"><?php echo e(__('landing.nav_features')); ?></div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"><?php echo e(__('landing.features_title')); ?></h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto"><?php echo e(__('landing.features_subtitle')); ?></p>
             </div>
             
             <!-- Product Management -->
             <div class="mb-12 scroll-reveal">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_products') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_products')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_sync_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_sync_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_sync_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_sync_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_bulk_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_bulk_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_bulk_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_bulk_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">📋</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_catalog_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_catalog_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_catalog_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_catalog_desc')); ?></p>
                     </div>
                 </div>
             </div>
 
             <!-- Pricing -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_pricing') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_pricing')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_pricing_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_pricing_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_pricing_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_pricing_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🎯</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_promo_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_promo_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_promo_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_promo_desc')); ?></p>
                     </div>
                 </div>
             </div>
 
             <!-- Warehouse -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_warehouse') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_warehouse')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">📊</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_wms_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_wms_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_wms_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_wms_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-red-600 group-hover:text-white transition">📝</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_movements_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_movements_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_movements_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_movements_desc')); ?></p>
                     </div>
                 </div>
             </div>
 
             <!-- Orders & Analytics -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_orders') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_orders')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">🛒</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_orders_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_orders_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_orders_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_orders_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-teal-600 group-hover:text-white transition">📈</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_analytics_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_analytics_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_analytics_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_analytics_desc')); ?></p>
                     </div>
                 </div>
             </div>
 
             <!-- AI Features -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_ai') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_ai')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-violet-100 text-violet-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-violet-600 group-hover:text-white transition">🤖</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_ai_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_ai_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_ai_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-fuchsia-100 text-fuchsia-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-fuchsia-600 group-hover:text-white transition">💬</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_reviews_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_ai_reviews_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_ai_reviews_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_ai_reviews_desc')); ?></p>
                     </div>
                 </div>
             </div>
 
             <!-- Additional Features -->
             <div class="mb-12">
-                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_additional') }}</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4"><?php echo e(__('landing.category_additional')); ?></h3>
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-sky-600 group-hover:text-white transition">📱</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_telegram_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_telegram_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_telegram_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_telegram_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-emerald-600 group-hover:text-white transition">💳</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_finance_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_finance_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_finance_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_finance_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-amber-600 group-hover:text-white transition">🔮</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_forecast_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_forecast_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_forecast_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_forecast_desc')); ?></p>
                     </div>
                     
                     <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
                         <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-rose-600 group-hover:text-white transition">👥</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_team_title') }}</h3>
-                        <p class="text-gray-600">{{ __('landing.feature_team_desc') }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3"><?php echo e(__('landing.feature_team_title')); ?></h3>
+                        <p class="text-gray-600"><?php echo e(__('landing.feature_team_desc')); ?></p>
                     </div>
                 </div>
             </div>
@@ -539,9 +543,9 @@
     <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.testimonials_title') }}</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.impact_title') }}</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.impact_subtitle') }}</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2"><?php echo e(__('landing.testimonials_title')); ?></div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"><?php echo e(__('landing.impact_title')); ?></h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto"><?php echo e(__('landing.impact_subtitle')); ?></p>
             </div>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -550,8 +554,8 @@
                         <div class="text-5xl font-bold text-green-600">+40%</div>
                         <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_sales') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_sales_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_sales')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_sales_desc')); ?></p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
@@ -559,8 +563,8 @@
                         <div class="text-5xl font-bold text-blue-600">-70%</div>
                         <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">⏱️</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_time') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_time_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_time')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_time_desc')); ?></p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
@@ -568,8 +572,8 @@
                         <div class="text-5xl font-bold text-purple-600">0</div>
                         <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">✅</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_oversells') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_oversells_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_oversells')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_oversells_desc')); ?></p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
@@ -577,8 +581,8 @@
                         <div class="text-5xl font-bold text-orange-600">-25%</div>
                         <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl">📦</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_dead_stock') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_dead_stock_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_dead_stock')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_dead_stock_desc')); ?></p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
@@ -586,8 +590,8 @@
                         <div class="text-5xl font-bold text-indigo-600">24/7</div>
                         <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl">🔔</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_monitoring') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_monitoring_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_monitoring')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_monitoring_desc')); ?></p>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
@@ -595,8 +599,8 @@
                         <div class="text-5xl font-bold text-teal-600">80%</div>
                         <div class="w-14 h-14 bg-teal-100 rounded-2xl flex items-center justify-center text-2xl">⚡</div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_efficiency') }}</h3>
-                    <p class="text-gray-600">{{ __('landing.impact_efficiency_desc') }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2"><?php echo e(__('landing.impact_efficiency')); ?></h3>
+                    <p class="text-gray-600"><?php echo e(__('landing.impact_efficiency_desc')); ?></p>
                 </div>
             </div>
         </div>
@@ -606,9 +610,9 @@
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.automation_title') }}</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.automation_subtitle') }}</p>
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2"><?php echo e(__('landing.nav_features')); ?></div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"><?php echo e(__('landing.automation_title')); ?></h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto"><?php echo e(__('landing.automation_subtitle')); ?></p>
             </div>
             
             <div class="max-w-4xl mx-auto">
@@ -616,45 +620,45 @@
                     <div class="space-y-6">
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-blue-600">{!! __('landing.automation_10min') !!}</div>
+                                <div class="text-sm font-semibold text-blue-600"><?php echo __('landing.automation_10min'); ?></div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_10min_title') }}</h3>
-                                <p class="text-gray-600">{{ __('landing.automation_10min_desc') }}</p>
+                                <h3 class="font-bold text-gray-900 mb-2"><?php echo e(__('landing.automation_10min_title')); ?></h3>
+                                <p class="text-gray-600"><?php echo e(__('landing.automation_10min_desc')); ?></p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-green-600">{!! __('landing.automation_hour') !!}</div>
+                                <div class="text-sm font-semibold text-green-600"><?php echo __('landing.automation_hour'); ?></div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-green-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_hour_title') }}</h3>
-                                <p class="text-gray-600">{{ __('landing.automation_hour_desc') }}</p>
+                                <h3 class="font-bold text-gray-900 mb-2"><?php echo e(__('landing.automation_hour_title')); ?></h3>
+                                <p class="text-gray-600"><?php echo e(__('landing.automation_hour_desc')); ?></p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-orange-600">{!! __('landing.automation_daily') !!}</div>
+                                <div class="text-sm font-semibold text-orange-600"><?php echo __('landing.automation_daily'); ?></div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-orange-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_daily_title') }}</h3>
-                                <p class="text-gray-600">{{ __('landing.automation_daily_desc') }}</p>
+                                <h3 class="font-bold text-gray-900 mb-2"><?php echo e(__('landing.automation_daily_title')); ?></h3>
+                                <p class="text-gray-600"><?php echo e(__('landing.automation_daily_desc')); ?></p>
                             </div>
                         </div>
                         
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-purple-600">{!! __('landing.automation_weekly') !!}</div>
+                                <div class="text-sm font-semibold text-purple-600"><?php echo __('landing.automation_weekly'); ?></div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-purple-600 rounded-full mt-2"></div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_weekly_title') }}</h3>
-                                <p class="text-gray-600">{{ __('landing.automation_weekly_desc') }}</p>
+                                <h3 class="font-bold text-gray-900 mb-2"><?php echo e(__('landing.automation_weekly_title')); ?></h3>
+                                <p class="text-gray-600"><?php echo e(__('landing.automation_weekly_desc')); ?></p>
                             </div>
                         </div>
                     </div>
@@ -662,8 +666,8 @@
                     <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-900 mb-1">{{ __('landing.automation_tech') }}</h4>
-                                <p class="text-sm text-gray-600">{{ __('landing.automation_tech_desc') }}</p>
+                                <h4 class="font-bold text-gray-900 mb-1"><?php echo e(__('landing.automation_tech')); ?></h4>
+                                <p class="text-sm text-gray-600"><?php echo e(__('landing.automation_tech_desc')); ?></p>
                             </div>
                             <div class="text-4xl">⚙️</div>
                         </div>
@@ -771,85 +775,92 @@
             </div>
             
             <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
-                @foreach($plans as $plan)
-                @if($plan->is_popular)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $plans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $plan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->is_popular): ?>
                 <div class="bg-blue-600 rounded-2xl relative shadow-xl shadow-blue-600/30 flex flex-col" style="min-height: 550px;">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-400 text-orange-900 text-xs font-bold rounded-full">
-                        {{ __('landing.pricing_popular') }}
+                        <?php echo e(__('landing.pricing_popular')); ?>
+
                     </div>
                     <div class="p-8 flex flex-col flex-grow">
-                        <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-white/80 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
                         <div class="text-4xl font-bold text-white mb-1">
-                            @if($plan->price == 0)
-                                {{ __('landing.pricing_free') }}
-                            @elseif($plan->slug === 'enterprise')
-                                {{ number_format($plan->price, 0, ',', ' ') }} {{ __('landing.pricing_currency') }} {{ __('landing.pricing_from') }}
-                            @else
-                                {{ number_format($plan->price, 0, ',', ' ') }} <span class="text-xl font-normal">{{ __('landing.pricing_currency') }}/{{ __('landing.pricing_month') }}</span>
-                            @endif
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
+                                <?php echo e(__('landing.pricing_free')); ?>
+
+                            <?php elseif($plan->slug === 'enterprise'): ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?> <?php echo e(__('landing.pricing_currency')); ?> <?php echo e(__('landing.pricing_from')); ?>
+
+                            <?php else: ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?> <span class="text-xl font-normal"><?php echo e(__('landing.pricing_currency')); ?>/<?php echo e(__('landing.pricing_month')); ?></span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                        <div class="text-white/80 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else &nbsp; @endif</div>
+                        <div class="text-white/80 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> <?php echo e(__('landing.pricing_forever')); ?> <?php else: ?> &nbsp; <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
                         <ul class="space-y-3 mb-8 text-white text-sm flex-grow">
                             <li class="flex items-center"><span class="mr-2">✓</span> 
-                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> <?php echo e(__('landing.pricing_unlimited_accounts')); ?> <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> <?php echo e(__('landing.pricing_marketplaces')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
                             <li class="flex items-center"><span class="mr-2">✓</span>
-                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> <?php echo e(__('landing.pricing_unlimited_products')); ?> <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> <?php echo e(__('landing.pricing_products_count')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
                             <li class="flex items-center"><span class="mr-2">✓</span>
-                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> <?php echo e(__('landing.pricing_unlimited_orders')); ?> <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> <?php echo e(__('landing.pricing_orders_month')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
-                            @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
-                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
-                            @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
-                            @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_analytics')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_auto_pricing')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_api')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_priority_support')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </ul>
                         <div class="mt-auto">
-                            <a href="/{{ app()->getLocale() }}/register?plan={{ $plan->id }}" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition" style="color: #2563eb !important;">
-                                {{ __('landing.pricing_cta') }}
+                            <a href="/<?php echo e(app()->getLocale()); ?>/register?plan=<?php echo e($plan->id); ?>" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition" style="color: #2563eb !important;">
+                                <?php echo e(__('landing.pricing_cta')); ?>
+
                             </a>
                         </div>
                     </div>
                 </div>
-                @else
+                <?php else: ?>
                 <div class="bg-white rounded-2xl border border-gray-200 flex flex-col" style="min-height: 550px;">
                     <div class="p-8 flex flex-col flex-grow">
-                        <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-gray-500 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
                         <div class="text-4xl font-bold text-gray-900 mb-1">
-                            @if($plan->price == 0)
-                                {{ __('landing.pricing_free') }}
-                            @elseif($plan->slug === 'enterprise')
-                                {{ number_format($plan->price, 0, ',', ' ') }} {{ __('landing.pricing_currency') }} {{ __('landing.pricing_from') }}
-                            @else
-                                {{ number_format($plan->price, 0, ',', ' ') }} <span class="text-xl font-normal">{{ __('landing.pricing_currency') }}/{{ __('landing.pricing_month') }}</span>
-                            @endif
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
+                                <?php echo e(__('landing.pricing_free')); ?>
+
+                            <?php elseif($plan->slug === 'enterprise'): ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?> <?php echo e(__('landing.pricing_currency')); ?> <?php echo e(__('landing.pricing_from')); ?>
+
+                            <?php else: ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?> <span class="text-xl font-normal"><?php echo e(__('landing.pricing_currency')); ?>/<?php echo e(__('landing.pricing_month')); ?></span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                        <div class="text-gray-500 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else &nbsp; @endif</div>
+                        <div class="text-gray-500 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> <?php echo e(__('landing.pricing_forever')); ?> <?php else: ?> &nbsp; <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
                         <ul class="space-y-3 mb-8 text-sm flex-grow">
                             <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> <?php echo e(__('landing.pricing_unlimited_accounts')); ?> <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> <?php echo e(__('landing.pricing_marketplaces')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
                             <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> <?php echo e(__('landing.pricing_unlimited_products')); ?> <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> <?php echo e(__('landing.pricing_products_count')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
                             <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> <?php echo e(__('landing.pricing_unlimited_orders')); ?> <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> <?php echo e(__('landing.pricing_orders_month')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </li>
-                            @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
-                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
-                            @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
-                            @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_analytics')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_auto_pricing')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_api')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_priority_support')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </ul>
                         <div class="mt-auto">
-                            <a href="/{{ app()->getLocale() }}/{{ $plan->slug === 'enterprise' ? 'contact' : 'register' }}?plan={{ $plan->id }}" 
+                            <a href="/<?php echo e(app()->getLocale()); ?>/<?php echo e($plan->slug === 'enterprise' ? 'contact' : 'register'); ?>?plan=<?php echo e($plan->id); ?>" 
                                class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                                {{ $plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta') }}
+                                <?php echo e($plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta')); ?>
+
                             </a>
                         </div>
                     </div>
                 </div>
-                @endif
-                @endforeach
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         </div>
     </section>
@@ -931,8 +942,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16 scroll-reveal">
                 <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.comparison_title') }}</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.comparison_subtitle') }}</p>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4"><?php echo e(__('landing.comparison_title')); ?></h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto"><?php echo e(__('landing.comparison_subtitle')); ?></p>
             </div>
             
             <div class="overflow-x-auto">
@@ -1040,7 +1051,8 @@
             
             <div class="mt-12 text-center">
                 <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
-                    {{ __('landing.comparison_cta') }}
+                    <?php echo e(__('landing.comparison_cta')); ?>
+
                 </a>
             </div>
         </div>
@@ -1202,3 +1214,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </body>
 </html>
+<?php /**PATH /Applications/MAMP/htdocs/sellermind-ai/resources/views/welcome.blade.php ENDPATH**/ ?>

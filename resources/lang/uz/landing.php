@@ -179,6 +179,7 @@ return [
     'pricing_forever' => 'doim',
     'pricing_sum' => 'so\'m',
     'pricing_select' => 'Tanlash',
+    'pricing_cta' => 'Rejani tanlash',
     'pricing_contact' => 'Bog\'lanish',
     
     // FAQ
@@ -223,5 +224,6 @@ return [
     'pricing_api' => 'API kirish',
     'pricing_priority_support' => 'Ustuvor qo\'llab-quvvatlash',
     'pricing_popular' => 'Mashhur',
+    'pricing_cta' => 'Rejani tanlash',
     'pricing_contact' => 'Bog\'lanish',
 ];

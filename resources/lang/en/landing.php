@@ -179,6 +179,7 @@ return [
     'pricing_forever' => 'forever',
     'pricing_sum' => 'UZS',
     'pricing_select' => 'Choose Plan',
+    'pricing_cta' => 'Select plan',
     'pricing_contact' => 'Contact Us',
     
     // FAQ
@@ -223,5 +224,6 @@ return [
     'pricing_api' => 'API access',
     'pricing_priority_support' => 'Priority support',
     'pricing_popular' => 'Popular',
+    'pricing_cta' => 'Select plan',
     'pricing_contact' => 'Contact us',
 ];

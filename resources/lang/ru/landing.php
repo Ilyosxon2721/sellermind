@@ -179,6 +179,7 @@ return [
     'pricing_forever' => 'навсегда',
     'pricing_sum' => 'сум',
     'pricing_select' => 'Выбрать план',
+    'pricing_cta' => 'Выбрать план',
     'pricing_contact' => 'Связаться',
     
     // FAQ
@@ -223,5 +224,6 @@ return [
     'pricing_api' => 'API доступ',
     'pricing_priority_support' => 'Приоритетная поддержка',
     'pricing_popular' => 'Популярный',
+    'pricing_cta' => 'Выбрать план',
     'pricing_contact' => 'Связаться',
 ];
