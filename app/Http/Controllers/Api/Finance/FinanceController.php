@@ -60,6 +60,9 @@ class FinanceController extends Controller
         $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
         $totalIncome += $marketplaceSales['total_revenue'];
 
+        // Расходы маркетплейсов теперь хранятся в FinanceTransaction
+        // и автоматически включаются в $totalExpense
+
         $netProfit = $totalIncome - $totalExpense;
 
         // Долги
@@ -809,76 +812,56 @@ class FinanceController extends Controller
         ];
 
         foreach ($uzumAccounts as $account) {
-            // First try: local DB (UzumExpense table - synced data)
+            // 1. Получаем комиссию и логистику из uzum_finance_orders (данные о заказах)
+            // Это основной источник для комиссии маркетплейса
+            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                $orderExpenses = \App\Models\UzumFinanceOrder::where('marketplace_account_id', $account->id)
+                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
+                    ->where('status', '!=', 'CANCELED')
+                    ->where(function($q) use ($from, $to) {
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->selectRaw('
+                        SUM(commission) as total_commission,
+                        SUM(logistic_delivery_fee) as total_logistics,
+                        COUNT(*) as orders_count
+                    ')
+                    ->first();
+
+                $commission = (float) ($orderExpenses->total_commission ?? 0);
+                $logisticsFromOrders = (float) ($orderExpenses->total_logistics ?? 0);
+
+                $uzumTotalExpenses['commission'] += $commission;
+                $uzumTotalExpenses['logistics'] += $logisticsFromOrders;
+                $uzumTotalExpenses['total'] += $commission + $logisticsFromOrders;
+                $uzumTotalExpenses['items_count'] += (int) ($orderExpenses->orders_count ?? 0);
+            }
+
+            // 2. Получаем прочие расходы из uzum_expenses (хранение, реклама, штрафы)
+            // Эти данные не дублируются с комиссией из заказов
             if (class_exists(\App\Models\UzumExpense::class)) {
                 $dbExpenses = \App\Models\UzumExpense::getSummaryForAccount($account->id, $from, $to);
 
                 if ($dbExpenses['total'] > 0) {
-                    $uzumTotalExpenses['commission'] += $dbExpenses['commission'] ?? 0;
-                    $uzumTotalExpenses['logistics'] += $dbExpenses['logistics'] ?? 0;
+                    // НЕ добавляем commission и logistics - они уже взяты из orders
                     $uzumTotalExpenses['storage'] += $dbExpenses['storage'] ?? 0;
                     $uzumTotalExpenses['advertising'] += $dbExpenses['advertising'] ?? 0;
                     $uzumTotalExpenses['penalties'] += $dbExpenses['penalties'] ?? 0;
                     $uzumTotalExpenses['other'] += $dbExpenses['other'] ?? 0;
-                    $uzumTotalExpenses['total'] += $dbExpenses['total'] ?? 0;
-                    $uzumTotalExpenses['items_count'] += $dbExpenses['items_count'] ?? 0;
+                    // Добавляем только storage/advertising/penalties/other к total
+                    $expensesOnlyTotal = ($dbExpenses['storage'] ?? 0) + ($dbExpenses['advertising'] ?? 0)
+                        + ($dbExpenses['penalties'] ?? 0) + ($dbExpenses['other'] ?? 0);
+                    $uzumTotalExpenses['total'] += $expensesOnlyTotal;
                     $uzumTotalExpenses['accounts_db']++;
-                    continue;
-                }
-            }
-
-            // Second try: API (if DB is empty)
-            try {
-                $expenses = $this->uzumClient->getExpensesSummary($account, $from, $to);
-
-                // Accumulate all expense categories
-                $uzumTotalExpenses['commission'] += $expenses['commission'] ?? 0;
-                $uzumTotalExpenses['logistics'] += $expenses['logistics'] ?? 0;
-                $uzumTotalExpenses['storage'] += $expenses['storage'] ?? 0;
-                $uzumTotalExpenses['advertising'] += $expenses['advertising'] ?? 0;
-                $uzumTotalExpenses['penalties'] += $expenses['penalties'] ?? 0;
-                $uzumTotalExpenses['returns'] += $expenses['returns'] ?? 0;
-                $uzumTotalExpenses['other'] += $expenses['other'] ?? 0;
-                $uzumTotalExpenses['total'] += $expenses['total'] ?? 0;
-                $uzumTotalExpenses['items_count'] += $expenses['items_count'] ?? 0;
-                $uzumTotalExpenses['accounts_api']++;
-            } catch (\Exception $e) {
-                \Log::warning('Uzum expenses API failed, falling back to orders calculation', [
-                    'account_id' => $account->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                // Third fallback: calculate from local orders if API fails
-                if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                    $uzumExpenses = \App\Models\UzumFinanceOrder::where('marketplace_account_id', $account->id)
-                        ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
-                        ->where('status', '!=', 'CANCELED')
-                        ->where(function($q) use ($from, $to) {
-                            $q->where(function($sub) use ($from, $to) {
-                                $sub->whereNotNull('date_issued')
-                                    ->whereDate('date_issued', '>=', $from)
-                                    ->whereDate('date_issued', '<=', $to);
-                            })
-                            ->orWhere(function($sub) use ($from, $to) {
-                                $sub->whereNull('date_issued')
-                                    ->whereDate('order_date', '>=', $from)
-                                    ->whereDate('order_date', '<=', $to);
-                            });
-                        })
-                        ->selectRaw('
-                            SUM(commission) as total_commission,
-                            SUM(logistic_delivery_fee) as total_logistics,
-                            COUNT(*) as orders_count
-                        ')
-                        ->first();
-
-                    $commission = (float) ($uzumExpenses->total_commission ?? 0);
-                    $logistics = (float) ($uzumExpenses->total_logistics ?? 0);
-
-                    $uzumTotalExpenses['commission'] += $commission;
-                    $uzumTotalExpenses['logistics'] += $logistics;
-                    $uzumTotalExpenses['total'] += $commission + $logistics;
-                    $uzumTotalExpenses['items_count'] += (int) ($uzumExpenses->orders_count ?? 0);
                 }
             }
         }
@@ -1125,9 +1108,9 @@ class FinanceController extends Controller
                     ')
                     ->first();
 
-                // Возвраты отдельно
+                // Возвраты/отмены отдельно (в Uzum это статус CANCELED)
                 $uzumReturns = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'RETURNED')
+                    ->where('status', 'CANCELED')
                     ->whereDate('date_issued', '>=', $from)
                     ->whereDate('date_issued', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as amount')
