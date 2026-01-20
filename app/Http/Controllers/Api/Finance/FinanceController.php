@@ -250,13 +250,13 @@ class FinanceController extends Controller
             \Log::error('WB sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
-        // Ozon продажи (stock_status = 'sold' с датой в периоде)
+        // Ozon продажи (статусы delivered, completed = завершённые продажи)
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
                 $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('stock_status', 'sold')
-                    ->whereDate('stock_sold_at', '>=', $from)
-                    ->whereDate('stock_sold_at', '<=', $to)
+                    ->whereIn('status', ['delivered', 'completed'])
+                    ->whereDate('created_at_ozon', '>=', $from)
+                    ->whereDate('created_at_ozon', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
                     ->first();
 
@@ -788,7 +788,7 @@ class FinanceController extends Controller
         $rubToUzs = $financeSettings->rub_rate ?? 140;
 
         $wbAccounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'wildberries')
+            ->where('marketplace', 'wb')
             ->where('is_active', true)
             ->get();
 
@@ -1000,8 +1000,8 @@ class FinanceController extends Controller
                 $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
-                    ->whereDate('date', '>=', $from)
-                    ->whereDate('date', '<=', $to)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
                     ->selectRaw('
                         COUNT(*) as orders_count,
                         SUM(COALESCE(total_price, 0)) as gross_revenue,
@@ -1012,8 +1012,8 @@ class FinanceController extends Controller
                 // Возвраты / отмены
                 $wbReturns = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('is_cancel', true)
-                    ->whereDate('date', '>=', $from)
-                    ->whereDate('date', '<=', $to)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
                     ->first();
 
@@ -1052,9 +1052,9 @@ class FinanceController extends Controller
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
                 $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'delivered')
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to)
+                    ->whereIn('status', ['delivered', 'completed'])
+                    ->whereDate('created_at_ozon', '>=', $from)
+                    ->whereDate('created_at_ozon', '<=', $to)
                     ->selectRaw('
                         COUNT(*) as orders_count,
                         SUM(COALESCE(total_price, 0)) as gross_revenue
@@ -1064,8 +1064,8 @@ class FinanceController extends Controller
                 // Возвраты / отмены
                 $ozonReturns = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->whereIn('status', ['cancelled', 'returned'])
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to)
+                    ->whereDate('created_at_ozon', '>=', $from)
+                    ->whereDate('created_at_ozon', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
                     ->first();
 
