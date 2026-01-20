@@ -2139,6 +2139,9 @@ function financePage() {
             await this.loadCategories();
             this.loadCategoriesForType('expense');
             await this.loadOverview();
+            // Загружаем данные маркетплейсов
+            this.loadMarketplaceExpenses();
+            this.loadMarketplaceIncome();
         }
     }
 }
