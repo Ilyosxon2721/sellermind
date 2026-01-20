@@ -1376,11 +1376,32 @@ class FinanceController extends Controller
             ],
         ];
 
-        // Aggregate by marketplace
-        foreach (['uzum', 'wb', 'ozon', 'yandex'] as $marketplace) {
+        // Aggregate by marketplace (include 'ym' as alias for yandex)
+        foreach (['uzum', 'wb', 'ozon', 'yandex', 'ym'] as $marketplace) {
             $mpExpenses = $cachedExpenses->where('marketplace', $marketplace);
 
             if ($mpExpenses->isEmpty()) {
+                // Return empty structure for marketplaces that have no cache data
+                // This ensures UI shows 0 instead of hiding the section
+                $displayKey = ($marketplace === 'ym') ? 'yandex' : $marketplace;
+                if (!isset($result[$displayKey])) {
+                    $result[$displayKey] = [
+                        'commission' => 0,
+                        'logistics' => 0,
+                        'storage' => 0,
+                        'advertising' => 0,
+                        'penalties' => 0,
+                        'returns' => 0,
+                        'other' => 0,
+                        'total' => 0,
+                        'gross_revenue' => 0,
+                        'orders_count' => 0,
+                        'returns_count' => 0,
+                        'currency' => 'UZS',
+                        'total_uzs' => 0,
+                        'source' => 'cache',
+                    ];
+                }
                 continue;
             }
 
@@ -1401,7 +1422,9 @@ class FinanceController extends Controller
                 'source' => 'cache',
             ];
 
-            $result[$marketplace] = $aggregated;
+            // Use 'yandex' key for 'ym' marketplace
+            $displayKey = ($marketplace === 'ym') ? 'yandex' : $marketplace;
+            $result[$displayKey] = $aggregated;
 
             // Determine conversion rate based on currency
             $isUzs = $aggregated['currency'] === 'UZS';
