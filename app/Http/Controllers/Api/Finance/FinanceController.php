@@ -18,6 +18,7 @@ use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceExpenseCache;
 use App\Support\ApiResponder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -727,6 +728,10 @@ class FinanceController extends Controller
 
     /**
      * Получить расходы маркетплейсов (Uzum/WB/Ozon)
+     *
+     * Использует кэш из таблицы marketplace_expense_cache для быстрой загрузки.
+     * Кэш обновляется каждые 4 часа через команду marketplace:sync-expenses.
+     * Если кэш устарел или отсутствует, данные загружаются напрямую из API.
      */
     public function marketplaceExpenses(Request $request)
     {
@@ -737,6 +742,16 @@ class FinanceController extends Controller
 
         $from = $request->from ? Carbon::parse($request->from)->startOfDay() : now()->startOfMonth();
         $to = $request->to ? Carbon::parse($request->to)->endOfDay() : now()->endOfMonth();
+        $useCache = $request->boolean('use_cache', true);
+        $forceRefresh = $request->boolean('refresh', false);
+
+        // Determine period type for cache lookup
+        $daysDiff = $from->diffInDays($to);
+        $periodType = match (true) {
+            $daysDiff <= 7 => '7days',
+            $daysDiff <= 30 => '30days',
+            default => '90days',
+        };
 
         $result = [
             'period' => [
@@ -756,7 +771,19 @@ class FinanceController extends Controller
                 'other' => 0,
                 'total' => 0,
             ],
+            'cache_info' => [
+                'used' => false,
+                'stale' => false,
+            ],
         ];
+
+        // Try to get data from cache first (if enabled and not forcing refresh)
+        if ($useCache && !$forceRefresh) {
+            $cachedData = $this->getExpensesFromCache($companyId, $periodType);
+            if ($cachedData) {
+                return $this->successResponse($cachedData);
+            }
+        }
 
         // Uzum expenses - first try local DB (uzum_expenses), fallback to API
         // API returns detailed expense breakdown by source: commission, logistics, storage, advertising, etc.
@@ -1297,5 +1324,100 @@ class FinanceController extends Controller
             ],
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Get marketplace expenses from cache table
+     *
+     * Returns cached data if available and fresh (< 4 hours old).
+     * Returns null if cache is stale or doesn't exist.
+     */
+    protected function getExpensesFromCache(int $companyId, string $periodType): ?array
+    {
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $rubToUzs = $financeSettings->rub_rate ?? 140;
+
+        // Get all cached expenses for this company and period
+        $cachedExpenses = MarketplaceExpenseCache::where('company_id', $companyId)
+            ->where('period_type', $periodType)
+            ->where('sync_status', 'success')
+            ->get();
+
+        if ($cachedExpenses->isEmpty()) {
+            return null;
+        }
+
+        // Check if any cache is stale (older than 4 hours)
+        $hasStale = $cachedExpenses->contains(fn($c) => $c->isStale(4));
+
+        // Prepare result structure
+        $result = [
+            'period' => [
+                'from' => $cachedExpenses->first()->period_from->format('Y-m-d'),
+                'to' => $cachedExpenses->first()->period_to->format('Y-m-d'),
+            ],
+            'uzum' => null,
+            'wb' => null,
+            'ozon' => null,
+            'total' => [
+                'commission' => 0,
+                'logistics' => 0,
+                'storage' => 0,
+                'advertising' => 0,
+                'penalties' => 0,
+                'returns' => 0,
+                'other' => 0,
+                'total' => 0,
+            ],
+            'cache_info' => [
+                'used' => true,
+                'stale' => $hasStale,
+                'synced_at' => $cachedExpenses->max('synced_at')?->toIso8601String(),
+            ],
+        ];
+
+        // Aggregate by marketplace
+        foreach (['uzum', 'wb', 'ozon', 'yandex'] as $marketplace) {
+            $mpExpenses = $cachedExpenses->where('marketplace', $marketplace);
+
+            if ($mpExpenses->isEmpty()) {
+                continue;
+            }
+
+            $aggregated = [
+                'commission' => $mpExpenses->sum('commission'),
+                'logistics' => $mpExpenses->sum('logistics'),
+                'storage' => $mpExpenses->sum('storage'),
+                'advertising' => $mpExpenses->sum('advertising'),
+                'penalties' => $mpExpenses->sum('penalties'),
+                'returns' => $mpExpenses->sum('returns'),
+                'other' => $mpExpenses->sum('other'),
+                'total' => $mpExpenses->sum('total'),
+                'gross_revenue' => $mpExpenses->sum('gross_revenue'),
+                'orders_count' => $mpExpenses->sum('orders_count'),
+                'returns_count' => $mpExpenses->sum('returns_count'),
+                'currency' => $mpExpenses->first()->currency ?? 'UZS',
+                'total_uzs' => $mpExpenses->sum('total_uzs'),
+                'source' => 'cache',
+            ];
+
+            $result[$marketplace] = $aggregated;
+
+            // Determine conversion rate based on currency
+            $isUzs = $aggregated['currency'] === 'UZS';
+            $conversionRate = $isUzs ? 1 : $rubToUzs;
+
+            // Add to totals
+            $result['total']['commission'] += $aggregated['commission'] * $conversionRate;
+            $result['total']['logistics'] += $aggregated['logistics'] * $conversionRate;
+            $result['total']['storage'] += $aggregated['storage'] * $conversionRate;
+            $result['total']['advertising'] += $aggregated['advertising'] * $conversionRate;
+            $result['total']['penalties'] += $aggregated['penalties'] * $conversionRate;
+            $result['total']['returns'] += $aggregated['returns'] * $conversionRate;
+            $result['total']['other'] += $aggregated['other'] * $conversionRate;
+            $result['total']['total'] += $aggregated['total_uzs'] ?: ($aggregated['total'] * $conversionRate);
+        }
+
+        return $result;
     }
 }

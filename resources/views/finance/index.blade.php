@@ -457,7 +457,7 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             </template>
-                            <button @click="loadMarketplaceExpenses()" class="text-sm text-emerald-600 hover:text-emerald-700" :disabled="loadingExpenses">
+                            <button @click="loadMarketplaceExpenses(true)" class="text-sm text-emerald-600 hover:text-emerald-700" :disabled="loadingExpenses" title="Обновить данные с маркетплейсов">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
                         </div>
@@ -1958,10 +1958,13 @@ function financePage() {
             if (summaryResp.ok && !summaryJson.errors) this.taxSummary = summaryJson.data || {};
         },
 
-        async loadMarketplaceExpenses() {
+        async loadMarketplaceExpenses(forceRefresh = false) {
             this.loadingExpenses = true;
             try {
                 const params = new URLSearchParams({ from: this.periodFrom, to: this.periodTo });
+                if (forceRefresh) {
+                    params.append('refresh', 'true');
+                }
                 const resp = await fetch('/api/finance/marketplace-expenses?' + params, { headers: this.getAuthHeaders() });
                 const json = await resp.json();
                 if (resp.ok && !json.errors) {

@@ -166,6 +166,16 @@ Schedule::command('uzum:sync-expenses --days=365')
     })
     ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
 
+// Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
+// Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
+Schedule::command('marketplace:sync-expenses --period=30days')
+    ->everyFourHours()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Marketplace expenses cache sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-expenses-cache.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Quick Wins Scheduled Tasks
