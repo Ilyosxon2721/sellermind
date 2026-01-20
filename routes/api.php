@@ -716,8 +716,9 @@ Route::middleware('auth.any')->group(function () {
         Route::get('taxes/{id}', [\App\Http\Controllers\Api\Finance\TaxController::class, 'show']);
         Route::post('taxes/{id}/pay', [\App\Http\Controllers\Api\Finance\TaxController::class, 'pay']);
 
-        // Marketplace Expenses
+        // Marketplace Expenses & Income
         Route::get('marketplace-expenses', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceExpenses']);
+        Route::get('marketplace-income', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceIncome']);
         Route::post('marketplace-expenses/sync-uzum', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'syncUzumExpenses']);
 
         // Cash Accounts (касса, банк)

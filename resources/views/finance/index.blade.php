@@ -287,97 +287,317 @@
                     </div>
                 </div>
 
-                <!-- Marketplace Sales -->
+                <!-- Marketplace Income (Доходы) -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Продажи на маркетплейсах</h3>
-                        <span class="text-sm text-gray-500" x-text="'За период: ' + periodFrom + ' — ' + periodTo"></span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <!-- Uzum -->
-                        <div class="bg-purple-50 rounded-xl p-4">
-                            <div class="flex items-center space-x-2 mb-2">
-                                <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
-                                <span class="font-medium text-purple-700">Uzum</span>
-                            </div>
-                            <div class="text-xl font-bold text-purple-700" x-text="formatMoney(overview.marketplace_sales?.uzum?.revenue || 0) + ' сум'"></div>
-                            <div class="text-sm text-purple-600" x-text="(overview.marketplace_sales?.uzum?.orders || 0) + ' заказов'"></div>
-                        </div>
-                        <!-- WB -->
-                        <div class="bg-pink-50 rounded-xl p-4">
-                            <div class="flex items-center space-x-2 mb-2">
-                                <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
-                                <span class="font-medium text-pink-700">Wildberries</span>
-                            </div>
-                            <div class="text-xl font-bold text-pink-700" x-text="formatMoney(overview.marketplace_sales?.wb?.revenue || 0) + ' сум'"></div>
-                            <div class="text-sm text-pink-600" x-text="(overview.marketplace_sales?.wb?.orders || 0) + ' заказов'"></div>
-                        </div>
-                        <!-- Ozon -->
-                        <div class="bg-blue-50 rounded-xl p-4">
-                            <div class="flex items-center space-x-2 mb-2">
-                                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
-                                <span class="font-medium text-blue-700">Ozon</span>
-                            </div>
-                            <div class="text-xl font-bold text-blue-700" x-text="formatMoney(overview.marketplace_sales?.ozon?.revenue || 0) + ' сум'"></div>
-                            <div class="text-sm text-blue-600" x-text="(overview.marketplace_sales?.ozon?.orders || 0) + ' заказов'"></div>
-                        </div>
-                        <!-- Total -->
-                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white">
-                            <div class="text-sm opacity-80 mb-2">Всего продаж</div>
-                            <div class="text-xl font-bold" x-text="formatMoney(overview.marketplace_sales?.total_revenue || 0) + ' сум'"></div>
-                            <div class="text-sm opacity-80" x-text="(overview.marketplace_sales?.total_orders || 0) + ' заказов'"></div>
+                        <h3 class="text-lg font-semibold text-gray-900">Доходы с маркетплейсов</h3>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-500" x-text="'За период: ' + periodFrom + ' — ' + periodTo"></span>
+                            <template x-if="loadingIncome">
+                                <span class="text-sm text-gray-400">Загрузка...</span>
+                            </template>
+                            <button @click="loadMarketplaceIncome()" class="text-sm text-emerald-600 hover:text-emerald-700">
+                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
                         </div>
                     </div>
+                    <template x-if="marketplaceIncome">
+                        <div class="space-y-4">
+                            <!-- Total Summary -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div class="bg-green-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-green-600 mb-1">Выручка</div>
+                                    <div class="text-lg font-bold text-green-700" x-text="formatMoney(marketplaceIncome.total?.gross_revenue || 0)"></div>
+                                </div>
+                                <div class="bg-emerald-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-emerald-600 mb-1">К выплате</div>
+                                    <div class="text-lg font-bold text-emerald-700" x-text="formatMoney(marketplaceIncome.total?.net_payout || 0)"></div>
+                                </div>
+                                <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-blue-600 mb-1">Заказов</div>
+                                    <div class="text-lg font-bold text-blue-700" x-text="marketplaceIncome.total?.orders_count || 0"></div>
+                                </div>
+                                <div class="bg-amber-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-amber-600 mb-1">Средний чек</div>
+                                    <div class="text-lg font-bold text-amber-700" x-text="formatMoney(marketplaceIncome.total?.avg_order_value || 0)"></div>
+                                </div>
+                                <div class="bg-red-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-red-600 mb-1">Возвратов</div>
+                                    <div class="text-lg font-bold text-red-700" x-text="marketplaceIncome.total?.returns_count || 0"></div>
+                                </div>
+                            </div>
+
+                            <!-- Breakdown by Marketplace -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <!-- Uzum -->
+                                <div class="border border-purple-200 rounded-xl p-4" x-show="marketplaceIncome.uzum && !marketplaceIncome.uzum.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                        <span class="font-medium text-purple-700">Uzum</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Выручка</span><span class="font-medium text-green-600" x-text="formatMoney(marketplaceIncome.uzum?.gross_revenue || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">К выплате</span><span class="font-medium text-emerald-600" x-text="formatMoney(marketplaceIncome.uzum?.net_payout || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Заказов</span><span class="font-medium" x-text="marketplaceIncome.uzum?.orders_count || 0"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Средний чек</span><span class="font-medium" x-text="formatMoney(marketplaceIncome.uzum?.avg_order_value || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Возвратов</span><span class="font-medium text-red-500" x-text="marketplaceIncome.uzum?.returns_count || 0"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200">
+                                            <span class="font-medium text-purple-700">Маржа</span>
+                                            <span class="font-bold text-purple-700" x-text="(marketplaceIncome.uzum?.profit_margin || 0) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceIncome.uzum?.error">
+                                    <div class="border border-purple-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                            <span class="font-medium text-purple-700">Uzum</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceIncome.uzum.error"></p>
+                                    </div>
+                                </template>
+
+                                <!-- Wildberries -->
+                                <div class="border border-pink-200 rounded-xl p-4" x-show="marketplaceIncome.wb && !marketplaceIncome.wb.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                        <span class="font-medium text-pink-700">Wildberries</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Выручка</span><span class="font-medium text-green-600" x-text="formatMoney(marketplaceIncome.wb?.gross_revenue || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">К выплате</span><span class="font-medium text-emerald-600" x-text="formatMoney(marketplaceIncome.wb?.net_payout || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Заказов</span><span class="font-medium" x-text="marketplaceIncome.wb?.orders_count || 0"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Средний чек</span><span class="font-medium" x-text="formatMoney(marketplaceIncome.wb?.avg_order_value || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Возвратов</span><span class="font-medium text-red-500" x-text="marketplaceIncome.wb?.returns_count || 0"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200">
+                                            <span class="font-medium text-pink-700">Маржа</span>
+                                            <span class="font-bold text-pink-700" x-text="(marketplaceIncome.wb?.profit_margin || 0) + '%'"></span>
+                                        </div>
+                                        <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceIncome.wb?.gross_revenue_rub || 0) + ' ₽)'"></div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceIncome.wb?.error">
+                                    <div class="border border-pink-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                            <span class="font-medium text-pink-700">Wildberries</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceIncome.wb.error"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!marketplaceIncome.wb">
+                                    <div class="border border-pink-200 rounded-xl p-4 opacity-50">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                            <span class="font-medium text-pink-700">Wildberries</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500">Нет данных</p>
+                                    </div>
+                                </template>
+
+                                <!-- Ozon -->
+                                <div class="border border-blue-200 rounded-xl p-4" x-show="marketplaceIncome.ozon && !marketplaceIncome.ozon.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                        <span class="font-medium text-blue-700">Ozon</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Выручка</span><span class="font-medium text-green-600" x-text="formatMoney(marketplaceIncome.ozon?.gross_revenue || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">К выплате</span><span class="font-medium text-emerald-600" x-text="formatMoney(marketplaceIncome.ozon?.net_payout || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Заказов</span><span class="font-medium" x-text="marketplaceIncome.ozon?.orders_count || 0"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Средний чек</span><span class="font-medium" x-text="formatMoney(marketplaceIncome.ozon?.avg_order_value || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Возвратов</span><span class="font-medium text-red-500" x-text="marketplaceIncome.ozon?.returns_count || 0"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200">
+                                            <span class="font-medium text-blue-700">Маржа</span>
+                                            <span class="font-bold text-blue-700" x-text="(marketplaceIncome.ozon?.profit_margin || 0) + '%'"></span>
+                                        </div>
+                                        <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceIncome.ozon?.gross_revenue_rub || 0) + ' ₽)'"></div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceIncome.ozon?.error">
+                                    <div class="border border-blue-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                            <span class="font-medium text-blue-700">Ozon</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceIncome.ozon.error"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!marketplaceIncome.ozon">
+                                    <div class="border border-blue-200 rounded-xl p-4 opacity-50">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                            <span class="font-medium text-blue-700">Ozon</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500">Нет данных</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="!marketplaceIncome && !loadingIncome">
+                        <div class="text-center py-8 text-gray-500">
+                            <p class="text-sm">Данные о доходах маркетплейсов недоступны</p>
+                            <button @click="loadMarketplaceIncome()" class="mt-2 text-sm text-emerald-600 hover:text-emerald-700">Загрузить</button>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Marketplace Expenses -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-gray-900">Расходы маркетплейсов</h3>
-                        <template x-if="loadingExpenses">
-                            <span class="text-sm text-gray-400">Загрузка...</span>
-                        </template>
+                        <div class="flex items-center space-x-2">
+                            <template x-if="loadingExpenses">
+                                <span class="text-sm text-gray-400">Загрузка...</span>
+                            </template>
+                            <button @click="loadMarketplaceExpenses()" class="text-sm text-emerald-600 hover:text-emerald-700">
+                                <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </div>
                     </div>
-                    <template x-if="marketplaceExpenses && !marketplaceExpenses.uzum?.error">
-                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                            <div class="bg-red-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-red-600 mb-1">Комиссия</div>
-                                <div class="text-lg font-bold text-red-700" x-text="formatMoney(marketplaceExpenses.total?.commission || 0)"></div>
+                    <template x-if="marketplaceExpenses">
+                        <div class="space-y-4">
+                            <!-- Total Summary -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                <div class="bg-red-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-red-600 mb-1">Комиссия</div>
+                                    <div class="text-lg font-bold text-red-700" x-text="formatMoney(marketplaceExpenses.total?.commission || 0)"></div>
+                                </div>
+                                <div class="bg-orange-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-orange-600 mb-1">Логистика</div>
+                                    <div class="text-lg font-bold text-orange-700" x-text="formatMoney(marketplaceExpenses.total?.logistics || 0)"></div>
+                                </div>
+                                <div class="bg-amber-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-amber-600 mb-1">Хранение</div>
+                                    <div class="text-lg font-bold text-amber-700" x-text="formatMoney(marketplaceExpenses.total?.storage || 0)"></div>
+                                </div>
+                                <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-blue-600 mb-1">Реклама</div>
+                                    <div class="text-lg font-bold text-blue-700" x-text="formatMoney(marketplaceExpenses.total?.advertising || 0)"></div>
+                                </div>
+                                <div class="bg-rose-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-rose-600 mb-1">Штрафы</div>
+                                    <div class="text-lg font-bold text-rose-700" x-text="formatMoney(marketplaceExpenses.total?.penalties || 0)"></div>
+                                </div>
+                                <div class="bg-purple-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-purple-600 mb-1">Возвраты</div>
+                                    <div class="text-lg font-bold text-purple-700" x-text="formatMoney(marketplaceExpenses.total?.returns || 0)"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 text-center text-white">
+                                    <div class="text-xs opacity-80 mb-1">Всего</div>
+                                    <div class="text-lg font-bold" x-text="formatMoney(marketplaceExpenses.total?.total || 0)"></div>
+                                </div>
                             </div>
-                            <div class="bg-orange-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-orange-600 mb-1">Логистика</div>
-                                <div class="text-lg font-bold text-orange-700" x-text="formatMoney(marketplaceExpenses.total?.logistics || 0)"></div>
-                            </div>
-                            <div class="bg-amber-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-amber-600 mb-1">Хранение</div>
-                                <div class="text-lg font-bold text-amber-700" x-text="formatMoney(marketplaceExpenses.total?.storage || 0)"></div>
-                            </div>
-                            <div class="bg-blue-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-blue-600 mb-1">Реклама</div>
-                                <div class="text-lg font-bold text-blue-700" x-text="formatMoney(marketplaceExpenses.total?.advertising || 0)"></div>
-                            </div>
-                            <div class="bg-rose-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-rose-600 mb-1">Штрафы</div>
-                                <div class="text-lg font-bold text-rose-700" x-text="formatMoney(marketplaceExpenses.total?.penalties || 0)"></div>
-                            </div>
-                            <div class="bg-purple-50 rounded-xl p-3 text-center">
-                                <div class="text-xs text-purple-600 mb-1">Возвраты</div>
-                                <div class="text-lg font-bold text-purple-700" x-text="formatMoney(marketplaceExpenses.total?.returns || 0)"></div>
-                            </div>
-                            <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 text-center text-white">
-                                <div class="text-xs opacity-80 mb-1">Всего</div>
-                                <div class="text-lg font-bold" x-text="formatMoney(marketplaceExpenses.total?.total || 0)"></div>
+
+                            <!-- Breakdown by Marketplace -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <!-- Uzum -->
+                                <div class="border border-purple-200 rounded-xl p-4" x-show="marketplaceExpenses.uzum && !marketplaceExpenses.uzum.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                        <span class="font-medium text-purple-700">Uzum</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Комиссия</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.uzum?.commission || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Логистика</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.uzum?.logistics || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Хранение</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.uzum?.storage || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Реклама</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.uzum?.advertising || 0)"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Штрафы</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.uzum?.penalties || 0)"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-purple-700">Итого</span><span class="font-bold text-purple-700" x-text="formatMoney(marketplaceExpenses.uzum?.total || 0)"></span></div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceExpenses.uzum?.error">
+                                    <div class="border border-purple-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                            <span class="font-medium text-purple-700">Uzum</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceExpenses.uzum.error"></p>
+                                    </div>
+                                </template>
+
+                                <!-- Wildberries -->
+                                <div class="border border-pink-200 rounded-xl p-4" x-show="marketplaceExpenses.wb && !marketplaceExpenses.wb.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                        <span class="font-medium text-pink-700">Wildberries</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Комиссия</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.commission || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Логистика</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.logistics || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Штрафы</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.penalties || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Возвраты</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.returns || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-pink-700">Итого</span><span class="font-bold text-pink-700" x-text="formatMoney(marketplaceExpenses.wb?.total_uzs || 0)"></span></div>
+                                        <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceExpenses.wb?.total || 0) + ' ₽)'"></div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceExpenses.wb?.error">
+                                    <div class="border border-pink-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                            <span class="font-medium text-pink-700">Wildberries</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceExpenses.wb.error"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!marketplaceExpenses.wb">
+                                    <div class="border border-pink-200 rounded-xl p-4 opacity-50">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                            <span class="font-medium text-pink-700">Wildberries</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500">Нет данных</p>
+                                    </div>
+                                </template>
+
+                                <!-- Ozon -->
+                                <div class="border border-blue-200 rounded-xl p-4" x-show="marketplaceExpenses.ozon && !marketplaceExpenses.ozon.error">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                        <span class="font-medium text-blue-700">Ozon</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between"><span class="text-gray-600">Комиссия</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.ozon?.commission || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Логистика</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.ozon?.logistics || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Хранение</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.ozon?.storage || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Реклама</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.ozon?.advertising || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Штрафы</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.ozon?.penalties || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-blue-700">Итого</span><span class="font-bold text-blue-700" x-text="formatMoney(marketplaceExpenses.ozon?.total_uzs || 0)"></span></div>
+                                        <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceExpenses.ozon?.total || 0) + ' ₽)'"></div>
+                                    </div>
+                                </div>
+                                <template x-if="marketplaceExpenses.ozon?.error">
+                                    <div class="border border-blue-200 rounded-xl p-4">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                            <span class="font-medium text-blue-700">Ozon</span>
+                                        </div>
+                                        <p class="text-sm text-red-500" x-text="marketplaceExpenses.ozon.error"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!marketplaceExpenses.ozon">
+                                    <div class="border border-blue-200 rounded-xl p-4 opacity-50">
+                                        <div class="flex items-center space-x-2 mb-3">
+                                            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                            <span class="font-medium text-blue-700">Ozon</span>
+                                        </div>
+                                        <p class="text-sm text-gray-500">Нет данных</p>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </template>
-                    <template x-if="!marketplaceExpenses || marketplaceExpenses.uzum?.error">
-                        <div class="text-center py-4 text-gray-500">
-                            <template x-if="marketplaceExpenses?.uzum?.error">
-                                <p class="text-sm text-red-500" x-text="marketplaceExpenses.uzum.error"></p>
-                            </template>
-                            <template x-if="!marketplaceExpenses">
-                                <p class="text-sm">Данные о расходах маркетплейсов недоступны</p>
-                            </template>
+                    <template x-if="!marketplaceExpenses && !loadingExpenses">
+                        <div class="text-center py-8 text-gray-500">
+                            <p class="text-sm">Данные о расходах маркетплейсов недоступны</p>
+                            <button @click="loadMarketplaceExpenses()" class="mt-2 text-sm text-emerald-600 hover:text-emerald-700">Загрузить</button>
                         </div>
                     </template>
                 </div>
@@ -1421,6 +1641,8 @@ function financePage() {
         reportData: null,
         marketplaceExpenses: null,
         loadingExpenses: false,
+        marketplaceIncome: null,
+        loadingIncome: false,
 
         periodFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10),
         periodTo: new Date().toISOString().slice(0,10),
@@ -1531,8 +1753,9 @@ function financePage() {
                     };
                 }
             }
-            // Also load marketplace expenses
+            // Also load marketplace data
             this.loadMarketplaceExpenses();
+            this.loadMarketplaceIncome();
         },
 
         async loadTransactions() {
@@ -1591,6 +1814,21 @@ function financePage() {
                 console.error('Failed to load marketplace expenses:', e);
             }
             this.loadingExpenses = false;
+        },
+
+        async loadMarketplaceIncome() {
+            this.loadingIncome = true;
+            try {
+                const params = new URLSearchParams({ from: this.periodFrom, to: this.periodTo });
+                const resp = await fetch('/api/finance/marketplace-income?' + params, { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.marketplaceIncome = json.data || null;
+                }
+            } catch (e) {
+                console.error('Failed to load marketplace income:', e);
+            }
+            this.loadingIncome = false;
         },
 
         async loadCategories() {

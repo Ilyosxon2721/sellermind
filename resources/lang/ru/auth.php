@@ -27,6 +27,21 @@ return [
     'feature_pricing' => 'Централизованное управление ценами',
     'feature_analytics' => 'Аналитика и отчёты в реальном времени',
     
+    // Login page stats
+    'stat_companies' => 'компаний',
+    'stat_products' => 'товаров',
+    'stat_uptime' => 'uptime',
+    
+    // Register page benefits
+    'register_hero_title' => 'Присоединяйтесь к нам',
+    'register_hero_subtitle' => '500+ компаний уже управляют продажами на маркетплейсах с нашей платформой',
+    'benefit_trial' => '14 дней бесплатного периода',
+    'benefit_no_card' => 'Без банковской карты',
+    'benefit_quick_setup' => 'Подключение за 5 минут',
+    'testimonial_text' => 'Перешли на SellerMind полгода назад. Время на управление остатками сократилось в 5 раз.',
+    'testimonial_author' => 'Алексей М.',
+    'testimonial_role' => 'Селлер, 3000+ SKU',
+    
     // Common
     'or' => 'или',
     'continue_with' => 'Продолжить с',

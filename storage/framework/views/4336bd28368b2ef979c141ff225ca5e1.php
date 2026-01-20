@@ -69,15 +69,15 @@
                 <div class="space-y-4">
                     <div class="flex items-center space-x-4 bg-white/5 rounded-xl px-5 py-4 border border-white/10">
                         <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center text-xl">📦</div>
-                        <span style="color: white;">Синхронизация остатков на всех площадках</span>
+                        <span style="color: white;"><?php echo e(__('auth.feature_stock_sync')); ?></span>
                     </div>
                     <div class="flex items-center space-x-4 bg-white/5 rounded-xl px-5 py-4 border border-white/10">
                         <div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center text-xl">💰</div>
-                        <span style="color: white;">Централизованное управление ценами</span>
+                        <span style="color: white;"><?php echo e(__('auth.feature_pricing')); ?></span>
                     </div>
                     <div class="flex items-center space-x-4 bg-white/5 rounded-xl px-5 py-4 border border-white/10">
                         <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center text-xl">📊</div>
-                        <span style="color: white;">Аналитика и отчёты в реальном времени</span>
+                        <span style="color: white;"><?php echo e(__('auth.feature_analytics')); ?></span>
                     </div>
                 </div>
                 
@@ -86,15 +86,15 @@
                     <div class="flex space-x-12">
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">500+</div>
-                            <div style="color: #9ca3af;">компаний</div>
+                            <div style="color: #9ca3af;"><?php echo e(__('auth.stat_companies')); ?></div>
                         </div>
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">50K+</div>
-                            <div style="color: #9ca3af;">товаров</div>
+                            <div style="color: #9ca3af;"><?php echo e(__('auth.stat_products')); ?></div>
                         </div>
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">99.9%</div>
-                            <div style="color: #9ca3af;">uptime</div>
+                            <div style="color: #9ca3af;"><?php echo e(__('auth.stat_uptime')); ?></div>
                         </div>
                     </div>
                 </div>

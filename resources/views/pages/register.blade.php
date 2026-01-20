@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Регистрация — SellerMind</title>
+    <title>{{ __('auth.register_title') }} — SellerMind</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -60,9 +60,9 @@
                         </div>
                         <span class="text-2xl font-bold" style="color: white;">SellerMind</span>
                     </div>
-                    <h1 class="text-4xl font-bold mb-4" style="color: white;">Присоединяйтесь к нам</h1>
+                    <h1 class="text-4xl font-bold mb-4" style="color: white;">{{ __('auth.register_hero_title') }}</h1>
                     <p class="text-lg" style="color: #9ca3af;">
-                        500+ компаний уже управляют продажами на маркетплейсах с нашей платформой
+                        {{ __('auth.register_hero_subtitle') }}
                     </p>
                 </div>
                 
@@ -74,7 +74,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span style="color: white;">14 дней бесплатного периода</span>
+                        <span style="color: white;">{{ __('auth.benefit_trial') }}</span>
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -82,7 +82,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span style="color: white;">Без банковской карты</span>
+                        <span style="color: white;">{{ __('auth.benefit_no_card') }}</span>
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -90,18 +90,18 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span style="color: white;">Подключение за 5 минут</span>
+                        <span style="color: white;">{{ __('auth.benefit_quick_setup') }}</span>
                     </div>
                 </div>
                 
                 <!-- Testimonial -->
                 <div class="mt-12 p-6 bg-white/5 rounded-2xl border border-white/10">
-                    <p class="italic mb-4" style="color: #e5e7eb;">"Перешли на SellerMind полгода назад. Время на управление остатками сократилось в 5 раз."</p>
+                    <p class="italic mb-4" style="color: #e5e7eb;">"{{ __('auth.testimonial_text') }}"</p>
                     <div class="flex items-center">
                         <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-bold" style="color: white;">АМ</div>
                         <div class="ml-4">
-                            <div class="font-medium" style="color: white;">Алексей М.</div>
-                            <div style="color: #9ca3af;">Селлер, 3000+ SKU</div>
+                            <div class="font-medium" style="color: white;">{{ __('auth.testimonial_author') }}</div>
+                            <div style="color: #9ca3af;">{{ __('auth.testimonial_role') }}</div>
                         </div>
                     </div>
                 </div>
@@ -123,8 +123,8 @@
                 
                 <!-- Form Header -->
                 <div class="mb-8">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Создать аккаунт</h2>
-                    <p class="text-gray-600">Начните бесплатный период</p>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ __('auth.register_title') }}</h2>
+                    <p class="text-gray-600">{{ __('auth.register_subtitle') }}</p>
                 </div>
                 
                 <!-- Error -->
@@ -140,21 +140,21 @@
                 <!-- Form -->
                 <form @submit.prevent="register" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Имя</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('auth.name') }}</label>
                         <input type="text" x-model="name" required autocomplete="name"
                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900"
                                placeholder="Ваше имя">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('auth.email') }}</label>
                         <input type="email" x-model="email" required autocomplete="email"
                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900"
                                placeholder="you@example.com">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('auth.password') }}</label>
                         <div class="relative">
                             <input :type="showPassword ? 'text' : 'password'" x-model="password" required minlength="8"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-12 text-gray-900"
@@ -180,7 +180,7 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Подтвердите пароль</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('auth.confirm_password') }}</label>
                         <input type="password" x-model="password_confirmation" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900"
                                placeholder="Повторите пароль">
@@ -190,20 +190,20 @@
                         <input type="checkbox" x-model="acceptTerms" 
                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1">
                         <span class="ml-2 text-sm text-gray-600">
-                            Я принимаю <a href="#" class="text-blue-600 hover:underline">условия</a> и <a href="#" class="text-blue-600 hover:underline">политику</a>
+                            {{ __('auth.agree_terms') }}
                         </span>
                     </div>
                     
                     <button type="submit" :disabled="loading"
                             class="w-full py-3.5 bg-blue-600 font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition shadow-lg shadow-blue-600/30"
                             style="color: white !important;">
-                        <span x-show="!loading">Создать аккаунт</span>
+                        <span x-show="!loading">{{ __('auth.register_button') }}</span>
                         <span x-show="loading" class="flex items-center justify-center">
                             <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Регистрация...
+                            {{ __('auth.register_button') }}...
                         </span>
                     </button>
                 </form>
@@ -211,18 +211,18 @@
                 <!-- Login Link -->
                 <div class="mt-8 text-center">
                     <p class="text-gray-600">
-                        Уже есть аккаунт? 
-                        <a href="/login" class="text-blue-600 hover:text-blue-700 font-semibold">Войти</a>
+                        {{ __('auth.have_account') }} 
+                        <a href="/{{ app()->getLocale() }}/login" class="text-blue-600 hover:text-blue-700 font-semibold">{{ __('auth.login_link') }}</a>
                     </p>
                 </div>
                 
                 <!-- Back to Home -->
                 <div class="mt-6 text-center">
-                    <a href="/" class="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center">
+                    <a href="/{{ app()->getLocale() }}" class="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
-                        На главную
+                        {{ __('landing.hero_cta_secondary') }}
                     </a>
                 </div>
             </div>

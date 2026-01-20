@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="<?php echo e(app()->getLocale()); ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Регистрация — SellerMind</title>
+    <title><?php echo e(__('auth.register_title')); ?> — SellerMind</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
@@ -147,14 +147,14 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2"><?php echo e(__('auth.email')); ?></label>
                         <input type="email" x-model="email" required autocomplete="email"
                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900"
                                placeholder="you@example.com">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2"><?php echo e(__('auth.password')); ?></label>
                         <div class="relative">
                             <input :type="showPassword ? 'text' : 'password'" x-model="password" required minlength="8"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-12 text-gray-900"
@@ -180,7 +180,7 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Подтвердите пароль</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2"><?php echo e(__('auth.confirm_password')); ?></label>
                         <input type="password" x-model="password_confirmation" required
                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-900"
                                placeholder="Повторите пароль">
@@ -211,18 +211,19 @@
                 <!-- Login Link -->
                 <div class="mt-8 text-center">
                     <p class="text-gray-600">
-                        Уже есть аккаунт? 
-                        <a href="/login" class="text-blue-600 hover:text-blue-700 font-semibold">Войти</a>
+                        <?php echo e(__('auth.have_account')); ?> 
+                        <a href="/<?php echo e(app()->getLocale()); ?>/login" class="text-blue-600 hover:text-blue-700 font-semibold"><?php echo e(__('auth.login_link')); ?></a>
                     </p>
                 </div>
                 
                 <!-- Back to Home -->
                 <div class="mt-6 text-center">
-                    <a href="/" class="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center">
+                    <a href="/<?php echo e(app()->getLocale()); ?>" class="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
-                        На главную
+                        <?php echo e(__('landing.hero_cta_secondary')); ?>
+
                     </a>
                 </div>
             </div>

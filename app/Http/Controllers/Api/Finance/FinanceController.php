@@ -865,6 +865,214 @@ class FinanceController extends Controller
     }
 
     /**
+     * Получить детальную информацию о доходах с маркетплейсов
+     */
+    public function marketplaceIncome(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $from = $request->from ? Carbon::parse($request->from) : now()->startOfMonth();
+        $to = $request->to ? Carbon::parse($request->to) : now()->endOfMonth();
+
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $rubToUzs = $financeSettings->rub_rate ?? 140;
+
+        $result = [
+            'period' => [
+                'from' => $from->format('Y-m-d'),
+                'to' => $to->format('Y-m-d'),
+            ],
+            'uzum' => null,
+            'wb' => null,
+            'ozon' => null,
+            'total' => [
+                'gross_revenue' => 0,
+                'net_payout' => 0,
+                'orders_count' => 0,
+                'returns_count' => 0,
+                'avg_order_value' => 0,
+            ],
+        ];
+
+        // Uzum income (UZS)
+        try {
+            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where(function($q) use ($from, $to) {
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->where('status', 'TO_WITHDRAW')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->where('status', 'PROCESSING')
+                                ->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        });
+                    })
+                    ->selectRaw('
+                        COUNT(*) as orders_count,
+                        SUM(sell_price * amount) as gross_revenue,
+                        SUM(seller_profit) as net_payout,
+                        SUM(CASE WHEN status = "RETURNED" THEN 1 ELSE 0 END) as returns_count
+                    ')
+                    ->first();
+
+                // Возвраты отдельно
+                $uzumReturns = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'RETURNED')
+                    ->whereDate('date_issued', '>=', $from)
+                    ->whereDate('date_issued', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($uzumSales?->orders_count ?? 0);
+                $grossRevenue = (float) ($uzumSales?->gross_revenue ?? 0);
+                $netPayout = (float) ($uzumSales?->net_payout ?? 0);
+                $returnsCount = (int) ($uzumReturns?->cnt ?? 0);
+                $returnsAmount = (float) ($uzumReturns?->amount ?? 0);
+
+                $result['uzum'] = [
+                    'orders_count' => $ordersCount,
+                    'gross_revenue' => $grossRevenue,
+                    'net_payout' => $netPayout,
+                    'returns_count' => $returnsCount,
+                    'returns_amount' => $returnsAmount,
+                    'avg_order_value' => $ordersCount > 0 ? $grossRevenue / $ordersCount : 0,
+                    'profit_margin' => $grossRevenue > 0 ? round(($netPayout / $grossRevenue) * 100, 1) : 0,
+                    'currency' => 'UZS',
+                ];
+
+                $result['total']['gross_revenue'] += $grossRevenue;
+                $result['total']['net_payout'] += $netPayout;
+                $result['total']['orders_count'] += $ordersCount;
+                $result['total']['returns_count'] += $returnsCount;
+            }
+        } catch (\Exception $e) {
+            $result['uzum'] = ['error' => $e->getMessage()];
+        }
+
+        // WB income (RUB -> UZS)
+        try {
+            if (class_exists(\App\Models\WildberriesOrder::class)) {
+                $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('is_realization', true)
+                    ->where('is_cancel', false)
+                    ->whereDate('date', '>=', $from)
+                    ->whereDate('date', '<=', $to)
+                    ->selectRaw('
+                        COUNT(*) as orders_count,
+                        SUM(COALESCE(total_price, 0)) as gross_revenue,
+                        SUM(COALESCE(for_pay, finished_price, 0)) as net_payout
+                    ')
+                    ->first();
+
+                // Возвраты / отмены
+                $wbReturns = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('is_cancel', true)
+                    ->whereDate('date', '>=', $from)
+                    ->whereDate('date', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($wbSales?->orders_count ?? 0);
+                $grossRevenueRub = (float) ($wbSales?->gross_revenue ?? 0);
+                $netPayoutRub = (float) ($wbSales?->net_payout ?? 0);
+                $returnsCount = (int) ($wbReturns?->cnt ?? 0);
+                $returnsAmountRub = (float) ($wbReturns?->amount ?? 0);
+
+                $result['wb'] = [
+                    'orders_count' => $ordersCount,
+                    'gross_revenue' => $grossRevenueRub * $rubToUzs,
+                    'gross_revenue_rub' => $grossRevenueRub,
+                    'net_payout' => $netPayoutRub * $rubToUzs,
+                    'net_payout_rub' => $netPayoutRub,
+                    'returns_count' => $returnsCount,
+                    'returns_amount' => $returnsAmountRub * $rubToUzs,
+                    'returns_amount_rub' => $returnsAmountRub,
+                    'avg_order_value' => $ordersCount > 0 ? ($grossRevenueRub / $ordersCount) * $rubToUzs : 0,
+                    'avg_order_value_rub' => $ordersCount > 0 ? $grossRevenueRub / $ordersCount : 0,
+                    'profit_margin' => $grossRevenueRub > 0 ? round(($netPayoutRub / $grossRevenueRub) * 100, 1) : 0,
+                    'currency' => 'RUB',
+                    'rub_rate' => $rubToUzs,
+                ];
+
+                $result['total']['gross_revenue'] += $grossRevenueRub * $rubToUzs;
+                $result['total']['net_payout'] += $netPayoutRub * $rubToUzs;
+                $result['total']['orders_count'] += $ordersCount;
+                $result['total']['returns_count'] += $returnsCount;
+            }
+        } catch (\Exception $e) {
+            $result['wb'] = ['error' => $e->getMessage()];
+        }
+
+        // Ozon income (RUB -> UZS)
+        try {
+            if (class_exists(\App\Models\OzonOrder::class)) {
+                $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'delivered')
+                    ->whereDate('created_at', '>=', $from)
+                    ->whereDate('created_at', '<=', $to)
+                    ->selectRaw('
+                        COUNT(*) as orders_count,
+                        SUM(COALESCE(total_price, 0)) as gross_revenue
+                    ')
+                    ->first();
+
+                // Возвраты / отмены
+                $ozonReturns = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['cancelled', 'returned'])
+                    ->whereDate('created_at', '>=', $from)
+                    ->whereDate('created_at', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($ozonSales?->orders_count ?? 0);
+                $grossRevenueRub = (float) ($ozonSales?->gross_revenue ?? 0);
+                // Для Ozon net_payout примерно = gross - комиссия (берём из expenses или оценка ~85%)
+                $netPayoutRub = $grossRevenueRub * 0.85; // Приблизительно
+                $returnsCount = (int) ($ozonReturns?->cnt ?? 0);
+                $returnsAmountRub = (float) ($ozonReturns?->amount ?? 0);
+
+                $result['ozon'] = [
+                    'orders_count' => $ordersCount,
+                    'gross_revenue' => $grossRevenueRub * $rubToUzs,
+                    'gross_revenue_rub' => $grossRevenueRub,
+                    'net_payout' => $netPayoutRub * $rubToUzs,
+                    'net_payout_rub' => $netPayoutRub,
+                    'returns_count' => $returnsCount,
+                    'returns_amount' => $returnsAmountRub * $rubToUzs,
+                    'returns_amount_rub' => $returnsAmountRub,
+                    'avg_order_value' => $ordersCount > 0 ? ($grossRevenueRub / $ordersCount) * $rubToUzs : 0,
+                    'avg_order_value_rub' => $ordersCount > 0 ? $grossRevenueRub / $ordersCount : 0,
+                    'profit_margin' => $grossRevenueRub > 0 ? round(($netPayoutRub / $grossRevenueRub) * 100, 1) : 0,
+                    'currency' => 'RUB',
+                    'rub_rate' => $rubToUzs,
+                    'note' => 'Net payout estimated at 85% of gross',
+                ];
+
+                $result['total']['gross_revenue'] += $grossRevenueRub * $rubToUzs;
+                $result['total']['net_payout'] += $netPayoutRub * $rubToUzs;
+                $result['total']['orders_count'] += $ordersCount;
+                $result['total']['returns_count'] += $returnsCount;
+            }
+        } catch (\Exception $e) {
+            $result['ozon'] = ['error' => $e->getMessage()];
+        }
+
+        // Calculate total avg order value
+        if ($result['total']['orders_count'] > 0) {
+            $result['total']['avg_order_value'] = $result['total']['gross_revenue'] / $result['total']['orders_count'];
+        }
+
+        return $this->successResponse($result);
+    }
+
+    /**
      * Синхронизировать расходы Uzum за период
      */
     public function syncUzumExpenses(Request $request)

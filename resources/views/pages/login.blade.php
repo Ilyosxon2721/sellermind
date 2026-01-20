@@ -85,15 +85,15 @@
                     <div class="flex space-x-12">
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">500+</div>
-                            <div style="color: #9ca3af;">компаний</div>
+                            <div style="color: #9ca3af;">{{ __('auth.stat_companies') }}</div>
                         </div>
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">50K+</div>
-                            <div style="color: #9ca3af;">товаров</div>
+                            <div style="color: #9ca3af;">{{ __('auth.stat_products') }}</div>
                         </div>
                         <div>
                             <div class="text-3xl font-bold" style="color: white;">99.9%</div>
-                            <div style="color: #9ca3af;">uptime</div>
+                            <div style="color: #9ca3af;">{{ __('auth.stat_uptime') }}</div>
                         </div>
                     </div>
                 </div>

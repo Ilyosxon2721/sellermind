@@ -27,6 +27,21 @@ return [
     'feature_pricing' => 'Markazlashgan narxlarni boshqarish',
     'feature_analytics' => 'Real vaqtda analitika va hisobotlar',
     
+    // Login page stats
+    'stat_companies' => 'kompaniya',
+    'stat_products' => 'mahsulot',
+    'stat_uptime' => 'uptime',
+    
+    // Register page benefits
+    'register_hero_title' => 'Bizga qo\'shiling',
+    'register_hero_subtitle' => '500+ kompaniya allaqachon platformamiz bilan savdo qilmoqda',
+    'benefit_trial' => '14 kun bepul sinov',
+    'benefit_no_card' => 'Karta talab qilinmaydi',
+    'benefit_quick_setup' => '5 daqiqada sozlash',
+    'testimonial_text' => 'SellerMindga o\'tganimizdan beri yarim yil bo\'ldi. Qoldiqlarni boshqarish vaqti 5 marta qisqardi.',
+    'testimonial_author' => 'Aleksey M.',
+    'testimonial_role' => 'Sotuvchi, 3000+ SKU',
+    
     // Common
     'or' => 'yoki',
     'continue_with' => 'Davom etish',

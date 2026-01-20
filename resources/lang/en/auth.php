@@ -27,6 +27,21 @@ return [
     'feature_pricing' => 'Centralized pricing management',
     'feature_analytics' => 'Real-time analytics and reports',
     
+    // Login page stats
+    'stat_companies' => 'companies',
+    'stat_products' => 'products',
+    'stat_uptime' => 'uptime',
+    
+    // Register page benefits
+    'register_hero_title' => 'Join us',
+    'register_hero_subtitle' => '500+ companies already manage marketplace sales with our platform',
+    'benefit_trial' => '14-day free trial',
+    'benefit_no_card' => 'No credit card required',
+    'benefit_quick_setup' => 'Setup in 5 minutes',
+    'testimonial_text' => 'We switched to SellerMind six months ago. Time spent managing inventory decreased by 5x.',
+    'testimonial_author' => 'Alex M.',
+    'testimonial_role' => 'Seller, 3000+ SKU',
+    
     // Common
     'or' => 'or',
     'continue_with' => 'Continue with',
