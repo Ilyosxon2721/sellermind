@@ -1,7 +1,7 @@
 <!-- Hamburger Menu Button -->
 <button @click="sidebarOpen = !sidebarOpen"
         class="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-lg border border-gray-200 hover:bg-gray-50 transition-all"
-        aria-label="Открыть меню навигации"
+        aria-label="{{ __('admin.open_navigation') }}"
         :aria-expanded="sidebarOpen.toString()">
     <svg class="w-6 h-6 text-gray-700 transition-transform duration-200"
          :class="sidebarOpen ? 'rotate-90' : ''"

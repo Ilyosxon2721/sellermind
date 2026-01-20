@@ -7,9 +7,9 @@
     <div class="browser-only flex h-screen bg-gray-50">
         <x-sidebar></x-sidebar>
         <x-mobile-header />
-        <x-pwa-top-navbar title="Дашборд">
+        <x-pwa-top-navbar :title="__('dashboard.title')">
             <x-slot name="subtitle">
-                <span x-text="$store.auth.currentCompany?.name || 'Выберите компанию'"></span>
+                <span x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></span>
             </x-slot>
         </x-pwa-top-navbar>
 
@@ -19,17 +19,17 @@
             <header class="hidden lg:block bg-white border-b border-gray-200 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Дашборд</h1>
-                        <p class="text-sm text-gray-500" x-text="$store.auth.currentCompany?.name || 'Выберите компанию'"></p>
+                        <h1 class="text-2xl font-bold text-gray-900">{{ __('dashboard.title') }}</h1>
+                        <p class="text-sm text-gray-500" x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></p>
                     </div>
                     <div class="flex items-center space-x-4">
                         <select x-model="period" @change="loadData()"
                                 class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                            <option value="today">Сегодня</option>
-                            <option value="week" selected>7 дней</option>
-                            <option value="month">30 дней</option>
+                            <option value="today">{{ __('dashboard.today') }}</option>
+                            <option value="week" selected>{{ __('dashboard.7_days') }}</option>
+                            <option value="month">{{ __('dashboard.30_days') }}</option>
                         </select>
-                        <button @click="loadData()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Обновить">
+                        <button @click="loadData()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" :title="__('dashboard.refresh')">
                             <svg class="w-5 h-5" :class="loading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
@@ -68,7 +68,7 @@
                                 </div>
                                 <div>
                                     <p class="font-medium text-amber-800">
-                                        <span x-text="alerts.total_count"></span> оповещений требуют внимания
+                                        <span x-text="alerts.total_count"></span> {{ __('dashboard.alerts_attention') }}
                                     </p>
                                     <p class="text-sm text-amber-600">
                                         <span x-show="alerts.by_type?.low_stock > 0" x-text="alerts.by_type?.low_stock + ' низкий остаток'"></span>
@@ -77,7 +77,7 @@
                                 </div>
                             </div>
                             <button @click="showAlertsModal = true" class="text-amber-700 hover:text-amber-900 font-medium text-sm">
-                                Подробнее →
+                                {{ __('dashboard.details') }} →
                             </button>
                         </div>
                     </div>
@@ -94,7 +94,7 @@
                                 </div>
                                 <span class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-medium" x-text="periodLabel"></span>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">Выручка</h3>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.revenue') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(stats.revenue)">0 сум</p>
                             <p class="text-sm text-gray-500" x-text="stats.orders_count + ' заказов'"></p>
                         </div>
@@ -108,7 +108,7 @@
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">Заказы сегодня</h3>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.orders_today') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.today_orders">0</p>
                             <p class="text-sm text-gray-500" x-text="formatMoney(stats.today_revenue)"></p>
                         </div>
@@ -122,7 +122,7 @@
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">Товары</h3>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.products') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.products_count">0</p>
                             <p class="text-sm text-blue-600 font-medium flex items-center">
                                 Открыть

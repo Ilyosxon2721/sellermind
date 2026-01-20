@@ -23,7 +23,7 @@
             <button v-show="!saving"
                     @click="$store.auth.showCompanyPrompt = false"
                     class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
-                    aria-label="Закрыть">
+                    aria-label="{{ __('admin.close') }}">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -39,9 +39,9 @@
 
             <!-- Content -->
             <div class="text-center mb-6">
-                <h3 id="company-modal-title" class="text-2xl font-bold text-gray-900 mb-2">Создайте компанию</h3>
+                <h3 id="company-modal-title" class="text-2xl font-bold text-gray-900 mb-2">{{ __('admin.create_company') }}</h3>
                 <p class="text-gray-600">
-                    Для работы с системой необходимо создать компанию. Это займет всего минуту!
+                    {{ __('admin.create_company_desc') }}
                 </p>
             </div>
 
@@ -50,7 +50,7 @@
                 <!-- Company Name -->
                 <div>
                     <label for="company-name" class="block text-sm font-medium text-gray-700 mb-1">
-                        Название компании <span class="text-red-500">*</span>
+                        {{ __('admin.company_name') }} <span class="text-red-500">*</span>
                     </label>
                     <input
                         type="text"
@@ -59,7 +59,7 @@
                         :disabled="saving"
                         required
                         maxlength="255"
-                        placeholder="ООО Моя компания"
+                        placeholder="{{ __('admin.company_placeholder') }}"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
                         :class="{'border-red-500': errors.name}">
                     <p x-show="errors.name" x-text="errors.name" class="mt-1 text-sm text-red-600"></p>
@@ -83,7 +83,7 @@
                         @click="$store.auth.showCompanyPrompt = false"
                         :disabled="saving"
                         class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        Позже
+                        {{ __('admin.later') }}
                     </button>
                     <button
                         type="submit"
@@ -93,14 +93,14 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span x-text="saving ? 'Создание...' : 'Создать компанию'"></span>
+                        <span x-text="saving ? '{{ __('admin.creating') }}' : '{{ __('admin.create') }}'"></span>
                     </button>
                 </div>
             </form>
 
             <!-- Help Text -->
             <p class="mt-4 text-xs text-center text-gray-500">
-                Вы сможете добавить дополнительную информацию о компании позже в настройках
+                {{ __('admin.additional_info_later') }}
             </p>
         </div>
     </div>
@@ -122,7 +122,7 @@ function companyPromptModal() {
 
             // Validation
             if (!this.form.name || this.form.name.trim() === '') {
-                this.errors.name = 'Введите название компании';
+                this.errors.name = '{{ __('admin.company_name_required') }}';
                 return;
             }
 
@@ -145,7 +145,7 @@ function companyPromptModal() {
                 this.form = { name: '' };
 
                 // Show success toast
-                this.showToast('success', 'Компания успешно создана!');
+                this.showToast('success', '{{ __('admin.company_created') }}');
 
                 // Close modal
                 Alpine.store('auth').showCompanyPrompt = false;
@@ -158,7 +158,7 @@ function companyPromptModal() {
                 } else if (error.response?.data?.message) {
                     this.errorMessage = error.response.data.message;
                 } else {
-                    this.errorMessage = 'Произошла ошибка при создании компании. Попробуйте еще раз.';
+                    this.errorMessage = '{{ __('admin.company_create_error') }}';
                 }
             } finally {
                 this.saving = false;

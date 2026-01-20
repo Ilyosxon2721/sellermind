@@ -1324,6 +1324,10 @@ class UzumClient implements MarketplaceClientInterface
      * Fetch finance expenses from Uzum Finance API
      * Расходы маркетплейса: комиссии, логистика, штрафы и т.д.
      *
+     * API endpoint: GET /v1/finance/expenses
+     * Response structure: { payload: { payments: [...] } }
+     * Payment item: { id, name, source, shopId, paymentPrice, amount, dateCreated, dateUpdated, status }
+     *
      * @param MarketplaceAccount $account
      * @param array $shopIds Shop IDs to fetch expenses for
      * @param int|null $dateFromMs Start date in milliseconds
@@ -1367,7 +1371,9 @@ class UzumClient implements MarketplaceClientInterface
 
                 $response = $this->request($account, 'GET', '/v1/finance/expenses', $query);
 
-                $expenses = $response['expenses'] ?? $response['payload'] ?? [];
+                // API returns: { payload: { payments: [...] } }
+                $payload = $response['payload'] ?? $response;
+                $expenses = $payload['payments'] ?? $payload['expenses'] ?? [];
                 $total = $response['totalElements'] ?? count($expenses);
 
                 Log::info('Uzum fetchFinanceExpenses response', [
@@ -1376,6 +1382,8 @@ class UzumClient implements MarketplaceClientInterface
                     'page' => $page,
                     'expenses_count' => count($expenses),
                     'total_elements' => $total,
+                    'response_keys' => array_keys($response),
+                    'sample' => !empty($expenses) ? array_slice($expenses, 0, 2) : [],
                 ]);
 
                 $allExpenses = array_merge($allExpenses, $expenses);
@@ -1508,6 +1516,19 @@ class UzumClient implements MarketplaceClientInterface
     /**
      * Get expenses summary for a period
      *
+     * API returns payments with 'source' field for categorization.
+     * Known Uzum sources (in Uzbek):
+     * - Marketing = Реклама (advertising)
+     * - Logistika = Логистика (logistics)
+     * - Ombor = Хранение (storage)
+     * - Obuna = Подписка (subscription/services)
+     * - Uzum Market = Штрафы и комиссии (penalties/commission)
+     * - Fotostudiya = Фотостудия (other services)
+     * - Tovarlarni tayyorlash markazi = Подготовка товаров (other services)
+     *
+     * Note: Uzum expenses API dateFrom/dateTo filters are unreliable (return empty results).
+     * We fetch all expenses and filter locally by dateService field.
+     *
      * @param MarketplaceAccount $account
      * @param \DateTimeInterface $from
      * @param \DateTimeInterface $to
@@ -1521,7 +1542,15 @@ class UzumClient implements MarketplaceClientInterface
         $dateFromMs = $from->getTimestamp() * 1000;
         $dateToMs = $to->getTimestamp() * 1000;
 
-        $expenses = $this->fetchAllFinanceExpenses($account, [], $dateFromMs, $dateToMs);
+        // Fetch ALL expenses without date filter (API date filters are unreliable)
+        // Then filter locally by dateService field
+        $allExpenses = $this->fetchAllFinanceExpenses($account, [], null, null);
+
+        // Filter by dateService (the actual service date, not creation date)
+        $expenses = array_filter($allExpenses, function($expense) use ($dateFromMs, $dateToMs) {
+            $dateService = $expense['dateService'] ?? $expense['dateCreated'] ?? 0;
+            return $dateService >= $dateFromMs && $dateService <= $dateToMs;
+        });
 
         $summary = [
             'total' => 0,
@@ -1533,24 +1562,66 @@ class UzumClient implements MarketplaceClientInterface
             'returns' => 0,
             'other' => 0,
             'items_count' => count($expenses),
+            'currency' => 'UZS',
+            'sources' => [], // Debug: track all unique sources with amounts
         ];
 
         foreach ($expenses as $expense) {
-            $amount = (float) ($expense['amount'] ?? 0);
-            $type = strtoupper($expense['type'] ?? '');
+            // API returns 'paymentPrice' for amount, 'source' for category
+            $amount = abs((float) ($expense['paymentPrice'] ?? $expense['amount'] ?? 0));
+            $source = $expense['source'] ?? '';
+            $sourceLower = strtolower($source);
+            $name = strtolower($expense['name'] ?? '');
+
+            // Track unique sources with amounts for debugging
+            if ($source) {
+                if (!isset($summary['sources'][$source])) {
+                    $summary['sources'][$source] = 0;
+                }
+                $summary['sources'][$source] += $amount;
+            }
 
             $summary['total'] += $amount;
 
-            match ($type) {
-                'COMMISSION' => $summary['commission'] += $amount,
-                'LOGISTICS', 'DELIVERY' => $summary['logistics'] += $amount,
-                'STORAGE' => $summary['storage'] += $amount,
-                'ADVERTISING', 'ADS' => $summary['advertising'] += $amount,
-                'PENALTY' => $summary['penalties'] += $amount,
-                'RETURN' => $summary['returns'] += $amount,
-                default => $summary['other'] += $amount,
-            };
+            // Categorize by Uzum source field (Uzbek language)
+            // Marketing = Реклама, targibot = продвижение
+            if ($sourceLower === 'marketing' || str_contains($name, 'targibot') || str_contains($name, 'reklama')) {
+                $summary['advertising'] += $amount;
+            }
+            // Logistika = Логистика
+            elseif ($sourceLower === 'logistika' || str_contains($name, 'logistika') || str_contains($name, 'yetkazish')) {
+                $summary['logistics'] += $amount;
+            }
+            // Ombor = Склад/Хранение, saqlash = хранение
+            elseif ($sourceLower === 'ombor' || str_contains($name, 'saqlash') || str_contains($name, 'ombor')) {
+                $summary['storage'] += $amount;
+            }
+            // Uzum Market = Штрафы (jarima = штраф)
+            elseif ($sourceLower === 'uzum market' || str_contains($name, 'jarima') || str_contains($name, 'штраф')) {
+                $summary['penalties'] += $amount;
+            }
+            // Obuna = Подписка, treat as commission/service fee
+            elseif ($sourceLower === 'obuna') {
+                $summary['commission'] += $amount;
+            }
+            // Qaytarish = Возврат
+            elseif (str_contains($name, 'qaytarish') || str_contains($name, 'возврат') || str_contains($name, 'return')) {
+                $summary['returns'] += $amount;
+            }
+            // Everything else goes to 'other'
+            else {
+                $summary['other'] += $amount;
+            }
         }
+
+        Log::info('Uzum getExpensesSummary completed', [
+            'account_id' => $account->id,
+            'from' => $from->format('Y-m-d'),
+            'to' => $to->format('Y-m-d'),
+            'items_count' => $summary['items_count'],
+            'total' => $summary['total'],
+            'by_source' => $summary['sources'],
+        ]);
 
         return $summary;
     }

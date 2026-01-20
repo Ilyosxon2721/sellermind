@@ -290,9 +290,20 @@ class MarketplaceAccount extends Model
         }
 
         try {
-            return Crypt::decryptString($value);
+            $decrypted = Crypt::decryptString($value);
+            \Log::debug('Uzum API key decryption SUCCESS', [
+                'original_length' => strlen($value),
+                'decrypted_length' => strlen($decrypted),
+                'decrypted_start' => substr($decrypted, 0, 10),
+            ]);
+            return $decrypted;
         } catch (\Exception $e) {
             // If decryption fails, return original value (unencrypted token)
+            \Log::warning('Uzum API key decryption FAILED, returning original value', [
+                'original_length' => strlen($value),
+                'original_start' => substr($value, 0, 10),
+                'error' => $e->getMessage(),
+            ]);
             return $value;
         }
     }
@@ -643,6 +654,16 @@ class MarketplaceAccount extends Model
     {
         // Accessors already decrypt tokens, no need to decrypt again
         $token = $this->uzum_access_token ?? $this->uzum_api_key ?? $this->api_key;
+
+        // DEBUG: Log token info for troubleshooting
+        \Log::debug('Uzum getUzumAuthHeaders token check', [
+            'account_id' => $this->id,
+            'has_token' => !empty($token),
+            'token_length' => $token ? strlen($token) : 0,
+            'token_start' => $token ? substr($token, 0, 10) : null,
+            'token_looks_encrypted' => $token && str_starts_with($token, 'eyJ'),
+        ]);
+
         if (!$token) {
             return [];
         }
