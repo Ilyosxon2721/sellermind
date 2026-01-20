@@ -75,7 +75,14 @@ class ProductService
         $mapById = [];
         $mapBySku = [];
 
-        foreach ($variants as $variantData) {
+        \Log::info('syncVariants called', [
+            'product_id' => $product->id,
+            'incoming_variants' => count($variants),
+            'existing_variants' => $existing->count(),
+            'existing_ids' => $existing->keys()->all(),
+        ]);
+
+        foreach ($variants as $idx => $variantData) {
             $variantId = $variantData['id'] ?? null;
             $payload = Arr::only($variantData, [
                 'sku',
@@ -96,9 +103,16 @@ class ProductService
             ]);
             $payload['company_id'] = $product->company_id;
 
+            \Log::info("syncVariants processing variant #{$idx}", [
+                'variant_id' => $variantId,
+                'sku' => $payload['sku'] ?? null,
+                'has_in_existing' => $variantId ? $existing->has($variantId) : false,
+            ]);
+
             if ($variantId && $existing->has($variantId)) {
                 $variant = $existing->get($variantId);
                 $variant->update($payload);
+                \Log::info("Updated existing variant by ID", ['id' => $variant->id]);
             } else {
                 // Check if variant with this SKU already exists for this product
                 $existingBySku = $product->variants()
@@ -108,8 +122,10 @@ class ProductService
                 if ($existingBySku) {
                     $existingBySku->update($payload);
                     $variant = $existingBySku;
+                    \Log::info("Updated existing variant by SKU", ['id' => $variant->id, 'sku' => $payload['sku']]);
                 } else {
                     $variant = $product->variants()->create($payload);
+                    \Log::info("Created new variant", ['id' => $variant->id, 'sku' => $payload['sku']]);
                 }
             }
 

@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Api\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\Finance\CashAccount;
 use App\Models\Finance\CashTransaction;
-use App\Traits\ApiResponse;
+use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CashAccountController extends Controller
 {
-    use ApiResponse;
+    use ApiResponder;
 
     /**
      * Список всех счетов компании

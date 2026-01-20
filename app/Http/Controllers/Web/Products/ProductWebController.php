@@ -198,6 +198,20 @@ class ProductWebController extends Controller
         $this->authorizeCompany($request, $product);
 
         $dto = $this->buildDto($request, $product);
+
+        // Debug logging
+        \Log::info('Product update request', [
+            'product_id' => $product->id,
+            'options_count' => count($dto['options'] ?? []),
+            'variants_count' => count($dto['variants'] ?? []),
+            'options' => $dto['options'] ?? [],
+            'variants' => array_map(fn($v) => [
+                'id' => $v['id'] ?? null,
+                'sku' => $v['sku'] ?? null,
+                'option_value_ids' => $v['option_value_ids'] ?? [],
+            ], $dto['variants'] ?? []),
+        ]);
+
         $product = $this->productService->updateProductFromDto($product, $dto);
 
         return redirect()
@@ -358,27 +372,30 @@ class ProductWebController extends Controller
             ];
         })->values()->all();
 
-        $variants = $product->variants->map(function ($variant) {
-            return [
-                'id' => $variant->id,
-                'sku' => $variant->sku,
-                'barcode' => $variant->barcode,
-                'article_suffix' => $variant->article_suffix,
-                'option_values_summary' => $variant->option_values_summary,
-                'purchase_price' => $variant->purchase_price,
-                'price_default' => $variant->price_default,
-                'old_price_default' => $variant->old_price_default,
-                'stock_default' => $variant->stock_default,
-                'weight_g' => $variant->weight_g,
-                'length_mm' => $variant->length_mm,
-                'width_mm' => $variant->width_mm,
-                'height_mm' => $variant->height_mm,
-                'main_image_id' => $variant->main_image_id,
-                'is_active' => $variant->is_active,
-                'is_deleted' => $variant->is_deleted,
-                'option_value_ids' => $variant->optionValues->pluck('id')->all(),
-            ];
-        })->values()->all();
+        // Filter out deleted variants - they should not be shown in edit form
+        $variants = $product->variants
+            ->where('is_deleted', false)
+            ->map(function ($variant) {
+                return [
+                    'id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'barcode' => $variant->barcode,
+                    'article_suffix' => $variant->article_suffix,
+                    'option_values_summary' => $variant->option_values_summary,
+                    'purchase_price' => $variant->purchase_price,
+                    'price_default' => $variant->price_default,
+                    'old_price_default' => $variant->old_price_default,
+                    'stock_default' => $variant->stock_default,
+                    'weight_g' => $variant->weight_g,
+                    'length_mm' => $variant->length_mm,
+                    'width_mm' => $variant->width_mm,
+                    'height_mm' => $variant->height_mm,
+                    'main_image_id' => $variant->main_image_id,
+                    'is_active' => $variant->is_active,
+                    'is_deleted' => $variant->is_deleted,
+                    'option_value_ids' => $variant->optionValues->pluck('id')->all(),
+                ];
+            })->values()->all();
 
         $images = $product->images->map(function ($image) {
             return [
