@@ -380,6 +380,90 @@ class WildberriesFinanceService
     }
 
     /**
+     * Get paid storage fees for period
+     * GET /api/v1/paid_storage
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon $dateTo
+     * @return float Total storage fees in RUB
+     */
+    public function getPaidStorageFees(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        Carbon $dateTo
+    ): float {
+        try {
+            $params = [
+                'dateFrom' => $dateFrom->format('Y-m-d'),
+                'dateTo' => $dateTo->format('Y-m-d'),
+            ];
+
+            $response = $this->httpClient->get('statistics', '/api/v1/paid_storage', $params);
+
+            // Response is array of storage records with warehousePrice field
+            $totalStorage = 0;
+            if (is_array($response)) {
+                foreach ($response as $record) {
+                    $totalStorage += abs((float) ($record['warehousePrice'] ?? 0));
+                }
+            }
+
+            Log::info('WB paid storage fees fetched', [
+                'account_id' => $account->id,
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'total' => $totalStorage,
+            ]);
+
+            return $totalStorage;
+        } catch (\Exception $e) {
+            Log::warning('Failed to get WB paid storage fees', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Return 0 if API not available or error
+            return 0;
+        }
+    }
+
+    /**
+     * Get full expense summary including storage
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon $dateTo
+     * @return array Full expense summary
+     */
+    public function getExpensesSummary(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        Carbon $dateTo
+    ): array {
+        // Get base summary from detailed report
+        $reportData = $this->getFullDetailedReport($account, $dateFrom, $dateTo);
+        $summary = $this->calculateSummary($reportData);
+
+        // Add storage fees
+        $storageFees = $this->getPaidStorageFees($account, $dateFrom, $dateTo);
+
+        return [
+            'commission' => $summary['total_commission'],
+            'logistics' => $summary['total_logistics'],
+            'storage' => $storageFees,
+            'advertising' => 0, // TODO: Add advertising API if needed
+            'penalties' => $summary['total_penalty'],
+            'returns' => $summary['total_returns'],
+            'other' => 0,
+            'total' => $summary['total_commission'] + $summary['total_logistics'] + $storageFees + $summary['total_penalty'],
+            'orders_count' => $summary['orders_count'],
+            'gross_revenue' => $summary['total_sales'],
+            'currency' => 'RUB',
+        ];
+    }
+
+    /**
      * Save document to storage
      *
      * @param MarketplaceAccount $account

@@ -809,7 +809,7 @@ class FinanceController extends Controller
             $result['uzum'] = ['error' => $e->getMessage()];
         }
 
-        // WB expenses (from local DB - calculated as gross_revenue - net_payout)
+        // WB expenses (from detailed realization report API - accurate breakdown)
         $financeSettings = FinanceSettings::getForCompany($companyId);
         $rubToUzs = $financeSettings->rub_rate ?? 140;
 
@@ -826,59 +826,76 @@ class FinanceController extends Controller
             'total_uzs' => 0,
         ];
 
-        try {
-            if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbExpenses = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('is_realization', true)
-                    ->where('is_cancel', false)
-                    ->where('is_return', false)
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to)
-                    ->selectRaw('
-                        COUNT(*) as orders_count,
-                        SUM(COALESCE(total_price, 0)) as gross_revenue,
-                        SUM(COALESCE(for_pay, finished_price, 0)) as net_payout
-                    ')
-                    ->first();
+        $wbAccounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'wb')
+            ->where('is_active', true)
+            ->get();
 
-                $grossRevenue = (float) ($wbExpenses->gross_revenue ?? 0);
-                $netPayout = (float) ($wbExpenses->net_payout ?? 0);
-                // Total fees = gross - net (includes commission + logistics + other deductions)
-                $totalFees = $grossRevenue - $netPayout;
+        foreach ($wbAccounts as $account) {
+            try {
+                $httpClient = new WildberriesHttpClient($account);
+                $financeService = new WildberriesFinanceService($httpClient);
 
-                // WB doesn't give detailed breakdown in orders, so we estimate:
-                // Typically ~15-20% commission, rest is logistics
-                $estimatedCommission = $totalFees * 0.4; // ~40% of fees is commission
-                $estimatedLogistics = $totalFees * 0.6;  // ~60% is logistics
+                // Get full expense summary including storage fees
+                $expenses = $financeService->getExpensesSummary($account, $from, $to);
 
-                $wbTotalExpenses = [
-                    'commission' => $estimatedCommission,
-                    'logistics' => $estimatedLogistics,
-                    'storage' => 0,
-                    'advertising' => 0,
-                    'penalties' => 0,
-                    'returns' => 0,
-                    'other' => 0,
-                    'total' => $totalFees,
-                    'orders_count' => (int) ($wbExpenses->orders_count ?? 0),
-                    'gross_revenue' => $grossRevenue,
-                    'net_payout' => $netPayout,
-                    'currency' => 'RUB',
-                    'total_uzs' => $totalFees * $rubToUzs,
-                    'note' => 'Commission/logistics split estimated (40%/60%)',
-                ];
+                // Accumulate all expense categories
+                $wbTotalExpenses['commission'] += $expenses['commission'] ?? 0;
+                $wbTotalExpenses['logistics'] += $expenses['logistics'] ?? 0;
+                $wbTotalExpenses['storage'] += $expenses['storage'] ?? 0;
+                $wbTotalExpenses['penalties'] += $expenses['penalties'] ?? 0;
+                $wbTotalExpenses['returns'] += $expenses['returns'] ?? 0;
+                $wbTotalExpenses['total'] += $expenses['total'] ?? 0;
+                $wbTotalExpenses['orders_count'] = ($wbTotalExpenses['orders_count'] ?? 0) + ($expenses['orders_count'] ?? 0);
+                $wbTotalExpenses['gross_revenue'] = ($wbTotalExpenses['gross_revenue'] ?? 0) + ($expenses['gross_revenue'] ?? 0);
+
+            } catch (\Exception $e) {
+                \Log::warning('WB expenses API failed, falling back to DB calculation', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                // Fallback: calculate from local orders if API fails
+                if (class_exists(\App\Models\WildberriesOrder::class)) {
+                    $wbExpenses = \App\Models\WildberriesOrder::where('marketplace_account_id', $account->id)
+                        ->where('is_realization', true)
+                        ->where('is_cancel', false)
+                        ->where('is_return', false)
+                        ->whereDate('order_date', '>=', $from)
+                        ->whereDate('order_date', '<=', $to)
+                        ->selectRaw('
+                            COUNT(*) as orders_count,
+                            SUM(COALESCE(total_price, 0)) as gross_revenue,
+                            SUM(COALESCE(for_pay, finished_price, 0)) as net_payout
+                        ')
+                        ->first();
+
+                    $grossRevenue = (float) ($wbExpenses->gross_revenue ?? 0);
+                    $netPayout = (float) ($wbExpenses->net_payout ?? 0);
+                    $totalFees = $grossRevenue - $netPayout;
+
+                    // Estimated split when using DB fallback
+                    $wbTotalExpenses['commission'] += $totalFees * 0.4;
+                    $wbTotalExpenses['logistics'] += $totalFees * 0.6;
+                    $wbTotalExpenses['total'] += $totalFees;
+                    $wbTotalExpenses['orders_count'] = ($wbTotalExpenses['orders_count'] ?? 0) + (int) ($wbExpenses->orders_count ?? 0);
+                    $wbTotalExpenses['gross_revenue'] = ($wbTotalExpenses['gross_revenue'] ?? 0) + $grossRevenue;
+                    $wbTotalExpenses['fallback'] = true;
+                }
             }
-        } catch (\Exception $e) {
-            $result['wb'] = ['error' => $e->getMessage()];
         }
 
-        // Add WB expenses to result and totals
-        if ($wbTotalExpenses['total'] > 0 || !isset($result['wb']['error'])) {
+        // Convert and add WB expenses to result and totals
+        if ($wbTotalExpenses['total'] > 0) {
+            $wbTotalExpenses['total_uzs'] = $wbTotalExpenses['total'] * $rubToUzs;
             $result['wb'] = $wbTotalExpenses;
 
             // Add WB expenses to totals (convert RUB to UZS)
             $result['total']['commission'] += $wbTotalExpenses['commission'] * $rubToUzs;
             $result['total']['logistics'] += $wbTotalExpenses['logistics'] * $rubToUzs;
+            $result['total']['storage'] += $wbTotalExpenses['storage'] * $rubToUzs;
+            $result['total']['penalties'] += $wbTotalExpenses['penalties'] * $rubToUzs;
+            $result['total']['returns'] += $wbTotalExpenses['returns'] * $rubToUzs;
             $result['total']['total'] += $wbTotalExpenses['total_uzs'];
         }
 
