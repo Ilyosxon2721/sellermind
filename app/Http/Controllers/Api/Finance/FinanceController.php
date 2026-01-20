@@ -99,6 +99,14 @@ class FinanceController extends Controller
         // ========== ПРИБЫЛЬ ЗА ПЕРИОД ==========
         $periodProfit = $this->getPeriodProfit($companyId, $from, $to, $financeSettings);
 
+        \Log::info('Finance overview period profit', [
+            'company_id' => $companyId,
+            'from' => $from->format('Y-m-d'),
+            'to' => $to->format('Y-m-d'),
+            'period_profit' => $periodProfit,
+            'marketplace_sales_from_overview' => $marketplaceSales,
+        ]);
+
         // ========== ОСТАТКИ НА СЧЕТАХ (касса, банк) ==========
         $cashBalance = $this->getCashBalance($companyId);
 
@@ -247,20 +255,8 @@ class FinanceController extends Controller
             if (class_exists(\App\Models\OzonOrder::class)) {
                 $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('stock_status', 'sold')
-                    ->whereNotNull('stock_sold_at')
-                    ->where(function($q) use ($from, $to) {
-                        // Используем stock_sold_at как дату продажи, fallback на created_at_ozon
-                        $q->where(function($sub) use ($from, $to) {
-                            $sub->whereNotNull('stock_sold_at')
-                                ->whereDate('stock_sold_at', '>=', $from)
-                                ->whereDate('stock_sold_at', '<=', $to);
-                        })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->whereNull('stock_sold_at')
-                                ->whereDate('created_at_ozon', '>=', $from)
-                                ->whereDate('created_at_ozon', '<=', $to);
-                        });
-                    })
+                    ->whereDate('stock_sold_at', '>=', $from)
+                    ->whereDate('stock_sold_at', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
                     ->first();
 
