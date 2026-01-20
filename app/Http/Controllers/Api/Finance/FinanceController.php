@@ -216,15 +216,16 @@ class FinanceController extends Controller
             \Log::error('Uzum sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
-        // WB продажи (is_realization = true)
+        // WB продажи (is_realization = true, не отменённые, не возвраты)
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
                 $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
-                    ->whereDate('date', '>=', $from)
-                    ->whereDate('date', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, 0)) as revenue')
+                    ->where('is_return', false)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as revenue')
                     ->first();
 
                 $revenueRub = (float) ($wbSales?->revenue ?? 0);
@@ -238,17 +239,29 @@ class FinanceController extends Controller
                 \Log::info('WB sales fetched', $result['wb']);
             }
         } catch (\Exception $e) {
-            \Log::error('WB sales error', ['error' => $e->getMessage()]);
+            \Log::error('WB sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
-        // Ozon продажи
+        // Ozon продажи (stock_status = 'sold' с датой в периоде)
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
                 $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'delivered')
-                    ->whereDate('created_at', '>=', $from)
-                    ->whereDate('created_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_price) as revenue')
+                    ->where('stock_status', 'sold')
+                    ->whereNotNull('stock_sold_at')
+                    ->where(function($q) use ($from, $to) {
+                        // Используем stock_sold_at как дату продажи, fallback на created_at_ozon
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->whereNotNull('stock_sold_at')
+                                ->whereDate('stock_sold_at', '>=', $from)
+                                ->whereDate('stock_sold_at', '<=', $to);
+                        })
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->whereNull('stock_sold_at')
+                                ->whereDate('created_at_ozon', '>=', $from)
+                                ->whereDate('created_at_ozon', '<=', $to);
+                        });
+                    })
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
                     ->first();
 
                 $revenueRub = (float) ($ozonSales?->revenue ?? 0);
@@ -262,7 +275,7 @@ class FinanceController extends Controller
                 \Log::info('Ozon sales fetched', $result['ozon']);
             }
         } catch (\Exception $e) {
-            \Log::error('Ozon sales error', ['error' => $e->getMessage()]);
+            \Log::error('Ozon sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
         // Итого
