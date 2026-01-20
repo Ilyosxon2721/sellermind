@@ -758,39 +758,60 @@ class FinanceController extends Controller
             ],
         ];
 
-        // Uzum expenses
-        $uzumAccounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'uzum')
-            ->where('is_active', true)
-            ->get();
+        // Uzum expenses (from local DB - uzum_finance_orders contains commission and logistics)
+        try {
+            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                $uzumExpenses = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
+                    ->where('status', '!=', 'CANCELED')
+                    ->where(function($q) use ($from, $to) {
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->selectRaw('
+                        SUM(commission) as total_commission,
+                        SUM(logistic_delivery_fee) as total_logistics,
+                        COUNT(*) as orders_count
+                    ')
+                    ->first();
 
-        foreach ($uzumAccounts as $account) {
-            try {
-                $expenses = $this->uzumClient->getExpensesSummary($account, $from, $to);
-                $result['uzum'] = $expenses;
+                $commission = (float) ($uzumExpenses->total_commission ?? 0);
+                $logistics = (float) ($uzumExpenses->total_logistics ?? 0);
+                $total = $commission + $logistics;
+
+                $result['uzum'] = [
+                    'commission' => $commission,
+                    'logistics' => $logistics,
+                    'storage' => 0,
+                    'advertising' => 0,
+                    'penalties' => 0,
+                    'returns' => 0,
+                    'other' => 0,
+                    'total' => $total,
+                    'orders_count' => (int) ($uzumExpenses->orders_count ?? 0),
+                    'currency' => 'UZS',
+                ];
 
                 // Add to totals
-                $result['total']['commission'] += $expenses['commission'] ?? 0;
-                $result['total']['logistics'] += $expenses['logistics'] ?? 0;
-                $result['total']['storage'] += $expenses['storage'] ?? 0;
-                $result['total']['advertising'] += $expenses['advertising'] ?? 0;
-                $result['total']['penalties'] += $expenses['penalties'] ?? 0;
-                $result['total']['returns'] += $expenses['returns'] ?? 0;
-                $result['total']['other'] += $expenses['other'] ?? 0;
-                $result['total']['total'] += $expenses['total'] ?? 0;
-            } catch (\Exception $e) {
-                $result['uzum'] = ['error' => $e->getMessage()];
+                $result['total']['commission'] += $commission;
+                $result['total']['logistics'] += $logistics;
+                $result['total']['total'] += $total;
             }
+        } catch (\Exception $e) {
+            $result['uzum'] = ['error' => $e->getMessage()];
         }
 
-        // WB expenses (from detailed report / реализация)
+        // WB expenses (from local DB - calculated as gross_revenue - net_payout)
         $financeSettings = FinanceSettings::getForCompany($companyId);
         $rubToUzs = $financeSettings->rub_rate ?? 140;
-
-        $wbAccounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'wb')
-            ->where('is_active', true)
-            ->get();
 
         $wbTotalExpenses = [
             'commission' => 0,
@@ -805,42 +826,59 @@ class FinanceController extends Controller
             'total_uzs' => 0,
         ];
 
-        foreach ($wbAccounts as $account) {
-            try {
-                $httpClient = new WildberriesHttpClient($account);
-                $financeService = new WildberriesFinanceService($httpClient);
+        try {
+            if (class_exists(\App\Models\WildberriesOrder::class)) {
+                $wbExpenses = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('is_realization', true)
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
+                    ->selectRaw('
+                        COUNT(*) as orders_count,
+                        SUM(COALESCE(total_price, 0)) as gross_revenue,
+                        SUM(COALESCE(for_pay, finished_price, 0)) as net_payout
+                    ')
+                    ->first();
 
-                $reportData = $financeService->getFullDetailedReport($account, $from, $to);
-                $summary = $financeService->calculateSummary($reportData);
+                $grossRevenue = (float) ($wbExpenses->gross_revenue ?? 0);
+                $netPayout = (float) ($wbExpenses->net_payout ?? 0);
+                // Total fees = gross - net (includes commission + logistics + other deductions)
+                $totalFees = $grossRevenue - $netPayout;
 
-                // Map WB fields to standard expense categories (all in RUB)
-                $wbTotalExpenses['commission'] += $summary['total_commission'] ?? 0;
-                $wbTotalExpenses['logistics'] += $summary['total_logistics'] ?? 0;
-                $wbTotalExpenses['penalties'] += $summary['total_penalty'] ?? 0;
-                $wbTotalExpenses['returns'] += $summary['total_returns'] ?? 0;
+                // WB doesn't give detailed breakdown in orders, so we estimate:
+                // Typically ~15-20% commission, rest is logistics
+                $estimatedCommission = $totalFees * 0.4; // ~40% of fees is commission
+                $estimatedLogistics = $totalFees * 0.6;  // ~60% is logistics
 
-                $accountTotal = ($summary['total_commission'] ?? 0)
-                    + ($summary['total_logistics'] ?? 0)
-                    + ($summary['total_penalty'] ?? 0);
-
-                $wbTotalExpenses['total'] += $accountTotal;
-            } catch (\Exception $e) {
-                if (!isset($result['wb']['error'])) {
-                    $result['wb'] = ['error' => $e->getMessage()];
-                }
+                $wbTotalExpenses = [
+                    'commission' => $estimatedCommission,
+                    'logistics' => $estimatedLogistics,
+                    'storage' => 0,
+                    'advertising' => 0,
+                    'penalties' => 0,
+                    'returns' => 0,
+                    'other' => 0,
+                    'total' => $totalFees,
+                    'orders_count' => (int) ($wbExpenses->orders_count ?? 0),
+                    'gross_revenue' => $grossRevenue,
+                    'net_payout' => $netPayout,
+                    'currency' => 'RUB',
+                    'total_uzs' => $totalFees * $rubToUzs,
+                    'note' => 'Commission/logistics split estimated (40%/60%)',
+                ];
             }
+        } catch (\Exception $e) {
+            $result['wb'] = ['error' => $e->getMessage()];
         }
 
-        // Convert WB totals to UZS and add to result
+        // Add WB expenses to result and totals
         if ($wbTotalExpenses['total'] > 0 || !isset($result['wb']['error'])) {
-            $wbTotalExpenses['total_uzs'] = $wbTotalExpenses['total'] * $rubToUzs;
             $result['wb'] = $wbTotalExpenses;
 
             // Add WB expenses to totals (convert RUB to UZS)
             $result['total']['commission'] += $wbTotalExpenses['commission'] * $rubToUzs;
             $result['total']['logistics'] += $wbTotalExpenses['logistics'] * $rubToUzs;
-            $result['total']['penalties'] += $wbTotalExpenses['penalties'] * $rubToUzs;
-            $result['total']['returns'] += $wbTotalExpenses['returns'] * $rubToUzs;
             $result['total']['total'] += $wbTotalExpenses['total_uzs'];
         }
 
