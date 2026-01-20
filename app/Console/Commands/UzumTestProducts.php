@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\Http;
 
 class UzumTestProducts extends Command
 {
-    protected $signature = 'uzum:test-products {--account= : Account ID}';
+    protected $signature = 'uzum:test-products {--account= : Account ID} {--all-shops : Test all shops}';
     protected $description = 'Test Uzum products API endpoint directly';
 
     public function handle(): int
     {
         $accountId = $this->option('account');
+        $testAllShops = $this->option('all-shops');
 
         $query = MarketplaceAccount::where('marketplace', 'uzum')->where('is_active', true);
         if ($accountId) {
@@ -54,43 +55,71 @@ class UzumTestProducts extends Command
         $this->line("   Accessor token looks encrypted: " . ($accessorToken && str_starts_with($accessorToken, 'eyJ') ? 'YES (BAD!)' : 'NO'));
 
         // 4. Get shop_id
-        $shopId = $account->shop_id;
+        $shopIdField = $account->shop_id;
         $credentialsJson = $account->credentials_json ?? [];
-        $shopIds = $credentialsJson['shop_ids'] ?? [];
+        $shopIdsFromJson = $credentialsJson['shop_ids'] ?? [];
 
         $this->line("\n4. Shop configuration:");
-        $this->line("   shop_id field: " . ($shopId ?: 'NULL'));
-        $this->line("   credentials_json shop_ids: " . json_encode($shopIds));
+        $this->line("   shop_id field: " . ($shopIdField ?: 'NULL'));
+        $this->line("   credentials_json shop_ids: " . json_encode($shopIdsFromJson));
 
-        $testShopId = $shopIds[0] ?? $shopId ?? null;
-        if (!$testShopId) {
+        // Parse all shop IDs
+        $allShopIds = [];
+        if ($shopIdField) {
+            foreach (explode(',', $shopIdField) as $id) {
+                $id = trim($id);
+                if ($id && is_numeric($id)) {
+                    $allShopIds[] = (int) $id;
+                }
+            }
+        }
+        $allShopIds = array_unique($allShopIds);
+
+        $this->line("   Parsed shop IDs: " . implode(', ', $allShopIds));
+
+        if (empty($allShopIds)) {
             $this->error("No shop_id configured!");
             return self::FAILURE;
         }
 
-        // Parse if comma-separated
-        if (is_string($testShopId) && str_contains($testShopId, ',')) {
-            $testShopId = explode(',', $testShopId)[0];
+        if ($testAllShops) {
+            // Test ALL shops one by one
+            $this->line("\n=== Testing ALL " . count($allShopIds) . " shops ===");
+
+            foreach ($allShopIds as $shopId) {
+                $this->line("\n--- Testing shop {$shopId} ---");
+                $result = $this->testEndpoint($accessorToken, "/v1/product/shop/{$shopId}?page=0&size=1");
+
+                if (!$result) {
+                    $this->error("   Shop {$shopId} FAILED - this might be the problem!");
+                }
+
+                // Small delay between requests
+                usleep(300000); // 300ms
+            }
+        } else {
+            $testShopId = $allShopIds[0];
+            $this->line("   Using shop_id for test: {$testShopId}");
+
+            // 5. Test orders endpoint (should work)
+            $this->line("\n5. Testing ORDERS endpoint (/v2/fbs/orders)...");
+            $this->testEndpoint($accessorToken, "/v2/fbs/orders?shopIds={$testShopId}&page=0&size=1&status=CREATED");
+
+            // 6. Test products endpoint (fails?)
+            $this->line("\n6. Testing PRODUCTS endpoint (/v1/product/shop/{$testShopId})...");
+            $this->testEndpoint($accessorToken, "/v1/product/shop/{$testShopId}?page=0&size=1");
+
+            // 7. Test shops endpoint
+            $this->line("\n7. Testing SHOPS endpoint (/v1/shops)...");
+            $this->testEndpoint($accessorToken, "/v1/shops");
+
+            $this->line("\n\nTip: Run with --all-shops to test each shop individually");
         }
-
-        $this->line("   Using shop_id for test: {$testShopId}");
-
-        // 5. Test orders endpoint (should work)
-        $this->line("\n5. Testing ORDERS endpoint (/v2/fbs/orders)...");
-        $this->testEndpoint($accessorToken, "/v2/fbs/orders?shopIds={$testShopId}&page=0&size=1&status=CREATED");
-
-        // 6. Test products endpoint (fails?)
-        $this->line("\n6. Testing PRODUCTS endpoint (/v1/product/shop/{$testShopId})...");
-        $this->testEndpoint($accessorToken, "/v1/product/shop/{$testShopId}?page=0&size=1");
-
-        // 7. Test shops endpoint
-        $this->line("\n7. Testing SHOPS endpoint (/v1/shops)...");
-        $this->testEndpoint($accessorToken, "/v1/shops");
 
         return self::SUCCESS;
     }
 
-    protected function testEndpoint(string $token, string $path): void
+    protected function testEndpoint(string $token, string $path): bool
     {
         $baseUrl = 'https://api-seller.uzum.uz/api/seller-openapi';
         $url = $baseUrl . $path;
@@ -110,12 +139,15 @@ class UzumTestProducts extends Command
                 $this->info("   SUCCESS!");
                 $body = $response->json();
                 $this->line("   Response keys: " . implode(', ', array_keys($body)));
+                return true;
             } else {
                 $this->error("   FAILED!");
                 $this->line("   Response: " . substr($response->body(), 0, 300));
+                return false;
             }
         } catch (\Exception $e) {
             $this->error("   EXCEPTION: " . $e->getMessage());
+            return false;
         }
     }
 }

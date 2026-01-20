@@ -69,6 +69,7 @@ class UzumClient implements MarketplaceClientInterface
         $synced = 0;
         $created = 0;
         $updated = 0;
+        $requests = 0;
 
         Log::info('Uzum syncCatalog starting', [
             'account_id' => $account->id,
@@ -83,7 +84,13 @@ class UzumClient implements MarketplaceClientInterface
                     'page' => $page,
                 ]);
 
-                $response = $this->request(
+                // Rate limit protection - delay between requests
+                if ($requests > 0) {
+                    usleep(500000); // 500ms delay between requests
+                }
+
+                // Retry logic for rate limiting
+                $response = $this->requestWithRetry(
                     $account,
                     'GET',
                     "/v1/product/shop/{$shopId}",
@@ -95,6 +102,7 @@ class UzumClient implements MarketplaceClientInterface
                         'filter' => 'ALL',
                     ]
                 );
+                $requests++;
 
                 $list = $response['payload']['productList'] ?? $response['productList'] ?? [];
 
@@ -114,7 +122,52 @@ class UzumClient implements MarketplaceClientInterface
             } while (!empty($list));
         }
 
-        return ['synced' => $synced, 'created' => $created, 'updated' => $updated, 'shops' => $shopIds];
+        return ['synced' => $synced, 'created' => $created, 'updated' => $updated, 'shops' => $shopIds, 'requests' => $requests];
+    }
+
+    /**
+     * Request with retry logic for rate limiting (429 errors)
+     */
+    protected function requestWithRetry(
+        MarketplaceAccount $account,
+        string $method,
+        string $path,
+        array $query = [],
+        array $body = [],
+        int $maxRetries = 3
+    ): array {
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $maxRetries) {
+            try {
+                return $this->request($account, $method, $path, $query, $body);
+            } catch (\RuntimeException $e) {
+                $lastException = $e;
+
+                // Check if it's a rate limit error
+                if (str_contains($e->getMessage(), 'Слишком много запросов') || str_contains($e->getMessage(), '429')) {
+                    $attempt++;
+                    $waitTime = pow(2, $attempt) * 2; // Exponential backoff: 4s, 8s, 16s
+
+                    Log::warning('Uzum rate limit hit, retrying', [
+                        'account_id' => $account->id,
+                        'path' => $path,
+                        'attempt' => $attempt,
+                        'wait_seconds' => $waitTime,
+                    ]);
+
+                    sleep($waitTime);
+                    continue;
+                }
+
+                // Not a rate limit error, rethrow immediately
+                throw $e;
+            }
+        }
+
+        // All retries exhausted
+        throw $lastException ?? new \RuntimeException("Превышен лимит запросов после {$maxRetries} попыток");
     }
 
     protected function storeProduct(MarketplaceAccount $account, string|int $shopId, array $product): void
