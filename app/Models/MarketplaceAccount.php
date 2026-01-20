@@ -640,17 +640,10 @@ class MarketplaceAccount extends Model
      */
     public function getUzumAuthHeaders(): array
     {
+        // Accessors already decrypt tokens, no need to decrypt again
         $token = $this->uzum_access_token ?? $this->uzum_api_key ?? $this->api_key;
         if (!$token) {
             return [];
-        }
-
-        // Токены в БД могут быть зашифрованы через Crypt::encryptString
-        // Пробуем расшифровать, а при ошибке используем исходное значение.
-        try {
-            $token = decrypt($token);
-        } catch (\Throwable $e) {
-            // оставляем как есть
         }
 
         $header = config('uzum.auth.header', 'Authorization');
