@@ -200,4 +200,28 @@ return [
     
     // Missing translations
     'nav_register' => 'Регистрация',
+    
+    // Comparison
+    'comparison_feature' => 'Функции',
+    'comparison_sellermind' => 'SellerMind',
+    'comparison_cta' => 'Попробовать бесплатно →',
+    
+    // Pricing section
+    'pricing_free' => 'Бесплатно',
+    'pricing_from' => 'от',
+    'pricing_month' => 'мес',
+    'pricing_forever' => 'навсегда',
+    'pricing_currency' => 'сом',
+    'pricing_unlimited_accounts' => 'Безлимит аккаунтов',
+    'pricing_marketplaces' => 'маркетплейса',
+    'pricing_unlimited_products' => 'Безлимит товаров',
+    'pricing_products_count' => 'товаров',
+    'pricing_unlimited_orders' => 'Безлимит заказов',
+    'pricing_orders_month' => 'заказов/мес',
+    'pricing_analytics' => 'Аналитика',
+    'pricing_auto_pricing' => 'Автоценообразование',
+    'pricing_api' => 'API доступ',
+    'pricing_priority_support' => 'Приоритетная поддержка',
+    'pricing_popular' => 'Популярный',
+    'pricing_contact' => 'Связаться',
 ];

@@ -200,4 +200,28 @@ return [
     
     // Missing translations
     'nav_register' => 'Ro\'yxatdan o\'tish',
+    
+    // Comparison
+    'comparison_feature' => 'Xususiyatlar',
+    'comparison_sellermind' => 'SellerMind',
+    'comparison_cta' => 'Bepul sinab ko\'ring →',
+    
+    // Pricing section
+    'pricing_free' => 'Bepul',
+    'pricing_from' => 'dan',
+    'pricing_month' => 'oy',
+    'pricing_forever' => 'abadiy',
+    'pricing_currency' => 'so\'m',
+    'pricing_unlimited_accounts' => 'Cheksiz hisoblar',
+    'pricing_marketplaces' => 'marketplace',
+    'pricing_unlimited_products' => 'Cheksiz mahsulotlar',
+    'pricing_products_count' => 'mahsulot',
+    'pricing_unlimited_orders' => 'Cheksiz buyurtmalar',
+    'pricing_orders_month' => 'buyurtma/oy',
+    'pricing_analytics' => 'Analitika',
+    'pricing_auto_pricing' => 'Avtomatik narxlash',
+    'pricing_api' => 'API kirish',
+    'pricing_priority_support' => 'Ustuvor qo\'llab-quvvatlash',
+    'pricing_popular' => 'Mashhur',
+    'pricing_contact' => 'Bog\'lanish',
 ];

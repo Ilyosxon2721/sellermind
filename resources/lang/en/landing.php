@@ -200,4 +200,28 @@ return [
     
     // Missing translations
     'nav_register' => 'Register',
+    
+    // Comparison
+    'comparison_feature' => 'Features',
+    'comparison_sellermind' => 'SellerMind',
+    'comparison_cta' => 'Try for free →',
+    
+    // Pricing section
+    'pricing_free' => 'Free',
+    'pricing_from' => 'from',
+    'pricing_month' => 'mo',
+    'pricing_forever' => 'forever',
+    'pricing_currency' => 'UZS',
+    'pricing_unlimited_accounts' => 'Unlimited accounts',
+    'pricing_marketplaces' => 'marketplace',
+    'pricing_unlimited_products' => 'Unlimited products',
+    'pricing_products_count' => 'products',
+    'pricing_unlimited_orders' => 'Unlimited orders',
+    'pricing_orders_month' => 'orders/mo',
+    'pricing_analytics' => 'Analytics',
+    'pricing_auto_pricing' => 'Auto-pricing',
+    'pricing_api' => 'API access',
+    'pricing_priority_support' => 'Priority support',
+    'pricing_popular' => 'Popular',
+    'pricing_contact' => 'Contact us',
 ];
