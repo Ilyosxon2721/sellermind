@@ -452,13 +452,108 @@
                         <h3 class="text-lg font-semibold text-gray-900">Расходы маркетплейсов</h3>
                         <div class="flex items-center space-x-2">
                             <template x-if="loadingExpenses">
-                                <span class="text-sm text-gray-400">Загрузка...</span>
+                                <svg class="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
                             </template>
-                            <button @click="loadMarketplaceExpenses()" class="text-sm text-emerald-600 hover:text-emerald-700">
+                            <button @click="loadMarketplaceExpenses()" class="text-sm text-emerald-600 hover:text-emerald-700" :disabled="loadingExpenses">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
                         </div>
                     </div>
+
+                    <!-- Shimmer Skeleton while loading -->
+                    <template x-if="loadingExpenses && !marketplaceExpenses">
+                        <div class="space-y-4 animate-pulse">
+                            <!-- Total Summary Skeleton -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                <div class="bg-red-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-red-600 mb-1">Комиссия</div>
+                                    <div class="h-6 bg-red-200 rounded w-20 mx-auto"></div>
+                                </div>
+                                <div class="bg-orange-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-orange-600 mb-1">Логистика</div>
+                                    <div class="h-6 bg-orange-200 rounded w-20 mx-auto"></div>
+                                </div>
+                                <div class="bg-amber-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-amber-600 mb-1">Хранение</div>
+                                    <div class="h-6 bg-amber-200 rounded w-16 mx-auto"></div>
+                                </div>
+                                <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-blue-600 mb-1">Реклама</div>
+                                    <div class="h-6 bg-blue-200 rounded w-12 mx-auto"></div>
+                                </div>
+                                <div class="bg-rose-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-rose-600 mb-1">Штрафы</div>
+                                    <div class="h-6 bg-rose-200 rounded w-16 mx-auto"></div>
+                                </div>
+                                <div class="bg-purple-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-purple-600 mb-1">Возвраты</div>
+                                    <div class="h-6 bg-purple-200 rounded w-16 mx-auto"></div>
+                                </div>
+                                <div class="bg-gradient-to-br from-red-400 to-rose-500 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-white/80 mb-1">Всего</div>
+                                    <div class="h-6 bg-white/30 rounded w-24 mx-auto"></div>
+                                </div>
+                            </div>
+
+                            <!-- Marketplace Cards Skeleton -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <!-- Uzum Skeleton -->
+                                <div class="border border-purple-200 rounded-xl p-4">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                        <span class="font-medium text-purple-700">Uzum</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Комиссия</span><div class="h-4 bg-gray-200 rounded w-16"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Логистика</span><div class="h-4 bg-gray-200 rounded w-14"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Хранение</span><div class="h-4 bg-gray-200 rounded w-12"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Реклама</span><div class="h-4 bg-gray-200 rounded w-14"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Штрафы</span><div class="h-4 bg-gray-200 rounded w-10"></div></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-purple-700">Итого</span><div class="h-5 bg-purple-200 rounded w-20"></div></div>
+                                    </div>
+                                </div>
+
+                                <!-- WB Skeleton -->
+                                <div class="border border-pink-200 rounded-xl p-4">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                        <span class="font-medium text-pink-700">Wildberries</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Комиссия</span><div class="h-4 bg-gray-200 rounded w-20"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Логистика</span><div class="h-4 bg-gray-200 rounded w-24"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Штрафы</span><div class="h-4 bg-gray-200 rounded w-16"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Возвраты</span><div class="h-4 bg-gray-200 rounded w-18"></div></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-pink-700">Итого</span><div class="h-5 bg-pink-200 rounded w-24"></div></div>
+                                    </div>
+                                </div>
+
+                                <!-- Ozon Skeleton -->
+                                <div class="border border-blue-200 rounded-xl p-4">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                        <span class="font-medium text-blue-700">Ozon</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Комиссия</span><div class="h-4 bg-gray-200 rounded w-14"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Логистика</span><div class="h-4 bg-gray-200 rounded w-16"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Хранение</span><div class="h-4 bg-gray-200 rounded w-12"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Реклама</span><div class="h-4 bg-gray-200 rounded w-10"></div></div>
+                                        <div class="flex justify-between"><span class="text-gray-600 text-sm">Штрафы</span><div class="h-4 bg-gray-200 rounded w-10"></div></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-blue-700">Итого</span><div class="h-5 bg-blue-200 rounded w-20"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Actual Content -->
                     <template x-if="marketplaceExpenses">
                         <div class="space-y-4">
                             <!-- Total Summary -->
@@ -526,15 +621,19 @@
                                     <div class="flex items-center space-x-2 mb-3">
                                         <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
                                         <span class="font-medium text-pink-700">Wildberries</span>
-                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                        <span class="text-xs text-gray-400 ml-auto" x-text="marketplaceExpenses.wb?.currency === 'UZS' ? 'UZS' : 'RUB → UZS'"></span>
                                     </div>
                                     <div class="space-y-1 text-sm">
-                                        <div class="flex justify-between"><span class="text-gray-600">Комиссия</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.commission || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
-                                        <div class="flex justify-between"><span class="text-gray-600">Логистика</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.logistics || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
-                                        <div class="flex justify-between"><span class="text-gray-600">Штрафы</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.penalties || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
-                                        <div class="flex justify-between"><span class="text-gray-600">Возвраты</span><span class="font-medium" x-text="formatMoney((marketplaceExpenses.wb?.returns || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
-                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-pink-700">Итого</span><span class="font-bold text-pink-700" x-text="formatMoney(marketplaceExpenses.wb?.total_uzs || 0)"></span></div>
-                                        <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceExpenses.wb?.total || 0) + ' ₽)'"></div>
+                                        <!-- Если валюта UZS - показываем как есть, иначе конвертируем -->
+                                        <div class="flex justify-between"><span class="text-gray-600">Комиссия</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.wb?.currency === 'UZS' ? (marketplaceExpenses.wb?.commission || 0) : (marketplaceExpenses.wb?.commission || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Логистика</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.wb?.currency === 'UZS' ? (marketplaceExpenses.wb?.logistics || 0) : (marketplaceExpenses.wb?.logistics || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Штрафы</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.wb?.currency === 'UZS' ? (marketplaceExpenses.wb?.penalties || 0) : (marketplaceExpenses.wb?.penalties || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between"><span class="text-gray-600">Возвраты</span><span class="font-medium" x-text="formatMoney(marketplaceExpenses.wb?.currency === 'UZS' ? (marketplaceExpenses.wb?.returns || 0) : (marketplaceExpenses.wb?.returns || 0) * (overview.currency?.rates?.RUB || 140))"></span></div>
+                                        <div class="flex justify-between pt-2 border-t border-gray-200"><span class="font-medium text-pink-700">Итого</span><span class="font-bold text-pink-700" x-text="formatMoney(marketplaceExpenses.wb?.total_uzs || marketplaceExpenses.wb?.total || 0)"></span></div>
+                                        <!-- Показываем рубли только если исходная валюта RUB -->
+                                        <template x-if="marketplaceExpenses.wb?.currency !== 'UZS'">
+                                            <div class="text-xs text-gray-400 text-right" x-text="'(' + formatMoney(marketplaceExpenses.wb?.total || 0) + ' ₽)'"></div>
+                                        </template>
                                     </div>
                                 </div>
                                 <template x-if="marketplaceExpenses.wb?.error">
@@ -594,10 +693,68 @@
                             </div>
                         </div>
                     </template>
+                    <!-- Empty state - показываем скелетон вместо сообщения -->
                     <template x-if="!marketplaceExpenses && !loadingExpenses">
-                        <div class="text-center py-8 text-gray-500">
-                            <p class="text-sm">Данные о расходах маркетплейсов недоступны</p>
-                            <button @click="loadMarketplaceExpenses()" class="mt-2 text-sm text-emerald-600 hover:text-emerald-700">Загрузить</button>
+                        <div class="space-y-4">
+                            <!-- Total Summary Empty -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                <div class="bg-red-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-red-600 mb-1">Комиссия</div>
+                                    <div class="text-lg font-bold text-red-700">0</div>
+                                </div>
+                                <div class="bg-orange-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-orange-600 mb-1">Логистика</div>
+                                    <div class="text-lg font-bold text-orange-700">0</div>
+                                </div>
+                                <div class="bg-amber-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-amber-600 mb-1">Хранение</div>
+                                    <div class="text-lg font-bold text-amber-700">0</div>
+                                </div>
+                                <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-blue-600 mb-1">Реклама</div>
+                                    <div class="text-lg font-bold text-blue-700">0</div>
+                                </div>
+                                <div class="bg-rose-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-rose-600 mb-1">Штрафы</div>
+                                    <div class="text-lg font-bold text-rose-700">0</div>
+                                </div>
+                                <div class="bg-purple-50 rounded-xl p-3 text-center">
+                                    <div class="text-xs text-purple-600 mb-1">Возвраты</div>
+                                    <div class="text-lg font-bold text-purple-700">0</div>
+                                </div>
+                                <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-3 text-center text-white">
+                                    <div class="text-xs opacity-80 mb-1">Всего</div>
+                                    <div class="text-lg font-bold">0</div>
+                                </div>
+                            </div>
+
+                            <!-- Marketplace Cards Empty -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                <div class="border border-purple-200 rounded-xl p-4 opacity-60">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">U</div>
+                                        <span class="font-medium text-purple-700">Uzum</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Нет данных</p>
+                                </div>
+                                <div class="border border-pink-200 rounded-xl p-4 opacity-60">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">WB</div>
+                                        <span class="font-medium text-pink-700">Wildberries</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Нет данных</p>
+                                </div>
+                                <div class="border border-blue-200 rounded-xl p-4 opacity-60">
+                                    <div class="flex items-center space-x-2 mb-3">
+                                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">O</div>
+                                        <span class="font-medium text-blue-700">Ozon</span>
+                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Нет данных</p>
+                                </div>
+                            </div>
                         </div>
                     </template>
                 </div>
