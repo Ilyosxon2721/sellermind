@@ -173,21 +173,32 @@ class FinanceController extends Controller
             'total_profit' => 0,
         ];
 
-        // Uzum продажи (TO_WITHDRAW или PROCESSING с date_issued)
+        \Log::info('getMarketplaceSales called', [
+            'company_id' => $companyId,
+            'from' => $from->format('Y-m-d'),
+            'to' => $to->format('Y-m-d'),
+            'rub_rate' => $rubToUzs,
+        ]);
+
+        // Uzum продажи (TO_WITHDRAW, COMPLETED, или PROCESSING с датой в периоде)
+        // TO_WITHDRAW = деньги выведены, COMPLETED = доставлено, PROCESSING = в процессе
         try {
             if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                // Считаем завершённые продажи (TO_WITHDRAW, COMPLETED) по date_issued или order_date
                 $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
+                    ->where('status', '!=', 'CANCELED')
                     ->where(function($q) use ($from, $to) {
+                        // Используем date_issued если есть, иначе order_date
                         $q->where(function($sub) use ($from, $to) {
-                            $sub->where('status', 'TO_WITHDRAW')
+                            $sub->whereNotNull('date_issued')
                                 ->whereDate('date_issued', '>=', $from)
                                 ->whereDate('date_issued', '<=', $to);
                         })
                         ->orWhere(function($sub) use ($from, $to) {
-                            $sub->where('status', 'PROCESSING')
-                                ->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
                         });
                     })
                     ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as revenue, SUM(seller_profit) as profit')
@@ -198,8 +209,12 @@ class FinanceController extends Controller
                     'revenue' => (float) ($uzumSales?->revenue ?? 0),
                     'profit' => (float) ($uzumSales?->profit ?? 0),
                 ];
+
+                \Log::info('Uzum sales fetched', $result['uzum']);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            \Log::error('Uzum sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
 
         // WB продажи (is_realization = true)
         try {
@@ -219,8 +234,12 @@ class FinanceController extends Controller
                     'revenue_rub' => $revenueRub,
                     'profit' => 0,
                 ];
+
+                \Log::info('WB sales fetched', $result['wb']);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            \Log::error('WB sales error', ['error' => $e->getMessage()]);
+        }
 
         // Ozon продажи
         try {
@@ -239,13 +258,23 @@ class FinanceController extends Controller
                     'revenue_rub' => $revenueRub,
                     'profit' => 0,
                 ];
+
+                \Log::info('Ozon sales fetched', $result['ozon']);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            \Log::error('Ozon sales error', ['error' => $e->getMessage()]);
+        }
 
         // Итого
         $result['total_orders'] = $result['uzum']['orders'] + $result['wb']['orders'] + $result['ozon']['orders'];
         $result['total_revenue'] = $result['uzum']['revenue'] + $result['wb']['revenue'] + $result['ozon']['revenue'];
         $result['total_profit'] = $result['uzum']['profit'] + $result['wb']['profit'] + $result['ozon']['profit'];
+
+        \Log::info('getMarketplaceSales totals', [
+            'total_orders' => $result['total_orders'],
+            'total_revenue' => $result['total_revenue'],
+            'total_profit' => $result['total_profit'],
+        ]);
 
         return $result;
     }
