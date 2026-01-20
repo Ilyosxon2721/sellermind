@@ -14,6 +14,7 @@ use App\Models\Warehouse\InventoryDocument;
 use App\Models\AP\SupplierInvoice;
 use App\Services\Finance\FinanceReportService;
 use App\Services\Marketplaces\UzumClient;
+use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
 use App\Models\MarketplaceAccount;
@@ -29,7 +30,8 @@ class FinanceController extends Controller
 
     public function __construct(
         protected FinanceReportService $reportService,
-        protected UzumClient $uzumClient
+        protected UzumClient $uzumClient,
+        protected OzonClient $ozonClient
     ) {
     }
 
@@ -804,8 +806,60 @@ class FinanceController extends Controller
             $result['total']['total'] += $wbTotalExpenses['total_uzs'];
         }
 
-        // Ozon expenses (from finance reports if available)
-        // TODO: Add Ozon expenses from finance API
+        // Ozon expenses (from finance transaction API)
+        $ozonAccounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'ozon')
+            ->where('is_active', true)
+            ->get();
+
+        $ozonTotalExpenses = [
+            'commission' => 0,
+            'logistics' => 0,
+            'storage' => 0,
+            'advertising' => 0,
+            'penalties' => 0,
+            'returns' => 0,
+            'other' => 0,
+            'total' => 0,
+            'currency' => 'RUB',
+            'total_uzs' => 0,
+        ];
+
+        foreach ($ozonAccounts as $account) {
+            try {
+                $expenses = $this->ozonClient->getExpensesSummary($account, $from, $to);
+
+                // Accumulate expenses (all in RUB)
+                $ozonTotalExpenses['commission'] += $expenses['commission'] ?? 0;
+                $ozonTotalExpenses['logistics'] += $expenses['logistics'] ?? 0;
+                $ozonTotalExpenses['storage'] += $expenses['storage'] ?? 0;
+                $ozonTotalExpenses['advertising'] += $expenses['advertising'] ?? 0;
+                $ozonTotalExpenses['penalties'] += $expenses['penalties'] ?? 0;
+                $ozonTotalExpenses['returns'] += $expenses['returns'] ?? 0;
+                $ozonTotalExpenses['other'] += $expenses['other'] ?? 0;
+                $ozonTotalExpenses['total'] += $expenses['total'] ?? 0;
+            } catch (\Exception $e) {
+                if (!isset($result['ozon']['error'])) {
+                    $result['ozon'] = ['error' => $e->getMessage()];
+                }
+            }
+        }
+
+        // Convert Ozon totals to UZS and add to result
+        if ($ozonTotalExpenses['total'] > 0 || !isset($result['ozon']['error'])) {
+            $ozonTotalExpenses['total_uzs'] = $ozonTotalExpenses['total'] * $rubToUzs;
+            $result['ozon'] = $ozonTotalExpenses;
+
+            // Add Ozon expenses to totals (convert RUB to UZS)
+            $result['total']['commission'] += $ozonTotalExpenses['commission'] * $rubToUzs;
+            $result['total']['logistics'] += $ozonTotalExpenses['logistics'] * $rubToUzs;
+            $result['total']['storage'] += $ozonTotalExpenses['storage'] * $rubToUzs;
+            $result['total']['advertising'] += $ozonTotalExpenses['advertising'] * $rubToUzs;
+            $result['total']['penalties'] += $ozonTotalExpenses['penalties'] * $rubToUzs;
+            $result['total']['returns'] += $ozonTotalExpenses['returns'] * $rubToUzs;
+            $result['total']['other'] += $ozonTotalExpenses['other'] * $rubToUzs;
+            $result['total']['total'] += $ozonTotalExpenses['total_uzs'];
+        }
 
         return $this->successResponse($result);
     }

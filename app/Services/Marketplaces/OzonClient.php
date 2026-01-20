@@ -1046,4 +1046,208 @@ class OzonClient implements MarketplaceClientInterface
             ],
         ]);
     }
+
+    // ==================== FINANCE METHODS ====================
+
+    /**
+     * Получить список транзакций за период
+     * POST /v3/finance/transaction/list
+     *
+     * @param MarketplaceAccount $account
+     * @param DateTimeInterface $from
+     * @param DateTimeInterface $to
+     * @param int $page
+     * @param int $pageSize
+     * @return array
+     */
+    public function getFinanceTransactions(
+        MarketplaceAccount $account,
+        DateTimeInterface $from,
+        DateTimeInterface $to,
+        int $page = 1,
+        int $pageSize = 1000
+    ): array {
+        return $this->http->post($account, '/v3/finance/transaction/list', [
+            'filter' => [
+                'date' => [
+                    'from' => $from->format('Y-m-d\TH:i:s.000\Z'),
+                    'to' => $to->format('Y-m-d\TH:i:s.999\Z'),
+                ],
+                'posting_number' => '',
+                'transaction_type' => 'all',
+            ],
+            'page' => $page,
+            'page_size' => $pageSize,
+        ]);
+    }
+
+    /**
+     * Получить все транзакции за период с пагинацией
+     *
+     * @param MarketplaceAccount $account
+     * @param DateTimeInterface $from
+     * @param DateTimeInterface $to
+     * @return array
+     */
+    public function getAllFinanceTransactions(
+        MarketplaceAccount $account,
+        DateTimeInterface $from,
+        DateTimeInterface $to
+    ): array {
+        $allTransactions = [];
+        $page = 1;
+        $pageSize = 1000;
+
+        do {
+            $response = $this->getFinanceTransactions($account, $from, $to, $page, $pageSize);
+            $transactions = $response['result']['operations'] ?? [];
+
+            if (empty($transactions)) {
+                break;
+            }
+
+            $allTransactions = array_merge($allTransactions, $transactions);
+            $page++;
+
+            // Safety limit
+            if ($page > 100) {
+                \Log::warning('Ozon finance transactions pagination limit reached', [
+                    'account_id' => $account->id,
+                    'total' => count($allTransactions),
+                ]);
+                break;
+            }
+        } while (count($transactions) === $pageSize);
+
+        return $allTransactions;
+    }
+
+    /**
+     * Получить итоговую сумму транзакций
+     * POST /v3/finance/transaction/totals
+     *
+     * @param MarketplaceAccount $account
+     * @param DateTimeInterface $from
+     * @param DateTimeInterface $to
+     * @return array
+     */
+    public function getFinanceTransactionTotals(
+        MarketplaceAccount $account,
+        DateTimeInterface $from,
+        DateTimeInterface $to
+    ): array {
+        return $this->http->post($account, '/v3/finance/transaction/totals', [
+            'filter' => [
+                'date' => [
+                    'from' => $from->format('Y-m-d\TH:i:s.000\Z'),
+                    'to' => $to->format('Y-m-d\TH:i:s.999\Z'),
+                ],
+                'posting_number' => '',
+                'transaction_type' => 'all',
+            ],
+        ]);
+    }
+
+    /**
+     * Получить сводку расходов маркетплейса
+     *
+     * @param MarketplaceAccount $account
+     * @param DateTimeInterface $from
+     * @param DateTimeInterface $to
+     * @return array
+     */
+    public function getExpensesSummary(
+        MarketplaceAccount $account,
+        DateTimeInterface $from,
+        DateTimeInterface $to
+    ): array {
+        $summary = [
+            'commission' => 0,
+            'logistics' => 0,
+            'storage' => 0,
+            'advertising' => 0,
+            'penalties' => 0,
+            'returns' => 0,
+            'other' => 0,
+            'total' => 0,
+            'currency' => 'RUB',
+        ];
+
+        try {
+            $transactions = $this->getAllFinanceTransactions($account, $from, $to);
+
+            foreach ($transactions as $transaction) {
+                $type = $transaction['operation_type'] ?? '';
+                $amount = abs((float) ($transaction['amount'] ?? 0));
+                $services = $transaction['services'] ?? [];
+
+                // Process services array for detailed breakdown
+                foreach ($services as $service) {
+                    $serviceName = $service['name'] ?? '';
+                    $serviceAmount = abs((float) ($service['price'] ?? 0));
+
+                    if (stripos($serviceName, 'комисси') !== false || stripos($serviceName, 'commission') !== false) {
+                        $summary['commission'] += $serviceAmount;
+                    } elseif (stripos($serviceName, 'логист') !== false || stripos($serviceName, 'доставк') !== false || stripos($serviceName, 'delivery') !== false) {
+                        $summary['logistics'] += $serviceAmount;
+                    } elseif (stripos($serviceName, 'хранен') !== false || stripos($serviceName, 'storage') !== false) {
+                        $summary['storage'] += $serviceAmount;
+                    } elseif (stripos($serviceName, 'реклам') !== false || stripos($serviceName, 'продвиж') !== false || stripos($serviceName, 'advertising') !== false) {
+                        $summary['advertising'] += $serviceAmount;
+                    } elseif (stripos($serviceName, 'штраф') !== false || stripos($serviceName, 'penalty') !== false) {
+                        $summary['penalties'] += $serviceAmount;
+                    } else {
+                        $summary['other'] += $serviceAmount;
+                    }
+                }
+
+                // Handle operation types
+                if (stripos($type, 'return') !== false || stripos($type, 'возврат') !== false) {
+                    $summary['returns'] += $amount;
+                }
+            }
+
+            $summary['total'] = $summary['commission']
+                + $summary['logistics']
+                + $summary['storage']
+                + $summary['advertising']
+                + $summary['penalties']
+                + $summary['other'];
+
+            \Log::info('Ozon expenses summary calculated', [
+                'account_id' => $account->id,
+                'period' => $from->format('Y-m-d') . ' - ' . $to->format('Y-m-d'),
+                'transactions_count' => count($transactions),
+                'summary' => $summary,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to get Ozon expenses summary', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Получить отчёт о реализации товаров
+     * POST /v1/finance/realization
+     *
+     * @param MarketplaceAccount $account
+     * @param int $year
+     * @param int $month
+     * @return array
+     */
+    public function getRealizationReport(
+        MarketplaceAccount $account,
+        int $year,
+        int $month
+    ): array {
+        return $this->http->post($account, '/v1/finance/realization', [
+            'date' => sprintf('%04d-%02d', $year, $month),
+        ]);
+    }
 }
