@@ -124,7 +124,7 @@ class SyncMarketplaceExpenses extends Command
                 'wb' => $this->syncWildberries($account, $dateFrom, $dateTo),
                 'ozon' => $this->syncOzon($account, $dateFrom, $dateTo),
                 'uzum' => $this->syncUzum($account, $dateFrom, $dateTo),
-                'yandex' => $this->syncYandex($account, $dateFrom, $dateTo),
+                'yandex', 'ym' => $this->syncYandex($account, $dateFrom, $dateTo),
                 default => throw new \Exception("Unsupported marketplace: {$account->marketplace}"),
             };
 
@@ -190,36 +190,43 @@ class SyncMarketplaceExpenses extends Command
 
     protected function syncUzum(MarketplaceAccount $account, Carbon $dateFrom, Carbon $dateTo): array
     {
-        // Uzum expenses are already in DB via uzum:sync-expenses command
-        // Just aggregate from uzum_expenses table
+        // Uzum expenses table structure:
+        // - source_normalized: category (advertising, commission, delivery, storage, penalty, return, other)
+        // - payment_price: amount in UZS (tiyin - 1/100 of sum)
+        // - amount: quantity (usually 1)
+        // - date_service: service date
         $expenses = \App\Models\UzumExpense::where('marketplace_account_id', $account->id)
-            ->whereBetween('date', [$dateFrom->format('Y-m-d'), $dateTo->format('Y-m-d')])
-            ->selectRaw('
-                SUM(commission) as commission,
-                SUM(delivery) as logistics,
-                SUM(storage) as storage,
-                SUM(advertising) as advertising,
-                SUM(penalties) as penalties,
-                SUM(returns) as returns,
-                SUM(other) as other,
-                SUM(total) as total
-            ')
+            ->whereDate('date_service', '>=', $dateFrom->format('Y-m-d'))
+            ->whereDate('date_service', '<=', $dateTo->format('Y-m-d'))
+            ->selectRaw("
+                SUM(CASE WHEN source_normalized = 'commission' THEN ABS(payment_price) ELSE 0 END) as commission,
+                SUM(CASE WHEN source_normalized = 'delivery' THEN ABS(payment_price) ELSE 0 END) as logistics,
+                SUM(CASE WHEN source_normalized = 'storage' THEN ABS(payment_price) ELSE 0 END) as storage,
+                SUM(CASE WHEN source_normalized = 'advertising' THEN ABS(payment_price) ELSE 0 END) as advertising,
+                SUM(CASE WHEN source_normalized = 'penalty' THEN ABS(payment_price) ELSE 0 END) as penalties,
+                SUM(CASE WHEN source_normalized = 'return' THEN ABS(payment_price) ELSE 0 END) as returns,
+                SUM(CASE WHEN source_normalized NOT IN ('commission', 'delivery', 'storage', 'advertising', 'penalty', 'return') THEN ABS(payment_price) ELSE 0 END) as other,
+                SUM(ABS(payment_price)) as total
+            ")
             ->first();
 
+        // payment_price is in tiyin (1/100 of sum), convert to sum
+        $total = (float) ($expenses->total ?? 0) / 100;
+
         return [
-            'commission' => (float) ($expenses->commission ?? 0),
-            'logistics' => (float) ($expenses->logistics ?? 0),
-            'storage' => (float) ($expenses->storage ?? 0),
-            'advertising' => (float) ($expenses->advertising ?? 0),
-            'penalties' => (float) ($expenses->penalties ?? 0),
-            'returns' => (float) ($expenses->returns ?? 0),
-            'other' => (float) ($expenses->other ?? 0),
-            'total' => (float) ($expenses->total ?? 0),
+            'commission' => (float) ($expenses->commission ?? 0) / 100,
+            'logistics' => (float) ($expenses->logistics ?? 0) / 100,
+            'storage' => (float) ($expenses->storage ?? 0) / 100,
+            'advertising' => (float) ($expenses->advertising ?? 0) / 100,
+            'penalties' => (float) ($expenses->penalties ?? 0) / 100,
+            'returns' => (float) ($expenses->returns ?? 0) / 100,
+            'other' => (float) ($expenses->other ?? 0) / 100,
+            'total' => $total,
             'gross_revenue' => 0,
             'orders_count' => 0,
             'returns_count' => 0,
             'currency' => 'UZS',
-            'total_uzs' => (float) ($expenses->total ?? 0),
+            'total_uzs' => $total,
         ];
     }
 
