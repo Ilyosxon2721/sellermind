@@ -777,75 +777,87 @@
             <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $plans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $plan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->is_popular): ?>
-                <div class="bg-blue-600 rounded-2xl p-8 relative shadow-xl shadow-blue-600/30">
+                <div class="bg-blue-600 rounded-2xl relative shadow-xl shadow-blue-600/30 flex flex-col" style="min-height: 550px;">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-400 text-orange-900 text-xs font-bold rounded-full">
-                        Популярный
-                    </div>
-                    <div class="text-white/80 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
-                    <div class="text-4xl font-bold text-white mb-1">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
-                            Бесплатно
-                        <?php elseif($plan->slug === 'enterprise'): ?>
-                            от <?php echo e(number_format($plan->price, 0, ',', ' ')); ?>
+                        <?php echo e(__('landing.pricing_popular')); ?>
 
-                        <?php else: ?>
-                            <?php echo e(number_format($plan->price, 0, ',', ' ')); ?><span class="text-xl font-normal">/мес</span>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <div class="text-white/80 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> навсегда <?php else: ?> сум <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
-                    <ul class="space-y-3 mb-8 text-white text-sm">
-                        <li class="flex items-center"><span class="mr-2">✓</span> 
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> Безлимит аккаунтов <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> маркетплейса <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> Безлимит товаров <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> товаров <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> Безлимит заказов <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> заказов/мес <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="mr-2">✓</span> Аналитика</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="mr-2">✓</span> Автоценообразование</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="mr-2">✓</span> API доступ</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    </ul>
-                    <a href="/<?php echo e(app()->getLocale()); ?>/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
-                        <?php echo e(__('landing.pricing_cta')); ?>
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-white/80 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
+                        <div class="text-4xl font-bold text-white mb-1">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
+                                <?php echo e(__('landing.pricing_free')); ?>
 
-                    </a>
+                            <?php elseif($plan->slug === 'enterprise'): ?>
+                                <?php echo e(__('landing.pricing_from')); ?> <?php echo e(number_format($plan->price, 0, ',', ' ')); ?>
+
+                            <?php else: ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?><span class="text-xl font-normal">/<?php echo e(__('landing.pricing_month')); ?></span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                        <div class="text-white/80 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> <?php echo e(__('landing.pricing_forever')); ?> <?php else: ?> <?php echo e(__('landing.pricing_currency')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
+                        <ul class="space-y-3 mb-8 text-white text-sm flex-grow">
+                            <li class="flex items-center"><span class="mr-2">✓</span> 
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> <?php echo e(__('landing.pricing_unlimited_accounts')); ?> <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> <?php echo e(__('landing.pricing_marketplaces')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> <?php echo e(__('landing.pricing_unlimited_products')); ?> <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> <?php echo e(__('landing.pricing_products_count')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> <?php echo e(__('landing.pricing_unlimited_orders')); ?> <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> <?php echo e(__('landing.pricing_orders_month')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_analytics')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_auto_pricing')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_api')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="mr-2">✓</span> <?php echo e(__('landing.pricing_priority_support')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/<?php echo e(app()->getLocale()); ?>/register?plan=<?php echo e($plan->id); ?>" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                                <?php echo e(__('landing.pricing_cta')); ?>
+
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <?php else: ?>
-                <div class="bg-white rounded-2xl p-8 border border-gray-200">
-                    <div class="text-gray-500 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
-                    <div class="text-4xl font-bold text-gray-900 mb-1">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
-                            Бесплатно
-                        <?php elseif($plan->slug === 'enterprise'): ?>
-                            от <?php echo e(number_format($plan->price, 0, ',', ' ')); ?>
+                <div class="bg-white rounded-2xl border border-gray-200 flex flex-col" style="min-height: 550px;">
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-gray-500 text-sm font-medium mb-2"><?php echo e($plan->name); ?></div>
+                        <div class="text-4xl font-bold text-gray-900 mb-1">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?>
+                                <?php echo e(__('landing.pricing_free')); ?>
 
-                        <?php else: ?>
-                            <?php echo e(number_format($plan->price, 0, ',', ' ')); ?><span class="text-xl font-normal">/мес</span>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php elseif($plan->slug === 'enterprise'): ?>
+                                <?php echo e(__('landing.pricing_from')); ?> <?php echo e(number_format($plan->price, 0, ',', ' ')); ?>
+
+                            <?php else: ?>
+                                <?php echo e(number_format($plan->price, 0, ',', ' ')); ?><span class="text-xl font-normal">/<?php echo e(__('landing.pricing_month')); ?></span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                        <div class="text-gray-500 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> <?php echo e(__('landing.pricing_forever')); ?> <?php else: ?> <?php echo e(__('landing.pricing_currency')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
+                        <ul class="space-y-3 mb-8 text-sm flex-grow">
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> <?php echo e(__('landing.pricing_unlimited_accounts')); ?> <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> <?php echo e(__('landing.pricing_marketplaces')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> <?php echo e(__('landing.pricing_unlimited_products')); ?> <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> <?php echo e(__('landing.pricing_products_count')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> <?php echo e(__('landing.pricing_unlimited_orders')); ?> <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> <?php echo e(__('landing.pricing_orders_month')); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </li>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_analytics')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_auto_pricing')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_api')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> <?php echo e(__('landing.pricing_priority_support')); ?></li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/<?php echo e(app()->getLocale()); ?>/<?php echo e($plan->slug === 'enterprise' ? 'contact' : 'register'); ?>?plan=<?php echo e($plan->id); ?>" 
+                               class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                                <?php echo e($plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta')); ?>
+
+                            </a>
+                        </div>
                     </div>
-                    <div class="text-gray-500 mb-6"><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->price == 0): ?> навсегда <?php else: ?> сум <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></div>
-                    <ul class="space-y-3 mb-8 text-gray-600 text-sm">
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_marketplace_accounts == -1): ?> Безлимит аккаунтов <?php else: ?> <?php echo e($plan->max_marketplace_accounts); ?> <?php echo e($plan->max_marketplace_accounts == 1 ? 'маркетплейс' : 'маркетплейса'); ?> <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_products == -1): ?> Безлимит товаров <?php else: ?> <?php echo e(number_format($plan->max_products)); ?> товаров <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->max_orders_per_month == -1): ?> Безлимит заказов <?php else: ?> <?php echo e(number_format($plan->max_orders_per_month)); ?> заказов/мес <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </li>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_analytics): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Аналитика</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_auto_pricing): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Автоценообразование</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_api_access): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($plan->has_priority_support): ?><li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    </ul>
-                    <a href="/<?php echo e(app()->getLocale()); ?>/<?php echo e($plan->slug === 'enterprise' ? 'contact' : 'register'); ?>" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        <?php echo e($plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta')); ?>
-
-                    </a>
                 </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

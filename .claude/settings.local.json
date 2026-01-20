@@ -48,7 +48,8 @@
       "Bash(/Applications/MAMP/Library/bin/mysql:*)",
       "Bash(# Test with Bearer prefix echo \"\"=== With Bearer prefix ===\"\" && curl -s -w \"\"\\\\nHTTP:%{http_code}\"\" \"\"https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=2025-01-01\"\" \\\\ -H \"\"Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwMTE1djEiLCJ0eXAiOiJKV1QifQ.eyJlbnQiOjEsImV4cCI6MTc1MjY3MDY2NCwiaWQiOiIwMTk0YjdjYi0yZWQ3LTc2YWItODM3MC1jZWJhZjhlMGI0ZTciLCJpaWQiOjE3Mjc0NTgzLCJvaWQiOjMwNTYwMywicyI6MTAzNCwidWlkIjoxNzI3NDU4M30.Hl3swhpK5zGYnYTfh3FPxN7xC-k3hy12lIzqgHK3BNDvSP2K_A-Lzjbr1Z1cBVpU6E1FMjO5Vx2iSfJmGDBi8A\"\")",
       "Bash(# Test new Statistics token echo \"\"=== NEW Statistics Token ===\"\" && curl -s -w \"\"\\\\nHTTP:%{http_code}\"\" \"\"https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=2025-01-01\"\" \\\\ -H \"\"Authorization: eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg0NDQ1NzE1LCJpZCI6IjAxOWJjZDY4LTJkOWYtNzZlOC05NzNhLTE5ODc5YzQzNzA3ZCIsImlpZCI6MTEzNDM1NDE5LCJvaWQiOjEzMjI0MDYsInMiOjIwODQsInNpZCI6IjYxOTJlNjI3LWJhY2MtNDBhNS04MWM1LWUwYTFhODRmYWI3MyIsInQiOmZhbHNlLCJ1aWQiOjExMzQzNTQxOX0.KqZ-5FVQpPDRiAgguRavKkY0vNb7m6NR9kzz5LM4kKrmKcSQSMiLz-oXEtZVJy30XT03P-RAIoLLPWj-Leg-Bw\"\")",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(wc:*)"
     ]
   }
 }

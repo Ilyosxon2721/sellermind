@@ -773,71 +773,80 @@
             <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
                 @foreach($plans as $plan)
                 @if($plan->is_popular)
-                <div class="bg-blue-600 rounded-2xl p-8 relative shadow-xl shadow-blue-600/30">
+                <div class="bg-blue-600 rounded-2xl relative shadow-xl shadow-blue-600/30 flex flex-col" style="min-height: 550px;">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-400 text-orange-900 text-xs font-bold rounded-full">
-                        Популярный
+                        {{ __('landing.pricing_popular') }}
                     </div>
-                    <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
-                    <div class="text-4xl font-bold text-white mb-1">
-                        @if($plan->price == 0)
-                            Бесплатно
-                        @elseif($plan->slug === 'enterprise')
-                            от {{ number_format($plan->price, 0, ',', ' ') }}
-                        @else
-                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
-                        @endif
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-4xl font-bold text-white mb-1">
+                            @if($plan->price == 0)
+                                {{ __('landing.pricing_free') }}
+                            @elseif($plan->slug === 'enterprise')
+                                {{ __('landing.pricing_from') }} {{ number_format($plan->price, 0, ',', ' ') }}
+                            @else
+                                {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/{{ __('landing.pricing_month') }}</span>
+                            @endif
+                        </div>
+                        <div class="text-white/80 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else {{ __('landing.pricing_currency') }} @endif</div>
+                        <ul class="space-y-3 mb-8 text-white text-sm flex-grow">
+                            <li class="flex items-center"><span class="mr-2">✓</span> 
+                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                            </li>
+                            @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
+                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
+                            @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
+                            @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/{{ app()->getLocale() }}/register?plan={{ $plan->id }}" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                                {{ __('landing.pricing_cta') }}
+                            </a>
+                        </div>
                     </div>
-                    <div class="text-white/80 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
-                    <ul class="space-y-3 mb-8 text-white text-sm">
-                        <li class="flex items-center"><span class="mr-2">✓</span> 
-                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} маркетплейса @endif
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
-                        </li>
-                        @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> Аналитика</li>@endif
-                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> Автоценообразование</li>@endif
-                        @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> API доступ</li>@endif
-                        @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li>@endif
-                    </ul>
-                    <a href="/{{ app()->getLocale() }}/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
-                        {{ __('landing.pricing_cta') }}
-                    </a>
                 </div>
                 @else
-                <div class="bg-white rounded-2xl p-8 border border-gray-200">
-                    <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
-                    <div class="text-4xl font-bold text-gray-900 mb-1">
-                        @if($plan->price == 0)
-                            Бесплатно
-                        @elseif($plan->slug === 'enterprise')
-                            от {{ number_format($plan->price, 0, ',', ' ') }}
-                        @else
-                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
-                        @endif
+                <div class="bg-white rounded-2xl border border-gray-200 flex flex-col" style="min-height: 550px;">
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-4xl font-bold text-gray-900 mb-1">
+                            @if($plan->price == 0)
+                                {{ __('landing.pricing_free') }}
+                            @elseif($plan->slug === 'enterprise')
+                                {{ __('landing.pricing_from') }} {{ number_format($plan->price, 0, ',', ' ') }}
+                            @else
+                                {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/{{ __('landing.pricing_month') }}</span>
+                            @endif
+                        </div>
+                        <div class="text-gray-500 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else {{ __('landing.pricing_currency') }} @endif</div>
+                        <ul class="space-y-3 mb-8 text-sm flex-grow">
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                            </li>
+                            @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
+                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
+                            @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
+                            @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/{{ app()->getLocale() }}/{{ $plan->slug === 'enterprise' ? 'contact' : 'register' }}?plan={{ $plan->id }}" 
+                               class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                                {{ $plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta') }}
+                            </a>
+                        </div>
                     </div>
-                    <div class="text-gray-500 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
-                    <ul class="space-y-3 mb-8 text-gray-600 text-sm">
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 
-                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} {{ $plan->max_marketplace_accounts == 1 ? 'маркетплейс' : 'маркетплейса' }} @endif
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
-                        </li>
-                        @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Аналитика</li>@endif
-                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Автоценообразование</li>@endif
-                        @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li>@endif
-                        @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li>@endif
-                    </ul>
-                    <a href="/{{ app()->getLocale() }}/{{ $plan->slug === 'enterprise' ? 'contact' : 'register' }}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        {{ $plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta') }}
-                    </a>
                 </div>
                 @endif
                 @endforeach
