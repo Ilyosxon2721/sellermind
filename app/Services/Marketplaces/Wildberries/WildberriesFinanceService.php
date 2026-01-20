@@ -342,30 +342,43 @@ class WildberriesFinanceService
             'total_commission' => 0,
             'total_logistics' => 0,
             'total_penalty' => 0,
+            'total_storage' => 0,
             'net_profit' => 0,
             'orders_count' => 0,
             'returns_count' => 0,
         ];
 
         foreach ($reportData as $record) {
-            $realizationReportId = $record['realizationreport_id'] ?? null;
+            $operationType = $record['supplier_oper_name'] ?? '';
 
-            // Sale
-            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Продажа') {
+            // Sale - use supplier_oper_name, not sa_name (which is article code)
+            if ($operationType === 'Продажа') {
                 $summary['total_sales'] += $record['retail_amount'] ?? 0;
-                $summary['total_commission'] += abs($record['commission_amount'] ?? 0);
-                $summary['total_logistics'] += abs($record['delivery_rub'] ?? 0);
+                // Commission is in ppvz_sales_commission field
+                $summary['total_commission'] += abs($record['ppvz_sales_commission'] ?? 0);
                 $summary['orders_count']++;
             }
 
             // Return
-            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Возврат') {
+            if ($operationType === 'Возврат') {
                 $summary['total_returns'] += abs($record['retail_amount'] ?? 0);
+                // Returns also have negative commission (refunded)
+                $summary['total_commission'] -= abs($record['ppvz_sales_commission'] ?? 0);
                 $summary['returns_count']++;
             }
 
-            // Penalty
-            if (isset($record['penalty'])) {
+            // Logistics - separate operation type
+            if ($operationType === 'Логистика') {
+                $summary['total_logistics'] += abs($record['delivery_rub'] ?? 0);
+            }
+
+            // Storage fee from report (in addition to paid_storage API)
+            if ($operationType === 'Хранение') {
+                $summary['total_storage'] += abs($record['storage_fee'] ?? 0);
+            }
+
+            // Penalty - can be in any record type
+            if (isset($record['penalty']) && $record['penalty'] != 0) {
                 $summary['total_penalty'] += abs($record['penalty']);
             }
         }
@@ -374,6 +387,7 @@ class WildberriesFinanceService
             - $summary['total_returns']
             - $summary['total_commission']
             - $summary['total_logistics']
+            - $summary['total_storage']
             - $summary['total_penalty'];
 
         return $summary;
@@ -445,19 +459,26 @@ class WildberriesFinanceService
         $reportData = $this->getFullDetailedReport($account, $dateFrom, $dateTo);
         $summary = $this->calculateSummary($reportData);
 
-        // Add storage fees
-        $storageFees = $this->getPaidStorageFees($account, $dateFrom, $dateTo);
+        // Storage from report + paid_storage API (they may overlap, take max)
+        $paidStorageFees = $this->getPaidStorageFees($account, $dateFrom, $dateTo);
+        $reportStorageFees = $summary['total_storage'] ?? 0;
+        $totalStorage = max($paidStorageFees, $reportStorageFees);
+
+        $commission = $summary['total_commission'];
+        $logistics = $summary['total_logistics'];
+        $penalties = $summary['total_penalty'];
 
         return [
-            'commission' => $summary['total_commission'],
-            'logistics' => $summary['total_logistics'],
-            'storage' => $storageFees,
+            'commission' => $commission,
+            'logistics' => $logistics,
+            'storage' => $totalStorage,
             'advertising' => 0, // TODO: Add advertising API if needed
-            'penalties' => $summary['total_penalty'],
+            'penalties' => $penalties,
             'returns' => $summary['total_returns'],
             'other' => 0,
-            'total' => $summary['total_commission'] + $summary['total_logistics'] + $storageFees + $summary['total_penalty'],
+            'total' => $commission + $logistics + $totalStorage + $penalties,
             'orders_count' => $summary['orders_count'],
+            'returns_count' => $summary['returns_count'],
             'gross_revenue' => $summary['total_sales'],
             'currency' => 'RUB',
         ];
