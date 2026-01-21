@@ -53,6 +53,11 @@ class Warehouse extends Model
         return $this->hasMany(InventoryDocument::class, 'warehouse_id');
     }
 
+    public function stockLedger(): HasMany
+    {
+        return $this->hasMany(StockLedger::class, 'warehouse_id');
+    }
+
     /**
      * Пользователи, привязанные к складу
      */
