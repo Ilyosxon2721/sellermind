@@ -14,7 +14,7 @@ class WarehouseDashboard extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBarSquare;
 
-    protected static string $view = 'filament.pages.warehouse-dashboard';
+    protected string $view = 'filament.pages.warehouse-dashboard';
 
     protected static ?int $navigationSort = 0;
 
