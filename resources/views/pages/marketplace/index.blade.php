@@ -207,7 +207,8 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <!-- Existing accounts -->
                                     <template x-for="account in getMarketplaceAccounts(marketplace.code)" :key="account.id">
-                                        <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition relative"
+                                        <div @click="window.location.href = '/marketplace/' + account.id"
+                                             class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-gray-300 transition relative cursor-pointer"
                                              :class="{'slide-in-up': account.isNew, 'opacity-50 pointer-events-none': account.isDeleting}">
                                             <!-- Deleting overlay -->
                                             <div x-show="account.isDeleting" class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-10">
@@ -239,7 +240,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="flex space-x-1">
-                                                    <button @click="testConnection(account.id)"
+                                                    <button @click.stop="testConnection(account.id)"
                                                             :disabled="testingConnection"
                                                             class="p-2 text-gray-400 hover:text-blue-600 transition"
                                                             title="Проверить подключение">
@@ -248,6 +249,7 @@
                                                         </svg>
                                                     </button>
                                                     <a :href="getAccountSettingsUrl(account)"
+                                                       @click.stop
                                                        class="p-2 text-gray-400 hover:text-gray-600 transition"
                                                        title="Настройки">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,7 +257,7 @@
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                         </svg>
                                                     </a>
-                                                    <button @click="confirmDeleteAccount(account)"
+                                                    <button @click.stop="confirmDeleteAccount(account)"
                                                             class="p-2 text-gray-400 hover:text-red-600 transition"
                                                             title="Удалить аккаунт">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,20 +270,24 @@
                                             <div class="space-y-2">
                                                 <div class="flex space-x-2">
                                                     <a :href="getAccountProductsUrl(account)"
+                                                       @click.stop
                                                        class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
                                                         {{ __('marketplace.products') }}
                                                     </a>
                                                     <a :href="getAccountOrdersUrl(account)"
+                                                       @click.stop
                                                        class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
                                                         {{ __('marketplace.orders') }}
                                                     </a>
                                                 </div>
                                                 <div class="flex space-x-2" x-show="account.marketplace === 'wb'">
                                                     <a :href="'/marketplace/' + account.id + '/supplies'"
+                                                       @click.stop
                                                        class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
                                                         {{ __('marketplace.supplies') }}
                                                     </a>
                                                     <a :href="'/marketplace/' + account.id + '/passes'"
+                                                       @click.stop
                                                        class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
                                                         {{ __('marketplace.passes') }}
                                                     </a>
