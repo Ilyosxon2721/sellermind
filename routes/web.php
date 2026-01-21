@@ -397,40 +397,34 @@ Route::get('/marketplace/{accountId}/products/{productId}/json', function (\Illu
     ]);
 })->name('marketplace.products.show.json');
 
+// Generic orders route - redirects to marketplace-specific page
 Route::get('/marketplace/{accountId}/orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
 
-    return view('pages.marketplace.orders', [
-        'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
-        'accountName' => $account->name,
-        'uzumShops' => $uzumShops,
-    ]);
+    // Redirect to marketplace-specific orders page
+    return match($account->marketplace) {
+        'wb' => redirect()->route('marketplace.wb-orders', $accountId),
+        'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
+        'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
+        'ym' => redirect()->route('marketplace.ym-orders', $accountId),
+        default => abort(404, 'Unsupported marketplace'),
+    };
 })->name('marketplace.orders');
 
-// Явные URL по маркетплейсу, чтобы разделить страницы заказов
+// Explicit URL by marketplace - redirects to dedicated page
 Route::get('/marketplace/{accountId}/{marketplace}/orders', function ($accountId, $marketplace) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
     if (strtolower($marketplace) !== strtolower($account->marketplace)) {
         abort(404);
     }
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
 
-    return view('pages.marketplace.orders', [
-        'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
-        'accountName' => $account->name,
-        'uzumShops' => $uzumShops,
-    ]);
+    return match($account->marketplace) {
+        'wb' => redirect()->route('marketplace.wb-orders', $accountId),
+        'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
+        'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
+        'ym' => redirect()->route('marketplace.ym-orders', $accountId),
+        default => abort(404, 'Unsupported marketplace'),
+    };
 })->name('marketplace.orders.specific');
 
 Route::get('/marketplace/{accountId}/supplies', function ($accountId) {
@@ -451,15 +445,13 @@ Route::get('/marketplace/{accountId}/wb-products', function ($accountId) {
     return view('pages.marketplace.wb-products', ['accountId' => $accountId]);
 })->name('marketplace.wb-products');
 
-// Wildberries Orders
+// Wildberries FBS Orders (new dedicated page)
 Route::get('/marketplace/{accountId}/wb-orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
 
-    return view('pages.marketplace.orders', [
+    return view('pages.marketplace.wb-orders', [
         'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
         'accountName' => $account->name,
-        'uzumShops' => collect(),
     ]);
 })->name('marketplace.wb-orders');
 
@@ -508,18 +500,15 @@ Route::get('/marketplace/{accountId}/ym-orders/json', function (\Illuminate\Http
     ]);
 })->name('marketplace.ym-orders.json');
 
-// Uzum Orders
+// Uzum FBS Orders (new dedicated page with brand design)
 Route::get('/marketplace/{accountId}/uzum-orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
+    $uzumShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
+        ->orderBy('name')
+        ->get(['id', 'external_id', 'name']);
 
-    return view('pages.marketplace.orders', [
+    return view('pages.marketplace.uzum-fbs-orders', [
         'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
         'accountName' => $account->name,
         'uzumShops' => $uzumShops,
     ]);
