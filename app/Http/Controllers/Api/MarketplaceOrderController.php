@@ -217,6 +217,70 @@ class MarketplaceOrderController extends Controller
         ]);
     }
 
+    /**
+     * Get Uzum Finance Orders (FBO/FBS/DBS - all types)
+     */
+    public function uzumFinanceOrders(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        if ($account->marketplace !== 'uzum') {
+            return response()->json(['message' => 'Этот endpoint только для Uzum аккаунтов'], 422);
+        }
+
+        try {
+            $client = app(\App\Services\Marketplaces\UzumClient::class);
+
+            // Parse date filters
+            $dateFromMs = null;
+            $dateToMs = null;
+
+            if ($request->filled('from')) {
+                $dateFromMs = strtotime($request->from) * 1000;
+            }
+            if ($request->filled('to')) {
+                $dateToMs = (strtotime($request->to) + 86400) * 1000; // End of day
+            }
+
+            // If no dates provided, default to last 30 days
+            if (!$dateFromMs && !$dateToMs) {
+                $dateToMs = time() * 1000;
+                $dateFromMs = (time() - 30 * 86400) * 1000;
+            }
+
+            $shopIds = [];
+            if ($request->filled('shop_id')) {
+                $shopIds = [(int) $request->shop_id];
+            }
+
+            $result = $client->fetchFinanceOrders(
+                $account,
+                $shopIds,
+                0,      // page
+                100,    // size
+                false,  // group
+                $dateFromMs,
+                $dateToMs
+            );
+
+            return response()->json([
+                'orderItems' => $result['orderItems'] ?? [],
+                'totalElements' => $result['totalElements'] ?? 0,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to fetch Uzum finance orders', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Ошибка загрузки FBO заказов: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function stats(Request $request): JsonResponse
     {
         $request->validate([
@@ -535,12 +599,19 @@ class MarketplaceOrderController extends Controller
     }
 
     /**
-     * Отменить заказ WB
+     * Отменить заказ (WB или Uzum)
      */
     public function cancel(Request $request, $orderId): JsonResponse
     {
-        // Ищем заказ в wb_orders
-        $order = \App\Models\WbOrder::find($orderId);
+        // Сначала ищем в Uzum заказах
+        $order = \App\Models\UzumOrder::find($orderId);
+        $marketplace = 'uzum';
+
+        // Если не найден, ищем в WB заказах
+        if (!$order) {
+            $order = \App\Models\WbOrder::find($orderId);
+            $marketplace = 'wb';
+        }
 
         if (!$order) {
             return response()->json(['message' => 'Заказ не найден.'], 404);
@@ -558,7 +629,8 @@ class MarketplaceOrderController extends Controller
         }
 
         // Проверка, что заказ не в финальном статусе
-        if (in_array($order->status, ['completed', 'cancelled'])) {
+        $finalStatuses = ['completed', 'cancelled', 'delivered', 'DELIVERED', 'CANCELLED'];
+        if (in_array($order->status, $finalStatuses)) {
             return response()->json([
                 'message' => 'Невозможно отменить заказ в статусе ' . $order->status,
             ], 422);
@@ -572,22 +644,41 @@ class MarketplaceOrderController extends Controller
         }
 
         try {
-            $orderService = $this->getWbOrderService($account);
+            if ($marketplace === 'uzum') {
+                // Отмена заказа Uzum
+                $client = app(\App\Services\Marketplaces\UzumClient::class);
+                $data = $client->cancelOrder($account, $order->external_order_id);
 
-            $result = $orderService->cancelOrder(
-                $account,
-                (int) $order->external_order_id
-            );
+                if (!$data) {
+                    return response()->json(['message' => 'Не удалось отменить заказ Uzum'], 422);
+                }
 
-            // Обновляем заказ в БД
-            $order->update([
-                'status' => 'cancelled',
-            ]);
+                // Обновляем заказ
+                $order->update([
+                    'status' => $data['status'] ?? 'cancelled',
+                    'status_normalized' => $data['status_normalized'] ?? 'cancelled',
+                    'raw_payload' => $data['raw_payload'] ?? $order->raw_payload,
+                ]);
+            } else {
+                // Отмена заказа WB
+                $orderService = $this->getWbOrderService($account);
+
+                $result = $orderService->cancelOrder(
+                    $account,
+                    (int) $order->external_order_id
+                );
+
+                // Обновляем заказ в БД
+                $order->update([
+                    'status' => 'cancelled',
+                ]);
+            }
 
             \Illuminate\Support\Facades\Log::info('Order canceled via API', [
                 'order_id' => $order->id,
                 'external_order_id' => $order->external_order_id,
                 'account_id' => $account->id,
+                'marketplace' => $marketplace,
                 'user_id' => $request->user()->id,
             ]);
 
@@ -600,6 +691,7 @@ class MarketplaceOrderController extends Controller
             \Illuminate\Support\Facades\Log::error('Failed to cancel order', [
                 'order_id' => $order->id,
                 'external_order_id' => $order->external_order_id,
+                'marketplace' => $marketplace,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

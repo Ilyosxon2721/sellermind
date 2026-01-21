@@ -344,6 +344,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'getSyncSettings']);
         Route::put('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'updateSyncSettings']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
+        Route::get('uzum/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'uzumFinanceOrders']);
 
         // Sync operations
         Route::post('accounts/{account}/sync/prices', [MarketplaceSyncController::class, 'syncPrices']);

@@ -1365,9 +1365,9 @@ function wbOrdersPage() {
             this.suppliesLoading = true;
             try {
                 const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
-                const res = await fetch('/api/marketplace/supplies', {
+                const res = await this.authFetch('/api/marketplace/supplies', {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         marketplace_account_id: this.accountId,
                         company_id: companyId,
@@ -1400,9 +1400,9 @@ function wbOrdersPage() {
             if (!this.selectedSupplyId) { alert('Выберите поставку'); return; }
             this.suppliesLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${this.selectedSupplyId}/orders`, {
+                const res = await this.authFetch(`/api/marketplace/supplies/${this.selectedSupplyId}/orders`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: this.selectedOrderForSupply.id })
                 });
                 if (res.ok) {
@@ -1424,9 +1424,9 @@ function wbOrdersPage() {
         async removeOrderFromSupply(order, supply) {
             if (!confirm('Убрать заказ из поставки?')) return;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supply.id}/orders`, {
+                const res = await this.authFetch(`/api/marketplace/supplies/${supply.id}/orders`, {
                     method: 'DELETE',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: order.id })
                 });
                 if (res.ok) {
@@ -1444,8 +1444,8 @@ function wbOrdersPage() {
         async closeSupply(supplyId) {
             if (!confirm('Закрыть поставку? После этого нельзя будет добавлять заказы.')) return;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supplyId}/close`, {
-                    method: 'POST', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/supplies/${supplyId}/close`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     await this.loadSupplies();
@@ -1467,8 +1467,8 @@ function wbOrdersPage() {
         async deliverSupply() {
             if (!this.supplyToDeliver) return;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${this.supplyToDeliver.id}/deliver`, {
-                    method: 'POST', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/supplies/${this.supplyToDeliver.id}/deliver`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     this.showDeliverSupplyModal = false;
@@ -1487,8 +1487,8 @@ function wbOrdersPage() {
         async deleteSupply(supplyId) {
             if (!confirm('Удалить пустую поставку?')) return;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supplyId}`, {
-                    method: 'DELETE', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/supplies/${supplyId}`, {
+                    method: 'DELETE'
                 });
                 if (res.ok) {
                     await this.loadSupplies();
@@ -1517,8 +1517,8 @@ function wbOrdersPage() {
             if (!this.orderToCancel || this.cancelingOrder) return;
             this.cancelingOrder = true;
             try {
-                const res = await fetch(`/api/marketplace/orders/${this.orderToCancel.id}/cancel`, {
-                    method: 'POST', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/orders/${this.orderToCancel.id}/cancel`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     this.showCancelModal = false;
@@ -1543,9 +1543,9 @@ function wbOrdersPage() {
                     return;
                 }
 
-                const res = await fetch('/api/marketplace/orders/stickers', {
+                const res = await this.authFetch('/api/marketplace/orders/stickers', {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         marketplace_account_id: this.accountId,
                         order_ids: [order.external_order_id],
@@ -1620,9 +1620,7 @@ function wbOrdersPage() {
             if (!supply || !supply.id) return [];
             this.taresLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supply.id}/tares`, {
-                    headers: this.getAuthHeaders()
-                });
+                const res = await this.authFetch(`/api/marketplace/supplies/${supply.id}/tares`);
                 if (res.ok) {
                     const data = await res.json();
                     return data.tares || [];
@@ -1650,9 +1648,9 @@ function wbOrdersPage() {
 
             this.taresLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/supplies/${this.selectedSupplyForTare.id}/tares`, {
+                const res = await this.authFetch(`/api/marketplace/supplies/${this.selectedSupplyForTare.id}/tares`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({})
                 });
 
@@ -1679,9 +1677,7 @@ function wbOrdersPage() {
             this.showTareModal = true;
 
             try {
-                const res = await fetch(`/api/marketplace/tares/${tare.id}`, {
-                    headers: this.getAuthHeaders()
-                });
+                const res = await this.authFetch(`/api/marketplace/tares/${tare.id}`);
                 if (res.ok) {
                     const data = await res.json();
                     this.selectedTare = data.tare;
@@ -1696,9 +1692,9 @@ function wbOrdersPage() {
 
             this.taresLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/tares/${this.selectedTare.id}/orders`, {
+                const res = await this.authFetch(`/api/marketplace/tares/${this.selectedTare.id}/orders`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
                 });
 
@@ -1725,9 +1721,9 @@ function wbOrdersPage() {
 
             this.taresLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/tares/${this.selectedTare.id}/orders`, {
+                const res = await this.authFetch(`/api/marketplace/tares/${this.selectedTare.id}/orders`, {
                     method: 'DELETE',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
                 });
 
@@ -1753,9 +1749,8 @@ function wbOrdersPage() {
 
             this.taresLoading = true;
             try {
-                const res = await fetch(`/api/marketplace/tares/${tare.id}`, {
-                    method: 'DELETE',
-                    headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/tares/${tare.id}`, {
+                    method: 'DELETE'
                 });
 
                 if (res.ok) {
@@ -1786,9 +1781,8 @@ function wbOrdersPage() {
             }
 
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supplyId}/sync-wb`, {
-                    method: 'POST',
-                    headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/supplies/${supplyId}/sync-wb`, {
+                    method: 'POST'
                 });
 
                 if (res.ok) {
@@ -1812,9 +1806,7 @@ function wbOrdersPage() {
             this.showSupplyModal = true;
 
             try {
-                const res = await fetch(`/api/marketplace/supplies/${supply.id}`, {
-                    headers: this.getAuthHeaders()
-                });
+                const res = await this.authFetch(`/api/marketplace/supplies/${supply.id}`);
                 if (res.ok) {
                     const data = await res.json();
                     this.supplyOrders = data.supply?.orders || [];
@@ -1831,9 +1823,9 @@ function wbOrdersPage() {
             }
 
             try {
-                const res = await fetch(`/api/marketplace/supplies/${this.selectedSupply.id}/orders`, {
+                const res = await this.authFetch(`/api/marketplace/supplies/${this.selectedSupply.id}/orders`, {
                     method: 'DELETE',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: order.id })
                 });
 
@@ -1955,7 +1947,7 @@ function wbOrdersPage() {
         let url = '/api/marketplace/orders?company_id=' + companyId + '&marketplace_account_id={{ $accountId }}';
         if (this.dateFrom) url += '&from=' + this.dateFrom;
         if (this.dateTo) url += '&to=' + this.dateTo;
-        const res = await fetch(url, { headers: this.getAuthHeaders() });
+        const res = await fetch(url, { headers: this.getAuthHeaders(), credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             this.orders = data.orders || [];
@@ -1970,7 +1962,7 @@ function wbOrdersPage() {
         let url = '/api/marketplace/orders/stats?company_id=' + companyId + '&marketplace_account_id={{ $accountId }}';
         if (this.dateFrom) url += '&from=' + this.dateFrom;
         if (this.dateTo) url += '&to=' + this.dateTo;
-        const res = await fetch(url, { headers: this.getAuthHeaders() });
+        const res = await fetch(url, { headers: this.getAuthHeaders(), credentials: 'include' });
         if (res.ok) { this.stats = await res.json(); }
     },
 

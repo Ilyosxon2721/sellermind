@@ -894,6 +894,41 @@ class UzumClient implements MarketplaceClientInterface
     }
 
     /**
+     * Отменить заказ FBS (отказ продавца)
+     */
+    public function cancelOrder(MarketplaceAccount $account, string $orderId): ?array
+    {
+        $path = "/v1/fbs/order/{$orderId}/cancel";
+        $response = $this->request($account, 'POST', $path);
+
+        Log::info('Uzum cancelOrder raw response', [
+            'order_id' => $orderId,
+            'response_keys' => array_keys($response),
+            'payload_status' => $response['payload']['status'] ?? 'N/A',
+            'full_payload' => $response['payload'] ?? null,
+        ]);
+
+        $payload = $response['payload'] ?? null;
+        if (!$payload) {
+            Log::warning('Uzum cancelOrder: no payload in response', [
+                'order_id' => $orderId,
+                'response' => $response,
+            ]);
+            return null;
+        }
+
+        $mapped = $this->mapOrderData($payload, 'fbs');
+
+        Log::info('Uzum cancelOrder mapped data', [
+            'order_id' => $orderId,
+            'mapped_status' => $mapped['status'] ?? 'N/A',
+            'mapped_status_normalized' => $mapped['status_normalized'] ?? 'N/A',
+        ]);
+
+        return $mapped;
+    }
+
+    /**
      * Low-level Uzum request wrapper (base URL + auth headers)
      */
     protected function request(

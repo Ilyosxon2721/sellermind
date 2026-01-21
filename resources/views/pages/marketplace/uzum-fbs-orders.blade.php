@@ -41,7 +41,22 @@
                                 </svg>
                             </div>
                             <div>
-                                <h1 class="text-xl font-bold text-gray-900">FBS Заказы</h1>
+                                <div class="flex items-center space-x-2">
+                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : 'FBO Заказы'"></h1>
+                                    <!-- FBS/FBO Toggle -->
+                                    <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
+                                        <button @click="switchMode('fbs')"
+                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
+                                                :class="orderMode === 'fbs' ? 'bg-[#3A007D] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                            FBS
+                                        </button>
+                                        <button @click="switchMode('fbo')"
+                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
+                                                :class="orderMode === 'fbo' ? 'bg-[#3A007D] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                            FBO
+                                        </button>
+                                    </div>
+                                </div>
                                 <p class="text-sm text-gray-500">{{ $accountName ?? 'Uzum Market' }}</p>
                             </div>
                         </div>
@@ -173,29 +188,37 @@
                                 <button @click="setLastWeek()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дней</button>
                                 <button @click="setLastMonth()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дней</button>
                             </div>
-                            <input type="date" x-model="dateFrom" @change="loadOrders(); loadStats()"
+                            <input type="date" x-model="dateFrom" @change="orderMode === 'fbs' ? (loadOrders(), loadStats()) : loadFboOrders()"
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                             <span class="text-gray-400">—</span>
-                            <input type="date" x-model="dateTo" @change="loadOrders(); loadStats()"
+                            <input type="date" x-model="dateTo" @change="orderMode === 'fbs' ? (loadOrders(), loadStats()) : loadFboOrders()"
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                         </div>
                     </div>
                     <div class="grid grid-cols-5 gap-4">
                         <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                            <div class="text-3xl font-bold text-gray-900" x-text="stats.total_orders || 0"></div>
+                            <div class="text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (stats.total_orders || 0) : fboOrders.length"></div>
                             <div class="text-sm text-gray-600 mt-1">Всего</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(stats.total_amount)"></div>
+                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? stats.total_amount : fboStats.total_amount)"></div>
                             <div class="text-sm text-gray-600 mt-1">Сумма</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100">
+                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
                             <div class="text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
                             <div class="text-sm text-gray-600 mt-1">Новых</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbo'">
+                            <div class="text-3xl font-bold text-[#F4488D]" x-text="getStatusCount('processing')"></div>
+                            <div class="text-sm text-gray-600 mt-1">В обработке</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
                             <div class="text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
                             <div class="text-sm text-gray-600 mt-1">В сборке</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbo'">
+                            <div class="text-3xl font-bold text-amber-600" x-text="getStatusCount('delivered')"></div>
+                            <div class="text-sm text-gray-600 mt-1">Доставлено</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
                             <div class="text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
@@ -322,45 +345,57 @@
                                         </td>
                                         <td class="px-4 py-3 text-sm" @click.stop>
                                             <div class="flex items-center space-x-2">
-                                                <!-- Take Order (New) -->
-                                                <template x-if="order.status === 'new'">
-                                                    <button @click="confirmUzumOrder(order)"
-                                                            :disabled="order.processing"
-                                                            class="px-3 py-1.5 bg-[#3A007D] text-white text-xs font-medium rounded-lg hover:bg-[#2A0060] transition disabled:opacity-50"
-                                                            title="Взять в работу">
-                                                        <span x-show="!order.processing">Взять</span>
-                                                        <svg x-show="order.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                                        </svg>
-                                                    </button>
+                                                <!-- FBS Actions (only show for FBS mode) -->
+                                                <template x-if="orderMode === 'fbs'">
+                                                    <div class="flex items-center space-x-2">
+                                                        <!-- Take Order (New) -->
+                                                        <template x-if="order.status === 'new'">
+                                                            <button @click="confirmUzumOrder(order)"
+                                                                    :disabled="order.processing"
+                                                                    class="px-3 py-1.5 bg-[#3A007D] text-white text-xs font-medium rounded-lg hover:bg-[#2A0060] transition disabled:opacity-50"
+                                                                    title="Взять в работу">
+                                                                <span x-show="!order.processing">Взять</span>
+                                                                <svg x-show="order.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                                </svg>
+                                                            </button>
+                                                        </template>
+
+                                                        <!-- Print Sticker (In Assembly) -->
+                                                        <template x-if="order.status === 'in_assembly'">
+                                                            <button @click="printOrderSticker(order)"
+                                                                    :disabled="order.printing"
+                                                                    class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                                                                    title="Печать этикетки">
+                                                                <svg x-show="!order.printing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                                                </svg>
+                                                                <svg x-show="order.printing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                                </svg>
+                                                            </button>
+                                                        </template>
+
+                                                        <!-- Cancel Button (for new/in_assembly) -->
+                                                        <template x-if="order.status === 'new' || order.status === 'in_assembly'">
+                                                            <button @click="openCancelModal(order)"
+                                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                                    title="Отменить заказ">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                                </svg>
+                                                            </button>
+                                                        </template>
+                                                    </div>
                                                 </template>
 
-                                                <!-- Print Sticker (In Assembly) -->
-                                                <template x-if="order.status === 'in_assembly'">
-                                                    <button @click="printOrderSticker(order)"
-                                                            :disabled="order.printing"
-                                                            class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-                                                            title="Печать этикетки">
-                                                        <svg x-show="!order.printing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                                        </svg>
-                                                        <svg x-show="order.printing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                                        </svg>
-                                                    </button>
-                                                </template>
-
-                                                <!-- Cancel Button (for new/in_assembly) -->
-                                                <template x-if="order.status === 'new' || order.status === 'in_assembly'">
-                                                    <button @click="openCancelModal(order)"
-                                                            class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                                            title="Отменить заказ">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                        </svg>
-                                                    </button>
+                                                <!-- FBO Info Badge -->
+                                                <template x-if="orderMode === 'fbo'">
+                                                    <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                                        FBO
+                                                    </span>
                                                 </template>
 
                                                 <!-- View Details -->
@@ -602,7 +637,9 @@ $__uzumShopsJson = ($uzumShops ?? collect())
 function uzumOrdersPage() {
     return {
         orders: [],
+        fboOrders: [],
         stats: { total_orders: 0, total_amount: 0, by_status: {} },
+        fboStats: { total_orders: 0, total_amount: 0 },
         loading: true,
         selectedOrder: null,
         showOrderModal: false,
@@ -611,6 +648,7 @@ function uzumOrdersPage() {
         orderToCancel: null,
         cancelingOrder: false,
         activeTab: 'new',
+        orderMode: 'fbs', // 'fbs' or 'fbo'
         dateFrom: '',
         dateTo: '',
         searchQuery: '',
@@ -623,7 +661,8 @@ function uzumOrdersPage() {
         selectedShopId: null,
         accountId: {{ $accountId }},
 
-        statusTabs: [
+        // FBS Status Tabs
+        fbsStatusTabs: [
             { value: 'new', label: 'Новые' },
             { value: 'in_assembly', label: 'В сборке' },
             { value: 'in_supply', label: 'В поставке' },
@@ -633,6 +672,19 @@ function uzumOrdersPage() {
             { value: 'cancelled', label: 'Отменены' },
             { value: 'returns', label: 'Возвраты' },
         ],
+
+        // FBO Status Tabs
+        fboStatusTabs: [
+            { value: 'all', label: 'Все' },
+            { value: 'processing', label: 'В обработке' },
+            { value: 'shipped', label: 'Отгружены' },
+            { value: 'delivered', label: 'Доставлены' },
+            { value: 'cancelled', label: 'Отменены' },
+        ],
+
+        get statusTabs() {
+            return this.orderMode === 'fbs' ? this.fbsStatusTabs : this.fboStatusTabs;
+        },
 
         get selectedShopLabel() {
             if (!this.selectedShopId) return 'Все магазины';
@@ -646,28 +698,41 @@ function uzumOrdersPage() {
         },
 
         get filteredOrders() {
-            let result = this.orders;
+            // Use appropriate orders based on mode
+            let result = this.orderMode === 'fbs' ? this.orders : this.fboOrders;
 
             // Filter by tab status
-            if (this.activeTab) {
-                const statusMap = {
-                    'new': ['new'],
-                    'in_assembly': ['in_assembly'],
-                    'in_supply': ['in_supply'],
-                    'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum'],
-                    'waiting_pickup': ['waiting_pickup'],
-                    'issued': ['issued', 'delivered'],
-                    'cancelled': ['cancelled', 'canceled'],
-                    'returns': ['returns', 'returned']
-                };
-                const validStatuses = statusMap[this.activeTab] || [this.activeTab];
-                result = result.filter(o => validStatuses.includes(o.status));
+            if (this.activeTab && this.activeTab !== 'all') {
+                if (this.orderMode === 'fbs') {
+                    const statusMap = {
+                        'new': ['new'],
+                        'in_assembly': ['in_assembly'],
+                        'in_supply': ['in_supply'],
+                        'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum'],
+                        'waiting_pickup': ['waiting_pickup'],
+                        'issued': ['issued', 'delivered'],
+                        'cancelled': ['cancelled', 'canceled'],
+                        'returns': ['returns', 'returned']
+                    };
+                    const validStatuses = statusMap[this.activeTab] || [this.activeTab];
+                    result = result.filter(o => validStatuses.includes(o.status));
+                } else {
+                    // FBO status mapping
+                    const fboStatusMap = {
+                        'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
+                        'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
+                        'delivered': ['DELIVERED', 'ISSUED', 'COMPLETED'],
+                        'cancelled': ['CANCELLED', 'RETURNED', 'REFUNDED']
+                    };
+                    const validStatuses = fboStatusMap[this.activeTab] || [this.activeTab.toUpperCase()];
+                    result = result.filter(o => validStatuses.includes(o.status?.toUpperCase()));
+                }
             }
 
             // Filter by shop
             if (this.selectedShopId) {
                 result = result.filter(o => {
-                    const shopId = o.raw_payload?.shopId || o.shop_id;
+                    const shopId = o.raw_payload?.shopId || o.shop_id || o.shopId;
                     return shopId == this.selectedShopId;
                 });
             }
@@ -681,13 +746,27 @@ function uzumOrdersPage() {
                         (item.skuTitle && item.skuTitle.toLowerCase().includes(q)) ||
                         (item.productTitle && item.productTitle.toLowerCase().includes(q)) ||
                         (item.skuId && item.skuId.toString().includes(q)) ||
-                        (item.barcode && item.barcode.toString().includes(q))
+                        (item.barcode && item.barcode.toString().includes(q)) ||
+                        (item.title && item.title.toLowerCase().includes(q))
                     );
-                    return (o.external_order_id && o.external_order_id.toString().includes(q)) || itemMatch;
+                    const orderId = o.external_order_id || o.orderId || o.id;
+                    return (orderId && orderId.toString().toLowerCase().includes(q)) || itemMatch;
                 });
             }
 
             return result;
+        },
+
+        async switchMode(mode) {
+            if (this.orderMode === mode) return;
+            this.orderMode = mode;
+            this.activeTab = mode === 'fbs' ? 'new' : 'all';
+            this.loading = true;
+
+            if (mode === 'fbo' && this.fboOrders.length === 0) {
+                await this.loadFboOrders();
+            }
+            this.loading = false;
         },
 
         async init() {
@@ -744,6 +823,45 @@ function uzumOrdersPage() {
                 }
             } catch (e) {
                 console.error('Failed to load orders', e);
+            }
+            this.loading = false;
+        },
+
+        async loadFboOrders() {
+            this.loading = true;
+            try {
+                const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
+                let url = `/api/marketplace/uzum/accounts/${this.accountId}/finance-orders?company_id=${companyId}`;
+                if (this.dateFrom) url += `&from=${this.dateFrom}`;
+                if (this.dateTo) url += `&to=${this.dateTo}`;
+                if (this.selectedShopId) url += `&shop_id=${this.selectedShopId}`;
+
+                const res = await this.authFetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Finance orders come as orderItems
+                    this.fboOrders = (data.orderItems || data.orders || []).map(item => ({
+                        id: item.orderId || item.id,
+                        external_order_id: item.orderId || item.id,
+                        status: item.status || 'PROCESSING',
+                        total_amount: item.totalPrice || item.sellerPrice || item.amount || 0,
+                        ordered_at: item.createdAt || item.dateCreated,
+                        shop_id: item.shopId,
+                        shopId: item.shopId,
+                        deliveryType: item.deliveryType || 'FBO',
+                        raw_payload: item,
+                        items: item.items || [item] // FBO orders may have single item per row
+                    }));
+
+                    // Calculate FBO stats
+                    this.fboStats = {
+                        total_orders: this.fboOrders.length,
+                        total_amount: this.fboOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0)
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to load FBO orders', e);
+                this.showMessage('Ошибка загрузки FBO заказов', 'error');
             }
             this.loading = false;
         },
@@ -1053,6 +1171,18 @@ function uzumOrdersPage() {
         },
 
         getStatusCount(status) {
+            if (this.orderMode === 'fbo') {
+                if (status === 'all') return this.fboOrders.length;
+                const orders = this.fboOrders;
+                const fboStatusMap = {
+                    'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
+                    'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
+                    'delivered': ['DELIVERED', 'ISSUED', 'COMPLETED'],
+                    'cancelled': ['CANCELLED', 'RETURNED', 'REFUNDED']
+                };
+                const validStatuses = fboStatusMap[status] || [status.toUpperCase()];
+                return orders.filter(o => validStatuses.includes(o.status?.toUpperCase())).length;
+            }
             return this.stats.by_status?.[status] || 0;
         },
 
