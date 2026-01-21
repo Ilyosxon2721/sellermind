@@ -145,6 +145,14 @@ Route::middleware('auth.any')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
     });
 
+    // Stock Recalculation API (for Forge without terminal)
+    Route::prefix('stock')->group(function () {
+        Route::get('recalculate-preview', [\App\Http\Controllers\Api\StockRecalculateController::class, 'preview']);
+        Route::post('set-initial', [\App\Http\Controllers\Api\StockRecalculateController::class, 'setInitialStock']);
+        Route::post('recalculate', [\App\Http\Controllers\Api\StockRecalculateController::class, 'recalculate']);
+        Route::get('variants', [\App\Http\Controllers\Api\StockRecalculateController::class, 'variants']);
+    });
+
     // Current user
     Route::get('me', [AuthController::class, 'me']);
     Route::put('me', [AuthController::class, 'updateProfile']);
