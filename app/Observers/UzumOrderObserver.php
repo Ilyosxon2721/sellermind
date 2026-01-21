@@ -5,6 +5,9 @@ namespace App\Observers;
 use App\Events\UzumOrderUpdated;
 use App\Models\UzumOrder;
 use App\Models\VariantMarketplaceLink;
+use App\Models\Warehouse\Sku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Support\Facades\Log;
 
 class UzumOrderObserver
@@ -92,9 +95,12 @@ class UzumOrderObserver
                 continue;
             }
 
-            // Decrease internal stock
-            $oldStock = $link->variant->stock_default;
+            // Decrease internal stock (stock_default)
+            $oldStock = $link->variant->stock_default ?? 0;
             $link->variant->decrementStock($item->quantity);
+
+            // Also decrease stock in warehouse system (stock_ledger)
+            $this->reduceWarehouseStock($link->variant, $item->quantity, $order);
 
             Log::info('Internal stock reduced for Uzum order', [
                 'order_id' => $order->external_order_id,
@@ -104,6 +110,73 @@ class UzumOrderObserver
                 'quantity' => $item->quantity,
                 'old_stock' => $oldStock,
                 'new_stock' => $link->variant->stock_default,
+            ]);
+        }
+    }
+
+    /**
+     * Reduce stock in warehouse system (stock_ledger)
+     */
+    protected function reduceWarehouseStock($variant, int $quantity, UzumOrder $order): void
+    {
+        try {
+            // Find warehouse SKU linked to this variant
+            $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
+
+            if (!$warehouseSku) {
+                Log::debug('No warehouse SKU found for variant', [
+                    'variant_id' => $variant->id,
+                    'sku' => $variant->sku,
+                ]);
+                return;
+            }
+
+            // Get default warehouse for company
+            $warehouse = Warehouse::where('company_id', $variant->company_id)
+                ->where('is_default', true)
+                ->first();
+
+            if (!$warehouse) {
+                $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
+            }
+
+            if (!$warehouse) {
+                Log::warning('No warehouse found for variant company', [
+                    'variant_id' => $variant->id,
+                    'company_id' => $variant->company_id,
+                ]);
+                return;
+            }
+
+            // Create negative ledger entry (stock out)
+            StockLedger::create([
+                'company_id' => $variant->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouse->id,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => -$quantity, // Negative for stock out
+                'cost_delta' => 0, // Cost will be calculated if needed
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => 'UZUM_ORDER',
+                'source_id' => $order->id,
+                'created_by' => null,
+            ]);
+
+            Log::info('Warehouse stock reduced for Uzum order', [
+                'order_id' => $order->external_order_id,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'warehouse_id' => $warehouse->id,
+                'quantity' => $quantity,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to reduce warehouse stock', [
+                'variant_id' => $variant->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
