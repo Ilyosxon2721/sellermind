@@ -67,8 +67,8 @@
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Маркетплейсы</h1>
-                    <p class="text-gray-600 text-sm">Подключение и управление интеграциями</p>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ __('marketplace.title') }}</h1>
+                    <p class="text-gray-600 text-sm">{{ __('marketplace.subtitle') }}</p>
                 </div>
             </div>
         </header>
@@ -178,10 +178,10 @@
             <div x-show="!loading" x-cloak>
                 <!-- Connected Accounts -->
                 <div class="mb-8">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Подключённые аккаунты</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('marketplace.connected_accounts') }}</h2>
 
                     <p x-show="accounts.length === 0 && !creatingAccount" class="text-sm text-gray-500 mb-4">
-                        Пока нет подключённых аккаунтов. Нажмите «+», чтобы добавить первый.
+                        {{ __('marketplace.no_accounts') }}
                     </p>
 
                     <div class="divide-y divide-gray-200">
@@ -216,7 +216,7 @@
                                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
-                                                    <span class="text-sm font-medium">Удаление...</span>
+                                                    <span class="text-sm font-medium">{{ __('marketplace.deleting') }}</span>
                                                 </div>
                                             </div>
                                             <div class="flex items-start justify-between mb-4">
@@ -233,8 +233,8 @@
                                                     <div>
                                                         <h3 class="font-medium text-gray-900" x-text="account.display_name || account.marketplace_label"></h3>
                                                         <p class="text-sm text-gray-500">
-                                                            <span x-show="account.is_active" class="text-green-600">Активен</span>
-                                                            <span x-show="!account.is_active" class="text-gray-400">Отключён</span>
+                                                            <span x-show="account.is_active" class="text-green-600">{{ __('marketplace.active') }}</span>
+                                                            <span x-show="!account.is_active" class="text-gray-400">{{ __('marketplace.disabled') }}</span>
                                                         </p>
                                                     </div>
                                                 </div>
@@ -269,21 +269,21 @@
                                                 <div class="flex space-x-2">
                                                     <a :href="getAccountProductsUrl(account)"
                                                        class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
-                                                        Товары
+                                                        {{ __('marketplace.products') }}
                                                     </a>
                                                     <a :href="getAccountOrdersUrl(account)"
                                                        class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
-                                                        Заказы
+                                                        {{ __('marketplace.orders') }}
                                                     </a>
                                                 </div>
                                                 <div class="flex space-x-2" x-show="account.marketplace === 'wb'">
                                                     <a :href="'/marketplace/' + account.id + '/supplies'"
                                                        class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
-                                                        Поставки
+                                                        {{ __('marketplace.supplies') }}
                                                     </a>
                                                     <a :href="'/marketplace/' + account.id + '/passes'"
                                                        class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
-                                                        Пропуски
+                                                        {{ __('marketplace.passes') }}
                                                     </a>
                                                 </div>
                                             </div>
@@ -319,7 +319,7 @@
                                             class="bg-white rounded-xl border-2 border-dashed border-gray-200 p-5 hover:border-blue-400 transition flex flex-col items-center justify-center text-gray-400"
                                             :aria-label="'Добавить аккаунт: ' + marketplace.label">
                                         <span class="text-4xl leading-none">+</span>
-                                        <span class="mt-2 text-sm text-gray-500">Добавить аккаунт</span>
+                                        <span class="mt-2 text-sm text-gray-500">{{ __('marketplace.add_account') }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -423,7 +423,7 @@
                                 @click="showConnectModal = false"
                                 :disabled="creatingAccount"
                                 class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Отмена
+                            {{ __('marketplace.cancel') }}
                         </button>
                         <button type="submit"
                                 :disabled="creatingAccount"
@@ -684,11 +684,25 @@ function marketplacePage() {
                 if (!this.$store.auth.currentCompany) {
                     console.log('No current company, loading companies...');
                     await this.$store.auth.loadCompanies();
+                    // Wait for Alpine persist to update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // If still no company, try to get from user's company_id
+                if (!this.$store.auth.currentCompany && this.$store.auth.user?.company_id) {
+                    console.log('Trying to load company from user.company_id:', this.$store.auth.user.company_id);
+                    // Force reload companies
+                    await this.$store.auth.loadCompanies();
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
                 // If still no company, show error
                 if (!this.$store.auth.currentCompany) {
-                    console.error('No company available after loading');
+                    console.error('No company available after loading. Auth state:', {
+                        user: this.$store.auth.user,
+                        companies: this.$store.auth.companies,
+                        currentCompany: this.$store.auth.currentCompany
+                    });
                     this.availableMarketplaces = this.defaultMarketplaces;
                     this.loading = false;
                     return;
