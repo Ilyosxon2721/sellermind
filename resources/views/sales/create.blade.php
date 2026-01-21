@@ -80,7 +80,7 @@
                                 <select class="form-select" x-model="sale.company_id" @change="onCompanyChange()">
                                     <option value="">Выберите компанию</option>
                                     <template x-for="company in companies" :key="company.id">
-                                        <option :value="company.id" x-text="company.name"></option>
+                                        <option :value="String(company.id)" x-text="company.name"></option>
                                     </template>
                                 </select>
                                 <p class="text-xs text-gray-500 mt-1" x-show="companies.length === 0">
@@ -129,7 +129,7 @@
                                 <select class="form-select" x-model="sale.warehouse_id" @change="onWarehouseChange()">
                                     <option value="">Выберите склад</option>
                                     <template x-for="wh in warehouses" :key="wh.id">
-                                        <option :value="wh.id" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')"></option>
+                                        <option :value="String(wh.id)" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')"></option>
                                     </template>
                                 </select>
                             </div>
@@ -420,7 +420,7 @@ function saleCreatePage() {
         sale: {
             sale_number: '',
             sale_date: new Date().toISOString().split('T')[0],
-            company_id: null,
+            company_id: '',
             company_name: '',
             counterparty_id: null,
             warehouse_id: '',
@@ -476,10 +476,12 @@ function saleCreatePage() {
                 if (resp.ok) {
                     const data = await resp.json();
                     this.companies = data.data || [];
-                    // Select first company by default
+                    // Select first company by default (use String for select compatibility)
                     if (this.companies.length > 0) {
-                        this.sale.company_id = this.companies[0].id;
-                        this.sale.company_name = this.companies[0].name;
+                        this.$nextTick(() => {
+                            this.sale.company_id = String(this.companies[0].id);
+                            this.sale.company_name = this.companies[0].name;
+                        });
                     }
                 } else {
                     console.error('Load companies failed:', resp.status, resp.statusText);
@@ -503,9 +505,11 @@ function saleCreatePage() {
                 if (resp.ok) {
                     const data = await resp.json();
                     this.warehouses = data.data || [];
-                    // Select first warehouse by default
+                    // Select first warehouse by default (use String for select compatibility)
                     if (this.warehouses.length > 0) {
-                        this.sale.warehouse_id = this.warehouses[0].id;
+                        this.$nextTick(() => {
+                            this.sale.warehouse_id = String(this.warehouses[0].id);
+                        });
                     }
                 } else {
                     console.error('Load warehouses failed:', resp.status, resp.statusText);
@@ -516,7 +520,8 @@ function saleCreatePage() {
         },
 
         onCompanyChange() {
-            const company = this.companies.find(c => c.id == this.sale.company_id);
+            const companyId = parseInt(this.sale.company_id);
+            const company = this.companies.find(c => c.id === companyId);
             if (company) {
                 this.sale.company_name = company.name;
             }
@@ -749,9 +754,9 @@ function saleCreatePage() {
                     type: 'manual',
                     source: 'manual',
                     sale_number: this.sale.sale_number,
-                    company_id: this.sale.company_id,
+                    company_id: parseInt(this.sale.company_id) || null,
                     counterparty_id: this.sale.counterparty_id || null,
-                    warehouse_id: this.sale.warehouse_id,
+                    warehouse_id: parseInt(this.sale.warehouse_id) || null,
                     currency: this.sale.currency,
                     notes: this.sale.notes,
                     status: status,
@@ -869,7 +874,7 @@ function saleCreatePage() {
                         <select class="native-input w-full mt-1" x-model="sale.company_id" @change="onCompanyChange()">
                             <option value="">Выберите</option>
                             <template x-for="company in companies" :key="company.id">
-                                <option :value="company.id" x-text="company.name"></option>
+                                <option :value="String(company.id)" x-text="company.name"></option>
                             </template>
                         </select>
                     </div>
@@ -879,7 +884,7 @@ function saleCreatePage() {
                         <select class="native-input w-full mt-1" x-model="sale.warehouse_id" @change="onWarehouseChange()">
                             <option value="">Выберите</option>
                             <template x-for="wh in warehouses" :key="wh.id">
-                                <option :value="wh.id" x-text="wh.name"></option>
+                                <option :value="String(wh.id)" x-text="wh.name"></option>
                             </template>
                         </select>
                     </div>
