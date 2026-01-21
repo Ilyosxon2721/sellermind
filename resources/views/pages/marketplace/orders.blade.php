@@ -1486,12 +1486,17 @@ $__uzumShopsJson = ($uzumShops ?? collect())
          },
         normalizeStatus(order) {
             if (!order) return null;
-            // Uzum: принудительно мапим в новые вкладки
+            // Uzum: приоритет - статус из БД, затем из raw_payload
             if (this.accountMarketplace === 'uzum') {
                 const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
                 const validStatuses = ['new', 'in_assembly', 'in_supply', 'accepted_uzum', 'waiting_pickup', 'issued', 'cancelled', 'returns'];
 
-                // Используем только статусы, поддерживаемые API Uzum Market
+                // Если в БД уже есть валидный статус - используем его (приоритет БД)
+                if (validStatuses.includes(dbStatus)) {
+                    return dbStatus;
+                }
+
+                // Иначе мапим из raw_payload.status (для новых заказов из API)
                 const rawStatus = (order.raw_payload?.status || '').toString().toUpperCase();
                 const map = {
                     'CREATED': 'new',
@@ -1502,27 +1507,18 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'SHIPPED': 'in_supply',
                     'DELIVERING': 'accepted_uzum',
                     'ACCEPTED_AT_DP': 'accepted_uzum',
-                    'DELIVERED': 'accepted_uzum', // Доставлен в ПВЗ
+                    'DELIVERED': 'accepted_uzum',
                     'DELIVERED_TO_CUSTOMER_DELIVERY_POINT': 'waiting_pickup',
-                    'COMPLETED': 'issued', // Выдан клиенту
+                    'COMPLETED': 'issued',
                     'CANCELED': 'cancelled',
                     'CANCELLED': 'cancelled',
                     'PENDING_CANCELLATION': 'cancelled',
                     'RETURNED': 'returns',
                 };
                 const mapped = map[rawStatus] || null;
-
-                if (mapped && ['cancelled', 'returns'].includes(mapped) && mapped !== dbStatus) {
+                if (mapped) {
                     order.status_normalized = mapped;
-                    return mapped;
                 }
-
-                if (validStatuses.includes(dbStatus)) {
-                    order.status_normalized = dbStatus;
-                    return dbStatus;
-                }
-
-                order.status_normalized = mapped;
                 return mapped;
             }
             // Wildberries: мапим wb_status_group / wb_status / status в нормализованные вкладки
