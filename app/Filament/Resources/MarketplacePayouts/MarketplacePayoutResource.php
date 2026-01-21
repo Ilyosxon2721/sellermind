@@ -24,17 +24,17 @@ class MarketplacePayoutResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Выплата';
+        return __('filament.resources.marketplace_payout.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Выплаты маркетплейсов';
+        return __('filament.resources.marketplace_payout.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Финансы';
+        return __('filament.nav_groups.finance');
     }
 
     public static function form(Schema $schema): Schema

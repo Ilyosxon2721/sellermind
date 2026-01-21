@@ -64,42 +64,99 @@ class UzumOrderObserver
         if (!$order->relationLoaded('items')) {
             $order->load('items');
         }
-        
+
         foreach ($order->items as $item) {
-            if (!$item->external_offer_id) {
-                continue;
-            }
-            
-            // Find linked variant by SKU ID (external_offer_id in Uzum is the SKU ID)
-            $link = VariantMarketplaceLink::query()
-                ->where('marketplace_account_id', $order->marketplace_account_id)
-                ->where('external_sku_id', $item->external_offer_id)
-                ->where('is_active', true)
-                ->with('variant')
-                ->first();
-            
-            if (!$link || !$link->variant) {
-                Log::info('No linked variant found for Uzum order item', [
+            // Get barcode from raw_payload (most reliable identifier from Uzum API)
+            $rawPayload = $item->raw_payload ?? [];
+            $barcode = $rawPayload['barcode'] ?? null;
+            $externalOfferId = $item->external_offer_id;
+
+            if (!$barcode && !$externalOfferId) {
+                Log::debug('Uzum order item has no barcode or external_offer_id', [
                     'order_id' => $order->external_order_id,
-                    'sku_id' => $item->external_offer_id,
                     'item_name' => $item->name,
                 ]);
                 continue;
             }
-            
+
+            // Try to find linked variant using multiple strategies
+            $link = $this->findVariantLink($order->marketplace_account_id, $externalOfferId, $barcode);
+
+            if (!$link || !$link->variant) {
+                Log::info('No linked variant found for Uzum order item', [
+                    'order_id' => $order->external_order_id,
+                    'external_offer_id' => $externalOfferId,
+                    'barcode' => $barcode,
+                    'item_name' => $item->name,
+                ]);
+                continue;
+            }
+
             // Decrease internal stock
             $oldStock = $link->variant->stock_default;
             $link->variant->decrementStock($item->quantity);
-            
+
             Log::info('Internal stock reduced for Uzum order', [
                 'order_id' => $order->external_order_id,
                 'variant_id' => $link->variant->id,
                 'sku' => $link->variant->sku,
-                'sku_id' => $item->external_offer_id,
+                'barcode' => $barcode,
                 'quantity' => $item->quantity,
                 'old_stock' => $oldStock,
                 'new_stock' => $link->variant->stock_default,
             ]);
         }
+    }
+
+    /**
+     * Find VariantMarketplaceLink using multiple lookup strategies
+     */
+    protected function findVariantLink(int $accountId, ?string $externalOfferId, ?string $barcode): ?VariantMarketplaceLink
+    {
+        // Strategy 1: Find by external_sku_id (if external_offer_id is a SKU ID)
+        if ($externalOfferId) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $accountId)
+                ->where('external_sku_id', $externalOfferId)
+                ->where('is_active', true)
+                ->with('variant')
+                ->first();
+
+            if ($link) {
+                return $link;
+            }
+        }
+
+        // Strategy 2: Find by variant barcode (most reliable for Uzum)
+        if ($barcode) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $accountId)
+                ->where('is_active', true)
+                ->whereHas('variant', function ($query) use ($barcode) {
+                    $query->where('barcode', $barcode);
+                })
+                ->with('variant')
+                ->first();
+
+            if ($link) {
+                return $link;
+            }
+        }
+
+        // Strategy 3: Find by external_offer_id field
+        if ($externalOfferId) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $accountId)
+                ->where('external_offer_id', $externalOfferId)
+                ->where('is_active', true)
+                ->with('variant')
+                ->first();
+
+            if ($link) {
+                return $link;
+            }
+        }
+
+        return null;
     }
 }

@@ -24,17 +24,17 @@ class GlobalOptionResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Глобальная настройка';
+        return __('filament.resources.global_option.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Настройки системы';
+        return __('filament.resources.global_option.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Система';
+        return __('filament.nav_groups.system');
     }
 
     public static function form(Schema $schema): Schema

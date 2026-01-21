@@ -15,7 +15,7 @@ class MarketplacePayoutForm
     {
         return $schema
             ->components([
-                Section::make('Общая информация')
+                Section::make(__('filament.sections.general_info'))
                     ->schema([
                         Select::make('marketplace_account_id')
                             ->label('Аккаунт')
@@ -28,7 +28,7 @@ class MarketplacePayoutForm
                             ->default('UZS'),
                     ])->columns(3),
 
-                Section::make('Период')
+                Section::make(__('filament.sections.period'))
                     ->schema([
                         DatePicker::make('period_from')
                             ->label('С'),
@@ -36,7 +36,7 @@ class MarketplacePayoutForm
                             ->label('По'),
                     ])->columns(2),
 
-                Section::make('Финансовые показатели')
+                Section::make(__('filament.sections.financial_metrics'))
                     ->schema([
                         TextInput::make('amount')
                             ->label('К выплате')
@@ -65,7 +65,7 @@ class MarketplacePayoutForm
                             ->numeric(),
                     ])->columns(4),
 
-                Section::make('Сырые данные')
+                Section::make(__('filament.sections.raw_data'))
                     ->schema([
                         Textarea::make('raw_payload')
                             ->label('Данные ответа (JSON)')

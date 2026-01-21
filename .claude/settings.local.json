@@ -52,7 +52,10 @@
       "Bash(wc:*)",
       "Bash(git hash-object:*)",
       "Bash(git ls-tree:*)",
-      "Read(//Applications/MAMP/htdocs/sellermind-ai/**)"
+      "Read(//Applications/MAMP/htdocs/sellermind-ai/**)",
+      "Bash(del get_order.php)",
+      "Bash(Get-Content \"d:\\\\server\\\\OSPanel\\\\home\\\\sellermind\\\\storage\\\\logs\\\\laravel.log\" -Tail 100)",
+      "Bash(Select-String:*)"
     ]
   }
 }

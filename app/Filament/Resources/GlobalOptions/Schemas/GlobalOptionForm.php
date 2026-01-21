@@ -14,7 +14,7 @@ class GlobalOptionForm
     {
         return $schema
             ->components([
-                Section::make('Настройка')
+                Section::make(__('filament.sections.setting'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -39,7 +39,7 @@ class GlobalOptionForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Отображение')
+                Section::make(__('filament.sections.display'))
                     ->schema([
                         TextInput::make('sort_order')
                             ->label('Порядок')

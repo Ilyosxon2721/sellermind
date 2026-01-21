@@ -114,6 +114,11 @@ class MarketplaceHttpClient
         $request = Http::timeout(30)
             ->baseUrl($config['base_url'] ?? '');
 
+        // SSL verification (disable for local development on Windows if needed)
+        if (!($config['verify_ssl'] ?? true)) {
+            $request = $request->withOptions(['verify' => false]);
+        }
+
         // Apply authentication based on marketplace type
         $request = $this->applyAuthentication($request, $account, $config);
 

@@ -24,17 +24,17 @@ class WarehouseResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Склад';
+        return __('filament.resources.warehouse.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Склады';
+        return __('filament.resources.warehouse.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Склад';
+        return __('filament.nav_groups.warehouse');
     }
 
     public static function form(Schema $schema): Schema

@@ -227,13 +227,20 @@ class WildberriesHttpClient
             throw new \RuntimeException("No API token available for WB category: {$category}. Please configure wb_marketplace_token or api_key for account ID {$this->account->id}");
         }
 
-        return Http::withHeaders([
+        $client = Http::withHeaders([
             'Authorization' => $token,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ])
             ->baseUrl($baseUrl)
             ->timeout($config['timeout'] ?? 30);
+
+        // SSL verification (disable for local development on Windows if needed)
+        if (!($config['verify_ssl'] ?? true)) {
+            $client = $client->withOptions(['verify' => false]);
+        }
+
+        return $client;
     }
 
     /**

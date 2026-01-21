@@ -873,7 +873,10 @@ class UzumClient implements MarketplaceClientInterface
             'query' => $this->sanitizeForLog($query),
         ]);
 
-        $client = Http::timeout($timeout)->withHeaders($headers);
+        $verifySsl = config('uzum.verify_ssl', true);
+        $client = Http::timeout($timeout)
+            ->withOptions(['verify' => $verifySsl])
+            ->withHeaders($headers);
 
         $upper = strtoupper($method);
         if ($upper === 'GET' && !empty($query)) {
@@ -1080,12 +1083,19 @@ class UzumClient implements MarketplaceClientInterface
     {
         $items = [];
         foreach ($orderData['orderItems'] ?? [] as $item) {
+            // Uzum API returns 'id' as item ID, 'barcode' as product barcode
+            // 'skuId' and 'productId' may not be present in FBS orders
+            $externalOfferId = $item['skuId'] ?? $item['productId'] ?? $item['id'] ?? '';
+
             $items[] = [
-                'external_offer_id' => isset($item['skuId']) ? (string)$item['skuId'] : (string)($item['productId'] ?? ''),
-                'name' => $item['skuTitle'] ?? $item['productTitle'] ?? null,
+                'external_offer_id' => (string) $externalOfferId,
+                'barcode' => $item['barcode'] ?? null,  // Critical for linking to internal products
+                'name' => $item['skuTitle'] ?? $item['productTitle'] ?? $item['title'] ?? null,
                 'quantity' => $item['amount'] ?? 1,
-                'price' => isset($item['sellerPrice']) ? (float) $item['sellerPrice'] : null,
-                'total_price' => isset($item['sellerPrice']) ? ((float) $item['sellerPrice']) * ($item['amount'] ?? 1) : null,
+                'price' => isset($item['sellerPrice']) ? (float) $item['sellerPrice'] : (isset($item['price']) ? (float) $item['price'] : null),
+                'total_price' => isset($item['sellerPrice'])
+                    ? ((float) $item['sellerPrice']) * ($item['amount'] ?? 1)
+                    : (isset($item['price']) ? ((float) $item['price']) * ($item['amount'] ?? 1) : null),
                 'raw_payload' => $item,
             ];
         }
@@ -1441,8 +1451,8 @@ class UzumClient implements MarketplaceClientInterface
 
                 // API returns: { payload: { payments: [...] } }
                 $payload = $response['payload'] ?? $response;
-                $expenses = $payload['payments'] ?? $payload['expenses'] ?? [];
-                $total = $response['totalElements'] ?? count($expenses);
+                $expenses = $payload['payments'] ?? $payload['expenses'] ?? $response['expenses'] ?? [];
+                $total = $response['totalElements'] ?? $payload['totalElements'] ?? count($expenses);
 
                 Log::info('Uzum fetchFinanceExpenses response', [
                     'account_id' => $account->id,

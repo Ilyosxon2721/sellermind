@@ -24,17 +24,17 @@ class InventoryResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Инвентаризация';
+        return __('filament.resources.inventory.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Инвентаризация';
+        return __('filament.resources.inventory.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Склад';
+        return __('filament.nav_groups.warehouse');
     }
 
     public static function form(Schema $schema): Schema

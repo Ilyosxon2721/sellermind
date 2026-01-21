@@ -24,17 +24,17 @@ class PlanResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Тариф';
+        return __('filament.resources.plan.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Тарифы';
+        return __('filament.resources.plan.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Биллинг';
+        return __('filament.nav_groups.billing');
     }
 
     public static function form(Schema $schema): Schema

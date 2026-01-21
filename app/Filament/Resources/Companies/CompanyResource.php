@@ -24,17 +24,17 @@ class CompanyResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Компания';
+        return __('filament.resources.company.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Компании';
+        return __('filament.resources.company.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Пользователи';
+        return __('filament.nav_groups.users');
     }
 
     public static function form(Schema $schema): Schema

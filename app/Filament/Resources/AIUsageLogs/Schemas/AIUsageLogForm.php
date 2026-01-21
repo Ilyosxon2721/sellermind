@@ -13,7 +13,7 @@ class AIUsageLogForm
     {
         return $schema
             ->components([
-                Section::make('Общая информация')
+                Section::make(__('filament.sections.general_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -32,7 +32,7 @@ class AIUsageLogForm
                             ->required(),
                     ])->columns(3),
 
-                Section::make('Потребление ресурсов')
+                Section::make(__('filament.sections.resource_consumption'))
                     ->schema([
                         TextInput::make('tokens_input')
                             ->label('Входящие токены')
@@ -56,7 +56,7 @@ class AIUsageLogForm
                             ->default(0.0),
                     ])->columns(2),
 
-                Section::make('Дополнительно')
+                Section::make(__('filament.sections.additional'))
                     ->schema([
                         TextInput::make('meta')
                             ->label('Метаданные (JSON)'),

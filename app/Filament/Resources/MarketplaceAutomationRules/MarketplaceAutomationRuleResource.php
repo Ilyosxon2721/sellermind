@@ -24,17 +24,17 @@ class MarketplaceAutomationRuleResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Правило автоматизации';
+        return __('filament.resources.marketplace_automation_rule.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Автоматизация';
+        return __('filament.resources.marketplace_automation_rule.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Маркетплейсы';
+        return __('filament.nav_groups.marketplaces');
     }
 
     public static function form(Schema $schema): Schema

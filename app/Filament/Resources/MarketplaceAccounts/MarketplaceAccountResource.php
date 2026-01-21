@@ -24,17 +24,17 @@ class MarketplaceAccountResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Аккаунт маркетплейса';
+        return __('filament.resources.marketplace_account.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Аккаунты маркетплейсов';
+        return __('filament.resources.marketplace_account.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Маркетплейсы';
+        return __('filament.nav_groups.marketplaces');
     }
 
     public static function form(Schema $schema): Schema

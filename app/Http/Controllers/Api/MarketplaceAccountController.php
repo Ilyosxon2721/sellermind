@@ -71,6 +71,14 @@ class MarketplaceAccountController extends Controller
 
         try {
             return $this->processStoreRequest($request);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Duplicate entry - account already exists
+            $marketplaceLabel = MarketplaceAccount::getMarketplaceLabels()[$request->marketplace] ?? $request->marketplace;
+
+            return response()->json([
+                'message' => "Аккаунт {$marketplaceLabel} для этой компании уже существует",
+                'error' => "Вы можете обновить существующий аккаунт или удалить его перед созданием нового.",
+            ], 409); // 409 Conflict
         } catch (\Exception $e) {
             \Log::error('MarketplaceAccountController@store error', [
                 'error' => $e->getMessage(),

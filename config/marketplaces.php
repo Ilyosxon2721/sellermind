@@ -21,6 +21,7 @@ return [
         'discounts_prices_url' => env('WB_DISCOUNTS_PRICES_URL', 'https://discounts-prices-api.wildberries.ru'),
         'auth_type' => 'api_key', // API key in Authorization header
         'auth_header' => 'Authorization',
+        'verify_ssl' => env('WB_VERIFY_SSL', true), // Disable for local development on Windows
         'rate_limit' => [
             'requests_per_minute' => 60,
         ],
@@ -35,6 +36,7 @@ return [
             'client_id' => 'Client-Id',
             'api_key' => 'Api-Key',
         ],
+        'verify_ssl' => env('OZON_VERIFY_SSL', true), // Disable for local development on Windows
         'rate_limit' => [
             'requests_per_minute' => 60,
         ],
@@ -47,6 +49,7 @@ return [
         'auth_type' => 'api_key', // API key from seller cabinet
         'auth_header' => 'Authorization',
         'auth_prefix' => '', // Uzum API requires token WITHOUT Bearer prefix
+        'verify_ssl' => env('UZUM_VERIFY_SSL', true), // Disable for local development on Windows
         'rate_limit' => [
             'requests_per_minute' => 100,
         ],

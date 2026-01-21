@@ -24,17 +24,17 @@ class AgentTaskResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Задача агента';
+        return __('filament.resources.agent_task.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Задачи агентов';
+        return __('filament.resources.agent_task.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'ИИ и Контент';
+        return __('filament.nav_groups.ai_content');
     }
 
     public static function form(Schema $schema): Schema

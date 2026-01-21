@@ -14,7 +14,7 @@ class AgentTaskForm
     {
         return $schema
             ->components([
-                Section::make('Контекст задачи')
+                Section::make(__('filament.sections.task_context'))
                     ->schema([
                         Select::make('user_id')
                             ->label('Пользователь')
@@ -38,7 +38,7 @@ class AgentTaskForm
                             ->preload(),
                     ])->columns(2),
 
-                Section::make('Описание задачи')
+                Section::make(__('filament.sections.task_description'))
                     ->schema([
                         TextInput::make('title')
                             ->label('Заголовок задачи')
@@ -62,7 +62,7 @@ class AgentTaskForm
                             ->default('active'),
                     ])->columns(2),
 
-                Section::make('Данные исполнения')
+                Section::make(__('filament.sections.execution_data'))
                     ->schema([
                         Textarea::make('input_payload')
                             ->label('Входящие параметры (JSON)')

@@ -15,7 +15,7 @@ class MarketplaceSyncLogForm
     {
         return $schema
             ->components([
-                Section::make('Метаданные сессии')
+                Section::make(__('filament.sections.session_metadata'))
                     ->schema([
                         Select::make('marketplace_account_id')
                             ->label('Аккаунт')
@@ -44,7 +44,7 @@ class MarketplaceSyncLogForm
                             ->required(),
                     ])->columns(3),
 
-                Section::make('Временные рамки')
+                Section::make(__('filament.sections.time_range'))
                     ->schema([
                         DateTimePicker::make('started_at')
                             ->label('Начало'),
@@ -52,7 +52,7 @@ class MarketplaceSyncLogForm
                             ->label('Конец'),
                     ])->columns(2),
 
-                Section::make('Результат и Данные')
+                Section::make(__('filament.sections.result_data'))
                     ->schema([
                         Textarea::make('message')
                             ->label('Сообщение')

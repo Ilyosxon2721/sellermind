@@ -637,14 +637,23 @@
                     warehouses: [],
                     localWarehouses: [],
                     mappings: [],
-                    
+
                     // For aggregated mode
                     targetWarehouse: null,
                     sourceWarehouses: [],
-                    
+
                     loadingWarehouses: false,
                     savingSettings: false,
-                    
+
+                    getAuthHeaders() {
+                        const authStore = Alpine.store('auth');
+                        return {
+                            'Authorization': `Bearer ${authStore?.token || ''}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        };
+                    },
+
                     init() {
                         this.syncMode = this.account?.credentials_json?.sync_mode || 'basic';
                         this.targetWarehouse = String(this.account?.credentials_json?.warehouse_id || '');
@@ -655,7 +664,7 @@
                             this.loadMappings();
                         }
                     },
-                    
+
                     async loadWarehouses() {
                         this.loadingWarehouses = true;
                         try {

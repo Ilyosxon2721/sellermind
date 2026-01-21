@@ -15,7 +15,7 @@ class WarehouseForm
     {
         return $schema
             ->components([
-                Section::make('Основная информация')
+                Section::make(__('filament.sections.basic_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -34,7 +34,7 @@ class WarehouseForm
                             ->placeholder('Региональные'),
                     ])->columns(2),
 
-                Section::make('Адрес и Контакты')
+                Section::make(__('filament.sections.address_contacts'))
                     ->schema([
                         TextInput::make('address')
                             ->label('Адрес'),
@@ -45,7 +45,7 @@ class WarehouseForm
                             ->columnSpanFull(),
                     ])->columns(2),
 
-                Section::make('Системные настройки')
+                Section::make(__('filament.sections.system_settings'))
                     ->schema([
                         TextInput::make('external_code')
                             ->label('Внешний код (ERP/1C)'),

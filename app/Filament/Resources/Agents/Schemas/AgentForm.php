@@ -14,7 +14,7 @@ class AgentForm
     {
         return $schema
             ->components([
-                Section::make('Основная информация')
+                Section::make(__('filament.sections.basic_info'))
                     ->schema([
                         TextInput::make('name')
                             ->label('Имя агента')
@@ -32,7 +32,7 @@ class AgentForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Конфигурация поведения')
+                Section::make(__('filament.sections.behavior_config'))
                     ->schema([
                         Textarea::make('description')
                             ->label('Описание для пользователей')

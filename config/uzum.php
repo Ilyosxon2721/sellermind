@@ -4,6 +4,7 @@
 return [
     'base_url' => env('UZUM_API_BASE_URL', 'https://api-seller.uzum.uz/api/seller-openapi'),
     'timeout' => env('UZUM_API_TIMEOUT', 60),
+    'verify_ssl' => env('UZUM_VERIFY_SSL', true), // Отключить для локальной разработки на Windows
     'auth' => [
         'header' => env('UZUM_AUTH_HEADER', 'Authorization'),
         // OpenAPI описывает передачу токена без Bearer-префикса
