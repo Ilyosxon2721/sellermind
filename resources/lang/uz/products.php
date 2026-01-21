@@ -1,59 +1,65 @@
 <?php
 
 return [
-    // Page title
     'title' => 'Mahsulotlar',
-    'create_product' => 'Mahsulot yaratish',
-    'edit_product' => 'Mahsulotni tahrirlash',
+    'subtitle' => 'Marketpleys maydonlari bilan kartochkalar yaratish',
     
-    // List
-    'all_products' => 'Barcha mahsulotlar',
-    'search_placeholder' => 'Mahsulotni qidirish...',
-    'filter' => 'Filtrlash',
+    // Buttons
     'export' => 'Eksport',
     'import' => 'Import',
-    'sync' => 'Sinxronlashtirish',
-    
-    // Table columns
-    'image' => 'Rasm',
-    'name' => 'Nomi',
-    'sku' => 'SKU',
-    'price' => 'Narx',
-    'stock' => 'Qoldiq',
-    'status' => 'Holat',
-    'actions' => 'Amallar',
-    
-    // Statuses
-    'active' => 'Faol',
-    'inactive' => 'Nofaol',
-    'draft' => 'Qoralama',
-    'in_stock' => 'Omborda bor',
-    'out_of_stock' => 'Tugagan',
-    'low_stock' => 'Past qoldiq',
-    
-    // Form fields
-    'product_name' => 'Mahsulot nomi',
-    'description' => 'Tavsif',
-    'category' => 'Kategoriya',
-    'brand' => 'Brend',
-    'barcode' => 'Shtrix-kod',
-    'cost_price' => 'Tan narxi',
-    'selling_price' => 'Sotish narxi',
-    'quantity' => 'Miqdor',
-    'min_quantity' => 'Minimal miqdor',
-    'images' => 'Rasmlar',
-    
-    // Actions
-    'view' => 'Ko\'rish',
+    'add_product' => 'Mahsulot qo\'shish',
     'edit' => 'Tahrirlash',
     'delete' => 'O\'chirish',
-    'duplicate' => 'Nusxa olish',
-    'publish' => 'Nashr qilish',
+    'cancel' => 'Bekor qilish',
+    'save' => 'Saqlash',
+    'create' => 'Yaratish',
+    
+    // Search
+    'search_placeholder' => 'Nomi, SKU, brend bo\'yicha qidirish...',
+    
+    // Empty state
+    'no_products' => 'Mahsulotlar yo\'q',
+    'add_first_product' => 'Boshlash uchun birinchi mahsulotni qo\'shing',
+    
+    // List items
+    'no_sku' => 'SKU yo\'q',
+    'no_brand' => 'Brend ko\'rsatilmagan',
+    'category' => 'Kategoriya',
+    'barcode' => 'Shtrixkod',
+    'price' => 'Narx',
+    'stock' => 'Qoldiq:',
+    
+    // Form
+    'editing' => 'Tahrirlash',
+    'creating' => 'Yaratish',
+    'product_card' => 'Mahsulot kartochkasi',
+    
+    // Form sections
+    'main' => 'Asosiy',
+    'name' => 'Nomi',
+    'sku' => 'SKU',
+    'description' => 'Tavsif',
+    'brand' => 'Brend',
+    
+    // Prices and stock
+    'prices_and_stock' => 'Narxlar va qoldiqlar',
+    
+    // Dimensions
+    'dimensions' => 'O\'lchamlar',
+    'weight_kg' => 'Og\'irlik, kg',
+    'length_cm' => 'Uzunlik, sm',
+    'width_cm' => 'Kenglik, sm',
+    'height_cm' => 'Balandlik, sm',
+    
+    // Attributes
+    'attributes' => 'Xususiyatlar',
+    'attr_name' => 'Nomi',
+    'attr_value' => 'Qiymati',
+    'add_attribute' => '+ Xususiyat qo\'shish',
     
     // Messages
-    'no_products' => 'Mahsulotlar topilmadi',
-    'product_created' => 'Mahsulot yaratildi',
-    'product_updated' => 'Mahsulot yangilandi',
-    'product_deleted' => 'Mahsulot o\'chirildi',
-    'confirm_delete' => 'Bu mahsulotni o\'chirmoqchimisiz?',
+    'name_required' => 'Nom majburiy',
+    'save_error' => 'Mahsulotni saqlashda xato',
+    'delete_confirm' => 'Mahsulotni o\'chirish?',
+    'delete_error' => 'O\'chirishda xato',
 ];

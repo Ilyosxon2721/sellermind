@@ -1,59 +1,65 @@
 <?php
 
 return [
-    // Page title
     'title' => 'Products',
-    'create_product' => 'Create product',
-    'edit_product' => 'Edit product',
+    'subtitle' => 'Create product cards with marketplace fields',
     
-    // List
-    'all_products' => 'All products',
-    'search_placeholder' => 'Search product...',
-    'filter' => 'Filter',
+    // Buttons
     'export' => 'Export',
     'import' => 'Import',
-    'sync' => 'Sync',
-    
-    // Table columns
-    'image' => 'Image',
-    'name' => 'Name',
-    'sku' => 'SKU',
-    'price' => 'Price',
-    'stock' => 'Stock',
-    'status' => 'Status',
-    'actions' => 'Actions',
-    
-    // Statuses
-    'active' => 'Active',
-    'inactive' => 'Inactive',
-    'draft' => 'Draft',
-    'in_stock' => 'In stock',
-    'out_of_stock' => 'Out of stock',
-    'low_stock' => 'Low stock',
-    
-    // Form fields
-    'product_name' => 'Product name',
-    'description' => 'Description',
-    'category' => 'Category',
-    'brand' => 'Brand',
-    'barcode' => 'Barcode',
-    'cost_price' => 'Cost price',
-    'selling_price' => 'Selling price',
-    'quantity' => 'Quantity',
-    'min_quantity' => 'Min quantity',
-    'images' => 'Images',
-    
-    // Actions
-    'view' => 'View',
+    'add_product' => 'Add product',
     'edit' => 'Edit',
     'delete' => 'Delete',
-    'duplicate' => 'Duplicate',
-    'publish' => 'Publish',
+    'cancel' => 'Cancel',
+    'save' => 'Save',
+    'create' => 'Create',
+    
+    // Search
+    'search_placeholder' => 'Search by name, SKU, brand...',
+    
+    // Empty state
+    'no_products' => 'No products',
+    'add_first_product' => 'Add your first product to get started',
+    
+    // List items
+    'no_sku' => 'No SKU',
+    'no_brand' => 'Brand not specified',
+    'category' => 'Category',
+    'barcode' => 'Barcode',
+    'price' => 'Price',
+    'stock' => 'Stock:',
+    
+    // Form
+    'editing' => 'Editing',
+    'creating' => 'Creating',
+    'product_card' => 'Product card',
+    
+    // Form sections
+    'main' => 'Main',
+    'name' => 'Name',
+    'sku' => 'SKU',
+    'description' => 'Description',
+    'brand' => 'Brand',
+    
+    // Prices and stock
+    'prices_and_stock' => 'Prices and stock',
+    
+    // Dimensions
+    'dimensions' => 'Dimensions',
+    'weight_kg' => 'Weight, kg',
+    'length_cm' => 'Length, cm',
+    'width_cm' => 'Width, cm',
+    'height_cm' => 'Height, cm',
+    
+    // Attributes
+    'attributes' => 'Attributes',
+    'attr_name' => 'Name',
+    'attr_value' => 'Value',
+    'add_attribute' => '+ Add attribute',
     
     // Messages
-    'no_products' => 'No products found',
-    'product_created' => 'Product created',
-    'product_updated' => 'Product updated',
-    'product_deleted' => 'Product deleted',
-    'confirm_delete' => 'Are you sure you want to delete this product?',
+    'name_required' => 'Name is required',
+    'save_error' => 'Error saving product',
+    'delete_confirm' => 'Delete product?',
+    'delete_error' => 'Delete error',
 ];
