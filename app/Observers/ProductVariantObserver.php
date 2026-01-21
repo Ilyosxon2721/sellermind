@@ -166,6 +166,10 @@ class ProductVariantObserver
 
     /**
      * Синхронизировать изменение stock_default в warehouse stock_ledger
+     *
+     * ВАЖНО: Не создаём запись в ledger если изменение пришло от warehouse системы,
+     * чтобы избежать дублирования. Проверяем - если ledger уже отражает новое значение,
+     * значит это синхронизация из warehouse и дублировать не нужно.
      */
     protected function syncStockToWarehouse(ProductVariant $variant, int $oldStock, int $newStock): void
     {
@@ -180,6 +184,21 @@ class ProductVariantObserver
             if (!$sku) {
                 Log::warning('No SKU found for stock sync', [
                     'variant_id' => $variant->id,
+                ]);
+                return;
+            }
+
+            // Check current ledger balance
+            $currentLedgerBalance = (float) StockLedger::where('sku_id', $sku->id)->sum('qty_delta');
+
+            // If ledger already matches the new stock value, this change came FROM the warehouse system
+            // (via DocumentPostingService or warehouse:sync-to-variants command)
+            // In that case, DON'T create another ledger entry to avoid duplication
+            if (abs($currentLedgerBalance - $newStock) < 0.001) {
+                Log::debug('Stock change originated from warehouse system, skipping ledger entry', [
+                    'variant_id' => $variant->id,
+                    'ledger_balance' => $currentLedgerBalance,
+                    'new_stock' => $newStock,
                 ]);
                 return;
             }
