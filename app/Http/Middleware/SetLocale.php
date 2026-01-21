@@ -15,11 +15,21 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get locale from URL segment or session
-        $locale = $request->segment(1);
-        
         // Supported locales
         $supportedLocales = ['uz', 'ru', 'en'];
+        
+        // 1. Check authenticated user's locale preference first
+        if (auth()->check() && auth()->user()->locale) {
+            $locale = auth()->user()->locale;
+            if (in_array($locale, $supportedLocales)) {
+                App::setLocale($locale);
+                Session::put('locale', $locale);
+                return $next($request);
+            }
+        }
+        
+        // 2. Get locale from URL segment
+        $locale = $request->segment(1);
         
         // If locale is valid, set it
         if (in_array($locale, $supportedLocales)) {
@@ -34,3 +44,4 @@ class SetLocale
         return $next($request);
     }
 }
+

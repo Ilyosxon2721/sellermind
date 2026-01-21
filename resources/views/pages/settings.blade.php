@@ -12,8 +12,8 @@
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Настройки</h1>
-                    <p class="text-sm text-gray-500">Управление аккаунтом и уведомлениями</p>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ __('app.settings.title') }}</h1>
+                    <p class="text-sm text-gray-500">{{ __('app.settings.subtitle') }}</p>
                 </div>
             </div>
         </header>
@@ -27,27 +27,32 @@
                         <button @click="activeTab = 'profile'"
                                 :class="activeTab === 'profile' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Профиль
+                            {{ __('app.settings.tabs.profile') }}
+                        </button>
+                        <button @click="activeTab = 'language'"
+                                :class="activeTab === 'language' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            {{ __('app.settings.tabs.language') }}
                         </button>
                         <button @click="activeTab = 'telegram'"
                                 :class="activeTab === 'telegram' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Telegram Уведомления
+                            {{ __('app.settings.tabs.telegram') }}
                         </button>
                         <button @click="activeTab = 'security'"
                                 :class="activeTab === 'security' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Безопасность
+                            {{ __('app.settings.tabs.security') }}
                         </button>
                         <button @click="activeTab = 'sync'"
                                 :class="activeTab === 'sync' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Синхронизация
+                            {{ __('app.settings.tabs.sync') }}
                         </button>
                         <button @click="activeTab = 'currency'"
                                 :class="activeTab === 'currency' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            Валюты
+                            {{ __('app.settings.tabs.currency') }}
                         </button>
                     </nav>
                 </div>
@@ -359,6 +364,8 @@ function settingsPage() {
                     email: user.email || '',
                     locale: user.locale || 'ru',
                 };
+                // Store initial locale to detect changes
+                this._initialLocale = this.profile.locale;
             } catch (error) {
                 console.error('Failed to load profile:', error);
             }
@@ -380,24 +387,29 @@ function settingsPage() {
                 });
 
                 if (response.ok) {
+                    // If locale was changed, reload page to apply new language
+                    if (this.profile.locale && this._initialLocale !== this.profile.locale) {
+                        window.location.reload();
+                        return;
+                    }
                     if (window.toast) {
-                        window.toast.success('Профиль обновлен');
+                        window.toast.success('{{ __('app.messages.profile_updated') }}');
                     } else {
-                        alert('Профиль обновлен');
+                        alert('{{ __('app.messages.profile_updated') }}');
                     }
                 } else {
                     if (window.toast) {
-                        window.toast.error('Ошибка обновления профиля');
+                        window.toast.error('{{ __('app.messages.error') }}');
                     } else {
-                        alert('Ошибка обновления профиля');
+                        alert('{{ __('app.messages.error') }}');
                     }
                 }
             } catch (error) {
                 console.error('Failed to update profile:', error);
                 if (window.toast) {
-                    window.toast.error('Ошибка обновления профиля');
+                    window.toast.error('{{ __('app.messages.error') }}');
                 } else {
-                    alert('Ошибка обновления профиля');
+                    alert('{{ __('app.messages.error') }}');
                 }
             }
         },

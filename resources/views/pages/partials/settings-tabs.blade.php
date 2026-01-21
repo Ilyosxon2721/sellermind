@@ -1,41 +1,63 @@
 <!-- Profile Tab -->
 <div x-show="activeTab === 'profile'">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4">Информация о профиле</h2>
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('app.settings.profile.title') }}</h2>
 
     <div class="space-y-4">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Имя</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.settings.profile.name') }}</label>
             <input type="text"
                    x-model="profile.name"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                   placeholder="Ваше имя">
+                   placeholder="{{ __('app.settings.profile.name') }}">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.settings.profile.email') }}</label>
             <input type="email"
                    x-model="profile.email"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-gray-50"
                    disabled>
-            <p class="text-xs text-gray-500 mt-1">Email нельзя изменить</p>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Язык</label>
-            <select x-model="profile.locale"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                <option value="ru">Русский</option>
-                <option value="uz">O'zbekcha</option>
-                <option value="en">English</option>
-            </select>
         </div>
 
         <div class="pt-4">
             <button @click="updateProfile()"
                     class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
-                Сохранить изменения
+                {{ __('app.settings.profile.save') }}
             </button>
         </div>
+    </div>
+</div>
+
+<!-- Language Tab -->
+<div x-show="activeTab === 'language'">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('app.settings.tabs.language') }}</h2>
+    <p class="text-sm text-gray-500 mb-6">{{ __('app.settings.profile.language') }}</p>
+
+    <div class="space-y-3">
+        <button @click="profile.locale = 'ru'; updateProfile()"
+                :class="profile.locale === 'ru' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                class="w-full px-6 py-3 border rounded-lg font-medium text-left flex items-center justify-between transition-colors">
+            <span>🇷🇺 {{ __('app.languages.ru') }}</span>
+            <svg x-show="profile.locale === 'ru'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+        </button>
+        <button @click="profile.locale = 'uz'; updateProfile()"
+                :class="profile.locale === 'uz' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                class="w-full px-6 py-3 border rounded-lg font-medium text-left flex items-center justify-between transition-colors">
+            <span>🇺🇿 {{ __('app.languages.uz') }}</span>
+            <svg x-show="profile.locale === 'uz'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+        </button>
+        <button @click="profile.locale = 'en'; updateProfile()"
+                :class="profile.locale === 'en' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                class="w-full px-6 py-3 border rounded-lg font-medium text-left flex items-center justify-between transition-colors">
+            <span>🇬🇧 {{ __('app.languages.en') }}</span>
+            <svg x-show="profile.locale === 'en'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+        </button>
     </div>
 </div>
 
@@ -44,27 +66,28 @@
     <x-telegram-settings />
 </div>
 
+
 <!-- Security Tab -->
 <div x-show="activeTab === 'security'">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4">Изменить пароль</h2>
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('app.settings.security.title') }}</h2>
 
     <div class="space-y-4">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Текущий пароль</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.settings.security.current_password') }}</label>
             <input type="password"
                    x-model="password.current"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Новый пароль</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.settings.security.new_password') }}</label>
             <input type="password"
                    x-model="password.new"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Подтвердите новый пароль</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.settings.security.confirm_password') }}</label>
             <input type="password"
                    x-model="password.confirm"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
@@ -73,7 +96,7 @@
         <div class="pt-4">
             <button @click="changePassword()"
                     class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
-                Изменить пароль
+                {{ __('app.settings.security.change_password') }}
             </button>
         </div>
     </div>
@@ -81,13 +104,13 @@
 
 <!-- Currency Rates Tab -->
 <div x-show="activeTab === 'currency'" x-data="currencySettings()">
-    <h2 class="text-lg font-semibold text-gray-900 mb-2">Курсы валют</h2>
-    <p class="text-sm text-gray-500 mb-6">Установите текущие курсы валют для расчёта себестоимости и отчётов. Эти курсы используются во всех разделах системы.</p>
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('app.settings.currency.title') }}</h2>
+    <p class="text-sm text-gray-500 mb-6">{{ __('app.settings.currency.description') }}</p>
 
     <div class="space-y-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-green-600 font-bold">$</span> Доллар США (USD → UZS)
+                <span class="text-green-600 font-bold">$</span> {{ __('app.settings.currency.usd') }}
             </label>
             <input type="number" step="0.01"
                    x-model="currencyForm.usd_rate"
@@ -97,7 +120,7 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-blue-600 font-bold">₽</span> Российский рубль (RUB → UZS)
+                <span class="text-blue-600 font-bold">₽</span> {{ __('app.settings.currency.rub') }}
             </label>
             <input type="number" step="0.0001"
                    x-model="currencyForm.rub_rate"
@@ -107,7 +130,7 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-amber-600 font-bold">€</span> Евро (EUR → UZS)
+                <span class="text-amber-600 font-bold">€</span> {{ __('app.settings.currency.eur') }}
             </label>
             <input type="number" step="0.01"
                    x-model="currencyForm.eur_rate"
@@ -119,30 +142,30 @@
             <button @click="saveCurrencyRates()"
                     :disabled="saving"
                     class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
-                <span x-show="!saving">Сохранить</span>
-                <span x-show="saving">Сохранение...</span>
+                <span x-show="!saving">{{ __('app.actions.save') }}</span>
+                <span x-show="saving">{{ __('app.messages.saving') }}</span>
             </button>
-            <span x-show="saveStatus === 'success'" x-transition class="text-green-600 text-sm">✓ Сохранено</span>
-            <span x-show="saveStatus === 'error'" x-transition class="text-red-600 text-sm">Ошибка сохранения</span>
+            <span x-show="saveStatus === 'success'" x-transition class="text-green-600 text-sm">✓ {{ __('app.messages.settings_saved') }}</span>
+            <span x-show="saveStatus === 'error'" x-transition class="text-red-600 text-sm">{{ __('app.messages.save_error') }}</span>
         </div>
 
         <template x-if="lastUpdated">
-            <div class="text-xs text-gray-400 mt-2" x-text="'Последнее обновление: ' + lastUpdated"></div>
+            <div class="text-xs text-gray-400 mt-2" x-text="'{{ __('app.settings.currency.last_updated') }}: ' + lastUpdated"></div>
         </template>
     </div>
 </div>
 
 <!-- Sync Settings Tab -->
 <div x-show="activeTab === 'sync'" x-data="syncSettings()">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4">Настройки синхронизации остатков</h2>
-    <p class="text-sm text-gray-500 mb-6">Управляйте автоматической синхронизацией остатков с маркетплейсами</p>
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('app.settings.sync.title') }}</h2>
+    <p class="text-sm text-gray-500 mb-6">{{ __('app.settings.sync.description') }}</p>
 
     <div class="space-y-6">
         <!-- Stock Sync Enabled -->
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
-                <h3 class="text-sm font-medium text-gray-900">Синхронизация остатков</h3>
-                <p class="text-sm text-gray-500">Общий переключатель синхронизации остатков с маркетплейсами</p>
+                <h3 class="text-sm font-medium text-gray-900">{{ __('app.settings.sync.stock_sync_enabled') }}</h3>
+                <p class="text-sm text-gray-500">{{ __('app.settings.sync.stock_sync_description') }}</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" x-model="settings.stock_sync_enabled" @change="saveSettings()" class="sr-only peer">
@@ -153,8 +176,8 @@
         <!-- Auto Sync on Link -->
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
-                <h3 class="text-sm font-medium text-gray-900">Автосинхронизация при привязке</h3>
-                <p class="text-sm text-gray-500">Автоматически отправлять остатки на маркетплейс при привязке товара</p>
+                <h3 class="text-sm font-medium text-gray-900">{{ __('app.settings.sync.auto_sync_on_link') }}</h3>
+                <p class="text-sm text-gray-500">{{ __('app.settings.sync.auto_sync_on_link_description') }}</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" x-model="settings.auto_sync_stock_on_link" @change="saveSettings()" class="sr-only peer" :disabled="!settings.stock_sync_enabled">
@@ -165,8 +188,8 @@
         <!-- Auto Sync on Change -->
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
-                <h3 class="text-sm font-medium text-gray-900">Автосинхронизация при изменении</h3>
-                <p class="text-sm text-gray-500">Автоматически обновлять остатки на маркетплейсах при их изменении в системе</p>
+                <h3 class="text-sm font-medium text-gray-900">{{ __('app.settings.sync.auto_sync_on_change') }}</h3>
+                <p class="text-sm text-gray-500">{{ __('app.settings.sync.auto_sync_on_change_description') }}</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" x-model="settings.auto_sync_stock_on_change" @change="saveSettings()" class="sr-only peer" :disabled="!settings.stock_sync_enabled">
@@ -177,7 +200,7 @@
         <!-- Save Status -->
         <div x-show="saveStatus" x-transition class="mt-4">
             <p :class="saveStatus === 'success' ? 'text-green-600' : 'text-red-600'" class="text-sm">
-                <span x-text="saveStatus === 'success' ? 'Настройки сохранены' : 'Ошибка сохранения'"></span>
+                <span x-text="saveStatus === 'success' ? '{{ __('app.messages.settings_saved') }}' : '{{ __('app.messages.save_error') }}'"></span>
             </p>
         </div>
     </div>
