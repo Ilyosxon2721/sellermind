@@ -656,67 +656,30 @@ class MarketplaceOrderController extends Controller
      */
     private function loadWbOrders(Request $request, MarketplaceAccount $account): array
     {
-        // Определяем источник данных: wb_orders для активных заказов FBS/DBS, wildberries_orders для архива
+        // Загружаем только из wb_orders (FBS/DBS/eDBS заказы из Marketplace API)
+        // wildberries_orders содержит FBO/FBW данные для отчётов и аналитики
         $statusFilter = $request->status;
 
-        // Для активных заказов (new, assembling, shipping) используем wb_orders (Marketplace API)
-        // Для архива и отменённых используем wildberries_orders (Statistics API)
-        $activeStatuses = ['new', 'in_assembly', 'in_delivery', 'assembling', 'shipping'];
-        $useWbOrders = !$statusFilter || in_array($statusFilter, $activeStatuses);
+        $query = \App\Models\WbOrder::query()->where('marketplace_account_id', $account->id);
 
-        $orders = collect();
-
-        // 1. Загружаем из wb_orders (активные FBS/DBS заказы)
-        if ($useWbOrders) {
-            $wbQuery = \App\Models\WbOrder::query()->where('marketplace_account_id', $account->id);
-
-            if ($statusFilter && in_array($statusFilter, $activeStatuses)) {
-                $wbQuery->where('wb_status_group', $statusFilter);
-            }
-            if ($request->from) {
-                $wbQuery->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay());
-            }
-            if ($request->to) {
-                $wbQuery->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
-            }
-
-            $wbOrders = $wbQuery->orderByDesc('ordered_at')->limit(500)->get();
-
-            $orders = $orders->concat($wbOrders->map(function ($o) {
-                return $this->mapWbOrderToResponse($o);
-            }));
+        // Фильтр по статусу
+        if ($statusFilter) {
+            $query->where('wb_status_group', $statusFilter);
         }
 
-        // 2. Загружаем из wildberries_orders (архив, статистика)
-        if (!$statusFilter || in_array($statusFilter, ['archive', 'canceled', 'return'])) {
-            $statsQuery = \App\Models\WildberriesOrder::query()->where('marketplace_account_id', $account->id);
-
-            if ($statusFilter === 'canceled') {
-                $statsQuery->where('is_cancel', true);
-            } elseif ($statusFilter === 'return') {
-                $statsQuery->where('is_return', true);
-            }
-            if ($request->from) {
-                $statsQuery->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
-            }
-            if ($request->to) {
-                $statsQuery->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
-            }
-
-            $statsOrders = $statsQuery->orderByDesc('order_date')->limit(500)->get();
-
-            $orders = $orders->concat($statsOrders->map(function ($o) {
-                return $this->mapWildberriesOrderToResponse($o);
-            }));
+        // Фильтр по датам
+        if ($request->from) {
+            $query->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
         }
 
-        // Сортируем по дате и убираем дубликаты по external_order_id
-        return $orders
-            ->unique('external_order_id')
-            ->sortByDesc('ordered_at')
-            ->take(1000)
-            ->values()
-            ->all();
+        $orders = $query->orderByDesc('ordered_at')->limit(1000)->get();
+
+        return $orders->map(function ($o) {
+            return $this->mapWbOrderToResponse($o);
+        })->all();
     }
 
     /**
