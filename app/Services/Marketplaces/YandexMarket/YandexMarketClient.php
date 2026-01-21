@@ -614,8 +614,8 @@ class YandexMarketClient implements MarketplaceClientInterface
                 $this->updateWarehouseStock($link->variant, $qtyDelta, $sourceType, $offerId);
 
                 // Fire StockUpdated event to sync to OTHER marketplaces
-                // Pass account ID to exclude this marketplace from sync
-                event(new StockUpdated($link->variant, $oldStock, $newStock, $account->id));
+                // Pass link_id to exclude this specific link from sync
+                event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
             }
         }
     }

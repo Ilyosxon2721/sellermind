@@ -18,7 +18,7 @@ class StockUpdated
         public ProductVariant $variant,
         public int $oldStock,
         public int $newStock,
-        public ?int $sourceMarketplaceAccountId = null // ID аккаунта откуда пришло изменение (исключаем из синхронизации)
+        public ?int $sourceLinkId = null // ID связи (VariantMarketplaceLink) откуда пришло изменение (исключаем из синхронизации)
     ) {}
 
     /**

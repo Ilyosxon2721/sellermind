@@ -124,8 +124,8 @@ class OzonOrderObserver
             $this->updateWarehouseStock($link->variant, -$quantity, $order, 'OZON_ORDER');
 
             // Fire StockUpdated event to sync to OTHER marketplaces
-            // Pass marketplace_account_id to exclude this marketplace from sync
-            event(new StockUpdated($link->variant, $oldStock, $newStock, $order->marketplace_account_id));
+            // Pass link_id to exclude this specific link from sync
+            event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
             Log::info('Internal stock reduced for Ozon order', [
                 'order_id' => $order->posting_number,
@@ -172,7 +172,7 @@ class OzonOrderObserver
             $this->updateWarehouseStock($link->variant, $quantity, $order, 'OZON_ORDER_CANCEL');
 
             // Fire StockUpdated event to sync to OTHER marketplaces
-            event(new StockUpdated($link->variant, $oldStock, $newStock, $order->marketplace_account_id));
+            event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
             Log::info('Internal stock returned for cancelled Ozon order', [
                 'order_id' => $order->posting_number,

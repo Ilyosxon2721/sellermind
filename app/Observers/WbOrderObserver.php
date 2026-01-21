@@ -132,8 +132,8 @@ class WbOrderObserver
 
         // Fire StockUpdated event to sync to OTHER marketplaces
         // (saveQuietly bypasses observer, so we need to dispatch manually)
-        // Pass marketplace_account_id to exclude this marketplace from sync (already has correct stock)
-        event(new StockUpdated($link->variant, $oldStock, $newStock, $order->marketplace_account_id));
+        // Pass link_id to exclude this specific link from sync (already has correct stock)
+        event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
         Log::info('Internal stock reduced for WB order', [
             'order_id' => $order->external_order_id,
@@ -181,7 +181,7 @@ class WbOrderObserver
         $this->updateWarehouseStock($link->variant, $quantity, $order, 'WB_ORDER_CANCEL');
 
         // Fire StockUpdated event to sync to OTHER marketplaces
-        event(new StockUpdated($link->variant, $oldStock, $newStock, $order->marketplace_account_id));
+        event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
         Log::info('Internal stock returned for cancelled WB order', [
             'order_id' => $order->external_order_id,

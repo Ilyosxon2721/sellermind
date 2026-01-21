@@ -58,12 +58,14 @@ class SyncStockToMarketplaces implements ShouldQueue
                     continue;
                 }
 
-                // Skip the marketplace that triggered the stock change (no need to sync back)
-                if ($event->sourceMarketplaceAccountId && $account->id === $event->sourceMarketplaceAccountId) {
+                // Skip the specific link that triggered the stock change (no need to sync back)
+                // This is important for Uzum where one account can have multiple shops
+                if ($event->sourceLinkId && $link->id === $event->sourceLinkId) {
                     $skippedAccounts[] = [
                         'account_id' => $account->id,
                         'account_name' => $account->name,
-                        'reason' => 'source marketplace (already has correct stock)',
+                        'link_id' => $link->id,
+                        'reason' => 'source link (already has correct stock)',
                     ];
                     continue;
                 }
