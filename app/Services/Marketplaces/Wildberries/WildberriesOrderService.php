@@ -572,9 +572,10 @@ class WildberriesOrderService
             'subject' => $orderData['subject'] ?? null,
             'category' => $orderData['category'] ?? null,
             'warehouse_name' => $orderData['warehouseName'] ?? null,
-            'warehouse_type' => !empty($orderData['isSupply']) ? 'FBS' : 'FBO',
+            // warehouseType: "Склад продавца" = FBS, "Склад WB" = FBW/FBO
+            'warehouse_type' => $orderData['warehouseType'] ?? null,
             'status' => $this->mapStatisticsStatus($orderData),
-            'wb_status' => $orderData['orderType'] ?? $orderData['warehouseType'] ?? null,
+            'wb_status' => $orderData['orderType'] ?? null,
             'is_cancel' => (bool)($orderData['isCancel'] ?? false),
             'is_return' => (bool)($orderData['isReturn'] ?? false),
             // isRealization - boolean field from Statistics API indicating completed sale
