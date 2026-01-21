@@ -96,7 +96,7 @@
                             </div>
                             <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.revenue') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(stats.revenue)">0 сум</p>
-                            <p class="text-sm text-gray-500" x-text="stats.orders_count + ' заказов'"></p>
+                            <p class="text-sm text-gray-500" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
                         </div>
 
                         {{-- Orders Today Card --}}
@@ -125,7 +125,7 @@
                             <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.products') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.products_count">0</p>
                             <p class="text-sm text-blue-600 font-medium flex items-center">
-                                Открыть
+                                {{ __('dashboard.open') }}
                                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
@@ -141,9 +141,9 @@
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">Склад</h3>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.warehouse') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(warehouse.total_value)">0 сум</p>
-                            <p class="text-sm text-gray-500" x-text="warehouse.total_items + ' позиций'"></p>
+                            <p class="text-sm text-gray-500" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
                         </div>
                     </div>
 
@@ -159,7 +159,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-bold text-gray-900" x-text="stats.marketplace_accounts">0</p>
-                                    <p class="text-xs text-gray-500">Маркетплейсов</p>
+                                    <p class="text-xs text-gray-500">{{ __('dashboard.marketplaces') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -174,7 +174,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-bold text-gray-900" x-text="reviews.pending_response || 0">0</p>
-                                    <p class="text-xs text-gray-500">Новых отзывов</p>
+                                    <p class="text-xs text-gray-500">{{ __('dashboard.new_reviews') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -189,7 +189,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-bold text-gray-900" x-text="supplies.active_count || 0">0</p>
-                                    <p class="text-xs text-gray-500">Поставок в пути</p>
+                                    <p class="text-xs text-gray-500">{{ __('dashboard.supplies_in_transit') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -204,7 +204,7 @@
                                 </div>
                                 <div>
                                     <p class="text-2xl font-bold text-gray-900" x-text="ai.running_tasks || 0">0</p>
-                                    <p class="text-xs text-gray-500">AI задач</p>
+                                    <p class="text-xs text-gray-500">{{ __('dashboard.ai_tasks') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -218,19 +218,19 @@
                             {{-- Recent Orders Table --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                                    <h2 class="text-lg font-semibold text-gray-900">Последние заказы</h2>
-                                    <a href="/sales" class="text-sm text-blue-600 hover:text-blue-700 font-medium">Все заказы →</a>
+                                    <h2 class="text-lg font-semibold text-gray-900">{{ __('dashboard.recent_orders') }}</h2>
+                                    <a href="/sales" class="text-sm text-blue-600 hover:text-blue-700 font-medium">{{ __('dashboard.all_orders') }} →</a>
                                 </div>
 
                                 <div x-show="recentOrders.length > 0">
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gray-50">
                                             <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заказ</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Магазин</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('dashboard.order') }}</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('dashboard.store') }}</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('dashboard.status') }}</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('dashboard.amount') }}</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('dashboard.date') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
@@ -268,15 +268,15 @@
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                     </svg>
-                                    <h3 class="mt-2 text-sm font-medium text-gray-900">Пока нет заказов</h3>
-                                    <p class="mt-1 text-sm text-gray-500">Они появятся здесь автоматически</p>
+                                    <h3 class="mt-2 text-sm font-medium text-gray-900">{{ __('dashboard.no_orders_yet') }}</h3>
+                                    <p class="mt-1 text-sm text-gray-500">{{ __('dashboard.orders_will_appear') }}</p>
                                 </div>
                             </div>
 
                             {{-- Marketplace Stats --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-6 py-4 border-b border-gray-200">
-                                    <h2 class="text-lg font-semibold text-gray-900">Маркетплейсы</h2>
+                                    <h2 class="text-lg font-semibold text-gray-900">{{ __('dashboard.marketplaces_section') }}</h2>
                                 </div>
                                 <div class="p-6">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -302,8 +302,8 @@
                                         </template>
                                     </div>
                                     <div x-show="!marketplace.accounts || marketplace.accounts.length === 0" class="text-center py-8">
-                                        <p class="text-gray-500">Нет подключенных маркетплейсов</p>
-                                        <a href="/marketplaces" class="text-blue-600 hover:text-blue-700 text-sm font-medium">Подключить →</a>
+                                        <p class="text-gray-500">{{ __('dashboard.no_marketplaces') }}</p>
+                                        <a href="/marketplaces" class="text-blue-600 hover:text-blue-700 text-sm font-medium">{{ __('dashboard.connect') }} →</a>
                                     </div>
                                 </div>
                             </div>
@@ -315,20 +315,20 @@
                             {{-- Subscription Status --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-4 py-3 border-b border-gray-200">
-                                    <h3 class="font-semibold text-gray-900">Подписка</h3>
+                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.subscription') }}</h3>
                                 </div>
                                 <div class="p-4">
                                     <template x-if="subscription.has_subscription">
                                         <div>
                                             <div class="flex items-center justify-between mb-3">
                                                 <span class="text-lg font-bold text-gray-900" x-text="subscription.plan?.name"></span>
-                                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Активна</span>
+                                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">{{ __('dashboard.active') }}</span>
                                             </div>
                                             <div class="space-y-3">
                                                 {{-- Days remaining --}}
                                                 <div x-show="subscription.days_remaining !== null">
                                                     <div class="flex justify-between text-sm mb-1">
-                                                        <span class="text-gray-500">Осталось дней</span>
+                                                        <span class="text-gray-500">{{ __('dashboard.days_remaining') }}</span>
                                                         <span class="font-medium" x-text="subscription.days_remaining"
                                                               :class="subscription.days_remaining <= 7 ? 'text-red-600' : 'text-gray-900'"></span>
                                                     </div>
@@ -342,7 +342,7 @@
                                                 {{-- AI Usage --}}
                                                 <div x-show="subscription.usage?.ai_requests">
                                                     <div class="flex justify-between text-sm mb-1">
-                                                        <span class="text-gray-500">AI запросы</span>
+                                                        <span class="text-gray-500">{{ __('dashboard.ai_requests') }}</span>
                                                         <span class="font-medium text-gray-900">
                                                             <span x-text="subscription.usage?.ai_requests?.used"></span>/<span x-text="subscription.usage?.ai_requests?.limit"></span>
                                                         </span>
@@ -356,7 +356,7 @@
                                                 {{-- Products Usage --}}
                                                 <div x-show="subscription.usage?.products">
                                                     <div class="flex justify-between text-sm mb-1">
-                                                        <span class="text-gray-500">Товары</span>
+                                                        <span class="text-gray-500">{{ __('dashboard.products_usage') }}</span>
                                                         <span class="font-medium text-gray-900">
                                                             <span x-text="subscription.usage?.products?.used"></span>/<span x-text="subscription.usage?.products?.limit"></span>
                                                         </span>
@@ -368,15 +368,15 @@
                                                 </div>
                                             </div>
                                             <a href="/pricing" class="block mt-4 text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-                                                Управление подпиской →
+                                                {{ __('dashboard.manage_subscription') }} →
                                             </a>
                                         </div>
                                     </template>
                                     <template x-if="!subscription.has_subscription">
                                         <div class="text-center py-4">
-                                            <p class="text-gray-500 mb-3">Нет активной подписки</p>
+                                            <p class="text-gray-500 mb-3">{{ __('dashboard.no_subscription') }}</p>
                                             <a href="/pricing" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                                                Выбрать тариф
+                                                {{ __('dashboard.choose_plan') }}
                                             </a>
                                         </div>
                                     </template>
@@ -386,22 +386,22 @@
                             {{-- AI Status --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">AI Агенты</h3>
-                                    <a href="/ai" class="text-xs text-blue-600 hover:text-blue-700">Все →</a>
+                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.ai_agents') }}</h3>
+                                    <a href="/ai" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.all') }} →</a>
                                 </div>
                                 <div class="p-4">
                                     <div class="grid grid-cols-3 gap-3 mb-4">
                                         <div class="text-center">
                                             <p class="text-2xl font-bold text-green-600" x-text="ai.running_tasks || 0"></p>
-                                            <p class="text-xs text-gray-500">Активных</p>
+                                            <p class="text-xs text-gray-500">{{ __('dashboard.active_tasks') }}</p>
                                         </div>
                                         <div class="text-center">
                                             <p class="text-2xl font-bold text-blue-600" x-text="ai.completed_today || 0"></p>
-                                            <p class="text-xs text-gray-500">Сегодня</p>
+                                            <p class="text-xs text-gray-500">{{ __('dashboard.today_tasks') }}</p>
                                         </div>
                                         <div class="text-center">
                                             <p class="text-2xl font-bold text-red-600" x-text="ai.failed_today || 0"></p>
-                                            <p class="text-xs text-gray-500">Ошибок</p>
+                                            <p class="text-xs text-gray-500">{{ __('dashboard.errors') }}</p>
                                         </div>
                                     </div>
 
@@ -424,7 +424,7 @@
                                         </template>
                                     </div>
                                     <div x-show="!ai.recent_runs || ai.recent_runs.length === 0" class="text-center py-4">
-                                        <p class="text-sm text-gray-500">Нет недавних задач</p>
+                                        <p class="text-sm text-gray-500">{{ __('dashboard.no_recent_tasks') }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -432,8 +432,8 @@
                             {{-- Reviews Summary --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">Отзывы</h3>
-                                    <a href="/reviews" class="text-xs text-blue-600 hover:text-blue-700">Все →</a>
+                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.reviews_section') }}</h3>
+                                    <a href="/reviews" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.all') }} →</a>
                                 </div>
                                 <div class="p-4">
                                     <div class="flex items-center justify-between mb-4">
@@ -466,12 +466,12 @@
                             {{-- Team --}}
                             <div class="bg-white rounded-lg shadow">
                                 <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">Команда</h3>
-                                    <a href="/settings/team" class="text-xs text-blue-600 hover:text-blue-700">Управление →</a>
+                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.team') }}</h3>
+                                    <a href="/settings/team" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.manage') }} →</a>
                                 </div>
                                 <div class="p-4">
                                     <div class="flex items-center justify-between mb-3">
-                                        <span class="text-sm text-gray-500">Участников</span>
+                                        <span class="text-sm text-gray-500">{{ __('dashboard.members') }}</span>
                                         <span class="font-medium">
                                             <span x-text="team.members_count || 0"></span>/<span x-text="team.max_members || 1"></span>
                                         </span>
@@ -493,7 +493,7 @@
                                     <button x-show="team.can_invite"
                                             @click="window.location.href='/settings/team'"
                                             class="mt-3 w-full py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                        + Пригласить
+                                        + {{ __('dashboard.invite') }}
                                     </button>
                                 </div>
                             </div>
@@ -506,7 +506,7 @@
 
     {{-- PWA MODE - Native App Layout --}}
     <div class="pwa-only min-h-screen" style="background: #f2f2f7;">
-        <x-pwa-header title="Главная" :showProfile="true">
+        <x-pwa-header title="{{ __('dashboard.title') }}" :showProfile="true">
             <button @click="showPeriodSheet = true"
                     class="native-header-btn"
                     onclick="if(window.haptic) window.haptic.light()">
@@ -568,9 +568,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
-                            <p class="text-xs text-gray-500 mb-1">Выручка</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.revenue') }}</p>
                             <p class="text-lg font-bold text-gray-900 leading-tight" x-text="formatMoney(stats.revenue)">0 сум</p>
-                            <p class="text-xs text-gray-400 mt-1" x-text="stats.orders_count + ' заказов'"></p>
+                            <p class="text-xs text-gray-400 mt-1" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
                         </div>
 
                         {{-- Orders Today Card --}}
@@ -580,7 +580,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                 </svg>
                             </div>
-                            <p class="text-xs text-gray-500 mb-1">Сегодня</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.today') }}</p>
                             <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.today_orders">0</p>
                             <p class="text-xs text-gray-400 mt-1" x-text="formatMoney(stats.today_revenue)"></p>
                         </div>
@@ -592,10 +592,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                 </svg>
                             </div>
-                            <p class="text-xs text-gray-500 mb-1">Товары</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.products') }}</p>
                             <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.products_count">0</p>
                             <div class="flex items-center mt-1">
-                                <span class="text-xs text-blue-600 font-medium">Открыть</span>
+                                <span class="text-xs text-blue-600 font-medium">{{ __('dashboard.open') }}</span>
                                 <svg class="w-3 h-3 text-blue-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
@@ -609,9 +609,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                 </svg>
                             </div>
-                            <p class="text-xs text-gray-500 mb-1">Склад</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.warehouse') }}</p>
                             <p class="text-lg font-bold text-gray-900 leading-tight" x-text="formatMoney(warehouse.total_value)">0 сум</p>
-                            <p class="text-xs text-gray-400 mt-1" x-text="warehouse.total_items + ' позиций'"></p>
+                            <p class="text-xs text-gray-400 mt-1" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
                         </div>
                     </div>
                 </div>
@@ -621,15 +621,15 @@
                     <div class="grid grid-cols-4 gap-2">
                         <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/marketplaces'">
                             <p class="text-lg font-bold text-orange-600" x-text="stats.marketplace_accounts">0</p>
-                            <p class="text-xs text-gray-500">МП</p>
+                            <p class="text-xs text-gray-500">{{ __('dashboard.mp') }}</p>
                         </div>
                         <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/reviews'">
                             <p class="text-lg font-bold text-yellow-600" x-text="reviews.pending_response || 0">0</p>
-                            <p class="text-xs text-gray-500">Отзывы</p>
+                            <p class="text-xs text-gray-500">{{ __('dashboard.reviews') }}</p>
                         </div>
                         <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/supplies'">
                             <p class="text-lg font-bold text-indigo-600" x-text="supplies.active_count || 0">0</p>
-                            <p class="text-xs text-gray-500">Поставки</p>
+                            <p class="text-xs text-gray-500">{{ __('dashboard.supplies') }}</p>
                         </div>
                         <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/ai'">
                             <p class="text-lg font-bold text-pink-600" x-text="ai.running_tasks || 0">0</p>
@@ -641,8 +641,8 @@
                 {{-- Recent Orders --}}
                 <div class="px-4 pt-3">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-base font-semibold text-gray-900">Последние заказы</h2>
-                        <a href="/sales" class="text-sm font-medium text-blue-600">Все</a>
+                        <h2 class="text-base font-semibold text-gray-900">{{ __('dashboard.recent_orders') }}</h2>
+                        <a href="/sales" class="text-sm font-medium text-blue-600">{{ __('dashboard.all') }}</a>
                     </div>
 
                     <div class="space-y-2" x-show="recentOrders.length > 0">
@@ -682,8 +682,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                             </svg>
                         </div>
-                        <p class="text-sm font-medium text-gray-900 mb-1">Пока нет заказов</p>
-                        <p class="text-xs text-gray-500">Они появятся здесь автоматически</p>
+                        <p class="text-sm font-medium text-gray-900 mb-1">{{ __('dashboard.no_orders_yet') }}</p>
+                        <p class="text-xs text-gray-500">{{ __('dashboard.orders_will_appear') }}</p>
                     </div>
                 </div>
             </div>
@@ -697,26 +697,26 @@
              style="display: none;">
             <div class="native-sheet" @click.away="showPeriodSheet = false">
                 <div class="native-sheet-handle"></div>
-                <h3 class="native-headline mb-4">Выберите период</h3>
+                <h3 class="native-headline mb-4">{{ __('dashboard.select_period') }}</h3>
                 <div class="space-y-2">
                     <button @click="period = 'today'; loadData(); showPeriodSheet = false"
                             class="native-btn w-full"
                             :class="period === 'today' ? '' : 'native-btn-secondary'">
-                        Сегодня
+                        {{ __('dashboard.today') }}
                     </button>
                     <button @click="period = 'week'; loadData(); showPeriodSheet = false"
                             class="native-btn w-full"
                             :class="period === 'week' ? '' : 'native-btn-secondary'">
-                        7 дней
+                        {{ __('dashboard.7_days') }}
                     </button>
                     <button @click="period = 'month'; loadData(); showPeriodSheet = false"
                             class="native-btn w-full"
                             :class="period === 'month' ? '' : 'native-btn-secondary'">
-                        30 дней
+                        {{ __('dashboard.30_days') }}
                     </button>
                     <button @click="showPeriodSheet = false"
                             class="native-btn native-btn-secondary w-full mt-4">
-                        Отмена
+                        {{ __('dashboard.cancel') }}
                     </button>
                 </div>
             </div>
@@ -730,7 +730,7 @@
              style="display: none;">
             <div class="native-sheet max-h-[70vh] overflow-y-auto" @click.away="showAlertsModal = false">
                 <div class="native-sheet-handle"></div>
-                <h3 class="native-headline mb-4">Оповещения</h3>
+                <h3 class="native-headline mb-4">{{ __('dashboard.alerts') }}</h3>
                 <div class="space-y-3">
                     <template x-for="alert in alerts.items" :key="alert.type + '_' + (alert.sku_id || alert.review_id || alert.supply_id || Math.random())">
                         <div class="p-3 rounded-xl border"
@@ -794,7 +794,7 @@
                 </div>
                 <button @click="showAlertsModal = false"
                         class="native-btn native-btn-secondary w-full mt-4">
-                    Закрыть
+                    {{ __('dashboard.close') }}
                 </button>
             </div>
         </div>
