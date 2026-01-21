@@ -58,6 +58,16 @@ class SyncStockToMarketplaces implements ShouldQueue
                     continue;
                 }
 
+                // Skip the marketplace that triggered the stock change (no need to sync back)
+                if ($event->sourceMarketplaceAccountId && $account->id === $event->sourceMarketplaceAccountId) {
+                    $skippedAccounts[] = [
+                        'account_id' => $account->id,
+                        'account_name' => $account->name,
+                        'reason' => 'source marketplace (already has correct stock)',
+                    ];
+                    continue;
+                }
+
                 try {
                     $result = $this->stockSyncService->syncLinkStock($link);
                     $syncedAccounts[] = [

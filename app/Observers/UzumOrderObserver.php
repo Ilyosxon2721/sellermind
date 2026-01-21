@@ -110,7 +110,8 @@ class UzumOrderObserver
 
             // Fire StockUpdated event to sync to OTHER marketplaces
             // (saveQuietly bypasses observer, so we need to dispatch manually)
-            event(new StockUpdated($link->variant, $oldStock, $newStock));
+            // Pass marketplace_account_id to exclude this marketplace from sync
+            event(new StockUpdated($link->variant, $oldStock, $newStock, $order->marketplace_account_id));
 
             Log::info('Internal stock reduced for Uzum order', [
                 'order_id' => $order->external_order_id,
