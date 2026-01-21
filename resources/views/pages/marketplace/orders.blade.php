@@ -1380,8 +1380,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             } else {
                 this.startAssembly(order);
             }
-        }
-,
+        },
         startAssembly(order) {
             if (!order) return;
             // Временное клиентское действие: помечаем заказ как «В сборке» в UI
@@ -1919,6 +1918,26 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 'bg-green-100 text-green-700': st === 'completed',
                 'bg-red-100 text-red-700': st === 'cancelled'
             };
+        },
+        async loadFboOrders() {
+            // FBO доступен для WB и Uzum
+            this.fboLoading = true;
+            try {
+                let url = '/api/marketplace/orders/fbo?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id=' + this.accountId;
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.fboOrders = data.orders || [];
+                    this.fboStats = data.stats || { total: 0, by_status: {} };
+                } else if (res.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (e) {
+                console.error('Error loading FBO orders:', e);
+            }
+            this.fboLoading = false;
         }
     }"
      class="flex h-screen bg-gray-50 browser-only">
