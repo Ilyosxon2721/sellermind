@@ -639,6 +639,15 @@ class MarketplaceOrderController extends Controller
         try {
             $client = app(\App\Services\Marketplaces\UzumClient::class);
             $data = $client->confirmOrder($account, $order->external_order_id);
+
+            \Log::info('Uzum confirmOrder response', [
+                'order_id' => $order->id,
+                'external_order_id' => $order->external_order_id,
+                'response_data' => $data,
+                'old_status' => $order->status,
+                'new_status' => $data['status'] ?? 'NULL',
+            ]);
+
             if (!$data) {
                 return response()->json(['message' => 'Не удалось подтвердить заказ Uzum'], 422);
             }
@@ -647,12 +656,25 @@ class MarketplaceOrderController extends Controller
             $orderedAtParsed = $this->parseUzumTimestamp($orderedAt) ?? $order->ordered_at;
 
             // Обновляем заказ
-            $order->update([
+            $updateData = [
                 'status' => $data['status'] ?? $order->status,
                 'status_normalized' => $data['status_normalized'] ?? $data['status'] ?? $order->status,
                 'raw_payload' => $data['raw_payload'] ?? $order->raw_payload,
                 'ordered_at' => $orderedAtParsed,
                 'total_amount' => $data['total_amount'] ?? $order->total_amount,
+            ];
+
+            \Log::info('Uzum order update data', [
+                'order_id' => $order->id,
+                'update_data' => $updateData,
+            ]);
+
+            $order->update($updateData);
+
+            \Log::info('Uzum order after update', [
+                'order_id' => $order->id,
+                'status' => $order->status,
+                'status_normalized' => $order->status_normalized,
             ]);
 
             // Обновляем позиции

@@ -825,11 +825,33 @@ class UzumClient implements MarketplaceClientInterface
     {
         $path = "/v1/fbs/order/{$orderId}/confirm";
         $response = $this->request($account, 'POST', $path);
+
+        Log::info('Uzum confirmOrder raw response', [
+            'order_id' => $orderId,
+            'response_keys' => array_keys($response),
+            'payload_status' => $response['payload']['status'] ?? 'N/A',
+            'full_payload' => $response['payload'] ?? null,
+        ]);
+
         $payload = $response['payload'] ?? null;
         if (!$payload) {
+            Log::warning('Uzum confirmOrder: no payload in response', [
+                'order_id' => $orderId,
+                'response' => $response,
+            ]);
             return null;
         }
-        return $this->mapOrderData($payload, 'fbs');
+
+        $mapped = $this->mapOrderData($payload, 'fbs');
+
+        Log::info('Uzum confirmOrder mapped data', [
+            'order_id' => $orderId,
+            'mapped_status' => $mapped['status'] ?? 'N/A',
+            'mapped_status_normalized' => $mapped['status_normalized'] ?? 'N/A',
+            'raw_payload_status' => $mapped['raw_payload']['status'] ?? 'N/A',
+        ]);
+
+        return $mapped;
     }
 
     /**
