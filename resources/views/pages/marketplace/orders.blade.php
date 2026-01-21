@@ -1566,25 +1566,27 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
                 const validStatuses = ['new', 'in_assembly', 'in_delivery', 'completed', 'cancelled'];
 
-                // DEBUG: логируем первые 5 заказов
-                if (!window._wbDebugCount) window._wbDebugCount = 0;
-                if (window._wbDebugCount < 5) {
-                    console.log('WB Order debug:', {
-                        id: order.id,
-                        external_order_id: order.external_order_id,
-                        status: order.status,
-                        status_normalized: order.status_normalized,
-                        wb_status_group: order.wb_status_group,
-                        wb_status: order.wb_status,
-                        dbStatus: dbStatus,
-                        validStatusMatch: validStatuses.includes(dbStatus)
-                    });
-                    window._wbDebugCount++;
-                }
+                // Маппинг внешних статусов WB на внутренние
+                const statusMapping = {
+                    'delivered': 'completed',
+                    'sold': 'completed',
+                    'canceled': 'cancelled',
+                    'on_delivery': 'in_delivery',
+                    'shipping': 'in_delivery',
+                    'sorted': 'in_assembly',
+                    'assembling': 'in_assembly',
+                    'waiting': 'new',
+                };
 
-                // Если в БД уже есть валидный статус - используем его (приоритет БД)
+                // Если статус напрямую валидный - используем его
                 if (validStatuses.includes(dbStatus)) {
                     return dbStatus;
+                }
+
+                // Если статус можно смаппить на валидный - делаем это
+                if (statusMapping[dbStatus]) {
+                    order.status_normalized = statusMapping[dbStatus];
+                    return statusMapping[dbStatus];
                 }
 
                 // Иначе мапим из wb_status_group / wb_status
@@ -1597,7 +1599,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'archive': 'completed',
                     'canceled': 'cancelled',
                 };
-                const mapStatus = {
+                const mapStatusFromWb = {
                     'new': 'new',
                     'waiting': 'new',
                     'sorted': 'in_assembly',
@@ -1609,7 +1611,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'canceled': 'cancelled',
                     'cancelled': 'cancelled',
                 };
-                const mapped = mapGroup[group] || mapStatus[wbStatus] || null;
+                const mapped = mapGroup[group] || mapStatusFromWb[wbStatus] || null;
                 if (mapped) {
                     order.status_normalized = mapped;
                     return mapped;

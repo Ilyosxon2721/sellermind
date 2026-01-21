@@ -42,7 +42,9 @@ class MarketplaceOrderController extends Controller
             return response()->json([
                 'orders' => $orders,
                 'meta' => ['total' => count($orders)],
-            ]);
+            ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+              ->header('Pragma', 'no-cache')
+              ->header('Expires', '0');
         }
 
         if ($account && $account->marketplace === 'uzum') {
@@ -50,14 +52,18 @@ class MarketplaceOrderController extends Controller
             return response()->json([
                 'orders' => $orders,
                 'meta' => ['total' => count($orders)],
-            ]);
+            ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+              ->header('Pragma', 'no-cache')
+              ->header('Expires', '0');
         }
 
         // Если маркетплейс не указан или не поддерживается
         return response()->json([
             'orders' => [],
             'meta' => ['total' => 0],
-        ]);
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
     public function show(Request $request, $orderId): JsonResponse
