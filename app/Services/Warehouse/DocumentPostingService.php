@@ -6,10 +6,12 @@ use App\Models\CompanySetting;
 use App\Models\Finance\FinanceSettings;
 use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
+use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class DocumentPostingService
@@ -74,11 +76,63 @@ class DocumentPostingService
             $document->posted_at = Carbon::now();
             $document->save();
 
+            // Auto-sync stock_default for affected SKUs
+            $syncedVariants = $this->syncStockDefaultForDocument($document);
+
             return [
                 'ledger_entries_created' => count($ledgerCreated),
+                'variants_synced' => $syncedVariants,
                 'warnings' => [],
             ];
         });
+    }
+
+    /**
+     * Sync stock_default for all ProductVariants affected by this document
+     */
+    protected function syncStockDefaultForDocument(InventoryDocument $document): int
+    {
+        $syncedCount = 0;
+
+        foreach ($document->lines as $line) {
+            try {
+                $sku = Sku::with('productVariant')->find($line->sku_id);
+
+                if (!$sku || !$sku->productVariant) {
+                    continue;
+                }
+
+                $variant = $sku->productVariant;
+
+                // Calculate total stock from ledger for this SKU
+                $ledgerStock = (float) StockLedger::where('sku_id', $sku->id)->sum('qty_delta');
+                $oldStock = (float) ($variant->stock_default ?? 0);
+
+                // Update stock_default if different
+                if (abs($ledgerStock - $oldStock) > 0.001) {
+                    $variant->update(['stock_default' => $ledgerStock]);
+
+                    Log::info('Auto-synced stock_default after document posting', [
+                        'document_id' => $document->id,
+                        'document_type' => $document->type,
+                        'variant_id' => $variant->id,
+                        'sku' => $variant->sku,
+                        'old_stock' => $oldStock,
+                        'new_stock' => $ledgerStock,
+                    ]);
+
+                    $syncedCount++;
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to sync stock_default for SKU', [
+                    'sku_id' => $line->sku_id,
+                    'document_id' => $document->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $syncedCount;
     }
 
     protected function ledgerEntry(
