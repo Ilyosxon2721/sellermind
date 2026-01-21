@@ -475,7 +475,8 @@ function saleCreatePage() {
                 });
                 if (resp.ok) {
                     const data = await resp.json();
-                    this.companies = data.data || [];
+                    // API returns { companies: [...] }
+                    this.companies = data.companies || data.data || [];
                     // Select first company by default (use String for select compatibility)
                     if (this.companies.length > 0) {
                         this.$nextTick(() => {
@@ -504,7 +505,8 @@ function saleCreatePage() {
                 });
                 if (resp.ok) {
                     const data = await resp.json();
-                    this.warehouses = data.data || [];
+                    // API returns { data: [...] }
+                    this.warehouses = data.warehouses || data.data || [];
                     // Select first warehouse by default (use String for select compatibility)
                     if (this.warehouses.length > 0) {
                         this.$nextTick(() => {
