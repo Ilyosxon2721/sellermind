@@ -20,7 +20,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
-            'locale' => $request->locale ?? 'ru',
+            'locale' => $request->locale ?? session('locale', 'ru'),
         ]);
 
         // Create API token
@@ -103,6 +103,27 @@ class AuthController extends Controller
         $user->update($request->only(['name', 'locale']));
 
         return response()->json([
+            'user' => new UserResource($user),
+        ]);
+    }
+
+    public function updateLocale(Request $request): JsonResponse
+    {
+        $request->validate([
+            'locale' => ['required', 'string', 'in:ru,uz,en'],
+        ]);
+
+        $user = $request->user();
+        $user->update(['locale' => $request->locale]);
+
+        // Also update session locale
+        if ($request->hasSession()) {
+            $request->session()->put('locale', $request->locale);
+        }
+
+        return response()->json([
+            'success' => true,
+            'locale' => $request->locale,
             'user' => new UserResource($user),
         ]);
     }

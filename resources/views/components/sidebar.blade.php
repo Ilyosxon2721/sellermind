@@ -237,6 +237,11 @@
         <div class="flex-1"></div>
     @endif
 
+    <!-- Language Switcher -->
+    <div class="px-4 pb-3 flex-shrink-0">
+        @include('components.dashboard-language-switcher')
+    </div>
+
     <!-- User Menu -->
     <div class="p-4 border-t border-gray-200 flex-shrink-0" role="region" aria-label="{{ __('admin.user_menu') }}">
         <div class="flex items-center space-x-3">

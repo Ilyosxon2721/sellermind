@@ -18,30 +18,33 @@ class SetLocale
         // Supported locales
         $supportedLocales = ['uz', 'ru', 'en'];
         
-        // 1. Check authenticated user's locale preference first
-        if (auth()->check() && auth()->user()->locale) {
-            $locale = auth()->user()->locale;
+        // Priority 1: URL segment (for landing pages)
+        $urlLocale = $request->segment(1);
+        
+        if (in_array($urlLocale, $supportedLocales)) {
+            App::setLocale($urlLocale);
+            Session::put('locale', $urlLocale);
+        } else {
+            // Priority 2: Authenticated user's preference
+            $userLocale = null;
+            if (auth()->check() && auth()->user()->locale) {
+                $userLocale = auth()->user()->locale;
+            }
+            
+            // Priority 3: Session locale
+            $sessionLocale = Session::get('locale');
+            
+            // Priority 4: Default (uz)
+            $locale = $userLocale ?? $sessionLocale ?? 'uz';
+            
+            // Validate and set
             if (in_array($locale, $supportedLocales)) {
                 App::setLocale($locale);
-                Session::put('locale', $locale);
-                return $next($request);
+            } else {
+                App::setLocale('uz');
             }
-        }
-        
-        // 2. Get locale from URL segment
-        $locale = $request->segment(1);
-        
-        // If locale is valid, set it
-        if (in_array($locale, $supportedLocales)) {
-            App::setLocale($locale);
-            Session::put('locale', $locale);
-        } else {
-            // Fallback to session or default (uz)
-            $locale = Session::get('locale', 'uz');
-            App::setLocale($locale);
         }
         
         return $next($request);
     }
 }
-

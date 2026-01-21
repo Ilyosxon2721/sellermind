@@ -156,6 +156,7 @@ Route::middleware('auth.any')->group(function () {
     // Current user
     Route::get('me', [AuthController::class, 'me']);
     Route::put('me', [AuthController::class, 'updateProfile']);
+    Route::put('me/locale', [AuthController::class, 'updateLocale']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
     // Telegram Notifications

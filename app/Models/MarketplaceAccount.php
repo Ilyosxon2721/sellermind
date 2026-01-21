@@ -280,7 +280,9 @@ class MarketplaceAccount extends Model
 
     public function setUzumApiKeyAttribute(?string $value): void
     {
-        $this->attributes['uzum_api_key'] = $value ? Crypt::encryptString($value) : null;
+        // Store token as-is without encryption for simplicity
+        // Uzum tokens are short-lived and DB is already protected
+        $this->attributes['uzum_api_key'] = $value;
     }
 
     public function getUzumApiKeyAttribute(?string $value): ?string
@@ -289,23 +291,18 @@ class MarketplaceAccount extends Model
             return null;
         }
 
-        try {
-            $decrypted = Crypt::decryptString($value);
-            \Log::debug('Uzum API key decryption SUCCESS', [
-                'original_length' => strlen($value),
-                'decrypted_length' => strlen($decrypted),
-                'decrypted_start' => substr($decrypted, 0, 10),
-            ]);
-            return $decrypted;
-        } catch (\Exception $e) {
-            // If decryption fails, return original value (unencrypted token)
-            \Log::warning('Uzum API key decryption FAILED, returning original value', [
-                'original_length' => strlen($value),
-                'original_start' => substr($value, 0, 10),
-                'error' => $e->getMessage(),
-            ]);
-            return $value;
+        // Check if value looks like Laravel encrypted string (starts with eyJ)
+        // If so, try to decrypt for backwards compatibility with old encrypted tokens
+        if (str_starts_with($value, 'eyJ')) {
+            try {
+                return Crypt::decryptString($value);
+            } catch (\Exception $e) {
+                // Decryption failed - might be a plain token that happens to start with eyJ
+                // or encrypted with different APP_KEY - return as-is
+            }
         }
+
+        return $value;
     }
 
     public function setUzumAccessTokenAttribute(?string $value): void

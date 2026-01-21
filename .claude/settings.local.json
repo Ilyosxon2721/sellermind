@@ -53,9 +53,10 @@
       "Bash(git hash-object:*)",
       "Bash(git ls-tree:*)",
       "Read(//Applications/MAMP/htdocs/sellermind-ai/**)",
-      "Bash(del get_order.php)",
-      "Bash(Get-Content \"d:\\\\server\\\\OSPanel\\\\home\\\\sellermind\\\\storage\\\\logs\\\\laravel.log\" -Tail 100)",
-      "Bash(Select-String:*)"
+      "Bash(node:*)",
+      "Bash(xargs:*)",
+      "Bash(ssh-add:*)",
+      "Bash(git remote set-url:*)"
     ]
   }
 }

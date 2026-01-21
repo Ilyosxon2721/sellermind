@@ -1037,9 +1037,18 @@ function wbOrdersPage() {
         },
 
         getAuthHeaders() {
-            const token = localStorage.getItem('auth_token') || localStorage.getItem('token') ||
+            // Try multiple token sources: Alpine store, localStorage with various keys
+            const token = window.Alpine?.store('auth')?.token ||
+                          localStorage.getItem('_x_auth_token')?.replace(/"/g, '') ||
+                          localStorage.getItem('auth_token') ||
+                          localStorage.getItem('token') ||
                           document.querySelector('meta[name="api-token"]')?.content;
-            return token ? { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } : { 'Accept': 'application/json' };
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            // Add CSRF token for web session auth
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+            return headers;
         },
 
         async loadOrders() {
@@ -1051,7 +1060,7 @@ function wbOrdersPage() {
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
 
-                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                const res = await this.authFetch(url);
                 if (res.ok) {
                     const data = await res.json();
                     this.orders = data.orders || [];
@@ -1069,7 +1078,7 @@ function wbOrdersPage() {
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
 
-                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                const res = await this.authFetch(url);
                 if (res.ok) {
                     this.stats = await res.json();
                 }
@@ -1078,12 +1087,24 @@ function wbOrdersPage() {
             }
         },
 
+        // Helper method for authenticated fetch with credentials
+        async authFetch(url, options = {}) {
+            const defaultOptions = {
+                headers: this.getAuthHeaders(),
+                credentials: 'include'
+            };
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: { ...defaultOptions.headers, ...(options.headers || {}) }
+            };
+            return fetch(url, mergedOptions);
+        },
+
         async loadSupplies() {
             try {
                 const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
-                const res = await fetch(`/api/marketplace/supplies?company_id=${companyId}&marketplace_account_id=${this.accountId}`, {
-                    headers: this.getAuthHeaders()
-                });
+                const res = await this.authFetch(`/api/marketplace/supplies?company_id=${companyId}&marketplace_account_id=${this.accountId}`);
                 if (res.ok) {
                     const data = await res.json();
                     this.supplies = data.supplies || [];
@@ -1105,9 +1126,9 @@ function wbOrdersPage() {
             this.syncProgress = 0;
 
             try {
-                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/orders`, {
+                const res = await this.authFetch(`/api/marketplace/accounts/${this.accountId}/sync/orders`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ async: true })
                 });
 
@@ -1132,8 +1153,8 @@ function wbOrdersPage() {
 
         async startLiveMonitoring() {
             try {
-                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/monitoring/start`, {
-                    method: 'POST', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/accounts/${this.accountId}/monitoring/start`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     this.liveMonitoringEnabled = true;
@@ -1146,8 +1167,8 @@ function wbOrdersPage() {
 
         async stopLiveMonitoring() {
             try {
-                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/monitoring/stop`, {
-                    method: 'POST', headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/accounts/${this.accountId}/monitoring/stop`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     this.liveMonitoringEnabled = false;

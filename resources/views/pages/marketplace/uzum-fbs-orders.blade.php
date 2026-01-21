@@ -701,8 +701,31 @@ function uzumOrdersPage() {
         },
 
         getAuthHeaders() {
-            const token = localStorage.getItem('auth_token') || document.querySelector('meta[name="api-token"]')?.content;
-            return token ? { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } : { 'Accept': 'application/json' };
+            // Try multiple token sources: Alpine store, localStorage with various keys
+            const token = window.Alpine?.store('auth')?.token ||
+                          localStorage.getItem('_x_auth_token')?.replace(/"/g, '') ||
+                          localStorage.getItem('auth_token') ||
+                          document.querySelector('meta[name="api-token"]')?.content;
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            // Add CSRF token for web session auth
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+            return headers;
+        },
+
+        // Helper method for authenticated fetch with credentials
+        async authFetch(url, options = {}) {
+            const defaultOptions = {
+                headers: this.getAuthHeaders(),
+                credentials: 'include'
+            };
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: { ...defaultOptions.headers, ...(options.headers || {}) }
+            };
+            return fetch(url, mergedOptions);
         },
 
         async loadOrders() {
@@ -714,7 +737,7 @@ function uzumOrdersPage() {
                 if (this.dateTo) url += `&to=${this.dateTo}`;
                 if (this.selectedShopId) url += `&shop_id=${this.selectedShopId}`;
 
-                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                const res = await this.authFetch(url);
                 if (res.ok) {
                     const data = await res.json();
                     this.orders = data.orders || [];
@@ -732,7 +755,7 @@ function uzumOrdersPage() {
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
 
-                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                const res = await this.authFetch(url);
                 if (res.ok) {
                     this.stats = await res.json();
                 }
@@ -744,9 +767,7 @@ function uzumOrdersPage() {
         async loadUzumShops() {
             if (this.shopOptions.length > 0) return;
             try {
-                const res = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/shops`, {
-                    headers: this.getAuthHeaders()
-                });
+                const res = await this.authFetch(`/api/marketplace/uzum/accounts/${this.accountId}/shops`);
                 if (res.ok) {
                     const data = await res.json();
                     const list = Array.isArray(data) ? data : (data.shops || []);
@@ -767,9 +788,9 @@ function uzumOrdersPage() {
             this.syncMessage = 'Запуск синхронизации...';
 
             try {
-                const res = await fetch(`/api/marketplace/uzum/accounts/${this.accountId}/orders/sync`, {
+                const res = await this.authFetch(`/api/marketplace/accounts/${this.accountId}/sync/orders`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (res.ok) {
@@ -792,9 +813,9 @@ function uzumOrdersPage() {
         async confirmUzumOrder(order) {
             order.processing = true;
             try {
-                const res = await fetch(`/api/marketplace/orders/${order.id}/confirm`, {
+                const res = await this.authFetch(`/api/marketplace/orders/${order.id}/confirm`, {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (res.ok) {
@@ -834,9 +855,9 @@ function uzumOrdersPage() {
                     size: 'LARGE' // Uzum uses PDF with DataMatrix
                 };
 
-                const res = await fetch('/api/marketplace/orders/stickers', {
+                const res = await this.authFetch('/api/marketplace/orders/stickers', {
                     method: 'POST',
-                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
@@ -933,9 +954,8 @@ function uzumOrdersPage() {
 
             this.cancelingOrder = true;
             try {
-                const res = await fetch(`/api/marketplace/orders/${this.orderToCancel.id}/cancel`, {
-                    method: 'POST',
-                    headers: this.getAuthHeaders()
+                const res = await this.authFetch(`/api/marketplace/orders/${this.orderToCancel.id}/cancel`, {
+                    method: 'POST'
                 });
 
                 if (res.ok) {
@@ -1627,10 +1647,18 @@ function uzumOrdersPWA() {
             return filtered;
         },
 
+        getAuthHeaders() {
+            const token = window.Alpine?.store('auth')?.token || localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+            return token ? { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } : { 'Accept': 'application/json' };
+        },
+
         async loadOrders() {
             this.loading = true;
             try {
-                const response = await fetch(`/api/uzum/orders?account_id=${this.accountId}`);
+                const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
+                const response = await fetch(`/api/marketplace/orders?company_id=${companyId}&marketplace_account_id=${this.accountId}`, {
+                    headers: this.getAuthHeaders()
+                });
                 const data = await response.json();
                 this.orders = data.orders || data.data || [];
             } catch (error) {
@@ -1786,13 +1814,13 @@ function uzumOrdersPWA() {
             if (!order || this.actionLoading) return;
             this.actionLoading = true;
             try {
-                const response = await fetch(`/api/uzum/orders/${order.id}/confirm`, {
+                const response = await fetch(`/api/marketplace/orders/${order.id}/confirm`, {
                     method: 'POST',
                     headers: {
+                        ...this.getAuthHeaders(),
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                    },
-                    body: JSON.stringify({ account_id: this.accountId })
+                    }
                 });
                 const data = await response.json();
                 if (data.success || response.ok) {
@@ -1811,31 +1839,9 @@ function uzumOrdersPWA() {
         },
 
         async markAssembled(order) {
-            if (!order || this.actionLoading) return;
-            this.actionLoading = true;
-            try {
-                const response = await fetch(`/api/uzum/orders/${order.id}/assembled`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                    },
-                    body: JSON.stringify({ account_id: this.accountId })
-                });
-                const data = await response.json();
-                if (data.success || response.ok) {
-                    this.showToast('Заказ собран', 'success');
-                    await this.loadOrders();
-                    this.closeBottomSheet();
-                } else {
-                    throw new Error(data.message || 'Ошибка');
-                }
-            } catch (error) {
-                console.error('Assembled error:', error);
-                this.showToast(error.message || 'Ошибка', 'error');
-            } finally {
-                this.actionLoading = false;
-            }
+            // Note: markAssembled not implemented in API yet - confirm handles the transition to in_assembly
+            // For now, just show a message
+            this.showToast('Функция в разработке', 'info');
         },
 
         async cancelOrder(order) {
@@ -1844,13 +1850,13 @@ function uzumOrdersPWA() {
 
             this.actionLoading = true;
             try {
-                const response = await fetch(`/api/uzum/orders/${order.id}/cancel`, {
+                const response = await fetch(`/api/marketplace/orders/${order.id}/cancel`, {
                     method: 'POST',
                     headers: {
+                        ...this.getAuthHeaders(),
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                    },
-                    body: JSON.stringify({ account_id: this.accountId })
+                    }
                 });
                 const data = await response.json();
                 if (data.success || response.ok) {

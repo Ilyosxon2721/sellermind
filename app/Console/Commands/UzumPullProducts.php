@@ -37,6 +37,16 @@ class UzumPullProducts extends Command
         foreach ($result['shops'] as $shopId) {
             $this->line("  - Shop ID: {$shopId}");
         }
+
+        // Show failed shops if any
+        $failedShops = $result['failed_shops'] ?? [];
+        if (!empty($failedShops)) {
+            $this->warn("Пропущено магазинов (нет доступа): " . count($failedShops));
+            foreach ($failedShops as $shopId) {
+                $this->line("  - Shop ID: {$shopId} (403 Access Denied)");
+            }
+        }
+
         $this->info("Сохранено товаров: {$result['synced']}");
         $this->info("API запросов: {$result['requests']}");
 

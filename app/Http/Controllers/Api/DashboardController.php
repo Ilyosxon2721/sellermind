@@ -15,6 +15,7 @@ use App\Models\Review;
 use App\Models\Subscription;
 use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
+use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Models\WildberriesSupply;
 use App\Models\Warehouse\ChannelOrder;
@@ -1011,13 +1012,17 @@ class DashboardController extends Controller
         }
 
         // 4. Заказы требующие сборки (новые/в обработке)
-        // Uzum Finance Orders: PROCESSING = требует обработки
-        $newOrdersCount = UzumFinanceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->where('status', 'PROCESSING')
-            ->sum('amount')
-            + WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+        // Uzum FBS Orders: status = 'new' или 'in_assembly' (требуют обработки продавцом)
+        $uzumNewOrdersCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereIn('status', ['new', 'in_assembly'])
+            ->count();
+
+        // WB FBS Orders: status = 'new' (из wb_orders таблицы)
+        $wbNewOrdersCount = WbOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('status', 'new')
             ->count();
+
+        $newOrdersCount = $uzumNewOrdersCount + $wbNewOrdersCount;
 
         if ($newOrdersCount > 0) {
             $alerts[] = [

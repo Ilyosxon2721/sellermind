@@ -541,6 +541,18 @@ function marketplacePage() {
             return normalized ? normalized.toUpperCase().substring(0, 2) : '';
         },
 
+        getMarketplaceShortName(marketplace) {
+            const normalized = this.normalizeMarketplace(marketplace);
+            const shortNames = { 'wb': 'WB', 'ozon': 'OZ', 'uzum': 'U', 'ym': 'YM' };
+            return shortNames[normalized] || normalized.charAt(0).toUpperCase();
+        },
+
+        getMarketplaceDisplayName(marketplace) {
+            const normalized = this.normalizeMarketplace(marketplace);
+            const names = { 'wb': 'Wildberries', 'ozon': 'Ozon', 'uzum': 'Uzum', 'ym': 'Yandex Market' };
+            return names[normalized] || normalized;
+        },
+
         getMarketplaceList() {
             const source = Object.keys(this.availableMarketplaces || {}).length
                 ? this.availableMarketplaces
@@ -915,21 +927,21 @@ function marketplacePage() {
                 <div class="native-card native-pressable" @click="window.location.href = `/marketplace/${account.id}`">
                     <div class="flex items-center space-x-3">
                         <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
-                            'bg-blue-100': account.marketplace === 'uzum',
-                            'bg-purple-100': account.marketplace === 'wildberries',
-                            'bg-blue-100': account.marketplace === 'ozon',
-                            'bg-red-100': account.marketplace === 'yandex_market'
+                            'bg-indigo-100': normalizeMarketplace(account.marketplace) === 'uzum',
+                            'bg-purple-100': normalizeMarketplace(account.marketplace) === 'wb',
+                            'bg-blue-100': normalizeMarketplace(account.marketplace) === 'ozon',
+                            'bg-yellow-100': normalizeMarketplace(account.marketplace) === 'ym'
                         }">
                             <span class="text-xl font-bold" :class="{
-                                'text-blue-600': account.marketplace === 'uzum',
-                                'text-purple-600': account.marketplace === 'wildberries',
-                                'text-blue-600': account.marketplace === 'ozon',
-                                'text-red-600': account.marketplace === 'yandex_market'
-                            }" x-text="account.marketplace.charAt(0).toUpperCase()"></span>
+                                'text-indigo-600': normalizeMarketplace(account.marketplace) === 'uzum',
+                                'text-purple-600': normalizeMarketplace(account.marketplace) === 'wb',
+                                'text-blue-600': normalizeMarketplace(account.marketplace) === 'ozon',
+                                'text-yellow-600': normalizeMarketplace(account.marketplace) === 'ym'
+                            }" x-text="getMarketplaceShortName(account.marketplace)"></span>
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="native-body font-semibold truncate" x-text="account.name"></p>
-                            <p class="native-caption capitalize" x-text="account.marketplace.replace('_', ' ')"></p>
+                            <p class="native-caption capitalize" x-text="getMarketplaceDisplayName(account.marketplace)"></p>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="w-2.5 h-2.5 rounded-full" :class="account.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
@@ -945,16 +957,28 @@ function marketplacePage() {
             <p class="native-caption px-2 mb-2">ДОСТУПНЫЕ МАРКЕТПЛЕЙСЫ</p>
             <div class="grid grid-cols-2 gap-3">
                 <button @click="selectedMarketplace = 'uzum'; showConnectModal = true" class="native-card native-pressable text-center py-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                        <span class="text-xl font-bold text-blue-600">U</span>
+                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <span class="text-xl font-bold text-indigo-600">U</span>
                     </div>
                     <p class="native-body font-semibold">Uzum</p>
                 </button>
-                <button @click="selectedMarketplace = 'wildberries'; showConnectModal = true" class="native-card native-pressable text-center py-4">
+                <button @click="selectedMarketplace = 'wb'; showConnectModal = true" class="native-card native-pressable text-center py-4">
                     <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                        <span class="text-xl font-bold text-purple-600">W</span>
+                        <span class="text-xl font-bold text-purple-600">WB</span>
                     </div>
                     <p class="native-body font-semibold">Wildberries</p>
+                </button>
+                <button @click="selectedMarketplace = 'ozon'; showConnectModal = true" class="native-card native-pressable text-center py-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <span class="text-xl font-bold text-blue-600">OZ</span>
+                    </div>
+                    <p class="native-body font-semibold">Ozon</p>
+                </button>
+                <button @click="selectedMarketplace = 'ym'; showConnectModal = true" class="native-card native-pressable text-center py-4">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-2">
+                        <span class="text-xl font-bold text-yellow-600">YM</span>
+                    </div>
+                    <p class="native-body font-semibold">Yandex Market</p>
                 </button>
             </div>
         </div>

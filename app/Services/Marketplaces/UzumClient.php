@@ -70,6 +70,8 @@ class UzumClient implements MarketplaceClientInterface
         $created = 0;
         $updated = 0;
         $requests = 0;
+        $successfulShops = [];
+        $failedShops = [];
 
         Log::info('Uzum syncCatalog starting', [
             'account_id' => $account->id,
@@ -78,51 +80,88 @@ class UzumClient implements MarketplaceClientInterface
 
         foreach ($shopIds as $shopId) {
             $page = 0;
-            do {
-                Log::info('Uzum syncCatalog fetching page', [
-                    'shop_id' => $shopId,
-                    'page' => $page,
-                ]);
+            $shopSynced = 0;
 
-                // Rate limit protection - delay between requests
-                if ($requests > 0) {
-                    usleep(500000); // 500ms delay between requests
-                }
-
-                // Retry logic for rate limiting
-                $response = $this->requestWithRetry(
-                    $account,
-                    'GET',
-                    "/v1/product/shop/{$shopId}",
-                    [
-                        'sortBy' => 'DEFAULT',
-                        'order' => 'ASC',
-                        'size' => 100,
+            try {
+                do {
+                    Log::info('Uzum syncCatalog fetching page', [
+                        'shop_id' => $shopId,
                         'page' => $page,
-                        'filter' => 'ALL',
-                    ]
-                );
-                $requests++;
+                    ]);
 
-                $list = $response['payload']['productList'] ?? $response['productList'] ?? [];
+                    // Rate limit protection - delay between requests
+                    if ($requests > 0) {
+                        usleep(500000); // 500ms delay between requests
+                    }
 
-                Log::info('Uzum syncCatalog response', [
+                    // Retry logic for rate limiting
+                    $response = $this->requestWithRetry(
+                        $account,
+                        'GET',
+                        "/v1/product/shop/{$shopId}",
+                        [
+                            'sortBy' => 'DEFAULT',
+                            'order' => 'ASC',
+                            'size' => 100,
+                            'page' => $page,
+                            'filter' => 'ALL',
+                        ]
+                    );
+                    $requests++;
+
+                    $list = $response['payload']['productList'] ?? $response['productList'] ?? [];
+
+                    Log::info('Uzum syncCatalog response', [
+                        'shop_id' => $shopId,
+                        'page' => $page,
+                        'products_count' => count($list),
+                        'response_keys' => array_keys($response),
+                    ]);
+
+                    foreach ($list as $product) {
+                        $this->storeProduct($account, $shopId, $product);
+                        $synced++;
+                        $shopSynced++;
+                    }
+
+                    $page++;
+                } while (!empty($list));
+
+                $successfulShops[] = $shopId;
+                Log::info('Uzum syncCatalog shop completed', [
+                    'account_id' => $account->id,
                     'shop_id' => $shopId,
-                    'page' => $page,
-                    'products_count' => count($list),
-                    'response_keys' => array_keys($response),
+                    'products_synced' => $shopSynced,
                 ]);
-
-                foreach ($list as $product) {
-                    $this->storeProduct($account, $shopId, $product);
-                    $synced++;
+            } catch (\RuntimeException $e) {
+                // If 403 Access Denied for this shop, skip it and continue with others
+                if (str_contains($e->getMessage(), 'Доступ запрещён') || str_contains($e->getMessage(), '403')) {
+                    Log::warning('Uzum syncCatalog: skipping shop due to access denied', [
+                        'account_id' => $account->id,
+                        'shop_id' => $shopId,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $failedShops[] = $shopId;
+                    continue; // Skip this shop, try next one
                 }
-
-                $page++;
-            } while (!empty($list));
+                // Re-throw other errors
+                throw $e;
+            }
         }
 
-        return ['synced' => $synced, 'created' => $created, 'updated' => $updated, 'shops' => $shopIds, 'requests' => $requests];
+        // If all shops failed, throw error
+        if (empty($successfulShops) && !empty($failedShops)) {
+            throw new \RuntimeException('Доступ запрещён ко всем магазинам. Проверьте, что токен Uzum активен и имеет доступ к магазинам: ' . implode(', ', $failedShops));
+        }
+
+        return [
+            'synced' => $synced,
+            'created' => $created,
+            'updated' => $updated,
+            'shops' => $successfulShops,
+            'failed_shops' => $failedShops,
+            'requests' => $requests,
+        ];
     }
 
     /**
