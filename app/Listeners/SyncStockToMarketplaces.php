@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  */
 class SyncStockToMarketplaces implements ShouldQueue
 {
-    public $queue = 'stock-sync';
+    public $queue = 'marketplace-sync';
     
     public function __construct(
         protected StockSyncService $stockSyncService
