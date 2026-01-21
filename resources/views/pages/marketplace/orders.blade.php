@@ -37,6 +37,8 @@
         lastDataChange: null,
         dataChangeNotifications: [],
         wsConnectedFlag: false,
+        _wsDebounceTimer: null,
+        _lastWsEventTime: 0,
 @php
 $__uzumShopsJson = ($uzumShops ?? collect())
     ->map(fn($s) => [
@@ -400,24 +402,39 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              window.addEventListener('websocket:message', (e) => {
                  const { channel, event, data } = e.detail;
 
-                // Обрабатываем событие обновления заказов
+                // Обрабатываем событие обновления заказов с дебаунсингом
                 if (event === 'orders.updated' || (event === 'data.changed' && data && data.data_type === 'orders')) {
-                    console.log('📦 Orders updated:', data);
-
-                    const newOrdersCount = (data && typeof data.new_orders_count !== 'undefined')
-                        ? data.new_orders_count
-                        : (data && data.metadata && typeof data.metadata.new_orders_count !== 'undefined'
-                            ? data.metadata.new_orders_count
-                            : (data && typeof data.affected_count !== 'undefined' ? data.affected_count : 0));
-
-                    // Обновляем только если есть изменения
-                    if (newOrdersCount > 0 || (data && data.change_type === 'updated')) {
-                        this.loadOrders(true);
-                        this.loadStats();
-                        if (newOrdersCount > 0) {
-                            this.showNotification('Получено ' + newOrdersCount + ' новых заказов');
-                        }
+                    // Дебаунсинг: игнорируем события чаще чем раз в 3 секунды
+                    const now = Date.now();
+                    if (now - this._lastWsEventTime < 3000) {
+                        return; // Игнорируем частые события
                     }
+
+                    // Отменяем предыдущий таймер если есть
+                    if (this._wsDebounceTimer) {
+                        clearTimeout(this._wsDebounceTimer);
+                    }
+
+                    // Устанавливаем новый таймер с задержкой 500мс
+                    this._wsDebounceTimer = setTimeout(() => {
+                        this._lastWsEventTime = Date.now();
+                        console.log('📦 Orders updated (debounced):', data);
+
+                        const newOrdersCount = (data && typeof data.new_orders_count !== 'undefined')
+                            ? data.new_orders_count
+                            : (data && data.metadata && typeof data.metadata.new_orders_count !== 'undefined'
+                                ? data.metadata.new_orders_count
+                                : (data && typeof data.affected_count !== 'undefined' ? data.affected_count : 0));
+
+                        // Обновляем только если есть изменения
+                        if (newOrdersCount > 0 || (data && data.change_type === 'updated')) {
+                            this.loadOrders(true);
+                            this.loadStats();
+                            if (newOrdersCount > 0) {
+                                this.showNotification('Получено ' + newOrdersCount + ' новых заказов');
+                            }
+                        }
+                    }, 500);
                 }
 
                  // Обрабатываем событие прогресса синхронизации
@@ -1653,18 +1670,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
          },
         get filteredOrders() {
             const baseFiltered = this.baseFiltered;
-
-            // DEBUG: подсчитываем заказы по статусам
-            if (this.accountMarketplace === 'wb' && !this._debugStatusCounted) {
-                this._debugStatusCounted = true;
-                const statusCounts = {};
-                baseFiltered.forEach(order => {
-                    const st = this.normalizeStatus(order);
-                    statusCounts[st] = (statusCounts[st] || 0) + 1;
-                });
-                console.log('WB Orders status counts:', statusCounts);
-                console.log('Total WB orders:', baseFiltered.length);
-            }
 
            // Карта статусов для фильтрации по вкладкам
             const statusMap = this.accountMarketplace === 'uzum'
