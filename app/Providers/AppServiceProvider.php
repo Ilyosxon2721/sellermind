@@ -35,7 +35,11 @@ class AppServiceProvider extends ServiceProvider
     {
         // Configure API rate limiting for Sanctum
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            // Higher limit for marketplace API endpoints (orders, stats, supplies)
+            if (str_contains($request->path(), 'marketplace/')) {
+                return Limit::perMinute(300)->by($request->user()?->id ?: $request->ip());
+            }
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
         // Register observers

@@ -525,38 +525,79 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  });
              }
          },
+        _loadOrdersInProgress: false,
+        _loadOrdersRetryCount: 0,
         async loadOrders(silent = false) {
-            if (!silent) this.loading = true;
-            let url = '/api/marketplace/orders?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
-            // Всегда грузим все статусы/даты, фильтруем на клиенте
-            if (this.dateFrom) url += '&from=' + this.dateFrom;
-            if (this.dateTo) url += '&to=' + this.dateTo;
-            if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
-
-            const res = await fetch(url, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.orders = (data.orders || []).map(o => {
-                    // Для Uzum используем фактическую дату из API без преобразований
-                    if (this.accountMarketplace === 'uzum' && o.raw_payload?.dateCreated) {
-                        o.ordered_at = o.raw_payload.dateCreated;
-                    }
-                    return o;
-                });
-            } else if (res.status === 401) {
-                window.location.href = '/login';
+            // Prevent concurrent requests
+            if (this._loadOrdersInProgress) {
+                console.log('loadOrders already in progress, skipping');
+                return;
             }
-            if (!silent) this.loading = false;
-        },
-        async loadStats() {
-            let url = '/api/marketplace/orders/stats?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
-            if (this.dateFrom) url += '&from=' + this.dateFrom;
-            if (this.dateTo) url += '&to=' + this.dateTo;
-            if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+            this._loadOrdersInProgress = true;
+            if (!silent) this.loading = true;
 
-            const res = await fetch(url, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                this.stats = await res.json();
+            try {
+                let url = '/api/marketplace/orders?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+                // Всегда грузим все статусы/даты, фильтруем на клиенте
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.orders = (data.orders || []).map(o => {
+                        // Для Uzum используем фактическую дату из API без преобразований
+                        if (this.accountMarketplace === 'uzum' && o.raw_payload?.dateCreated) {
+                            o.ordered_at = o.raw_payload.dateCreated;
+                        }
+                        return o;
+                    });
+                    this._loadOrdersRetryCount = 0; // Reset retry count on success
+                } else if (res.status === 401) {
+                    window.location.href = '/login';
+                } else if (res.status === 429) {
+                    // Rate limited - wait and don't retry immediately
+                    console.warn('Rate limited (429), waiting before retry...');
+                    this._loadOrdersRetryCount++;
+                    if (this._loadOrdersRetryCount < 3) {
+                        await new Promise(r => setTimeout(r, 5000 * this._loadOrdersRetryCount)); // Wait 5s, 10s, 15s
+                    }
+                } else {
+                    console.error('loadOrders failed with status:', res.status);
+                }
+            } catch (error) {
+                console.error('loadOrders error:', error);
+            } finally {
+                this._loadOrdersInProgress = false;
+                if (!silent) this.loading = false;
+            }
+        },
+        _loadStatsInProgress: false,
+        async loadStats() {
+            // Prevent concurrent requests
+            if (this._loadStatsInProgress) {
+                console.log('loadStats already in progress, skipping');
+                return;
+            }
+            this._loadStatsInProgress = true;
+
+            try {
+                let url = '/api/marketplace/orders/stats?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.stats = await res.json();
+                } else if (res.status === 429) {
+                    console.warn('loadStats rate limited (429)');
+                }
+            } catch (error) {
+                console.error('loadStats error:', error);
+            } finally {
+                this._loadStatsInProgress = false;
             }
          },
          // ========== Tares (Boxes) Management ==========
