@@ -1521,11 +1521,19 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 }
                 return mapped;
             }
-            // Wildberries: мапим wb_status_group / wb_status / status в нормализованные вкладки
+            // Wildberries: приоритет - статус из БД, затем wb_status_group, затем wb_status
             if (this.accountMarketplace === 'wb') {
+                const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
+                const validStatuses = ['new', 'in_assembly', 'in_delivery', 'completed', 'cancelled'];
+
+                // Если в БД уже есть валидный статус - используем его (приоритет БД)
+                if (validStatuses.includes(dbStatus)) {
+                    return dbStatus;
+                }
+
+                // Иначе мапим из wb_status_group / wb_status
                 const group = (order.wb_status_group || '').toString().toLowerCase();
                 const wbStatus = (order.wb_status || '').toString().toLowerCase();
-                const status = (order.status || '').toString().toLowerCase();
                 const mapGroup = {
                     'new': 'new',
                     'assembling': 'in_assembly',
@@ -1545,100 +1553,45 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'canceled': 'cancelled',
                     'cancelled': 'cancelled',
                 };
-                const mapped = mapGroup[group] || mapStatus[wbStatus] || mapStatus[status] || null;
+                const mapped = mapGroup[group] || mapStatus[wbStatus] || null;
                 if (mapped) {
                     order.status_normalized = mapped;
                     return mapped;
                 }
             }
+            // Fallback: если статус уже установлен, возвращаем его
             if (order.status_normalized) return order.status_normalized;
-            // Учитываем статус поставки, если заказ привязан
-            const supply = this.supplies.find(s =>
-                s.external_supply_id === order.supply_id ||
-                s.id === order.supply_id ||
-                ('SUPPLY-' + s.id) === order.supply_id
-            );
-            if (supply) {
-                if (supply.status === 'sent') {
-                    order.status_normalized = 'in_delivery';
-                    return order.status_normalized;
+
+            // Для WB: учитываем статус поставки как дополнительный fallback
+            if (this.accountMarketplace === 'wb') {
+                // Учитываем статус поставки, если заказ привязан
+                const supply = this.supplies.find(s =>
+                    s.external_supply_id === order.supply_id ||
+                    s.id === order.supply_id ||
+                    ('SUPPLY-' + s.id) === order.supply_id
+                );
+                if (supply) {
+                    if (supply.status === 'sent') {
+                        order.status_normalized = 'in_delivery';
+                        return order.status_normalized;
+                    }
+                    if (supply.status === 'delivered') {
+                        order.status_normalized = 'completed';
+                        return order.status_normalized;
+                    }
+                    if (supply.status === 'ready' || supply.status === 'in_assembly' || supply.status === 'draft') {
+                        order.status_normalized = 'in_assembly';
+                        return order.status_normalized;
+                    }
                 }
-                if (supply.status === 'delivered') {
-                    order.status_normalized = 'completed';
-                    return order.status_normalized;
-                }
-                if (supply.status === 'ready' || supply.status === 'in_assembly' || supply.status === 'draft') {
+                // Принудительно считаем заказы в поставке 'На сборке'
+                if ((order.supply_id || order.supplyId) && (order.status === 'new' || !order.status)) {
                     order.status_normalized = 'in_assembly';
                     return order.status_normalized;
                 }
             }
-            // Принудительно считаем заказы в поставке 'На сборке'
-            if ((order.supply_id || order.supplyId) && (order.status === 'new' || !order.status)) {
-                order.status_normalized = 'in_assembly';
-                return order.status_normalized;
-            }
-            // Статусы WB сортировки
-            const wbStatus = (order.wb_status || '').toLowerCase();
-            if ((order.supply_id || order.supplyId) || wbStatus === 'sort' || wbStatus === 'sorted') {
-                order.status_normalized = 'in_assembly';
-                return order.status_normalized;
-            }
 
-            // WB групповый статус из базы (assembling/shipping/canceled)
-            const group = (order.wb_status_group || '').toLowerCase();
-            if (group) {
-                const groupMap = {
-                    'assembling': 'in_assembly',
-                    'shipping': 'in_delivery',
-                    'archive': 'completed',
-                    'canceled': 'cancelled',
-                };
-                if (groupMap[group]) {
-                    order.status_normalized = groupMap[group];
-                    return order.status_normalized;
-                }
-            }
-            const fromOrder = order.status;
-            if (fromOrder) {
-                order.status_normalized = fromOrder;
-                return order.status_normalized;
-            }
-            const supplier = (order.wb_supplier_status || '').toLowerCase();
-            if (supplier) {
-                const map = {
-                    'new': 'new',
-                     'confirm': 'in_assembly',
-                     'complete': 'in_delivery',
-                     'receive': 'completed',
-                     'cancel': 'cancelled',
-                     'reject': 'cancelled'
-                 };
-                 if (map[supplier]) {
-                     order.status_normalized = map[supplier];
-                     return map[supplier];
-                 }
-             }
-            const wb = (order.wb_status || '').toLowerCase();
-            if (wb) {
-                const map = {
-                    'waiting': 'new',
-                    'sorted': 'in_assembly',
-                    'sold': 'completed',
-                    'sold_from_store': 'completed',
-                    'ready_for_pickup': 'in_delivery',
-                    'on_way_to_client': 'in_delivery',
-                    'on_way_from_client': 'in_delivery',
-                    'delivered': 'completed',
-                    'canceled': 'cancelled',
-                     'canceled_by_client': 'cancelled',
-                     'defect': 'cancelled'
-                 };
-                 if (map[wb]) {
-                     order.status_normalized = map[wb];
-                     return map[wb];
-                 }
-             }
-             return null;
+            return null;
          },
         get filteredOrders() {
             const baseFiltered = this.baseFiltered;
