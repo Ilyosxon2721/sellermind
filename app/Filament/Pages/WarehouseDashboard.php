@@ -33,14 +33,14 @@ class WarehouseDashboard extends Page
         return __('filament.pages.warehouse_dashboard.title');
     }
 
-    protected function getHeaderWidgets(): array
+    public function getHeaderWidgets(): array
     {
         return [
             WarehouseStatsOverview::class,
         ];
     }
 
-    protected function getFooterWidgets(): array
+    public function getFooterWidgets(): array
     {
         return [
             LowStockAlerts::class,
@@ -49,12 +49,12 @@ class WarehouseDashboard extends Page
         ];
     }
 
-    protected function getHeaderWidgetsColumns(): int|array
+    public function getHeaderWidgetsColumns(): int|array
     {
         return 1;
     }
 
-    protected function getFooterWidgetsColumns(): int|array
+    public function getFooterWidgetsColumns(): int|array
     {
         return [
             'default' => 1,
