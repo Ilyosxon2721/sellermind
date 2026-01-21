@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Events\MarketplaceOrdersUpdated;
+use App\Events\StockUpdated;
 use App\Models\OzonOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
@@ -122,6 +123,9 @@ class OzonOrderObserver
             // Create ledger entry for warehouse system
             $this->updateWarehouseStock($link->variant, -$quantity, $order, 'OZON_ORDER');
 
+            // Fire StockUpdated event to sync to OTHER marketplaces
+            event(new StockUpdated($link->variant, $oldStock, $newStock));
+
             Log::info('Internal stock reduced for Ozon order', [
                 'order_id' => $order->posting_number,
                 'variant_id' => $link->variant->id,
@@ -165,6 +169,9 @@ class OzonOrderObserver
 
             // Create ledger entry for warehouse system
             $this->updateWarehouseStock($link->variant, $quantity, $order, 'OZON_ORDER_CANCEL');
+
+            // Fire StockUpdated event to sync to OTHER marketplaces
+            event(new StockUpdated($link->variant, $oldStock, $newStock));
 
             Log::info('Internal stock returned for cancelled Ozon order', [
                 'order_id' => $order->posting_number,

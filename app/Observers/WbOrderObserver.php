@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Events\MarketplaceOrdersUpdated;
+use App\Events\StockUpdated;
 use App\Models\WbOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
@@ -129,6 +130,10 @@ class WbOrderObserver
         // Create ledger entry for warehouse system
         $this->updateWarehouseStock($link->variant, -$quantity, $order, 'WB_ORDER');
 
+        // Fire StockUpdated event to sync to OTHER marketplaces
+        // (saveQuietly bypasses observer, so we need to dispatch manually)
+        event(new StockUpdated($link->variant, $oldStock, $newStock));
+
         Log::info('Internal stock reduced for WB order', [
             'order_id' => $order->external_order_id,
             'variant_id' => $link->variant->id,
@@ -173,6 +178,9 @@ class WbOrderObserver
 
         // Create ledger entry for warehouse system
         $this->updateWarehouseStock($link->variant, $quantity, $order, 'WB_ORDER_CANCEL');
+
+        // Fire StockUpdated event to sync to OTHER marketplaces
+        event(new StockUpdated($link->variant, $oldStock, $newStock));
 
         Log::info('Internal stock returned for cancelled WB order', [
             'order_id' => $order->external_order_id,

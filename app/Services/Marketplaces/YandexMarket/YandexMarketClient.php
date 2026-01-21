@@ -2,6 +2,7 @@
 
 namespace App\Services\Marketplaces\YandexMarket;
 
+use App\Events\StockUpdated;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\Warehouse\Sku;
@@ -606,10 +607,14 @@ class YandexMarketClient implements MarketplaceClientInterface
                     $qtyDelta = $count;
                     $sourceType = 'YM_ORDER_CANCEL';
                 }
+                $newStock = $link->variant->stock_default;
                 $link->variant->saveQuietly();
 
                 // Create ledger entry for warehouse system
                 $this->updateWarehouseStock($link->variant, $qtyDelta, $sourceType, $offerId);
+
+                // Fire StockUpdated event to sync to OTHER marketplaces
+                event(new StockUpdated($link->variant, $oldStock, $newStock));
             }
         }
     }

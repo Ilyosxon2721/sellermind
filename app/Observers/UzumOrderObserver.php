@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Events\StockUpdated;
 use App\Events\UzumOrderUpdated;
 use App\Models\UzumOrder;
 use App\Models\VariantMarketplaceLink;
@@ -106,6 +107,10 @@ class UzumOrderObserver
 
             // Create ledger entry for warehouse system
             $this->reduceWarehouseStock($link->variant, $item->quantity, $order);
+
+            // Fire StockUpdated event to sync to OTHER marketplaces
+            // (saveQuietly bypasses observer, so we need to dispatch manually)
+            event(new StockUpdated($link->variant, $oldStock, $newStock));
 
             Log::info('Internal stock reduced for Uzum order', [
                 'order_id' => $order->external_order_id,
