@@ -1526,6 +1526,22 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
                 const validStatuses = ['new', 'in_assembly', 'in_delivery', 'completed', 'cancelled'];
 
+                // DEBUG: логируем первые 5 заказов
+                if (!window._wbDebugCount) window._wbDebugCount = 0;
+                if (window._wbDebugCount < 5) {
+                    console.log('WB Order debug:', {
+                        id: order.id,
+                        external_order_id: order.external_order_id,
+                        status: order.status,
+                        status_normalized: order.status_normalized,
+                        wb_status_group: order.wb_status_group,
+                        wb_status: order.wb_status,
+                        dbStatus: dbStatus,
+                        validStatusMatch: validStatuses.includes(dbStatus)
+                    });
+                    window._wbDebugCount++;
+                }
+
                 // Если в БД уже есть валидный статус - используем его (приоритет БД)
                 if (validStatuses.includes(dbStatus)) {
                     return dbStatus;
@@ -1595,6 +1611,19 @@ $__uzumShopsJson = ($uzumShops ?? collect())
          },
         get filteredOrders() {
             const baseFiltered = this.baseFiltered;
+
+            // DEBUG: подсчитываем заказы по статусам
+            if (this.accountMarketplace === 'wb' && !this._debugStatusCounted) {
+                this._debugStatusCounted = true;
+                const statusCounts = {};
+                baseFiltered.forEach(order => {
+                    const st = this.normalizeStatus(order);
+                    statusCounts[st] = (statusCounts[st] || 0) + 1;
+                });
+                console.log('WB Orders status counts:', statusCounts);
+                console.log('Total WB orders:', baseFiltered.length);
+            }
+
            // Карта статусов для фильтрации по вкладкам
             const statusMap = this.accountMarketplace === 'uzum'
                 ? {
