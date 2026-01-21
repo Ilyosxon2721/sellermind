@@ -60,7 +60,7 @@ class WbOrderObserver
             broadcast(new MarketplaceOrdersUpdated(
                 $wbOrder->account?->company_id ?? 0,
                 $wbOrder->marketplace_account_id,
-                'wb'
+                1 // newOrdersCount
             ))->toOthers();
         } catch (\Exception $e) {
             Log::debug('WbOrderObserver broadcast failed', [

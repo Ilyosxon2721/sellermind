@@ -656,119 +656,221 @@ class MarketplaceOrderController extends Controller
      */
     private function loadWbOrders(Request $request, MarketplaceAccount $account): array
     {
-        $query = \App\Models\WildberriesOrder::query()->where('marketplace_account_id', $account->id);
+        // Определяем источник данных: wb_orders для активных заказов FBS/DBS, wildberries_orders для архива
+        $statusFilter = $request->status;
 
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-        if ($request->from) {
-            $query->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
-        }
-        if ($request->to) {
-            $query->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
-        }
+        // Для активных заказов (new, assembling, shipping) используем wb_orders (Marketplace API)
+        // Для архива и отменённых используем wildberries_orders (Statistics API)
+        $activeStatuses = ['new', 'in_assembly', 'in_delivery', 'assembling', 'shipping'];
+        $useWbOrders = !$statusFilter || in_array($statusFilter, $activeStatuses);
 
-        $orders = $query->orderByDesc('order_date')->limit(1000)->get();
+        $orders = collect();
 
-        return $orders->map(function ($o) {
-            // Получаем данные из raw_data
-            $rawData = $o->raw_data ?? [];
-            $brand = $o->brand ?? $rawData['brand'] ?? null;
-            $productName = $o->subject ?? $rawData['subject'] ?? null;
-            $characteristics = $o->tech_size ?? null;
+        // 1. Загружаем из wb_orders (активные FBS/DBS заказы)
+        if ($useWbOrders) {
+            $wbQuery = \App\Models\WbOrder::query()->where('marketplace_account_id', $account->id);
 
-            // Формируем метаинформацию
-            $meta = array_filter([$brand, $o->supplier_article, $characteristics], function($value) {
-                return !empty($value) && trim($value) !== '';
-            });
-            $metaString = implode(' - ', $meta);
-
-            // Генерируем URL фото по nm_id
-            $photoUrl = null;
-            if ($o->nm_id) {
-                $vol = intval($o->nm_id / 100000);
-                $part = intval($o->nm_id / 1000);
-                $host = match(true) {
-                    $vol <= 143 => '01',
-                    $vol <= 287 => '02',
-                    $vol <= 431 => '03',
-                    $vol <= 719 => '04',
-                    $vol <= 1007 => '05',
-                    $vol <= 1061 => '06',
-                    $vol <= 1115 => '07',
-                    $vol <= 1169 => '08',
-                    $vol <= 1313 => '09',
-                    $vol <= 1601 => '10',
-                    $vol <= 1655 => '11',
-                    $vol <= 1919 => '12',
-                    $vol <= 2045 => '13',
-                    $vol <= 2189 => '14',
-                    $vol <= 2405 => '15',
-                    $vol <= 2621 => '16',
-                    $vol <= 2837 => '17',
-                    default => '18',
-                };
-                $photoUrl = "https://basket-{$host}.wbbasket.ru/vol{$vol}/part{$part}/{$o->nm_id}/images/c246x328/1.webp";
+            if ($statusFilter && in_array($statusFilter, $activeStatuses)) {
+                $wbQuery->where('wb_status_group', $statusFilter);
+            }
+            if ($request->from) {
+                $wbQuery->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay());
+            }
+            if ($request->to) {
+                $wbQuery->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
             }
 
-            return [
-                // Основные поля для списка
-                'id' => $o->id,
-                'marketplace_account_id' => $o->marketplace_account_id,
-                'external_order_id' => $o->order_id ?? $o->srid,
+            $wbOrders = $wbQuery->orderByDesc('ordered_at')->limit(500)->get();
 
-                // Информация о товаре
-                'photo_url' => $photoUrl,
-                'article' => $o->supplier_article,
-                'product_name' => $productName,
-                'meta_info' => $metaString,
-                'brand' => $brand,
-                'characteristics' => $characteristics,
+            $orders = $orders->concat($wbOrders->map(function ($o) {
+                return $this->mapWbOrderToResponse($o);
+            }));
+        }
 
-                // Идентификаторы
-                'nm_id' => $o->nm_id,
-                'sku' => $o->barcode,
+        // 2. Загружаем из wildberries_orders (архив, статистика)
+        if (!$statusFilter || in_array($statusFilter, ['archive', 'canceled', 'return'])) {
+            $statsQuery = \App\Models\WildberriesOrder::query()->where('marketplace_account_id', $account->id);
 
-                // Статусы
-                'status' => $o->status,
-                'status_normalized' => $o->status,
-                'wb_status_group' => $o->is_cancel ? 'canceled' : ($o->is_return ? 'return' : 'archive'),
+            if ($statusFilter === 'canceled') {
+                $statsQuery->where('is_cancel', true);
+            } elseif ($statusFilter === 'return') {
+                $statsQuery->where('is_return', true);
+            }
+            if ($request->from) {
+                $statsQuery->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
+            }
+            if ($request->to) {
+                $statsQuery->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
+            }
 
-                // Логистика
-                'supply_id' => $o->supply_id,
+            $statsOrders = $statsQuery->orderByDesc('order_date')->limit(500)->get();
 
-                // Финансы
-                'total_amount' => $o->total_price ?? $o->price,
-                'currency' => 'RUB',
+            $orders = $orders->concat($statsOrders->map(function ($o) {
+                return $this->mapWildberriesOrderToResponse($o);
+            }));
+        }
 
-                // Время
-                'ordered_at' => $o->order_date,
-                'time_elapsed' => $o->order_date ? $o->order_date->diffForHumans() : null,
+        // Сортируем по дате и убираем дубликаты по external_order_id
+        return $orders
+            ->unique('external_order_id')
+            ->sortByDesc('ordered_at')
+            ->take(1000)
+            ->values()
+            ->all();
+    }
 
-                // Дополнительные поля (для детального просмотра)
-                'details' => [
-                    'rid' => $o->rid,
-                    'srid' => $o->srid,
-                    'odid' => $o->odid,
-                    'wb_status' => $o->wb_status,
-                    'warehouse_name' => $o->warehouse_name,
-                    'warehouse_type' => $o->warehouse_type,
-                    'category' => $o->category,
-                    'region_name' => $o->region_name,
-                    'country_name' => $o->country_name,
-                    'price' => $o->price,
-                    'total_price' => $o->total_price,
-                    'finished_price' => $o->finished_price,
-                    'for_pay' => $o->for_pay,
-                    'discount_percent' => $o->discount_percent,
-                    'spp' => $o->spp,
-                    'is_cancel' => $o->is_cancel,
-                    'is_return' => $o->is_return,
-                    'cancel_date' => $o->cancel_date,
-                    'raw_data' => $o->raw_data,
-                ],
-            ];
-        })->all();
+    /**
+     * Map WbOrder (Marketplace API) to response format
+     */
+    private function mapWbOrderToResponse(\App\Models\WbOrder $o): array
+    {
+        $rawPayload = $o->raw_payload ?? [];
+        $brand = $rawPayload['brand'] ?? null;
+        $productName = $o->product_name;
+        $characteristics = $rawPayload['colorCode'] ?? null;
+
+        $meta = array_filter([$brand, $o->article, $characteristics], fn($v) => !empty($v));
+        $metaString = implode(' - ', $meta);
+
+        $photoUrl = $this->generateWbPhotoUrl($o->nm_id);
+
+        return [
+            'id' => $o->id,
+            'source' => 'wb_orders',
+            'marketplace_account_id' => $o->marketplace_account_id,
+            'external_order_id' => $o->external_order_id,
+            'photo_url' => $photoUrl ?? $o->photo_url,
+            'article' => $o->article,
+            'product_name' => $productName,
+            'meta_info' => $metaString,
+            'brand' => $brand,
+            'characteristics' => $characteristics,
+            'nm_id' => $o->nm_id,
+            'sku' => $rawPayload['skus'][0] ?? null,
+            'status' => $o->status,
+            'status_normalized' => $o->status_normalized,
+            'wb_status_group' => $o->wb_status_group,
+            'wb_status' => $o->wb_status,
+            'wb_supplier_status' => $o->wb_supplier_status,
+            'supply_id' => $o->supply_id,
+            'total_amount' => $o->total_amount,
+            'currency' => $o->currency ?? 'RUB',
+            'ordered_at' => $o->ordered_at,
+            'time_elapsed' => $o->ordered_at ? $o->ordered_at->diffForHumans() : null,
+            'details' => [
+                'rid' => $o->rid,
+                'order_uid' => $o->order_uid,
+                'warehouse_id' => $o->warehouse_id,
+                'wb_delivery_type' => $o->wb_delivery_type,
+                'cargo_type' => $o->cargo_type,
+                'price' => $o->price,
+                'scan_price' => $o->scan_price,
+                'raw_payload' => $rawPayload,
+            ],
+        ];
+    }
+
+    /**
+     * Map WildberriesOrder (Statistics API) to response format
+     */
+    private function mapWildberriesOrderToResponse(\App\Models\WildberriesOrder $o): array
+    {
+        $rawData = $o->raw_data ?? [];
+        $brand = $o->brand ?? $rawData['brand'] ?? null;
+        $productName = $o->subject ?? $rawData['subject'] ?? null;
+        $characteristics = $o->tech_size ?? null;
+
+        $meta = array_filter([$brand, $o->supplier_article, $characteristics], fn($v) => !empty($v));
+        $metaString = implode(' - ', $meta);
+
+        $photoUrl = $this->generateWbPhotoUrl($o->nm_id);
+
+        // Determine status group
+        $statusGroup = 'archive';
+        if ($o->is_cancel) {
+            $statusGroup = 'canceled';
+        } elseif ($o->is_return) {
+            $statusGroup = 'return';
+        }
+
+        return [
+            'id' => $o->id,
+            'source' => 'wildberries_orders',
+            'marketplace_account_id' => $o->marketplace_account_id,
+            'external_order_id' => $o->order_id ?? $o->srid,
+            'photo_url' => $photoUrl,
+            'article' => $o->supplier_article,
+            'product_name' => $productName,
+            'meta_info' => $metaString,
+            'brand' => $brand,
+            'characteristics' => $characteristics,
+            'nm_id' => $o->nm_id,
+            'sku' => $o->barcode,
+            'status' => $o->status,
+            'status_normalized' => $o->status,
+            'wb_status_group' => $statusGroup,
+            'wb_status' => $o->wb_status,
+            'supply_id' => $o->supply_id,
+            'total_amount' => $o->total_price ?? $o->price,
+            'currency' => 'RUB',
+            'ordered_at' => $o->order_date,
+            'time_elapsed' => $o->order_date ? $o->order_date->diffForHumans() : null,
+            'details' => [
+                'rid' => $o->rid,
+                'srid' => $o->srid,
+                'odid' => $o->odid,
+                'warehouse_name' => $o->warehouse_name,
+                'warehouse_type' => $o->warehouse_type,
+                'category' => $o->category,
+                'region_name' => $o->region_name,
+                'country_name' => $o->country_name,
+                'price' => $o->price,
+                'total_price' => $o->total_price,
+                'finished_price' => $o->finished_price,
+                'for_pay' => $o->for_pay,
+                'discount_percent' => $o->discount_percent,
+                'spp' => $o->spp,
+                'is_cancel' => $o->is_cancel,
+                'is_return' => $o->is_return,
+                'cancel_date' => $o->cancel_date,
+                'raw_data' => $rawData,
+            ],
+        ];
+    }
+
+    /**
+     * Generate WB product photo URL from nm_id
+     */
+    private function generateWbPhotoUrl(?int $nmId): ?string
+    {
+        if (!$nmId) {
+            return null;
+        }
+
+        $vol = intval($nmId / 100000);
+        $part = intval($nmId / 1000);
+        $host = match(true) {
+            $vol <= 143 => '01',
+            $vol <= 287 => '02',
+            $vol <= 431 => '03',
+            $vol <= 719 => '04',
+            $vol <= 1007 => '05',
+            $vol <= 1061 => '06',
+            $vol <= 1115 => '07',
+            $vol <= 1169 => '08',
+            $vol <= 1313 => '09',
+            $vol <= 1601 => '10',
+            $vol <= 1655 => '11',
+            $vol <= 1919 => '12',
+            $vol <= 2045 => '13',
+            $vol <= 2189 => '14',
+            $vol <= 2405 => '15',
+            $vol <= 2621 => '16',
+            $vol <= 2837 => '17',
+            default => '18',
+        };
+
+        return "https://basket-{$host}.wbbasket.ru/vol{$vol}/part{$part}/{$nmId}/images/c246x328/1.webp";
     }
 
     /**
