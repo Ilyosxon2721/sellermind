@@ -381,6 +381,7 @@ Route::middleware('auth.any')->group(function () {
         // Marketplace Orders
         Route::get('orders', [MarketplaceOrderController::class, 'index']);
         Route::get('orders/stats', [MarketplaceOrderController::class, 'stats']);
+        Route::get('orders/fbo', [MarketplaceOrderController::class, 'fboOrders']);
         Route::get('orders/new', [MarketplaceOrderController::class, 'getNew']);
         Route::post('orders/stickers', [MarketplaceOrderController::class, 'getStickers']);
         Route::get('orders/{order}', [MarketplaceOrderController::class, 'show']);

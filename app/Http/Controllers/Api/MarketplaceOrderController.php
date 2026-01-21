@@ -257,6 +257,157 @@ class MarketplaceOrderController extends Controller
     }
 
     /**
+     * Получить FBO заказы (Склад маркетплейса)
+     * GET /api/marketplace/orders/fbo
+     * WB: warehouse_type = 'Склад WB'
+     * Uzum: raw_payload.stock.poolSource = 'FULLFILMENT'
+     */
+    public function fboOrders(Request $request): JsonResponse
+    {
+        $request->validate([
+            'company_id' => ['required', 'exists:companies,id'],
+            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+
+        // WB FBO
+        if ($account->marketplace === 'wb') {
+            return $this->loadWbFboOrders($request, $account);
+        }
+
+        // Uzum FBO (Fulfillment)
+        if ($account->marketplace === 'uzum') {
+            return $this->loadUzumFboOrders($request, $account);
+        }
+
+        // Другие маркетплейсы - пустой ответ
+        return response()->json([
+            'orders' => [],
+            'stats' => ['total' => 0, 'by_status' => []],
+        ]);
+    }
+
+    /**
+     * Загрузить WB FBO заказы (Склад WB)
+     */
+    private function loadWbFboOrders(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        $query = \App\Models\WildberriesOrder::query()
+            ->where('marketplace_account_id', $account->id)
+            ->where('warehouse_type', 'Склад WB');
+
+        if ($request->from) {
+            $query->where('order_date', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('order_date', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        $fboOrders = $query->orderByDesc('order_date')->limit(1000)->get();
+        $orders = $fboOrders->map(fn($o) => $this->mapWildberriesOrderToResponse($o, 'fbo'))->values()->all();
+
+        $stats = [
+            'total' => count($orders),
+            'total_amount' => $fboOrders->sum('total_price'),
+            'by_status' => [
+                'completed' => $fboOrders->filter(fn($o) => !$o->is_cancel && !$o->is_return)->count(),
+                'cancelled' => $fboOrders->where('is_cancel', true)->count(),
+                'returned' => $fboOrders->where('is_return', true)->count(),
+            ],
+        ];
+
+        return response()->json(['orders' => $orders, 'stats' => $stats]);
+    }
+
+    /**
+     * Загрузить Uzum FBO заказы (Fulfillment - склад Uzum)
+     */
+    private function loadUzumFboOrders(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        $query = \App\Models\UzumOrder::query()
+            ->where('marketplace_account_id', $account->id)
+            ->whereNotNull('raw_payload');
+
+        if ($request->from) {
+            $query->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        // Фильтруем по poolSource = FULLFILMENT (FBO для Uzum)
+        $allOrders = $query->orderByDesc('ordered_at')->get();
+        $fboOrders = $allOrders->filter(function($order) {
+            return ($order->raw_payload['stock']['poolSource'] ?? '') === 'FULLFILMENT';
+        })->take(1000);
+
+        $orders = $fboOrders->map(fn($o) => $this->mapUzumOrderToFboResponse($o))->values()->all();
+
+        // Статистика
+        $stats = [
+            'total' => count($orders),
+            'total_amount' => $fboOrders->sum('total_amount'),
+            'by_status' => [
+                'completed' => $fboOrders->filter(fn($o) => in_array($o->status, ['issued', 'completed', 'delivered']))->count(),
+                'cancelled' => $fboOrders->filter(fn($o) => in_array($o->status, ['cancelled', 'canceled']))->count(),
+                'in_progress' => $fboOrders->filter(fn($o) => !in_array($o->status, ['issued', 'completed', 'delivered', 'cancelled', 'canceled']))->count(),
+            ],
+        ];
+
+        return response()->json(['orders' => $orders, 'stats' => $stats]);
+    }
+
+    /**
+     * Map Uzum FBO order to response format
+     */
+    private function mapUzumOrderToFboResponse(\App\Models\UzumOrder $o): array
+    {
+        $rawPayload = $o->raw_payload ?? [];
+        $firstItem = $rawPayload['orderItems'][0] ?? [];
+
+        return [
+            'id' => $o->id,
+            'source' => 'uzum_orders',
+            'order_type' => 'fbo',
+            'marketplace_account_id' => $o->marketplace_account_id,
+            'external_order_id' => $o->external_order_id,
+            'photo_url' => $firstItem['photo']['photo']['240']['high'] ?? null,
+            'article' => $firstItem['skuTitle'] ?? null,
+            'product_name' => $firstItem['productTitle'] ?? $firstItem['skuTitle'] ?? null,
+            'meta_info' => $firstItem['skuCharacteristics'] ?? null,
+            'brand' => null,
+            'characteristics' => $firstItem['skuCharacteristics'] ?? null,
+            'nm_id' => $firstItem['productId'] ?? null,
+            'sku' => $firstItem['skuId'] ?? null,
+            'status' => $o->status,
+            'status_normalized' => $o->status_normalized,
+            'wb_status_group' => null,
+            'wb_status' => null,
+            'supply_id' => null,
+            'total_amount' => $o->total_amount,
+            'currency' => $o->currency ?? 'UZS',
+            'ordered_at' => $o->ordered_at,
+            'time_elapsed' => $o->ordered_at ? $o->ordered_at->diffForHumans() : null,
+            'details' => [
+                'shop_id' => $rawPayload['shopId'] ?? null,
+                'warehouse_name' => $rawPayload['stock']['title'] ?? 'Склад Uzum',
+                'warehouse_type' => 'FULLFILMENT',
+                'pool_source' => $rawPayload['stock']['poolSource'] ?? null,
+                'delivery_address' => $o->delivery_address_full,
+                'customer_name' => $o->customer_name,
+                'raw_payload' => $rawPayload,
+            ],
+        ];
+    }
+
+    /**
      * Получить новые заказы FBS от Wildberries
      * GET /api/marketplace/orders/new
      */
@@ -743,6 +894,7 @@ class MarketplaceOrderController extends Controller
             'wb_status_group' => $o->wb_status_group,
             'wb_status' => $o->wb_status,
             'wb_supplier_status' => $o->wb_supplier_status,
+            'wb_delivery_type' => $o->wb_delivery_type, // FBS, DBS, eDBS
             'supply_id' => $o->supply_id,
             'total_amount' => $o->total_amount,
             'currency' => $o->currency ?? 'RUB',
@@ -764,7 +916,7 @@ class MarketplaceOrderController extends Controller
     /**
      * Map WildberriesOrder (Statistics API) to response format
      */
-    private function mapWildberriesOrderToResponse(\App\Models\WildberriesOrder $o): array
+    private function mapWildberriesOrderToResponse(\App\Models\WildberriesOrder $o, string $orderType = 'fbs'): array
     {
         $rawData = $o->raw_data ?? [];
         $brand = $o->brand ?? $rawData['brand'] ?? null;
@@ -787,6 +939,7 @@ class MarketplaceOrderController extends Controller
         return [
             'id' => $o->id,
             'source' => 'wildberries_orders',
+            'order_type' => $orderType, // fbs или fbo
             'marketplace_account_id' => $o->marketplace_account_id,
             'external_order_id' => $o->order_id ?? $o->srid,
             'photo_url' => $photoUrl,
@@ -924,6 +1077,11 @@ class MarketplaceOrderController extends Controller
                     'completed' => 0,
                     'cancelled' => 0,
                 ],
+                'by_delivery_type' => [
+                    'fbs' => 0,
+                    'dbs' => 0,
+                    'edbs' => 0,
+                ],
             ];
         }
 
@@ -935,6 +1093,17 @@ class MarketplaceOrderController extends Controller
             SUM(CASE WHEN status = "cancelled" THEN 1 ELSE 0 END) as cancelled_count
         ')->first();
 
+        // Статистика по типу доставки
+        $byDeliveryType = \App\Models\WbOrder::query()
+            ->where('marketplace_account_id', $account->id)
+            ->when($request->from, fn($q) => $q->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay()))
+            ->when($request->to, fn($q) => $q->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay()))
+            ->selectRaw('
+                SUM(CASE WHEN LOWER(wb_delivery_type) = "fbs" THEN 1 ELSE 0 END) as fbs_count,
+                SUM(CASE WHEN LOWER(wb_delivery_type) = "dbs" THEN 1 ELSE 0 END) as dbs_count,
+                SUM(CASE WHEN LOWER(wb_delivery_type) = "edbs" THEN 1 ELSE 0 END) as edbs_count
+            ')->first();
+
         return [
             'total_orders' => $total,
             'total_amount' => $query->sum('total_amount'),
@@ -944,6 +1113,11 @@ class MarketplaceOrderController extends Controller
                 'in_delivery' => (int) ($byStatus->in_delivery_count ?? 0),
                 'completed' => (int) ($byStatus->completed_count ?? 0),
                 'cancelled' => (int) ($byStatus->cancelled_count ?? 0),
+            ],
+            'by_delivery_type' => [
+                'fbs' => (int) ($byDeliveryType->fbs_count ?? 0),
+                'dbs' => (int) ($byDeliveryType->dbs_count ?? 0),
+                'edbs' => (int) ($byDeliveryType->edbs_count ?? 0),
             ],
         ];
     }
@@ -977,6 +1151,11 @@ class MarketplaceOrderController extends Controller
                     'cancelled' => 0,
                     'returns' => 0,
                 ],
+                'by_delivery_type' => [
+                    'fbs' => 0,
+                    'dbs' => 0,
+                    'edbs' => 0,
+                ],
             ];
         }
 
@@ -991,6 +1170,26 @@ class MarketplaceOrderController extends Controller
             SUM(CASE WHEN status = "returns" THEN 1 ELSE 0 END) as returns_count
         ')->first();
 
+        // Статистика по типу доставки для Uzum (из raw_payload->scheme)
+        $uzumOrders = \App\Models\UzumOrder::query()
+            ->where('marketplace_account_id', $account->id)
+            ->when($request->from, fn($q) => $q->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay()))
+            ->when($request->to, fn($q) => $q->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay()))
+            ->when($request->shop_id, function($q) use ($request) {
+                $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn($v) => trim($v))->all();
+                return $q->whereIn('shop_id', $shopIds);
+            })
+            ->whereNotNull('raw_payload')
+            ->get();
+
+        $byDeliveryType = ['fbs' => 0, 'dbs' => 0, 'edbs' => 0];
+        foreach ($uzumOrders as $order) {
+            $scheme = strtolower($order->raw_payload['scheme'] ?? '');
+            if ($scheme === 'fbs') $byDeliveryType['fbs']++;
+            elseif ($scheme === 'dbs') $byDeliveryType['dbs']++;
+            elseif ($scheme === 'edbs') $byDeliveryType['edbs']++;
+        }
+
         return [
             'total_orders' => $total,
             'total_amount' => $query->sum('total_amount'),
@@ -1004,6 +1203,7 @@ class MarketplaceOrderController extends Controller
                 'cancelled' => (int) ($byStatus->cancelled_count ?? 0),
                 'returns' => (int) ($byStatus->returns_count ?? 0),
             ],
+            'by_delivery_type' => $byDeliveryType,
         ];
     }
 }
