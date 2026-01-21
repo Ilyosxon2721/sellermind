@@ -117,11 +117,16 @@ class WbOrderObserver
         // WB order quantity is always 1 per order record
         $quantity = 1;
 
-        // Decrease internal stock (stock_default)
+        // Decrease internal stock in both systems
         $oldStock = $link->variant->stock_default ?? 0;
-        $link->variant->decrementStock($quantity);
+        $newStock = max(0, $oldStock - $quantity);
 
-        // Also decrease stock in warehouse system (stock_ledger)
+        // Update stock_default WITHOUT triggering ProductVariantObserver
+        // (to avoid duplicate ledger entries - we create our own below)
+        $link->variant->stock_default = $newStock;
+        $link->variant->saveQuietly();
+
+        // Create ledger entry for warehouse system
         $this->updateWarehouseStock($link->variant, -$quantity, $order, 'WB_ORDER');
 
         Log::info('Internal stock reduced for WB order', [
@@ -158,10 +163,15 @@ class WbOrderObserver
         // WB order quantity is always 1 per order record
         $quantity = 1;
 
+        // Increase internal stock in both systems
         $oldStock = $link->variant->stock_default ?? 0;
-        $link->variant->incrementStock($quantity);
+        $newStock = $oldStock + $quantity;
 
-        // Also increase stock in warehouse system (stock_ledger)
+        // Update stock_default WITHOUT triggering ProductVariantObserver
+        $link->variant->stock_default = $newStock;
+        $link->variant->saveQuietly();
+
+        // Create ledger entry for warehouse system
         $this->updateWarehouseStock($link->variant, $quantity, $order, 'WB_ORDER_CANCEL');
 
         Log::info('Internal stock returned for cancelled WB order', [

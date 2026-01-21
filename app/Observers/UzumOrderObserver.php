@@ -95,11 +95,16 @@ class UzumOrderObserver
                 continue;
             }
 
-            // Decrease internal stock (stock_default)
+            // Decrease internal stock in both systems
             $oldStock = $link->variant->stock_default ?? 0;
-            $link->variant->decrementStock($item->quantity);
+            $newStock = max(0, $oldStock - $item->quantity);
 
-            // Also decrease stock in warehouse system (stock_ledger)
+            // Update stock_default WITHOUT triggering ProductVariantObserver
+            // (to avoid duplicate ledger entries - we create our own below)
+            $link->variant->stock_default = $newStock;
+            $link->variant->saveQuietly();
+
+            // Create ledger entry for warehouse system
             $this->reduceWarehouseStock($link->variant, $item->quantity, $order);
 
             Log::info('Internal stock reduced for Uzum order', [

@@ -586,25 +586,29 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ->first();
 
             if ($link && $link->variant) {
+                $oldStock = $link->variant->stock_default ?? 0;
+
                 Log::info("Yandex Market order stock {$action}", [
                     'offer_id' => $offerId,
                     'count' => $count,
                     'variant_id' => $link->variant->id,
-                    'current_stock' => $link->variant->stock_default,
+                    'current_stock' => $oldStock,
                 ]);
 
-                // Update stock_default
+                // Update stock_default WITHOUT triggering ProductVariantObserver
+                // (to avoid duplicate ledger entries - we create our own below)
                 if ($action === 'decrement') {
-                    $link->variant->decrementStock($count);
+                    $link->variant->stock_default = max(0, $oldStock - $count);
                     $qtyDelta = -$count;
                     $sourceType = 'YM_ORDER';
                 } else {
-                    $link->variant->incrementStock($count);
+                    $link->variant->stock_default = $oldStock + $count;
                     $qtyDelta = $count;
                     $sourceType = 'YM_ORDER_CANCEL';
                 }
+                $link->variant->saveQuietly();
 
-                // Also update warehouse stock_ledger
+                // Create ledger entry for warehouse system
                 $this->updateWarehouseStock($link->variant, $qtyDelta, $sourceType, $offerId);
             }
         }
