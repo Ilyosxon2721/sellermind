@@ -1107,24 +1107,24 @@ class MarketplaceOrderController extends Controller
             ];
         }
 
-        $byStatus = $query->selectRaw('
-            SUM(CASE WHEN status = "new" THEN 1 ELSE 0 END) as new_count,
-            SUM(CASE WHEN status = "in_assembly" THEN 1 ELSE 0 END) as in_assembly_count,
-            SUM(CASE WHEN status = "in_delivery" THEN 1 ELSE 0 END) as in_delivery_count,
-            SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count,
-            SUM(CASE WHEN status = "cancelled" THEN 1 ELSE 0 END) as cancelled_count
-        ')->first();
+        $byStatus = $query->selectRaw("
+            SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new_count,
+            SUM(CASE WHEN status = 'in_assembly' THEN 1 ELSE 0 END) as in_assembly_count,
+            SUM(CASE WHEN status = 'in_delivery' THEN 1 ELSE 0 END) as in_delivery_count,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+            SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count
+        ")->first();
 
         // Статистика по типу доставки
         $byDeliveryType = \App\Models\WbOrder::query()
             ->where('marketplace_account_id', $account->id)
             ->when($request->from, fn($q) => $q->where('ordered_at', '>=', Carbon::parse($request->from)->startOfDay()))
             ->when($request->to, fn($q) => $q->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay()))
-            ->selectRaw('
-                SUM(CASE WHEN LOWER(wb_delivery_type) = "fbs" THEN 1 ELSE 0 END) as fbs_count,
-                SUM(CASE WHEN LOWER(wb_delivery_type) = "dbs" THEN 1 ELSE 0 END) as dbs_count,
-                SUM(CASE WHEN LOWER(wb_delivery_type) = "edbs" THEN 1 ELSE 0 END) as edbs_count
-            ')->first();
+            ->selectRaw("
+                SUM(CASE WHEN LOWER(wb_delivery_type) = 'fbs' THEN 1 ELSE 0 END) as fbs_count,
+                SUM(CASE WHEN LOWER(wb_delivery_type) = 'dbs' THEN 1 ELSE 0 END) as dbs_count,
+                SUM(CASE WHEN LOWER(wb_delivery_type) = 'edbs' THEN 1 ELSE 0 END) as edbs_count
+            ")->first();
 
         return [
             'total_orders' => $total,
@@ -1181,16 +1181,16 @@ class MarketplaceOrderController extends Controller
             ];
         }
 
-        $byStatus = $query->selectRaw('
-            SUM(CASE WHEN status = "new" THEN 1 ELSE 0 END) as new_count,
-            SUM(CASE WHEN status = "in_assembly" THEN 1 ELSE 0 END) as in_assembly_count,
-            SUM(CASE WHEN status = "in_supply" THEN 1 ELSE 0 END) as in_supply_count,
-            SUM(CASE WHEN status = "accepted_uzum" THEN 1 ELSE 0 END) as accepted_uzum_count,
-            SUM(CASE WHEN status = "waiting_pickup" THEN 1 ELSE 0 END) as waiting_pickup_count,
-            SUM(CASE WHEN status = "issued" THEN 1 ELSE 0 END) as issued_count,
-            SUM(CASE WHEN status = "cancelled" THEN 1 ELSE 0 END) as cancelled_count,
-            SUM(CASE WHEN status = "returns" THEN 1 ELSE 0 END) as returns_count
-        ')->first();
+        $byStatus = $query->selectRaw("
+            SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new_count,
+            SUM(CASE WHEN status = 'in_assembly' THEN 1 ELSE 0 END) as in_assembly_count,
+            SUM(CASE WHEN status = 'in_supply' THEN 1 ELSE 0 END) as in_supply_count,
+            SUM(CASE WHEN status = 'accepted_uzum' THEN 1 ELSE 0 END) as accepted_uzum_count,
+            SUM(CASE WHEN status = 'waiting_pickup' THEN 1 ELSE 0 END) as waiting_pickup_count,
+            SUM(CASE WHEN status = 'issued' THEN 1 ELSE 0 END) as issued_count,
+            SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+            SUM(CASE WHEN status = 'returns' THEN 1 ELSE 0 END) as returns_count
+        ")->first();
 
         // Статистика по типу доставки для Uzum (из raw_payload->scheme)
         $uzumOrders = \App\Models\UzumOrder::query()
