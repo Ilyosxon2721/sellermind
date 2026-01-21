@@ -5,6 +5,9 @@ namespace App\Observers;
 use App\Events\MarketplaceOrdersUpdated;
 use App\Models\WbOrder;
 use App\Models\VariantMarketplaceLink;
+use App\Models\Warehouse\Sku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Support\Facades\Log;
 
 class WbOrderObserver
@@ -114,9 +117,12 @@ class WbOrderObserver
         // WB order quantity is always 1 per order record
         $quantity = 1;
 
-        // Decrease internal stock
-        $oldStock = $link->variant->stock_default;
+        // Decrease internal stock (stock_default)
+        $oldStock = $link->variant->stock_default ?? 0;
         $link->variant->decrementStock($quantity);
+
+        // Also decrease stock in warehouse system (stock_ledger)
+        $this->updateWarehouseStock($link->variant, -$quantity, $order, 'WB_ORDER');
 
         Log::info('Internal stock reduced for WB order', [
             'order_id' => $order->external_order_id,
@@ -152,8 +158,11 @@ class WbOrderObserver
         // WB order quantity is always 1 per order record
         $quantity = 1;
 
-        $oldStock = $link->variant->stock_default;
+        $oldStock = $link->variant->stock_default ?? 0;
         $link->variant->incrementStock($quantity);
+
+        // Also increase stock in warehouse system (stock_ledger)
+        $this->updateWarehouseStock($link->variant, $quantity, $order, 'WB_ORDER_CANCEL');
 
         Log::info('Internal stock returned for cancelled WB order', [
             'order_id' => $order->external_order_id,
@@ -163,6 +172,74 @@ class WbOrderObserver
             'old_stock' => $oldStock,
             'new_stock' => $link->variant->stock_default,
         ]);
+    }
+
+    /**
+     * Update stock in warehouse system (stock_ledger)
+     */
+    protected function updateWarehouseStock($variant, int $qtyDelta, WbOrder $order, string $sourceType): void
+    {
+        try {
+            // Find warehouse SKU linked to this variant
+            $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
+
+            if (!$warehouseSku) {
+                Log::debug('No warehouse SKU found for variant', [
+                    'variant_id' => $variant->id,
+                    'sku' => $variant->sku,
+                ]);
+                return;
+            }
+
+            // Get default warehouse for company
+            $warehouse = Warehouse::where('company_id', $variant->company_id)
+                ->where('is_default', true)
+                ->first();
+
+            if (!$warehouse) {
+                $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
+            }
+
+            if (!$warehouse) {
+                Log::warning('No warehouse found for variant company', [
+                    'variant_id' => $variant->id,
+                    'company_id' => $variant->company_id,
+                ]);
+                return;
+            }
+
+            // Create ledger entry
+            StockLedger::create([
+                'company_id' => $variant->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouse->id,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'cost_delta' => 0,
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => $sourceType,
+                'source_id' => $order->id,
+                'created_by' => null,
+            ]);
+
+            Log::info('Warehouse stock updated for WB order', [
+                'order_id' => $order->external_order_id,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'warehouse_id' => $warehouse->id,
+                'qty_delta' => $qtyDelta,
+                'source_type' => $sourceType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update warehouse stock for WB order', [
+                'variant_id' => $variant->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

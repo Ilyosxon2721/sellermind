@@ -4,6 +4,9 @@ namespace App\Services\Marketplaces\YandexMarket;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
+use App\Models\Warehouse\Sku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 use App\Services\Marketplaces\MarketplaceClientInterface;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Log;
@@ -583,19 +586,85 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ->first();
 
             if ($link && $link->variant) {
-                \Illuminate\Support\Facades\Log::info("Order stock {$action}", [
+                Log::info("Yandex Market order stock {$action}", [
                     'offer_id' => $offerId,
                     'count' => $count,
                     'variant_id' => $link->variant->id,
                     'current_stock' => $link->variant->stock_default,
                 ]);
 
+                // Update stock_default
                 if ($action === 'decrement') {
                     $link->variant->decrementStock($count);
+                    $qtyDelta = -$count;
+                    $sourceType = 'YM_ORDER';
                 } else {
                     $link->variant->incrementStock($count);
+                    $qtyDelta = $count;
+                    $sourceType = 'YM_ORDER_CANCEL';
                 }
+
+                // Also update warehouse stock_ledger
+                $this->updateWarehouseStock($link->variant, $qtyDelta, $sourceType, $offerId);
             }
+        }
+    }
+
+    /**
+     * Update stock in warehouse system (stock_ledger)
+     */
+    protected function updateWarehouseStock($variant, int $qtyDelta, string $sourceType, ?string $orderId = null): void
+    {
+        try {
+            // Find warehouse SKU linked to this variant
+            $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
+
+            if (!$warehouseSku) {
+                return;
+            }
+
+            // Get default warehouse for company
+            $warehouse = Warehouse::where('company_id', $variant->company_id)
+                ->where('is_default', true)
+                ->first();
+
+            if (!$warehouse) {
+                $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
+            }
+
+            if (!$warehouse) {
+                return;
+            }
+
+            // Create ledger entry
+            StockLedger::create([
+                'company_id' => $variant->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouse->id,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'cost_delta' => 0,
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => $sourceType,
+                'source_id' => null,
+                'created_by' => null,
+            ]);
+
+            Log::info('Warehouse stock updated for Yandex Market order', [
+                'order_id' => $orderId,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'source_type' => $sourceType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update warehouse stock for YM order', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

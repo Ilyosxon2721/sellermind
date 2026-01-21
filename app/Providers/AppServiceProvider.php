@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Events\StockUpdated;
 use App\Listeners\SyncStockToMarketplaces;
+use App\Models\OzonOrder;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
+use App\Observers\OzonOrderObserver;
 use App\Observers\ProductVariantObserver;
 use App\Observers\UzumOrderObserver;
 use App\Observers\WbOrderObserver;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         ProductVariant::observe(ProductVariantObserver::class);
         UzumOrder::observe(UzumOrderObserver::class);
         WbOrder::observe(WbOrderObserver::class);
+        OzonOrder::observe(OzonOrderObserver::class);
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);
