@@ -134,6 +134,13 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ], 201);
         } catch (\Exception $e) {
+            \Log::error('Failed to create sale', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->except(['items']),
+                'items_count' => count($request->input('items', [])),
+            ]);
+
             return response()->json([
                 'message' => 'Failed to create sale',
                 'error' => $e->getMessage(),

@@ -780,11 +780,17 @@ function saleCreatePage() {
                     return data.data.id;
                 } else {
                     const error = await resp.json();
-                    alert('Ошибка: ' + (error.message || 'Не удалось сохранить'));
+                    console.error('Save sale error response:', error);
+                    let errorMsg = error.error || error.message || 'Не удалось сохранить';
+                    if (error.errors) {
+                        // Validation errors
+                        errorMsg = Object.values(error.errors).flat().join('\n');
+                    }
+                    alert('Ошибка: ' + errorMsg);
                 }
             } catch (e) {
                 console.error('Save sale error:', e);
-                alert('Ошибка сохранения продажи');
+                alert('Ошибка сохранения: ' + e.message);
             } finally {
                 this.saving = false;
             }
