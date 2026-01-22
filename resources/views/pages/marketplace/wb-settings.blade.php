@@ -372,12 +372,20 @@
                     <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-semibold text-gray-900">Привязка складов</h3>
-                            <button @click="loadWarehouses()" class="text-sm wb-text hover:underline flex items-center space-x-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                                <span>Обновить</span>
-                            </button>
+                            <div class="flex items-center space-x-3">
+                                <button @click="syncWarehouses()" :disabled="syncingWarehouses" class="px-4 py-2 wb-gradient text-white rounded-lg text-sm font-medium hover:opacity-90 transition flex items-center space-x-2 disabled:opacity-50">
+                                    <svg :class="syncingWarehouses && 'animate-spin'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                    <span x-text="syncingWarehouses ? 'Синхронизация...' : 'Синхронизировать с WB'"></span>
+                                </button>
+                                <button @click="loadWarehouses()" class="text-sm wb-text hover:underline flex items-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                    <span>Обновить</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div x-show="loadingWarehouses" class="py-8 text-center">
@@ -394,7 +402,7 @@
                                 </svg>
                             </div>
                             <p class="text-gray-500">Склады WB не найдены</p>
-                            <p class="text-sm text-gray-400 mt-1">Убедитесь, что токены настроены правильно</p>
+                            <p class="text-sm text-gray-400 mt-1">Нажмите "Синхронизировать с WB" для загрузки складов</p>
                         </div>
 
                         <div x-show="!loadingWarehouses && wbWarehouses.length > 0" class="space-y-3">
@@ -811,19 +819,105 @@ function warehouseSettings() {
         wbWarehouses: [],
         internalWarehouses: [],
         loadingWarehouses: false,
+        syncingWarehouses: false,
+
+        getAuthHeaders() {
+            const token = this.$store?.auth?.token || localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;
+            return headers;
+        },
 
         async init() {
+            await this.$nextTick();
             await this.loadWarehouses();
+            await this.loadInternalWarehouses();
         },
 
         async loadWarehouses() {
             this.loadingWarehouses = true;
-            // Load warehouses logic here
+            try {
+                const res = await fetch(`/api/marketplace/warehouses?account_id={{ $accountId }}`, {
+                    headers: this.getAuthHeaders(),
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.wbWarehouses = (data.warehouses || []).map(w => ({
+                        db_id: w.id, // Database ID for API updates
+                        id: w.marketplace_warehouse_id || w.wildberries_warehouse_id || w.id,
+                        name: w.name,
+                        linked_warehouse_id: w.local_warehouse_id || '',
+                        type: w.type || 'FBS'
+                    }));
+                } else {
+                    console.error('Failed to load warehouses:', res.status);
+                }
+            } catch (e) {
+                console.error('Error loading warehouses:', e);
+            }
             this.loadingWarehouses = false;
         },
 
+        async loadInternalWarehouses() {
+            try {
+                const companyId = this.$store?.auth?.currentCompany?.id;
+                if (!companyId) return;
+
+                const res = await fetch(`/api/marketplace/warehouses/local?company_id=${companyId}`, {
+                    headers: this.getAuthHeaders(),
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.internalWarehouses = data.warehouses || [];
+                }
+            } catch (e) {
+                console.error('Error loading internal warehouses:', e);
+            }
+        },
+
+        async syncWarehouses() {
+            this.syncingWarehouses = true;
+            try {
+                const res = await fetch(`/api/marketplace/wb/accounts/{{ $accountId }}/warehouses/sync`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Синхронизировано: ${data.count || 0} складов. ${data.note || ''}`);
+                    await this.loadWarehouses();
+                } else {
+                    alert(data.message || 'Ошибка синхронизации складов');
+                }
+            } catch (e) {
+                console.error('Error syncing warehouses:', e);
+                alert('Ошибка: ' + e.message);
+            }
+            this.syncingWarehouses = false;
+        },
+
         async saveWarehouseMapping(wbWarehouse) {
-            // Save mapping logic here
+            try {
+                const res = await fetch(`/api/marketplace/warehouses/${wbWarehouse.db_id}`, {
+                    method: 'PUT',
+                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        local_warehouse_id: wbWarehouse.linked_warehouse_id || null
+                    })
+                });
+                if (!res.ok) {
+                    alert('Ошибка сохранения привязки');
+                }
+            } catch (e) {
+                console.error('Error saving mapping:', e);
+                alert('Ошибка: ' + e.message);
+            }
         }
     }
 }

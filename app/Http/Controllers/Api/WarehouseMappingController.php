@@ -177,11 +177,23 @@ class WarehouseMappingController extends Controller
     /**
      * Get local warehouses for dropdown
      *
-     * GET /api/warehouses
+     * GET /api/marketplace/warehouses/local
      */
-    public function localWarehouses()
+    public function localWarehouses(Request $request)
     {
-        $warehouses = Warehouse::where('is_active', true)
+        $companyId = $request->input('company_id');
+
+        if (!$companyId) {
+            return response()->json(['warehouses' => []]);
+        }
+
+        // Check user has access to this company
+        if (!$request->user()->hasCompanyAccess($companyId)) {
+            return response()->json(['message' => 'Доступ запрещён'], 403);
+        }
+
+        $warehouses = Warehouse::where('company_id', $companyId)
+            ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
