@@ -1118,7 +1118,7 @@ class SalesController extends Controller
     }
 
     /**
-     * Get manual/channel orders
+     * Get manual/channel orders (from both channel_orders and sales tables)
      */
     private function getManualOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
@@ -1126,46 +1126,90 @@ class SalesController extends Controller
             return collect();
         }
 
+        $result = collect();
+
+        // 1. Get from channel_orders table
         try {
-            // Check if table exists
-            if (!DB::getSchemaBuilder()->hasTable('channel_orders')) {
-                return collect();
+            if (DB::getSchemaBuilder()->hasTable('channel_orders')) {
+                $query = ChannelOrder::query()
+                    ->whereNull('channel_id') // Manual orders have no channel
+                    ->whereDate('created_at', '>=', $dateFrom)
+                    ->whereDate('created_at', '<=', $dateTo)
+                    ->where(function($q) use ($companyId) {
+                        $q->whereJsonContains('payload_json->company_id', $companyId)
+                          ->orWhereJsonContains('payload_json->is_manual', true);
+                    });
+
+                if ($status) {
+                    $query->whereIn('status', $this->mapStatusToDbStatuses($status));
+                }
+
+                if ($search) {
+                    $query->where('external_order_id', 'like', "%{$search}%");
+                }
+
+                $channelOrders = $query->get()->map(fn($order) => [
+                    'id' => 'manual_' . $order->id,
+                    'order_number' => (string) $order->external_order_id,
+                    'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
+                    'marketplace' => 'manual',
+                    'account_name' => 'Ручной заказ',
+                    'customer_name' => $order->payload_json['customer_name'] ?? null,
+                    'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
+                    'currency' => $order->payload_json['currency'] ?? 'UZS',
+                    'status' => $this->normalizeStatus($order->status),
+                    'is_revenue' => true,
+                    'raw_status' => $order->status,
+                ]);
+
+                $result = $result->merge($channelOrders);
             }
-
-            $query = ChannelOrder::query()
-                ->whereNull('channel_id') // Manual orders have no channel
-                ->whereDate('created_at', '>=', $dateFrom)
-                ->whereDate('created_at', '<=', $dateTo)
-                ->where(function($q) use ($companyId) {
-                    $q->whereJsonContains('payload_json->company_id', $companyId)
-                      ->orWhereJsonContains('payload_json->is_manual', true);
-                });
-
-            if ($status) {
-                $query->whereIn('status', $this->mapStatusToDbStatuses($status));
-            }
-
-            if ($search) {
-                $query->where('external_order_id', 'like', "%{$search}%");
-            }
-
-            return $query->get()->map(fn($order) => [
-                'id' => 'manual_' . $order->id,
-                'order_number' => (string) $order->external_order_id,
-                'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
-                'marketplace' => 'manual',
-                'account_name' => 'Ручной заказ',
-                'customer_name' => $order->payload_json['customer_name'] ?? null,
-                'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
-                'currency' => $order->payload_json['currency'] ?? 'UZS',
-                'status' => $this->normalizeStatus($order->status),
-                'is_revenue' => true, // Ручные заказы всегда считаем как доход
-                'raw_status' => $order->status,
-            ]);
         } catch (\Exception $e) {
-            \Log::warning('Manual orders fetch skipped: ' . $e->getMessage());
-            return collect();
+            \Log::warning('Channel orders fetch skipped: ' . $e->getMessage());
         }
+
+        // 2. Get from sales table (manual sales created via /sales/create)
+        try {
+            if (DB::getSchemaBuilder()->hasTable('sales')) {
+                $salesQuery = \App\Models\Sale::query()
+                    ->where('company_id', $companyId)
+                    ->where('type', 'manual')
+                    ->whereDate('created_at', '>=', $dateFrom)
+                    ->whereDate('created_at', '<=', $dateTo);
+
+                if ($status) {
+                    $salesQuery->where('status', $status);
+                }
+
+                if ($search) {
+                    $salesQuery->where(function($q) use ($search) {
+                        $q->where('sale_number', 'like', "%{$search}%")
+                          ->orWhere('notes', 'like', "%{$search}%");
+                    });
+                }
+
+                $sales = $salesQuery->with('counterparty')->get()->map(fn($sale) => [
+                    'id' => 'sale_' . $sale->id,
+                    'order_number' => $sale->sale_number,
+                    'created_at' => $sale->created_at?->toIso8601String(),
+                    'marketplace' => 'manual',
+                    'account_name' => 'Ручная продажа',
+                    'customer_name' => $sale->counterparty?->name ?? null,
+                    'total_amount' => (float) $sale->total_amount,
+                    'currency' => $sale->currency ?? 'UZS',
+                    'status' => $sale->status,
+                    'is_revenue' => in_array($sale->status, ['confirmed', 'completed']),
+                    'raw_status' => $sale->status,
+                    'items_count' => $sale->items_count ?? 0,
+                ]);
+
+                $result = $result->merge($sales);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Sales fetch skipped: ' . $e->getMessage());
+        }
+
+        return $result;
     }
     
     /**
