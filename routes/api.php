@@ -133,6 +133,9 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     
     // Warehouses for inventory
     Route::get('warehouses', [\App\Http\Controllers\Api\InventoryController::class, 'warehouses']);
+    
+    // Companies list for web-authenticated users (used by sales/create page)
+    Route::get('companies', [CompanyController::class, 'index']);
 });
 // Broadcasting auth routes (must be before protected routes to avoid middleware issues)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
