@@ -804,10 +804,13 @@ function saleCreatePage() {
                     window.location.href = '/sales';
                 } else {
                     const error = await resp.json();
-                    alert('Ошибка подтверждения: ' + (error.message || error.error));
+                    console.error('Confirm sale error response:', error);
+                    const errorDetails = error.error || error.message || 'Неизвестная ошибка';
+                    alert('Ошибка подтверждения: ' + errorDetails);
                 }
             } catch (e) {
                 console.error('Confirm sale error:', e);
+                alert('Ошибка сети: ' + e.message);
             }
         },
 
