@@ -405,13 +405,21 @@
 
 <script>
 function saleCreatePage() {
-    // Helper function to get headers with CSRF token
-    const getHeaders = () => ({
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-    });
+    // Helper function to get headers with CSRF token and Bearer token
+    const getHeaders = () => {
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        };
+        // Try to get Bearer token from Alpine store (for API auth)
+        const token = window.Alpine?.store?.('auth')?.token || localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    };
 
     return {
         saving: false,
