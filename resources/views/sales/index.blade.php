@@ -274,6 +274,7 @@
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Номер</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Магазин</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Контрагент</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
@@ -284,7 +285,7 @@
                             {{-- Loading skeleton --}}
                             <template x-if="loading">
                                 <tr>
-                                    <td colspan="7" class="px-6 py-12 text-center">
+                                    <td colspan="8" class="px-6 py-12 text-center">
                                         <div class="flex items-center justify-center space-x-2">
                                             <svg class="animate-spin h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -317,6 +318,9 @@
                                         <span class="text-sm text-gray-700 truncate max-w-[150px] inline-block" x-text="order.account_name || '-'" :title="order.account_name"></span>
                                     </td>
                                     <td class="px-6 py-4">
+                                        <span class="text-sm text-gray-700 truncate max-w-[150px] inline-block" x-text="order.customer_name || '-'" :title="order.customer_name"></span>
+                                    </td>
+                                    <td class="px-6 py-4">
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
                                               :class="{
                                                   'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed' || order.status === 'sold',
@@ -344,7 +348,7 @@
                             {{-- Empty state --}}
                             <template x-if="!loading && orders.length === 0">
                                 <tr>
-                                    <td colspan="7" class="px-6 py-12 text-center">
+                                    <td colspan="8" class="px-6 py-12 text-center">
                                         <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
