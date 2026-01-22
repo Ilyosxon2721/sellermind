@@ -161,17 +161,23 @@ class SaleService
     public function confirmSale(Sale $sale, bool $reserveStock = true): Sale
     {
         return DB::transaction(function () use ($sale, $reserveStock) {
-            if (!$sale->confirm()) {
+            // Проверяем статус перед резервированием
+            if ($sale->status !== 'draft') {
                 throw new \Exception('Cannot confirm sale with status: ' . $sale->status);
             }
 
-            // Резервируем остатки если требуется (БЕЗ синхронизации с маркетплейсами)
+            // Сначала резервируем остатки (пока статус draft)
             if ($reserveStock) {
                 $results = $this->reservationService->reserveStock($sale);
 
                 if ($results['failed'] > 0) {
                     throw new \Exception('Failed to reserve stock: ' . json_encode($results['errors']));
                 }
+            }
+
+            // Только после успешного резервирования меняем статус
+            if (!$sale->confirm()) {
+                throw new \Exception('Failed to confirm sale');
             }
 
             Log::info('Sale confirmed', [
