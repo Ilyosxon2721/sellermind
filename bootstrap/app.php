@@ -28,8 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add security headers globally
         $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
         
-        // Add locale middleware globally
-        $middleware->append(\App\Http\Middleware\SetLocale::class);
+        // Add locale middleware to appropriate groups
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
+        
+        $middleware->api(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
 
         // Configure API rate limiting
         $middleware->throttleApi('api');

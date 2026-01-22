@@ -102,6 +102,12 @@ class AuthController extends Controller
         $user = $request->user();
         $user->update($request->only(['name', 'locale']));
 
+        if ($request->locale && $request->hasSession()) {
+            $request->session()->put('locale', $request->locale);
+            // Also explicitly set app locale for current response
+            \App::setLocale($request->locale);
+        }
+
         return response()->json([
             'user' => new UserResource($user),
         ]);
@@ -119,6 +125,7 @@ class AuthController extends Controller
         // Also update session locale
         if ($request->hasSession()) {
             $request->session()->put('locale', $request->locale);
+            \App::setLocale($request->locale);
         }
 
         return response()->json([

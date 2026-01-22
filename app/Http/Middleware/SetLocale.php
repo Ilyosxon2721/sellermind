@@ -15,36 +15,42 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Supported locales
         $supportedLocales = ['uz', 'ru', 'en'];
-        
-        // Priority 1: URL segment (for landing pages)
+        $locale = null;
+
+        // 1. Priority: URL segment (explicitly requested)
         $urlLocale = $request->segment(1);
-        
         if (in_array($urlLocale, $supportedLocales)) {
-            App::setLocale($urlLocale);
-            Session::put('locale', $urlLocale);
-        } else {
-            // Priority 2: Authenticated user's preference
-            $userLocale = null;
-            if (auth()->check() && auth()->user()->locale) {
-                $userLocale = auth()->user()->locale;
-            }
-            
-            // Priority 3: Session locale
-            $sessionLocale = Session::get('locale');
-            
-            // Priority 4: Default (uz)
-            $locale = $userLocale ?? $sessionLocale ?? 'uz';
-            
-            // Validate and set
-            if (in_array($locale, $supportedLocales)) {
-                App::setLocale($locale);
-            } else {
-                App::setLocale('uz');
-            }
+            $locale = $urlLocale;
+            // \Log::debug('Locale chosen from URL: ' . $locale);
         }
-        
+
+        // 2. Priority: Authenticated User preference
+        if (!$locale && auth()->check() && auth()->user()->locale) {
+            $locale = auth()->user()->locale;
+            // \Log::debug('Locale chosen from User pref: ' . $locale);
+        }
+
+        // 3. Priority: Session
+        if (!$locale && Session::has('locale')) {
+            $locale = Session::get('locale');
+            // \Log::debug('Locale chosen from Session: ' . $locale);
+        }
+
+        // 4. Default
+        if (!$locale || !in_array($locale, $supportedLocales)) {
+            $locale = config('app.locale', 'uz');
+            // \Log::debug('Locale chosen from Default: ' . $locale);
+        }
+
+        // Set the locale
+        App::setLocale($locale);
+
+        // Persistent in session if possible
+        if (Session::isStarted()) {
+            Session::put('locale', $locale);
+        }
+
         return $next($request);
     }
 }
