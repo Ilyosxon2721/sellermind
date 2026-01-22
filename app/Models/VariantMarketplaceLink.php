@@ -35,6 +35,7 @@ class VariantMarketplaceLink extends Model
         'external_offer_id',
         'external_sku_id',
         'external_sku',
+        'marketplace_barcode', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
         'is_active',
         'sync_stock_enabled',
         'sync_price_enabled',

@@ -31,6 +31,7 @@ class VariantLinkController extends Controller
         $validated = $request->validate([
             'product_variant_id' => 'required|integer|exists:product_variants,id',
             'external_sku_id' => 'nullable|string', // For Uzum SKU-level linking
+            'marketplace_barcode' => 'nullable|string', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
             'sync_stock_enabled' => 'boolean',
             'sync_price_enabled' => 'boolean',
         ]);
@@ -60,6 +61,25 @@ class VariantLinkController extends Controller
             $externalSku = $mpProduct->external_sku ?? $variant->sku;
         }
 
+        // Для Uzum: автоматически получаем marketplace_barcode из skuList, если не передан вручную
+        $marketplaceBarcode = $validated['marketplace_barcode'] ?? null;
+        if (!$marketplaceBarcode && $account->marketplace === 'uzum') {
+            $skuList = $mpProduct->raw_payload['skuList'] ?? [];
+            $externalSkuId = $validated['external_sku_id'] ?? null;
+
+            foreach ($skuList as $sku) {
+                // Ищем SKU по ID или берём первый с баркодом
+                if ($externalSkuId && (string)($sku['skuId'] ?? '') === $externalSkuId) {
+                    $marketplaceBarcode = $sku['barcode'] ?? null;
+                    break;
+                }
+            }
+            // Если не нашли по ID, берём первый баркод
+            if (!$marketplaceBarcode && !empty($skuList[0]['barcode'])) {
+                $marketplaceBarcode = $skuList[0]['barcode'];
+            }
+        }
+
         // Build unique key for the link (include SKU ID for multi-SKU products like Uzum)
         $linkKey = [
             'product_variant_id' => $variant->id,
@@ -81,6 +101,7 @@ class VariantLinkController extends Controller
                 'external_offer_id' => $externalOfferId,
                 'external_sku_id' => $validated['external_sku_id'] ?? null,
                 'external_sku' => $externalSku,
+                'marketplace_barcode' => $marketplaceBarcode, // Баркод маркетплейса (автозаполнение из API или ручной ввод)
                 'is_active' => true,
                 'sync_stock_enabled' => $validated['sync_stock_enabled'] ?? true,
                 'sync_price_enabled' => $validated['sync_price_enabled'] ?? false,
@@ -176,6 +197,7 @@ class VariantLinkController extends Controller
                     'id' => $link->id,
                     'external_sku_id' => $link->external_sku_id,
                     'external_sku' => $link->external_sku,
+                    'marketplace_barcode' => $link->marketplace_barcode, // Баркод маркетплейса
                     'variant' => $link->variant ? [
                         'id' => $link->variant->id,
                         'sku' => $link->variant->sku,

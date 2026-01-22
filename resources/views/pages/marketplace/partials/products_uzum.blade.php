@@ -193,8 +193,15 @@
                                                     <div class="text-right">
                                                         <div class="text-green-700 font-medium text-[11px]" x-text="getSkuLink(sku.skuId)?.variant?.name || getSkuLink(sku.skuId)?.variant?.sku"></div>
                                                         <div class="text-green-600 text-[10px]" x-text="'Остаток: ' + (getSkuLink(sku.skuId)?.variant?.stock ?? 0) + ' шт'"></div>
+                                                        <!-- Показываем баркоды: внутренний и маркетплейса -->
+                                                        <div class="text-[10px] text-gray-500 mt-0.5">
+                                                            <span x-show="getSkuLink(sku.skuId)?.variant?.barcode">ШК внутр: <span x-text="getSkuLink(sku.skuId)?.variant?.barcode"></span></span>
+                                                        </div>
+                                                        <div class="text-[10px] text-purple-600 font-medium" x-show="getSkuLink(sku.skuId)?.marketplace_barcode">
+                                                            ШК Uzum: <span x-text="getSkuLink(sku.skuId)?.marketplace_barcode"></span>
+                                                        </div>
                                                         <div class="mt-1 flex space-x-1">
-                                                            <button @click="syncSkuStock(sku.skuId)" 
+                                                            <button @click="syncSkuStock(sku.skuId)"
                                                                     :disabled="syncingStock === sku.skuId"
                                                                     class="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 flex items-center">
                                                                 <svg x-show="syncingStock === sku.skuId" class="w-3 h-3 mr-0.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -225,9 +232,31 @@
                                 <h3 class="font-semibold text-gray-900">Привязать SKU к товару</h3>
                                 <button @click="linkModalOpen = false" class="text-gray-400 hover:text-gray-600">&times;</button>
                             </div>
-                            <div class="text-sm text-gray-600 mb-3" x-text="'SKU: ' + (linkingSku?.skuFullTitle || linkingSku?.skuId || '')"></div>
+                            <!-- Информация о товаре Uzum -->
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
+                                <div class="text-sm font-medium text-purple-900" x-text="linkingSku?.skuFullTitle || linkingSku?.skuId || ''"></div>
+                                <div class="text-xs text-purple-600 mt-1" x-show="linkingSku?.barcode">
+                                    Баркод в Uzum: <span class="font-mono font-semibold" x-text="linkingSku?.barcode"></span>
+                                </div>
+                            </div>
+
+                            <!-- Marketplace barcode field -->
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">
+                                    Баркод маркетплейса (Uzum)
+                                </label>
+                                <input type="text"
+                                       x-model="linkingMarketplaceBarcode"
+                                       placeholder="Например: 1000025729206"
+                                       class="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-purple-50 font-mono">
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Этот баркод используется для автоматического списания остатков при продажах на Uzum.
+                                    <span class="text-purple-600">Автозаполнен из карточки товара.</span>
+                                </p>
+                            </div>
+
                             <div class="relative mb-3">
-                                <input type="text" 
+                                <input type="text"
                                        x-model="variantSearchQuery"
                                        @input.debounce.400ms="searchVariants()"
                                        placeholder="Поиск по SKU, штрих-коду, названию..."
@@ -236,22 +265,29 @@
                             <div x-show="searchingVariants" class="text-center py-4 text-gray-500 text-sm">Поиск...</div>
                             <div x-show="!searchingVariants && variantSearchResults.length > 0" class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                                 <template x-for="variant in variantSearchResults" :key="variant.id">
-                                    <div @click="linkSkuToVariant(variant.id)" 
+                                    <div @click="linkSkuToVariant(variant.id)"
                                          class="p-3 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="flex items-center justify-between">
-                                            <div>
+                                            <div class="flex-1">
                                                 <p class="font-medium text-gray-900" x-text="variant.name || variant.sku"></p>
-                                                <p class="text-xs text-gray-500" x-text="'SKU: ' + variant.sku + (variant.barcode ? ' | ШК: ' + variant.barcode : '')"></p>
+                                                <p class="text-xs text-gray-500">SKU: <span x-text="variant.sku"></span></p>
+                                                <p class="text-xs text-gray-500" x-show="variant.barcode">
+                                                    Внутренний ШК: <span class="font-mono" x-text="variant.barcode"></span>
+                                                    <span x-show="linkingMarketplaceBarcode && variant.barcode === linkingMarketplaceBarcode"
+                                                          class="ml-1 text-green-600 font-medium">✓ совпадает</span>
+                                                    <span x-show="linkingMarketplaceBarcode && variant.barcode !== linkingMarketplaceBarcode"
+                                                          class="ml-1 text-orange-500">≠ отличается от Uzum</span>
+                                                </p>
                                             </div>
-                                            <div class="text-right">
-                                                <p class="text-sm font-medium" :class="(variant.stock || 0) > 0 ? 'text-green-600' : 'text-red-500'" 
+                                            <div class="text-right ml-2">
+                                                <p class="text-sm font-medium" :class="(variant.stock || 0) > 0 ? 'text-green-600' : 'text-red-500'"
                                                    x-text="(variant.stock ?? 0) + ' шт'"></p>
                                             </div>
                                         </div>
                                     </div>
                                 </template>
                             </div>
-                            <p x-show="variantSearchQuery && !searchingVariants && variantSearchResults.length === 0" 
+                            <p x-show="variantSearchQuery && !searchingVariants && variantSearchResults.length === 0"
                                class="text-sm text-gray-500 text-center py-4">Товары не найдены</p>
                         </div>
                     </div>
@@ -280,6 +316,7 @@
             // Linking state
             linkModalOpen: false,
             linkingSku: null,
+            linkingMarketplaceBarcode: '', // Баркод маркетплейса (может отличаться от внутреннего)
             skuLinks: [],
             variantSearchQuery: '',
             variantSearchResults: [],
@@ -462,6 +499,7 @@
             // Open modal to link a SKU
             openLinkModal(sku) {
                 this.linkingSku = sku;
+                this.linkingMarketplaceBarcode = sku.barcode || ''; // Автозаполнение баркода из Uzum
                 this.variantSearchQuery = sku.barcode || '';
                 this.variantSearchResults = [];
                 this.linkModalOpen = true;
@@ -510,18 +548,24 @@
             async linkSkuToVariant(variantId) {
                 if (!this.selected?.id || !this.linkingSku) return;
                 try {
+                    const payload = {
+                        product_variant_id: variantId,
+                        external_sku_id: String(this.linkingSku.skuId),
+                    };
+                    // Добавляем marketplace_barcode если указан
+                    if (this.linkingMarketplaceBarcode && this.linkingMarketplaceBarcode.trim()) {
+                        payload.marketplace_barcode = this.linkingMarketplaceBarcode.trim();
+                    }
                     const res = await fetch(`/api/marketplace/variant-links/accounts/${this.accountId}/products/${this.selected.id}/link`, {
                         method: 'POST',
                         headers: this.getHeaders(),
                         credentials: 'include',
-                        body: JSON.stringify({
-                            product_variant_id: variantId,
-                            external_sku_id: String(this.linkingSku.skuId),
-                        }),
+                        body: JSON.stringify(payload),
                     });
                     if (res.ok) {
                         this.linkModalOpen = false;
                         this.linkingSku = null;
+                        this.linkingMarketplaceBarcode = '';
                         await this.loadProductLinks();
                     } else {
                         const err = await res.json();

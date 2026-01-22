@@ -8,10 +8,12 @@ use App\Models\OzonOrder;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
+use App\Models\YandexMarketOrder;
 use App\Observers\OzonOrderObserver;
 use App\Observers\ProductVariantObserver;
 use App\Observers\UzumOrderObserver;
 use App\Observers\WbOrderObserver;
+use App\Observers\YandexMarketOrderObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         UzumOrder::observe(UzumOrderObserver::class);
         WbOrder::observe(WbOrderObserver::class);
         OzonOrder::observe(OzonOrderObserver::class);
+        YandexMarketOrder::observe(YandexMarketOrderObserver::class);
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);

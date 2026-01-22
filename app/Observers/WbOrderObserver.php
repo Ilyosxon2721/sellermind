@@ -15,31 +15,25 @@ class WbOrderObserver
 {
     /**
      * Handle the WbOrder "created" event.
+     *
+     * NOTE: Stock reduction is handled by OrderStockService::processOrderStatusChange
+     * which is called after order sync. Don't duplicate stock logic here.
      */
     public function created(WbOrder $wbOrder): void
     {
         $this->safeBroadcast($wbOrder);
-
-        // Reduce internal stock for linked variants
-        $this->reduceInternalStock($wbOrder);
     }
 
     /**
      * Handle the WbOrder "updated" event.
+     *
+     * NOTE: Stock changes (including cancellation) are handled by OrderStockService.
      */
     public function updated(WbOrder $wbOrder): void
     {
         // Only broadcast if important fields changed
         if ($wbOrder->wasChanged(['status', 'status_normalized', 'wb_status', 'total_amount', 'ordered_at'])) {
             $this->safeBroadcast($wbOrder);
-
-            // Handle cancellation - return stock
-            $oldStatus = $wbOrder->getOriginal('status_normalized');
-            $newStatus = $wbOrder->status_normalized;
-
-            if ($this->isOrderCancelled($newStatus) && !$this->isOrderCancelled($oldStatus)) {
-                $this->returnInternalStock($wbOrder);
-            }
         }
     }
 
@@ -271,29 +265,66 @@ class WbOrderObserver
             ->where('is_active', true)
             ->with('variant');
 
-        // Try by external_sku_id first (most specific)
+        // Strategy 1: Try by marketplace_barcode (приоритетный поиск по баркоду маркетплейса)
+        if ($sku) {
+            $link = (clone $query)->where('marketplace_barcode', $sku)->first();
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by marketplace_barcode', ['sku' => $sku, 'link_id' => $link->id]);
+                return $link;
+            }
+        }
+
+        // Strategy 2: Try by external_sku_id (most specific)
         if ($sku) {
             $link = (clone $query)->where('external_sku_id', $sku)->first();
-            if ($link) return $link;
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
+                return $link;
+            }
 
             // Also try external_sku
             $link = (clone $query)->where('external_sku', $sku)->first();
-            if ($link) return $link;
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by external_sku', ['sku' => $sku, 'link_id' => $link->id]);
+                return $link;
+            }
         }
 
-        // Try by nm_id (external_offer_id)
+        // Strategy 3: Try by nm_id (external_offer_id)
         if ($nmId) {
             $link = (clone $query)->where('external_offer_id', $nmId)->first();
-            if ($link) return $link;
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by external_offer_id', ['nm_id' => $nmId, 'link_id' => $link->id]);
+                return $link;
+            }
 
             $link = (clone $query)->where('external_sku_id', $nmId)->first();
-            if ($link) return $link;
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by external_sku_id (nmId)', ['nm_id' => $nmId, 'link_id' => $link->id]);
+                return $link;
+            }
         }
 
-        // Try by article
+        // Strategy 4: Try by article
         if ($article) {
             $link = (clone $query)->where('external_sku', $article)->first();
-            if ($link) return $link;
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by external_sku (article)', ['article' => $article, 'link_id' => $link->id]);
+                return $link;
+            }
+        }
+
+        // Strategy 5: Fallback - ищем по внутреннему баркоду варианта
+        if ($sku) {
+            $link = (clone $query)
+                ->whereHas('variant', function ($q) use ($sku) {
+                    $q->where('barcode', $sku);
+                })
+                ->first();
+            if ($link) {
+                Log::debug('WbOrderObserver: Found link by variant internal barcode', ['sku' => $sku, 'link_id' => $link->id]);
+                return $link;
+            }
         }
 
         return null;

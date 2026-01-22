@@ -4,61 +4,61 @@ namespace App\Observers;
 
 use App\Events\MarketplaceOrdersUpdated;
 use App\Events\StockUpdated;
-use App\Models\OzonOrder;
+use App\Models\YandexMarketOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
 use Illuminate\Support\Facades\Log;
 
-class OzonOrderObserver
+class YandexMarketOrderObserver
 {
     /**
-     * Handle the OzonOrder "created" event.
+     * Handle the YandexMarketOrder "created" event.
      *
      * NOTE: Stock reduction is handled by OrderStockService::processOrderStatusChange
      * which is called after order sync. Don't duplicate stock logic here.
      */
-    public function created(OzonOrder $ozonOrder): void
+    public function created(YandexMarketOrder $order): void
     {
-        $this->safeBroadcast($ozonOrder);
+        $this->safeBroadcast($order);
     }
 
     /**
-     * Handle the OzonOrder "updated" event.
+     * Handle the YandexMarketOrder "updated" event.
      *
      * NOTE: Stock changes (including cancellation) are handled by OrderStockService.
      */
-    public function updated(OzonOrder $ozonOrder): void
+    public function updated(YandexMarketOrder $order): void
     {
         // Only broadcast if important fields changed
-        if ($ozonOrder->wasChanged(['status', 'substatus', 'total_price'])) {
-            $this->safeBroadcast($ozonOrder);
+        if ($order->wasChanged(['status', 'substatus', 'total_price'])) {
+            $this->safeBroadcast($order);
         }
     }
 
     /**
-     * Handle the OzonOrder "deleted" event.
+     * Handle the YandexMarketOrder "deleted" event.
      */
-    public function deleted(OzonOrder $ozonOrder): void
+    public function deleted(YandexMarketOrder $order): void
     {
-        $this->safeBroadcast($ozonOrder);
+        $this->safeBroadcast($order);
     }
 
     /**
      * Safely broadcast event without breaking the main flow
      */
-    protected function safeBroadcast(OzonOrder $ozonOrder): void
+    protected function safeBroadcast(YandexMarketOrder $order): void
     {
         try {
             broadcast(new MarketplaceOrdersUpdated(
-                $ozonOrder->account?->company_id ?? 0,
-                $ozonOrder->marketplace_account_id,
-                'ozon'
+                $order->account?->company_id ?? 0,
+                $order->marketplace_account_id,
+                'yandex_market'
             ))->toOthers();
         } catch (\Exception $e) {
-            Log::debug('OzonOrderObserver broadcast failed', [
-                'order_id' => $ozonOrder->id,
+            Log::debug('YandexMarketOrderObserver broadcast failed', [
+                'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -69,67 +69,68 @@ class OzonOrderObserver
      */
     protected function isOrderCancelled(?string $status): bool
     {
-        return in_array(strtolower($status ?? ''), [
-            'cancelled',
-            'canceled',
+        return in_array(strtoupper($status ?? ''), [
+            'CANCELLED',
+            'RETURNED',
         ]);
     }
 
     /**
      * Reduce internal stock for order products
      */
-    protected function reduceInternalStock(OzonOrder $order): void
+    protected function reduceInternalStock(YandexMarketOrder $order): void
     {
-        $products = $order->getProductsList();
+        $orderData = $order->order_data ?? [];
+        $items = $orderData['items'] ?? [];
 
-        foreach ($products as $product) {
-            $sku = $product['sku'] ?? $product['offer_id'] ?? null;
-            $barcode = $product['barcode'] ?? null;
-            $quantity = $product['quantity'] ?? 1;
+        foreach ($items as $item) {
+            $offerId = $item['offerId'] ?? null;
+            $shopSku = $item['shopSku'] ?? null;
+            $sku = $item['sku'] ?? null;
+            $quantity = $item['count'] ?? 1;
 
-            if (!$sku && !$barcode) {
-                Log::debug('Ozon order product has no SKU or barcode', [
-                    'order_id' => $order->posting_number,
-                    'product' => $product,
+            if (!$offerId && !$shopSku && !$sku) {
+                Log::debug('YandexMarket order item has no identifier', [
+                    'order_id' => $order->order_id,
+                    'item' => $item,
                 ]);
                 continue;
             }
 
             // Find linked variant
-            $link = $this->findVariantLink($order->marketplace_account_id, $sku, $barcode);
+            $link = $this->findVariantLink($order->marketplace_account_id, $offerId, $shopSku, $sku);
 
             if (!$link || !$link->variant) {
-                Log::info('No linked variant found for Ozon order product', [
-                    'order_id' => $order->posting_number,
-                    'sku' => $sku,
+                Log::info('No linked variant found for YandexMarket order item', [
+                    'order_id' => $order->order_id,
+                    'offer_id' => $offerId,
+                    'shop_sku' => $shopSku,
                 ]);
                 continue;
             }
 
-            // Decrease internal stock in both systems
+            // Decrease internal stock
             $oldStock = $link->variant->stock_default ?? 0;
             $newStock = max(0, $oldStock - $quantity);
 
             // Update stock_default WITHOUT triggering ProductVariantObserver
-            // (to avoid duplicate ledger entries - we create our own below)
             $link->variant->stock_default = $newStock;
             $link->variant->saveQuietly();
 
             // Create ledger entry for warehouse system
-            $this->updateWarehouseStock($link->variant, -$quantity, $order, 'OZON_ORDER');
+            $this->updateWarehouseStock($link->variant, -$quantity, $order, 'YANDEX_ORDER');
 
             // Fire StockUpdated event to sync to OTHER marketplaces
-            // Pass link_id to exclude this specific link from sync
             event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
-            Log::info('Internal stock reduced for Ozon order', [
-                'order_id' => $order->posting_number,
+            Log::info('Internal stock reduced for YandexMarket order', [
+                'order_id' => $order->order_id,
                 'variant_id' => $link->variant->id,
                 'variant_sku' => $link->variant->sku,
-                'external_sku' => $sku,
+                'offer_id' => $offerId,
                 'quantity' => $quantity,
                 'old_stock' => $oldStock,
-                'new_stock' => $link->variant->stock_default,
+                'new_stock' => $newStock,
             ]);
         }
     }
@@ -137,26 +138,28 @@ class OzonOrderObserver
     /**
      * Return stock when order is cancelled
      */
-    protected function returnInternalStock(OzonOrder $order): void
+    protected function returnInternalStock(YandexMarketOrder $order): void
     {
-        $products = $order->getProductsList();
+        $orderData = $order->order_data ?? [];
+        $items = $orderData['items'] ?? [];
 
-        foreach ($products as $product) {
-            $sku = $product['sku'] ?? $product['offer_id'] ?? null;
-            $barcode = $product['barcode'] ?? null;
-            $quantity = $product['quantity'] ?? 1;
+        foreach ($items as $item) {
+            $offerId = $item['offerId'] ?? null;
+            $shopSku = $item['shopSku'] ?? null;
+            $sku = $item['sku'] ?? null;
+            $quantity = $item['count'] ?? 1;
 
-            if (!$sku && !$barcode) {
+            if (!$offerId && !$shopSku && !$sku) {
                 continue;
             }
 
-            $link = $this->findVariantLink($order->marketplace_account_id, $sku, $barcode);
+            $link = $this->findVariantLink($order->marketplace_account_id, $offerId, $shopSku, $sku);
 
             if (!$link || !$link->variant) {
                 continue;
             }
 
-            // Increase internal stock in both systems
+            // Increase internal stock
             $oldStock = $link->variant->stock_default ?? 0;
             $newStock = $oldStock + $quantity;
 
@@ -165,18 +168,18 @@ class OzonOrderObserver
             $link->variant->saveQuietly();
 
             // Create ledger entry for warehouse system
-            $this->updateWarehouseStock($link->variant, $quantity, $order, 'OZON_ORDER_CANCEL');
+            $this->updateWarehouseStock($link->variant, $quantity, $order, 'YANDEX_ORDER_CANCEL');
 
             // Fire StockUpdated event to sync to OTHER marketplaces
             event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
 
-            Log::info('Internal stock returned for cancelled Ozon order', [
-                'order_id' => $order->posting_number,
+            Log::info('Internal stock returned for cancelled YandexMarket order', [
+                'order_id' => $order->order_id,
                 'variant_id' => $link->variant->id,
                 'variant_sku' => $link->variant->sku,
                 'quantity' => $quantity,
                 'old_stock' => $oldStock,
-                'new_stock' => $link->variant->stock_default,
+                'new_stock' => $newStock,
             ]);
         }
     }
@@ -184,10 +187,9 @@ class OzonOrderObserver
     /**
      * Update stock in warehouse system (stock_ledger)
      */
-    protected function updateWarehouseStock($variant, int $qtyDelta, OzonOrder $order, string $sourceType): void
+    protected function updateWarehouseStock($variant, int $qtyDelta, YandexMarketOrder $order, string $sourceType): void
     {
         try {
-            // Find warehouse SKU linked to this variant
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
             if (!$warehouseSku) {
@@ -198,7 +200,6 @@ class OzonOrderObserver
                 return;
             }
 
-            // Get default warehouse for company
             $warehouse = Warehouse::where('company_id', $variant->company_id)
                 ->where('is_default', true)
                 ->first();
@@ -215,7 +216,6 @@ class OzonOrderObserver
                 return;
             }
 
-            // Create ledger entry
             StockLedger::create([
                 'company_id' => $variant->company_id,
                 'occurred_at' => now(),
@@ -224,7 +224,7 @@ class OzonOrderObserver
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $qtyDelta,
                 'cost_delta' => 0,
-                'currency_code' => 'UZS',
+                'currency_code' => 'RUB',
                 'document_id' => null,
                 'document_line_id' => null,
                 'source_type' => $sourceType,
@@ -232,8 +232,8 @@ class OzonOrderObserver
                 'created_by' => null,
             ]);
 
-            Log::info('Warehouse stock updated for Ozon order', [
-                'order_id' => $order->posting_number,
+            Log::info('Warehouse stock updated for YandexMarket order', [
+                'order_id' => $order->order_id,
                 'warehouse_sku_id' => $warehouseSku->id,
                 'warehouse_id' => $warehouse->id,
                 'qty_delta' => $qtyDelta,
@@ -241,7 +241,7 @@ class OzonOrderObserver
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to update warehouse stock for Ozon order', [
+            Log::error('Failed to update warehouse stock for YandexMarket order', [
                 'variant_id' => $variant->id,
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
@@ -250,74 +250,61 @@ class OzonOrderObserver
     }
 
     /**
-     * Find variant link by Ozon SKU/barcode
+     * Find variant link by YandexMarket identifiers
      */
-    protected function findVariantLink(int $accountId, ?string $sku, ?string $barcode = null): ?VariantMarketplaceLink
+    protected function findVariantLink(int $accountId, ?string $offerId, ?string $shopSku, ?string $sku): ?VariantMarketplaceLink
     {
-        if (!$sku && !$barcode) {
-            return null;
-        }
-
         $query = VariantMarketplaceLink::query()
             ->where('marketplace_account_id', $accountId)
             ->where('is_active', true)
             ->with('variant');
 
-        // Strategy 1: Try by marketplace_barcode (приоритетный поиск по баркоду маркетплейса)
-        if ($barcode) {
-            $link = (clone $query)->where('marketplace_barcode', $barcode)->first();
+        // Strategy 1: Try by marketplace_barcode (if shopSku is the barcode)
+        if ($shopSku) {
+            $link = (clone $query)->where('marketplace_barcode', $shopSku)->first();
             if ($link) {
-                Log::debug('OzonOrderObserver: Found link by marketplace_barcode', ['barcode' => $barcode, 'link_id' => $link->id]);
+                Log::debug('YandexMarketOrderObserver: Found link by marketplace_barcode', ['shopSku' => $shopSku, 'link_id' => $link->id]);
                 return $link;
             }
         }
 
-        // Strategy 2: Try marketplace_barcode with SKU (sometimes SKU is the barcode)
-        if ($sku) {
-            $link = (clone $query)->where('marketplace_barcode', $sku)->first();
+        // Strategy 2: Try by external_sku (shopSku)
+        if ($shopSku) {
+            $link = (clone $query)->where('external_sku', $shopSku)->first();
             if ($link) {
-                Log::debug('OzonOrderObserver: Found link by marketplace_barcode (from sku)', ['sku' => $sku, 'link_id' => $link->id]);
+                Log::debug('YandexMarketOrderObserver: Found link by external_sku', ['shopSku' => $shopSku, 'link_id' => $link->id]);
                 return $link;
             }
         }
 
-        // Strategy 3: Try by external_sku
-        if ($sku) {
-            $link = (clone $query)->where('external_sku', $sku)->first();
+        // Strategy 3: Try by external_offer_id (offerId)
+        if ($offerId) {
+            $link = (clone $query)->where('external_offer_id', $offerId)->first();
             if ($link) {
-                Log::debug('OzonOrderObserver: Found link by external_sku', ['sku' => $sku, 'link_id' => $link->id]);
+                Log::debug('YandexMarketOrderObserver: Found link by external_offer_id', ['offerId' => $offerId, 'link_id' => $link->id]);
                 return $link;
             }
         }
 
-        // Strategy 4: Try by external_offer_id
-        if ($sku) {
-            $link = (clone $query)->where('external_offer_id', $sku)->first();
-            if ($link) {
-                Log::debug('OzonOrderObserver: Found link by external_offer_id', ['sku' => $sku, 'link_id' => $link->id]);
-                return $link;
-            }
-        }
-
-        // Strategy 5: Try by external_sku_id
+        // Strategy 4: Try by external_sku_id (sku)
         if ($sku) {
             $link = (clone $query)->where('external_sku_id', $sku)->first();
             if ($link) {
-                Log::debug('OzonOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
+                Log::debug('YandexMarketOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
                 return $link;
             }
         }
 
-        // Strategy 6: Fallback - ищем по внутреннему баркоду варианта
-        $searchBarcode = $barcode ?? $sku;
-        if ($searchBarcode) {
+        // Strategy 5: Fallback - search by variant internal barcode
+        $searchValue = $shopSku ?? $sku;
+        if ($searchValue) {
             $link = (clone $query)
-                ->whereHas('variant', function ($q) use ($searchBarcode) {
-                    $q->where('barcode', $searchBarcode);
+                ->whereHas('variant', function ($q) use ($searchValue) {
+                    $q->where('barcode', $searchValue)->orWhere('sku', $searchValue);
                 })
                 ->first();
             if ($link) {
-                Log::debug('OzonOrderObserver: Found link by variant internal barcode', ['barcode' => $searchBarcode, 'link_id' => $link->id]);
+                Log::debug('YandexMarketOrderObserver: Found link by variant barcode/sku', ['value' => $searchValue, 'link_id' => $link->id]);
                 return $link;
             }
         }

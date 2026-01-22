@@ -447,7 +447,25 @@ class OrderStockService
             'nm_id' => $nmId,
         ]);
 
-        // 1. Ищем по связи VariantMarketplaceLink
+        // 1. Ищем по marketplace_barcode (приоритетный поиск по баркоду маркетплейса)
+        if ($barcode) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $account->id)
+                ->where('marketplace_barcode', $barcode)
+                ->where('is_active', true)
+                ->first();
+
+            if ($link && $link->variant) {
+                Log::debug('OrderStockService: Found variant via marketplace_barcode', [
+                    'barcode' => $barcode,
+                    'link_id' => $link->id,
+                    'variant_id' => $link->variant->id,
+                ]);
+                return $link->variant;
+            }
+        }
+
+        // 2. Ищем по связи VariantMarketplaceLink (external_sku_id, external_offer_id, nm_id)
         $link = VariantMarketplaceLink::query()
             ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
@@ -469,14 +487,14 @@ class OrderStockService
             ->first();
 
         if ($link && $link->variant) {
-            Log::debug('OrderStockService: Found variant via VariantMarketplaceLink', [
+            Log::debug('OrderStockService: Found variant via external_sku_id/offer_id', [
                 'link_id' => $link->id,
                 'variant_id' => $link->variant->id,
             ]);
             return $link->variant;
         }
 
-        // 2. Ищем через MarketplaceProduct
+        // 3. Ищем через MarketplaceProduct
         if ($skuId || $nmId) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $account->id)
@@ -503,14 +521,14 @@ class OrderStockService
             }
         }
 
-        // 3. Fallback: ищем по barcode в ProductVariant
+        // 4. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
         if ($barcode) {
             $variant = ProductVariant::where('barcode', $barcode)
                 ->where('company_id', $account->company_id)
                 ->first();
 
             if ($variant) {
-                Log::debug('OrderStockService: Found variant via barcode', [
+                Log::debug('OrderStockService: Found variant via internal barcode', [
                     'barcode' => $barcode,
                     'variant_id' => $variant->id,
                 ]);
@@ -518,7 +536,7 @@ class OrderStockService
             }
         }
 
-        // 4. Fallback: ищем по артикулу/sku
+        // 5. Fallback: ищем по артикулу/sku
         if ($offerId) {
             $variant = ProductVariant::where('sku', $offerId)
                 ->where('company_id', $account->company_id)

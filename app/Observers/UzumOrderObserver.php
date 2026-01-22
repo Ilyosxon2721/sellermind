@@ -15,13 +15,13 @@ class UzumOrderObserver
 {
     /**
      * Handle the UzumOrder "created" event.
+     *
+     * NOTE: Stock reduction is handled by OrderStockService::processOrderStatusChange
+     * which is called after order items are synced. Don't duplicate stock logic here.
      */
     public function created(UzumOrder $uzumOrder): void
     {
         $this->safeBroadcast($uzumOrder, 'created');
-
-        // Reduce internal stock for linked variants
-        $this->reduceInternalStock($uzumOrder);
     }
 
     /**
@@ -197,7 +197,25 @@ class UzumOrderObserver
      */
     protected function findVariantLink(int $accountId, ?string $externalOfferId, ?string $barcode): ?VariantMarketplaceLink
     {
-        // Strategy 1: Find by external_sku_id (if external_offer_id is a SKU ID)
+        // Strategy 1: Find by marketplace_barcode (баркод маркетплейса может отличаться от внутреннего)
+        if ($barcode) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $accountId)
+                ->where('marketplace_barcode', $barcode)
+                ->where('is_active', true)
+                ->with('variant')
+                ->first();
+
+            if ($link) {
+                Log::debug('Found link by marketplace_barcode', [
+                    'barcode' => $barcode,
+                    'link_id' => $link->id,
+                ]);
+                return $link;
+            }
+        }
+
+        // Strategy 2: Find by external_sku_id (if external_offer_id is a SKU ID)
         if ($externalOfferId) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $accountId)
@@ -207,11 +225,15 @@ class UzumOrderObserver
                 ->first();
 
             if ($link) {
+                Log::debug('Found link by external_sku_id', [
+                    'external_offer_id' => $externalOfferId,
+                    'link_id' => $link->id,
+                ]);
                 return $link;
             }
         }
 
-        // Strategy 2: Find by variant barcode (most reliable for Uzum)
+        // Strategy 3: Find by variant internal barcode (если баркод совпадает с внутренним)
         if ($barcode) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $accountId)
@@ -223,11 +245,15 @@ class UzumOrderObserver
                 ->first();
 
             if ($link) {
+                Log::debug('Found link by variant internal barcode', [
+                    'barcode' => $barcode,
+                    'link_id' => $link->id,
+                ]);
                 return $link;
             }
         }
 
-        // Strategy 3: Find by external_offer_id field
+        // Strategy 4: Find by external_offer_id field
         if ($externalOfferId) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $accountId)
@@ -237,6 +263,10 @@ class UzumOrderObserver
                 ->first();
 
             if ($link) {
+                Log::debug('Found link by external_offer_id', [
+                    'external_offer_id' => $externalOfferId,
+                    'link_id' => $link->id,
+                ]);
                 return $link;
             }
         }
