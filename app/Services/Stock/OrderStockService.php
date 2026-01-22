@@ -6,6 +6,10 @@ use App\Models\MarketplaceAccount;
 use App\Models\OrderStockReturn;
 use App\Models\ProductVariant;
 use App\Models\VariantMarketplaceLink;
+use App\Models\Warehouse\Sku as WarehouseSku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\StockReservation;
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -173,6 +177,27 @@ class OrderStockService
                 $variant->decrementStock($quantity);
                 $stockAfter = $variant->fresh()->stock_default;
 
+                // Create warehouse stock ledger entry
+                $warehouseSku = $this->createWarehouseStockLedger(
+                    $account,
+                    $order,
+                    $variant,
+                    -$quantity, // Negative for outgoing
+                    'marketplace_order_reserve',
+                    $marketplace
+                );
+
+                // Create stock reservation
+                if ($warehouseSku) {
+                    $this->createStockReservation(
+                        $account,
+                        $order,
+                        $warehouseSku,
+                        $quantity,
+                        $marketplace
+                    );
+                }
+
                 // Логируем операцию
                 $this->logStockOperation(
                     $account,
@@ -228,6 +253,9 @@ class OrderStockService
      */
     protected function convertReserveToSold(Model $order): array
     {
+        // Update stock reservations to CONSUMED
+        $this->consumeStockReservations($order);
+
         $order->update([
             'stock_status' => 'sold',
             'stock_sold_at' => now(),
@@ -280,6 +308,19 @@ class OrderStockService
                 $stockBefore = $variant->stock_default;
                 $variant->incrementStock($quantity);
                 $stockAfter = $variant->fresh()->stock_default;
+
+                // Create warehouse stock ledger entry (positive to return stock)
+                $this->createWarehouseStockLedger(
+                    $account,
+                    $order,
+                    $variant,
+                    $quantity, // Positive for incoming
+                    'marketplace_order_cancel',
+                    $marketplace
+                );
+
+                // Cancel stock reservations
+                $this->cancelStockReservations($order);
 
                 // Логируем операцию
                 $this->logStockOperation(
@@ -500,6 +541,242 @@ class OrderStockService
         ]);
 
         return null;
+    }
+
+    /**
+     * Create warehouse stock ledger entry for marketplace order
+     * 
+     * @param MarketplaceAccount $account
+     * @param Model $order
+     * @param ProductVariant $variant
+     * @param int $qtyDelta Quantity change (negative for outgoing, positive for incoming)
+     * @param string $sourceType Type of operation (e.g., 'marketplace_order_reserve')
+     * @param string $marketplace Marketplace code
+     * @return WarehouseSku|null Returns warehouse SKU if successful
+     */
+    protected function createWarehouseStockLedger(
+        MarketplaceAccount $account,
+        Model $order,
+        ProductVariant $variant,
+        int $qtyDelta,
+        string $sourceType,
+        string $marketplace
+    ): ?WarehouseSku {
+        try {
+            // Find or create warehouse SKU for this variant
+            $warehouseSku = WarehouseSku::firstOrCreate(
+                [
+                    'product_variant_id' => $variant->id,
+                    'company_id' => $account->company_id,
+                ],
+                [
+                    'product_id' => $variant->product_id,
+                    'sku_code' => $variant->sku,
+                    'barcode_ean13' => $variant->barcode,
+                    'is_active' => true,
+                ]
+            );
+
+            // Determine warehouse to use
+            $warehouseId = $this->determineWarehouse($account);
+
+            if (!$warehouseId) {
+                Log::warning('OrderStockService: No warehouse found for stock ledger entry', [
+                    'account_id' => $account->id,
+                    'variant_id' => $variant->id,
+                ]);
+                return null;
+            }
+
+            // Create stock ledger entry
+            StockLedger::create([
+                'company_id' => $account->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouseId,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'cost_delta' => 0, // We don't track cost here
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => $sourceType,
+                'source_id' => $order->id,
+                'created_by' => null,
+            ]);
+
+            Log::info('OrderStockService: Warehouse stock ledger entry created', [
+                'variant_id' => $variant->id,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'warehouse_id' => $warehouseId,
+                'qty_delta' => $qtyDelta,
+                'source_type' => $sourceType,
+            ]);
+
+            return $warehouseSku;
+
+        } catch (\Throwable $e) {
+            // Log error but don't fail the entire operation
+            Log::error('OrderStockService: Failed to create warehouse stock ledger', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Determine which warehouse to use for marketplace orders
+     * 
+     * @param MarketplaceAccount $account
+     * @return int|null Warehouse ID or null if not found
+     */
+    protected function determineWarehouse(MarketplaceAccount $account): ?int
+    {
+        // Priority 1: Check if account has default warehouse configured
+        // (This would require adding warehouse_id to marketplace_accounts table)
+        // if ($account->warehouse_id) {
+        //     return $account->warehouse_id;
+        // }
+
+        // Priority 2: Get company's first active warehouse
+        $warehouse = Warehouse::where('company_id', $account->company_id)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
+
+        if ($warehouse) {
+            return $warehouse->id;
+        }
+
+        // Priority 3: Create default warehouse if none exists
+        try {
+            $warehouse = Warehouse::create([
+                'company_id' => $account->company_id,
+                'name' => 'Склад по умолчанию',
+                'code' => 'DEFAULT',
+                'is_active' => true,
+            ]);
+
+            Log::info('OrderStockService: Created default warehouse', [
+                'company_id' => $account->company_id,
+                'warehouse_id' => $warehouse->id,
+            ]);
+
+            return $warehouse->id;
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Failed to create default warehouse', [
+                'company_id' => $account->company_id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create stock reservation for marketplace order
+     * 
+     * @param MarketplaceAccount $account
+     * @param Model $order
+     * @param WarehouseSku $warehouseSku
+     * @param int $quantity
+     * @param string $marketplace
+     * @return void
+     */
+    protected function createStockReservation(
+        MarketplaceAccount $account,
+        Model $order,
+        WarehouseSku $warehouseSku,
+        int $quantity,
+        string $marketplace
+    ): void {
+        try {
+            $warehouseId = $this->determineWarehouse($account);
+
+            if (!$warehouseId) {
+                return;
+            }
+
+            StockReservation::create([
+                'company_id' => $account->company_id,
+                'warehouse_id' => $warehouseId,
+                'sku_id' => $warehouseSku->id,
+                'qty' => $quantity,
+                'status' => StockReservation::STATUS_ACTIVE,
+                'reason' => "Marketplace order: {$marketplace}",
+                'source_type' => 'marketplace_order',
+                'source_id' => $order->id,
+                'expires_at' => now()->addDays(7), // 7 days expiration
+                'created_by' => null,
+            ]);
+
+            Log::info('OrderStockService: Stock reservation created', [
+                'order_id' => $order->id,
+                'sku_id' => $warehouseSku->id,
+                'quantity' => $quantity,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Failed to create stock reservation', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Consume (mark as used) stock reservations for an order
+     * 
+     * @param Model $order
+     * @return void
+     */
+    protected function consumeStockReservations(Model $order): void
+    {
+        try {
+            $updated = StockReservation::where('source_type', 'marketplace_order')
+                ->where('source_id', $order->id)
+                ->where('status', StockReservation::STATUS_ACTIVE)
+                ->update(['status' => StockReservation::STATUS_CONSUMED]);
+
+            Log::info('OrderStockService: Stock reservations consumed', [
+                'order_id' => $order->id,
+                'count' => $updated,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Failed to consume stock reservations', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Cancel stock reservations for an order
+     * 
+     * @param Model $order
+     * @return void
+     */
+    protected function cancelStockReservations(Model $order): void
+    {
+        try {
+            $updated = StockReservation::where('source_type', 'marketplace_order')
+                ->where('source_id', $order->id)
+                ->where('status', StockReservation::STATUS_ACTIVE)
+                ->update(['status' => StockReservation::STATUS_CANCELLED]);
+
+            Log::info('OrderStockService: Stock reservations cancelled', [
+                'order_id' => $order->id,
+                'count' => $updated,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Failed to cancel stock reservations', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -526,23 +526,18 @@ class SalesManagementController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        if (auth()->check()) {
-            // Получаем склады пользователя
-            $warehouses = auth()->user()->warehouses()
-                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get(['id', 'name', 'code', 'address']);
-        } else {
-            // Если не авторизован, показываем все активные склады
-            $warehouses = Warehouse::query()
-                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get(['id', 'name', 'code', 'address']);
-        }
+        // Get warehouses directly from Warehouse model
+        $warehouses = Warehouse::select([
+                'warehouses.id as id',
+                'warehouses.name as name',
+                'warehouses.code as code',
+                'warehouses.address as address'
+            ])
+            ->when($companyId, fn($q) => $q->where('warehouses.company_id', $companyId))
+            ->where('warehouses.is_active', true)
+            ->orderBy('warehouses.is_default', 'desc')
+            ->orderBy('warehouses.name')
+            ->get();
 
         return response()->json(['data' => $warehouses]);
     }
