@@ -189,6 +189,16 @@ class SalesController extends Controller
                     $order = $this->formatManualOrderDetails($order);
                 }
                 break;
+
+            case 'sale':
+                // Manual sales from 'sales' table (created via /sales/create)
+                $order = \App\Models\Sale::with(['items.productVariant', 'counterparty', 'warehouse'])
+                    ->where('company_id', $companyId)
+                    ->find($orderId);
+                if ($order) {
+                    $order = $this->formatSaleDetails($order);
+                }
+                break;
         }
 
         if (!$order) {
@@ -392,6 +402,54 @@ class SalesController extends Controller
     }
 
     /**
+     * Format Sale model for details view (from /sales/create)
+     */
+    private function formatSaleDetails(\App\Models\Sale $sale): array
+    {
+        $items = $sale->items->map(fn($item) => [
+            'id' => $item->id,
+            'product_name' => $item->product_name,
+            'sku' => $item->productVariant?->sku ?? $item->sku,
+            'barcode' => $item->productVariant?->barcode ?? $item->barcode,
+            'quantity' => (int) $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'discount_percent' => (float) ($item->discount_percent ?? 0),
+            'tax_percent' => (float) ($item->tax_percent ?? 0),
+            'subtotal' => (float) $item->subtotal,
+            'total' => (float) $item->total,
+            'is_expense' => $item->metadata['is_expense'] ?? false,
+        ])->toArray();
+
+        return [
+            'id' => 'sale_' . $sale->id,
+            'order_number' => $sale->sale_number,
+            'marketplace' => 'manual',
+            'marketplace_label' => 'Ручная продажа',
+            'account_name' => null,
+            'status' => $sale->status,
+            'status_label' => $this->getStatusLabel($sale->status),
+            'raw_status' => $sale->status,
+            'customer_name' => $sale->counterparty?->name,
+            'customer_phone' => $sale->counterparty?->phone,
+            'warehouse_name' => $sale->warehouse?->name,
+            'total_amount' => (float) $sale->total_amount,
+            'subtotal' => (float) $sale->subtotal,
+            'discount_amount' => (float) ($sale->discount_amount ?? 0),
+            'tax_amount' => (float) ($sale->tax_amount ?? 0),
+            'currency' => $sale->currency ?? 'UZS',
+            'notes' => $sale->notes,
+            'items' => $items,
+            'items_count' => count($items),
+            'created_at' => $sale->created_at?->toIso8601String(),
+            'created_at_formatted' => $sale->created_at?->format('d.m.Y H:i'),
+            'confirmed_at' => $sale->confirmed_at?->toIso8601String(),
+            'confirmed_at_formatted' => $sale->confirmed_at?->format('d.m.Y H:i'),
+            'completed_at' => $sale->completed_at?->toIso8601String(),
+            'completed_at_formatted' => $sale->completed_at?->format('d.m.Y H:i'),
+        ];
+    }
+
+    /**
      * Get status label in Russian
      */
     private function getStatusLabel(?string $status): string
@@ -399,13 +457,23 @@ class SalesController extends Controller
         if (!$status) return 'Неизвестно';
 
         $labels = [
+            // General statuses
             'new' => 'Новый',
             'processing' => 'В обработке',
             'transit' => 'В транзите',
             'shipped' => 'Отправлен',
-            'delivered' => 'Продан',
-            'completed' => 'Продан',
+            'delivered' => 'Доставлен',
+            'completed' => 'Завершён',
             'cancelled' => 'Отменён',
+            'canceled' => 'Отменён',
+            'returned' => 'Возврат',
+
+            // Sale statuses (from /sales/create)
+            'draft' => 'Черновик',
+            'confirmed' => 'Подтверждён',
+            'pending' => 'Ожидает',
+
+            // Uzum statuses
             'in_assembly' => 'В сборке',
             'in_delivery' => 'В доставке',
             'accepted_uzum' => 'Принят Uzum',
@@ -414,9 +482,14 @@ class SalesController extends Controller
             'awaiting_pickup' => 'В ПВЗ',
             'issued' => 'Выдан',
             'returns' => 'Возврат',
+
+            // WB statuses
+            'sold' => 'Продан',
+            'defect' => 'Брак',
+            'fit' => 'Принят',
         ];
 
-        return $labels[$status] ?? $status;
+        return $labels[$status] ?? ucfirst($status);
     }
 
     /**
@@ -1158,6 +1231,7 @@ class SalesController extends Controller
                     'total_amount' => (float) ($order->payload_json['total_amount'] ?? 0),
                     'currency' => $order->payload_json['currency'] ?? 'UZS',
                     'status' => $this->normalizeStatus($order->status),
+                    'status_label' => $this->getStatusLabel($this->normalizeStatus($order->status)),
                     'is_revenue' => true,
                     'raw_status' => $order->status,
                 ]);
@@ -1198,6 +1272,7 @@ class SalesController extends Controller
                     'total_amount' => (float) $sale->total_amount,
                     'currency' => $sale->currency ?? 'UZS',
                     'status' => $sale->status,
+                    'status_label' => $this->getStatusLabel($sale->status),
                     'is_revenue' => in_array($sale->status, ['confirmed', 'completed']),
                     'raw_status' => $sale->status,
                     'items_count' => $sale->items_count ?? 0,

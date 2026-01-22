@@ -319,13 +319,13 @@
                                     <td class="px-6 py-4">
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
                                               :class="{
-                                                  'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed',
-                                                  'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing' || order.status === 'in_assembly',
-                                                  'bg-blue-100 text-blue-700': order.status === 'shipped' || order.status === 'in_delivery',
-                                                  'bg-gray-100 text-gray-700': order.status === 'new',
-                                                  'bg-red-100 text-red-700': order.status === 'cancelled' || order.status === 'canceled'
+                                                  'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed' || order.status === 'sold',
+                                                  'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing' || order.status === 'in_assembly' || order.status === 'pending',
+                                                  'bg-blue-100 text-blue-700': order.status === 'shipped' || order.status === 'in_delivery' || order.status === 'confirmed',
+                                                  'bg-gray-100 text-gray-700': order.status === 'new' || order.status === 'draft',
+                                                  'bg-red-100 text-red-700': order.status === 'cancelled' || order.status === 'canceled' || order.status === 'returned'
                                               }"
-                                              x-text="getStatusName(order.status)"></span>
+                                              x-text="order.status_label || getStatusName(order.status)"></span>
                                         {{-- Revenue indicator --}}
                                         <span x-show="order.is_revenue" class="ml-1 text-xs text-green-600" title="Доход учтён">✓</span>
                                     </td>
@@ -479,13 +479,13 @@
                                       x-text="getMarketplaceName(order.marketplace)"></span>
                                 <span class="text-xs px-2 py-1 rounded-full"
                                       :class="{
-                                          'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed',
-                                          'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing',
-                                          'bg-blue-100 text-blue-700': order.status === 'shipped',
-                                          'bg-gray-100 text-gray-700': order.status === 'new',
-                                          'bg-red-100 text-red-700': order.status === 'cancelled'
+                                          'bg-green-100 text-green-700': order.status === 'delivered' || order.status === 'completed' || order.status === 'sold',
+                                          'bg-yellow-100 text-yellow-700': order.status === 'transit' || order.status === 'processing' || order.status === 'pending',
+                                          'bg-blue-100 text-blue-700': order.status === 'shipped' || order.status === 'confirmed',
+                                          'bg-gray-100 text-gray-700': order.status === 'new' || order.status === 'draft',
+                                          'bg-red-100 text-red-700': order.status === 'cancelled' || order.status === 'returned'
                                       }"
-                                      x-text="getStatusName(order.status)"></span>
+                                      x-text="order.status_label || getStatusName(order.status)"></span>
                             </div>
                             <p class="native-body font-semibold truncate" x-text="'Заказ #' + (order.order_number || order.id)"></p>
                             <p class="native-caption mt-0.5" x-text="order.account_name" x-show="order.account_name"></p>
@@ -922,18 +922,34 @@ function salesPage() {
 
         getStatusName(status) {
             const names = {
+                // General
                 new: 'Новый',
                 processing: 'В обработке',
                 transit: 'В транзите',
-                in_assembly: 'На сборке',
                 shipped: 'Отправлен',
-                in_delivery: 'В доставке',
-                delivered: 'Продан',
-                completed: 'Продан',
+                delivered: 'Доставлен',
+                completed: 'Завершён',
                 cancelled: 'Отменён',
                 canceled: 'Отменён',
                 CANCELED: 'Отменён',
-                issued: 'Выдан'
+                returned: 'Возврат',
+                // Sale statuses
+                draft: 'Черновик',
+                confirmed: 'Подтверждён',
+                pending: 'Ожидает',
+                // Uzum
+                in_assembly: 'На сборке',
+                in_delivery: 'В доставке',
+                accepted_uzum: 'Принят Uzum',
+                in_supply: 'В поставке',
+                waiting_pickup: 'Ждёт выдачи',
+                awaiting_pickup: 'В ПВЗ',
+                issued: 'Выдан',
+                returns: 'Возврат',
+                // WB
+                sold: 'Продан',
+                defect: 'Брак',
+                fit: 'Принят'
             };
             return names[status] || status;
         },
