@@ -32,12 +32,14 @@
         x-data="{
             async changeLocale(locale) {
                 try {
+                    const token = window.api?.getToken() || localStorage.getItem('auth_token');
                     const response = await fetch('/api/me/locale', {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                         },
                         credentials: 'include',
                         body: JSON.stringify({ locale })
@@ -47,7 +49,8 @@
                         // Reload page to apply new locale
                         window.location.reload();
                     } else {
-                        console.error('Failed to update locale');
+                        const errorData = await response.json();
+                        console.error('Failed to update locale:', errorData.message);
                     }
                 } catch (error) {
                     console.error('Error updating locale:', error);
