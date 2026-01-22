@@ -405,6 +405,14 @@
 
 <script>
 function saleCreatePage() {
+    // Helper function to get headers with CSRF token
+    const getHeaders = () => ({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    });
+
     return {
         saving: false,
         autoGenerateNumber: true,
@@ -468,10 +476,7 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/companies', {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -498,10 +503,7 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/sales-management/warehouses', {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -547,10 +549,7 @@ function saleCreatePage() {
                 const params = new URLSearchParams({ search: this.counterpartySearch });
                 const resp = await fetch(`/api/sales-management/counterparties?${params}`, {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -580,10 +579,8 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/counterparties', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    credentials: 'same-origin',
+                    headers: getHeaders(),
                     body: JSON.stringify({
                         name: this.newCounterparty.name,
                         inn: this.newCounterparty.inn,
@@ -632,10 +629,7 @@ function saleCreatePage() {
                 });
                 const resp = await fetch(`/api/sales-management/products?${params}`, {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -767,10 +761,8 @@ function saleCreatePage() {
 
                 const resp = await fetch('/api/sales-management', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    credentials: 'same-origin',
+                    headers: getHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -795,10 +787,8 @@ function saleCreatePage() {
             try {
                 const resp = await fetch(`/api/sales-management/${saleId}/confirm`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
+                    credentials: 'same-origin',
+                    headers: getHeaders()
                 });
 
                 if (resp.ok) {

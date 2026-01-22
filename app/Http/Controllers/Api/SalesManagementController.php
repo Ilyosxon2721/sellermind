@@ -495,7 +495,7 @@ class SalesManagementController extends Controller
             })
             ->orderBy('sku')
             ->limit(50)
-            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price', 'metadata']);
+            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price']);
 
         // Получить все связанные SKU из складской системы
         $variantIds = $products->pluck('id')->all();
