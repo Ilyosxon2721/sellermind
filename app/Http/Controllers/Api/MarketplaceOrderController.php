@@ -1142,9 +1142,9 @@ class MarketplaceOrderController extends Controller
         $orders = $query->orderByDesc('ordered_at')->limit(1000)->get();
 
         return $orders->map(function ($o) {
-            // Extract scheme (delivery type) from raw_payload
+            // Get delivery type from DB field first, fallback to raw_payload
             $rawPayload = is_array($o->raw_payload) ? $o->raw_payload : json_decode($o->raw_payload, true);
-            $scheme = strtoupper($rawPayload['scheme'] ?? 'FBS');
+            $scheme = strtoupper($o->delivery_type ?? $rawPayload['scheme'] ?? 'FBS');
 
             return [
                 'id' => $o->id,
@@ -1156,7 +1156,8 @@ class MarketplaceOrderController extends Controller
                 'currency' => $o->currency,
                 'ordered_at' => $o->ordered_at,
                 'raw_payload' => $o->raw_payload,
-                // Add delivery type for filtering
+                // Add delivery type for filtering (DB field takes priority)
+                'delivery_type' => $scheme,
                 'deliveryType' => $scheme,
                 'scheme' => $scheme,
             ];

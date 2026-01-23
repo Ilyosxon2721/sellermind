@@ -10,6 +10,7 @@ use App\Models\Warehouse\Sku as WarehouseSku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\Warehouse;
+use App\Services\Stock\StockSyncService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -225,6 +226,10 @@ class OrderStockService
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
                 ]);
+
+                // ВАЖНО: Синхронизируем остатки с ДРУГИМИ маркетплейсами
+                // чтобы избежать overselling
+                $this->syncVariantToOtherMarketplaces($variant, $account->id);
             }
 
             // Обновляем статус заказа
@@ -351,6 +356,10 @@ class OrderStockService
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
                 ]);
+
+                // ВАЖНО: Синхронизируем остатки с ДРУГИМИ маркетплейсами
+                // чтобы они знали что товар снова доступен
+                $this->syncVariantToOtherMarketplaces($variant, $account->id);
             }
 
             // Cancel stock reservations
@@ -1014,5 +1023,69 @@ class OrderStockService
         }
 
         return [];
+    }
+
+    /**
+     * Синхронизировать остатки варианта с ДРУГИМИ маркетплейсами
+     * Исключаем маркетплейс, откуда пришёл заказ (sourceLinkId)
+     *
+     * @param ProductVariant $variant
+     * @param int|null $sourceAccountId ID аккаунта маркетплейса, откуда пришёл заказ (исключаем)
+     * @return void
+     */
+    protected function syncVariantToOtherMarketplaces(ProductVariant $variant, ?int $sourceAccountId = null): void
+    {
+        try {
+            // Получаем все активные связи с маркетплейсами для этого варианта
+            $links = $variant->activeMarketplaceLinks()
+                ->where('sync_stock_enabled', true)
+                ->with('account')
+                ->get();
+
+            if ($links->isEmpty()) {
+                Log::debug('OrderStockService: No active marketplace links for variant', [
+                    'variant_id' => $variant->id,
+                ]);
+                return;
+            }
+
+            // Получаем StockSyncService
+            $stockSyncService = app(StockSyncService::class);
+            $currentStock = $variant->getCurrentStock();
+
+            foreach ($links as $link) {
+                // Пропускаем маркетплейс, откуда пришёл заказ
+                if ($sourceAccountId && $link->marketplace_account_id === $sourceAccountId) {
+                    Log::debug('OrderStockService: Skipping source marketplace for sync', [
+                        'variant_id' => $variant->id,
+                        'account_id' => $link->marketplace_account_id,
+                    ]);
+                    continue;
+                }
+
+                try {
+                    $stockSyncService->syncLinkStock($link, $currentStock);
+
+                    Log::info('OrderStockService: Stock synced to other marketplace', [
+                        'variant_id' => $variant->id,
+                        'link_id' => $link->id,
+                        'marketplace' => $link->account->marketplace,
+                        'stock' => $currentStock,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('OrderStockService: Failed to sync stock to marketplace', [
+                        'variant_id' => $variant->id,
+                        'link_id' => $link->id,
+                        'marketplace' => $link->account->marketplace ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Error syncing variant to other marketplaces', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

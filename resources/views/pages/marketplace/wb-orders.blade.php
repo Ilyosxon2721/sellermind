@@ -3,12 +3,84 @@
 @section('content')
 <style>
     [x-cloak] { display: none !important; }
-    .wb-gradient { background: linear-gradient(135deg, #CB11AB 0%, #9B0D85 100%); }
-    .wb-accent { color: #CB11AB; }
-    .wb-bg-accent { background-color: #CB11AB; }
-    .wb-border-accent { border-color: #CB11AB; }
-    .wb-ring-accent:focus { --tw-ring-color: #CB11AB; }
-    .wb-hover:hover { background-color: rgba(203, 17, 171, 0.1); }
+
+    /* Wildberries Brand Colors */
+    :root {
+        --wb-primary: #CB11AB;
+        --wb-primary-dark: #9B0D85;
+        --wb-primary-light: #E91ECC;
+        --wb-secondary: #3F0E3F;
+        --wb-accent: #FF4081;
+    }
+
+    .wb-gradient { background: linear-gradient(135deg, var(--wb-primary) 0%, var(--wb-primary-dark) 100%); }
+    .wb-gradient-subtle { background: linear-gradient(135deg, #FCE4F6 0%, #F3E8FF 100%); }
+    .wb-accent { color: var(--wb-primary); }
+    .wb-bg-accent { background-color: var(--wb-primary); }
+    .wb-border-accent { border-color: var(--wb-primary); }
+    .wb-ring-accent:focus { --tw-ring-color: var(--wb-primary); }
+    .wb-hover:hover { background-color: rgba(203, 17, 171, 0.08); }
+
+    /* WB Header Gradient - Classic Wildberries look */
+    .wb-header-bg {
+        background: linear-gradient(180deg, var(--wb-primary) 0%, var(--wb-primary-dark) 100%);
+    }
+
+    /* WB Card styling */
+    .wb-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+    .wb-card:hover {
+        border-color: var(--wb-primary);
+        box-shadow: 0 4px 12px rgba(203, 17, 171, 0.15);
+    }
+
+    /* WB Button */
+    .wb-btn-primary {
+        background: var(--wb-primary);
+        color: white;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .wb-btn-primary:hover {
+        background: var(--wb-primary-dark);
+        transform: translateY(-1px);
+    }
+
+    /* WB Tab styling */
+    .wb-tab {
+        position: relative;
+        padding: 12px 16px;
+        font-weight: 500;
+        color: #6B7280;
+        transition: all 0.2s ease;
+    }
+    .wb-tab:hover { color: var(--wb-primary); }
+    .wb-tab.active {
+        color: var(--wb-primary);
+    }
+    .wb-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--wb-primary);
+        border-radius: 3px 3px 0 0;
+    }
+
+    /* Status badges */
+    .wb-badge-new { background: #DBEAFE; color: #1E40AF; }
+    .wb-badge-assembly { background: #FEF3C7; color: #92400E; }
+    .wb-badge-delivery { background: #D1FAE5; color: #065F46; }
+    .wb-badge-completed { background: #E0E7FF; color: #3730A3; }
+    .wb-badge-cancelled { background: #FEE2E2; color: #991B1B; }
+
     .animate-pulse {
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
@@ -16,62 +88,72 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
     }
+
+    /* Smooth scrollbar */
+    .wb-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .wb-scroll::-webkit-scrollbar-track { background: #F3F4F6; border-radius: 3px; }
+    .wb-scroll::-webkit-scrollbar-thumb { background: var(--wb-primary); border-radius: 3px; }
 </style>
 
-<div x-data="wbOrdersPage()" x-init="init()" class="flex h-screen bg-gray-50 browser-only">
+<div x-data="wbOrdersPage()" x-init="init()" class="flex h-screen bg-gray-100 browser-only">
 
     <x-sidebar />
 
     <div class="flex-1 flex flex-col overflow-hidden font-sans">
-        <!-- WB Header -->
-        <header class="bg-white border-b border-gray-300">
+        <!-- WB Header - Classic Wildberries Style -->
+        <header class="wb-header-bg shadow-lg">
             <div class="px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition">
+                        <a href="/marketplace/{{ $accountId }}" class="text-white/70 hover:text-white transition p-1 rounded hover:bg-white/10">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </a>
                         <div class="flex items-center space-x-3">
-                            <!-- WB Logo - Cleaner style -->
-                            <div class="w-10 h-10 bg-[#CB11AB] rounded-lg flex items-center justify-center">
-                                <span class="text-white font-bold text-sm">WB</span>
+                            <!-- WB Logo - Classic White Badge -->
+                            <div class="w-11 h-11 bg-white rounded-xl flex items-center justify-center shadow-md">
+                                <span class="text-[#CB11AB] font-bold text-lg tracking-tight">WB</span>
                             </div>
                             <div>
-                                <div class="flex items-center space-x-2">
-                                    <h1 class="text-lg font-semibold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : 'Финансовые заказы'"></h1>
-                                    <!-- FBS/FBO Toggle -->
-                                    <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
+                                <div class="flex items-center space-x-3">
+                                    <h1 class="text-xl font-bold text-white" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
+                                    <!-- FBS/DBS/FBO Toggle - Pill Style -->
+                                    <div class="flex items-center bg-white/20 backdrop-blur rounded-full p-1">
                                         <button @click="switchMode('fbs')"
-                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
-                                                :class="orderMode === 'fbs' ? 'bg-[#CB11AB] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                :class="orderMode === 'fbs' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
                                             FBS
                                         </button>
+                                        <button @click="switchMode('dbs')"
+                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                :class="orderMode === 'dbs' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
+                                            DBS
+                                        </button>
                                         <button @click="switchMode('fbo')"
-                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
-                                                :class="orderMode === 'fbo' ? 'bg-[#CB11AB] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                                class="px-4 py-1.5 text-xs font-bold rounded-full transition"
+                                                :class="orderMode === 'fbo' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
                                             FBO
                                         </button>
                                     </div>
                                 </div>
-                                <p class="text-xs text-gray-500">{{ $accountName ?? 'Wildberries' }}</p>
+                                <p class="text-sm text-white/70">{{ $accountName ?? 'Wildberries' }}</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex items-center space-x-2">
-                        <!-- WebSocket Indicator -->
-                        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-gray-50 border"
-                             :class="wsConnected ? 'border-green-300 bg-green-50' : 'border-gray-300'">
-                            <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'"></span>
-                            <span class="text-xs font-medium" :class="wsConnected ? 'text-green-700' : 'text-gray-500'" x-text="wsConnected ? (syncInProgress ? syncProgress + '%' : 'Live') : 'Offline'"></span>
+                    <div class="flex items-center space-x-3">
+                        <!-- WebSocket Indicator - Pill Style -->
+                        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full backdrop-blur"
+                             :class="wsConnected ? 'bg-green-400/20 border border-green-400/40' : 'bg-white/10 border border-white/20'">
+                            <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-400 animate-pulse' : 'bg-white/50'"></span>
+                            <span class="text-xs font-semibold" :class="wsConnected ? 'text-green-100' : 'text-white/70'" x-text="wsConnected ? (syncInProgress ? syncProgress + '%' : 'Live') : 'Offline'"></span>
                         </div>
 
                         <button @click="triggerSync()"
                                 :disabled="syncInProgress"
-                                class="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium transition flex items-center space-x-2 disabled:opacity-50 text-sm">
+                                class="px-4 py-2 bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20 rounded-lg font-semibold transition flex items-center space-x-2 disabled:opacity-50 text-sm">
                             <svg x-show="syncInProgress" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -79,11 +161,11 @@
                             <svg x-show="!syncInProgress" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            <span x-text="syncInProgress ? 'Загрузка...' : 'Обновить'"></span>
+                            <span x-text="syncInProgress ? 'Синхронизация...' : 'Обновить'"></span>
                         </button>
 
                         <a href="/marketplace/{{ $accountId }}/supplies"
-                           class="px-3 py-2 bg-[#CB11AB] text-white rounded-md font-medium transition flex items-center space-x-2 hover:bg-[#9B0D85] text-sm">
+                           class="px-4 py-2 bg-white text-[#CB11AB] rounded-lg font-bold transition flex items-center space-x-2 hover:bg-pink-50 text-sm shadow">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                             </svg>
@@ -94,52 +176,52 @@
 
                 <!-- Filters Row -->
                 <div class="mt-4 flex items-center space-x-3 flex-wrap gap-2">
-                    <!-- Date Filters -->
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-gray-500 font-medium">Период:</span>
-                        <button @click="setToday()" class="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-xs transition">Сегодня</button>
-                        <button @click="setYesterday()" class="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-xs transition">Вчера</button>
-                        <button @click="setLastWeek()" class="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-xs transition">7 дней</button>
-                        <button @click="setLastMonth()" class="px-2.5 py-1 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-xs transition">30 дней</button>
+                    <!-- Quick Date Filters -->
+                    <div class="flex items-center space-x-1 bg-white/10 backdrop-blur rounded-lg p-1">
+                        <button @click="setToday()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">Сегодня</button>
+                        <button @click="setYesterday()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">Вчера</button>
+                        <button @click="setLastWeek()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">7 дней</button>
+                        <button @click="setLastMonth()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">30 дней</button>
                     </div>
 
                     <div class="flex items-center space-x-2">
                         <input type="date" x-model="dateFrom" @change="loadOrders(); loadStats()"
-                               class="px-2.5 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
-                        <span class="text-gray-400 text-xs">—</span>
+                               class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 focus:border-white/40 placeholder-white/50">
+                        <span class="text-white/60 text-xs">—</span>
                         <input type="date" x-model="dateTo" @change="loadOrders(); loadStats()"
-                               class="px-2.5 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
+                               class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 focus:border-white/40">
                     </div>
 
-                    <!-- Sale Type Filter (FBO/DBS/EDBS) -->
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-gray-500 font-medium">Тип продажи:</span>
-                        <select x-model="saleTypeFilter" @change="loadOrders()" class="px-2.5 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
-                            <option value="">Все</option>
-                            <option value="fbs">FBS (Со склада продавца)</option>
-                            <option value="fbo">FBO (Со склада WB)</option>
-                            <option value="dbs">DBS (Доставка продавцом)</option>
-                        </select>
-                    </div>
+                    <!-- Sale Type Filter -->
+                    <select x-model="saleTypeFilter" @change="loadOrders()"
+                            class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 appearance-none cursor-pointer">
+                        <option value="" class="text-gray-900">Все типы</option>
+                        <option value="fbs" class="text-gray-900">FBS</option>
+                        <option value="fbo" class="text-gray-900">FBO</option>
+                        <option value="dbs" class="text-gray-900">DBS</option>
+                    </select>
 
-                    <input type="text" x-model="searchQuery" placeholder="Поиск по номеру, артикулу..."
-                           class="flex-1 max-w-xs px-3 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
+                    <div class="flex-1 max-w-xs relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" x-model="searchQuery" placeholder="Поиск заказа..."
+                               class="w-full pl-9 pr-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 placeholder-white/50">
+                    </div>
                 </div>
             </div>
 
-            <!-- Status Tabs (only for FBS mode) -->
-            <div x-show="orderMode === 'fbs'" class="border-t border-gray-200 bg-gray-50">
-                <div class="px-6 flex items-center space-x-1 overflow-x-auto">
+            <!-- Status Tabs (only for FBS mode) - White background -->
+            <div x-show="orderMode === 'fbs'" class="bg-white border-b border-gray-200">
+                <div class="px-6 flex items-center space-x-1 overflow-x-auto wb-scroll">
                     <template x-for="tab in statusTabs" :key="tab.value">
                         <button @click="activeTab = tab.value; loadOrders()"
-                                class="px-4 py-3 text-xs font-medium border-b-2 transition whitespace-nowrap"
-                                :class="activeTab === tab.value
-                                    ? 'border-[#CB11AB] text-[#CB11AB] bg-white'
-                                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'">
+                                class="wb-tab text-sm whitespace-nowrap"
+                                :class="{'active': activeTab === tab.value}">
                             <span x-text="tab.label"></span>
                             <span x-show="getStatusCount(tab.value) > 0"
-                                  class="ml-1.5 px-1.5 py-0.5 text-xs rounded-md font-semibold"
-                                  :class="activeTab === tab.value ? 'bg-[#CB11AB] text-white' : 'bg-gray-300 text-gray-700'"
+                                  class="ml-2 px-2 py-0.5 text-xs rounded-full font-bold"
+                                  :class="activeTab === tab.value ? 'bg-[#CB11AB] text-white' : 'bg-gray-200 text-gray-600'"
                                   x-text="getStatusCount(tab.value)"></span>
                         </button>
                     </template>
@@ -159,63 +241,63 @@
                 </div>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="px-6 py-3">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <!-- Stats Cards - WB Style -->
+            <div class="px-6 py-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <!-- Total Orders -->
-                    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 mb-1">Всего заказов</div>
-                                <p class="text-2xl font-bold text-gray-900" x-text="displayStats.total_orders || 0"></p>
+                    <div class="wb-card p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Заказов</p>
+                                <p class="text-3xl font-bold text-gray-900" x-text="displayStats.total_orders || 0"></p>
                             </div>
-                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-[#CB11AB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-12 h-12 wb-gradient-subtle rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-[#CB11AB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                 </svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Total Amount -->
-                    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 mb-1">Общая сумма</div>
-                                <p class="text-xl font-bold text-gray-900" x-text="formatMoney(displayStats.total_amount)"></p>
+                    <div class="wb-card p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Сумма</p>
+                                <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(displayStats.total_amount)"></p>
                             </div>
-                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Average Check -->
-                    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 mb-1">Средний чек</div>
-                                <p class="text-xl font-bold text-gray-900" x-text="displayStats.total_orders > 0 ? formatMoney(displayStats.total_amount / displayStats.total_orders) : '—'"></p>
+                    <div class="wb-card p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Средний чек</p>
+                                <p class="text-2xl font-bold text-gray-900" x-text="displayStats.total_orders > 0 ? formatMoney(displayStats.total_amount / displayStats.total_orders) : '—'"></p>
                             </div>
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                                 </svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Found Orders -->
-                    <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 mb-1">Найдено</div>
-                                <p class="text-2xl font-bold text-gray-900" x-text="filteredOrders.length"></p>
+                    <div class="wb-card p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Найдено</p>
+                                <p class="text-3xl font-bold text-[#CB11AB]" x-text="filteredOrders.length"></p>
                             </div>
-                            <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
                             </div>
@@ -563,52 +645,67 @@
                 </div>
             </div>
 
-            <!-- FBS: Orders for other tabs (simple list) -->
-            <div x-show="!loading && orderMode === 'fbs' && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-6 pb-6 space-y-4">
+            <!-- FBS: Orders for other tabs (simple list) - WB Style -->
+            <div x-show="!loading && orderMode === 'fbs' && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-6 pb-6 space-y-3">
                 <template x-for="order in filteredOrders" :key="order.id">
-                    <div class="bg-white rounded-xl border border-gray-200 hover:border-[#CB11AB] hover:shadow-md transition p-5">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1 flex items-start space-x-4 cursor-pointer" @click="viewOrder(order)">
+                    <div class="wb-card overflow-hidden">
+                        <div class="flex items-stretch">
+                            <!-- Product Image -->
+                            <div class="flex-shrink-0 w-28 bg-gray-50 flex items-center justify-center cursor-pointer" @click="viewOrder(order)">
                                 <img x-show="order.photo_url || order.nm_id"
                                      :src="order.photo_url || getWbProductImageUrl(order.nm_id)"
-                                     class="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                                     class="w-24 h-24 object-cover rounded-lg"
                                      loading="lazy" x-on:error="handleImageError($event)">
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-3 mb-2">
-                                        <h3 class="text-lg font-bold text-gray-900">Заказ #<span x-text="order.external_order_id"></span></h3>
-                                        <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
-                                        <span class="px-2 py-1 text-xs font-medium rounded"
-                                              :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
-                                              x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
-                                        <span x-show="order.supply_id" class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">В поставке</span>
-                                    </div>
-                                    <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
-                                    <div class="text-sm text-gray-500 mb-2" x-text="order.meta_info || ''"></div>
-                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                                        <div><span class="text-gray-500">Артикул:</span> <span class="font-medium" x-text="order.article || '-'"></span></div>
-                                        <div><span class="text-gray-500">SKU:</span> <span class="font-mono text-sm" x-text="order.sku || '-'"></span></div>
-                                        <div><span class="text-gray-500">NM ID:</span> <span class="font-medium" x-text="order.nm_id || '-'"></span></div>
-                                        <div><span class="text-gray-500">Время:</span> <span x-text="order.time_elapsed || formatDate(order.ordered_at)"></span></div>
-                                    </div>
+                            </div>
+
+                            <!-- Order Info -->
+                            <div class="flex-1 p-4 cursor-pointer" @click="viewOrder(order)">
+                                <div class="flex items-center flex-wrap gap-2 mb-2">
+                                    <span class="text-lg font-bold text-gray-900">#<span x-text="order.external_order_id"></span></span>
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                    <span class="px-2 py-1 text-xs font-bold rounded"
+                                          :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                          x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
+                                    <span x-show="order.supply_id" class="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-700">
+                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5z"/></svg>
+                                        В поставке
+                                    </span>
+                                </div>
+                                <p class="font-semibold text-gray-800 mb-1" x-text="order.product_name || order.article || 'Товар'"></p>
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                                    <span><span class="font-medium text-gray-700">Артикул:</span> <span x-text="order.article || '-'"></span></span>
+                                    <span><span class="font-medium text-gray-700">NM:</span> <span x-text="order.nm_id || '-'"></span></span>
+                                    <span class="flex items-center">
+                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span x-text="order.time_elapsed || formatDate(order.ordered_at)"></span>
+                                    </span>
                                 </div>
                             </div>
-                            <div class="flex items-center space-x-3 ml-4">
-                                <div class="text-right">
-                                    <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
+
+                            <!-- Price & Actions -->
+                            <div class="flex items-center px-4 border-l border-gray-100 bg-gray-50/50">
+                                <div class="text-right mr-4">
+                                    <p class="text-2xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></p>
+                                    <p class="text-xs text-gray-500">RUB</p>
                                 </div>
-                                <div class="flex flex-col space-y-2">
+                                <div class="flex flex-col space-y-1.5">
                                     <button x-show="!order.supply_id && (order.status === 'new' || order.status === 'in_assembly')"
                                             @click.stop="openAddToSupplyModal(order)"
-                                            class="px-3 py-1.5 wb-gradient text-white text-xs rounded-lg hover:opacity-90 transition">
+                                            class="wb-btn-primary px-3 py-1.5 text-xs">
                                         В поставку
                                     </button>
                                     <button @click.stop="printOrderSticker(order)"
-                                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition">
-                                        <span x-text="order.sticker_path ? 'Скачать' : 'Печать'"></span>
+                                            class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition">
+                                        <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                        </svg>
+                                        Стикер
                                     </button>
                                     <button x-show="order.status !== 'completed' && order.status !== 'cancelled'"
                                             @click.stop="openCancelModal(order)"
-                                            class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition">
+                                            class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition">
                                         Отменить
                                     </button>
                                 </div>
@@ -1190,7 +1287,7 @@ function wbOrdersPage() {
         async switchMode(mode) {
             if (this.orderMode === mode) return;
             this.orderMode = mode;
-            this.activeTab = mode === 'fbs' ? 'new' : 'all';
+            this.activeTab = (mode === 'fbs' || mode === 'dbs') ? 'new' : 'all';
             this.loading = true;
 
             if (mode === 'fbo') {
@@ -1202,6 +1299,17 @@ function wbOrdersPage() {
                 this.dateFrom = weekAgo.toISOString().split('T')[0];
 
                 await this.loadFboOrders();
+            } else if (mode === 'dbs') {
+                // DBS mode uses same orders but filters by delivery_type
+                // Set default date range to 30 days
+                const today = new Date();
+                const monthAgo = new Date(today);
+                monthAgo.setDate(monthAgo.getDate() - 30);
+                this.dateTo = today.toISOString().split('T')[0];
+                this.dateFrom = monthAgo.toISOString().split('T')[0];
+
+                await this.loadOrders();
+                await this.loadStats();
             }
             this.loading = false;
         },
@@ -1435,6 +1543,21 @@ function wbOrdersPage() {
 
         get filteredOrders() {
             let result = this.orders;
+
+            // Filter by orderMode (FBS/DBS)
+            if (this.orderMode === 'fbs') {
+                result = result.filter(o => {
+                    const deliveryType = (o.wb_delivery_type || 'fbs').toLowerCase();
+                    return deliveryType === 'fbs' || !deliveryType || deliveryType === '';
+                });
+            } else if (this.orderMode === 'dbs') {
+                result = result.filter(o => {
+                    const deliveryType = (o.wb_delivery_type || '').toLowerCase();
+                    return deliveryType === 'dbs' || deliveryType === 'edbs';
+                });
+            }
+
+            // Apply search filter
             if (this.searchQuery) {
                 const q = this.searchQuery.toLowerCase();
                 result = result.filter(o =>

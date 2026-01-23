@@ -794,19 +794,45 @@ class WildberriesClient implements MarketplaceClientInterface
     /**
      * Маппинг WB статусов в внутренние статусы системы
      * Приоритет: supplierStatus > wbStatus
+     *
+     * Статусы WB API (supplierStatus):
+     * - new: новый заказ
+     * - confirm: подтверждён продавцом
+     * - complete: собран и передан в доставку
+     * - cancel: отменён
+     * - reject: отклонён
+     * - receive: получен клиентом
+     *
+     * Статусы WB API (wbStatus):
+     * - waiting: ожидает обработки
+     * - sorted: отсортирован
+     * - sold: продан
+     * - canceled: отменён
+     * - canceled_by_client: отменён клиентом
+     * - declined_by_client: отклонён клиентом
+     * - defect: дефект
+     * - delivered: доставлен
+     * - sold_from_store: продан из магазина
+     * - on_way_to_client: в пути к клиенту
+     * - on_way_from_client: в пути от клиента
+     * - ready_for_pickup: готов к выдаче
      */
     protected function mapWbStatusToInternal(?string $supplierStatus, ?string $wbStatus): string
     {
+        // Normalize to lowercase
+        $supplierStatus = $supplierStatus ? strtolower($supplierStatus) : null;
+        $wbStatus = $wbStatus ? strtolower($wbStatus) : null;
+
         // Приоритет: отменённые → завершённые → в доставке → на сборке → новые
 
         // 1. Отменённые
-        if (in_array($supplierStatus, ['cancel', 'reject']) ||
-            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+        if (in_array($supplierStatus, ['cancel', 'reject', 'cancelled']) ||
+            in_array($wbStatus, ['canceled', 'cancelled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
             return 'cancelled';
         }
 
         // 2. Завершённые (доставлено клиенту)
-        if (in_array($wbStatus, ['delivered', 'sold_from_store']) ||
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'received']) ||
             $wbStatus === 'sold' ||
             $supplierStatus === 'receive') {
             return 'completed';
@@ -814,23 +840,35 @@ class WildberriesClient implements MarketplaceClientInterface
 
         // 3. В доставке (продавец завершил, WB доставляет)
         if ($supplierStatus === 'complete' ||
-            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup'])) {
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'at_pickup_point', 'in_transit', 'delivering'])) {
             return 'in_delivery';
         }
 
         // 4. На сборке (продавец подтвердил и собирает)
         if ($supplierStatus === 'confirm' ||
-            in_array($wbStatus, ['sorted', 'sold'])) {
+            in_array($wbStatus, ['sorted', 'accepted', 'in_assembly', 'confirm', 'confirmed'])) {
             return 'in_assembly';
         }
 
-        // 5. Новые (ожидают подтверждения)
-        if ($supplierStatus === 'new' ||
-            $wbStatus === 'waiting') {
+        // 5. Новые (ожидают подтверждения) - ТОЛЬКО если явно указано
+        if ($supplierStatus === 'new' || $wbStatus === 'waiting' || $wbStatus === 'new') {
             return 'new';
         }
 
-        // По умолчанию - новый
+        // 6. Если статус не определён, но есть wbStatus - скорее всего это archived заказы
+        // Archived заказы без supplierStatus обычно завершены или отменены
+        if ($wbStatus && !$supplierStatus) {
+            // Если wbStatus есть но не попадает в известные - скорее всего completed
+            return 'completed';
+        }
+
+        // По умолчанию - если есть supplierStatus 'complete', то in_delivery
+        // Иначе in_assembly (заказ в процессе)
+        if ($supplierStatus) {
+            return 'in_assembly';
+        }
+
+        // Если совсем нет данных - новый
         return 'new';
     }
 }

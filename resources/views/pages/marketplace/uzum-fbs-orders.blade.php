@@ -729,18 +729,20 @@ function uzumOrdersPage() {
             if (this.orderMode === 'fbs') {
                 // FBS mode: show only orders with FBS scheme from orders table
                 result = (this.orders || []).filter(o => {
-                    const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || 'FBS';
-                    return scheme.toUpperCase() === 'FBS';
+                    // Check multiple sources: delivery_type field (DB), deliveryType (camelCase), raw_payload.scheme
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || 'FBS').toUpperCase();
+                    return scheme === 'FBS';
                 });
             } else if (this.orderMode === 'dbs') {
                 // DBS mode: show orders with DBS or EDBS scheme from orders table
                 result = (this.orders || []).filter(o => {
-                    const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || '';
-                    return scheme.toUpperCase() === 'DBS' || scheme.toUpperCase() === 'EDBS';
+                    // Check multiple sources: delivery_type field (DB), deliveryType (camelCase), raw_payload.scheme
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || '').toUpperCase();
+                    return scheme === 'DBS' || scheme === 'EDBS';
                 });
             } else if (this.orderMode === 'fbo') {
                 // FBO mode: show orders from Finance API that are FBO type
-                result = (this.fboOrders || []).filter(o => o.deliveryType === 'FBO');
+                result = (this.fboOrders || []).filter(o => (o.delivery_type || o.deliveryType || '').toUpperCase() === 'FBO');
             }
 
             if (!Array.isArray(result)) result = [];

@@ -228,6 +228,8 @@ class OrdersSyncService
             ->where('external_order_id', $externalOrderId)
             ->first();
 
+        $oldStatus = $existingOrder?->status;
+
         // Parse ordered_at date
         $orderedAt = null;
         if (!empty($orderData['ordered_at'])) {
@@ -287,7 +289,7 @@ class OrdersSyncService
             'raw_payload' => $orderData['raw_payload'] ?? $orderData,
         ];
 
-        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+        $result = DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
             if ($existingOrder) {
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
@@ -306,17 +308,28 @@ class OrdersSyncService
                 }
 
                 $order = $existingOrder;
-                $result = 'updated';
+                $resultType = 'updated';
             } else {
                 $order = WbOrder::create($orderPayload);
-                $result = 'created';
+                $resultType = 'created';
             }
 
             // Sync order items
             $this->syncWbOrderItems($order, $orderData['items'] ?? []);
 
-            return $result;
+            return ['result' => $resultType, 'order' => $order];
         });
+
+        // Обрабатываем изменение статуса для остатков
+        $order = $result['order'];
+        $newStatus = $order->status;
+        $isCreated = $result['result'] === 'created';
+
+        if ($isCreated || $oldStatus !== $newStatus) {
+            $this->processOrderStockChange($account, $order, $oldStatus, $newStatus, 'wb');
+        }
+
+        return $result['result'];
     }
 
     /**
@@ -357,18 +370,26 @@ class OrdersSyncService
             }
         }
 
+        // Extract delivery_type/scheme from raw_payload or wb_delivery_type (uzum mapOrderData sets it there)
+        $rawPayload = $orderData['raw_payload'] ?? $orderData;
+        $deliveryType = $orderData['wb_delivery_type']
+            ?? $rawPayload['scheme']
+            ?? $rawPayload['deliveryScheme']
+            ?? 'FBS';
+
         $orderPayload = [
             'marketplace_account_id' => $account->id,
             'external_order_id' => $externalOrderId,
             'status' => $orderData['status'] ?? 'new',
             'status_normalized' => $orderData['status_normalized'] ?? ($orderData['status'] ?? 'new'),
             'uzum_status' => $orderData['uzum_status'] ?? null,
+            'delivery_type' => strtoupper($deliveryType), // FBS, DBS, EDBS
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,
             'total_amount' => $orderData['total_amount'] ?? 0,
             'currency' => $orderData['currency'] ?? 'UZS',
             'ordered_at' => $orderedAt,
-            'raw_payload' => $orderData['raw_payload'] ?? $orderData,
+            'raw_payload' => $rawPayload,
         ];
 
         $result = DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
