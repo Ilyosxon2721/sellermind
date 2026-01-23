@@ -157,6 +157,7 @@ class MarketplaceHttpClient
                 } elseif ($account->marketplace === 'uzum') {
                     $apiKey = $credentials['uzum_access_token']
                         ?? $credentials['uzum_api_key']
+                        ?? $credentials['api_token']
                         ?? $credentials['api_key']
                         ?? '';
                 } else {
