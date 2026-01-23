@@ -136,6 +136,9 @@ class OrderStockService
 
     /**
      * Зарезервировать товар (новый заказ)
+     * ВАЖНО: При резервировании СРАЗУ списываем со склада (ledger entry) чтобы:
+     * 1. Остатки на маркетплейсах обновились и не было overselling
+     * 2. Создаём stock_reservation для отслеживания (чтобы при отмене вернуть товар)
      */
     protected function reserveStock(
         MarketplaceAccount $account,
@@ -174,20 +177,22 @@ class OrderStockService
                 }
 
                 $stockBefore = $variant->stock_default;
+
+                // Decrease stock in ProductVariant (for marketplace sync)
                 $variant->decrementStock($quantity);
                 $stockAfter = $variant->fresh()->stock_default;
 
-                // Create warehouse stock ledger entry
+                // Create warehouse stock ledger entry (actual deduction)
                 $warehouseSku = $this->createWarehouseStockLedger(
                     $account,
                     $order,
                     $variant,
-                    -$quantity, // Negative for outgoing
+                    -$quantity, // Negative for stock out
                     'marketplace_order_reserve',
                     $marketplace
                 );
 
-                // Create stock reservation
+                // Create stock reservation for tracking (to return stock if cancelled)
                 if ($warehouseSku) {
                     $this->createStockReservation(
                         $account,
@@ -213,7 +218,7 @@ class OrderStockService
 
                 $results['items_processed']++;
 
-                Log::info('OrderStockService: Stock reserved', [
+                Log::info('OrderStockService: Stock reserved and deducted', [
                     'variant_id' => $variant->id,
                     'variant_sku' => $variant->sku,
                     'quantity' => $quantity,
@@ -250,10 +255,12 @@ class OrderStockService
 
     /**
      * Перевести резерв в продажу
+     * ВАЖНО: Остаток уже был списан при резервировании!
+     * Здесь только обновляем статус резерва в CONSUMED.
      */
     protected function convertReserveToSold(Model $order): array
     {
-        // Update stock reservations to CONSUMED
+        // Stock was already deducted on reserve, just update reservation status
         $this->consumeStockReservations($order);
 
         $order->update([
@@ -261,7 +268,7 @@ class OrderStockService
             'stock_sold_at' => now(),
         ]);
 
-        Log::info('OrderStockService: Reserve converted to sold', [
+        Log::info('OrderStockService: Reserve converted to sold (stock was already deducted)', [
             'order_id' => $order->id,
         ]);
 
@@ -274,6 +281,8 @@ class OrderStockService
 
     /**
      * Отменить резерв (при отмене заказа до отправки)
+     * ВАЖНО: Поскольку при резервировании мы СОЗДАЛИ ledger entry (списание),
+     * при отмене нужно ВЕРНУТЬ товар обратно (положительный ledger entry).
      */
     protected function releaseReserve(
         MarketplaceAccount $account,
@@ -306,6 +315,8 @@ class OrderStockService
                 }
 
                 $stockBefore = $variant->stock_default;
+
+                // Return stock to ProductVariant (for marketplace sync)
                 $variant->incrementStock($quantity);
                 $stockAfter = $variant->fresh()->stock_default;
 
@@ -314,13 +325,10 @@ class OrderStockService
                     $account,
                     $order,
                     $variant,
-                    $quantity, // Positive for incoming
+                    $quantity, // Positive for stock return
                     'marketplace_order_cancel',
                     $marketplace
                 );
-
-                // Cancel stock reservations
-                $this->cancelStockReservations($order);
 
                 // Логируем операцию
                 $this->logStockOperation(
@@ -337,13 +345,16 @@ class OrderStockService
 
                 $results['items_processed']++;
 
-                Log::info('OrderStockService: Stock released', [
+                Log::info('OrderStockService: Stock returned on cancel', [
                     'variant_id' => $variant->id,
                     'quantity' => $quantity,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
                 ]);
             }
+
+            // Cancel stock reservations
+            $this->cancelStockReservations($order);
 
             // Обновляем статус заказа
             $order->update([
@@ -645,8 +656,41 @@ class OrderStockService
     }
 
     /**
+     * Get or create warehouse SKU without creating ledger entry
+     *
+     * @param MarketplaceAccount $account
+     * @param ProductVariant $variant
+     * @return WarehouseSku|null
+     */
+    protected function getOrCreateWarehouseSku(
+        MarketplaceAccount $account,
+        ProductVariant $variant
+    ): ?WarehouseSku {
+        try {
+            return WarehouseSku::firstOrCreate(
+                [
+                    'product_variant_id' => $variant->id,
+                    'company_id' => $account->company_id,
+                ],
+                [
+                    'product_id' => $variant->product_id,
+                    'sku_code' => $variant->sku,
+                    'barcode_ean13' => $variant->barcode,
+                    'is_active' => true,
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::error('OrderStockService: Failed to get/create warehouse SKU', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Determine which warehouse to use for marketplace orders
-     * 
+     *
      * @param MarketplaceAccount $account
      * @return int|null Warehouse ID or null if not found
      */

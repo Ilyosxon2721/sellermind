@@ -217,6 +217,11 @@ Route::middleware('auth.any')->group(function () {
         return view('sales.show', ['orderId' => $id]);
     })->name('sales.show');
 
+    // Sale print routes
+    Route::get('/sales/{sale}/print/receipt', [\App\Http\Controllers\SalePrintController::class, 'receipt'])->name('sales.print.receipt');
+    Route::get('/sales/{sale}/print/invoice', [\App\Http\Controllers\SalePrintController::class, 'invoice'])->name('sales.print.invoice');
+    Route::get('/sales/{sale}/print/waybill', [\App\Http\Controllers\SalePrintController::class, 'waybill'])->name('sales.print.waybill');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');

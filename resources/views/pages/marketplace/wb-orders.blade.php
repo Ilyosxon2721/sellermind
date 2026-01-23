@@ -39,8 +39,23 @@
                                 <span class="text-white font-bold text-sm">WB</span>
                             </div>
                             <div>
-                                <h1 class="text-lg font-semibold text-gray-900">Заказы Wildberries</h1>
-                                <p class="text-xs text-gray-500">{{ $accountName ?? 'FBS' }}</p>
+                                <div class="flex items-center space-x-2">
+                                    <h1 class="text-lg font-semibold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : 'Финансовые заказы'"></h1>
+                                    <!-- FBS/FBO Toggle -->
+                                    <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
+                                        <button @click="switchMode('fbs')"
+                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
+                                                :class="orderMode === 'fbs' ? 'bg-[#CB11AB] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                            FBS
+                                        </button>
+                                        <button @click="switchMode('fbo')"
+                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
+                                                :class="orderMode === 'fbo' ? 'bg-[#CB11AB] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                            FBO
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500">{{ $accountName ?? 'Wildberries' }}</p>
                             </div>
                         </div>
                     </div>
@@ -112,8 +127,8 @@
                 </div>
             </div>
 
-            <!-- Status Tabs -->
-            <div class="border-t border-gray-200 bg-gray-50">
+            <!-- Status Tabs (only for FBS mode) -->
+            <div x-show="orderMode === 'fbs'" class="border-t border-gray-200 bg-gray-50">
                 <div class="px-6 flex items-center space-x-1 overflow-x-auto">
                     <template x-for="tab in statusTabs" :key="tab.value">
                         <button @click="activeTab = tab.value; loadOrders()"
@@ -225,8 +240,8 @@
                 </template>
             </div>
 
-            <!-- Empty State -->
-            <div x-show="!loading && filteredOrders.length === 0" class="px-6 py-12">
+            <!-- FBS Empty State -->
+            <div x-show="!loading && orderMode === 'fbs' && filteredOrders.length === 0" class="px-6 py-12">
                 <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                     <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,8 +256,109 @@
                 </div>
             </div>
 
-            <!-- Orders for "На сборке" tab (grouped by supply) -->
-            <div x-show="!loading && activeTab === 'in_assembly'" class="px-6 pb-6 space-y-6">
+            <!-- ==================== FBO SECTION ==================== -->
+            <!-- FBO Filters -->
+            <div x-show="orderMode === 'fbo'" class="px-6 py-3 bg-gray-50 border-b border-gray-200">
+                <div class="flex items-center space-x-4">
+                    <!-- Delivery Type Filter -->
+                    <select x-model="deliveryTypeFilter" @change="$nextTick(() => {})"
+                            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
+                        <option value="">Все типы</option>
+                        <option value="FBS">FBS (со склада продавца)</option>
+                        <option value="FBO">FBO (со склада WB)</option>
+                    </select>
+
+                    <!-- Operation Type Filter -->
+                    <select x-model="operationFilter" @change="$nextTick(() => {})"
+                            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#CB11AB] focus:border-[#CB11AB]">
+                        <option value="">Все операции</option>
+                        <option value="Продажа">Продажи</option>
+                        <option value="Возврат">Возвраты</option>
+                    </select>
+
+                    <!-- FBO Stats -->
+                    <div class="flex items-center space-x-4 ml-auto text-sm">
+                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">FBS: <span x-text="fboTypeCounts.FBS || 0"></span></span>
+                        <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded">FBO: <span x-text="fboTypeCounts.FBO || 0"></span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FBO Empty State -->
+            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length === 0" class="px-6 py-12">
+                <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+                    <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Нет финансовых данных</h3>
+                    <p class="text-gray-600 mb-4">За выбранный период нет записей в финансовом отчёте</p>
+                    <button @click="loadFboOrders()" class="px-4 py-2 wb-gradient text-white rounded-lg hover:opacity-90 transition">
+                        Обновить
+                    </button>
+                </div>
+            </div>
+
+            <!-- FBO Orders Table -->
+            <div x-show="!loading && orderMode === 'fbo' && fboFilteredOrders.length > 0" class="px-6 pb-6">
+                <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Дата</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Тип</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Артикул</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Бренд / Товар</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Склад</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Сумма</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Комиссия</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">К выплате</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="order in fboFilteredOrders" :key="order.id">
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="px-4 py-3 text-sm text-gray-600" x-text="order.dateFormatted || formatDate(order.date)"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="px-2 py-1 text-xs font-medium rounded"
+                                                      :class="{
+                                                          'bg-blue-100 text-blue-700': order.deliveryType === 'FBS',
+                                                          'bg-purple-100 text-purple-700': order.deliveryType === 'FBO'
+                                                      }"
+                                                      x-text="order.deliveryType || 'FBO'"></span>
+                                                <span class="px-2 py-1 text-xs rounded"
+                                                      :class="order.operationType === 'Возврат' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+                                                      x-text="order.operationType === 'Возврат' ? 'Возврат' : 'Продажа'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm font-medium text-gray-900" x-text="order.supplierArticle || '-'"></div>
+                                            <div class="text-xs text-gray-500" x-text="order.nmId ? `NM ID: ${order.nmId}` : ''"></div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm font-medium text-gray-900" x-text="order.brand || '-'"></div>
+                                            <div class="text-xs text-gray-500 truncate max-w-xs" x-text="order.subject || ''"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600" x-text="order.warehouseName || '-'"></td>
+                                        <td class="px-4 py-3 text-sm font-medium text-right"
+                                            :class="order.operationType === 'Возврат' ? 'text-red-600' : 'text-gray-900'"
+                                            x-text="formatMoney(order.retailAmount)"></td>
+                                        <td class="px-4 py-3 text-sm text-right text-red-600" x-text="formatMoney(order.commission)"></td>
+                                        <td class="px-4 py-3 text-sm font-semibold text-right text-green-600" x-text="formatMoney(order.forPay)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- ==================== END FBO SECTION ==================== -->
+
+            <!-- FBS: Orders for "На сборке" tab (grouped by supply) -->
+            <div x-show="!loading && orderMode === 'fbs' && activeTab === 'in_assembly'" class="px-6 pb-6 space-y-6">
                 <!-- Create Supply Button -->
                 <div class="flex justify-end">
                     <button @click="openCreateSupplyModal()"
@@ -319,6 +435,9 @@
                                                 <div class="flex items-center space-x-3 mb-2">
                                                     <h4 class="text-base font-bold text-gray-900">#<span x-text="order.external_order_id"></span></h4>
                                                     <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                                    <span class="px-2 py-1 text-xs font-medium rounded"
+                                                          :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                                          x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
                                                 </div>
                                                 <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
                                                 <div class="text-sm text-gray-500" x-text="order.meta_info || ''"></div>
@@ -411,6 +530,9 @@
                                         <div class="flex items-center space-x-3 mb-2">
                                             <h3 class="text-lg font-bold text-gray-900">Заказ #<span x-text="order.external_order_id"></span></h3>
                                             <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                            <span class="px-2 py-1 text-xs font-medium rounded"
+                                                  :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                                  x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
                                         </div>
                                         <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
                                         <div class="text-sm text-gray-500 mb-2" x-text="order.meta_info || ''"></div>
@@ -441,8 +563,8 @@
                 </div>
             </div>
 
-            <!-- Orders for other tabs (simple list) -->
-            <div x-show="!loading && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-6 pb-6 space-y-4">
+            <!-- FBS: Orders for other tabs (simple list) -->
+            <div x-show="!loading && orderMode === 'fbs' && activeTab !== 'in_assembly' && filteredOrders.length > 0" class="px-6 pb-6 space-y-4">
                 <template x-for="order in filteredOrders" :key="order.id">
                     <div class="bg-white rounded-xl border border-gray-200 hover:border-[#CB11AB] hover:shadow-md transition p-5">
                         <div class="flex items-start justify-between">
@@ -455,6 +577,9 @@
                                     <div class="flex items-center space-x-3 mb-2">
                                         <h3 class="text-lg font-bold text-gray-900">Заказ #<span x-text="order.external_order_id"></span></h3>
                                         <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                        <span class="px-2 py-1 text-xs font-medium rounded"
+                                              :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                              x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
                                         <span x-show="order.supply_id" class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">В поставке</span>
                                     </div>
                                     <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
@@ -979,6 +1104,8 @@
 function wbOrdersPage() {
     return {
         orders: [],
+        fboOrders: [],
+        fboSummary: {},
         stats: { total_orders: 0, total_amount: 0, by_status: {} },
         supplies: [],
         openSupplies: [],
@@ -986,10 +1113,14 @@ function wbOrdersPage() {
         selectedOrder: null,
         showOrderModal: false,
         showRaw: false,
+        orderMode: 'fbs', // 'fbs' or 'fbo'
         activeTab: 'new',
         dateFrom: '',
         dateTo: '',
         searchQuery: '',
+        saleTypeFilter: '',
+        deliveryTypeFilter: '',
+        operationFilter: '',
         message: '',
         messageType: 'success',
         wsConnected: false,
@@ -1056,6 +1187,108 @@ function wbOrdersPage() {
             this.initWebSocket();
         },
 
+        async switchMode(mode) {
+            if (this.orderMode === mode) return;
+            this.orderMode = mode;
+            this.activeTab = mode === 'fbs' ? 'new' : 'all';
+            this.loading = true;
+
+            if (mode === 'fbo') {
+                // Set shorter date range for FBO to avoid timeout (7 days)
+                const today = new Date();
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                this.dateTo = today.toISOString().split('T')[0];
+                this.dateFrom = weekAgo.toISOString().split('T')[0];
+
+                await this.loadFboOrders();
+            }
+            this.loading = false;
+        },
+
+        async loadFboOrders() {
+            this.loading = true;
+            try {
+                let url = `/api/marketplace/wb/accounts/${this.accountId}/finance-orders?`;
+                if (this.dateFrom) url += `from=${this.dateFrom}&`;
+                if (this.dateTo) url += `to=${this.dateTo}&`;
+
+                const res = await this.authFetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    this.fboOrders = (data.orderItems || []).map((item, index) => ({
+                        id: `${item.orderId || item.srid}_${index}`,
+                        external_order_id: item.orderId || item.srid,
+                        orderId: item.orderId,
+                        srid: item.srid,
+                        nmId: item.nmId,
+                        supplierArticle: item.supplierArticle,
+                        brand: item.brand,
+                        subject: item.subject,
+                        techSize: item.techSize,
+                        barcode: item.barcode,
+                        warehouseName: item.warehouseName,
+                        regionName: item.regionName,
+                        quantity: item.quantity || 1,
+                        retailAmount: item.retailAmount || 0,
+                        commission: item.commission || 0,
+                        logistics: item.logistics || 0,
+                        forPay: item.forPay || 0,
+                        date: item.date,
+                        dateFormatted: item.dateFormatted,
+                        operationType: item.operationType || 'Продажа',
+                        deliveryType: item.deliveryType || 'FBO',
+                        currency: item.currency || 'RUB',
+                    }));
+                    this.fboSummary = data.summary || {};
+                } else {
+                    const err = await res.json();
+                    this.showMessage(err.message || 'Ошибка загрузки FBO данных', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to load FBO orders', e);
+                this.showMessage('Ошибка: ' + e.message, 'error');
+            }
+            this.loading = false;
+        },
+
+        get fboFilteredOrders() {
+            let result = [...this.fboOrders];
+
+            // Filter by delivery type
+            if (this.deliveryTypeFilter) {
+                result = result.filter(o => o.deliveryType === this.deliveryTypeFilter);
+            }
+
+            // Filter by operation type
+            if (this.operationFilter) {
+                result = result.filter(o => o.operationType === this.operationFilter);
+            }
+
+            // Search
+            if (this.searchQuery) {
+                const q = this.searchQuery.toLowerCase();
+                result = result.filter(o =>
+                    (o.supplierArticle && o.supplierArticle.toLowerCase().includes(q)) ||
+                    (o.brand && o.brand.toLowerCase().includes(q)) ||
+                    (o.subject && o.subject.toLowerCase().includes(q)) ||
+                    (o.nmId && o.nmId.toString().includes(q)) ||
+                    (o.external_order_id && o.external_order_id.toString().includes(q))
+                );
+            }
+
+            return result;
+        },
+
+        get fboTypeCounts() {
+            const counts = { FBS: 0, FBO: 0 };
+            this.fboFilteredOrders.forEach(o => {
+                const type = o.deliveryType || 'FBO';
+                counts[type] = (counts[type] || 0) + 1;
+            });
+            return counts;
+        },
+
         getAuthHeaders() {
             // Try multiple token sources: Alpine store, localStorage with various keys
             const token = window.Alpine?.store('auth')?.token ||
@@ -1079,6 +1312,7 @@ function wbOrdersPage() {
                 if (this.activeTab && this.activeTab !== 'all') url += `&status=${this.activeTab}`;
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
+                if (this.saleTypeFilter) url += `&delivery_type=${this.saleTypeFilter}`;
 
                 const res = await this.authFetch(url);
                 if (res.ok) {
@@ -1214,6 +1448,26 @@ function wbOrdersPage() {
         },
 
         get displayStats() {
+            if (this.orderMode === 'fbo') {
+                const filtered = this.fboFilteredOrders;
+                let amount = 0;
+                let commission = 0;
+                let logistics = 0;
+                filtered.forEach(o => {
+                    amount += o.retailAmount || 0;
+                    commission += o.commission || 0;
+                    logistics += o.logistics || 0;
+                });
+                return {
+                    total_orders: filtered.length,
+                    total_amount: amount,
+                    commission: commission,
+                    logistics: logistics,
+                    currency: this.fboSummary.currency || 'RUB',
+                    by_status: {}
+                };
+            }
+
             const filtered = this.filteredOrders;
             let amount = 0;
             filtered.forEach(o => { amount += o.total_amount || 0; });
@@ -1246,6 +1500,17 @@ function wbOrdersPage() {
                 'edbs': 'eDBS (экспресс доставка)'
             };
             return types[type] || type || 'FBS';
+        },
+
+        getDeliveryTypeBadgeClass(type) {
+            const t = (type || 'fbs').toLowerCase();
+            const classes = {
+                'fbs': 'bg-blue-100 text-blue-700',
+                'fbo': 'bg-purple-100 text-purple-700',
+                'dbs': 'bg-green-100 text-green-700',
+                'edbs': 'bg-orange-100 text-orange-700'
+            };
+            return classes[t] || 'bg-gray-100 text-gray-700';
         },
 
         getSupplyStatusText(status) {

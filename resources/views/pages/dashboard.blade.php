@@ -726,8 +726,7 @@
         <div x-show="showAlertsModal"
              x-cloak
              @click.self="showAlertsModal = false"
-             class="native-modal-overlay"
-             style="display: none;">
+             class="native-modal-overlay">
             <div class="native-sheet max-h-[70vh] overflow-y-auto" @click.away="showAlertsModal = false">
                 <div class="native-sheet-handle"></div>
                 <h3 class="native-headline mb-4">{{ __('dashboard.alerts') }}</h3>

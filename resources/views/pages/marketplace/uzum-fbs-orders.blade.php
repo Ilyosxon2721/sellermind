@@ -42,13 +42,18 @@
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
-                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : 'FBO Заказы'"></h1>
-                                    <!-- FBS/FBO Toggle -->
+                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'FBO Заказы')"></h1>
+                                    <!-- FBS/DBS/FBO Toggle -->
                                     <div class="flex items-center bg-gray-100 rounded-lg p-0.5">
                                         <button @click="switchMode('fbs')"
                                                 class="px-3 py-1 text-xs font-semibold rounded-md transition"
                                                 :class="orderMode === 'fbs' ? 'bg-[#3A007D] text-white' : 'text-gray-600 hover:text-gray-900'">
                                             FBS
+                                        </button>
+                                        <button @click="switchMode('dbs')"
+                                                class="px-3 py-1 text-xs font-semibold rounded-md transition"
+                                                :class="orderMode === 'dbs' ? 'bg-[#3A007D] text-white' : 'text-gray-600 hover:text-gray-900'">
+                                            DBS
                                         </button>
                                         <button @click="switchMode('fbo')"
                                                 class="px-3 py-1 text-xs font-semibold rounded-md transition"
@@ -138,11 +143,11 @@
                             class="px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap"
                             :class="activeTab === tab.value
                                 ? 'border-[#3A007D] text-[#3A007D] bg-white'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white/50'">
+                                : 'border-transparent text-gray-700 hover:text-gray-900 hover:bg-white/50'">
                         <span x-text="tab.label"></span>
                         <span x-show="getStatusCount(tab.value) > 0"
                               class="ml-2 px-2 py-0.5 text-xs rounded-full font-semibold"
-                              :class="activeTab === tab.value ? 'bg-[#3A007D] text-white' : 'bg-gray-200 text-gray-600'"
+                              :class="activeTab === tab.value ? 'bg-[#3A007D] text-white' : 'bg-gray-300 text-gray-700'"
                               x-text="getStatusCount(tab.value)"></span>
                     </button>
                 </template>
@@ -197,28 +202,36 @@
                     </div>
                     <div class="grid grid-cols-5 gap-4">
                         <div class="text-center p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                            <div class="text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (stats.total_orders || 0) : fboOrders.length"></div>
+                            <div class="text-3xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? (schemeStats.fbs_count || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_count || 0) : (fboStats.fbo_count || 0))"></div>
                             <div class="text-sm text-gray-600 mt-1">Всего</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? stats.total_amount : fboStats.total_amount)"></div>
+                            <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(orderMode === 'fbs' ? (schemeStats.fbs_amount || 0) : (orderMode === 'dbs' ? (schemeStats.dbs_amount || 0) : (fboStats.fbo_amount || 0)))"></div>
                             <div class="text-sm text-gray-600 mt-1">Сумма</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbs'">
                             <div class="text-3xl font-bold text-[#F4488D]" x-text="stats.by_status?.new || 0"></div>
                             <div class="text-sm text-gray-600 mt-1">Новых</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-[#F4488D]" x-text="getStatusCount('processing')"></div>
-                            <div class="text-sm text-gray-600 mt-1">В обработке</div>
+                        <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100" x-show="orderMode === 'fbo'">
+                            <div class="text-3xl font-bold text-blue-600" x-text="fboStats.fbs_count || 0"></div>
+                            <div class="text-sm text-gray-600 mt-1">FBS</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100" x-show="orderMode === 'dbs'">
+                            <div class="text-3xl font-bold text-green-600" x-text="schemeStats.edbs_count || 0"></div>
+                            <div class="text-sm text-gray-600 mt-1">EDBS</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbs'">
                             <div class="text-3xl font-bold text-amber-600" x-text="stats.by_status?.in_assembly || 0"></div>
                             <div class="text-sm text-gray-600 mt-1">В сборке</div>
                         </div>
-                        <div class="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100" x-show="orderMode === 'fbo'">
-                            <div class="text-3xl font-bold text-amber-600" x-text="getStatusCount('delivered')"></div>
-                            <div class="text-sm text-gray-600 mt-1">Доставлено</div>
+                        <div class="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100" x-show="orderMode === 'fbo'">
+                            <div class="text-3xl font-bold text-purple-600" x-text="fboStats.fbo_count || 0"></div>
+                            <div class="text-sm text-gray-600 mt-1">FBO</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100" x-show="orderMode === 'dbs'">
+                            <div class="text-3xl font-bold text-orange-600" x-text="schemeStats.dbs_only_count || 0"></div>
+                            <div class="text-sm text-gray-600 mt-1">DBS</div>
                         </div>
                         <div class="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
                             <div class="text-3xl font-bold text-blue-600" x-text="filteredOrders.length"></div>
@@ -391,10 +404,16 @@
                                                     </div>
                                                 </template>
 
-                                                <!-- FBO Info Badge -->
+                                                <!-- Delivery Type Badge (for Finance Orders mode) -->
                                                 <template x-if="orderMode === 'fbo'">
-                                                    <span class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                                                        FBO
+                                                    <span class="px-2 py-1 text-xs font-medium rounded"
+                                                          :class="{
+                                                              'bg-blue-100 text-blue-700': order.deliveryType === 'FBS',
+                                                              'bg-purple-100 text-purple-700': order.deliveryType === 'FBO',
+                                                              'bg-green-100 text-green-700': order.deliveryType === 'DBS',
+                                                              'bg-orange-100 text-orange-700': order.deliveryType === 'EDBS'
+                                                          }"
+                                                          x-text="order.deliveryType || 'FBO'">
                                                     </span>
                                                 </template>
 
@@ -639,7 +658,7 @@ function uzumOrdersPage() {
         orders: [],
         fboOrders: [],
         stats: { total_orders: 0, total_amount: 0, by_status: {} },
-        fboStats: { total_orders: 0, total_amount: 0 },
+        fboStats: { total_orders: 0, total_amount: 0, fbs_count: 0, fbo_count: 0, dbs_count: 0, edbs_count: 0, fbs_amount: 0, fbo_amount: 0, dbs_amount: 0 },
         loading: true,
         selectedOrder: null,
         showOrderModal: false,
@@ -648,7 +667,8 @@ function uzumOrdersPage() {
         orderToCancel: null,
         cancelingOrder: false,
         activeTab: 'new',
-        orderMode: 'fbs', // 'fbs' or 'fbo'
+        orderMode: 'fbs', // 'fbs', 'dbs', or 'fbo'
+        schemeStats: { fbs_count: 0, fbs_amount: 0, dbs_count: 0, dbs_amount: 0, dbs_only_count: 0, edbs_count: 0 },
         dateFrom: '',
         dateTo: '',
         searchQuery: '',
@@ -683,7 +703,9 @@ function uzumOrdersPage() {
         ],
 
         get statusTabs() {
-            return this.orderMode === 'fbs' ? this.fbsStatusTabs : this.fboStatusTabs;
+            // FBS and DBS use FBS tabs (from uzum_orders table)
+            // FBO uses FBO tabs (from Finance API)
+            return (this.orderMode === 'fbs' || this.orderMode === 'dbs') ? this.fbsStatusTabs : this.fboStatusTabs;
         },
 
         get selectedShopLabel() {
@@ -699,11 +721,34 @@ function uzumOrdersPage() {
 
         get filteredOrders() {
             // Use appropriate orders based on mode
-            let result = this.orderMode === 'fbs' ? this.orders : this.fboOrders;
+            // FBS mode: orders from uzum_orders table (FBS API) - filtered by scheme
+            // DBS mode: orders from uzum_orders table with DBS/EDBS scheme
+            // FBO mode: orders from Finance API that are NOT in uzum_orders
+            let result = [];
+
+            if (this.orderMode === 'fbs') {
+                // FBS mode: show only orders with FBS scheme from orders table
+                result = (this.orders || []).filter(o => {
+                    const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || 'FBS';
+                    return scheme.toUpperCase() === 'FBS';
+                });
+            } else if (this.orderMode === 'dbs') {
+                // DBS mode: show orders with DBS or EDBS scheme from orders table
+                result = (this.orders || []).filter(o => {
+                    const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || '';
+                    return scheme.toUpperCase() === 'DBS' || scheme.toUpperCase() === 'EDBS';
+                });
+            } else if (this.orderMode === 'fbo') {
+                // FBO mode: show orders from Finance API that are FBO type
+                result = (this.fboOrders || []).filter(o => o.deliveryType === 'FBO');
+            }
+
+            if (!Array.isArray(result)) result = [];
 
             // Filter by tab status
             if (this.activeTab && this.activeTab !== 'all') {
-                if (this.orderMode === 'fbs') {
+                if (this.orderMode === 'fbs' || this.orderMode === 'dbs') {
+                    // FBS and DBS use same status mapping (from uzum_orders table)
                     const statusMap = {
                         'new': ['new'],
                         'in_assembly': ['in_assembly'],
@@ -717,7 +762,7 @@ function uzumOrdersPage() {
                     const validStatuses = statusMap[this.activeTab] || [this.activeTab];
                     result = result.filter(o => validStatuses.includes(o.status));
                 } else {
-                    // FBO status mapping
+                    // FBO status mapping (from Finance API)
                     const fboStatusMap = {
                         'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
                         'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
@@ -754,15 +799,18 @@ function uzumOrdersPage() {
                 });
             }
 
-            return result;
+            return result || [];
         },
 
         async switchMode(mode) {
             if (this.orderMode === mode) return;
             this.orderMode = mode;
-            this.activeTab = mode === 'fbs' ? 'new' : 'all';
+            // FBS and DBS use status tabs, FBO uses 'all'
+            this.activeTab = (mode === 'fbs' || mode === 'dbs') ? 'new' : 'all';
             this.loading = true;
 
+            // FBS and DBS modes use orders from uzum_orders table (FBS API)
+            // FBO mode uses fboOrders from Finance API
             if (mode === 'fbo' && this.fboOrders.length === 0) {
                 await this.loadFboOrders();
             }
@@ -770,7 +818,12 @@ function uzumOrdersPage() {
         },
 
         async init() {
-            // Uzum - no default date range to show all orders
+            // Set default date range to last 30 days
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            this.dateTo = today.toISOString().split('T')[0];
+            this.dateFrom = thirtyDaysAgo.toISOString().split('T')[0];
+
             await Promise.all([
                 this.loadOrders(),
                 this.loadStats(),
@@ -819,12 +872,49 @@ function uzumOrdersPage() {
                 const res = await this.authFetch(url);
                 if (res.ok) {
                     const data = await res.json();
-                    this.orders = data.orders || [];
+                    // Initialize processing/printing flags for UI state
+                    this.orders = (data.orders || []).map(order => ({
+                        ...order,
+                        processing: false,
+                        printing: false,
+                    }));
+
+                    // Calculate stats by delivery scheme (FBS, DBS, EDBS)
+                    this.calculateOrderStats();
                 }
             } catch (e) {
                 console.error('Failed to load orders', e);
             }
             this.loading = false;
+        },
+
+        // Calculate stats for FBS and DBS modes from orders
+        calculateOrderStats() {
+            const orders = this.orders || [];
+            const fbsOrders = orders.filter(o => {
+                const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || 'FBS';
+                return scheme.toUpperCase() === 'FBS';
+            });
+            const dbsOrders = orders.filter(o => {
+                const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || '';
+                return scheme.toUpperCase() === 'DBS';
+            });
+            const edbsOrders = orders.filter(o => {
+                const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || '';
+                return scheme.toUpperCase() === 'EDBS';
+            });
+
+            // Store scheme-based stats
+            this.schemeStats = {
+                fbs_count: fbsOrders.length,
+                fbs_amount: fbsOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                dbs_count: dbsOrders.length + edbsOrders.length,
+                dbs_amount: [...dbsOrders, ...edbsOrders].reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                dbs_only_count: dbsOrders.length,
+                edbs_count: edbsOrders.length,
+            };
+
+            console.log('Order scheme stats:', this.schemeStats);
         },
 
         async loadFboOrders() {
@@ -839,25 +929,80 @@ function uzumOrdersPage() {
                 const res = await this.authFetch(url);
                 if (res.ok) {
                     const data = await res.json();
-                    // Finance orders come as orderItems
-                    this.fboOrders = (data.orderItems || data.orders || []).map(item => ({
-                        id: item.orderId || item.id,
-                        external_order_id: item.orderId || item.id,
-                        status: item.status || 'PROCESSING',
-                        total_amount: item.totalPrice || item.sellerPrice || item.amount || 0,
-                        ordered_at: item.createdAt || item.dateCreated,
-                        shop_id: item.shopId,
-                        shopId: item.shopId,
-                        deliveryType: item.deliveryType || 'FBO',
-                        raw_payload: item,
-                        items: item.items || [item] // FBO orders may have single item per row
-                    }));
+                    // Finance orders come as orderItems with delivery_type from API
+                    // Add unique index to id to prevent duplicate key issues in x-for
+                    this.fboOrders = (data.orderItems || data.orders || []).map((item, index) => {
+                        // Extract image URL from productImage object if needed
+                        let imageUrl = null;
+                        if (item.productImage) {
+                            if (typeof item.productImage === 'string') {
+                                imageUrl = item.productImage;
+                            } else if (item.productImage.photo) {
+                                // Get high quality image from any resolution
+                                const sizes = ['540', '480', '240', '120', '80'];
+                                for (const size of sizes) {
+                                    if (item.productImage.photo[size]?.high) {
+                                        imageUrl = item.productImage.photo[size].high;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
 
-                    // Calculate FBO stats
+                        return {
+                            id: `${item.orderId || item.id}_${index}`,
+                            external_order_id: item.orderId || item.id,
+                            status: item.status || 'PROCESSING',
+                            total_amount: item.sellPrice || item.totalPrice || item.sellerPrice || item.amount || 0,
+                            ordered_at: item.date || item.createdAt || item.dateCreated,
+                            shop_id: item.shopId,
+                            shopId: item.shopId,
+                            // Use delivery_type from API (determined by checking uzum_orders table)
+                            deliveryType: item.delivery_type || 'FBO',
+                            skuTitle: item.skuTitle,
+                            productTitle: item.productTitle,
+                            productImage: imageUrl,
+                            amount: item.amount || 1,
+                            commission: item.commission || 0,
+                            sellerProfit: item.sellerProfit || 0,
+                            logisticDeliveryFee: item.logisticDeliveryFee || 0,
+                            raw_payload: item,
+                            items: item.items || [item]
+                        };
+                    });
+
+                    // Calculate stats with breakdown by delivery type (FBS, DBS, EDBS, FBO)
+                    const fbsOrders = this.fboOrders.filter(o => o.deliveryType === 'FBS');
+                    const dbsOrders = this.fboOrders.filter(o => o.deliveryType === 'DBS');
+                    const edbsOrders = this.fboOrders.filter(o => o.deliveryType === 'EDBS');
+                    const fboOnly = this.fboOrders.filter(o => o.deliveryType === 'FBO');
+
+                    // Seller orders = FBS + DBS + EDBS (все что идет через продавца)
+                    const sellerOrders = [...fbsOrders, ...dbsOrders, ...edbsOrders];
+
+                    // DBS total = DBS + EDBS orders combined
+                    const allDbsOrders = [...dbsOrders, ...edbsOrders];
+
                     this.fboStats = {
                         total_orders: this.fboOrders.length,
-                        total_amount: this.fboOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0)
+                        total_amount: this.fboOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                        fbs_count: sellerOrders.length, // FBS + DBS + EDBS
+                        fbo_count: fboOnly.length,
+                        fbs_amount: sellerOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                        fbo_amount: fboOnly.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                        // DBS breakdown (DBS + EDBS)
+                        dbs_count: allDbsOrders.length,
+                        dbs_amount: allDbsOrders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                        edbs_count: edbsOrders.length,
                     };
+
+                    console.log('Finance Orders loaded:', {
+                        total: this.fboOrders.length,
+                        fbs: fbsOrders.length,
+                        dbs: dbsOrders.length,
+                        edbs: edbsOrders.length,
+                        fbo: fboOnly.length,
+                    });
                 }
             } catch (e) {
                 console.error('Failed to load FBO orders', e);
@@ -1159,7 +1304,23 @@ function uzumOrdersPage() {
         },
 
         getItemImage(item) {
-            return item?.skuImage || item?.productImage || null;
+            if (!item) return null;
+            // Check skuImage first
+            if (item.skuImage && typeof item.skuImage === 'string') return item.skuImage;
+            // Check productImage - could be string or object
+            if (item.productImage) {
+                if (typeof item.productImage === 'string') return item.productImage;
+                // Extract from object structure (Uzum Finance API format)
+                if (item.productImage.photo) {
+                    const sizes = ['540', '480', '240', '120', '80'];
+                    for (const size of sizes) {
+                        if (item.productImage.photo[size]?.high) {
+                            return item.productImage.photo[size].high;
+                        }
+                    }
+                }
+            }
+            return null;
         },
 
         getShopName(order) {
@@ -1172,8 +1333,9 @@ function uzumOrdersPage() {
 
         getStatusCount(status) {
             if (this.orderMode === 'fbo') {
-                if (status === 'all') return this.fboOrders.length;
-                const orders = this.fboOrders;
+                // Only count FBO orders (exclude FBS from Finance API)
+                const fboOnlyOrders = (this.fboOrders || []).filter(o => o.deliveryType === 'FBO');
+                if (status === 'all') return fboOnlyOrders.length;
                 const fboStatusMap = {
                     'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],
                     'shipped': ['SHIPPED', 'DELIVERED_TO_PVZ'],
@@ -1181,7 +1343,7 @@ function uzumOrdersPage() {
                     'cancelled': ['CANCELLED', 'RETURNED', 'REFUNDED']
                 };
                 const validStatuses = fboStatusMap[status] || [status.toUpperCase()];
-                return orders.filter(o => validStatuses.includes(o.status?.toUpperCase())).length;
+                return fboOnlyOrders.filter(o => validStatuses.includes(o.status?.toUpperCase())).length;
             }
             return this.stats.by_status?.[status] || 0;
         },
@@ -1790,7 +1952,12 @@ function uzumOrdersPWA() {
                     headers: this.getAuthHeaders()
                 });
                 const data = await response.json();
-                this.orders = data.orders || data.data || [];
+                // Initialize processing/printing flags for UI state
+                this.orders = (data.orders || data.data || []).map(order => ({
+                    ...order,
+                    processing: false,
+                    printing: false,
+                }));
             } catch (error) {
                 console.error('Error loading orders:', error);
                 this.showToast('Ошибка загрузки заказов', 'error');

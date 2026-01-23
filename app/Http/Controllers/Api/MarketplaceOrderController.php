@@ -25,6 +25,7 @@ class MarketplaceOrderController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'shop_id' => ['nullable', 'string'],
+            'delivery_type' => ['nullable', 'string', 'in:fbs,fbo,dbs,edbs'],
         ]);
 
         if (!$request->user()->hasCompanyAccess($request->company_id)) {
@@ -233,6 +234,10 @@ class MarketplaceOrderController extends Controller
         try {
             $client = app(\App\Services\Marketplaces\UzumClient::class);
 
+            // Note: FBS/FBO type detection relies on uzum_orders table data.
+            // To ensure accurate type detection, sync FBS orders first via "Синхронизировать" button
+            // or run: php artisan uzum:sync-orders --account={id}
+
             // Parse date filters
             $dateFromMs = null;
             $dateToMs = null;
@@ -255,24 +260,281 @@ class MarketplaceOrderController extends Controller
                 $shopIds = [(int) $request->shop_id];
             }
 
+            // Check available shops for this account
+            $dbShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $account->id)->get();
+            $credentialsShopIds = $account->credentials_json['shop_ids'] ?? [];
+
+            \Log::info('Uzum Finance Orders request', [
+                'account_id' => $account->id,
+                'request_shop_ids' => $shopIds,
+                'credentials_shop_ids' => $credentialsShopIds,
+                'db_shops_count' => $dbShops->count(),
+                'db_shop_ids' => $dbShops->pluck('external_id')->toArray(),
+                'date_from' => $dateFromMs ? date('Y-m-d H:i:s', $dateFromMs / 1000) : null,
+                'date_to' => $dateToMs ? date('Y-m-d H:i:s', $dateToMs / 1000) : null,
+            ]);
+
+            // Note: Uzum Finance API dateFrom/dateTo filters are unreliable (return empty results)
+            // We fetch all orders WITHOUT date filter and filter locally
             $result = $client->fetchFinanceOrders(
                 $account,
                 $shopIds,
                 0,      // page
                 100,    // size
                 false,  // group
-                $dateFromMs,
-                $dateToMs
+                null,   // dateFromMs - disabled, API doesn't work with dates properly
+                null    // dateToMs - disabled
             );
 
+            $orderItems = $result['orderItems'] ?? [];
+
+            // Filter by date locally if date filter was requested
+            if (!empty($orderItems) && ($dateFromMs || $dateToMs)) {
+                $orderItems = array_filter($orderItems, function ($item) use ($dateFromMs, $dateToMs) {
+                    // Use 'date' field from finance order (timestamp in ms)
+                    $orderDate = $item['date'] ?? $item['dateCreated'] ?? 0;
+                    if ($dateFromMs && $orderDate < $dateFromMs) {
+                        return false;
+                    }
+                    if ($dateToMs && $orderDate > $dateToMs) {
+                        return false;
+                    }
+                    return true;
+                });
+                $orderItems = array_values($orderItems); // Re-index array
+            }
+
+            // Determine order type (FBS/DBS/EDBS/FBO) by checking uzum_orders table
+            // Orders in uzum_orders have 'scheme' field in raw_payload (FBS, DBS, EDBS)
+            // Orders NOT in uzum_orders are FBO (fulfilled by Uzum)
+            if (!empty($orderItems)) {
+                // Get unique order IDs from finance response (convert to strings for DB comparison)
+                $financeOrderIds = array_unique(array_filter(array_column($orderItems, 'orderId')));
+                $financeOrderIdsStr = array_map('strval', $financeOrderIds);
+
+                // Find orders in uzum_orders with their scheme (delivery type)
+                $orderSchemes = [];
+                if (!empty($financeOrderIdsStr)) {
+                    $uzumOrders = \App\Models\UzumOrder::where('marketplace_account_id', $account->id)
+                        ->whereIn('external_order_id', $financeOrderIdsStr)
+                        ->get(['external_order_id', 'raw_payload']);
+
+                    foreach ($uzumOrders as $order) {
+                        $orderId = (int) $order->external_order_id;
+                        $payload = is_array($order->raw_payload) ? $order->raw_payload : json_decode($order->raw_payload, true);
+                        // Get scheme from raw_payload, default to FBS if exists in table
+                        $scheme = $payload['scheme'] ?? 'FBS';
+                        $orderSchemes[$orderId] = strtoupper($scheme);
+                    }
+                }
+
+                // Add delivery_type to each order item
+                $orderItems = array_map(function ($item) use ($orderSchemes) {
+                    $orderId = (int) ($item['orderId'] ?? 0);
+                    // If order exists in uzum_orders, use its scheme; otherwise it's FBO
+                    $item['delivery_type'] = $orderSchemes[$orderId] ?? 'FBO';
+                    return $item;
+                }, $orderItems);
+
+                // Count by type for logging
+                $typeCounts = array_count_values(array_column($orderItems, 'delivery_type'));
+
+                \Log::info('Uzum Finance Orders: determined order types', [
+                    'total_items' => count($orderItems),
+                    'unique_orders' => count($financeOrderIds),
+                    'type_counts' => $typeCounts,
+                ]);
+            }
+
+            \Log::info('Uzum Finance Orders response', [
+                'account_id' => $account->id,
+                'items_count' => count($orderItems),
+                'total_elements' => $result['totalElements'] ?? 0,
+            ]);
+
             return response()->json([
-                'orderItems' => $result['orderItems'] ?? [],
+                'orderItems' => $orderItems,
                 'totalElements' => $result['totalElements'] ?? 0,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Failed to fetch Uzum finance orders', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Ошибка загрузки FBO заказов: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get WB Finance Orders (FBO/FBS - all types from Statistics API)
+     */
+    public function wbFinanceOrders(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        if ($account->marketplace !== 'wb') {
+            return response()->json(['message' => 'Этот endpoint только для Wildberries аккаунтов'], 422);
+        }
+
+        try {
+            $httpClient = new WildberriesHttpClient($account);
+            $financeService = new \App\Services\Marketplaces\Wildberries\WildberriesFinanceService($httpClient);
+
+            // Parse date filters - default to 7 days to avoid timeout
+            $dateFrom = $request->filled('from')
+                ? Carbon::parse($request->from)
+                : now()->subDays(7);
+            $dateTo = $request->filled('to')
+                ? Carbon::parse($request->to)
+                : now();
+
+            \Log::info('WB Finance Orders request', [
+                'account_id' => $account->id,
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+            ]);
+
+            // Get detailed report from Statistics API (limit to avoid timeout)
+            // Use getDetailedReport with limit instead of getFullDetailedReport to avoid timeout
+            $reportData = $financeService->getDetailedReport($account, $dateFrom, $dateTo, 10000);
+
+            // Transform report data to order items format
+            $orderItems = [];
+            $orderMap = []; // Group by order ID to avoid duplicates
+
+            foreach ($reportData as $record) {
+                $operationType = $record['supplier_oper_name'] ?? '';
+
+                // Only include Sales and Returns
+                if (!in_array($operationType, ['Продажа', 'Возврат'])) {
+                    continue;
+                }
+
+                $orderId = $record['srid'] ?? $record['rid'] ?? null;
+                $nmId = $record['nm_id'] ?? null;
+
+                if (!$orderId) {
+                    continue;
+                }
+
+                // Determine delivery type from doc_type_name or warehouse type
+                // WB: FBO orders come from WB warehouses, FBS from seller warehouses
+                $docType = $record['doc_type_name'] ?? '';
+                $warehouseName = $record['office_name'] ?? '';
+
+                // Detect FBO/FBS based on document type and warehouse
+                $deliveryType = 'FBO'; // Default to FBO for finance API data
+                if (stripos($docType, 'FBS') !== false || stripos($warehouseName, 'FBS') !== false) {
+                    $deliveryType = 'FBS';
+                }
+
+                // Check if this order exists in wb_orders (then it's FBS)
+                if (!isset($orderMap[$orderId])) {
+                    $orderMap[$orderId] = [
+                        'orderId' => $orderId,
+                        'srid' => $record['srid'] ?? null,
+                        'rid' => $record['rid'] ?? null,
+                        'nmId' => $nmId,
+                        'supplierArticle' => $record['sa_name'] ?? $record['supplier_article'] ?? null,
+                        'techSize' => $record['ts_name'] ?? null,
+                        'barcode' => $record['barcode'] ?? null,
+                        'brand' => $record['brand_name'] ?? null,
+                        'subject' => $record['subject_name'] ?? null,
+                        'category' => $record['gi_0_name'] ?? null,
+                        'quantity' => 0,
+                        'totalPrice' => 0,
+                        'retailAmount' => 0,
+                        'commission' => 0,
+                        'logistics' => 0,
+                        'forPay' => 0,
+                        'date' => isset($record['rr_dt']) ? strtotime($record['rr_dt']) * 1000 : null,
+                        'dateFormatted' => $record['rr_dt'] ?? null,
+                        'operationType' => $operationType,
+                        'deliveryType' => $deliveryType,
+                        'warehouseName' => $warehouseName,
+                        'regionName' => $record['region_name'] ?? null,
+                        'countryName' => $record['country_name'] ?? null,
+                        'currency' => $record['currency_name'] ?? 'RUB',
+                    ];
+                }
+
+                // Aggregate amounts
+                if ($operationType === 'Продажа') {
+                    $orderMap[$orderId]['quantity'] += 1;
+                    $orderMap[$orderId]['retailAmount'] += $record['retail_amount'] ?? 0;
+                    $orderMap[$orderId]['totalPrice'] += $record['ppvz_for_pay'] ?? 0;
+                    $orderMap[$orderId]['commission'] += abs($record['ppvz_sales_commission'] ?? 0);
+                } elseif ($operationType === 'Возврат') {
+                    $orderMap[$orderId]['quantity'] -= 1;
+                    $orderMap[$orderId]['retailAmount'] -= abs($record['retail_amount'] ?? 0);
+                    $orderMap[$orderId]['operationType'] = 'Возврат';
+                }
+
+                // Logistics (separate records)
+                if (isset($record['delivery_rub'])) {
+                    $orderMap[$orderId]['logistics'] += abs($record['delivery_rub']);
+                }
+
+                $orderMap[$orderId]['forPay'] = $orderMap[$orderId]['retailAmount']
+                    - $orderMap[$orderId]['commission']
+                    - $orderMap[$orderId]['logistics'];
+            }
+
+            // Detect FBS orders by checking wb_orders table
+            $orderIds = array_keys($orderMap);
+            if (!empty($orderIds)) {
+                $fbsOrders = \App\Models\WbOrder::where('marketplace_account_id', $account->id)
+                    ->whereIn('external_order_id', $orderIds)
+                    ->pluck('external_order_id')
+                    ->toArray();
+
+                foreach ($fbsOrders as $fbsOrderId) {
+                    if (isset($orderMap[$fbsOrderId])) {
+                        $orderMap[$fbsOrderId]['deliveryType'] = 'FBS';
+                    }
+                }
+            }
+
+            $orderItems = array_values($orderMap);
+
+            // Sort by date descending
+            usort($orderItems, function ($a, $b) {
+                return ($b['date'] ?? 0) - ($a['date'] ?? 0);
+            });
+
+            // Calculate summary
+            $summary = $financeService->calculateSummary($reportData);
+
+            // Count by delivery type
+            $typeCounts = array_count_values(array_column($orderItems, 'deliveryType'));
+
+            \Log::info('WB Finance Orders response', [
+                'account_id' => $account->id,
+                'items_count' => count($orderItems),
+                'type_counts' => $typeCounts,
+                'summary' => $summary,
+            ]);
+
+            return response()->json([
+                'orderItems' => $orderItems,
+                'totalElements' => count($orderItems),
+                'summary' => $summary,
+                'period' => [
+                    'from' => $dateFrom->format('Y-m-d'),
+                    'to' => $dateTo->format('Y-m-d'),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to fetch WB finance orders', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -760,6 +1022,9 @@ class MarketplaceOrderController extends Controller
         if ($request->to) {
             $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
         }
+        if ($request->delivery_type) {
+            $query->where('wb_delivery_type', $request->delivery_type);
+        }
 
         $orders = $query->with('items')->orderByDesc('ordered_at')->limit(1000)->get();
 
@@ -868,10 +1133,19 @@ class MarketplaceOrderController extends Controller
             $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn($v) => trim($v))->all();
             $query->whereIn('shop_id', $shopIds);
         }
+        // Filter by delivery type (scheme) if specified
+        if ($request->delivery_type) {
+            $deliveryType = strtoupper($request->delivery_type);
+            $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')) = ?", [$deliveryType]);
+        }
 
         $orders = $query->orderByDesc('ordered_at')->limit(1000)->get();
 
         return $orders->map(function ($o) {
+            // Extract scheme (delivery type) from raw_payload
+            $rawPayload = is_array($o->raw_payload) ? $o->raw_payload : json_decode($o->raw_payload, true);
+            $scheme = strtoupper($rawPayload['scheme'] ?? 'FBS');
+
             return [
                 'id' => $o->id,
                 'marketplace_account_id' => $o->marketplace_account_id,
@@ -882,6 +1156,9 @@ class MarketplaceOrderController extends Controller
                 'currency' => $o->currency,
                 'ordered_at' => $o->ordered_at,
                 'raw_payload' => $o->raw_payload,
+                // Add delivery type for filtering
+                'deliveryType' => $scheme,
+                'scheme' => $scheme,
             ];
         })->all();
     }

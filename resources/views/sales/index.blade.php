@@ -337,10 +337,44 @@
                                         <span class="font-semibold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price)"></span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(order.created_at || order.ordered_at)"></td>
-                                    <td class="px-6 py-4 text-right">
-                                        <button class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
-                                            Подробнее
-                                        </button>
+                                    <td class="px-6 py-4 text-right" @click.stop>
+                                        <div class="flex items-center justify-end space-x-2">
+                                            {{-- Print dropdown for manual sales --}}
+                                            <div x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')" class="relative" x-data="{ printOpen: false }">
+                                                <button @click="printOpen = !printOpen" class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors" title="Печать">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                                    </svg>
+                                                </button>
+                                                <div x-show="printOpen" @click.away="printOpen = false" x-transition
+                                                     class="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                                    <a :href="'/sales/' + order.id.replace('sale_', '') + '/print/receipt'" target="_blank"
+                                                       class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        Чек
+                                                    </a>
+                                                    <a :href="'/sales/' + order.id.replace('sale_', '') + '/print/waybill'" target="_blank"
+                                                       class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                                        </svg>
+                                                        Накладная
+                                                    </a>
+                                                    <a :href="'/sales/' + order.id.replace('sale_', '') + '/print/invoice'" target="_blank"
+                                                       class="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                                                        </svg>
+                                                        Счёт-фактура
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <button @click="viewOrder(order)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
+                                                Подробнее
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </template>

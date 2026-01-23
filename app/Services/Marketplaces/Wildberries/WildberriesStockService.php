@@ -410,11 +410,26 @@ class WildberriesStockService
     public function getWarehouses(MarketplaceAccount $account): array
     {
         try {
-            return $this->getHttpClient($account)->get('marketplace', '/api/v3/warehouses');
+            Log::info('WB getWarehouses: fetching warehouses from API', [
+                'account_id' => $account->id,
+                'has_marketplace_token' => !empty($account->wb_marketplace_token),
+                'has_api_key' => !empty($account->api_key),
+            ]);
+
+            $warehouses = $this->getHttpClient($account)->get('marketplace', '/api/v3/warehouses');
+
+            Log::info('WB getWarehouses: API response', [
+                'account_id' => $account->id,
+                'warehouses_count' => is_array($warehouses) ? count($warehouses) : 0,
+                'warehouses' => is_array($warehouses) ? array_slice($warehouses, 0, 5) : $warehouses,
+            ]);
+
+            return $warehouses;
         } catch (\Exception $e) {
             Log::error('Failed to get WB warehouses', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return [];
         }

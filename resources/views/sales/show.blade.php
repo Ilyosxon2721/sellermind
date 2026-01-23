@@ -34,6 +34,44 @@
                           :class="getStatusClass(order.status)"
                           x-text="order.status_label || order.status"></span>
                 </div>
+                {{-- Print buttons for manual sales --}}
+                <div x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')" class="flex items-center space-x-2 ml-4">
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="flex items-center space-x-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            <span>Печать</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="open" @click.away="open = false" x-transition
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                            <a :href="'/sales/' + getSaleId() + '/print/receipt'" target="_blank"
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Чек
+                            </a>
+                            <a :href="'/sales/' + getSaleId() + '/print/waybill'" target="_blank"
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                </svg>
+                                Накладная
+                            </a>
+                            <a :href="'/sales/' + getSaleId() + '/print/invoice'" target="_blank"
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                                </svg>
+                                Счёт-фактура
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -264,6 +302,34 @@
                     </template>
                 </div>
             </div>
+
+            {{-- Print buttons for manual sales (mobile) --}}
+            <div class="native-card" x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')">
+                <h3 class="font-semibold text-gray-900 mb-3">Печать документов</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <a :href="'/sales/' + getSaleId() + '/print/receipt'" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Чек</span>
+                    </a>
+                    <a :href="'/sales/' + getSaleId() + '/print/waybill'" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Накладная</span>
+                    </a>
+                    <a :href="'/sales/' + getSaleId() + '/print/invoice'" target="_blank"
+                       class="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-6 h-6 text-indigo-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                        </svg>
+                        <span class="text-xs text-gray-700">Счёт-фактура</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -338,6 +404,12 @@ function orderDetails() {
                 'manual': 'bg-gray-100 text-gray-700'
             };
             return classes[marketplace] || 'bg-gray-100 text-gray-700';
+        },
+
+        getSaleId() {
+            // Extract numeric ID from 'sale_X' format for print URLs
+            const id = this.order.id || this.orderId;
+            return id?.replace('sale_', '') || id;
         }
     };
 }

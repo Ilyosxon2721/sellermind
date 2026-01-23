@@ -80,6 +80,9 @@ class SaleReservationService
 
     /**
      * Зарезервировать один товар
+     * ВАЖНО: При резервировании СРАЗУ списываем со склада (ledger entry) чтобы:
+     * 1. Остатки на маркетплейсах обновились и не было overselling
+     * 2. Создаём stock_reservation для отслеживания (чтобы при отмене вернуть товар)
      *
      * @param Sale $sale
      * @param SaleItem $item
@@ -110,7 +113,22 @@ class SaleReservationService
             );
         }
 
-        // Создаём резерв (используем Warehouse\Sku ID)
+        // СРАЗУ списываем со склада (ledger entry) - чтобы остатки обновились везде
+        StockLedger::create([
+            'company_id' => $sale->company_id,
+            'occurred_at' => now(),
+            'warehouse_id' => $sale->warehouse_id,
+            'sku_id' => $warehouseSku->id,
+            'qty_delta' => -$item->quantity, // Отрицательное = списание
+            'cost_delta' => -($item->cost_price ?? 0) * $item->quantity,
+            'document_id' => null,
+            'document_line_id' => null,
+            'source_type' => Sale::class,
+            'source_id' => $sale->id,
+            'created_by' => auth()->id(),
+        ]);
+
+        // Создаём резерв для отслеживания (чтобы при отмене вернуть товар)
         $reservation = StockReservation::create([
             'company_id' => $sale->company_id,
             'warehouse_id' => $sale->warehouse_id,
@@ -120,12 +138,13 @@ class SaleReservationService
             'reason' => 'Резерв для продажи',
             'source_type' => Sale::class,
             'source_id' => $sale->id,
-            'expires_at' => null, // Резерв не истекает до отгрузки/отмены
+            'expires_at' => null,
             'created_by' => auth()->id(),
         ]);
 
-        // ПРИМЕЧАНИЕ: Остаток НЕ уменьшается физически при резервировании
-        // Физическое списание происходит при отгрузке через stock_ledger
+        // Уменьшаем stock_default для синхронизации с маркетплейсами
+        $variant->decrementStock((int) $item->quantity);
+        $this->stockSyncService->syncVariantStock($variant);
 
         // Обновляем item
         $item->update([
@@ -139,7 +158,7 @@ class SaleReservationService
             ]),
         ]);
 
-        Log::info('Stock reserved for sale item', [
+        Log::info('Stock reserved and deducted for sale item', [
             'sale_id' => $sale->id,
             'item_id' => $item->id,
             'reservation_id' => $reservation->id,
@@ -212,6 +231,8 @@ class SaleReservationService
 
     /**
      * Отгрузить один товар
+     * ВАЖНО: Ledger entry уже создан при резервировании!
+     * Здесь только обновляем статус резерва в CONSUMED.
      *
      * @param Sale $sale
      * @param SaleItem $item
@@ -232,38 +253,10 @@ class SaleReservationService
             throw new \Exception("Резерв #{$reservationId} не найден");
         }
 
-        // Получаем warehouse_sku_id из metadata (сохранен при резервировании)
-        $warehouseSkuId = $item->metadata['warehouse_sku_id'] ?? null;
-
-        if (!$warehouseSkuId) {
-            // Fallback: ищем по product_variant_id
-            $variant = $item->productVariant;
-            $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $variant->id)->first();
-            $warehouseSkuId = $warehouseSku?->id;
-        }
-
-        if (!$warehouseSkuId) {
-            throw new \Exception("Warehouse SKU не найден для товара '{$item->product_name}'");
-        }
-
         // Переводим резерв в статус CONSUMED (потреблён)
+        // Ledger entry уже был создан при резервировании
         $reservation->update([
             'status' => StockReservation::STATUS_CONSUMED,
-        ]);
-
-        // Создаём движение в stock_ledger (списание со склада)
-        StockLedger::create([
-            'company_id' => $sale->company_id,
-            'occurred_at' => now(),
-            'warehouse_id' => $sale->warehouse_id,
-            'sku_id' => $warehouseSkuId,  // Используем правильный Warehouse\Sku ID
-            'qty_delta' => -$item->quantity, // Отрицательное значение = списание
-            'cost_delta' => -($item->cost_price ?? 0) * $item->quantity,
-            'document_id' => null,
-            'document_line_id' => null,
-            'source_type' => Sale::class,
-            'source_id' => $sale->id,
-            'created_by' => auth()->id(),
         ]);
 
         // Обновляем metadata в item
@@ -274,25 +267,7 @@ class SaleReservationService
             ]),
         ]);
 
-        // ВАЖНО: Синхронизируем остатки с маркетплейсами ТОЛЬКО после отгрузки
-        if ($item->product_variant_id) {
-            $variant = $item->productVariant;
-            $this->stockSyncService->syncVariantStock($variant);
-
-            // Получаем актуальный остаток из warehouse
-            $currentStock = \App\Models\Warehouse\StockLedger::where('sku_id', $warehouseSkuId)
-                ->where('warehouse_id', $sale->warehouse_id)
-                ->sum('qty_delta');
-
-            Log::info('Stock synced to marketplaces after shipment', [
-                'sale_id' => $sale->id,
-                'item_id' => $item->id,
-                'variant_id' => $variant->id,
-                'new_stock' => $currentStock,
-            ]);
-        }
-
-        Log::info('Sale item shipped', [
+        Log::info('Sale item shipped (ledger was already deducted on reserve)', [
             'sale_id' => $sale->id,
             'item_id' => $item->id,
             'quantity' => $item->quantity,
@@ -355,6 +330,8 @@ class SaleReservationService
 
     /**
      * Отменить резерв одного товара
+     * ВАЖНО: При резервировании был создан ledger entry (списание),
+     * поэтому при отмене нужно ВЕРНУТЬ товар обратно (положительный ledger entry).
      *
      * @param SaleItem $item
      * @return void
@@ -363,6 +340,8 @@ class SaleReservationService
     protected function cancelItemReservation(SaleItem $item): void
     {
         $reservationId = $item->metadata['reservation_id'] ?? null;
+        $warehouseSkuId = $item->metadata['warehouse_sku_id'] ?? null;
+        $warehouseId = $item->metadata['warehouse_id'] ?? null;
 
         if ($reservationId) {
             $reservation = StockReservation::find($reservationId);
@@ -374,20 +353,37 @@ class SaleReservationService
             }
         }
 
-        // Возвращаем остаток
+        // Возвращаем остаток в ProductVariant (для маркетплейсов)
         if ($item->productVariant) {
             $item->productVariant->incrementStock((int)$item->quantity);
 
             // Синхронизируем обновлённые остатки с маркетплейсами
             $this->stockSyncService->syncVariantStock($item->productVariant);
+        }
 
-            Log::info('Stock returned and synced after cancellation', [
-                'item_id' => $item->id,
-                'variant_id' => $item->product_variant_id,
-                'quantity' => $item->quantity,
-                'new_stock' => $item->productVariant->stock_default,
+        // Возвращаем товар в stock_ledger (положительный entry)
+        if ($warehouseSkuId && $warehouseId) {
+            StockLedger::create([
+                'company_id' => $item->sale->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouseId,
+                'sku_id' => $warehouseSkuId,
+                'qty_delta' => $item->quantity, // Положительное = возврат
+                'cost_delta' => ($item->cost_price ?? 0) * $item->quantity,
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => Sale::class,
+                'source_id' => $item->sale_id,
+                'created_by' => auth()->id(),
             ]);
         }
+
+        Log::info('Stock returned on cancellation', [
+            'item_id' => $item->id,
+            'variant_id' => $item->product_variant_id,
+            'quantity' => $item->quantity,
+            'new_stock' => $item->productVariant?->stock_default,
+        ]);
 
         // Обновляем item
         $item->update([

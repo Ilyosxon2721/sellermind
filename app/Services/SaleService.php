@@ -152,6 +152,8 @@ class SaleService
 
     /**
      * Подтвердить продажу и зарезервировать остатки
+     * ВАЖНО: Резервирование СРАЗУ списывает товар из stock_ledger,
+     * чтобы остатки обновились везде (на маркетплейсах тоже).
      *
      * @param Sale $sale
      * @param bool $reserveStock Зарезервировать ли остатки
@@ -166,7 +168,7 @@ class SaleService
                 throw new \Exception('Cannot confirm sale with status: ' . $sale->status);
             }
 
-            // Сначала резервируем остатки (пока статус draft)
+            // Резервируем остатки (это СРАЗУ списывает из ledger и синхронизирует с маркетплейсами)
             if ($reserveStock) {
                 $results = $this->reservationService->reserveStock($sale);
 
@@ -180,7 +182,7 @@ class SaleService
                 throw new \Exception('Failed to confirm sale');
             }
 
-            Log::info('Sale confirmed', [
+            Log::info('Sale confirmed and stock deducted', [
                 'sale_id' => $sale->id,
                 'sale_number' => $sale->sale_number,
                 'stock_reserved' => $reserveStock,
