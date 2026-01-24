@@ -1642,7 +1642,8 @@ function wbOrdersPage() {
         },
 
         getSupplyOrders(supply) {
-            return this.filteredOrders.filter(o => o.supply_id === supply.external_supply_id || o.supply_id === ('SUPPLY-' + supply.id));
+            // Используем this.orders вместо filteredOrders, чтобы показывать все заказы поставки независимо от выбранной вкладки
+            return this.orders.filter(o => o.supply_id === supply.external_supply_id || o.supply_id === ('SUPPLY-' + supply.id));
         },
 
         getOrdersWithoutSupply() {
