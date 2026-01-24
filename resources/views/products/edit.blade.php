@@ -221,31 +221,48 @@
                 const sizes = this.selectedSizes;
                 const colors = this.selectedColors;
 
-                if (!sizes.length || !colors.length) {
-                    alert('Выберите хотя бы один размер и один цвет');
-                    return;
-                }
-
                 // Combine global and custom options for lookups
                 const allSizes = [...this.globalSizes, ...this.customSizes];
                 const allColors = [...this.globalColors, ...this.customColors];
 
                 this.variants = [];
 
-                for (const sizeCode of sizes) {
-                    const sizeObj = allSizes.find(s => s.code === sizeCode);
-                    const sizeValue = sizeObj ? sizeObj.value : sizeCode;
+                // Case 1: Both sizes and colors selected
+                if (sizes.length > 0 && colors.length > 0) {
+                    for (const sizeCode of sizes) {
+                        const sizeObj = allSizes.find(s => s.code === sizeCode);
+                        const sizeValue = sizeObj ? sizeObj.value : sizeCode;
 
-                    for (const colorCode of colors) {
-                        const colorObj = allColors.find(c => c.code === colorCode);
-                        const colorValue = colorObj ? colorObj.value : colorCode;
+                        for (const colorCode of colors) {
+                            const colorObj = allColors.find(c => c.code === colorCode);
+                            const colorValue = colorObj ? colorObj.value : colorCode;
 
-                        // SKU format: Article-SizeCode-ColorCode
-                        const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
+                            const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
+                            this.variants.push({
+                                sku: sku,
+                                option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
+                                barcode: '',
+                                weight_g: null,
+                                length_mm: null,
+                                width_mm: null,
+                                height_mm: null,
+                                is_active: true,
+                                size_code: sizeCode,
+                                color_code: colorCode
+                            });
+                        }
+                    }
+                }
+                // Case 2: Only sizes selected (no colors)
+                else if (sizes.length > 0) {
+                    for (const sizeCode of sizes) {
+                        const sizeObj = allSizes.find(s => s.code === sizeCode);
+                        const sizeValue = sizeObj ? sizeObj.value : sizeCode;
 
+                        const sku = `${article}-${sizeCode.toUpperCase()}`;
                         this.variants.push({
                             sku: sku,
-                            option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
+                            option_values_summary: `Размер: ${sizeValue}`,
                             barcode: '',
                             weight_g: null,
                             length_mm: null,
@@ -253,9 +270,45 @@
                             height_mm: null,
                             is_active: true,
                             size_code: sizeCode,
+                            color_code: null
+                        });
+                    }
+                }
+                // Case 3: Only colors selected (no sizes)
+                else if (colors.length > 0) {
+                    for (const colorCode of colors) {
+                        const colorObj = allColors.find(c => c.code === colorCode);
+                        const colorValue = colorObj ? colorObj.value : colorCode;
+
+                        const sku = `${article}-${colorCode.toUpperCase()}`;
+                        this.variants.push({
+                            sku: sku,
+                            option_values_summary: `Цвет: ${colorValue}`,
+                            barcode: '',
+                            weight_g: null,
+                            length_mm: null,
+                            width_mm: null,
+                            height_mm: null,
+                            is_active: true,
+                            size_code: null,
                             color_code: colorCode
                         });
                     }
+                }
+                // Case 4: No sizes and no colors - create single variant
+                else {
+                    this.variants.push({
+                        sku: article,
+                        option_values_summary: '',
+                        barcode: '',
+                        weight_g: null,
+                        length_mm: null,
+                        width_mm: null,
+                        height_mm: null,
+                        is_active: true,
+                        size_code: null,
+                        color_code: null
+                    });
                 }
 
                 // Auto-advance to step 3 to show variants table
@@ -831,13 +884,18 @@
                                 <span x-show="selectedSizes.length > 0 && selectedColors.length > 0">
                                     Будет создано <span class="font-semibold text-indigo-600" x-text="selectedSizes.length * selectedColors.length"></span> вариантов
                                 </span>
-                                <span x-show="selectedSizes.length === 0 || selectedColors.length === 0" class="text-amber-600">
-                                    Выберите хотя бы один размер и один цвет
+                                <span x-show="selectedSizes.length > 0 && selectedColors.length === 0">
+                                    Будет создано <span class="font-semibold text-indigo-600" x-text="selectedSizes.length"></span> вариантов (только размеры)
+                                </span>
+                                <span x-show="selectedSizes.length === 0 && selectedColors.length > 0">
+                                    Будет создано <span class="font-semibold text-indigo-600" x-text="selectedColors.length"></span> вариантов (только цвета)
+                                </span>
+                                <span x-show="selectedSizes.length === 0 && selectedColors.length === 0" class="text-gray-500">
+                                    Будет создан 1 вариант (простой товар без размеров и цветов)
                                 </span>
                             </div>
-                            <button type="button" 
-                                    class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                    :disabled="selectedSizes.length === 0 || selectedColors.length === 0"
+                            <button type="button"
+                                    class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-medium"
                                     @click="generateVariantsFromSelection">
                                 🚀 Сгенерировать варианты
                             </button>
