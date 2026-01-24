@@ -1619,9 +1619,12 @@ function wbOrdersPage() {
                 let commission = 0;
                 let logistics = 0;
                 filtered.forEach(o => {
-                    amount += o.retailAmount || 0;
-                    commission += o.commission || 0;
-                    logistics += o.logistics || 0;
+                    const a = parseFloat(o.retailAmount);
+                    const c = parseFloat(o.commission);
+                    const l = parseFloat(o.logistics);
+                    if (!isNaN(a)) amount += a;
+                    if (!isNaN(c)) commission += c;
+                    if (!isNaN(l)) logistics += l;
                 });
                 return {
                     total_orders: filtered.length,
@@ -1635,7 +1638,10 @@ function wbOrdersPage() {
 
             const filtered = this.filteredOrders;
             let amount = 0;
-            filtered.forEach(o => { amount += o.total_amount || 0; });
+            filtered.forEach(o => {
+                const val = parseFloat(o.total_amount);
+                if (!isNaN(val)) amount += val;
+            });
             return {
                 total_orders: filtered.length,
                 total_amount: amount,
