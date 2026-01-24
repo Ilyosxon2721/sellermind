@@ -93,6 +93,19 @@
     .wb-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .wb-scroll::-webkit-scrollbar-track { background: #F3F4F6; border-radius: 3px; }
     .wb-scroll::-webkit-scrollbar-thumb { background: var(--wb-primary); border-radius: 3px; }
+
+    /* Date input styling for better contrast */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        opacity: 0.8;
+        cursor: pointer;
+    }
+    input[type="date"]::-webkit-datetime-edit {
+        color: white;
+    }
+    input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+        color: white;
+    }
 </style>
 
 <div x-data="wbOrdersPage()" x-init="init()" class="flex h-screen bg-gray-100 browser-only">
@@ -117,7 +130,7 @@
                             </div>
                             <div>
                                 <div class="flex items-center space-x-3">
-                                    <h1 class="text-xl font-bold text-white" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
+                                    <h1 class="text-xl font-bold text-white drop-shadow-sm" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
                                     <!-- FBS/DBS/FBO Toggle - Pill Style -->
                                     <div class="flex items-center bg-white/20 backdrop-blur rounded-full p-1">
                                         <button @click="switchMode('fbs')"
@@ -137,7 +150,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <p class="text-sm text-white/70">{{ $accountName ?? 'Wildberries' }}</p>
+                                <p class="text-sm text-white opacity-90">{{ $accountName ?? 'Wildberries' }}</p>
                             </div>
                         </div>
                     </div>
@@ -177,24 +190,24 @@
                 <!-- Filters Row -->
                 <div class="mt-4 flex items-center space-x-3 flex-wrap gap-2">
                     <!-- Quick Date Filters -->
-                    <div class="flex items-center space-x-1 bg-white/10 backdrop-blur rounded-lg p-1">
-                        <button @click="setToday()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">Сегодня</button>
-                        <button @click="setYesterday()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">Вчера</button>
-                        <button @click="setLastWeek()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">7 дней</button>
-                        <button @click="setLastMonth()" class="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md text-xs font-medium transition">30 дней</button>
+                    <div class="flex items-center space-x-1 bg-white/20 backdrop-blur rounded-lg p-1">
+                        <button @click="setToday()" class="px-3 py-1.5 text-white hover:bg-white/20 rounded-md text-xs font-semibold transition">Сегодня</button>
+                        <button @click="setYesterday()" class="px-3 py-1.5 text-white hover:bg-white/20 rounded-md text-xs font-semibold transition">Вчера</button>
+                        <button @click="setLastWeek()" class="px-3 py-1.5 text-white hover:bg-white/20 rounded-md text-xs font-semibold transition">7 дней</button>
+                        <button @click="setLastMonth()" class="px-3 py-1.5 text-white hover:bg-white/20 rounded-md text-xs font-semibold transition">30 дней</button>
                     </div>
 
                     <div class="flex items-center space-x-2">
                         <input type="date" x-model="dateFrom" @change="loadOrders(); loadStats()"
-                               class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 focus:border-white/40 placeholder-white/50">
-                        <span class="text-white/60 text-xs">—</span>
+                               class="px-3 py-1.5 bg-white/20 backdrop-blur border border-white/30 text-white rounded-lg text-xs font-medium focus:ring-2 focus:ring-white/40 focus:border-white/50">
+                        <span class="text-white text-xs font-medium">—</span>
                         <input type="date" x-model="dateTo" @change="loadOrders(); loadStats()"
-                               class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 focus:border-white/40">
+                               class="px-3 py-1.5 bg-white/20 backdrop-blur border border-white/30 text-white rounded-lg text-xs font-medium focus:ring-2 focus:ring-white/40 focus:border-white/50">
                     </div>
 
                     <!-- Sale Type Filter -->
                     <select x-model="saleTypeFilter" @change="loadOrders()"
-                            class="px-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 appearance-none cursor-pointer">
+                            class="px-3 py-1.5 bg-white/20 backdrop-blur border border-white/30 text-white rounded-lg text-xs font-medium focus:ring-2 focus:ring-white/40 appearance-none cursor-pointer">
                         <option value="" class="text-gray-900">Все типы</option>
                         <option value="fbs" class="text-gray-900">FBS</option>
                         <option value="fbo" class="text-gray-900">FBO</option>
@@ -202,11 +215,11 @@
                     </select>
 
                     <div class="flex-1 max-w-xs relative">
-                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                         <input type="text" x-model="searchQuery" placeholder="Поиск заказа..."
-                               class="w-full pl-9 pr-3 py-1.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-lg text-xs focus:ring-2 focus:ring-white/30 placeholder-white/50">
+                               class="w-full pl-9 pr-3 py-1.5 bg-white/20 backdrop-blur border border-white/30 text-white rounded-lg text-xs font-medium focus:ring-2 focus:ring-white/40 placeholder-white/70">
                     </div>
                 </div>
             </div>

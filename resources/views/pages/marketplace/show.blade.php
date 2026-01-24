@@ -344,8 +344,8 @@
                                 <span class="text-xl font-bold brand-text" x-text="getLogoText()"></span>
                             </div>
                             <div>
-                                <h1 class="text-2xl font-bold text-white" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
-                                <p class="text-white/70 text-sm" x-text="account?.name || 'Управление интеграцией'"></p>
+                                <h1 class="text-2xl font-bold text-white drop-shadow-sm" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
+                                <p class="text-white text-sm opacity-90" x-text="account?.name || 'Управление интеграцией'"></p>
                             </div>
                         </div>
                     </div>
