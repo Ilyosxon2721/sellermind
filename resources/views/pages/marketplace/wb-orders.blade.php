@@ -506,45 +506,62 @@
                         <!-- Supply Orders -->
                         <div x-show="expandedSupplies[supply.id]" x-transition class="divide-y divide-gray-100">
                             <template x-for="order in getSupplyOrders(supply)" :key="order.id">
-                                <div class="p-5 hover:bg-gray-50 transition">
-                                    <div class="flex items-start justify-between">
-                                        <div class="flex-1 flex items-start space-x-4 cursor-pointer" @click="viewOrder(order)">
-                                            <img x-show="order.photo_url || order.nm_id"
-                                                 :src="order.photo_url || getWbProductImageUrl(order.nm_id)"
-                                                 class="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                                                 loading="lazy" x-on:error="handleImageError($event)">
-                                            <div class="flex-1">
-                                                <div class="flex items-center space-x-3 mb-2">
-                                                    <h4 class="text-base font-bold text-gray-900">#<span x-text="order.external_order_id"></span></h4>
-                                                    <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
-                                                    <span class="px-2 py-1 text-xs font-medium rounded"
-                                                          :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
-                                                          x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
+                                <div class="hover:bg-gray-50 transition">
+                                    <div class="flex items-stretch">
+                                        <!-- Product Image -->
+                                        <div class="flex-shrink-0 w-24 bg-gray-50 flex items-center justify-center cursor-pointer p-2" @click="viewOrder(order)">
+                                            <template x-if="order.photo_url || order.nm_id">
+                                                <img :src="order.photo_url || getWbProductImageUrl(order.nm_id)"
+                                                     class="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                                     loading="lazy" x-on:error="handleImageError($event)">
+                                            </template>
+                                            <template x-if="!order.photo_url && !order.nm_id">
+                                                <div class="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
                                                 </div>
-                                                <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
-                                                <div class="text-sm text-gray-500" x-text="order.meta_info || ''"></div>
-                                                <div class="mt-2 grid grid-cols-3 gap-3 text-sm">
-                                                    <div><span class="text-gray-500">Артикул:</span> <span class="font-medium" x-text="order.article || '-'"></span></div>
-                                                    <div><span class="text-gray-500">NM ID:</span> <span class="font-medium" x-text="order.nm_id || '-'"></span></div>
-                                                    <div><span class="text-gray-500">Время:</span> <span class="font-medium" x-text="order.time_elapsed || formatDate(order.ordered_at)"></span></div>
-                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- Order Info -->
+                                        <div class="flex-1 p-4 cursor-pointer" @click="viewOrder(order)">
+                                            <div class="flex items-center flex-wrap gap-2 mb-2">
+                                                <span class="text-base font-bold text-gray-900">#<span x-text="order.external_order_id"></span></span>
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                                <span class="px-2 py-1 text-xs font-medium rounded"
+                                                      :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                                      x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
+                                            </div>
+                                            <p class="font-semibold text-gray-800 mb-1" x-text="order.product_name || order.article || 'Товар'"></p>
+                                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                                                <span><span class="font-medium text-gray-700">Артикул:</span> <span x-text="order.article || '-'"></span></span>
+                                                <span><span class="font-medium text-gray-700">NM:</span> <span x-text="order.nm_id || '-'"></span></span>
+                                                <span class="flex items-center">
+                                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                    </svg>
+                                                    <span x-text="order.time_elapsed || formatDate(order.ordered_at)"></span>
+                                                </span>
                                             </div>
                                         </div>
-                                        <div class="flex items-center space-x-3 ml-4">
-                                            <div class="text-right">
-                                                <div class="text-xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
+
+                                        <!-- Price & Actions -->
+                                        <div class="flex items-center px-4 border-l border-gray-100 bg-gray-50/50">
+                                            <div class="text-right mr-3">
+                                                <p class="text-xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></p>
                                             </div>
-                                            <div class="flex flex-col space-y-2">
+                                            <div class="flex flex-col space-y-1.5">
                                                 <button @click.stop="removeOrderFromSupply(order, supply)"
-                                                        class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs rounded-lg transition">
+                                                        class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded-lg transition">
                                                     Убрать
                                                 </button>
                                                 <button @click.stop="printOrderSticker(order)"
-                                                        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition">
-                                                    <span x-text="order.sticker_path ? 'Скачать' : 'Печать'"></span>
+                                                        class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition">
+                                                    <span x-text="order.sticker_path ? 'Скачать' : 'Стикер'"></span>
                                                 </button>
                                                 <button @click.stop="openCancelModal(order)"
-                                                        class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition">
+                                                        class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition">
                                                     Отменить
                                                 </button>
                                             </div>
@@ -598,44 +615,66 @@
                 </div>
 
                 <!-- Orders without supply -->
-                <div x-show="getOrdersWithoutSupply().length > 0" class="space-y-4">
+                <div x-show="getOrdersWithoutSupply().length > 0" class="space-y-3">
                     <h3 class="text-lg font-semibold text-gray-700">Без поставки</h3>
                     <template x-for="order in getOrdersWithoutSupply()" :key="order.id">
-                        <div class="bg-white rounded-xl border border-gray-200 hover:border-[#CB11AB] hover:shadow-md transition p-5">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1 flex items-start space-x-4 cursor-pointer" @click="viewOrder(order)">
-                                    <img x-show="order.photo_url || order.nm_id"
-                                         :src="order.photo_url || getWbProductImageUrl(order.nm_id)"
-                                         class="w-24 h-24 object-cover rounded-lg border border-gray-200"
-                                         loading="lazy" x-on:error="handleImageError($event)">
-                                    <div class="flex-1">
-                                        <div class="flex items-center space-x-3 mb-2">
-                                            <h3 class="text-lg font-bold text-gray-900">Заказ #<span x-text="order.external_order_id"></span></h3>
-                                            <span class="px-3 py-1 text-xs font-semibold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
-                                            <span class="px-2 py-1 text-xs font-medium rounded"
-                                                  :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
-                                                  x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
+                        <div class="wb-card overflow-hidden">
+                            <div class="flex items-stretch">
+                                <!-- Product Image -->
+                                <div class="flex-shrink-0 w-28 bg-gray-50 flex items-center justify-center cursor-pointer" @click="viewOrder(order)">
+                                    <template x-if="order.photo_url || order.nm_id">
+                                        <img :src="order.photo_url || getWbProductImageUrl(order.nm_id)"
+                                             class="w-24 h-24 object-cover rounded-lg"
+                                             loading="lazy" x-on:error="handleImageError($event)">
+                                    </template>
+                                    <template x-if="!order.photo_url && !order.nm_id">
+                                        <div class="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                                            <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
                                         </div>
-                                        <div class="font-semibold text-gray-900" x-text="order.product_name || order.article || '-'"></div>
-                                        <div class="text-sm text-gray-500 mb-2" x-text="order.meta_info || ''"></div>
-                                        <div class="flex items-center space-x-2 text-sm text-gray-600">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    </template>
+                                </div>
+
+                                <!-- Order Info -->
+                                <div class="flex-1 p-4 cursor-pointer" @click="viewOrder(order)">
+                                    <div class="flex items-center flex-wrap gap-2 mb-2">
+                                        <span class="text-lg font-bold text-gray-900">#<span x-text="order.external_order_id"></span></span>
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full" :class="getStatusClass(order.status)" x-text="getStatusLabel(order.status)"></span>
+                                        <span class="px-2 py-1 text-xs font-bold rounded"
+                                              :class="getDeliveryTypeBadgeClass(order.wb_delivery_type)"
+                                              x-text="(order.wb_delivery_type || 'fbs').toUpperCase()"></span>
+                                    </div>
+                                    <p class="font-semibold text-gray-800 mb-1" x-text="order.product_name || order.article || 'Товар'"></p>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                                        <span><span class="font-medium text-gray-700">Артикул:</span> <span x-text="order.article || '-'"></span></span>
+                                        <span><span class="font-medium text-gray-700">NM:</span> <span x-text="order.nm_id || '-'"></span></span>
+                                        <span class="flex items-center">
+                                            <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
                                             <span x-text="order.time_elapsed || formatDate(order.ordered_at)"></span>
-                                        </div>
+                                        </span>
                                     </div>
                                 </div>
-                                <div class="flex items-center space-x-3 ml-4">
-                                    <div class="text-2xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
-                                    <div class="flex flex-col space-y-2">
+
+                                <!-- Price & Actions -->
+                                <div class="flex items-center px-4 border-l border-gray-100 bg-gray-50/50">
+                                    <div class="text-right mr-4">
+                                        <p class="text-2xl font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></p>
+                                        <p class="text-xs text-gray-500">RUB</p>
+                                    </div>
+                                    <div class="flex flex-col space-y-1.5">
                                         <button @click.stop="openAddToSupplyModal(order)"
-                                                class="px-4 py-2 wb-gradient text-white text-sm rounded-lg hover:opacity-90 transition">
+                                                class="wb-btn-primary px-3 py-1.5 text-xs">
                                             В поставку
                                         </button>
                                         <button @click.stop="printOrderSticker(order)"
-                                                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
-                                            Печать
+                                                class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition">
+                                            <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                            </svg>
+                                            Стикер
                                         </button>
                                     </div>
                                 </div>
