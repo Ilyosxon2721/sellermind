@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse\StockReservation;
+use App\Models\UzumOrder;
+use App\Models\WbOrder;
+use App\Models\OzonOrder;
 use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
@@ -33,7 +36,7 @@ class ReservationController extends Controller
         }
 
         $query = StockReservation::query()
-            ->with('sku:id,sku_code')
+            ->with(['sku.product.images', 'sku.productVariant', 'warehouse'])
             ->where('company_id', $companyId);
         if ($request->warehouse_id) {
             $query->where('warehouse_id', $request->warehouse_id);
@@ -45,7 +48,69 @@ class ReservationController extends Controller
             $query->where('reason', $request->reason);
         }
 
-        return $this->successResponse($query->orderByDesc('id')->limit(500)->get());
+        $reservations = $query->orderByDesc('id')->limit(500)->get();
+
+        // Load order information for marketplace orders
+        $reservations = $reservations->map(function ($reservation) {
+            $data = $reservation->toArray();
+
+            // Add product image
+            $data['product_image'] = null;
+            $data['product_name'] = null;
+            if ($reservation->sku && $reservation->sku->product) {
+                $data['product_name'] = $reservation->sku->product->name;
+                $image = $reservation->sku->product->images->first();
+                if ($image) {
+                    $data['product_image'] = $image->url ?? $image->path ?? null;
+                }
+            }
+
+            // Add order info for marketplace orders
+            $data['order_date'] = null;
+            $data['order_status'] = null;
+            $data['order_status_normalized'] = null;
+            $data['marketplace'] = null;
+
+            if ($reservation->source_type === 'marketplace_order' && $reservation->source_id) {
+                $order = $this->getMarketplaceOrder($reservation->reason, $reservation->source_id);
+                if ($order) {
+                    $data['order_date'] = $order->ordered_at ?? $order->created_at;
+                    $data['order_status'] = $order->uzum_status ?? $order->wb_status ?? $order->ozon_status ?? $order->status ?? null;
+                    $data['order_status_normalized'] = $order->status_normalized ?? $order->status ?? null;
+                    $data['marketplace'] = $this->extractMarketplace($reservation->reason);
+                }
+            }
+
+            return $data;
+        });
+
+        return $this->successResponse($reservations);
+    }
+
+    /**
+     * Get marketplace order by source ID based on reason string
+     */
+    private function getMarketplaceOrder(string $reason, int $sourceId)
+    {
+        $marketplace = $this->extractMarketplace($reason);
+
+        return match ($marketplace) {
+            'uzum' => UzumOrder::find($sourceId),
+            'wb', 'wildberries' => WbOrder::find($sourceId),
+            'ozon' => OzonOrder::find($sourceId),
+            default => null,
+        };
+    }
+
+    /**
+     * Extract marketplace name from reason string
+     */
+    private function extractMarketplace(string $reason): ?string
+    {
+        if (preg_match('/marketplace\s*order:\s*(\w+)/i', $reason, $matches)) {
+            return strtolower($matches[1]);
+        }
+        return null;
     }
 
     public function reserve(Request $request)

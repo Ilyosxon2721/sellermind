@@ -1051,7 +1051,7 @@
                         <h2 class="text-lg font-semibold text-gray-900">Базовые цены</h2>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm">
-                                <thead><tr class="text-left text-xs text-gray-500 bg-gray-50"><th class="px-3 py-2 rounded-l-lg">Вариант</th><th class="px-3 py-2">Цена</th><th class="px-3 py-2">Старая цена</th><th class="px-3 py-2 rounded-r-lg">Закупка</th></tr></thead>
+                                <thead><tr class="text-left text-xs text-gray-500 bg-gray-50"><th class="px-3 py-2 rounded-l-lg">Вариант</th><th class="px-3 py-2">Цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Старая цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2 rounded-r-lg">Закупка ({{ $currency ?? 'UZS' }})</th></tr></thead>
                                 <tbody class="divide-y divide-gray-100">
                                     <template x-for="(variant, idx) in variants" :key="idx">
                                         <tr>
@@ -1137,11 +1137,11 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="native-caption">Цена</label>
+                            <label class="native-caption">Цена ({{ $currency ?? 'UZS' }})</label>
                             <input type="number" name="product[base_price]" x-model="product.base_price" class="native-input mt-1" step="0.01" placeholder="0.00">
                         </div>
                         <div>
-                            <label class="native-caption">Старая цена</label>
+                            <label class="native-caption">Старая цена ({{ $currency ?? 'UZS' }})</label>
                             <input type="number" name="product[old_price]" x-model="product.old_price" class="native-input mt-1" step="0.01" placeholder="0.00">
                         </div>
                     </div>
@@ -1200,7 +1200,7 @@
                                 <input type="text" x-model="variant.sku" class="native-input mt-1">
                             </div>
                             <div>
-                                <label class="native-caption">Цена</label>
+                                <label class="native-caption">Цена ({{ $currency ?? 'UZS' }})</label>
                                 <input type="number" x-model="variant.price_default" class="native-input mt-1" step="0.01">
                             </div>
                         </div>

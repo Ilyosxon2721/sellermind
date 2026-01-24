@@ -107,17 +107,19 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Кол-во</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Причина</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Источник</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Действия</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Товар</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Кол-во</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус резерва</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                            <th class="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Действия</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -125,7 +127,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="6" class="px-6 py-12 text-center">
+                            <tr><td colspan="8" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 </div>
@@ -134,21 +136,55 @@
                         </template>
                         <template x-for="res in items" :key="res.id">
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-semibold text-purple-600" x-text="res.sku?.sku_code || res.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right font-medium" x-text="res.qty"></td>
-                                <td class="px-6 py-4">
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium" 
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                            <template x-if="res.product_image">
+                                                <img :src="res.product_image" class="w-full h-full object-cover" :alt="res.product_name">
+                                            </template>
+                                            <template x-if="!res.product_image">
+                                                <div class="w-full h-full flex items-center justify-center">
+                                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 truncate" x-text="res.product_name || '—'"></p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4 text-sm font-semibold text-purple-600" x-text="res.sku?.sku_code || res.sku_id"></td>
+                                <td class="px-4 py-4 text-sm text-right font-medium" x-text="parseInt(res.qty)"></td>
+                                <td class="px-4 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium"
                                           :class="{
                                               'bg-green-100 text-green-700': res.status === 'ACTIVE',
                                               'bg-amber-100 text-amber-700': res.status === 'RELEASED',
                                               'bg-blue-100 text-blue-700': res.status === 'CONSUMED',
                                               'bg-gray-100 text-gray-700': res.status === 'CANCELLED'
-                                          }" 
-                                          x-text="res.status"></span>
+                                          }"
+                                          x-text="translateStatus(res.status)"></span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="res.reason"></td>
-                                <td class="px-6 py-4 text-sm text-gray-500" x-text="res.source_type || '—'"></td>
-                                <td class="px-6 py-4 text-right space-x-2">
+                                <td class="px-4 py-4 text-sm text-gray-700" x-text="formatDate(res.order_date)"></td>
+                                <td class="px-4 py-4">
+                                    <template x-if="res.order_status_normalized">
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium"
+                                              :class="getOrderStatusClass(res.order_status_normalized)"
+                                              x-text="translateOrderStatus(res.order_status_normalized)"></span>
+                                    </template>
+                                    <template x-if="!res.order_status_normalized">
+                                        <span class="text-sm text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <template x-if="res.marketplace">
+                                        <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 uppercase" x-text="res.marketplace"></span>
+                                    </template>
+                                    <template x-if="!res.marketplace">
+                                        <span class="text-sm text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-4 py-4 text-right space-x-2">
                                     <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="release(res.id)" :disabled="res.status !== 'ACTIVE'">Отпустить</button>
                                     <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'">Списать</button>
                                 </td>
@@ -221,6 +257,63 @@
             toast: { show: false, message: '', type: 'success' },
             showModal: false,
             form: { warehouse_id: '{{ $selectedWarehouseId }}', sku_id: '', qty: 1, reason: 'MANUAL' },
+
+            // Status translations
+            statusTranslations: {
+                'ACTIVE': 'Активный',
+                'RELEASED': 'Отпущен',
+                'CONSUMED': 'Списан',
+                'CANCELLED': 'Отменён'
+            },
+
+            // Order status translations
+            orderStatusTranslations: {
+                'new': 'Новый',
+                'pending': 'Ожидает',
+                'confirmed': 'Подтверждён',
+                'processing': 'В обработке',
+                'assembling': 'В сборке',
+                'assembled': 'Собран',
+                'awaiting_deliver': 'Ожидает доставку',
+                'delivering': 'В доставке',
+                'delivered': 'Доставлен',
+                'shipped': 'Отправлен',
+                'in_transit': 'В пути',
+                'completed': 'Завершён',
+                'cancelled': 'Отменён',
+                'returned': 'Возвращён',
+                'refunded': 'Возвращён',
+                'sorted': 'Отсортирован',
+                'on_the_way': 'В пути',
+                'ready_for_pickup': 'Готов к выдаче'
+            },
+
+            translateStatus(status) {
+                return this.statusTranslations[status] || status;
+            },
+
+            translateOrderStatus(status) {
+                if (!status) return '—';
+                const lower = status.toLowerCase();
+                return this.orderStatusTranslations[lower] || status;
+            },
+
+            getOrderStatusClass(status) {
+                if (!status) return 'bg-gray-100 text-gray-700';
+                const s = status.toLowerCase();
+                if (['new', 'pending'].includes(s)) return 'bg-yellow-100 text-yellow-700';
+                if (['confirmed', 'processing', 'assembling', 'assembled'].includes(s)) return 'bg-blue-100 text-blue-700';
+                if (['delivering', 'shipped', 'in_transit', 'awaiting_deliver', 'on_the_way'].includes(s)) return 'bg-purple-100 text-purple-700';
+                if (['delivered', 'completed', 'ready_for_pickup'].includes(s)) return 'bg-green-100 text-green-700';
+                if (['cancelled', 'returned', 'refunded'].includes(s)) return 'bg-red-100 text-red-700';
+                return 'bg-gray-100 text-gray-700';
+            },
+
+            formatDate(dateStr) {
+                if (!dateStr) return '—';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            },
 
             showToast(message, type = 'success') {
                 this.toast = { show: true, message, type };
@@ -369,19 +462,46 @@
         <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
             <template x-for="item in items" :key="item.id">
                 <div class="native-card">
-                    <div class="flex items-start justify-between mb-2">
-                        <p class="native-body font-semibold text-purple-600" x-text="item.sku?.code || 'SKU'"></p>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
-                            'bg-green-100 text-green-700': item.status === 'ACTIVE',
-                            'bg-blue-100 text-blue-700': item.status === 'RELEASED',
-                            'bg-gray-100 text-gray-600': item.status === 'CANCELLED'
-                        }" x-text="item.status"></span>
+                    <div class="flex items-start space-x-3 mb-2">
+                        <div class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            <template x-if="item.product_image">
+                                <img :src="item.product_image" class="w-full h-full object-cover" :alt="item.product_name">
+                            </template>
+                            <template x-if="!item.product_image">
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between">
+                                <p class="native-body font-semibold text-purple-600" x-text="item.sku?.sku_code || 'SKU'"></p>
+                                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
+                                    'bg-green-100 text-green-700': item.status === 'ACTIVE',
+                                    'bg-amber-100 text-amber-700': item.status === 'RELEASED',
+                                    'bg-blue-100 text-blue-700': item.status === 'CONSUMED',
+                                    'bg-gray-100 text-gray-600': item.status === 'CANCELLED'
+                                }" x-text="translateStatus(item.status)"></span>
+                            </div>
+                            <p class="native-caption truncate" x-text="item.product_name || '—'"></p>
+                        </div>
                     </div>
-                    <p class="native-caption" x-text="item.sku?.product?.name || '—'"></p>
-                    <div class="flex items-center justify-between mt-2">
-                        <span class="native-body font-semibold" x-text="item.qty + ' шт'"></span>
-                        <span class="native-caption" x-text="item.reason"></span>
+                    <div class="flex items-center justify-between">
+                        <span class="native-body font-semibold" x-text="parseInt(item.qty) + ' шт'"></span>
+                        <template x-if="item.marketplace">
+                            <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 uppercase" x-text="item.marketplace"></span>
+                        </template>
                     </div>
+                    <template x-if="item.order_date || item.order_status_normalized">
+                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                            <span class="native-caption" x-text="'Заказ: ' + formatDate(item.order_date)"></span>
+                            <template x-if="item.order_status_normalized">
+                                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                      :class="getOrderStatusClass(item.order_status_normalized)"
+                                      x-text="translateOrderStatus(item.order_status_normalized)"></span>
+                            </template>
+                        </div>
+                    </template>
                 </div>
             </template>
         </div>

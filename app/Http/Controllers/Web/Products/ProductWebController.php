@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Products;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
+use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -99,6 +100,7 @@ class ProductWebController extends Controller
                 'globalColors' => $globalColors,
                 'initialState' => $this->buildInitialState(null),
                 'noCompany' => true,
+                'currency' => 'UZS',
             ]);
         }
 
@@ -109,6 +111,10 @@ class ProductWebController extends Controller
 
         $attributes = Attribute::orderBy('name')->get();
 
+        // Get company currency
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $currency = $financeSettings->base_currency_code ?? 'UZS';
+
         return view('products.edit', [
             'product' => new Product(['company_id' => $companyId]),
             'categories' => $categories,
@@ -117,6 +123,7 @@ class ProductWebController extends Controller
             'globalColors' => $globalColors,
             'initialState' => $this->buildInitialState(null),
             'noCompany' => false,
+            'currency' => $currency,
         ]);
     }
 
@@ -148,6 +155,10 @@ class ProductWebController extends Controller
         $globalSizes = \App\Models\GlobalOption::sizes()?->activeValues ?? collect();
         $globalColors = \App\Models\GlobalOption::colors()?->activeValues ?? collect();
 
+        // Get company currency
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $currency = $financeSettings->base_currency_code ?? 'UZS';
+
         return view('products.edit', [
             'product' => $product,
             'categories' => $categories,
@@ -155,6 +166,7 @@ class ProductWebController extends Controller
             'globalSizes' => $globalSizes,
             'globalColors' => $globalColors,
             'initialState' => $this->buildInitialState($product),
+            'currency' => $currency,
         ]);
     }
 
