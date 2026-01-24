@@ -32,10 +32,20 @@ return [
         'currency' => [
             'title' => 'Currency Rates',
             'description' => 'Set current exchange rates for cost calculations and reports. These rates are used across all sections of the system.',
+            'display_currency' => 'Main Currency',
+            'display_currency_description' => 'Select the currency for displaying amounts in reports and dashboard',
+            'currencies' => [
+                'UZS' => 'Uzbekistani Som',
+                'RUB' => 'Russian Ruble',
+                'USD' => 'US Dollar',
+                'EUR' => 'Euro',
+                'KZT' => 'Kazakhstani Tenge',
+            ],
             'usd' => 'US Dollar (USD → UZS)',
             'rub' => 'Ruble (RUB → UZS)',
             'eur' => 'Euro (EUR → UZS)',
             'last_updated' => 'Last updated',
+            'exchange_rates' => 'Exchange Rates',
         ],
         'sync' => [
             'title' => 'Stock Synchronization Settings',

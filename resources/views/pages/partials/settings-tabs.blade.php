@@ -107,51 +107,83 @@
     <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('app.settings.currency.title') }}</h2>
     <p class="text-sm text-gray-500 mb-6">{{ __('app.settings.currency.description') }}</p>
 
-    <div class="space-y-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-green-600 font-bold">$</span> {{ __('app.settings.currency.usd') }}
+    <div class="space-y-6">
+        <!-- Display Currency Selector -->
+        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-4">
+            <label class="block text-sm font-medium text-gray-900 mb-2">
+                {{ __('app.settings.currency.display_currency') }}
             </label>
-            <input type="number" step="0.01"
-                   x-model="currencyForm.usd_rate"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                   placeholder="12700">
+            <p class="text-xs text-gray-500 mb-3">{{ __('app.settings.currency.display_currency_description') }}</p>
+            <div class="flex flex-wrap gap-2">
+                <template x-for="currency in availableCurrencies" :key="currency.code">
+                    <button @click="setDisplayCurrency(currency.code)"
+                            :class="displayCurrency === currency.code
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                            class="px-4 py-2 border rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+                        <span x-text="currency.symbol" class="font-bold"></span>
+                        <span x-text="currency.code"></span>
+                        <svg x-show="displayCurrency === currency.code" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </template>
+            </div>
+            <div x-show="displayCurrencyStatus === 'success'" x-transition class="text-green-600 text-xs mt-2">✓ {{ __('app.messages.settings_saved') }}</div>
+            <div x-show="displayCurrencyStatus === 'error'" x-transition class="text-red-600 text-xs mt-2">{{ __('app.messages.save_error') }}</div>
         </div>
 
+        <!-- Exchange Rates Section -->
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-blue-600 font-bold">₽</span> {{ __('app.settings.currency.rub') }}
-            </label>
-            <input type="number" step="0.0001"
-                   x-model="currencyForm.rub_rate"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                   placeholder="140">
-        </div>
+            <h3 class="text-sm font-medium text-gray-900 mb-4">{{ __('app.settings.currency.exchange_rates') }}</h3>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                <span class="text-amber-600 font-bold">€</span> {{ __('app.settings.currency.eur') }}
-            </label>
-            <input type="number" step="0.01"
-                   x-model="currencyForm.eur_rate"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                   placeholder="13800">
-        </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-green-600 font-bold">$</span> {{ __('app.settings.currency.usd') }}
+                    </label>
+                    <input type="number" step="0.01"
+                           x-model="currencyForm.usd_rate"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="12700">
+                </div>
 
-        <div class="pt-4 flex items-center space-x-4">
-            <button @click="saveCurrencyRates()"
-                    :disabled="saving"
-                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
-                <span x-show="!saving">{{ __('app.actions.save') }}</span>
-                <span x-show="saving">{{ __('app.messages.saving') }}</span>
-            </button>
-            <span x-show="saveStatus === 'success'" x-transition class="text-green-600 text-sm">✓ {{ __('app.messages.settings_saved') }}</span>
-            <span x-show="saveStatus === 'error'" x-transition class="text-red-600 text-sm">{{ __('app.messages.save_error') }}</span>
-        </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-blue-600 font-bold">₽</span> {{ __('app.settings.currency.rub') }}
+                    </label>
+                    <input type="number" step="0.0001"
+                           x-model="currencyForm.rub_rate"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="140">
+                </div>
 
-        <template x-if="lastUpdated">
-            <div class="text-xs text-gray-400 mt-2" x-text="'{{ __('app.settings.currency.last_updated') }}: ' + lastUpdated"></div>
-        </template>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="text-amber-600 font-bold">€</span> {{ __('app.settings.currency.eur') }}
+                    </label>
+                    <input type="number" step="0.01"
+                           x-model="currencyForm.eur_rate"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="13800">
+                </div>
+
+                <div class="pt-4 flex items-center space-x-4">
+                    <button @click="saveCurrencyRates()"
+                            :disabled="saving"
+                            class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                        <span x-show="!saving">{{ __('app.actions.save') }}</span>
+                        <span x-show="saving">{{ __('app.messages.saving') }}</span>
+                    </button>
+                    <span x-show="saveStatus === 'success'" x-transition class="text-green-600 text-sm">✓ {{ __('app.messages.settings_saved') }}</span>
+                    <span x-show="saveStatus === 'error'" x-transition class="text-red-600 text-sm">{{ __('app.messages.save_error') }}</span>
+                </div>
+
+                <template x-if="lastUpdated">
+                    <div class="text-xs text-gray-400 mt-2" x-text="'{{ __('app.settings.currency.last_updated') }}: ' + lastUpdated"></div>
+                </template>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -214,11 +246,21 @@ function currencySettings() {
             rub_rate: 140,
             eur_rate: 13800,
         },
+        displayCurrency: 'UZS',
+        displayCurrencyStatus: null,
+        availableCurrencies: [
+            { code: 'UZS', symbol: 'сўм', name: '{{ __("app.settings.currency.currencies.UZS") }}' },
+            { code: 'RUB', symbol: '₽', name: '{{ __("app.settings.currency.currencies.RUB") }}' },
+            { code: 'USD', symbol: '$', name: '{{ __("app.settings.currency.currencies.USD") }}' },
+            { code: 'EUR', symbol: '€', name: '{{ __("app.settings.currency.currencies.EUR") }}' },
+            { code: 'KZT', symbol: '₸', name: '{{ __("app.settings.currency.currencies.KZT") }}' },
+        ],
         saving: false,
         saveStatus: null,
         lastUpdated: null,
 
         init() {
+            this.loadCurrencySettings();
             this.loadCurrencyRates();
         },
 
@@ -230,6 +272,50 @@ function currencySettings() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             };
+        },
+
+        async loadCurrencySettings() {
+            try {
+                const response = await fetch('/api/currency', {
+                    credentials: 'include',
+                    headers: this.getAuthHeaders(),
+                });
+                const data = await response.json();
+                if (response.ok && data.display_currency) {
+                    this.displayCurrency = data.display_currency;
+                }
+            } catch (error) {
+                console.error('Failed to load currency settings:', error);
+            }
+        },
+
+        async setDisplayCurrency(currency) {
+            if (this.displayCurrency === currency) return;
+
+            const previousCurrency = this.displayCurrency;
+            this.displayCurrency = currency;
+            this.displayCurrencyStatus = null;
+
+            try {
+                const response = await fetch('/api/currency/display', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify({ currency }),
+                });
+
+                if (response.ok) {
+                    this.displayCurrencyStatus = 'success';
+                    setTimeout(() => this.displayCurrencyStatus = null, 2000);
+                } else {
+                    this.displayCurrency = previousCurrency;
+                    this.displayCurrencyStatus = 'error';
+                }
+            } catch (error) {
+                console.error('Failed to update display currency:', error);
+                this.displayCurrency = previousCurrency;
+                this.displayCurrencyStatus = 'error';
+            }
         },
 
         async loadCurrencyRates() {

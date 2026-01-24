@@ -32,10 +32,20 @@ return [
         'currency' => [
             'title' => 'Valyuta kurslari',
             'description' => 'Tannarx va hisobotlarni hisoblash uchun joriy valyuta kurslarini o\'rnating. Bu kurslar tizimning barcha bo\'limlarida ishlatiladi.',
+            'display_currency' => 'Asosiy valyuta',
+            'display_currency_description' => 'Hisobotlar va boshqaruv panelida summalarni ko\'rsatish uchun valyutani tanlang',
+            'currencies' => [
+                'UZS' => 'O\'zbekiston so\'mi',
+                'RUB' => 'Rossiya rubli',
+                'USD' => 'AQSh dollari',
+                'EUR' => 'Yevro',
+                'KZT' => 'Qozog\'iston tengesi',
+            ],
             'usd' => 'AQSh Dollari (USD → UZS)',
             'rub' => 'Rubl (RUB → UZS)',
             'eur' => 'Yevro (EUR → UZS)',
             'last_updated' => 'Oxirgi yangilanish',
+            'exchange_rates' => 'Almashuv kurslari',
         ],
         'sync' => [
             'title' => 'Qoldiqlarni sinxronizatsiya sozlamalari',
