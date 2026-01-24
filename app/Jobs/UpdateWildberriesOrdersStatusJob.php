@@ -19,9 +19,9 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, HandlesMarketplaceRateLimiting;
 
     /**
-     * Таймаут выполнения job (5 минут)
+     * Таймаут выполнения job (10 минут для обработки всех заказов)
      */
-    public int $timeout = 300;
+    public int $timeout = 600;
 
     /**
      * Количество попыток
@@ -61,6 +61,17 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
+     * Получить общее количество заказов для обновления
+     */
+    protected function getTotalOrdersCount(MarketplaceAccount $account): int
+    {
+        return WbOrder::where('marketplace_account_id', $account->id)
+            ->whereNotIn('status', ['completed', 'canceled', 'cancelled'])
+            ->whereNotNull('external_order_id')
+            ->count();
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(WildberriesOrderService $orderService): void
@@ -97,79 +108,98 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
         ]);
 
         try {
-            // Получаем заказы, которые не в финальном статусе
-            $orders = WbOrder::where('marketplace_account_id', $account->id)
-                ->whereNotIn('status', ['completed', 'canceled'])
+            // Получаем общее количество заказов для обновления
+            $totalOrders = WbOrder::where('marketplace_account_id', $account->id)
+                ->whereNotIn('status', ['completed', 'canceled', 'cancelled'])
                 ->whereNotNull('external_order_id')
-                ->limit(100) // Ограничиваем количество для избежания rate limit
-                ->get();
+                ->count();
 
-            if ($orders->isEmpty()) {
+            if ($totalOrders === 0) {
                 Log::info('UpdateWildberriesOrdersStatusJob: No orders to update', [
                     'account_id' => $account->id,
                 ]);
                 return;
             }
 
-            // Получаем ID заказов
-            $orderIds = $orders->pluck('external_order_id')->toArray();
+            Log::info('UpdateWildberriesOrdersStatusJob: Found orders to update', [
+                'account_id' => $account->id,
+                'total_orders' => $totalOrders,
+            ]);
 
-            // Получаем статусы от WB API
-            $statusesData = $orderService->getOrdersStatus($account, $orderIds);
-            $statuses = $statusesData['orders'] ?? [];
+            $totalUpdated = 0;
+            $totalChecked = 0;
 
-            $updated = 0;
-            foreach ($statuses as $statusData) {
-                $orderId = $statusData['id'] ?? null;
-                $wbStatus = $statusData['wbStatus'] ?? null;
-                $supplierStatus = $statusData['supplierStatus'] ?? null;
+            // Обрабатываем заказы батчами по 1000 (лимит WB API)
+            WbOrder::where('marketplace_account_id', $account->id)
+                ->whereNotIn('status', ['completed', 'canceled', 'cancelled'])
+                ->whereNotNull('external_order_id')
+                ->orderBy('ordered_at', 'desc') // Сначала новые заказы
+                ->chunk(1000, function ($orders) use ($account, $orderService, &$totalUpdated, &$totalChecked) {
+                    // Получаем ID заказов
+                    $orderIds = $orders->pluck('external_order_id')->toArray();
+                    $totalChecked += count($orderIds);
 
-                if (!$orderId) continue;
+                    // Получаем статусы от WB API
+                    $statusesData = $orderService->getOrdersStatus($account, $orderIds);
+                    $statuses = $statusesData['orders'] ?? [];
 
-                // Найти заказ в БД (конвертируем в строку для сравнения)
-                $order = $orders->firstWhere('external_order_id', (string) $orderId);
-                if (!$order) continue;
+                    foreach ($statuses as $statusData) {
+                        $orderId = $statusData['id'] ?? null;
+                        $wbStatus = $statusData['wbStatus'] ?? null;
+                        $supplierStatus = $statusData['supplierStatus'] ?? null;
 
-                // Подготовка данных для обновления
-                $updateData = [];
+                        if (!$orderId) continue;
 
-                if ($wbStatus) {
-                    $updateData['wb_status'] = $wbStatus;
-                }
+                        // Найти заказ в БД (конвертируем в строку для сравнения)
+                        $order = $orders->firstWhere('external_order_id', (string) $orderId);
+                        if (!$order) continue;
 
-                if ($supplierStatus) {
-                    $updateData['wb_supplier_status'] = $supplierStatus;
-                }
+                        // Подготовка данных для обновления
+                        $updateData = [];
 
-                // Нормализуем статус на основе WB статусов
-                $normalizedStatus = $this->mapWbStatusToInternal($supplierStatus, $wbStatus);
-                $statusGroup = $this->mapWbStatusToGroup($supplierStatus, $wbStatus);
+                        if ($wbStatus) {
+                            $updateData['wb_status'] = $wbStatus;
+                        }
 
-                $updateData['status'] = $normalizedStatus;
-                $updateData['status_normalized'] = $normalizedStatus;
-                $updateData['wb_status_group'] = $statusGroup;
+                        if ($supplierStatus) {
+                            $updateData['wb_supplier_status'] = $supplierStatus;
+                        }
 
-                // Добавляем запись в историю статусов
-                $statusHistory = $order->status_history ?? [];
-                $statusHistory[] = [
-                    'wb_status' => $wbStatus,
-                    'supplier_status' => $supplierStatus,
-                    'status' => $normalizedStatus,
-                    'updated_at' => now()->toIso8601String(),
-                ];
-                $updateData['status_history'] = $statusHistory;
+                        // Нормализуем статус на основе WB статусов
+                        $normalizedStatus = $this->mapWbStatusToInternal($supplierStatus, $wbStatus);
+                        $statusGroup = $this->mapWbStatusToGroup($supplierStatus, $wbStatus);
 
-                // Обновляем заказ
-                if (!empty($updateData)) {
-                    $order->update($updateData);
-                    $updated++;
-                }
-            }
+                        $updateData['status'] = $normalizedStatus;
+                        $updateData['status_normalized'] = $normalizedStatus;
+                        $updateData['wb_status_group'] = $statusGroup;
+
+                        // Добавляем запись в историю статусов
+                        $statusHistory = $order->status_history ?? [];
+                        $statusHistory[] = [
+                            'wb_status' => $wbStatus,
+                            'supplier_status' => $supplierStatus,
+                            'status' => $normalizedStatus,
+                            'updated_at' => now()->toIso8601String(),
+                        ];
+                        $updateData['status_history'] = $statusHistory;
+
+                        // Обновляем заказ
+                        if (!empty($updateData)) {
+                            $order->update($updateData);
+                            $totalUpdated++;
+                        }
+                    }
+
+                    // Небольшая пауза между батчами для избежания rate limit
+                    if ($totalChecked < $this->getTotalOrdersCount($account)) {
+                        usleep(500000); // 0.5 секунды
+                    }
+                });
 
             Log::info('UpdateWildberriesOrdersStatusJob: Completed', [
                 'account_id' => $account->id,
-                'checked' => count($orderIds),
-                'updated' => $updated,
+                'checked' => $totalChecked,
+                'updated' => $totalUpdated,
             ]);
 
         } catch (\Exception $e) {
