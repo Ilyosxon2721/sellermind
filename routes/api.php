@@ -63,6 +63,12 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 
 // Sales API (uses web session auth)
 Route::middleware(['web', 'auth.any'])->group(function () {
+    // Global Option Values (custom sizes/colors)
+    Route::prefix('option-values')->group(function () {
+        Route::post('/', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'store']);
+        Route::get('/sizes', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'sizes']);
+        Route::get('/colors', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'colors']);
+    });
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
     Route::get('sales/sync-status', [\App\Http\Controllers\Api\SalesController::class, 'syncStatus']);

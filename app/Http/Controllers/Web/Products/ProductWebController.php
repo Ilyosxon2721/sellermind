@@ -86,9 +86,9 @@ class ProductWebController extends Controller
         $user = $request->user();
         $companyId = $user?->company_id;
 
-        // Global options for sizes and colors (universal for all companies)
-        $globalSizes = \App\Models\GlobalOption::sizes()?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors()?->activeValues ?? collect();
+        // Global options for sizes and colors (universal + company-specific)
+        $globalSizes = \App\Models\GlobalOption::sizesWithCompany($companyId);
+        $globalColors = \App\Models\GlobalOption::colorsWithCompany($companyId);
 
         // Redirect to company setup if no company
         if (!$companyId) {
@@ -151,9 +151,9 @@ class ProductWebController extends Controller
 
         $attributes = Attribute::orderBy('name')->get();
 
-        // Global options for sizes and colors (universal for all companies)
-        $globalSizes = \App\Models\GlobalOption::sizes()?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors()?->activeValues ?? collect();
+        // Global options for sizes and colors (universal + company-specific)
+        $globalSizes = \App\Models\GlobalOption::sizesWithCompany($companyId);
+        $globalColors = \App\Models\GlobalOption::colorsWithCompany($companyId);
 
         // Get company currency
         $financeSettings = FinanceSettings::getForCompany($companyId);

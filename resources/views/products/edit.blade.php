@@ -104,8 +104,8 @@
                 this.selectedColors = Array.from(colorCodes);
             },
 
-            // Add custom size
-            addCustomSize() {
+            // Add custom size (saves to database for future use)
+            async addCustomSize() {
                 const value = this.newSizeValue.trim();
                 if (!value) return;
                 const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -113,9 +113,39 @@
                     alert('Такой размер уже существует');
                     return;
                 }
-                this.customSizes.push({ id: 'custom-' + Date.now(), value: value, code: code });
-                this.selectedSizes.push(code);
-                this.newSizeValue = '';
+
+                try {
+                    const response = await fetch('/api/option-values', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        },
+                        body: JSON.stringify({
+                            type: 'size',
+                            value: value,
+                            code: code
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        // Add to globalSizes so it's available for future use
+                        this.globalSizes.push({ id: result.data.id, value: result.data.value, code: result.data.code });
+                        this.selectedSizes.push(code);
+                        this.newSizeValue = '';
+                    } else {
+                        alert(result.error || 'Ошибка при сохранении размера');
+                    }
+                } catch (error) {
+                    console.error('Error saving custom size:', error);
+                    // Fallback: add locally without saving
+                    this.customSizes.push({ id: 'custom-' + Date.now(), value: value, code: code });
+                    this.selectedSizes.push(code);
+                    this.newSizeValue = '';
+                }
             },
 
             // Remove custom size
@@ -125,8 +155,8 @@
                 this.customSizes.splice(idx, 1);
             },
 
-            // Add custom color
-            addCustomColor() {
+            // Add custom color (saves to database for future use)
+            async addCustomColor() {
                 const value = this.newColorValue.trim();
                 if (!value) return;
                 const code = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -134,9 +164,40 @@
                     alert('Такой цвет уже существует');
                     return;
                 }
-                this.customColors.push({ id: 'custom-' + Date.now(), value: value, code: code, hex: this.newColorHex });
-                this.selectedColors.push(code);
-                this.newColorValue = '';
+
+                try {
+                    const response = await fetch('/api/option-values', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        },
+                        body: JSON.stringify({
+                            type: 'color',
+                            value: value,
+                            code: code,
+                            color_hex: this.newColorHex
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        // Add to globalColors so it's available for future use
+                        this.globalColors.push({ id: result.data.id, value: result.data.value, code: result.data.code, hex: result.data.color_hex });
+                        this.selectedColors.push(code);
+                        this.newColorValue = '';
+                    } else {
+                        alert(result.error || 'Ошибка при сохранении цвета');
+                    }
+                } catch (error) {
+                    console.error('Error saving custom color:', error);
+                    // Fallback: add locally without saving
+                    this.customColors.push({ id: 'custom-' + Date.now(), value: value, code: code, hex: this.newColorHex });
+                    this.selectedColors.push(code);
+                    this.newColorValue = '';
+                }
             },
 
             // Remove custom color
@@ -469,12 +530,17 @@
 @endif
 
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="productEditor()" x-cloak>
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="productEditor()" x-cloak
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <x-sidebar />
-
-
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
