@@ -1672,7 +1672,7 @@ class WildberriesOrderService
     {
         try {
             $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/status', [
-                'orders' => $orderIds,
+                'orders' => array_map('intval', $orderIds),
             ]);
 
             Log::info('WB orders status fetched', [
