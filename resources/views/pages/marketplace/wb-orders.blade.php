@@ -322,8 +322,8 @@
                 </template>
             </div>
 
-            <!-- FBS Empty State -->
-            <div x-show="!loading && orderMode === 'fbs' && filteredOrders.length === 0" class="px-6 py-12">
+            <!-- FBS Empty State (не показывать на вкладке "На сборке" если есть открытые поставки) -->
+            <div x-show="!loading && orderMode === 'fbs' && filteredOrders.length === 0 && !(activeTab === 'in_assembly' && supplies.filter(s => ['draft', 'in_assembly', 'ready'].includes(s.status)).length > 0)" class="px-6 py-12">
                 <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                     <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1417,7 +1417,10 @@ function wbOrdersPage() {
             try {
                 const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
                 let url = `/api/marketplace/orders?company_id=${companyId}&marketplace_account_id=${this.accountId}`;
-                if (this.activeTab && this.activeTab !== 'all') url += `&status=${this.activeTab}`;
+                // Не фильтруем по статусу для вкладки "На сборке" — нужны ВСЕ заказы для отображения в поставках
+                if (this.activeTab && this.activeTab !== 'all' && this.activeTab !== 'in_assembly') {
+                    url += `&status=${this.activeTab}`;
+                }
                 if (this.dateFrom) url += `&from=${this.dateFrom}`;
                 if (this.dateTo) url += `&to=${this.dateTo}`;
                 if (this.saleTypeFilter) url += `&delivery_type=${this.saleTypeFilter}`;
