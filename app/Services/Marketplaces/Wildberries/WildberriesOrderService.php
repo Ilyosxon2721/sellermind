@@ -414,6 +414,13 @@ class WildberriesOrderService
             ->first();
         $oldStatus = $existingOrder?->status;
 
+        // Терминальные статусы которые НЕ должны перезаписываться при синхронизации "новых" заказов
+        $terminalStatuses = ['cancelled', 'canceled', 'completed'];
+
+        // Если заказ уже существует с терминальным статусом - пропускаем обновление статуса
+        // чтобы не перезаписать cancelled на new
+        $preserveTerminalStatus = $existingOrder && in_array($oldStatus, $terminalStatuses, true);
+
         // Используем WildberriesClient для мапинга данных
         $marketplaceHttpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'wb');
         $client = new WildberriesClient($marketplaceHttpClient);
@@ -458,7 +465,18 @@ class WildberriesOrderService
             );
         }
 
-        if (!empty($orderData['supply_status'])) {
+        // Если существующий заказ имеет терминальный статус - сохраняем его
+        if ($preserveTerminalStatus) {
+            $mapped['status'] = $oldStatus;
+            $mapped['status_normalized'] = $oldStatus;
+            // Также сохраняем существующий wb_status_group
+            $mapped['wb_status_group'] = $existingOrder->wb_status_group;
+
+            Log::info('Preserving terminal status for existing order', [
+                'order_id' => $orderId,
+                'preserved_status' => $oldStatus,
+            ]);
+        } elseif (!empty($orderData['supply_status'])) {
             $mapped['status'] = $orderData['supply_status'];
             $mapped['status_normalized'] = $orderData['supply_status'];
         } elseif (!empty($mapped['wb_status_group'])) {
