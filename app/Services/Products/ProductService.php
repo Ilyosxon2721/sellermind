@@ -241,9 +241,16 @@ class ProductService
             $payload = Arr::only($imageData, ['variant_id', 'file_path', 'alt_text', 'is_main', 'sort_order']);
             $payload['company_id'] = $product->company_id;
             
-            // Fix: Convert empty string to null for variant_id
-            if (array_key_exists('variant_id', $payload) && ($payload['variant_id'] === '' || $payload['variant_id'] === 0)) {
-                $payload['variant_id'] = null;
+            // Fix: Convert empty string, 0, or non-numeric string to null for variant_id
+            if (array_key_exists('variant_id', $payload)) {
+                $variantId = $payload['variant_id'];
+                if ($variantId === '' || $variantId === 0 || $variantId === '0' || $variantId === null) {
+                    $payload['variant_id'] = null;
+                } elseif (is_string($variantId) && !ctype_digit($variantId)) {
+                    // variant_id is a SKU string, try to find actual variant ID
+                    $variant = $product->variants()->where('sku', $variantId)->first();
+                    $payload['variant_id'] = $variant?->id;
+                }
             }
 
             if ($imageId && $existing->has($imageId)) {
