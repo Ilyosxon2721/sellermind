@@ -266,26 +266,28 @@
                 'CANCELLED': 'Отменён'
             },
 
-            // Order status translations
+            // Order status translations from Laravel localization
             orderStatusTranslations: {
-                'new': 'Новый',
-                'pending': 'Ожидает',
-                'confirmed': 'Подтверждён',
-                'processing': 'В обработке',
-                'assembling': 'В сборке',
-                'assembled': 'Собран',
-                'awaiting_deliver': 'Ожидает доставку',
-                'delivering': 'В доставке',
-                'delivered': 'Доставлен',
-                'shipped': 'Отправлен',
-                'in_transit': 'В пути',
-                'completed': 'Завершён',
-                'cancelled': 'Отменён',
-                'returned': 'Возвращён',
-                'refunded': 'Возвращён',
-                'sorted': 'Отсортирован',
-                'on_the_way': 'В пути',
-                'ready_for_pickup': 'Готов к выдаче'
+                'new': '{{ __("orders.new") }}',
+                'pending': '{{ __("orders.pending") }}',
+                'confirmed': '{{ __("orders.confirmed") }}',
+                'processing': '{{ __("orders.processing") }}',
+                'assembling': '{{ __("orders.assembling") }}',
+                'in_assembly': '{{ __("orders.in_assembly") }}',
+                'assembled': '{{ __("orders.assembled") }}',
+                'awaiting_deliver': '{{ __("orders.awaiting_deliver") }}',
+                'delivering': '{{ __("orders.delivering") }}',
+                'in_delivery': '{{ __("orders.in_delivery") }}',
+                'delivered': '{{ __("orders.delivered") }}',
+                'shipped': '{{ __("orders.shipped") }}',
+                'in_transit': '{{ __("orders.in_transit") }}',
+                'completed': '{{ __("orders.completed") }}',
+                'cancelled': '{{ __("orders.cancelled") }}',
+                'returned': '{{ __("orders.returned") }}',
+                'refunded': '{{ __("orders.refunded") }}',
+                'sorted': '{{ __("orders.sorted") }}',
+                'on_the_way': '{{ __("orders.on_the_way") }}',
+                'ready_for_pickup': '{{ __("orders.ready_for_pickup") }}'
             },
 
             translateStatus(status) {
@@ -302,8 +304,8 @@
                 if (!status) return 'bg-gray-100 text-gray-700';
                 const s = status.toLowerCase();
                 if (['new', 'pending'].includes(s)) return 'bg-yellow-100 text-yellow-700';
-                if (['confirmed', 'processing', 'assembling', 'assembled'].includes(s)) return 'bg-blue-100 text-blue-700';
-                if (['delivering', 'shipped', 'in_transit', 'awaiting_deliver', 'on_the_way'].includes(s)) return 'bg-purple-100 text-purple-700';
+                if (['confirmed', 'processing', 'assembling', 'in_assembly', 'assembled'].includes(s)) return 'bg-blue-100 text-blue-700';
+                if (['delivering', 'in_delivery', 'shipped', 'in_transit', 'awaiting_deliver', 'on_the_way'].includes(s)) return 'bg-purple-100 text-purple-700';
                 if (['delivered', 'completed', 'ready_for_pickup'].includes(s)) return 'bg-green-100 text-green-700';
                 if (['cancelled', 'returned', 'refunded'].includes(s)) return 'bg-red-100 text-red-700';
                 return 'bg-gray-100 text-gray-700';

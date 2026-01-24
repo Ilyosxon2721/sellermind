@@ -21,10 +21,23 @@ return [
     // Statuses
     'new' => 'Новый',
     'pending' => 'Ожидает',
+    'confirmed' => 'Подтверждён',
     'processing' => 'В обработке',
+    'assembling' => 'В сборке',
+    'in_assembly' => 'В сборке',
+    'assembled' => 'Собран',
+    'awaiting_deliver' => 'Ожидает доставку',
+    'delivering' => 'В доставке',
+    'in_delivery' => 'В доставке',
     'shipped' => 'Отправлен',
+    'in_transit' => 'В пути',
+    'on_the_way' => 'В пути',
+    'sorted' => 'Отсортирован',
+    'ready_for_pickup' => 'Готов к выдаче',
     'delivered' => 'Доставлен',
+    'completed' => 'Завершён',
     'cancelled' => 'Отменён',
+    'returned' => 'Возвращён',
     'refunded' => 'Возвращён',
     
     // Filters

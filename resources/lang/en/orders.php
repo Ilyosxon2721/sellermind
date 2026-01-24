@@ -21,10 +21,23 @@ return [
     // Statuses
     'new' => 'New',
     'pending' => 'Pending',
+    'confirmed' => 'Confirmed',
     'processing' => 'Processing',
+    'assembling' => 'Assembling',
+    'in_assembly' => 'In Assembly',
+    'assembled' => 'Assembled',
+    'awaiting_deliver' => 'Awaiting Delivery',
+    'delivering' => 'Delivering',
+    'in_delivery' => 'In Delivery',
     'shipped' => 'Shipped',
+    'in_transit' => 'In Transit',
+    'on_the_way' => 'On The Way',
+    'sorted' => 'Sorted',
+    'ready_for_pickup' => 'Ready for Pickup',
     'delivered' => 'Delivered',
+    'completed' => 'Completed',
     'cancelled' => 'Cancelled',
+    'returned' => 'Returned',
     'refunded' => 'Refunded',
     
     // Filters
