@@ -2,7 +2,7 @@
 <div class="w-72 bg-white border-r border-gray-200 flex flex-col h-full"
      :class="sidebarOpen ? 'open' : ''"
      role="complementary">
-    <!-- Logo -->
+    <!-- Logo - Fixed at top -->
     <div class="p-4 border-b border-gray-200 flex-shrink-0">
         <a href="/home" class="flex items-center space-x-3" aria-label="SellerMind - Главная страница">
             <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
@@ -17,8 +17,8 @@
         </a>
     </div>
 
-    <!-- Navigation -->
-    <nav class="p-4 space-y-1 flex-shrink-0" role="navigation" aria-label="{{ __('admin.main_navigation') }}">
+    <!-- Navigation - Scrollable middle section -->
+    <nav class="p-4 space-y-1 flex-1 overflow-y-auto" role="navigation" aria-label="{{ __('admin.main_navigation') }}">
         <a href="/home"
            class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition {{ request()->is('home') || request()->is('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
            aria-label="{{ __('admin.home') }}"
@@ -28,7 +28,7 @@
             </svg>
             <span class="font-medium">{{ __('admin.home') }}</span>
         </a>
-        
+
         {{-- Чат - временно скрыт до завершения разработки --}}
 
         <div class="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('admin.warehouse_section') }}</div>
@@ -225,24 +225,21 @@
             </svg>
             <span class="font-medium">{{ __('app.settings.title') }}</span>
         </a>
+
+        <!-- Slot for page-specific content (e.g., chat history, filters) -->
+        @if(isset($slot) && $slot instanceof \Illuminate\Support\HtmlString && !empty(trim($slot)))
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                {{ $slot }}
+            </div>
+        @endif
     </nav>
 
-    <!-- Slot for page-specific content (e.g., chat history, filters) -->
-    @if(isset($slot) && $slot instanceof \Illuminate\Support\HtmlString && !empty(trim($slot)))
-        <div class="flex-1 overflow-y-auto border-t border-gray-200">
-            {{ $slot }}
-        </div>
-    @else
-        <!-- Spacer -->
-        <div class="flex-1"></div>
-    @endif
-
-    <!-- Language Switcher -->
-    <div class="px-4 pb-3 flex-shrink-0">
+    <!-- Language Switcher - Fixed at bottom -->
+    <div class="px-4 pb-3 flex-shrink-0 border-t border-gray-200 pt-3">
         @include('components.dashboard-language-switcher')
     </div>
 
-    <!-- User Menu -->
+    <!-- User Menu - Fixed at bottom -->
     <div class="p-4 border-t border-gray-200 flex-shrink-0" role="region" aria-label="{{ __('admin.user_menu') }}">
         <div class="flex items-center space-x-3">
             <div class="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium"
