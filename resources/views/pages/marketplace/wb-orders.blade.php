@@ -1689,7 +1689,18 @@ function wbOrdersPage() {
         },
 
         getOrdersWithoutSupply() {
-            return this.filteredOrders.filter(o => !o.supply_id);
+            return this.filteredOrders.filter(o => {
+                // Исключаем заказы с поставкой
+                if (o.supply_id) return false;
+
+                // На вкладке "На сборке" исключаем отменённые заказы
+                if (this.activeTab === 'in_assembly') {
+                    const status = (o.status || '').toLowerCase();
+                    if (status === 'cancelled' || status === 'canceled') return false;
+                }
+
+                return true;
+            });
         },
 
         toggleSupply(supplyId) {
