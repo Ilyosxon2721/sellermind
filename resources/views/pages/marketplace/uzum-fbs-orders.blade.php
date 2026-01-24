@@ -1307,14 +1307,16 @@ function uzumOrdersPage() {
 
         getItemImage(item) {
             if (!item) return null;
-            // Check skuImage first
+
+            // Check skuImage first (direct string)
             if (item.skuImage && typeof item.skuImage === 'string') return item.skuImage;
+
             // Check productImage - could be string or object
             if (item.productImage) {
                 if (typeof item.productImage === 'string') return item.productImage;
                 // Extract from object structure (Uzum Finance API format)
                 if (item.productImage.photo) {
-                    const sizes = ['540', '480', '240', '120', '80'];
+                    const sizes = ['540', '480', '240', '120', '80', '800', '720'];
                     for (const size of sizes) {
                         if (item.productImage.photo[size]?.high) {
                             return item.productImage.photo[size].high;
@@ -1322,6 +1324,37 @@ function uzumOrdersPage() {
                     }
                 }
             }
+
+            // Check raw_payload for FBS orders (raw_payload contains original API data)
+            if (item.raw_payload) {
+                // Check productImage in raw_payload
+                if (item.raw_payload.productImage) {
+                    if (typeof item.raw_payload.productImage === 'string') return item.raw_payload.productImage;
+                    if (item.raw_payload.productImage.photo) {
+                        const sizes = ['540', '480', '240', '120', '80', '800', '720'];
+                        for (const size of sizes) {
+                            if (item.raw_payload.productImage.photo[size]?.high) {
+                                return item.raw_payload.productImage.photo[size].high;
+                            }
+                        }
+                    }
+                }
+                // Check skuImage in raw_payload
+                if (item.raw_payload.skuImage && typeof item.raw_payload.skuImage === 'string') {
+                    return item.raw_payload.skuImage;
+                }
+            }
+
+            // Check images array (some API formats)
+            if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+                return item.images[0];
+            }
+
+            // Check image field directly
+            if (item.image && typeof item.image === 'string') return item.image;
+            if (item.imageUrl && typeof item.imageUrl === 'string') return item.imageUrl;
+            if (item.photo && typeof item.photo === 'string') return item.photo;
+
             return null;
         },
 
