@@ -126,8 +126,8 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
 
                 if (!$orderId) continue;
 
-                // Найти заказ в БД
-                $order = $orders->firstWhere('external_order_id', $orderId);
+                // Найти заказ в БД (конвертируем в строку для сравнения)
+                $order = $orders->firstWhere('external_order_id', (string) $orderId);
                 if (!$order) continue;
 
                 // Подготовка данных для обновления
@@ -138,7 +138,7 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                 }
 
                 if ($supplierStatus) {
-                    $updateData['supplier_status'] = $supplierStatus;
+                    $updateData['wb_supplier_status'] = $supplierStatus;
                 }
 
                 // Нормализуем статус на основе WB статусов
