@@ -294,7 +294,7 @@
                         <div class="flex items-start justify-between">
                             <div>
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Найдено</p>
-                                <p class="text-3xl font-bold text-[#CB11AB]" x-text="filteredOrders.length"></p>
+                                <p class="text-3xl font-bold text-[#CB11AB]" x-text="displayStats.total_orders"></p>
                             </div>
                             <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
                                 <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,7 +469,7 @@
                                             <span class="text-sm text-gray-500 font-mono" x-text="'#' + (supply.external_supply_id || supply.id)"></span>
                                         </div>
                                         <p class="text-sm text-gray-600">
-                                            <span x-text="supply.orders_count || 0"></span> заказ(ов)
+                                            <span x-text="getSupplyOrders(supply).length"></span> заказ(ов)
                                             <template x-if="supply.total_amount > 0">
                                                 <span> • <span x-text="formatMoney(supply.total_amount / 100)"></span></span>
                                             </template>
@@ -493,7 +493,7 @@
                                           }"
                                           x-text="getSupplyStatusText(supply.status)"></span>
                                     <span class="px-3 py-1 bg-orange-200 text-orange-800 rounded-full text-sm font-semibold">
-                                        <span x-text="supply.orders_count || 0"></span> шт
+                                        <span x-text="getSupplyOrders(supply).length"></span> шт
                                     </span>
                                     <svg class="w-6 h-6 text-gray-500 transition-transform" :class="{'rotate-180': expandedSupplies[supply.id]}"
                                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -584,7 +584,7 @@
                                 <div class="flex items-center space-x-2">
                                     <button x-show="supply.status === 'draft' || supply.status === 'in_assembly'"
                                             @click.stop="closeSupply(supply.id)"
-                                            :disabled="!supply.orders_count"
+                                            :disabled="getSupplyOrders(supply).length === 0"
                                             class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition disabled:opacity-50">
                                         Закрыть поставку
                                     </button>
@@ -593,7 +593,7 @@
                                             class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
                                         Передать в доставку
                                     </button>
-                                    <button x-show="supply.orders_count === 0"
+                                    <button x-show="getSupplyOrders(supply).length === 0"
                                             @click.stop="deleteSupply(supply.id)"
                                             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition">
                                         Удалить
@@ -885,7 +885,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="font-medium text-gray-900" x-text="supply.name"></p>
-                                    <p class="text-sm text-gray-500" x-text="'Заказов: ' + (supply.orders_count || 0)"></p>
+                                    <p class="text-sm text-gray-500" x-text="'Заказов: ' + getSupplyOrders(supply).length"></p>
                                 </div>
                                 <div x-show="selectedSupplyId === supply.id" class="text-[#CB11AB]">
                                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -926,7 +926,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div><span class="text-xs text-gray-500">Название:</span> <span class="block font-semibold" x-text="supplyToDeliver?.name"></span></div>
                             <div><span class="text-xs text-gray-500">ID WB:</span> <span class="block font-mono text-sm" x-text="supplyToDeliver?.external_supply_id"></span></div>
-                            <div><span class="text-xs text-gray-500">Заказов:</span> <span class="block font-bold" x-text="supplyToDeliver?.orders_count || 0"></span></div>
+                            <div><span class="text-xs text-gray-500">Заказов:</span> <span class="block font-bold" x-text="supplyToDeliver ? getSupplyOrders(supplyToDeliver).length : 0"></span></div>
                             <div><span class="text-xs text-gray-500">Сумма:</span> <span class="block font-bold" x-text="formatMoney((supplyToDeliver?.total_amount || 0) / 100)"></span></div>
                         </div>
                     </div>
@@ -1460,8 +1460,11 @@ function wbOrdersPage() {
                 if (this.activeTab && this.activeTab !== 'all' && this.activeTab !== 'in_assembly') {
                     url += `&status=${this.activeTab}`;
                 }
-                if (this.dateFrom) url += `&from=${this.dateFrom}`;
-                if (this.dateTo) url += `&to=${this.dateTo}`;
+                // На вкладке "На сборке" не фильтруем по дате - нужны ВСЕ заказы для отображения в поставках
+                if (this.activeTab !== 'in_assembly') {
+                    if (this.dateFrom) url += `&from=${this.dateFrom}`;
+                    if (this.dateTo) url += `&to=${this.dateTo}`;
+                }
                 if (this.saleTypeFilter) url += `&delivery_type=${this.saleTypeFilter}`;
 
                 const res = await this.authFetch(url);
@@ -1636,7 +1639,13 @@ function wbOrdersPage() {
                 };
             }
 
-            const filtered = this.filteredOrders;
+            let filtered = this.filteredOrders;
+
+            // На вкладке "На сборке" показываем статистику только для заказов со статусом in_assembly
+            if (this.activeTab === 'in_assembly') {
+                filtered = filtered.filter(o => o.status === 'in_assembly');
+            }
+
             let amount = 0;
             filtered.forEach(o => {
                 const val = parseFloat(o.total_amount);
@@ -1690,8 +1699,23 @@ function wbOrdersPage() {
         },
 
         getSupplyOrders(supply) {
-            // Используем this.orders вместо filteredOrders, чтобы показывать все заказы поставки независимо от выбранной вкладки
-            return this.orders.filter(o => o.supply_id === supply.external_supply_id || o.supply_id === ('SUPPLY-' + supply.id));
+            // Фильтруем заказы поставки по типу доставки (FBS/DBS) в соответствии с выбранным режимом
+            let orders = this.orders.filter(o => o.supply_id === supply.external_supply_id || o.supply_id === ('SUPPLY-' + supply.id));
+
+            // Применяем фильтр по режиму доставки
+            if (this.orderMode === 'fbs') {
+                orders = orders.filter(o => {
+                    const deliveryType = (o.wb_delivery_type || 'fbs').toLowerCase();
+                    return deliveryType === 'fbs' || !deliveryType || deliveryType === '';
+                });
+            } else if (this.orderMode === 'dbs') {
+                orders = orders.filter(o => {
+                    const deliveryType = (o.wb_delivery_type || '').toLowerCase();
+                    return deliveryType === 'dbs' || deliveryType === 'edbs';
+                });
+            }
+
+            return orders;
         },
 
         getOrdersWithoutSupply() {
@@ -1699,10 +1723,9 @@ function wbOrdersPage() {
                 // Исключаем заказы с поставкой
                 if (o.supply_id) return false;
 
-                // На вкладке "На сборке" исключаем отменённые заказы
+                // На вкладке "На сборке" показываем только заказы со статусом in_assembly
                 if (this.activeTab === 'in_assembly') {
-                    const status = (o.status || '').toLowerCase();
-                    if (status === 'cancelled' || status === 'canceled') return false;
+                    return o.status === 'in_assembly';
                 }
 
                 return true;
