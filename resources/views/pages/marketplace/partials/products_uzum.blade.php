@@ -1,6 +1,13 @@
-<div x-data="uzumProducts({{ (int) $accountId }})" class="flex h-screen bg-gray-50">
-    <x-sidebar />
-    <div class="flex-1 flex flex-col overflow-hidden">
+<div x-data="uzumProducts({{ (int) $accountId }})" class="flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Premium clean header with Uzum branding -->
         <header class="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
             <div class="flex items-center justify-between">
@@ -499,8 +506,8 @@
             // Open modal to link a SKU
             openLinkModal(sku) {
                 this.linkingSku = sku;
-                this.linkingMarketplaceBarcode = sku.barcode || ''; // Автозаполнение баркода из Uzum
-                this.variantSearchQuery = sku.barcode || '';
+                this.linkingMarketplaceBarcode = String(sku.barcode || ''); // Автозаполнение баркода из Uzum (приводим к строке)
+                this.variantSearchQuery = String(sku.barcode || '');
                 this.variantSearchResults = [];
                 this.linkModalOpen = true;
                 if (this.variantSearchQuery) {
@@ -553,8 +560,9 @@
                         external_sku_id: String(this.linkingSku.skuId),
                     };
                     // Добавляем marketplace_barcode если указан
-                    if (this.linkingMarketplaceBarcode && this.linkingMarketplaceBarcode.trim()) {
-                        payload.marketplace_barcode = this.linkingMarketplaceBarcode.trim();
+                    const barcode = String(this.linkingMarketplaceBarcode || '').trim();
+                    if (barcode) {
+                        payload.marketplace_barcode = barcode;
                     }
                     const res = await fetch(`/api/marketplace/variant-links/accounts/${this.accountId}/products/${this.selected.id}/link`, {
                         method: 'POST',
