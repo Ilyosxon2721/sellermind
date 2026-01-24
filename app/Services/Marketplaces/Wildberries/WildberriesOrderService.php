@@ -1712,7 +1712,7 @@ class WildberriesOrderService
     ): array {
         try {
             $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/stickers', [
-                'orders' => $orderIds,
+                'orders' => array_map('intval', $orderIds),
             ], [
                 'type' => $type,
                 'width' => $width,
