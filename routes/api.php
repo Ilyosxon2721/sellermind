@@ -387,6 +387,7 @@ Route::middleware('auth.any')->group(function () {
                 Route::get('products/{productId}/links', [\App\Http\Controllers\Api\VariantLinkController::class, 'getProductLinks']);
                 Route::post('products/{productId}/sync-stock', [\App\Http\Controllers\Api\VariantLinkController::class, 'syncProductStock']);
                 Route::post('sync-all-stocks', [\App\Http\Controllers\Api\VariantLinkController::class, 'syncAllStocks']);
+                Route::post('auto-link', [\App\Http\Controllers\Api\VariantLinkController::class, 'autoLink']);
             });
         });
 

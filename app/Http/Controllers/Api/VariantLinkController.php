@@ -401,6 +401,28 @@ class VariantLinkController extends Controller
         ]);
     }
 
+    /**
+     * Автоматически привязать товары маркетплейса к внутренним вариантам
+     */
+    public function autoLink(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        $this->authorizeAccount($request, $account);
+
+        $autoLinkService = app(\App\Services\Marketplaces\AutoLinkService::class);
+        $stats = $autoLinkService->autoLinkForAccount($account);
+
+        $newlyLinked = $stats['linked_by_barcode'] + $stats['linked_by_sku'] + $stats['linked_by_article'];
+
+        return response()->json([
+            'success' => true,
+            'message' => $newlyLinked > 0
+                ? "Привязано {$newlyLinked} товаров"
+                : 'Новых привязок не найдено',
+            'stats' => $stats,
+            'newly_linked' => $newlyLinked,
+        ]);
+    }
+
     protected function authorizeAccount(Request $request, MarketplaceAccount $account): void
     {
         if (!$request->user()->hasCompanyAccess($account->company_id)) {
