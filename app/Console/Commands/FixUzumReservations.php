@@ -163,6 +163,15 @@ class FixUzumReservations extends Command
             return ['success' => true, 'action' => 'skipped', 'reason' => 'Already correct'];
         }
 
+        // Если ожидаемых вариантов нет - просто удаляем резервы и помечаем заказ как skipped
+        if (empty($expectedVariants)) {
+            if ($dryRun) {
+                $this->line("\n  Order {$orderId}: No linked items, would delete " . $existingReservations->count() . " wrong reservations");
+                return ['success' => true, 'action' => 'dry_run_delete'];
+            }
+            return $this->deleteReservationsOnly($account, $order, $existingReservations);
+        }
+
         if ($dryRun) {
             $this->line("\n  Order {$orderId}:");
             $this->line("    Current reservations:");
@@ -246,6 +255,67 @@ class FixUzumReservations extends Command
             ]);
 
             return ['success' => $result['success'] ?? true, 'action' => 'fixed', 'result' => $result];
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Delete reservations only (for orders with no linked items)
+     */
+    protected function deleteReservationsOnly(
+        MarketplaceAccount $account,
+        UzumOrder $order,
+        $existingReservations
+    ): array {
+        DB::beginTransaction();
+
+        try {
+            foreach ($existingReservations as $reservation) {
+                $variant = $reservation->sku?->productVariant;
+                $qty = $reservation->qty;
+
+                // Return stock
+                if ($variant) {
+                    $variant->incrementStock($qty);
+
+                    StockLedger::create([
+                        'company_id' => $account->company_id,
+                        'occurred_at' => now(),
+                        'warehouse_id' => $reservation->warehouse_id,
+                        'sku_id' => $reservation->sku_id,
+                        'qty_delta' => $qty,
+                        'cost_delta' => 0,
+                        'currency_code' => 'UZS',
+                        'source_type' => 'reservation_fix_delete',
+                        'source_id' => $order->id,
+                    ]);
+                }
+
+                $reservation->delete();
+            }
+
+            // Delete ledger entries
+            StockLedger::where('source_type', 'marketplace_order_reserve')
+                ->where('source_id', $order->id)
+                ->delete();
+
+            // Mark order as skipped (no linked items)
+            $order->update([
+                'stock_status' => 'skipped',
+                'stock_reserved_at' => null,
+            ]);
+
+            DB::commit();
+
+            Log::info('FixUzumReservations: Order reservations deleted (no linked items)', [
+                'order_id' => $order->id,
+                'external_order_id' => $order->external_order_id,
+            ]);
+
+            return ['success' => true, 'action' => 'deleted', 'reason' => 'No linked items'];
 
         } catch (\Throwable $e) {
             DB::rollBack();

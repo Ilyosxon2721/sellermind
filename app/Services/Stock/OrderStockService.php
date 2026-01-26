@@ -252,11 +252,22 @@ class OrderStockService
                 $this->syncVariantToOtherMarketplaces($variant, $account->id);
             }
 
-            // Обновляем статус заказа
-            $order->update([
-                'stock_status' => 'reserved',
-                'stock_reserved_at' => now(),
-            ]);
+            // Обновляем статус заказа ТОЛЬКО если хотя бы один item был успешно обработан
+            // Если все items не найдены (не привязаны) - НЕ помечаем заказ как reserved
+            if ($results['items_processed'] > 0) {
+                $order->update([
+                    'stock_status' => 'reserved',
+                    'stock_reserved_at' => now(),
+                ]);
+            } else {
+                // Все items не привязаны - помечаем заказ как skipped
+                $order->update([
+                    'stock_status' => 'skipped',
+                ]);
+                Log::info('OrderStockService: No items could be reserved (all items not linked)', [
+                    'order_id' => $order->id,
+                ]);
+            }
 
             DB::commit();
 
