@@ -238,19 +238,126 @@ class StockSyncService
      */
     protected function syncToUzum(MarketplaceAccount $account, VariantMarketplaceLink $link, int $stock): array
     {
+        $mpProduct = $link->marketplaceProduct;
+
+        if (!$mpProduct) {
+            throw new \RuntimeException('Не найден связанный MarketplaceProduct для Uzum');
+        }
+
         // For Uzum, we need both the product ID and the SKU ID for SKU-level stock updates
-        $productId = $link->marketplaceProduct->external_product_id;
+        $productId = $mpProduct->external_product_id;
         $skuId = $link->external_sku_id;
-        
+
         if (!$productId) {
             throw new \RuntimeException('Не указан external_product_id для товара Uzum');
         }
-        
+
+        // Если external_sku_id не указан, пробуем найти его из skuList
+        if (!$skuId) {
+            $skuId = $this->findUzumSkuId($link, $mpProduct);
+        }
+
         if (!$skuId) {
             throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Невозможно синхронизировать остаток на уровне SKU.');
         }
 
+        Log::info('Uzum stock sync', [
+            'link_id' => $link->id,
+            'product_id' => $productId,
+            'sku_id' => $skuId,
+            'stock' => $stock,
+        ]);
+
         return $this->uzumClient->updateStock($account, $productId, $skuId, $stock);
+    }
+
+    /**
+     * Найти Uzum SKU ID для связи
+     * Пробуем найти по баркоду или берём первый из списка
+     */
+    protected function findUzumSkuId(VariantMarketplaceLink $link, $mpProduct): ?string
+    {
+        $skuList = $mpProduct->raw_payload['skuList'] ?? [];
+
+        if (empty($skuList)) {
+            // Пробуем использовать external_offer_id если он содержит skuId
+            if ($mpProduct->external_offer_id) {
+                Log::info('Uzum: Using external_offer_id as skuId fallback', [
+                    'link_id' => $link->id,
+                    'external_offer_id' => $mpProduct->external_offer_id,
+                ]);
+                return (string) $mpProduct->external_offer_id;
+            }
+            return null;
+        }
+
+        // 1. Пробуем найти по баркоду из связи
+        $linkBarcode = $link->marketplace_barcode ?? $link->variant?->barcode ?? null;
+
+        if ($linkBarcode) {
+            foreach ($skuList as $sku) {
+                $skuBarcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                if ($skuBarcode && $skuBarcode === (string) $linkBarcode) {
+                    $foundSkuId = isset($sku['skuId']) ? (string) $sku['skuId'] : null;
+                    if ($foundSkuId) {
+                        Log::info('Uzum: Found skuId by barcode match', [
+                            'link_id' => $link->id,
+                            'barcode' => $linkBarcode,
+                            'sku_id' => $foundSkuId,
+                        ]);
+
+                        // Сохраняем найденный skuId в link для будущих синхронизаций
+                        $link->update(['external_sku_id' => $foundSkuId]);
+
+                        return $foundSkuId;
+                    }
+                }
+            }
+        }
+
+        // 2. Пробуем найти по external_sku (может содержать skuTitle или другой идентификатор)
+        $externalSku = $link->external_sku;
+        if ($externalSku) {
+            foreach ($skuList as $sku) {
+                $skuTitle = $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null;
+                if ($skuTitle && stripos($skuTitle, $externalSku) !== false) {
+                    $foundSkuId = isset($sku['skuId']) ? (string) $sku['skuId'] : null;
+                    if ($foundSkuId) {
+                        Log::info('Uzum: Found skuId by title match', [
+                            'link_id' => $link->id,
+                            'external_sku' => $externalSku,
+                            'sku_id' => $foundSkuId,
+                        ]);
+
+                        $link->update(['external_sku_id' => $foundSkuId]);
+                        return $foundSkuId;
+                    }
+                }
+            }
+        }
+
+        // 3. Если ничего не нашли, берём первый SKU из списка
+        $firstSku = $skuList[0] ?? null;
+        if ($firstSku && isset($firstSku['skuId'])) {
+            $foundSkuId = (string) $firstSku['skuId'];
+            Log::warning('Uzum: Using first skuId as fallback (may be incorrect for multi-SKU products)', [
+                'link_id' => $link->id,
+                'sku_id' => $foundSkuId,
+                'total_skus' => count($skuList),
+            ]);
+
+            // Сохраняем только если это единственный SKU (однозначное соответствие)
+            if (count($skuList) === 1) {
+                $link->update([
+                    'external_sku_id' => $foundSkuId,
+                    'marketplace_barcode' => $firstSku['barcode'] ?? null,
+                ]);
+            }
+
+            return $foundSkuId;
+        }
+
+        return null;
     }
 
     /**
