@@ -134,12 +134,12 @@ class UzumSyncOrders extends Command
                     foreach ($orderData['items'] as $item) {
                         UzumOrderItem::create([
                             'uzum_order_id' => $order->id,
-                            'external_product_id' => $item['external_product_id'] ?? $item['product_id'] ?? null,
-                            'sku' => $item['sku'] ?? null,
+                            'external_offer_id' => $item['external_offer_id'] ?? $item['skuId'] ?? null,
                             'name' => $item['name'] ?? null,
                             'quantity' => $item['quantity'] ?? 1,
                             'price' => $item['price'] ?? 0,
-                            'total' => $item['total'] ?? ($item['price'] * $item['quantity']),
+                            'total_price' => $item['total_price'] ?? ($item['price'] * $item['quantity']),
+                            'raw_payload' => $item['raw_payload'] ?? $item,
                         ]);
                     }
                 }

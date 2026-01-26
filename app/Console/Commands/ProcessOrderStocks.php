@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
+use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
+use App\Models\YandexMarketOrder;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +19,7 @@ class ProcessOrderStocks extends Command
      * @var string
      */
     protected $signature = 'orders:process-stocks
-                            {--marketplace= : Filter by marketplace (wb, uzum, ozon)}
+                            {--marketplace= : Filter by marketplace (wb, uzum, ozon, ym)}
                             {--account= : Filter by account ID}
                             {--status= : Filter by order status (new, in_assembly, etc)}
                             {--force : Force reprocessing even if already processed}
@@ -72,6 +74,24 @@ class ProcessOrderStocks extends Command
         // Process WB orders
         if (!$marketplace || $marketplace === 'wb') {
             $result = $this->processWbOrders($accountId, $status, $force, $dryRun);
+            $processed += $result['processed'];
+            $reserved += $result['reserved'];
+            $failed += $result['failed'];
+            $skipped += $result['skipped'];
+        }
+
+        // Process Ozon orders
+        if (!$marketplace || $marketplace === 'ozon') {
+            $result = $this->processOzonOrders($accountId, $status, $force, $dryRun);
+            $processed += $result['processed'];
+            $reserved += $result['reserved'];
+            $failed += $result['failed'];
+            $skipped += $result['skipped'];
+        }
+
+        // Process Yandex Market orders
+        if (!$marketplace || $marketplace === 'ym') {
+            $result = $this->processYmOrders($accountId, $status, $force, $dryRun);
             $processed += $result['processed'];
             $reserved += $result['reserved'];
             $failed += $result['failed'];
@@ -241,6 +261,168 @@ class ProcessOrderStocks extends Command
                 $stats['failed']++;
                 $this->error("\n  Failed order #{$order->external_order_id}: {$e->getMessage()}");
                 Log::error('ProcessOrderStocks: Failed to process WB order', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        return $stats;
+    }
+
+    protected function processOzonOrders(?int $accountId, ?string $status, bool $force, bool $dryRun): array
+    {
+        $query = OzonOrder::query()
+            ->with(['account']);
+
+        if ($accountId) {
+            $query->where('marketplace_account_id', $accountId);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        } else {
+            // By default, only process orders with reserve statuses
+            $query->whereIn('status', ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress']);
+        }
+
+        if (!$force) {
+            $query->where('stock_status', 'none');
+        }
+
+        $orders = $query->get();
+
+        $this->info("Found {$orders->count()} Ozon orders to process");
+
+        $stats = ['processed' => 0, 'reserved' => 0, 'failed' => 0, 'skipped' => 0];
+
+        $bar = $this->output->createProgressBar($orders->count());
+        $bar->start();
+
+        foreach ($orders as $order) {
+            $stats['processed']++;
+
+            if ($dryRun) {
+                $this->line("\n  [DRY] Would process order #{$order->posting_number} ({$order->status})");
+                $bar->advance();
+                continue;
+            }
+
+            try {
+                $items = $this->orderStockService->getOrderItems($order, 'ozon');
+
+                if (empty($items)) {
+                    $this->line("\n  Skipped order #{$order->posting_number}: No items found");
+                    $stats['skipped']++;
+                    $bar->advance();
+                    continue;
+                }
+
+                $result = $this->orderStockService->processOrderStatusChange(
+                    $order->account,
+                    $order,
+                    null, // old status - null to force processing
+                    $order->status,
+                    $items
+                );
+
+                if ($result['success'] && $result['action'] === 'reserve') {
+                    $stats['reserved']++;
+                    $this->line("\n  Reserved order #{$order->posting_number}: {$result['items_processed']} items");
+                } elseif ($result['action'] === 'none') {
+                    $stats['skipped']++;
+                }
+
+            } catch (\Throwable $e) {
+                $stats['failed']++;
+                $this->error("\n  Failed order #{$order->posting_number}: {$e->getMessage()}");
+                Log::error('ProcessOrderStocks: Failed to process Ozon order', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        return $stats;
+    }
+
+    protected function processYmOrders(?int $accountId, ?string $status, bool $force, bool $dryRun): array
+    {
+        $query = YandexMarketOrder::query()
+            ->with(['account']);
+
+        if ($accountId) {
+            $query->where('marketplace_account_id', $accountId);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        } else {
+            // By default, only process orders with reserve statuses
+            $query->whereIn('status', ['PROCESSING', 'RESERVED']);
+        }
+
+        if (!$force) {
+            $query->where('stock_status', 'none');
+        }
+
+        $orders = $query->get();
+
+        $this->info("Found {$orders->count()} Yandex Market orders to process");
+
+        $stats = ['processed' => 0, 'reserved' => 0, 'failed' => 0, 'skipped' => 0];
+
+        $bar = $this->output->createProgressBar($orders->count());
+        $bar->start();
+
+        foreach ($orders as $order) {
+            $stats['processed']++;
+
+            if ($dryRun) {
+                $this->line("\n  [DRY] Would process order #{$order->order_id} ({$order->status})");
+                $bar->advance();
+                continue;
+            }
+
+            try {
+                $items = $this->orderStockService->getOrderItems($order, 'ym');
+
+                if (empty($items)) {
+                    $this->line("\n  Skipped order #{$order->order_id}: No items found");
+                    $stats['skipped']++;
+                    $bar->advance();
+                    continue;
+                }
+
+                $result = $this->orderStockService->processOrderStatusChange(
+                    $order->account,
+                    $order,
+                    null, // old status - null to force processing
+                    $order->status,
+                    $items
+                );
+
+                if ($result['success'] && $result['action'] === 'reserve') {
+                    $stats['reserved']++;
+                    $this->line("\n  Reserved order #{$order->order_id}: {$result['items_processed']} items");
+                } elseif ($result['action'] === 'none') {
+                    $stats['skipped']++;
+                }
+
+            } catch (\Throwable $e) {
+                $stats['failed']++;
+                $this->error("\n  Failed order #{$order->order_id}: {$e->getMessage()}");
+                Log::error('ProcessOrderStocks: Failed to process YM order', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                 ]);

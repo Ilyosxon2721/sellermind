@@ -114,8 +114,8 @@ class OrderStockService
 
         // 3. Отмена заказа
         if ($isCancelledStatus) {
-            // Если был резерв - отменяем его
-            if ($currentStockStatus === 'reserved') {
+            // Если был резерв или статус не установлен - отменяем резерв
+            if ($currentStockStatus === 'reserved' || $currentStockStatus === 'none') {
                 return $this->releaseReserve($account, $order, $items, $marketplace);
             }
             // Если уже продан - ничего не делаем (возврат вручную)
@@ -124,6 +124,13 @@ class OrderStockService
                     'order_id' => $order->id,
                 ]);
                 return ['success' => true, 'action' => 'none', 'message' => 'Order was already sold, manual return needed'];
+            }
+            // Если уже освобождён - ничего не делаем
+            if ($currentStockStatus === 'released') {
+                Log::info('OrderStockService: Order already released', [
+                    'order_id' => $order->id,
+                ]);
+                return ['success' => true, 'action' => 'none', 'message' => 'Stock already released'];
             }
         }
 
@@ -300,70 +307,129 @@ class OrderStockService
             'action' => 'release',
             'items_processed' => 0,
             'items_failed' => 0,
+            'reservations_released' => 0,
             'errors' => [],
         ];
 
         DB::beginTransaction();
 
         try {
-            foreach ($items as $item) {
-                $quantity = $this->getItemQuantity($item);
-                if ($quantity <= 0) {
-                    continue;
-                }
+            // Сначала проверяем есть ли активные резервы в базе
+            $activeReservations = StockReservation::where('source_type', 'marketplace_order')
+                ->where('source_id', $order->id)
+                ->where('status', StockReservation::STATUS_ACTIVE)
+                ->with('sku.productVariant')
+                ->get();
 
-                $variant = $this->findVariantByOrderItem($account, $item, $marketplace);
-
-                if (!$variant) {
-                    $results['items_failed']++;
-                    continue;
-                }
-
-                $stockBefore = $variant->stock_default;
-
-                // Return stock to ProductVariant (for marketplace sync)
-                $variant->incrementStock($quantity);
-                $stockAfter = $variant->fresh()->stock_default;
-
-                // Create warehouse stock ledger entry (positive to return stock)
-                $this->createWarehouseStockLedger(
-                    $account,
-                    $order,
-                    $variant,
-                    $quantity, // Positive for stock return
-                    'marketplace_order_cancel',
-                    $marketplace
-                );
-
-                // Логируем операцию
-                $this->logStockOperation(
-                    $account,
-                    $order,
-                    $marketplace,
-                    $variant,
-                    'release',
-                    $quantity,
-                    $stockBefore,
-                    $stockAfter,
-                    $item
-                );
-
-                $results['items_processed']++;
-
-                Log::info('OrderStockService: Stock returned on cancel', [
-                    'variant_id' => $variant->id,
-                    'quantity' => $quantity,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
+            // Если есть активные резервы - освобождаем их напрямую
+            if ($activeReservations->isNotEmpty()) {
+                Log::info('OrderStockService: Found active reservations, releasing directly', [
+                    'order_id' => $order->id,
+                    'reservations_count' => $activeReservations->count(),
                 ]);
 
-                // ВАЖНО: Синхронизируем остатки с ДРУГИМИ маркетплейсами
-                // чтобы они знали что товар снова доступен
-                $this->syncVariantToOtherMarketplaces($variant, $account->id);
-            }
+                foreach ($activeReservations as $reservation) {
+                    $variant = $reservation->sku?->productVariant;
+                    $qty = $reservation->qty;
 
-            // Cancel stock reservations
-            $this->cancelStockReservations($order);
+                    // Отменяем резерв
+                    $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
+                    $results['reservations_released']++;
+
+                    if ($variant) {
+                        $stockBefore = $variant->stock_default;
+
+                        // Возвращаем остатки
+                        $variant->incrementStock($qty);
+                        $stockAfter = $variant->fresh()->stock_default;
+
+                        // Создаём запись в журнале
+                        StockLedger::create([
+                            'company_id' => $account->company_id,
+                            'occurred_at' => now(),
+                            'warehouse_id' => $reservation->warehouse_id,
+                            'sku_id' => $reservation->sku_id,
+                            'qty_delta' => $qty,
+                            'cost_delta' => 0,
+                            'currency_code' => 'UZS',
+                            'source_type' => 'marketplace_order_cancel',
+                            'source_id' => $order->id,
+                        ]);
+
+                        Log::info('OrderStockService: Stock returned from reservation', [
+                            'variant_id' => $variant->id,
+                            'quantity' => $qty,
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
+                        ]);
+
+                        // Синхронизируем с другими маркетплейсами
+                        $this->syncVariantToOtherMarketplaces($variant, $account->id);
+
+                        $results['items_processed']++;
+                    }
+                }
+            } else {
+                // Если резервов нет - пробуем через items заказа
+                foreach ($items as $item) {
+                    $quantity = $this->getItemQuantity($item);
+                    if ($quantity <= 0) {
+                        continue;
+                    }
+
+                    $variant = $this->findVariantByOrderItem($account, $item, $marketplace);
+
+                    if (!$variant) {
+                        $results['items_failed']++;
+                        continue;
+                    }
+
+                    $stockBefore = $variant->stock_default;
+
+                    // Return stock to ProductVariant (for marketplace sync)
+                    $variant->incrementStock($quantity);
+                    $stockAfter = $variant->fresh()->stock_default;
+
+                    // Create warehouse stock ledger entry (positive to return stock)
+                    $this->createWarehouseStockLedger(
+                        $account,
+                        $order,
+                        $variant,
+                        $quantity, // Positive for stock return
+                        'marketplace_order_cancel',
+                        $marketplace
+                    );
+
+                    // Логируем операцию
+                    $this->logStockOperation(
+                        $account,
+                        $order,
+                        $marketplace,
+                        $variant,
+                        'release',
+                        $quantity,
+                        $stockBefore,
+                        $stockAfter,
+                        $item
+                    );
+
+                    $results['items_processed']++;
+
+                    Log::info('OrderStockService: Stock returned on cancel', [
+                        'variant_id' => $variant->id,
+                        'quantity' => $quantity,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                    ]);
+
+                    // ВАЖНО: Синхронизируем остатки с ДРУГИМИ маркетплейсами
+                    // чтобы они знали что товар снова доступен
+                    $this->syncVariantToOtherMarketplaces($variant, $account->id);
+                }
+
+                // Cancel any remaining stock reservations
+                $this->cancelStockReservations($order);
+            }
 
             // Обновляем статус заказа
             $order->update([
@@ -485,16 +551,33 @@ class OrderStockService
             }
         }
 
-        // 2. Ищем по связи VariantMarketplaceLink (external_sku_id, external_offer_id, nm_id)
+        // 2. Ищем по ТОЧНОМУ external_sku_id (приоритет для Uzum и других с несколькими SKU на продукт)
+        if ($skuId) {
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $account->id)
+                ->where('external_sku_id', $skuId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($link && $link->variant) {
+                Log::debug('OrderStockService: Found variant via exact external_sku_id', [
+                    'sku_id' => $skuId,
+                    'link_id' => $link->id,
+                    'variant_id' => $link->variant->id,
+                ]);
+                return $link->variant;
+            }
+        }
+
+        // 3. Ищем по external_offer_id или nm_id (для WB)
         $link = VariantMarketplaceLink::query()
             ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
             ->where(function ($query) use ($skuId, $offerId, $nmId) {
-                // По external_sku_id
+                // По external_offer_id (может совпадать со skuId для некоторых МП)
                 if ($skuId) {
-                    $query->orWhere('external_sku_id', $skuId);
+                    $query->orWhere('external_offer_id', $skuId);
                 }
-                // По external_offer_id
                 if ($offerId) {
                     $query->orWhere('external_offer_id', $offerId);
                 }
@@ -507,14 +590,14 @@ class OrderStockService
             ->first();
 
         if ($link && $link->variant) {
-            Log::debug('OrderStockService: Found variant via external_sku_id/offer_id', [
+            Log::debug('OrderStockService: Found variant via external_offer_id/nm_id', [
                 'link_id' => $link->id,
                 'variant_id' => $link->variant->id,
             ]);
             return $link->variant;
         }
 
-        // 3. Ищем через MarketplaceProduct
+        // 4. Ищем через MarketplaceProduct
         if ($skuId || $nmId) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $account->id)
@@ -541,7 +624,7 @@ class OrderStockService
             }
         }
 
-        // 4. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
+        // 5. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
         if ($barcode) {
             $variant = ProductVariant::where('barcode', $barcode)
                 ->where('company_id', $account->company_id)
@@ -556,7 +639,7 @@ class OrderStockService
             }
         }
 
-        // 5. Fallback: ищем по артикулу/sku
+        // 6. Fallback: ищем по артикулу/sku
         if ($offerId) {
             $variant = ProductVariant::where('sku', $offerId)
                 ->where('company_id', $account->company_id)

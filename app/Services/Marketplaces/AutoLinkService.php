@@ -271,7 +271,12 @@ class AutoLinkService
     ): void {
         $marketplace = $account->marketplace;
 
-        // Определяем external_offer_id и external_sku
+        // Определяем external_offer_id, external_sku_id и marketplace_barcode
+        $externalOfferId = null;
+        $externalSkuId = null;
+        $externalSku = null;
+        $marketplaceBarcode = null;
+
         if ($marketplace === 'wb') {
             $externalOfferId = $product->nm_id;
             $externalSku = $product->barcode ?? $variant->sku;
@@ -280,30 +285,52 @@ class AutoLinkService
             $externalOfferId = $product->external_product_id;
             $externalSku = $product->external_offer_id ?? $product->external_product_id;
             $marketplaceBarcode = $product->barcode;
-        } else {
-            // Uzum, YM
+        } elseif ($marketplace === 'uzum') {
+            // Для Uzum ищем конкретный SKU по баркоду
             $externalOfferId = $product->external_offer_id;
-            $externalSku = $product->external_sku ?? $variant->sku;
-            // Для Uzum берём баркод из skuList
-            $marketplaceBarcode = null;
-            if ($marketplace === 'uzum') {
-                $skuList = $product->raw_payload['skuList'] ?? [];
-                if (!empty($skuList[0]['barcode'])) {
-                    $marketplaceBarcode = (string) $skuList[0]['barcode'];
+            $skuList = $product->raw_payload['skuList'] ?? [];
+
+            // Ищем SKU по совпавшему баркоду
+            foreach ($skuList as $sku) {
+                $skuBarcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                if ($skuBarcode && $skuBarcode === $matchValue) {
+                    $externalSkuId = isset($sku['skuId']) ? (string) $sku['skuId'] : null;
+                    $marketplaceBarcode = $skuBarcode;
+                    $externalSku = $sku['skuTitle'] ?? $variant->sku;
+                    break;
                 }
             }
+
+            // Если не нашли по баркоду, берём первый SKU
+            if (!$externalSkuId && !empty($skuList[0])) {
+                $externalSkuId = isset($skuList[0]['skuId']) ? (string) $skuList[0]['skuId'] : null;
+                $marketplaceBarcode = isset($skuList[0]['barcode']) ? (string) $skuList[0]['barcode'] : null;
+                $externalSku = $skuList[0]['skuTitle'] ?? $variant->sku;
+            }
+        } else {
+            // YM и другие
+            $externalOfferId = $product->external_offer_id;
+            $externalSku = $product->external_sku ?? $variant->sku;
+        }
+
+        // Для Uzum включаем external_sku_id в ключ уникальности
+        $linkKey = [
+            'product_variant_id' => $variant->id,
+            'marketplace_product_id' => $product->id,
+            'marketplace_code' => $marketplace,
+        ];
+
+        if ($marketplace === 'uzum' && $externalSkuId) {
+            $linkKey['external_sku_id'] = $externalSkuId;
         }
 
         VariantMarketplaceLink::updateOrCreate(
-            [
-                'product_variant_id' => $variant->id,
-                'marketplace_product_id' => $product->id,
-                'marketplace_code' => $marketplace,
-            ],
+            $linkKey,
             [
                 'company_id' => $account->company_id,
                 'marketplace_account_id' => $account->id,
                 'external_offer_id' => $externalOfferId,
+                'external_sku_id' => $externalSkuId,
                 'external_sku' => $externalSku,
                 'marketplace_barcode' => $marketplaceBarcode,
                 'is_active' => true,
@@ -316,6 +343,8 @@ class AutoLinkService
             'account_id' => $account->id,
             'product_id' => $product->id,
             'variant_id' => $variant->id,
+            'external_sku_id' => $externalSkuId,
+            'marketplace_barcode' => $marketplaceBarcode,
             'match_type' => $matchType,
             'match_value' => $matchValue,
         ]);

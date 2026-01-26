@@ -276,3 +276,36 @@ Schedule::command('subscriptions:check-expiring --notify-days=7,3,1 --mark-expir
         \Log::error('Subscription check failed');
     })
     ->appendOutputTo(storage_path('logs/subscriptions.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Stock Reservation Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Automatically process stock reservations for marketplace orders
+|
+*/
+
+// Обработка резервов для заказов (обрабатывает заказы, которые могли быть пропущены)
+Schedule::command('orders:process-stocks')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->onSuccess(function () {
+        \Log::info('Order stocks processing completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Order stocks processing failed');
+    })
+    ->appendOutputTo(storage_path('logs/stock-processing.log'));
+
+// Автоматическая привязка товаров маркетплейсов к внутренним вариантам (раз в день)
+Schedule::command('marketplace:auto-link --all')
+    ->dailyAt('03:00')
+    ->withoutOverlapping(60)
+    ->onSuccess(function () {
+        \Log::info('Marketplace auto-link completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Marketplace auto-link failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
