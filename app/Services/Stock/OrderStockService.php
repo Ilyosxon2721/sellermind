@@ -540,11 +540,63 @@ class OrderStockService
 
         Log::debug('OrderStockService: Looking for variant', [
             'account_id' => $account->id,
+            'marketplace' => $marketplace,
             'sku_id' => $skuId,
             'offer_id' => $offerId,
             'barcode' => $barcode,
             'nm_id' => $nmId,
         ]);
+
+        // =====================================================
+        // UZUM SPECIFIC: Используем ТОЛЬКО поиск по barcode через skuList
+        // Это критически важно, т.к. Uzum API не возвращает skuId в FBS заказах
+        // и другие методы поиска могут найти НЕПРАВИЛЬНЫЙ товар
+        // =====================================================
+        if ($marketplace === 'uzum') {
+            // 1. Сначала пробуем точное совпадение по marketplace_barcode
+            if ($barcode) {
+                $link = VariantMarketplaceLink::query()
+                    ->where('marketplace_account_id', $account->id)
+                    ->where('marketplace_barcode', $barcode)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($link && $link->variant) {
+                    Log::debug('OrderStockService: [Uzum] Found variant via marketplace_barcode', [
+                        'barcode' => $barcode,
+                        'link_id' => $link->id,
+                        'variant_id' => $link->variant->id,
+                    ]);
+                    return $link->variant;
+                }
+            }
+
+            // 2. Поиск по barcode через skuList в MarketplaceProduct.raw_payload
+            if ($barcode) {
+                $variant = $this->findVariantByBarcodeInSkuList($account, $barcode);
+                if ($variant) {
+                    Log::debug('OrderStockService: [Uzum] Found variant via skuList barcode', [
+                        'barcode' => $barcode,
+                        'variant_id' => $variant->id,
+                        'variant_sku' => $variant->sku,
+                    ]);
+                    return $variant;
+                }
+            }
+
+            // Для Uzum НЕ используем другие методы поиска - они могут найти неправильный товар
+            // Если barcode не найден в skuList, значит товар не привязан к нашей системе
+            Log::info('OrderStockService: [Uzum] Variant not found, item not linked', [
+                'barcode' => $barcode,
+                'sku_id' => $skuId,
+                'account_id' => $account->id,
+            ]);
+            return null;
+        }
+
+        // =====================================================
+        // Для других маркетплейсов (WB, Ozon, YM) - стандартная логика
+        // =====================================================
 
         // 1. Ищем по marketplace_barcode (приоритетный поиск по баркоду маркетплейса)
         if ($barcode) {
@@ -564,7 +616,7 @@ class OrderStockService
             }
         }
 
-        // 2. Ищем по ТОЧНОМУ external_sku_id (приоритет для Uzum и других с несколькими SKU на продукт)
+        // 2. Ищем по ТОЧНОМУ external_sku_id (приоритет для маркетплейсов с несколькими SKU на продукт)
         if ($skuId) {
             $link = VariantMarketplaceLink::query()
                 ->where('marketplace_account_id', $account->id)
@@ -637,29 +689,7 @@ class OrderStockService
             }
         }
 
-        // 4.5. Для Uzum: поиск по barcode через skuList в raw_payload продуктов
-        // Uzum API не возвращает skuId в FBS заказах, но возвращает barcode
-        // ВАЖНО: Для Uzum используем ТОЛЬКО этот метод поиска - без fallback-ов
-        if ($barcode && $marketplace === 'uzum') {
-            $variant = $this->findVariantByBarcodeInSkuList($account, $barcode);
-            if ($variant) {
-                Log::debug('OrderStockService: Found variant via Uzum skuList barcode', [
-                    'barcode' => $barcode,
-                    'variant_id' => $variant->id,
-                    'variant_sku' => $variant->sku,
-                ]);
-                return $variant;
-            }
-            // Для Uzum НЕ используем fallback - если не нашли через skuList, значит товар не привязан
-            Log::info('OrderStockService: Uzum variant not found via barcode lookup, skipping fallbacks', [
-                'barcode' => $barcode,
-                'account_id' => $account->id,
-            ]);
-            return null;
-        }
-
         // 5. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
-        // НЕ используется для Uzum (см. выше)
         if ($barcode) {
             $variant = ProductVariant::where('barcode', $barcode)
                 ->where('company_id', $account->company_id)
@@ -675,7 +705,6 @@ class OrderStockService
         }
 
         // 6. Fallback: ищем по артикулу/sku
-        // НЕ используется для Uzum (см. выше)
         if ($offerId) {
             $variant = ProductVariant::where('sku', $offerId)
                 ->where('company_id', $account->company_id)

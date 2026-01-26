@@ -254,7 +254,8 @@ class FixUzumReservations extends Command
     }
 
     /**
-     * Copy of findVariantByBarcodeInSkuList from OrderStockService for diagnostic purposes
+     * Copy of findVariantByBarcodeInSkuList from OrderStockService
+     * ВАЖНО: Без fallback - только точное совпадение по skuId
      */
     protected function findVariantByBarcodeInSkuList(
         MarketplaceAccount $account,
@@ -293,7 +294,7 @@ class FixUzumReservations extends Command
             return null;
         }
 
-        // Find VariantMarketplaceLink by this skuId
+        // Find VariantMarketplaceLink by this skuId - ТОЛЬКО точное совпадение
         $link = \App\Models\VariantMarketplaceLink::query()
             ->where('marketplace_account_id', $account->id)
             ->where('external_sku_id', (string) $matchedSkuId)
@@ -304,13 +305,7 @@ class FixUzumReservations extends Command
             return $link->variant;
         }
 
-        // Fallback: if no link found by skuId, try by product
-        $link = \App\Models\VariantMarketplaceLink::query()
-            ->where('marketplace_account_id', $account->id)
-            ->where('marketplace_product_id', $marketplaceProduct->id)
-            ->where('is_active', true)
-            ->first();
-
-        return $link?->variant;
+        // НЕТ FALLBACK - если нет точного совпадения по skuId, возвращаем null
+        return null;
     }
 }
