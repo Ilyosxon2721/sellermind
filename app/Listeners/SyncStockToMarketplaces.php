@@ -12,19 +12,22 @@ use Illuminate\Support\Facades\Log;
  */
 class SyncStockToMarketplaces implements ShouldQueue
 {
-    public $queue = 'marketplace-sync';
-    
+    // Use 'default' queue so existing queue workers process this
+    // Previously was 'marketplace-sync' which wasn't being processed
+    public $queue = 'default';
+
     public function __construct(
         protected StockSyncService $stockSyncService
     ) {}
 
     public function handle(StockUpdated $event): void
     {
-        Log::info('Stock updated, checking marketplace accounts for sync', [
+        Log::info('SyncStockToMarketplaces::handle() STARTED - Stock updated, checking marketplace accounts for sync', [
             'variant_id' => $event->variant->id,
             'sku' => $event->variant->sku,
             'old_stock' => $event->oldStock,
             'new_stock' => $event->newStock,
+            'source_link_id' => $event->sourceLinkId,
         ]);
 
         try {
@@ -48,13 +51,29 @@ class SyncStockToMarketplaces implements ShouldQueue
             foreach ($links as $link) {
                 $account = $link->account;
 
+                Log::debug('Processing marketplace link for stock sync', [
+                    'link_id' => $link->id,
+                    'marketplace' => $account?->marketplace,
+                    'account_id' => $account?->id,
+                    'account_name' => $account?->name,
+                    'sync_stock_enabled' => $link->sync_stock_enabled,
+                    'external_sku' => $link->external_sku,
+                    'external_sku_id' => $link->external_sku_id,
+                ]);
+
                 // Проверяем настройки аккаунта маркетплейса
                 if (!$account || !$account->isAutoSyncOnChangeEnabled()) {
                     $skippedAccounts[] = [
                         'account_id' => $account?->id,
                         'account_name' => $account?->name,
+                        'marketplace' => $account?->marketplace,
                         'reason' => 'auto_sync_on_change disabled',
                     ];
+                    Log::info('Skipping link - auto_sync_on_change disabled', [
+                        'link_id' => $link->id,
+                        'account_id' => $account?->id,
+                        'marketplace' => $account?->marketplace,
+                    ]);
                     continue;
                 }
 
@@ -71,18 +90,41 @@ class SyncStockToMarketplaces implements ShouldQueue
                 }
 
                 try {
+                    Log::info('Attempting to sync stock to marketplace', [
+                        'link_id' => $link->id,
+                        'marketplace' => $account->marketplace,
+                        'account_name' => $account->name,
+                        'stock' => $event->newStock,
+                    ]);
+
                     $result = $this->stockSyncService->syncLinkStock($link);
                     $syncedAccounts[] = [
                         'account_id' => $account->id,
                         'marketplace' => $account->marketplace,
                         'result' => $result,
                     ];
+
+                    Log::info('Successfully synced stock to marketplace', [
+                        'link_id' => $link->id,
+                        'marketplace' => $account->marketplace,
+                        'result' => $result,
+                    ]);
                 } catch (\Exception $e) {
-                    Log::warning('Failed to sync stock to account', [
+                    Log::error('Failed to sync stock to marketplace account', [
                         'link_id' => $link->id,
                         'account_id' => $account->id,
+                        'marketplace' => $account->marketplace,
+                        'account_name' => $account->name,
                         'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
                     ]);
+
+                    $skippedAccounts[] = [
+                        'account_id' => $account->id,
+                        'account_name' => $account->name,
+                        'marketplace' => $account->marketplace,
+                        'reason' => 'sync error: ' . $e->getMessage(),
+                    ];
                 }
             }
 

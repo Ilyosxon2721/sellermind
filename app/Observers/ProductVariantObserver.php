@@ -49,11 +49,30 @@ class ProductVariantObserver
                 $this->syncToWarehouseSku($variant);
             }
 
+            // Debug: log all changes
+            Log::debug('ProductVariantObserver::updated called', [
+                'variant_id' => $variant->id,
+                'sku' => $variant->sku,
+                'changes' => $variant->getChanges(),
+                'wasChanged_stock_default' => $variant->wasChanged('stock_default'),
+                'original_stock' => $variant->getOriginal('stock_default'),
+                'current_stock' => $variant->stock_default,
+            ]);
+
             // Use wasChanged() to see if 'stock_default' was part of the update.
             if ($variant->wasChanged('stock_default')) {
                 // getOriginal() provides the value before the update.
-                $oldStock = $variant->getOriginal('stock_default') ?? 0;
-                $newStock = $variant->stock_default ?? 0;
+                $oldStock = (int) ($variant->getOriginal('stock_default') ?? 0);
+                $newStock = (int) ($variant->stock_default ?? 0);
+
+                Log::info('ProductVariantObserver: stock_default changed', [
+                    'variant_id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'old_stock' => $oldStock,
+                    'new_stock' => $newStock,
+                    'old_type' => gettype($oldStock),
+                    'new_type' => gettype($newStock),
+                ]);
 
                 // Fire the event only if the stock value actually changed.
                 if ($oldStock !== $newStock) {
@@ -61,7 +80,18 @@ class ProductVariantObserver
                     $this->syncStockToWarehouse($variant, $oldStock, $newStock);
 
                     // Fire event for marketplace sync
+                    Log::info('ProductVariantObserver: Firing StockUpdated event', [
+                        'variant_id' => $variant->id,
+                        'old_stock' => $oldStock,
+                        'new_stock' => $newStock,
+                    ]);
                     event(new StockUpdated($variant, $oldStock, $newStock));
+                } else {
+                    Log::debug('ProductVariantObserver: stock values equal after casting, skipping event', [
+                        'variant_id' => $variant->id,
+                        'old_stock' => $oldStock,
+                        'new_stock' => $newStock,
+                    ]);
                 }
             }
         } catch (\Exception $e) {
