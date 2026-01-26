@@ -97,10 +97,11 @@ class StockSyncService
      */
     protected function syncToYandexMarket(MarketplaceAccount $account, VariantMarketplaceLink $link, int $stock): array
     {
-        $offerId = $link->external_offer_id ?? $link->marketplaceProduct->external_offer_id;
-        
+        // Для YM API нужен shopSku (артикул), проверяем сначала external_sku
+        $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
+
         if (!$offerId) {
-            throw new \RuntimeException('Не указан offerId для товара');
+            throw new \RuntimeException('Не указан offerId/external_sku для товара YM');
         }
 
         return $this->ymClient->updateStock($account, $offerId, $stock);
@@ -111,10 +112,12 @@ class StockSyncService
      */
     protected function syncToOzon(MarketplaceAccount $account, VariantMarketplaceLink $link, int $stock): array
     {
-        $offerId = $link->external_offer_id ?? $link->marketplaceProduct->external_offer_id;
+        // Для Ozon API нужен offer_id (артикул), который хранится в external_sku
+        // external_offer_id содержит product_id, который НЕ подходит для API остатков
+        $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
         if (!$offerId) {
-            throw new \RuntimeException('Не указан offer_id для товара');
+            throw new \RuntimeException('Не указан offer_id/external_sku для товара Ozon');
         }
 
         $credentials = $account->credentials_json ?? [];

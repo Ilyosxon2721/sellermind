@@ -76,11 +76,11 @@ class YandexMarketPushStocks extends Command
         foreach ($links as $link) {
             $stock = $link->getCurrentStock();
 
-            // Для YM нужен offer_id
-            $offerId = $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
+            // Для YM API нужен shopSku (артикул), проверяем сначала external_sku
+            $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
             if (!$offerId) {
-                $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id");
+                $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id/external_sku");
                 continue;
             }
 
