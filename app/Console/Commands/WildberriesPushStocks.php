@@ -22,8 +22,8 @@ class WildberriesPushStocks extends Command
         $dryRun = $this->option('dry-run');
 
         $accounts = $accountId
-            ? MarketplaceAccount::where('id', $accountId)->where('marketplace', 'wildberries')->get()
-            : MarketplaceAccount::where('marketplace', 'wildberries')->where('is_active', true)->get();
+            ? MarketplaceAccount::where('id', $accountId)->whereIn('marketplace', ['wildberries', 'wb'])->get()
+            : MarketplaceAccount::whereIn('marketplace', ['wildberries', 'wb'])->where('is_active', true)->get();
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных WB аккаунтов');
@@ -58,7 +58,7 @@ class WildberriesPushStocks extends Command
 
         // Получить все активные связи для этого аккаунта
         $links = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
-            ->where('marketplace_code', 'wildberries')
+            ->whereIn('marketplace_code', ['wildberries', 'wb'])
             ->where('is_active', true)
             ->where('sync_stock_enabled', true)
             ->with(['variant', 'marketplaceProduct'])
