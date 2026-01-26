@@ -125,8 +125,23 @@ class VariantMarketplaceLink extends Model
             return $this->getAggregatedStock($companyId, $skuId, $account);
         } else {
             // Базовый режим: остаток со склада из настроек или общий
-            $warehouseId = $account->credentials_json['warehouse_id'] ?? null;
-            return $this->getBasicStock($companyId, $skuId, $warehouseId);
+            // ВАЖНО: local_warehouse_id - это ЛОКАЛЬНЫЙ склад для расчёта остатков
+            // warehouse_id - это склад МАРКЕТПЛЕЙСА для API (напр. Ozon warehouse ID)
+            // Не путать! Для локального расчёта используем local_warehouse_id
+            $localWarehouseId = $account->credentials_json['local_warehouse_id'] ?? null;
+
+            // Проверяем что local_warehouse_id существует в наших складах
+            if ($localWarehouseId) {
+                $exists = \DB::table('warehouses')
+                    ->where('id', $localWarehouseId)
+                    ->where('company_id', $companyId)
+                    ->exists();
+                if (!$exists) {
+                    $localWarehouseId = null;
+                }
+            }
+
+            return $this->getBasicStock($companyId, $skuId, $localWarehouseId);
         }
     }
     
