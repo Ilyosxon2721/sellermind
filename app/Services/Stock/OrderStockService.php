@@ -548,6 +548,7 @@ class OrderStockService
         $offerId = $item['offer_id'] ?? $item['offerId'] ?? $item['article'] ?? $item['supplierArticle'] ?? null;
         $barcode = $item['barcode'] ?? null;
         $nmId = $item['nm_id'] ?? $item['nmId'] ?? null;
+        $chrtId = $item['chrt_id'] ?? $item['chrtId'] ?? null; // WB characteristic ID (size/color)
 
         Log::debug('OrderStockService: Looking for variant', [
             'account_id' => $account->id,
@@ -556,6 +557,7 @@ class OrderStockService
             'offer_id' => $offerId,
             'barcode' => $barcode,
             'nm_id' => $nmId,
+            'chrt_id' => $chrtId,
         ]);
 
         // =====================================================
@@ -603,6 +605,28 @@ class OrderStockService
                 'account_id' => $account->id,
             ]);
             return null;
+        }
+
+        // =====================================================
+        // WB SPECIFIC: Приоритетный поиск по chrtId (идентификатор размера/цвета)
+        // chrtId уникально идентифицирует конкретный вариант товара на WB
+        // =====================================================
+        if ($marketplace === 'wb' && $chrtId) {
+            // 1. Ищем по chrtId в external_sku_id
+            $link = VariantMarketplaceLink::query()
+                ->where('marketplace_account_id', $account->id)
+                ->where('external_sku_id', (string) $chrtId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($link && $link->variant) {
+                Log::debug('OrderStockService: [WB] Found variant via chrtId', [
+                    'chrt_id' => $chrtId,
+                    'link_id' => $link->id,
+                    'variant_id' => $link->variant->id,
+                ]);
+                return $link->variant;
+            }
         }
 
         // =====================================================
@@ -1193,16 +1217,42 @@ class OrderStockService
             $items = $order->items;
             if ($items && $items->isNotEmpty()) {
                 return $items->map(function ($item) use ($marketplace) {
-                    // For Uzum, use sku_id accessor which gets skuId from raw_payload
+                    $rawPayload = $item->raw_payload ?? [];
+
+                    // WB specific: extract data from WB API structure
+                    if ($marketplace === 'wb') {
+                        // WB stores barcode in skus array, not in barcode field
+                        $skus = $rawPayload['skus'] ?? [];
+                        $barcode = !empty($skus) ? (string) $skus[0] : null;
+
+                        // chrtId is the characteristic ID (identifies size/color)
+                        // This is the key identifier for matching variants
+                        $chrtId = $rawPayload['chrtId'] ?? null;
+                        $nmId = $rawPayload['nmId'] ?? null;
+                        $article = $rawPayload['article'] ?? $rawPayload['supplierArticle'] ?? null;
+
+                        return [
+                            'sku_id' => $chrtId, // Use chrtId for variant matching
+                            'nm_id' => $nmId,    // nmId identifies the product card
+                            'chrt_id' => $chrtId, // Explicit chrtId field
+                            'offer_id' => $article,
+                            'barcode' => $barcode,
+                            'quantity' => $item->quantity ?? 1,
+                            'name' => $item->name ?? null,
+                            'raw_payload' => $rawPayload,
+                        ];
+                    }
+
+                    // Uzum specific: use sku_id accessor which gets skuId from raw_payload
                     // This is critical for matching correct variant by size/color
                     $skuId = $item->sku_id ?? $item->external_offer_id ?? null;
 
                     return [
                         'sku_id' => $skuId,
-                        'barcode' => $item->raw_payload['barcode'] ?? null,
+                        'barcode' => $rawPayload['barcode'] ?? null,
                         'quantity' => $item->quantity ?? 1,
                         'name' => $item->name ?? null,
-                        'raw_payload' => $item->raw_payload ?? [],
+                        'raw_payload' => $rawPayload,
                     ];
                 })->toArray();
             }
@@ -1223,11 +1273,16 @@ class OrderStockService
         // WB specific
         if ($marketplace === 'wb') {
             if (isset($rawPayload['nmId'])) {
+                // WB stores barcode in skus array
+                $skus = $rawPayload['skus'] ?? [];
+                $barcode = !empty($skus) ? (string) $skus[0] : ($rawPayload['barcode'] ?? null);
+
                 return [[
                     'nm_id' => $rawPayload['nmId'],
-                    'sku_id' => $rawPayload['chrtId'] ?? null,
-                    'barcode' => $rawPayload['barcode'] ?? null,
-                    'offer_id' => $rawPayload['supplierArticle'] ?? null,
+                    'chrt_id' => $rawPayload['chrtId'] ?? null,
+                    'sku_id' => $rawPayload['chrtId'] ?? null, // chrtId for variant matching
+                    'barcode' => $barcode,
+                    'offer_id' => $rawPayload['article'] ?? $rawPayload['supplierArticle'] ?? null,
                     'quantity' => 1,
                 ]];
             }
