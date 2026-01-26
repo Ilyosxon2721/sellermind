@@ -289,6 +289,10 @@
                 'assembling': '{{ __("orders.assembling") }}',
                 'in_assembly': '{{ __("orders.in_assembly") }}',
                 'assembled': '{{ __("orders.assembled") }}',
+                'in_supply': '{{ __("orders.in_supply") }}',
+                'accepted_uzum': '{{ __("orders.accepted_uzum") }}',
+                'waiting_pickup': '{{ __("orders.waiting_pickup") }}',
+                'issued': '{{ __("orders.issued") }}',
                 'awaiting_deliver': '{{ __("orders.awaiting_deliver") }}',
                 'delivering': '{{ __("orders.delivering") }}',
                 'in_delivery': '{{ __("orders.in_delivery") }}',
@@ -319,8 +323,10 @@
                 const s = status.toLowerCase();
                 if (['new', 'pending'].includes(s)) return 'bg-yellow-100 text-yellow-700';
                 if (['confirmed', 'processing', 'assembling', 'in_assembly', 'assembled'].includes(s)) return 'bg-blue-100 text-blue-700';
+                if (['in_supply', 'accepted_uzum'].includes(s)) return 'bg-indigo-100 text-indigo-700';
                 if (['delivering', 'in_delivery', 'shipped', 'in_transit', 'awaiting_deliver', 'on_the_way'].includes(s)) return 'bg-purple-100 text-purple-700';
-                if (['delivered', 'completed', 'ready_for_pickup'].includes(s)) return 'bg-green-100 text-green-700';
+                if (['waiting_pickup', 'ready_for_pickup'].includes(s)) return 'bg-orange-100 text-orange-700';
+                if (['delivered', 'completed', 'issued'].includes(s)) return 'bg-green-100 text-green-700';
                 if (['cancelled', 'returned', 'refunded'].includes(s)) return 'bg-red-100 text-red-700';
                 return 'bg-gray-100 text-gray-700';
             },
