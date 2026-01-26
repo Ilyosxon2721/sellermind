@@ -639,18 +639,27 @@ class OrderStockService
 
         // 4.5. Для Uzum: поиск по barcode через skuList в raw_payload продуктов
         // Uzum API не возвращает skuId в FBS заказах, но возвращает barcode
+        // ВАЖНО: Для Uzum используем ТОЛЬКО этот метод поиска - без fallback-ов
         if ($barcode && $marketplace === 'uzum') {
             $variant = $this->findVariantByBarcodeInSkuList($account, $barcode);
             if ($variant) {
                 Log::debug('OrderStockService: Found variant via Uzum skuList barcode', [
                     'barcode' => $barcode,
                     'variant_id' => $variant->id,
+                    'variant_sku' => $variant->sku,
                 ]);
                 return $variant;
             }
+            // Для Uzum НЕ используем fallback - если не нашли через skuList, значит товар не привязан
+            Log::info('OrderStockService: Uzum variant not found via barcode lookup, skipping fallbacks', [
+                'barcode' => $barcode,
+                'account_id' => $account->id,
+            ]);
+            return null;
         }
 
         // 5. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
+        // НЕ используется для Uzum (см. выше)
         if ($barcode) {
             $variant = ProductVariant::where('barcode', $barcode)
                 ->where('company_id', $account->company_id)
@@ -666,6 +675,7 @@ class OrderStockService
         }
 
         // 6. Fallback: ищем по артикулу/sku
+        // НЕ используется для Uzum (см. выше)
         if ($offerId) {
             $variant = ProductVariant::where('sku', $offerId)
                 ->where('company_id', $account->company_id)
@@ -752,25 +762,19 @@ class OrderStockService
                 'sku_id' => $matchedSkuId,
                 'link_id' => $link->id,
                 'variant_id' => $link->variant->id,
+                'variant_sku' => $link->variant->sku,
             ]);
             return $link->variant;
         }
 
-        // Fallback: если связь не найдена по skuId, может быть только одна связь для продукта
-        $link = VariantMarketplaceLink::query()
-            ->where('marketplace_account_id', $account->id)
-            ->where('marketplace_product_id', $marketplaceProduct->id)
-            ->where('is_active', true)
-            ->first();
-
-        if ($link && $link->variant) {
-            Log::info('OrderStockService: Found variant via product link (fallback)', [
-                'barcode' => $barcode,
-                'link_id' => $link->id,
-                'variant_id' => $link->variant->id,
-            ]);
-            return $link->variant;
-        }
+        // НЕ используем fallback - только точное совпадение по skuId
+        // Если связь не найдена, значит товар не привязан к нашей системе
+        Log::warning('OrderStockService: No VariantMarketplaceLink found for skuId', [
+            'barcode' => $barcode,
+            'sku_id' => $matchedSkuId,
+            'product_id' => $marketplaceProduct->id,
+            'account_id' => $account->id,
+        ]);
 
         return null;
     }
