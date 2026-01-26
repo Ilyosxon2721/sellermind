@@ -153,11 +153,12 @@ class VariantMarketplaceLink extends Model
             ->sum('qty_delta');
         
         // Subtract reservations from selected warehouses
+        // Status ACTIVE = active reservation (pending/confirmed are legacy)
         $reservedQty = \DB::table('stock_reservations')
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId)
             ->whereIn('warehouse_id', $sourceWarehouseIds)
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['ACTIVE', 'pending', 'confirmed'])
             ->sum('qty');
         
         $availableStock = max(0, $totalStock - $reservedQty);
@@ -183,10 +184,11 @@ class VariantMarketplaceLink extends Model
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId);
 
+        // Status ACTIVE = active reservation (pending/confirmed are legacy)
         $reserveQuery = \DB::table('stock_reservations')
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId)
-            ->whereIn('status', ['pending', 'confirmed']);
+            ->whereIn('status', ['ACTIVE', 'pending', 'confirmed']);
 
         // Если указан конкретный склад
         if ($warehouseId) {
