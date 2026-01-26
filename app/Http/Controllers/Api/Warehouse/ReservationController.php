@@ -66,6 +66,7 @@ class ReservationController extends Controller
             }
 
             // Add order info for marketplace orders
+            $data['order_number'] = null;
             $data['order_date'] = null;
             $data['order_status'] = null;
             $data['order_status_normalized'] = null;
@@ -74,6 +75,7 @@ class ReservationController extends Controller
             if ($reservation->source_type === 'marketplace_order' && $reservation->source_id) {
                 $order = $this->getMarketplaceOrder($reservation->reason, $reservation->source_id);
                 if ($order) {
+                    $data['order_number'] = $order->external_order_id ?? $order->order_id ?? null;
                     $data['order_date'] = $order->ordered_at ?? $order->created_at;
                     $data['order_status'] = $order->uzum_status ?? $order->wb_status ?? $order->ozon_status ?? $order->status ?? null;
                     $data['order_status_normalized'] = $order->status_normalized ?? $order->status ?? null;

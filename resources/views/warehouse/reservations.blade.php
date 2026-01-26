@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-purple-50" x-data="reservationsPage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-purple-50" x-data="reservationsPage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -111,15 +118,16 @@
                             <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
                             <th class="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Кол-во</th>
                             <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус резерва</th>
-                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата заказа</th>
-                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус заказа</th>
                             <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">№ заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата/время заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Статус заказа</th>
                             <th class="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Действия</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="9" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -127,7 +135,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="8" class="px-6 py-12 text-center">
+                            <tr><td colspan="9" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 </div>
@@ -165,7 +173,16 @@
                                           }"
                                           x-text="translateStatus(res.status)"></span>
                                 </td>
-                                <td class="px-4 py-4 text-sm text-gray-700" x-text="formatDate(res.order_date)"></td>
+                                <td class="px-4 py-4">
+                                    <template x-if="res.marketplace">
+                                        <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 uppercase" x-text="res.marketplace"></span>
+                                    </template>
+                                    <template x-if="!res.marketplace">
+                                        <span class="text-sm text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-4 py-4 text-sm text-gray-700 font-mono" x-text="res.order_number || '—'"></td>
+                                <td class="px-4 py-4 text-sm text-gray-700" x-text="formatDateTime(res.order_date)"></td>
                                 <td class="px-4 py-4">
                                     <template x-if="res.order_status_normalized">
                                         <span class="px-3 py-1 rounded-full text-xs font-medium"
@@ -173,14 +190,6 @@
                                               x-text="translateOrderStatus(res.order_status_normalized)"></span>
                                     </template>
                                     <template x-if="!res.order_status_normalized">
-                                        <span class="text-sm text-gray-400">—</span>
-                                    </template>
-                                </td>
-                                <td class="px-4 py-4">
-                                    <template x-if="res.marketplace">
-                                        <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 uppercase" x-text="res.marketplace"></span>
-                                    </template>
-                                    <template x-if="!res.marketplace">
                                         <span class="text-sm text-gray-400">—</span>
                                     </template>
                                 </td>
@@ -315,6 +324,13 @@
                 if (!dateStr) return '—';
                 const date = new Date(dateStr);
                 return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            },
+
+            formatDateTime(dateStr) {
+                if (!dateStr) return '—';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+                       date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
             },
 
             showToast(message, type = 'success') {
@@ -494,13 +510,18 @@
                             <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 uppercase" x-text="item.marketplace"></span>
                         </template>
                     </div>
-                    <template x-if="item.order_date || item.order_status_normalized">
-                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                            <span class="native-caption" x-text="'Заказ: ' + formatDate(item.order_date)"></span>
-                            <template x-if="item.order_status_normalized">
-                                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
-                                      :class="getOrderStatusClass(item.order_status_normalized)"
-                                      x-text="translateOrderStatus(item.order_status_normalized)"></span>
+                    <template x-if="item.order_number || item.order_date || item.order_status_normalized">
+                        <div class="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="native-caption" x-text="item.order_number ? '№ ' + item.order_number : ''"></span>
+                                <template x-if="item.order_status_normalized">
+                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                          :class="getOrderStatusClass(item.order_status_normalized)"
+                                          x-text="translateOrderStatus(item.order_status_normalized)"></span>
+                                </template>
+                            </div>
+                            <template x-if="item.order_date">
+                                <div class="native-caption text-gray-500" x-text="formatDateTime(item.order_date)"></div>
                             </template>
                         </div>
                     </template>
