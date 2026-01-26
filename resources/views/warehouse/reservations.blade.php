@@ -7,7 +7,7 @@
          'flex-row': $store.ui.navPosition === 'left',
          'flex-row-reverse': $store.ui.navPosition === 'right'
      }">
-    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+    <template x-if="!$store.ui.navPosition || $store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
         <x-sidebar />
     </template>
 
