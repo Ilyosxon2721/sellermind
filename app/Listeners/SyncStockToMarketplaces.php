@@ -16,12 +16,14 @@ class SyncStockToMarketplaces implements ShouldQueue
     // Previously was 'marketplace-sync' which wasn't being processed
     public $queue = 'default';
 
-    public function __construct(
-        protected StockSyncService $stockSyncService
-    ) {}
-
+    /**
+     * Handle the stock updated event.
+     * Note: Dependencies must be resolved in handle() for queued listeners,
+     * not in constructor (constructor injection doesn't work with serialized queue jobs)
+     */
     public function handle(StockUpdated $event): void
     {
+        $stockSyncService = app(StockSyncService::class);
         Log::info('SyncStockToMarketplaces::handle() STARTED - Stock updated, checking marketplace accounts for sync', [
             'variant_id' => $event->variant->id,
             'sku' => $event->variant->sku,
@@ -97,7 +99,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                         'stock' => $event->newStock,
                     ]);
 
-                    $result = $this->stockSyncService->syncLinkStock($link);
+                    $result = $stockSyncService->syncLinkStock($link);
                     $syncedAccounts[] = [
                         'account_id' => $account->id,
                         'marketplace' => $account->marketplace,
