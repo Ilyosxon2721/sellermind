@@ -103,17 +103,26 @@ class UzumSyncStocks extends Command
         $synced = 0;
         $errors = 0;
 
-        try {
-            // Отправить остатки в Uzum (используем метод syncStocks из UzumClient)
-            $client->syncStocks($account, $stocksData);
-            $synced = count($stocksData);
-        } catch (\Exception $e) {
-            $errors++;
-            Log::error('Failed to sync Uzum stocks', [
-                'account_id' => $account->id,
-                'error' => $e->getMessage(),
-            ]);
-            $this->error("  Ошибка синхронизации: " . $e->getMessage());
+        // Синхронизируем каждый SKU отдельно через updateStock
+        foreach ($stocksData as $stockItem) {
+            try {
+                $client->updateStock(
+                    $account,
+                    (string) $stockItem['productId'],
+                    (string) $stockItem['skuId'],
+                    (int) $stockItem['stock']
+                );
+                $synced++;
+            } catch (\Exception $e) {
+                $errors++;
+                Log::error('Failed to sync Uzum stock for SKU', [
+                    'account_id' => $account->id,
+                    'product_id' => $stockItem['productId'],
+                    'sku_id' => $stockItem['skuId'],
+                    'error' => $e->getMessage(),
+                ]);
+                $this->error("  Ошибка для SKU {$stockItem['skuId']}: " . $e->getMessage());
+            }
         }
 
         $duration = round(microtime(true) - $startTime, 2);
