@@ -1,0 +1,378 @@
+<?php $__env->startSection('content'); ?>
+
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentPage(<?php echo e($documentId); ?>)">
+    <?php if (isset($component)) { $__componentOriginal2880b66d47486b4bfeaf519598a469d6 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal2880b66d47486b4bfeaf519598a469d6 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.sidebar','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('sidebar'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal2880b66d47486b4bfeaf519598a469d6)): ?>
+<?php $attributes = $__attributesOriginal2880b66d47486b4bfeaf519598a469d6; ?>
+<?php unset($__attributesOriginal2880b66d47486b4bfeaf519598a469d6); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal2880b66d47486b4bfeaf519598a469d6)): ?>
+<?php $component = $__componentOriginal2880b66d47486b4bfeaf519598a469d6; ?>
+<?php unset($__componentOriginal2880b66d47486b4bfeaf519598a469d6); ?>
+<?php endif; ?>
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center space-x-3">
+                        <a href="/warehouse/documents" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </a>
+                        <h1 class="text-2xl font-bold text-gray-900">Документ <span class="bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent" x-text="doc?.doc_no || '#<?php echo e($documentId); ?>'"></span></h1>
+                    </div>
+                    <p class="text-sm text-gray-500">Детали документа и проводки</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors flex items-center space-x-2" @click="load()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Обновить</span>
+                    </button>
+                    <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center space-x-2" 
+                            @click="postDoc()" 
+                            x-show="doc && doc.status === 'DRAFT'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Провести</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <template x-if="loading">
+                <div class="flex items-center justify-center py-12">
+                    <svg class="animate-spin w-8 h-8 text-slate-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                </div>
+            </template>
+
+            <template x-if="error">
+                <div class="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600" x-text="error"></div>
+            </template>
+
+            <!-- Document Info -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-show="doc">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Информация о документе</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Номер</div>
+                        <div class="text-lg font-semibold text-gray-900" x-text="doc?.doc_no"></div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Тип</div>
+                        <span class="px-3 py-1 rounded-lg text-sm font-medium inline-block" 
+                              :class="{
+                                  'bg-blue-100 text-blue-700': doc?.type === 'IN',
+                                  'bg-red-100 text-red-700': doc?.type === 'OUT',
+                                  'bg-amber-100 text-amber-700': doc?.type === 'MOVE',
+                                  'bg-gray-100 text-gray-700': doc?.type === 'WRITE_OFF',
+                                  'bg-purple-100 text-purple-700': doc?.type === 'INVENTORY'
+                              }" 
+                              x-text="doc?.type"></span>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Статус</div>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium inline-block" 
+                              :class="doc?.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'" 
+                              x-text="doc?.status === 'POSTED' ? 'Проведён' : 'Черновик'"></span>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Склад</div>
+                        <div class="text-lg font-semibold text-gray-900" x-text="doc?.warehouse?.name || doc?.warehouse_id"></div>
+                    </div>
+                    <div class="col-span-2 md:col-span-4" x-show="doc?.comment">
+                        <div class="text-sm text-gray-500 mb-1">Комментарий</div>
+                        <div class="text-gray-700" x-text="doc?.comment"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lines -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" x-show="lines.length">
+                <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Строки документа</h2>
+                    <span class="text-sm text-gray-500" x-text="`${lines.length} позиций`"></span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Кол-во</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Цена</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                        <template x-for="line in lines" :key="line.id">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="line.sku?.sku_code || line.sku_id"></td>
+                                <td class="px-6 py-4 text-sm text-right" x-text="line.qty"></td>
+                                <td class="px-6 py-4 text-sm text-right text-gray-600" x-text="line.unit_cost ?? '—'"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium" x-text="line.total_cost ?? '—'"></td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ledger -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" x-show="ledger.length">
+                <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Проводки</h2>
+                    <span class="text-sm text-gray-500" x-text="`${ledger.length} записей`"></span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Δ Кол-во</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Склад</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                        <template x-for="row in ledger" :key="row.id">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(row.occurred_at)"></td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></td>
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
+                            </tr>
+                        </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
+        <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function documentPage(id) {
+        return {
+            doc: null,
+            lines: [],
+            ledger: [],
+            error: '',
+            loading: true,
+            toast: { show: false, message: '', type: 'success' },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 4000);
+            },
+
+            getAuthHeaders() {
+                const token = localStorage.getItem('_x_auth_token');
+                const parsed = token ? JSON.parse(token) : null;
+                return {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': parsed ? `Bearer ${parsed}` : ''
+                };
+            },
+
+            formatDate(val) {
+                if (!val) return '—';
+                return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            },
+
+            async load() {
+                this.error = '';
+                this.loading = true;
+                try {
+                    const resp = await fetch(`/api/marketplace/inventory/documents/${id}`, {headers: this.getAuthHeaders()});
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
+                    this.doc = json.data.document;
+                    this.lines = json.data.lines || [];
+                    this.ledger = json.data.ledger || [];
+                } catch (e) {
+                    console.error(e);
+                    this.error = e.message || 'Ошибка';
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async postDoc() {
+                try {
+                    const resp = await fetch(`/api/marketplace/inventory/documents/${id}/post`, {
+                        method: 'POST',
+                        headers: this.getAuthHeaders()
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка проведения');
+                    this.showToast('Документ проведён', 'success');
+                    this.load();
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка', 'error');
+                }
+            },
+
+            init() {
+                this.load();
+            }
+        }
+    }
+</script>
+
+
+<div class="pwa-only min-h-screen" x-data="documentPage(<?php echo e($documentId); ?>)" style="background: #f2f2f7;">
+    <?php if (isset($component)) { $__componentOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.pwa-header','data' => ['title' => 'Документ','backUrl' => '/warehouse/documents']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('pwa-header'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Документ','backUrl' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('/warehouse/documents')]); ?>
+        <button @click="load()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
+        <button x-show="doc && doc.status === 'DRAFT'" @click="postDoc()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
+            Провести
+        </button>
+     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80)): ?>
+<?php $attributes = $__attributesOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80; ?>
+<?php unset($__attributesOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80)): ?>
+<?php $component = $__componentOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80; ?>
+<?php unset($__componentOriginal84f30a98935d3ac0aa5cf2b5bdbd7c80); ?>
+<?php endif; ?>
+
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="load">
+
+        
+        <div x-show="loading" class="px-4 py-8">
+            <?php if (isset($component)) { $__componentOriginalfd3a6f8f1730f577643b0c9e9ee5a212 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalfd3a6f8f1730f577643b0c9e9ee5a212 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.skeleton-card','data' => ['rows' => 4]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('skeleton-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['rows' => 4]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalfd3a6f8f1730f577643b0c9e9ee5a212)): ?>
+<?php $attributes = $__attributesOriginalfd3a6f8f1730f577643b0c9e9ee5a212; ?>
+<?php unset($__attributesOriginalfd3a6f8f1730f577643b0c9e9ee5a212); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalfd3a6f8f1730f577643b0c9e9ee5a212)): ?>
+<?php $component = $__componentOriginalfd3a6f8f1730f577643b0c9e9ee5a212; ?>
+<?php unset($__componentOriginalfd3a6f8f1730f577643b0c9e9ee5a212); ?>
+<?php endif; ?>
+        </div>
+
+        
+        <div x-show="error" class="px-4 py-4">
+            <div class="native-card bg-red-50 border border-red-200 text-red-600 text-center" x-text="error"></div>
+        </div>
+
+        <div x-show="!loading && doc" class="px-4 py-4 space-y-4">
+            
+            <div class="native-card">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <p class="native-caption">Номер документа</p>
+                        <p class="native-body font-bold text-lg" x-text="doc?.doc_no"></p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-medium"
+                          :class="doc?.status === 'POSTED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                          x-text="doc?.status === 'POSTED' ? 'Проведён' : 'Черновик'"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="native-caption">Тип</p>
+                        <span class="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700" x-text="doc?.type"></span>
+                    </div>
+                    <div>
+                        <p class="native-caption">Склад</p>
+                        <p class="native-body" x-text="doc?.warehouse?.name || doc?.warehouse_id"></p>
+                    </div>
+                </div>
+                <div x-show="doc?.comment" class="mt-3">
+                    <p class="native-caption">Комментарий</p>
+                    <p class="native-body" x-text="doc?.comment"></p>
+                </div>
+            </div>
+
+            
+            <div x-show="lines.length" class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Строки документа</p>
+                    <span class="native-caption" x-text="`${lines.length} позиций`"></span>
+                </div>
+                <div class="space-y-2">
+                    <template x-for="line in lines" :key="line.id">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <p class="native-body font-semibold" x-text="line.sku?.sku_code || line.sku_id"></p>
+                                <p class="native-body" x-text="line.qty"></p>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <p class="native-caption" x-text="line.unit_cost ? `Цена: ${line.unit_cost}` : ''"></p>
+                                <p class="native-caption font-medium" x-text="line.total_cost ? `Сумма: ${line.total_cost}` : ''"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            
+            <div x-show="ledger.length" class="native-card">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="native-body font-semibold">Проводки</p>
+                    <span class="native-caption" x-text="`${ledger.length} записей`"></span>
+                </div>
+                <div class="space-y-2">
+                    <template x-for="row in ledger" :key="row.id">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <p class="native-body font-semibold" x-text="row.sku?.sku_code || row.sku_id"></p>
+                                <p class="native-body font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></p>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <p class="native-caption" x-text="formatDate(row.occurred_at)"></p>
+                                <p class="native-caption" x-text="row.warehouse?.name || ''"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH D:\server\OSPanel\home\sellermind\resources\views\warehouse\document-show.blade.php ENDPATH**/ ?>

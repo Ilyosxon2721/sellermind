@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- WB Products - Browser Version --}}
-<div x-data="wbProductsPage()" class="flex h-screen bg-gray-50 browser-only">
-    <x-sidebar />
+<div x-data="wbProductsPage()" class="flex h-screen bg-gray-50 browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         {{-- Header with WB branding --}}
         <header class="wb-header">
             <div class="flex items-center justify-between max-w-full">

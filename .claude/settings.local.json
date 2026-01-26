@@ -56,7 +56,16 @@
       "Bash(node:*)",
       "Bash(xargs:*)",
       "Bash(ssh-add:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)",
+      "Bash(if [ -f storage/logs/marketplace-sync.log ])",
+      "Bash(then tail -50 storage/logs/marketplace-sync.log)",
+      "Bash(else echo \"Log file not found\")",
+      "Bash(fi)",
+      "Bash(dir:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(del check_order_items.php)"
     ]
   }
 }

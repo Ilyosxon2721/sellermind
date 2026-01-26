@@ -238,6 +238,155 @@
     </div>
 </div>
 
+<!-- Navigation Tab -->
+<div x-show="activeTab === 'navigation'" x-data="navigationSettings()">
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('app.settings.navigation.title') }}</h2>
+    <p class="text-sm text-gray-500 mb-6">{{ __('app.settings.navigation.description') }}</p>
+
+    <div class="space-y-6">
+        <!-- Position Selector -->
+        <div>
+            <label class="block text-sm font-medium text-gray-900 mb-3">
+                {{ __('app.settings.navigation.position') }}
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <!-- Left Position -->
+                <button @click="setPosition('left')"
+                        :class="position === 'left'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                        class="px-4 py-3 border rounded-lg font-medium text-sm flex flex-col items-center gap-2 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="6" height="18" rx="1" stroke-width="2"/>
+                        <rect x="10" y="3" width="12" height="18" rx="1" stroke-width="2" stroke-dasharray="4 2"/>
+                    </svg>
+                    <span>{{ __('app.settings.navigation.position_left') }}</span>
+                    <svg x-show="position === 'left'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <!-- Top Position -->
+                <button @click="setPosition('top')"
+                        :class="position === 'top'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                        class="px-4 py-3 border rounded-lg font-medium text-sm flex flex-col items-center gap-2 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="4" rx="1" stroke-width="2"/>
+                        <rect x="2" y="9" width="20" height="12" rx="1" stroke-width="2" stroke-dasharray="4 2"/>
+                    </svg>
+                    <span>{{ __('app.settings.navigation.position_top') }}</span>
+                    <svg x-show="position === 'top'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <!-- Bottom Position -->
+                <button @click="setPosition('bottom')"
+                        :class="position === 'bottom'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                        class="px-4 py-3 border rounded-lg font-medium text-sm flex flex-col items-center gap-2 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="14" rx="1" stroke-width="2" stroke-dasharray="4 2"/>
+                        <rect x="2" y="19" width="20" height="4" rx="1" stroke-width="2"/>
+                    </svg>
+                    <span>{{ __('app.settings.navigation.position_bottom') }}</span>
+                    <svg x-show="position === 'bottom'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <!-- Right Position -->
+                <button @click="setPosition('right')"
+                        :class="position === 'right'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                        class="px-4 py-3 border rounded-lg font-medium text-sm flex flex-col items-center gap-2 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="12" height="18" rx="1" stroke-width="2" stroke-dasharray="4 2"/>
+                        <rect x="16" y="3" width="6" height="18" rx="1" stroke-width="2"/>
+                    </svg>
+                    <span>{{ __('app.settings.navigation.position_right') }}</span>
+                    <svg x-show="position === 'right'" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapse Toggle (only for left/right sidebar) -->
+        <div x-show="position === 'left' || position === 'right'" x-transition class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+                <h3 class="text-sm font-medium text-gray-900">{{ __('app.settings.navigation.collapse') }}</h3>
+                <p class="text-sm text-gray-500">{{ __('app.settings.navigation.collapse_description') }}</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" x-model="collapsed" @change="toggleCollapse()" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+        </div>
+
+        <!-- Preview -->
+        <div class="bg-gray-100 rounded-lg p-4">
+            <p class="text-xs text-gray-500 mb-3 text-center">Preview</p>
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden h-32 flex"
+                 :class="{
+                     'flex-row': position === 'left',
+                     'flex-row-reverse': position === 'right',
+                     'flex-col': position === 'top' || position === 'bottom'
+                 }">
+                <!-- Top Nav Preview -->
+                <template x-if="position === 'top'">
+                    <div class="bg-gray-800 h-8 flex items-center justify-around px-2">
+                        <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                    </div>
+                </template>
+                <!-- Sidebar Preview (left/right) -->
+                <template x-if="position === 'left' || position === 'right'">
+                    <div class="bg-gray-800 flex flex-col items-center py-2 transition-all duration-300"
+                         :class="collapsed ? 'w-8' : 'w-16'">
+                        <div class="w-4 h-4 bg-indigo-500 rounded mb-2"></div>
+                        <div class="space-y-2">
+                            <div class="w-3 h-3 bg-gray-600 rounded"></div>
+                            <div class="w-3 h-3 bg-gray-600 rounded"></div>
+                            <div class="w-3 h-3 bg-gray-600 rounded"></div>
+                        </div>
+                    </div>
+                </template>
+                <!-- Content Preview -->
+                <div class="flex-1 p-2">
+                    <div class="h-2 w-1/2 bg-gray-200 rounded mb-2"></div>
+                    <div class="h-2 w-3/4 bg-gray-100 rounded mb-1"></div>
+                    <div class="h-2 w-2/3 bg-gray-100 rounded"></div>
+                </div>
+                <!-- Bottom Nav Preview -->
+                <template x-if="position === 'bottom'">
+                    <div class="bg-gray-800 h-8 flex items-center justify-around px-2">
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-indigo-500 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                        <div class="w-4 h-4 bg-gray-600 rounded"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Save Status -->
+        <div x-show="saveStatus" x-transition class="mt-4">
+            <p :class="saveStatus === 'success' ? 'text-green-600' : 'text-red-600'" class="text-sm">
+                <span x-text="saveStatus === 'success' ? '{{ __('app.messages.settings_saved') }}' : '{{ __('app.messages.save_error') }}'"></span>
+            </p>
+        </div>
+    </div>
+</div>
+
 <script>
 function currencySettings() {
     return {
@@ -429,6 +578,36 @@ function syncSettings() {
                 this.saveStatus = 'error';
             }
             this.loading = false;
+        }
+    };
+}
+
+function navigationSettings() {
+    return {
+        position: 'left',
+        collapsed: false,
+        saveStatus: null,
+
+        init() {
+            // Sync with Alpine UI store
+            this.position = Alpine.store('ui').navPosition;
+            this.collapsed = Alpine.store('ui').sidebarCollapsed;
+        },
+
+        setPosition(pos) {
+            this.position = pos;
+            Alpine.store('ui').setNavPosition(pos);
+            this.showSaveStatus();
+        },
+
+        toggleCollapse() {
+            Alpine.store('ui').sidebarCollapsed = this.collapsed;
+            this.showSaveStatus();
+        },
+
+        showSaveStatus() {
+            this.saveStatus = 'success';
+            setTimeout(() => this.saveStatus = null, 2000);
         }
     };
 }

@@ -112,6 +112,19 @@ class OrderStockService
             return $this->convertReserveToSold($order);
         }
 
+        // 2.5. Historical order already sold but never processed - just mark as sold
+        // This handles orders that were delivered before stock tracking was enabled
+        if ($isSoldStatus && $currentStockStatus === 'none') {
+            $order->update([
+                'stock_status' => 'sold',
+                'stock_sold_at' => now(),
+            ]);
+            Log::info('OrderStockService: Historical order marked as sold (no stock changes)', [
+                'order_id' => $order->id,
+            ]);
+            return ['success' => true, 'action' => 'sold_historical', 'message' => 'Historical order marked as sold'];
+        }
+
         // 3. Отмена заказа
         if ($isCancelledStatus) {
             // Если был резерв или статус не установлен - отменяем резерв
@@ -624,6 +637,19 @@ class OrderStockService
             }
         }
 
+        // 4.5. Для Uzum: поиск по barcode через skuList в raw_payload продуктов
+        // Uzum API не возвращает skuId в FBS заказах, но возвращает barcode
+        if ($barcode && $marketplace === 'uzum') {
+            $variant = $this->findVariantByBarcodeInSkuList($account, $barcode);
+            if ($variant) {
+                Log::debug('OrderStockService: Found variant via Uzum skuList barcode', [
+                    'barcode' => $barcode,
+                    'variant_id' => $variant->id,
+                ]);
+                return $variant;
+            }
+        }
+
         // 5. Fallback: ищем по barcode в ProductVariant (если баркод совпадает с внутренним)
         if ($barcode) {
             $variant = ProductVariant::where('barcode', $barcode)
@@ -660,6 +686,91 @@ class OrderStockService
             'offer_id' => $offerId,
             'barcode' => $barcode,
         ]);
+
+        return null;
+    }
+
+    /**
+     * Найти вариант по barcode через skuList в MarketplaceProduct.raw_payload
+     * Критично для Uzum, где API не возвращает skuId в FBS заказах
+     */
+    protected function findVariantByBarcodeInSkuList(
+        MarketplaceAccount $account,
+        string $barcode
+    ): ?ProductVariant {
+        // Ищем MarketplaceProduct где в skuList есть этот barcode
+        $marketplaceProduct = \App\Models\MarketplaceProduct::query()
+            ->where('marketplace_account_id', $account->id)
+            ->whereNotNull('raw_payload')
+            ->get()
+            ->first(function ($product) use ($barcode) {
+                $skuList = $product->raw_payload['skuList'] ?? [];
+                foreach ($skuList as $sku) {
+                    if (isset($sku['barcode']) && (string) $sku['barcode'] === (string) $barcode) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+        if (!$marketplaceProduct) {
+            Log::debug('OrderStockService: No MarketplaceProduct found with barcode in skuList', [
+                'barcode' => $barcode,
+                'account_id' => $account->id,
+            ]);
+            return null;
+        }
+
+        // Найти skuId для этого barcode
+        $skuList = $marketplaceProduct->raw_payload['skuList'] ?? [];
+        $matchedSkuId = null;
+        foreach ($skuList as $sku) {
+            if (isset($sku['barcode']) && (string) $sku['barcode'] === (string) $barcode) {
+                $matchedSkuId = $sku['skuId'] ?? null;
+                break;
+            }
+        }
+
+        if (!$matchedSkuId) {
+            Log::warning('OrderStockService: Found barcode but no skuId in skuList', [
+                'barcode' => $barcode,
+                'product_id' => $marketplaceProduct->id,
+            ]);
+            return null;
+        }
+
+        // Теперь ищем VariantMarketplaceLink по этому skuId
+        $link = VariantMarketplaceLink::query()
+            ->where('marketplace_account_id', $account->id)
+            ->where('external_sku_id', (string) $matchedSkuId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($link && $link->variant) {
+            Log::info('OrderStockService: Found variant via barcode->skuId lookup', [
+                'barcode' => $barcode,
+                'sku_id' => $matchedSkuId,
+                'link_id' => $link->id,
+                'variant_id' => $link->variant->id,
+            ]);
+            return $link->variant;
+        }
+
+        // Fallback: если связь не найдена по skuId, может быть только одна связь для продукта
+        $link = VariantMarketplaceLink::query()
+            ->where('marketplace_account_id', $account->id)
+            ->where('marketplace_product_id', $marketplaceProduct->id)
+            ->where('is_active', true)
+            ->first();
+
+        if ($link && $link->variant) {
+            Log::info('OrderStockService: Found variant via product link (fallback)', [
+                'barcode' => $barcode,
+                'link_id' => $link->id,
+                'variant_id' => $link->variant->id,
+            ]);
+            return $link->variant;
+        }
 
         return null;
     }
@@ -1037,9 +1148,13 @@ class OrderStockService
         if (method_exists($order, 'items')) {
             $items = $order->items;
             if ($items && $items->isNotEmpty()) {
-                return $items->map(function ($item) {
+                return $items->map(function ($item) use ($marketplace) {
+                    // For Uzum, use sku_id accessor which gets skuId from raw_payload
+                    // This is critical for matching correct variant by size/color
+                    $skuId = $item->sku_id ?? $item->external_offer_id ?? null;
+
                     return [
-                        'sku_id' => $item->external_offer_id ?? null,
+                        'sku_id' => $skuId,
                         'barcode' => $item->raw_payload['barcode'] ?? null,
                         'quantity' => $item->quantity ?? 1,
                         'name' => $item->name ?? null,

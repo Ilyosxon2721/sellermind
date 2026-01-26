@@ -31,7 +31,7 @@ function safePersist(defaultValue, key) {
 
 // Clean up any corrupted localStorage on load
 try {
-    const keysToCheck = ['auth_user', 'auth_token', 'current_company'];
+    const keysToCheck = ['auth_user', 'auth_token', 'current_company', 'nav_position', 'sidebar_collapsed'];
     keysToCheck.forEach(key => {
         const prefixedKey = '_x_' + key;
         const value = localStorage.getItem(prefixedKey);
@@ -339,6 +339,8 @@ Alpine.store('pwa', {
 // UI Store - For managing UI state
 Alpine.store('ui', {
     sidebarOpen: false,
+    navPosition: safePersist('left', 'nav_position'), // 'left', 'right', 'bottom'
+    sidebarCollapsed: safePersist(false, 'sidebar_collapsed'),
 
     toggleSidebar() {
         this.sidebarOpen = !this.sidebarOpen;
@@ -352,6 +354,16 @@ Alpine.store('ui', {
     openSidebar() {
         this.sidebarOpen = true;
         if (window.haptic) window.haptic.light();
+    },
+
+    toggleSidebarCollapse() {
+        this.sidebarCollapsed = !this.sidebarCollapsed;
+        if (window.haptic) window.haptic.light();
+    },
+
+    setNavPosition(position) {
+        this.navPosition = position;
+        if (window.haptic) window.haptic.selection();
     }
 });
 

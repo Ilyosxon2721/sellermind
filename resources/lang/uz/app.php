@@ -12,6 +12,7 @@ return [
             'sync' => 'Sinxronizatsiya',
             'currency' => 'Valyutalar',
             'language' => 'Til',
+            'navigation' => 'Navigatsiya',
         ],
         'profile' => [
             'title' => 'Profil ma\'lumotlari',
@@ -56,6 +57,18 @@ return [
             'auto_sync_on_link_description' => 'Mahsulotni bog\'lagandan so\'ng qoldiqlarni darhol sinxronlash',
             'auto_sync_on_change' => 'O\'zgartirishda avtosinxronizatsiya',
             'auto_sync_on_change_description' => 'Omborda o\'zgarish bo\'lganda qoldiqlarni sinxronlash',
+        ],
+        'navigation' => [
+            'title' => 'Navigatsiya',
+            'description' => 'Navigatsiya panelining joylashuvi va ko\'rinishini sozlash',
+            'position' => 'Joylashuv',
+            'position_left' => 'Chapda',
+            'position_right' => 'O\'ngda',
+            'position_top' => 'Tepada',
+            'position_bottom' => 'Pastda',
+            'collapse' => 'Yon panelni yig\'ish',
+            'collapse_description' => 'Faqat ikonkalarni ko\'rsatish',
+            'more' => 'Yana',
         ],
         'telegram' => [
             'connect' => 'Ulash',

@@ -34,8 +34,14 @@
 @endif
 
 {{-- BROWSER MODE - Regular Web Layout --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
     <x-mobile-header />
     <x-pwa-top-navbar title="Товары" subtitle="Список товаров компании">
         <x-slot name="actions">
@@ -48,7 +54,8 @@
         </x-slot>
     </x-pwa-top-navbar>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="hidden lg:block bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>

@@ -12,6 +12,7 @@ return [
             'sync' => 'Synchronization',
             'currency' => 'Currency',
             'language' => 'Language',
+            'navigation' => 'Navigation',
         ],
         'profile' => [
             'title' => 'Profile Information',
@@ -56,6 +57,18 @@ return [
             'auto_sync_on_link_description' => 'Sync stock immediately after linking a product',
             'auto_sync_on_change' => 'Auto-sync on Change',
             'auto_sync_on_change_description' => 'Sync stock when warehouse quantities change',
+        ],
+        'navigation' => [
+            'title' => 'Navigation',
+            'description' => 'Customize navigation bar position and appearance',
+            'position' => 'Position',
+            'position_left' => 'Left',
+            'position_right' => 'Right',
+            'position_top' => 'Top',
+            'position_bottom' => 'Bottom',
+            'collapse' => 'Collapse sidebar',
+            'collapse_description' => 'Show only icons in sidebar',
+            'more' => 'More',
         ],
         'telegram' => [
             'connect' => 'Connect',

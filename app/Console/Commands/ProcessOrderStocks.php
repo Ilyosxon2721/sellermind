@@ -125,8 +125,15 @@ class ProcessOrderStocks extends Command
         if ($status) {
             $query->where('status', $status);
         } else {
-            // By default, only process orders with reserve statuses
-            $query->whereIn('status', ['new', 'in_assembly', 'CREATED', 'PACKING']);
+            // Process orders with reserve OR sold statuses (to handle historical orders)
+            $query->whereIn('status', [
+                // Reserve statuses
+                'new', 'in_assembly', 'CREATED', 'PACKING',
+                // Sold statuses (for historical orders that were never processed)
+                'in_supply', 'accepted_uzum', 'waiting_pickup', 'issued',
+                'PENDING_DELIVERY', 'DELIVERING', 'ACCEPTED_AT_DP',
+                'DELIVERED_TO_CUSTOMER_DELIVERY_POINT', 'DELIVERED', 'COMPLETED',
+            ]);
         }
 
         if (!$force) {

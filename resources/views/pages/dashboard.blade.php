@@ -4,8 +4,14 @@
 <div x-data="dashboardPage()" x-init="init()">
 
     {{-- BROWSER MODE - Regular Web Layout --}}
-    <div class="browser-only flex h-screen bg-gray-50">
-        <x-sidebar></x-sidebar>
+    <div class="browser-only flex h-screen bg-gray-50"
+         :class="{
+             'flex-row': $store.ui.navPosition === 'left',
+             'flex-row-reverse': $store.ui.navPosition === 'right'
+         }">
+        <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+            <x-sidebar></x-sidebar>
+        </template>
         <x-mobile-header />
         <x-pwa-top-navbar :title="__('dashboard.title')">
             <x-slot name="subtitle">
@@ -14,7 +20,8 @@
         </x-pwa-top-navbar>
 
         <!-- Main Content (Browser) -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden"
+             :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
             <!-- Header (hidden on mobile, shown on desktop) -->
             <header class="hidden lg:block bg-white border-b border-gray-200 px-6 py-4">
                 <div class="flex items-center justify-between">
@@ -39,7 +46,9 @@
             </header>
 
             <!-- Dashboard Content (Browser) -->
-            <main class="flex-1 overflow-y-auto p-6" x-pull-to-refresh="loadData">
+            <main class="flex-1 overflow-y-auto p-6"
+                  :class="{ 'pb-20': $store.ui.navPosition === 'bottom' }"
+                  x-pull-to-refresh="loadData">
 
                 {{-- Loading State --}}
                 <div x-show="loading" class="space-y-6">

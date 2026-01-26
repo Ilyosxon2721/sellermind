@@ -1,11 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="ymOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only">
-    
-    <x-sidebar />
-    
-    <div class="flex-1 flex flex-col overflow-hidden font-['YS_Text',_'Helvetica_Neue',_Arial,_sans-serif]">
+<div x-data="ymOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 flex flex-col overflow-hidden font-['YS_Text',_'Helvetica_Neue',_Arial,_sans-serif]"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- YM Header -->
         <header class="bg-white border-b border-gray-200">
             <div class="px-6 py-4">

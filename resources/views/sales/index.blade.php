@@ -4,8 +4,14 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gray-50" x-data="salesPage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gray-50" x-data="salesPage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
     <x-mobile-header />
     <x-pwa-top-navbar title="Продажи" subtitle="Заказы с маркетплейсов">
         <x-slot name="actions">
@@ -17,7 +23,8 @@
         </x-slot>
     </x-pwa-top-navbar>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="hidden lg:block bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>

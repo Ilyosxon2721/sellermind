@@ -12,6 +12,7 @@ return [
             'sync' => 'Синхронизация',
             'currency' => 'Валюты',
             'language' => 'Язык',
+            'navigation' => 'Навигация',
         ],
         'profile' => [
             'title' => 'Информация о профиле',
@@ -56,6 +57,18 @@ return [
             'auto_sync_on_link_description' => 'Синхронизировать остатки сразу после привязки товара',
             'auto_sync_on_change' => 'Автосинхронизация при изменении',
             'auto_sync_on_change_description' => 'Синхронизировать остатки при изменении на складе',
+        ],
+        'navigation' => [
+            'title' => 'Навигация',
+            'description' => 'Настройте положение и внешний вид панели навигации',
+            'position' => 'Расположение',
+            'position_left' => 'Слева',
+            'position_right' => 'Справа',
+            'position_top' => 'Сверху',
+            'position_bottom' => 'Снизу',
+            'collapse' => 'Свернуть боковую панель',
+            'collapse_description' => 'Показывать только иконки в боковой панели',
+            'more' => 'Ещё',
         ],
         'telegram' => [
             'connect' => 'Подключить',

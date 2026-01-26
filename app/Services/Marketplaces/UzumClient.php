@@ -1183,6 +1183,16 @@ class UzumClient implements MarketplaceClientInterface
             // 'skuId' and 'productId' may not be present in FBS orders
             $externalOfferId = $item['skuId'] ?? $item['productId'] ?? $item['id'] ?? '';
 
+            // Логируем все ключи item для диагностики
+            Log::debug('Uzum mapOrderData: orderItem structure', [
+                'order_id' => $orderData['id'] ?? 'unknown',
+                'item_keys' => array_keys($item),
+                'skuId' => $item['skuId'] ?? null,
+                'productId' => $item['productId'] ?? null,
+                'barcode' => $item['barcode'] ?? null,
+                'id' => $item['id'] ?? null,
+            ]);
+
             $items[] = [
                 'external_offer_id' => (string) $externalOfferId,
                 'barcode' => $item['barcode'] ?? null,  // Critical for linking to internal products

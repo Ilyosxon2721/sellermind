@@ -323,11 +323,17 @@
              return 'MP';
          }
      }"
-     class="flex h-screen bg-gray-100" :class="getBrandClass()"
+     class="flex h-screen bg-gray-100" :class="[getBrandClass(), {
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }]">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Brand Header -->
         <header class="brand-header shadow-lg">
             <div class="px-6 py-5">

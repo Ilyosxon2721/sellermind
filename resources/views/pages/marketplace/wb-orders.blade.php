@@ -108,11 +108,18 @@
     }
 </style>
 
-<div x-data="wbOrdersPage()" x-init="init()" class="flex h-screen bg-gray-100 browser-only">
+<div x-data="wbOrdersPage()" x-init="init()" class="flex h-screen bg-gray-100 browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden font-sans">
+    <div class="flex-1 flex flex-col overflow-hidden font-sans"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- WB Header - Classic Wildberries Style -->
         <header class="wb-header-bg shadow-lg">
             <div class="px-6 py-4">
