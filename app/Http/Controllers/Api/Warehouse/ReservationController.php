@@ -36,7 +36,7 @@ class ReservationController extends Controller
         }
 
         $query = StockReservation::query()
-            ->with(['sku.product.images', 'sku.productVariant', 'warehouse'])
+            ->with(['sku.product.images', 'sku.productVariant.product.images', 'warehouse'])
             ->where('company_id', $companyId);
         if ($request->warehouse_id) {
             $query->where('warehouse_id', $request->warehouse_id);
@@ -54,15 +54,34 @@ class ReservationController extends Controller
         $reservations = $reservations->map(function ($reservation) {
             $data = $reservation->toArray();
 
-            // Add product image
+            // Add product image and name
             $data['product_image'] = null;
             $data['product_name'] = null;
-            if ($reservation->sku && $reservation->sku->product) {
-                $data['product_name'] = $reservation->sku->product->name;
-                $image = $reservation->sku->product->images->first();
+
+            // Try to get product info from different paths
+            $product = null;
+            $variant = $reservation->sku?->productVariant;
+
+            // Path 1: sku -> product
+            if ($reservation->sku?->product) {
+                $product = $reservation->sku->product;
+            }
+            // Path 2: sku -> productVariant -> product
+            elseif ($variant?->product) {
+                $product = $variant->product;
+            }
+
+            if ($product) {
+                $data['product_name'] = $product->name;
+                $image = $product->images->first();
                 if ($image) {
                     $data['product_image'] = $image->url ?? $image->path ?? null;
                 }
+            }
+
+            // Fallback: use variant name if no product name
+            if (!$data['product_name'] && $variant) {
+                $data['product_name'] = $variant->name ?? $variant->sku ?? null;
             }
 
             // Add order info for marketplace orders
