@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Supply;
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
+use App\Models\WbOrder;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use Illuminate\Http\JsonResponse;
@@ -237,10 +237,10 @@ class SupplyController extends Controller
         }
 
         $validated = $request->validate([
-            'order_id' => ['required', 'exists:marketplace_orders,id'],
+            'order_id' => ['required', 'exists:wb_orders,id'],
         ]);
 
-        $order = MarketplaceOrder::findOrFail($validated['order_id']);
+        $order = WbOrder::findOrFail($validated['order_id']);
 
         // Проверяем, что заказ принадлежит тому же аккаунту
         if ($order->marketplace_account_id !== $supply->marketplace_account_id) {
@@ -363,10 +363,10 @@ class SupplyController extends Controller
         }
 
         $validated = $request->validate([
-            'order_id' => ['required', 'exists:marketplace_orders,id'],
+            'order_id' => ['required', 'exists:wb_orders,id'],
         ]);
 
-        $order = MarketplaceOrder::findOrFail($validated['order_id']);
+        $order = WbOrder::findOrFail($validated['order_id']);
 
         // Проверяем, что заказ в этой поставке
         $supplyId = $supply->external_supply_id ?? 'SUPPLY-' . $supply->id;
@@ -603,7 +603,7 @@ class SupplyController extends Controller
 
             // Если в поставке уже есть заказы, добавляем их в WB поставку
             if ($supply->orders_count > 0 && $supply->external_supply_id) {
-                $orders = MarketplaceOrder::where('supply_id', 'SUPPLY-' . $supply->id)->get();
+                $orders = WbOrder::where('supply_id', 'SUPPLY-' . $supply->id)->get();
                 $orderIds = $orders->pluck('external_order_id')->filter()->toArray();
 
                 if (!empty($orderIds)) {
@@ -615,7 +615,7 @@ class SupplyController extends Controller
                 }
 
                 // Обновляем supply_id у заказов на external_supply_id
-                MarketplaceOrder::where('supply_id', 'SUPPLY-' . $supply->id)
+                WbOrder::where('supply_id', 'SUPPLY-' . $supply->id)
                     ->update(['supply_id' => $supply->external_supply_id]);
             }
 
