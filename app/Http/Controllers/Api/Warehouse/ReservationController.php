@@ -75,7 +75,7 @@ class ReservationController extends Controller
                 $data['product_name'] = $product->name;
                 $image = $product->images->first();
                 if ($image) {
-                    $data['product_image'] = $image->url ?? $image->path ?? null;
+                    $data['product_image'] = $image->file_path ?? $image->url ?? $image->path ?? null;
                 }
             }
 
