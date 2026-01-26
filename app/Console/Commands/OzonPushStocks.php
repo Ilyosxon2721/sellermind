@@ -90,11 +90,12 @@ class OzonPushStocks extends Command
         foreach ($links as $link) {
             $stock = $link->getCurrentStock();
 
-            // Для Ozon нужен offer_id
-            $offerId = $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
+            // Для Ozon API нужен offer_id (артикул), который хранится в external_sku
+            // external_offer_id содержит product_id, который НЕ подходит для API остатков
+            $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
             if (!$offerId) {
-                $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id");
+                $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id/external_sku");
                 continue;
             }
 
