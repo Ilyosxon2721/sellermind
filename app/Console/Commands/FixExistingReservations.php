@@ -36,11 +36,12 @@ class FixExistingReservations extends Command
 
         $this->info('Поиск Uzum резервов для исправления...');
 
-        // Найти все активные Uzum резервы
+        // Найти все активные Uzum резервы (ищем по reason, т.к. marketplace_code нет)
         $reservations = StockReservation::query()
-            ->where('marketplace_code', 'uzum')
-            ->where('status', 'active')
-            ->with(['order', 'variant'])
+            ->where('reason', 'like', '%uzum%')
+            ->where('status', 'ACTIVE')
+            ->where('source_type', 'marketplace_order')
+            ->with(['sku.productVariant'])
             ->get();
 
         $this->info("Найдено активных Uzum резервов: {$reservations->count()}");
@@ -50,8 +51,8 @@ class FixExistingReservations extends Command
             return self::SUCCESS;
         }
 
-        // Группируем по заказам
-        $orderIds = $reservations->pluck('reservable_id')->unique();
+        // Группируем по заказам (source_id содержит ID заказа)
+        $orderIds = $reservations->pluck('source_id')->unique()->filter();
         $this->info("Уникальных заказов: {$orderIds->count()}");
 
         $deleted = 0;
@@ -66,16 +67,16 @@ class FixExistingReservations extends Command
                 continue;
             }
 
-            $orderReservations = $reservations->where('reservable_id', $orderId);
+            $orderReservations = $reservations->where('source_id', $orderId);
 
             $this->line("  Заказ #{$order->external_order_id}: {$orderReservations->count()} резервов");
 
             if (!$dryRun) {
                 // 1. Удаляем старые резервы
                 foreach ($orderReservations as $reservation) {
-                    // Возвращаем остатки
-                    if ($reservation->variant) {
-                        $reservation->variant->incrementStock($reservation->quantity);
+                    // Возвращаем остатки через sku
+                    if ($reservation->sku && $reservation->sku->productVariant) {
+                        $reservation->sku->productVariant->incrementStock($reservation->qty);
                     }
                     $reservation->delete();
                     $deleted++;
