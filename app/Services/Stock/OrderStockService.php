@@ -114,15 +114,21 @@ class OrderStockService
 
         // 2.5. Historical order already sold but never processed - just mark as sold
         // This handles orders that were delivered before stock tracking was enabled
-        if ($isSoldStatus && $currentStockStatus === 'none') {
+        // Also handles orders with 'skipped' status (items not linked at reservation time)
+        // IMPORTANT: Also consume any active reservations that might exist
+        if ($isSoldStatus && in_array($currentStockStatus, ['none', 'skipped'])) {
+            // Check if there are active reservations for this order and consume them
+            $this->consumeStockReservations($order);
+
             $order->update([
                 'stock_status' => 'sold',
                 'stock_sold_at' => now(),
             ]);
-            Log::info('OrderStockService: Historical order marked as sold (no stock changes)', [
+            Log::info('OrderStockService: Order marked as sold (reservations consumed if any)', [
                 'order_id' => $order->id,
+                'previous_stock_status' => $currentStockStatus,
             ]);
-            return ['success' => true, 'action' => 'sold_historical', 'message' => 'Historical order marked as sold'];
+            return ['success' => true, 'action' => 'sold_historical', 'message' => 'Order marked as sold'];
         }
 
         // 3. Отмена заказа
