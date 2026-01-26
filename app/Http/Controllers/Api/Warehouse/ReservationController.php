@@ -71,6 +71,7 @@ class ReservationController extends Controller
             $data['order_status'] = null;
             $data['order_status_normalized'] = null;
             $data['marketplace'] = null;
+            $data['marketplace_account_name'] = null;
 
             if ($reservation->source_type === 'marketplace_order' && $reservation->source_id) {
                 $order = $this->getMarketplaceOrder($reservation->reason, $reservation->source_id);
@@ -80,6 +81,10 @@ class ReservationController extends Controller
                     $data['order_status'] = $order->uzum_status ?? $order->wb_status ?? $order->ozon_status ?? $order->status ?? null;
                     $data['order_status_normalized'] = $order->status_normalized ?? $order->status ?? null;
                     $data['marketplace'] = $this->extractMarketplace($reservation->reason);
+
+                    // Get account name
+                    $account = $order->account ?? null;
+                    $data['marketplace_account_name'] = $account?->name ?? $account?->shop_name ?? null;
                 }
             }
 

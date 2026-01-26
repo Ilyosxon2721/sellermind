@@ -175,7 +175,12 @@
                                 </td>
                                 <td class="px-4 py-4">
                                     <template x-if="res.marketplace">
-                                        <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 uppercase" x-text="res.marketplace"></span>
+                                        <div class="flex flex-col">
+                                            <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 uppercase w-fit" x-text="res.marketplace"></span>
+                                            <template x-if="res.marketplace_account_name">
+                                                <span class="text-xs text-gray-500 mt-1 truncate max-w-[150px]" x-text="res.marketplace_account_name" :title="res.marketplace_account_name"></span>
+                                            </template>
+                                        </div>
                                     </template>
                                     <template x-if="!res.marketplace">
                                         <span class="text-sm text-gray-400">—</span>
