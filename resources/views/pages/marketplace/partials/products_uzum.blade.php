@@ -185,7 +185,7 @@
                                             <div class="flex-1">
                                                 <div class="font-semibold" x-text="sku.skuFullTitle || sku.skuTitle || sku.skuId"></div>
                                                 <div class="text-gray-600">Штрихкод: <span x-text="sku.barcode || '-'"></span></div>
-                                                <div class="text-gray-600">Остаток МП: <span x-text="(sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0)"></span></div>
+                                                <div class="text-gray-600">Остаток МП: <span x-text="parseInt((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></span></div>
                                                 <div class="text-gray-600" x-text="sku.characteristics || ''"></div>
                                                 <template x-if="sku.characteristicsList && sku.characteristicsList.length">
                                                     <ul class="mt-1 list-disc list-inside text-gray-600">
@@ -790,7 +790,7 @@
                                 <div class="native-card">
                                     <p class="native-body font-semibold" x-text="sku.skuFullTitle || sku.skuTitle || sku.skuId"></p>
                                     <p class="native-caption mt-1" x-text="'Штрихкод: ' + (sku.barcode || '-')"></p>
-                                    <p class="native-caption" x-text="'Остаток: ' + ((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></p>
+                                    <p class="native-caption" x-text="'Остаток: ' + parseInt((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></p>
                                 </div>
                             </template>
                         </div>

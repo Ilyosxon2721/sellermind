@@ -110,7 +110,7 @@
                                 <div class="flex items-center space-x-3 mt-2 text-sm">
                                     <span class="text-gray-900 font-medium" x-text="product.price ? formatMoney(product.price) : '{{ __('products.price') }}'"></span>
                                     <span class="text-gray-500">{{ __('products.stock') }}</span>
-                                    <span class="text-gray-900 font-medium" x-text="product.stock_quantity ?? 0"></span>
+                                    <span class="text-gray-900 font-medium" x-text="parseInt(product.stock_quantity ?? 0)"></span>
                                 </div>
                             </div>
                             <div class="flex flex-col space-y-2">

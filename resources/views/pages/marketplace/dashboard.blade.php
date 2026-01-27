@@ -245,7 +245,7 @@
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-4 py-3 font-mono text-sm" x-text="sku.external_offer_id || '-'"></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" x-text="sku.name || '-'"></td>
-                                            <td class="px-4 py-3 text-right" x-text="sku.total_qty"></td>
+                                            <td class="px-4 py-3 text-right" x-text="parseInt(sku.total_qty)"></td>
                                             <td class="px-4 py-3 text-right" x-text="formatNumber(sku.total_revenue)"></td>
                                             <td class="px-4 py-3 text-right">
                                                 <span :class="sku.return_rate > 10 ? 'text-red-600 font-medium' : (sku.return_rate > 5 ? 'text-yellow-600' : 'text-gray-600')" x-text="sku.return_rate.toFixed(1) + '%'"></span>

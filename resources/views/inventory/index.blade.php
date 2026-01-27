@@ -249,7 +249,7 @@
                                         <span class="font-medium" x-text="item.product?.name || 'Товар #' + item.product_id"></span>
                                     </td>
                                     <td class="text-right">
-                                        <span x-text="item.expected_quantity"></span>
+                                        <span x-text="parseInt(item.expected_quantity)"></span>
                                     </td>
                                     <td class="text-right">
                                         <template x-if="selectedInventory?.status === 'in_progress' && !selectedInventory?.is_applied">
@@ -258,7 +258,7 @@
                                                    @change="updateItemQuantity(item)">
                                         </template>
                                         <template x-if="selectedInventory?.status !== 'in_progress' || selectedInventory?.is_applied">
-                                            <span x-text="item.actual_quantity ?? '—'"></span>
+                                            <span x-text="item.actual_quantity != null ? parseInt(item.actual_quantity) : '—'"></span>
                                         </template>
                                     </td>
                                     <td class="text-right">

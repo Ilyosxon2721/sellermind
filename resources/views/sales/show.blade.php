@@ -224,7 +224,7 @@
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900" x-text="item.name"></td>
                                         <td class="px-4 py-3 text-sm text-gray-500" x-text="item.sku"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-900 text-right" x-text="item.quantity"></td>
+                                        <td class="px-4 py-3 text-sm text-gray-900 text-right" x-text="parseInt(item.quantity)"></td>
                                         <td class="px-4 py-3 text-sm text-gray-900 text-right" x-text="formatMoney(item.price, order.currency)"></td>
                                     </tr>
                                 </template>
@@ -302,7 +302,7 @@
                                 <p class="text-xs text-gray-500" x-text="item.sku"></p>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm font-medium" x-text="item.quantity + ' шт'"></p>
+                                <p class="text-sm font-medium" x-text="parseInt(item.quantity) + ' шт'"></p>
                                 <p class="text-xs text-gray-500" x-text="formatMoney(item.price, order.currency)"></p>
                             </div>
                         </div>

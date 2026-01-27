@@ -198,7 +198,7 @@
                                                 <div class="font-medium text-[#1a1a1a]" x-text="product.name || product.offer_id"></div>
                                                 <div class="text-gray-500 text-xs mt-1">
                                                     <span>SKU: </span><span x-text="product.sku || product.offer_id"></span>
-                                                    <span class="ml-3">Кол-во: </span><span x-text="product.quantity"></span>
+                                                    <span class="ml-3">Кол-во: </span><span x-text="parseInt(product.quantity)"></span>
                                                 </div>
                                             </div>
                                             <div class="text-right">
@@ -943,7 +943,7 @@ function ozonOrdersPage() {
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="font-medium text-sm" x-text="product.name || product.offer_id"></p>
                                     <div class="flex justify-between mt-1">
-                                        <span class="native-caption text-gray-500" x-text="(product.quantity || 1) + ' шт.'"></span>
+                                        <span class="native-caption text-gray-500" x-text="parseInt(product.quantity || 1) + ' шт.'"></span>
                                         <span class="font-medium" x-text="formatPrice(product.price)"></span>
                                     </div>
                                 </div>

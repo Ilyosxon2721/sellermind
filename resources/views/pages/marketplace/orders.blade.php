@@ -2372,7 +2372,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                                                 <span class="font-semibold">SKU:</span>
                                                 <span x-text="item.skuId || item.productId || item.barcode || '—'"></span>
                                             </div>
-                                            <div class="text-xs text-gray-500" x-text="(item.amount || 0) + ' шт'"></div>
+                                            <div class="text-xs text-gray-500" x-text="parseInt(item.amount || 0) + ' шт'"></div>
                                         </div>
                                     </div>
                                 </template>

@@ -348,7 +348,7 @@
                                                         </template>
                                                         <div class="flex-1 min-w-0">
                                                             <div class="text-xs font-medium text-gray-900 truncate" x-text="(item.skuTitle || item.productTitle || item.name || '—').slice(0, 50)"></div>
-                                                            <div class="text-xs text-gray-500" x-text="(item.amount || item.quantity || 1) + ' шт'"></div>
+                                                            <div class="text-xs text-gray-500" x-text="parseInt(item.amount || item.quantity || 1) + ' шт'"></div>
                                                         </div>
                                                     </div>
                                                 </template>
@@ -524,7 +524,7 @@
                                             <span x-show="item.skuId">SKU: <span x-text="item.skuId"></span></span>
                                             <span x-show="item.barcode"> | Баркод: <span x-text="item.barcode"></span></span>
                                         </p>
-                                        <p class="text-sm text-gray-500" x-text="'Кол-во: ' + (item.amount || item.quantity || 1)"></p>
+                                        <p class="text-sm text-gray-500" x-text="'Кол-во: ' + parseInt(item.amount || item.quantity || 1)"></p>
                                     </div>
                                     <div class="text-right">
                                         <p class="font-semibold" x-text="formatPrice(item.sellerPrice || item.price)"></p>

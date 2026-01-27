@@ -377,7 +377,7 @@
                                             </p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="font-medium text-[#1a1a1a]" x-text="(item.count || 1) + ' × ' + formatPrice(item.buyerPrice || item.price)"></p>
+                                            <p class="font-medium text-[#1a1a1a]" x-text="parseInt(item.count || 1) + ' × ' + formatPrice(item.buyerPrice || item.price)"></p>
                                             <p class="text-sm text-green-600 font-medium" x-text="formatPrice((item.buyerPrice || item.price) * (item.count || 1))"></p>
                                         </div>
                                     </div>
@@ -1001,7 +1001,7 @@ function ymOrdersPage() {
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="font-medium text-sm" x-text="item.offerName || item.offerId"></p>
                                     <div class="flex justify-between mt-1">
-                                        <span class="native-caption text-gray-500" x-text="(item.count || 1) + ' шт.'"></span>
+                                        <span class="native-caption text-gray-500" x-text="parseInt(item.count || 1) + ' шт.'"></span>
                                         <span class="font-medium" x-text="formatPrice(item.buyerPrice || item.price)"></span>
                                     </div>
                                 </div>
