@@ -294,42 +294,48 @@ class FinanceController extends Controller
 
     /**
      * Получить сводку по остаткам на складах
-     * cost_delta хранит закупочную цену за единицу в USD
-     * Себестоимость рассчитывается: qty × cost_delta × usd_rate
+     *
+     * ВАЖНО: cost_delta хранит себестоимость в UZS (уже конвертирована при записи)
+     * - Поступления: cost_delta положительная (добавляется к себестоимости)
+     * - Списания: cost_delta отрицательная (вычитается из себестоимости)
+     *
+     * Формула: SUM(cost_delta) для всех записей
+     * Это автоматически учитывает поступления и списания
      */
     protected function getStockSummary(int $companyId, FinanceSettings $settings): array
     {
-        $usdRate = $settings->usd_rate ?? 12700;
-
-        // Суммируем все движения по складам для получения текущих остатков
-        // cost_delta - это закупочная цена за единицу в USD
-        // Себестоимость = SUM(qty_delta * cost_delta) * usd_rate
         try {
-            $stockSummary = StockLedger::byCompany($companyId)
-                ->selectRaw('SUM(qty_delta) as total_qty, SUM(qty_delta * cost_delta) as total_cost_usd')
+            // Получаем текущее количество и себестоимость
+            // cost_delta уже в UZS и уже учитывает направление (+ для поступлений, - для списаний)
+            $summary = StockLedger::byCompany($companyId)
+                ->selectRaw('SUM(qty_delta) as total_qty, SUM(cost_delta) as total_cost')
                 ->first();
 
-            $totalCostUzs = ((float) ($stockSummary?->total_cost_usd ?? 0)) * $usdRate;
+            $totalQty = max(0, (float) ($summary?->total_qty ?? 0));
+            $totalCost = max(0, (float) ($summary?->total_cost ?? 0));
 
-            // Группировка по складам (явно указываем таблицу для company_id)
+            // Группировка по складам
             $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.qty_delta * stock_ledger.cost_delta) as cost_usd')
+                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.cost_delta) as cost')
                 ->groupBy('warehouses.id', 'warehouses.name')
                 ->having('qty', '>', 0)
                 ->get();
 
+            $warehouseData = $byWarehouse->map(fn($w) => [
+                'id' => $w->id,
+                'name' => $w->name,
+                'qty' => (float) $w->qty,
+                'cost' => max(0, (float) $w->cost),
+            ])->toArray();
+
             return [
-                'total_qty' => (float) ($stockSummary?->total_qty ?? 0),
-                'total_cost' => $totalCostUzs,
-                'by_warehouse' => $byWarehouse->map(fn($w) => [
-                    'id' => $w->id,
-                    'name' => $w->name,
-                    'qty' => (float) $w->qty,
-                    'cost' => ((float) $w->cost_usd) * $usdRate,
-                ])->toArray(),
+                'total_qty' => $totalQty,
+                'total_cost' => $totalCost,
+                'by_warehouse' => $warehouseData,
             ];
         } catch (\Exception $e) {
+            \Log::error('getStockSummary error', ['error' => $e->getMessage()]);
             return [
                 'total_qty' => 0,
                 'total_cost' => 0,
