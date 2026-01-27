@@ -80,7 +80,16 @@
                             <button x-show="supply.external_supply_id && supply.external_supply_id.startsWith('WB-')" @click="downloadBarcode(supply.id)" class="text-green-600 hover:text-green-800">QR</button>
                             <button x-show="!supply.closed_at" @click="closeSupply(supply.id)" class="text-amber-600 hover:text-amber-800">Закрыть</button>
                             <button x-show="supply.status === 'ready'" @click="markAsSent(supply.id)" class="text-purple-600 hover:text-purple-800">Отправить</button>
-                            <button x-show="supply.orders_count === 0" @click="deleteSupply(supply.id)" class="text-red-600 hover:text-red-800">Удалить</button>
+                            <button x-show="supply.orders_count === 0"
+                                    @click="deleteSupply(supply.id)"
+                                    :disabled="deletingSupplyId === supply.id"
+                                    class="text-red-600 hover:text-red-800 disabled:opacity-50 flex items-center">
+                                <svg x-show="deletingSupplyId === supply.id" class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="deletingSupplyId === supply.id ? 'Удаление...' : 'Удалить'"></span>
+                            </button>
                         </td>
                     </tr>
                 </template>
@@ -104,7 +113,13 @@
             <input type="text" x-model="newSupplyName" placeholder="Название поставки"
                    class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4">
             <div class="flex gap-2">
-                <button @click="createSupply()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg">Создать</button>
+                <button @click="createSupply()" :disabled="creating" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center justify-center">
+                    <svg x-show="creating" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="creating ? 'Создание...' : 'Создать'"></span>
+                </button>
                 <button @click="showCreateModal = false" class="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">Отмена</button>
             </div>
         </div>
@@ -143,8 +158,14 @@
                                 </div>
                                 <div class="text-sm font-semibold text-gray-900 mt-1" x-text="formatPrice(order.wb_final_price)"></div>
                             </div>
-                            <button @click="removeOrderFromSupply(order.id)" class="ml-4 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs rounded-lg transition">
-                                Удалить
+                            <button @click="removeOrderFromSupply(order.id)"
+                                    :disabled="removingOrderId === order.id"
+                                    class="ml-4 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs rounded-lg transition disabled:opacity-50 flex items-center">
+                                <svg x-show="removingOrderId === order.id" class="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="removingOrderId === order.id ? 'Удаление...' : 'Удалить'"></span>
                             </button>
                         </div>
                     </template>
@@ -166,6 +187,9 @@ function suppliesManager(accountId) {
         accountId: accountId,
         supplies: [],
         loading: true,
+        creating: false,
+        deletingSupplyId: null,
+        removingOrderId: null,
         showCreateModal: false,
         showSupplyModal: false,
         newSupplyName: '',
@@ -222,6 +246,7 @@ function suppliesManager(accountId) {
                 return;
             }
 
+            this.creating = true;
             try {
                 const response = await axios.post('/api/marketplace/supplies', {
                     marketplace_account_id: this.accountId,
@@ -240,6 +265,8 @@ function suppliesManager(accountId) {
             } catch (error) {
                 console.error('Failed to create supply:', error);
                 alert(error.response?.data?.message || 'Ошибка создания поставки');
+            } finally {
+                this.creating = false;
             }
         },
 
@@ -298,6 +325,7 @@ function suppliesManager(accountId) {
         async deleteSupply(supplyId) {
             if (!confirm('Удалить поставку? Это действие нельзя отменить.')) return;
 
+            this.deletingSupplyId = supplyId;
             try {
                 await axios.delete(`/api/marketplace/supplies/${supplyId}`, {
                     headers: this.getAuthHeaders()
@@ -307,12 +335,15 @@ function suppliesManager(accountId) {
             } catch (error) {
                 console.error('Failed to delete supply:', error);
                 alert(error.response?.data?.message || 'Ошибка при удалении поставки');
+            } finally {
+                this.deletingSupplyId = null;
             }
         },
 
         async removeOrderFromSupply(orderId) {
             if (!confirm('Удалить заказ из поставки?')) return;
 
+            this.removingOrderId = orderId;
             try {
                 const response = await axios.delete(`/api/marketplace/supplies/${this.selectedSupply.id}/orders`, {
                     headers: this.getAuthHeaders(),
@@ -326,6 +357,8 @@ function suppliesManager(accountId) {
             } catch (error) {
                 console.error('Failed to remove order:', error);
                 alert(error.response?.data?.message || 'Ошибка удаления заказа');
+            } finally {
+                this.removingOrderId = null;
             }
         },
 
@@ -468,7 +501,11 @@ function suppliesManager(accountId) {
                         <button x-show="supply.status === 'ready'"
                                 @click.stop="markAsSent(supply.id)" class="text-xs text-purple-600 px-2 py-1 bg-purple-50 rounded-lg">Отправить</button>
                         <button x-show="supply.orders_count === 0"
-                                @click.stop="deleteSupply(supply.id)" class="text-xs text-red-600 px-2 py-1 bg-red-50 rounded-lg">Удалить</button>
+                                @click.stop="deleteSupply(supply.id)"
+                                :disabled="deletingSupplyId === supply.id"
+                                class="text-xs text-red-600 px-2 py-1 bg-red-50 rounded-lg disabled:opacity-50">
+                                <span x-text="deletingSupplyId === supply.id ? '...' : 'Удалить'"></span>
+                            </button>
                     </div>
                 </div>
             </template>
@@ -493,7 +530,13 @@ function suppliesManager(accountId) {
             <h3 class="text-lg font-bold mb-4">Создать поставку</h3>
             <input type="text" x-model="newSupplyName" placeholder="Название поставки" class="native-input w-full mb-4">
             <div class="flex gap-2">
-                <button @click="createSupply()" class="native-btn native-btn-primary flex-1">Создать</button>
+                <button @click="createSupply()" :disabled="creating" class="native-btn native-btn-primary flex-1 disabled:opacity-50 flex items-center justify-center">
+                    <svg x-show="creating" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="creating ? 'Создание...' : 'Создать'"></span>
+                </button>
                 <button @click="showCreateModal = false" class="native-btn flex-1">Отмена</button>
             </div>
         </div>

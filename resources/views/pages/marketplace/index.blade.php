@@ -400,8 +400,12 @@
                                                             :disabled="testingConnection"
                                                             class="p-2 text-gray-400 hover:text-blue-600 transition"
                                                             title="Проверить подключение">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg x-show="testingAccountId !== account.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                        <svg x-show="testingAccountId === account.id" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                         </svg>
                                                     </button>
                                                     <a :href="getAccountSettingsUrl(account)"
@@ -413,11 +417,18 @@
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                         </svg>
                                                     </a>
+                                                    <button @click="confirmDeleteAccount(account)"
+                                                            :disabled="deletingAccountId === account.id"
+                                                            class="p-2 text-gray-400 hover:text-red-600 transition disabled:opacity-50"
                                                     <button @click.stop="confirmDeleteAccount(account)"
                                                             class="p-2 text-gray-400 hover:text-red-600 transition"
                                                             title="Удалить аккаунт">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg x-show="deletingAccountId !== account.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                        </svg>
+                                                        <svg x-show="deletingAccountId === account.id" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -727,7 +738,8 @@ function marketplacePage() {
         selectedMarketplace: null,
         credentials: {},
         accountName: '',
-        testingConnection: false,
+        testingAccountId: null,
+        deletingAccountId: null,
         testResult: null,
         loading: true,
         accounts: [],
@@ -923,6 +935,7 @@ function marketplacePage() {
         },
 
         async deleteAccount(accountId) {
+            this.deletingAccountId = accountId;
             try {
                 if (!this.$store.auth.currentCompany) {
                     this.showNotification('error', 'Ошибка', 'Нет активной компании');
@@ -965,6 +978,8 @@ function marketplacePage() {
                     accountToDelete.isDeleting = false;
                 }
                 this.showNotification('error', 'Ошибка', 'Ошибка соединения: ' + e.message);
+            } finally {
+                this.deletingAccountId = null;
             }
         },
 
@@ -1133,15 +1148,25 @@ function marketplacePage() {
         },
 
         async testConnection(accountId) {
-            this.testingConnection = true;
+            this.testingAccountId = accountId;
             this.testResult = null;
-            const res = await fetch(`/api/marketplace/accounts/${accountId}/test`, {
-                method: 'POST',
-                headers: this.getAuthHeaders()
-            });
-            const data = await res.json();
-            this.testResult = data;
-            this.testingConnection = false;
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${accountId}/test`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                this.testResult = data;
+                if (data.success) {
+                    this.showNotification('success', 'Подключение успешно', data.message || 'API работает корректно');
+                } else {
+                    this.showNotification('error', 'Ошибка подключения', data.error || data.message || 'Проверьте настройки');
+                }
+            } catch (e) {
+                this.showNotification('error', 'Ошибка', 'Не удалось проверить подключение');
+            } finally {
+                this.testingAccountId = null;
+            }
         },
 
         async disconnectMarketplace(accountId) {

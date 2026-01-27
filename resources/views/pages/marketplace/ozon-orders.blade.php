@@ -221,14 +221,24 @@
 
                                 <template x-if="canShipOrder(order)">
                                     <button @click.stop="shipOrder(order)"
-                                            class="flex-1 px-3 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 border border-green-200 transition">
-                                        Подтвердить отгрузку
+                                            :disabled="shippingOrderId === order.id"
+                                            class="flex-1 px-3 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 border border-green-200 transition disabled:opacity-50 flex items-center justify-center">
+                                        <svg x-show="shippingOrderId === order.id" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span x-text="shippingOrderId === order.id ? 'Отгрузка...' : 'Подтвердить отгрузку'"></span>
                                     </button>
                                 </template>
 
                                 <button @click.stop="printLabel(order)"
-                                        class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition">
-                                    Печать этикетки
+                                        :disabled="printingOrderId === order.id"
+                                        class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition disabled:opacity-50 flex items-center justify-center">
+                                    <svg x-show="printingOrderId === order.id" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span x-text="printingOrderId === order.id ? 'Загрузка...' : 'Печать этикетки'"></span>
                                 </button>
                             </div>
                         </div>
@@ -389,6 +399,8 @@ function ozonOrdersPage() {
         orders: [],
         loading: true,
         syncing: false,
+        shippingOrderId: null,
+        printingOrderId: null,
         searchQuery: '',
         activeTab: 'all',
         selectedOrder: null,
@@ -711,6 +723,7 @@ function ozonOrdersPage() {
                 return;
             }
 
+            this.shippingOrderId = order.id;
             try {
                 const res = await fetch(`/api/marketplace/ozon/accounts/{{ $accountId }}/orders/${order.id}/ship`, {
                     method: 'POST',
@@ -728,10 +741,13 @@ function ozonOrdersPage() {
                 }
             } catch (e) {
                 alert('Ошибка: ' + e.message);
+            } finally {
+                this.shippingOrderId = null;
             }
         },
 
         async printLabel(order) {
+            this.printingOrderId = order.id;
             try {
                 const res = await fetch(`/api/marketplace/ozon/accounts/{{ $accountId }}/orders/${order.id}/label`, {
                     method: 'POST',
@@ -756,6 +772,8 @@ function ozonOrdersPage() {
                 }
             } catch (e) {
                 alert('Ошибка: ' + e.message);
+            } finally {
+                this.printingOrderId = null;
             }
         },
 

@@ -152,9 +152,16 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                         </button>
-                                        <button class="btn btn-ghost btn-sm text-red-600" @click="deleteCounterparty(item)" title="Удалить">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <button class="btn btn-ghost btn-sm text-red-600 disabled:opacity-50"
+                                                @click="deleteCounterparty(item)"
+                                                :disabled="deletingId === item.id"
+                                                title="Удалить">
+                                            <svg x-show="deletingId !== item.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                            <svg x-show="deletingId === item.id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
                                         </button>
                                     </div>
@@ -289,9 +296,12 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" @click="showFormModal = false">Отмена</button>
-                <button class="btn btn-primary" @click="saveCounterparty()" :disabled="saving">
-                    <span x-show="saving">Сохранение...</span>
-                    <span x-show="!saving" x-text="isEditing ? 'Сохранить' : 'Создать'"></span>
+                <button class="btn btn-primary disabled:opacity-50 flex items-center" @click="saveCounterparty()" :disabled="saving">
+                    <svg x-show="saving" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="saving ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать')"></span>
                 </button>
             </div>
         </div>
@@ -373,7 +383,15 @@
                                 </div>
                                 <div class="flex gap-1">
                                     <button class="btn btn-ghost btn-sm" @click="editContract(contract)">✎</button>
-                                    <button class="btn btn-ghost btn-sm text-red-600" @click="deleteContract(contract)">✕</button>
+                                    <button class="btn btn-ghost btn-sm text-red-600 disabled:opacity-50"
+                                            @click="deleteContract(contract)"
+                                            :disabled="deletingContractId === contract.id">
+                                        <span x-show="deletingContractId !== contract.id">✕</span>
+                                        <svg x-show="deletingContractId === contract.id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
                         </template>
@@ -446,9 +464,13 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-ghost" @click="showContractModal = false">Отмена</button>
-                <button class="btn btn-primary" @click="saveContract()">
-                    <span x-text="contractForm.id ? 'Сохранить' : 'Создать'"></span>
+                <button class="btn btn-ghost" @click="showContractModal = false" :disabled="savingContract">Отмена</button>
+                <button class="btn btn-primary disabled:opacity-50 flex items-center" @click="saveContract()" :disabled="savingContract">
+                    <svg x-show="savingContract" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="savingContract ? 'Сохранение...' : (contractForm.id ? 'Сохранить' : 'Создать')"></span>
                 </button>
             </div>
         </div>
@@ -460,13 +482,16 @@ function counterpartiesPage() {
     return {
         loading: false,
         saving: false,
+        savingContract: false,
+        deletingId: null,
+        deletingContractId: null,
         counterparties: [],
         contracts: [],
         currentPage: 1,
         totalPages: 1,
         filters: { search: '', type: '' },
         stats: { total: 0, legal: 0, individual: 0, withContracts: 0 },
-        
+
         showFormModal: false,
         showViewModal: false,
         showContractModal: false,
@@ -649,7 +674,8 @@ function counterpartiesPage() {
         
         async deleteCounterparty(item) {
             if (!confirm(`Удалить контрагента "${item.name}"?`)) return;
-            
+
+            this.deletingId = item.id;
             try {
                 const resp = await fetch(`/api/counterparties/${item.id}`, {
                     method: 'DELETE',
@@ -658,12 +684,14 @@ function counterpartiesPage() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     }
                 });
-                
+
                 if (resp.ok) {
                     this.loadCounterparties();
                 }
             } catch (e) {
                 alert('Ошибка удаления');
+            } finally {
+                this.deletingId = null;
             }
         },
         
@@ -708,13 +736,14 @@ function counterpartiesPage() {
                 alert('Заполните номер и дату договора');
                 return;
             }
-            
+
+            this.savingContract = true;
             try {
-                const url = this.contractForm.id 
+                const url = this.contractForm.id
                     ? `/api/counterparties/${this.selectedCounterparty.id}/contracts/${this.contractForm.id}`
                     : `/api/counterparties/${this.selectedCounterparty.id}/contracts`;
                 const method = this.contractForm.id ? 'PUT' : 'POST';
-                
+
                 const resp = await fetch(url, {
                     method,
                     headers: {
@@ -734,12 +763,15 @@ function counterpartiesPage() {
                 }
             } catch (e) {
                 alert('Ошибка: ' + e.message);
+            } finally {
+                this.savingContract = false;
             }
         },
-        
+
         async deleteContract(contract) {
             if (!confirm('Удалить договор?')) return;
-            
+
+            this.deletingContractId = contract.id;
             try {
                 await fetch(`/api/counterparties/${this.selectedCounterparty.id}/contracts/${contract.id}`, {
                     method: 'DELETE',
@@ -752,6 +784,8 @@ function counterpartiesPage() {
                 this.loadCounterparties();
             } catch (e) {
                 alert('Ошибка удаления');
+            } finally {
+                this.deletingContractId = null;
             }
         },
         
