@@ -1305,6 +1305,145 @@ class FinanceController extends Controller
             $marketplaces['ozon'] = ['error' => $e->getMessage()];
         }
 
+        // ========== YANDEX MARKET ==========
+        try {
+            if (class_exists(\App\Models\YandexMarketOrder::class)) {
+                $ymQuery = fn() => \App\Models\YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereDate('created_at_ym', '>=', $from)
+                    ->whereDate('created_at_ym', '<=', $to);
+
+                // Все заказы
+                $ymAll = $ymQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Проданные (DELIVERED)
+                $ymSold = $ymQuery()
+                    ->where('status', 'DELIVERED')
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Возвраты (RETURNED)
+                $ymReturns = $ymQuery()
+                    ->where('status', 'RETURNED')
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Отменённые (CANCELLED)
+                $ymCancelled = $ymQuery()
+                    ->where('status', 'CANCELLED')
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($ymAll?->cnt ?? 0);
+                $ordersAmountRub = (float) ($ymAll?->amount ?? 0);
+                $soldCount = (int) ($ymSold?->cnt ?? 0);
+                $soldAmountRub = (float) ($ymSold?->amount ?? 0);
+                $returnsCount = (int) ($ymReturns?->cnt ?? 0);
+                $returnsAmountRub = (float) ($ymReturns?->amount ?? 0);
+                $cancelledCount = (int) ($ymCancelled?->cnt ?? 0);
+                $cancelledAmountRub = (float) ($ymCancelled?->amount ?? 0);
+
+                $marketplaces['yandex'] = [
+                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmountRub * $rubToUzs, 'amount_rub' => $ordersAmountRub],
+                    'sold' => ['count' => $soldCount, 'amount' => $soldAmountRub * $rubToUzs, 'amount_rub' => $soldAmountRub],
+                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmountRub * $rubToUzs, 'amount_rub' => $returnsAmountRub],
+                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmountRub * $rubToUzs, 'amount_rub' => $cancelledAmountRub],
+                    'avg_order_value' => $soldCount > 0 ? ($soldAmountRub / $soldCount) * $rubToUzs : 0,
+                    'avg_order_value_rub' => $soldCount > 0 ? $soldAmountRub / $soldCount : 0,
+                    'currency' => 'RUB',
+                    'rub_rate' => $rubToUzs,
+                ];
+
+                // Добавляем к итогам (конвертируем RUB -> UZS)
+                $totals['orders']['count'] += $ordersCount;
+                $totals['orders']['amount'] += $ordersAmountRub * $rubToUzs;
+                $totals['sold']['count'] += $soldCount;
+                $totals['sold']['amount'] += $soldAmountRub * $rubToUzs;
+                $totals['returns']['count'] += $returnsCount;
+                $totals['returns']['amount'] += $returnsAmountRub * $rubToUzs;
+                $totals['cancelled']['count'] += $cancelledCount;
+                $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
+            }
+        } catch (\Exception $e) {
+            $marketplaces['yandex'] = ['error' => $e->getMessage()];
+        }
+
+        // ========== OFFLINE SALES (Офлайн/Оптовые продажи) ==========
+        try {
+            if (class_exists(\App\Models\OfflineSale::class)) {
+                $offlineQuery = fn() => \App\Models\OfflineSale::byCompany($companyId)
+                    ->whereDate('sale_date', '>=', $from)
+                    ->whereDate('sale_date', '<=', $to);
+
+                // Все продажи
+                $offlineAll = $offlineQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Проданные (delivered)
+                $offlineSold = $offlineQuery()
+                    ->where('status', 'delivered')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Возвраты (returned)
+                $offlineReturns = $offlineQuery()
+                    ->where('status', 'returned')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Отменённые (cancelled)
+                $offlineCancelled = $offlineQuery()
+                    ->where('status', 'cancelled')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // По типам продаж
+                $byType = $offlineQuery()
+                    ->where('status', 'delivered')
+                    ->selectRaw('sale_type, COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->groupBy('sale_type')
+                    ->get()
+                    ->keyBy('sale_type');
+
+                $ordersCount = (int) ($offlineAll?->cnt ?? 0);
+                $ordersAmount = (float) ($offlineAll?->amount ?? 0);
+                $soldCount = (int) ($offlineSold?->cnt ?? 0);
+                $soldAmount = (float) ($offlineSold?->amount ?? 0);
+                $returnsCount = (int) ($offlineReturns?->cnt ?? 0);
+                $returnsAmount = (float) ($offlineReturns?->amount ?? 0);
+                $cancelledCount = (int) ($offlineCancelled?->cnt ?? 0);
+                $cancelledAmount = (float) ($offlineCancelled?->amount ?? 0);
+
+                $marketplaces['offline'] = [
+                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
+                    'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
+                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
+                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
+                    'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
+                    'currency' => 'UZS',
+                    'by_type' => [
+                        'retail' => ['count' => (int) ($byType['retail']?->cnt ?? 0), 'amount' => (float) ($byType['retail']?->amount ?? 0)],
+                        'wholesale' => ['count' => (int) ($byType['wholesale']?->cnt ?? 0), 'amount' => (float) ($byType['wholesale']?->amount ?? 0)],
+                        'direct' => ['count' => (int) ($byType['direct']?->cnt ?? 0), 'amount' => (float) ($byType['direct']?->amount ?? 0)],
+                    ],
+                ];
+
+                // Добавляем к итогам (Offline уже в UZS)
+                $totals['orders']['count'] += $ordersCount;
+                $totals['orders']['amount'] += $ordersAmount;
+                $totals['sold']['count'] += $soldCount;
+                $totals['sold']['amount'] += $soldAmount;
+                $totals['returns']['count'] += $returnsCount;
+                $totals['returns']['amount'] += $returnsAmount;
+                $totals['cancelled']['count'] += $cancelledCount;
+                $totals['cancelled']['amount'] += $cancelledAmount;
+            }
+        } catch (\Exception $e) {
+            $marketplaces['offline'] = ['error' => $e->getMessage()];
+        }
+
         // Рассчитываем средний чек по проданным
         if ($totals['sold']['count'] > 0) {
             $totals['avg_order_value'] = $totals['sold']['amount'] / $totals['sold']['count'];
@@ -1327,6 +1466,8 @@ class FinanceController extends Controller
             'uzum' => $marketplaces['uzum'] ?? null,
             'wb' => $marketplaces['wb'] ?? null,
             'ozon' => $marketplaces['ozon'] ?? null,
+            'yandex' => $marketplaces['yandex'] ?? null,
+            'offline' => $marketplaces['offline'] ?? null,
         ]);
     }
 

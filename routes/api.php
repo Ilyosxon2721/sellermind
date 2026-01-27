@@ -755,6 +755,18 @@ Route::middleware('auth.any')->group(function () {
         Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
         Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
         Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
+
+        // Offline Sales (Офлайн/Оптовые продажи)
+        Route::get('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'index']);
+        Route::post('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'store']);
+        Route::get('offline-sales/summary', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'summary']);
+        Route::get('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'show']);
+        Route::put('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'update']);
+        Route::delete('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'destroy']);
+        Route::post('offline-sales/{id}/confirm', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'confirm']);
+        Route::post('offline-sales/{id}/deliver', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'deliver']);
+        Route::post('offline-sales/{id}/cancel', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'cancel']);
+        Route::post('offline-sales/{id}/pay', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'markPaid']);
     });
 
     // Admin Routes
