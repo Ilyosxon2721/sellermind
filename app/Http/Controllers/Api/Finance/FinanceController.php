@@ -192,34 +192,21 @@ class FinanceController extends Controller
             'rub_rate' => $rubToUzs,
         ]);
 
-        // Uzum продажи (TO_WITHDRAW, COMPLETED, или PROCESSING с датой в периоде)
-        // TO_WITHDRAW = деньги выведены, COMPLETED = доставлено, PROCESSING = в процессе
+        // Uzum продажи из uzum_orders (issued = доставлено клиенту)
         try {
-            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                // Считаем завершённые продажи (TO_WITHDRAW, COMPLETED) по date_issued или order_date
-                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
-                    ->where('status', '!=', 'CANCELED')
-                    ->where(function($q) use ($from, $to) {
-                        // Используем date_issued если есть, иначе order_date
-                        $q->where(function($sub) use ($from, $to) {
-                            $sub->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
-                    })
-                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as revenue, SUM(seller_profit) as profit')
+            if (class_exists(\App\Models\UzumOrder::class)) {
+                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'issued')
+                    ->whereDate('ordered_at', '>=', $from)
+                    ->whereDate('ordered_at', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as revenue')
                     ->first();
 
+                $revenue = (float) ($uzumSales?->revenue ?? 0);
                 $result['uzum'] = [
                     'orders' => (int) ($uzumSales?->cnt ?? 0),
-                    'revenue' => (float) ($uzumSales?->revenue ?? 0),
-                    'profit' => (float) ($uzumSales?->profit ?? 0),
+                    'revenue' => $revenue,
+                    'profit' => $revenue * 0.85, // Примерная прибыль после комиссий
                 ];
 
                 \Log::info('Uzum sales fetched', $result['uzum']);
@@ -365,13 +352,13 @@ class FinanceController extends Controller
             'total_amount' => 0,
         ];
 
-        // 1. Uzum заказы в пути (уже в UZS)
+        // 1. Uzum заказы в пути (уже в UZS) - из uzum_orders
+        // Статусы: waiting_pickup, accepted_uzum, in_supply, in_assembly = в пути
         try {
-            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                $uzumTransit = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'PROCESSING')
-                    ->whereNull('date_issued')
-                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total')
+            if (class_exists(\App\Models\UzumOrder::class)) {
+                $uzumTransit = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['waiting_pickup', 'accepted_uzum', 'in_supply', 'in_assembly'])
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as total')
                     ->first();
 
                 $uzumCount = (int) ($uzumTransit?->cnt ?? 0);
@@ -1126,44 +1113,42 @@ class FinanceController extends Controller
             ],
         ];
 
-        // Uzum income (UZS)
+        // Uzum income (UZS) - использует uzum_orders таблицу
         try {
-            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where(function($q) use ($from, $to) {
-                        $q->where(function($sub) use ($from, $to) {
-                            $sub->where('status', 'TO_WITHDRAW')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->where('status', 'PROCESSING')
-                                ->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        });
-                    })
+            if (class_exists(\App\Models\UzumOrder::class)) {
+                // Выполненные заказы (issued = доставлено клиенту)
+                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'issued')
+                    ->whereDate('ordered_at', '>=', $from)
+                    ->whereDate('ordered_at', '<=', $to)
                     ->selectRaw('
                         COUNT(*) as orders_count,
-                        SUM(sell_price * amount) as gross_revenue,
-                        SUM(seller_profit) as net_payout,
-                        SUM(CASE WHEN status = "RETURNED" THEN 1 ELSE 0 END) as returns_count
+                        SUM(total_amount) as gross_revenue
                     ')
                     ->first();
 
-                // Возвраты/отмены отдельно (в Uzum это статус CANCELED)
-                $uzumReturns = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'CANCELED')
-                    ->whereDate('date_issued', '>=', $from)
-                    ->whereDate('date_issued', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as amount')
+                // Возвраты
+                $uzumReturns = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'returns')
+                    ->whereDate('ordered_at', '>=', $from)
+                    ->whereDate('ordered_at', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Отмены
+                $uzumCancelled = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('status', 'cancelled')
+                    ->whereDate('ordered_at', '>=', $from)
+                    ->whereDate('ordered_at', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
                     ->first();
 
                 $ordersCount = (int) ($uzumSales?->orders_count ?? 0);
                 $grossRevenue = (float) ($uzumSales?->gross_revenue ?? 0);
-                $netPayout = (float) ($uzumSales?->net_payout ?? 0);
-                $returnsCount = (int) ($uzumReturns?->cnt ?? 0);
-                $returnsAmount = (float) ($uzumReturns?->amount ?? 0);
+                // Net payout приблизительно 85% от выручки (после комиссий Uzum)
+                $netPayout = $grossRevenue * 0.85;
+                $returnsCount = (int) ($uzumReturns?->cnt ?? 0) + (int) ($uzumCancelled?->cnt ?? 0);
+                $returnsAmount = (float) ($uzumReturns?->amount ?? 0) + (float) ($uzumCancelled?->amount ?? 0);
 
                 $result['uzum'] = [
                     'orders_count' => $ordersCount,
@@ -1174,6 +1159,7 @@ class FinanceController extends Controller
                     'avg_order_value' => $ordersCount > 0 ? $grossRevenue / $ordersCount : 0,
                     'profit_margin' => $grossRevenue > 0 ? round(($netPayout / $grossRevenue) * 100, 1) : 0,
                     'currency' => 'UZS',
+                    'note' => 'Net payout estimated at 85% of gross',
                 ];
 
                 $result['total']['gross_revenue'] += $grossRevenue;
