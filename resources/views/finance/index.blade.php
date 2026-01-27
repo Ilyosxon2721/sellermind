@@ -1952,13 +1952,13 @@ function financePage() {
         marketplaceIncome: null,
         loadingIncome: false,
 
-        periodFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10),
-        periodTo: new Date().toISOString().slice(0,10),
-        reportFrom: new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0,10),
-        reportTo: new Date().toISOString().slice(0,10),
+        periodFrom: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; })(),
+        periodTo: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
+        reportFrom: (() => { const d = new Date(); return `${d.getFullYear()}-01-01`; })(),
+        reportTo: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
         reportType: 'pnl',
 
-        filtersTransactions: { type: '', status: '', from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10), to: new Date().toISOString().slice(0,10) },
+        filtersTransactions: { type: '', status: '', from: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; })(), to: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })() },
         filtersDebts: { type: '', status: '' },
         filtersTaxes: { year: new Date().getFullYear() },
 
