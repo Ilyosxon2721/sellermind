@@ -390,11 +390,11 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Возвраты</span>
-                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.uzum?.returns?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.uzum?.returns?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.uzum?.returns?.amount || 0)"></span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Отменены</span>
-                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.uzum?.cancelled?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.uzum?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.uzum?.cancelled?.amount || 0)"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -417,11 +417,11 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Возвраты</span>
-                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.wb?.returns?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.wb?.returns?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.wb?.returns?.amount || 0)"></span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Отменены</span>
-                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.wb?.cancelled?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.wb?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.wb?.cancelled?.amount || 0)"></span>
                                         </div>
                                         <div class="text-xs text-gray-400 text-right pt-1" x-text="'(' + formatMoney(marketplaceIncome.marketplaces?.wb?.sold?.amount_rub || 0) + ' ₽)'"></div>
                                     </div>
@@ -445,11 +445,11 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Возвраты</span>
-                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.ozon?.returns?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.ozon?.returns?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.ozon?.returns?.amount || 0)"></span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Отменены</span>
-                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.ozon?.cancelled?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.ozon?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.ozon?.cancelled?.amount || 0)"></span>
                                         </div>
                                         <div class="text-xs text-gray-400 text-right pt-1" x-text="'(' + formatMoney(marketplaceIncome.marketplaces?.ozon?.sold?.amount_rub || 0) + ' ₽)'"></div>
                                     </div>
@@ -473,11 +473,11 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Возвраты</span>
-                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.yandex?.returns?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.yandex?.returns?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.yandex?.returns?.amount || 0)"></span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Отменены</span>
-                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.yandex?.cancelled?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.yandex?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.yandex?.cancelled?.amount || 0)"></span>
                                         </div>
                                         <div class="text-xs text-gray-400 text-right pt-1" x-text="'(' + formatMoney(marketplaceIncome.marketplaces?.yandex?.sold?.amount_rub || 0) + ' ₽)'"></div>
                                     </div>
@@ -503,25 +503,29 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Возвраты</span>
-                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.offline?.returns?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-amber-600" x-text="(marketplaceIncome.marketplaces?.offline?.returns?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.offline?.returns?.amount || 0)"></span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-gray-600">Отменены</span>
-                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.offline?.cancelled?.count || 0) + ' шт'"></span>
+                                            <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.offline?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.offline?.cancelled?.amount || 0)"></span>
                                         </div>
-                                        <!-- Sale types breakdown -->
+                                        <!-- Sale sources breakdown -->
                                         <div class="pt-2 border-t border-slate-100 mt-2 space-y-1">
-                                            <div class="flex justify-between items-center text-xs">
-                                                <span class="text-slate-500">Розница</span>
-                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_type?.retail?.count || 0) + ' шт'"></span>
+                                            <div class="flex justify-between items-center text-xs" x-show="marketplaceIncome.marketplaces?.offline?.by_source?.pos?.count > 0">
+                                                <span class="text-slate-500">POS</span>
+                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_source?.pos?.count || 0) + ' шт'"></span>
                                             </div>
-                                            <div class="flex justify-between items-center text-xs">
-                                                <span class="text-slate-500">Опт</span>
-                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_type?.wholesale?.count || 0) + ' шт'"></span>
+                                            <div class="flex justify-between items-center text-xs" x-show="marketplaceIncome.marketplaces?.offline?.by_source?.web?.count > 0">
+                                                <span class="text-slate-500">Веб</span>
+                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_source?.web?.count || 0) + ' шт'"></span>
                                             </div>
-                                            <div class="flex justify-between items-center text-xs">
-                                                <span class="text-slate-500">Прямые</span>
-                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_type?.direct?.count || 0) + ' шт'"></span>
+                                            <div class="flex justify-between items-center text-xs" x-show="marketplaceIncome.marketplaces?.offline?.by_source?.phone?.count > 0">
+                                                <span class="text-slate-500">Телефон</span>
+                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_source?.phone?.count || 0) + ' шт'"></span>
+                                            </div>
+                                            <div class="flex justify-between items-center text-xs" x-show="marketplaceIncome.marketplaces?.offline?.by_source?.other?.count > 0">
+                                                <span class="text-slate-500">Другое</span>
+                                                <span class="text-slate-600" x-text="(marketplaceIncome.marketplaces?.offline?.by_source?.other?.count || 0) + ' шт'"></span>
                                             </div>
                                         </div>
                                     </div>

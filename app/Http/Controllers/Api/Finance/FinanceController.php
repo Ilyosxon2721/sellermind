@@ -1369,52 +1369,51 @@ class FinanceController extends Controller
             $marketplaces['yandex'] = ['error' => $e->getMessage()];
         }
 
-        // ========== OFFLINE SALES (Офлайн/Оптовые продажи) ==========
+        // ========== РУЧНЫЕ ПРОДАЖИ (Продажи со страницы "Продажи") ==========
         try {
-            if (class_exists(\App\Models\OfflineSale::class)) {
-                $offlineQuery = fn() => \App\Models\OfflineSale::byCompany($companyId)
-                    ->whereDate('sale_date', '>=', $from)
-                    ->whereDate('sale_date', '<=', $to);
+            if (class_exists(\App\Models\Sale::class)) {
+                // Ручные продажи (type = 'manual') за период
+                $saleQuery = fn() => \App\Models\Sale::byCompany($companyId)
+                    ->where('type', 'manual')
+                    ->whereDate('created_at', '>=', $from)
+                    ->whereDate('created_at', '<=', $to);
 
                 // Все продажи
-                $offlineAll = $offlineQuery()
+                $saleAll = $saleQuery()
                     ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
                     ->first();
 
-                // Проданные (delivered)
-                $offlineSold = $offlineQuery()
-                    ->where('status', 'delivered')
+                // Завершённые (completed) - аналог проданных
+                $saleSold = $saleQuery()
+                    ->where('status', 'completed')
                     ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
                     ->first();
 
-                // Возвраты (returned)
-                $offlineReturns = $offlineQuery()
-                    ->where('status', 'returned')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                // Возвраты - в модели Sale нет отдельного статуса returned, считаем 0
+                $saleReturns = (object) ['cnt' => 0, 'amount' => 0];
 
                 // Отменённые (cancelled)
-                $offlineCancelled = $offlineQuery()
+                $saleCancelled = $saleQuery()
                     ->where('status', 'cancelled')
                     ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
                     ->first();
 
-                // По типам продаж
-                $byType = $offlineQuery()
-                    ->where('status', 'delivered')
-                    ->selectRaw('sale_type, COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->groupBy('sale_type')
+                // По источникам продаж (source: pos, web, phone, etc.)
+                $bySource = $saleQuery()
+                    ->where('status', 'completed')
+                    ->selectRaw('COALESCE(source, "other") as source, COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->groupBy('source')
                     ->get()
-                    ->keyBy('sale_type');
+                    ->keyBy('source');
 
-                $ordersCount = (int) ($offlineAll?->cnt ?? 0);
-                $ordersAmount = (float) ($offlineAll?->amount ?? 0);
-                $soldCount = (int) ($offlineSold?->cnt ?? 0);
-                $soldAmount = (float) ($offlineSold?->amount ?? 0);
-                $returnsCount = (int) ($offlineReturns?->cnt ?? 0);
-                $returnsAmount = (float) ($offlineReturns?->amount ?? 0);
-                $cancelledCount = (int) ($offlineCancelled?->cnt ?? 0);
-                $cancelledAmount = (float) ($offlineCancelled?->amount ?? 0);
+                $ordersCount = (int) ($saleAll?->cnt ?? 0);
+                $ordersAmount = (float) ($saleAll?->amount ?? 0);
+                $soldCount = (int) ($saleSold?->cnt ?? 0);
+                $soldAmount = (float) ($saleSold?->amount ?? 0);
+                $returnsCount = (int) ($saleReturns?->cnt ?? 0);
+                $returnsAmount = (float) ($saleReturns?->amount ?? 0);
+                $cancelledCount = (int) ($saleCancelled?->cnt ?? 0);
+                $cancelledAmount = (float) ($saleCancelled?->amount ?? 0);
 
                 $marketplaces['offline'] = [
                     'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
@@ -1423,14 +1422,15 @@ class FinanceController extends Controller
                     'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
                     'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
                     'currency' => 'UZS',
-                    'by_type' => [
-                        'retail' => ['count' => (int) ($byType['retail']?->cnt ?? 0), 'amount' => (float) ($byType['retail']?->amount ?? 0)],
-                        'wholesale' => ['count' => (int) ($byType['wholesale']?->cnt ?? 0), 'amount' => (float) ($byType['wholesale']?->amount ?? 0)],
-                        'direct' => ['count' => (int) ($byType['direct']?->cnt ?? 0), 'amount' => (float) ($byType['direct']?->amount ?? 0)],
+                    'by_source' => [
+                        'pos' => ['count' => (int) ($bySource['pos']?->cnt ?? 0), 'amount' => (float) ($bySource['pos']?->amount ?? 0)],
+                        'web' => ['count' => (int) ($bySource['web']?->cnt ?? 0), 'amount' => (float) ($bySource['web']?->amount ?? 0)],
+                        'phone' => ['count' => (int) ($bySource['phone']?->cnt ?? 0), 'amount' => (float) ($bySource['phone']?->amount ?? 0)],
+                        'other' => ['count' => (int) ($bySource['other']?->cnt ?? 0), 'amount' => (float) ($bySource['other']?->amount ?? 0)],
                     ],
                 ];
 
-                // Добавляем к итогам (Offline уже в UZS)
+                // Добавляем к итогам (Ручные продажи уже в UZS)
                 $totals['orders']['count'] += $ordersCount;
                 $totals['orders']['amount'] += $ordersAmount;
                 $totals['sold']['count'] += $soldCount;
