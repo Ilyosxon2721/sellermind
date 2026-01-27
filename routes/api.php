@@ -692,6 +692,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('overview', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'overview']);
         Route::get('categories', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'categories']);
         Route::get('categories/all', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'allCategories']);
+        Route::post('categories', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'storeCategory']);
         Route::get('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'settings']);
         Route::put('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateSettings']);
         Route::get('reports', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'reports']);

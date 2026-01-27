@@ -664,6 +664,43 @@ class FinanceController extends Controller
         return $this->successResponse($query->get());
     }
 
+    public function storeCategory(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'in:income,expense,both'],
+            'parent_id' => ['nullable', 'integer', 'exists:finance_categories,id'],
+        ]);
+
+        // Check if category with same name exists for this company
+        $existing = FinanceCategory::where('company_id', $companyId)
+            ->where('name', $data['name'])
+            ->where('type', $data['type'])
+            ->first();
+
+        if ($existing) {
+            return $this->successResponse($existing);
+        }
+
+        $category = FinanceCategory::create([
+            'company_id' => $companyId,
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'parent_id' => $data['parent_id'] ?? null,
+            'code' => 'CUSTOM_' . strtoupper(str_replace(' ', '_', $data['name'])) . '_' . time(),
+            'is_system' => false,
+            'is_active' => true,
+            'sort_order' => 999,
+        ]);
+
+        return $this->successResponse($category, 201);
+    }
+
     public function settings(Request $request)
     {
         $companyId = Auth::user()?->company_id;

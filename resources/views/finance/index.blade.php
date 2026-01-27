@@ -1277,23 +1277,63 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Тип</label>
-                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.type" @change="loadCategoriesForType(transactionForm.type)">
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.type" @change="loadCategoriesForType(transactionForm.type); transactionForm.category_id = ''; showCustomCategoryInput = false;">
                         <option value="expense">Расход</option>
                         <option value="income">Доход</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Категория</label>
-                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.category_id">
-                        <option value="">—</option>
-                        <template x-for="cat in filteredCategories" :key="cat.id">
-                            <option :value="cat.id" x-text="cat.name"></option>
-                        </template>
-                    </select>
+                    <template x-if="!showCustomCategoryInput">
+                        <div>
+                            <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.category_id">
+                                <option value="">— Выберите категорию —</option>
+                                <template x-for="group in groupedCategories" :key="group.id">
+                                    <optgroup :label="group.name">
+                                        <template x-for="child in group.children" :key="child.id">
+                                            <option :value="child.id" x-text="child.name"></option>
+                                        </template>
+                                        <option :value="group.id" x-text="group.name + ' (общее)'"></option>
+                                    </optgroup>
+                                </template>
+                                <optgroup label="Пользовательские категории" x-show="customCategories.length > 0">
+                                    <template x-for="cat in customCategories" :key="cat.id">
+                                        <option :value="cat.id" x-text="cat.name"></option>
+                                    </template>
+                                </optgroup>
+                                <option value="__custom__">+ Создать свою категорию...</option>
+                            </select>
+                            <div x-show="transactionForm.category_id === '__custom__'" x-effect="if (transactionForm.category_id === '__custom__') { showCustomCategoryInput = true; transactionForm.category_id = ''; }"></div>
+                        </div>
+                    </template>
+                    <template x-if="showCustomCategoryInput">
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="text"
+                                       class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5"
+                                       placeholder="Название новой категории"
+                                       x-model="newCategoryName"
+                                       @keydown.enter.prevent="createCustomCategory()">
+                                <button type="button"
+                                        class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm"
+                                        @click="createCustomCategory()"
+                                        :disabled="!newCategoryName.trim() || savingCategory">
+                                    <span x-show="!savingCategory">Добавить</span>
+                                    <span x-show="savingCategory">...</span>
+                                </button>
+                                <button type="button"
+                                        class="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm"
+                                        @click="showCustomCategoryInput = false; newCategoryName = '';">
+                                    Отмена
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500">Новая категория будет сохранена и доступна для будущих транзакций</p>
+                        </div>
+                    </template>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Сумма</label>
-                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.amount">
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.amount" placeholder="0">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Дата</label>
@@ -1301,12 +1341,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Описание</label>
-                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.description">
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transactionForm.description" placeholder="Комментарий к транзакции">
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransactionForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="createTransaction()">Сохранить</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="createTransaction()" :disabled="!transactionForm.amount || !transactionForm.category_id">Сохранить</button>
             </div>
         </div>
     </div>
@@ -1793,6 +1833,12 @@ function financePage() {
         taxSummary: {},
         categories: [],
         filteredCategories: [],
+        allGroupedCategories: [],
+        groupedCategories: [],
+        customCategories: [],
+        showCustomCategoryInput: false,
+        newCategoryName: '',
+        savingCategory: false,
         reportData: null,
         marketplaceExpenses: null,
         loadingExpenses: false,
@@ -1996,13 +2042,55 @@ function financePage() {
         },
 
         async loadCategories() {
-            const resp = await fetch('/api/finance/categories/all', { headers: this.getAuthHeaders() });
-            const json = await resp.json();
-            if (resp.ok && !json.errors) this.categories = json.data || [];
+            // Load all categories flat for storage
+            const respAll = await fetch('/api/finance/categories/all', { headers: this.getAuthHeaders() });
+            const jsonAll = await respAll.json();
+            if (respAll.ok && !jsonAll.errors) this.categories = jsonAll.data || [];
+
+            // Load grouped categories with children for display
+            const respGrouped = await fetch('/api/finance/categories', { headers: this.getAuthHeaders() });
+            const jsonGrouped = await respGrouped.json();
+            if (respGrouped.ok && !jsonGrouped.errors) {
+                this.allGroupedCategories = jsonGrouped.data || [];
+            }
         },
 
         loadCategoriesForType(type) {
             this.filteredCategories = this.categories.filter(c => c.type === type || c.type === 'both');
+            // Group root categories with their children for select dropdown
+            this.groupedCategories = this.allGroupedCategories.filter(c => c.type === type || c.type === 'both');
+            // Custom categories are non-system categories for this type
+            this.customCategories = this.filteredCategories.filter(c => !c.is_system);
+        },
+
+        async createCustomCategory() {
+            if (!this.newCategoryName.trim()) return;
+            this.savingCategory = true;
+            try {
+                const resp = await fetch('/api/finance/categories', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify({
+                        name: this.newCategoryName.trim(),
+                        type: this.transactionForm.type
+                    })
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка создания категории');
+
+                // Add new category to list and select it
+                const newCat = json.data;
+                this.categories.push(newCat);
+                this.loadCategoriesForType(this.transactionForm.type);
+                this.transactionForm.category_id = newCat.id;
+                this.newCategoryName = '';
+                this.showCustomCategoryInput = false;
+                this.showToast('Категория создана');
+            } catch (e) {
+                this.showToast(e.message, 'error');
+            } finally {
+                this.savingCategory = false;
+            }
         },
 
         async loadReport() {
