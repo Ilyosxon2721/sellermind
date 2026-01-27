@@ -414,7 +414,7 @@ function currencySettings() {
         },
 
         getAuthHeaders() {
-            const token = window.api?.getToken() || localStorage.getItem('auth_token');
+            const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
             return {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
@@ -532,7 +532,7 @@ function syncSettings() {
 
         async loadSettings() {
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/company/settings', {
                     credentials: 'include',
                     headers: {
@@ -554,7 +554,7 @@ function syncSettings() {
             this.loading = true;
             this.saveStatus = null;
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/company/settings', {
                     method: 'PUT',
                     credentials: 'include',

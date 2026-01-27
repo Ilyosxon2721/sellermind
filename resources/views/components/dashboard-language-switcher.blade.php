@@ -32,7 +32,7 @@
         x-data="{
             async changeLocale(locale) {
                 try {
-                    const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                    const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                     const response = await fetch('/api/me/locale', {
                         method: 'PUT',
                         headers: {

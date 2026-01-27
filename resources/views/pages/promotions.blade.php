@@ -151,6 +151,11 @@ function promotionsPage() {
         promotions: [],
         loading: false,
 
+        getToken() {
+            const t = localStorage.getItem('_x_auth_token');
+            return t ? JSON.parse(t) : null;
+        },
+
         async init() {
             await this.loadPromotions();
         },
@@ -160,7 +165,7 @@ function promotionsPage() {
             try {
                 const response = await fetch('/api/promotions', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 const data = await response.json();
@@ -183,7 +188,7 @@ function promotionsPage() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                     body: JSON.stringify({
                         apply_immediately: true,
@@ -226,7 +231,7 @@ function promotionsPage() {
                 const response = await fetch(`/api/promotions/${promotion.id}/${action}`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 

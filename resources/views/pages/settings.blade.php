@@ -359,7 +359,7 @@ function settingsPage() {
 
         async loadProfile() {
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/me', {
                     credentials: 'include',
                     headers: {
@@ -385,7 +385,7 @@ function settingsPage() {
 
         async updateProfile() {
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/me', {
                     method: 'PUT',
                     credentials: 'include',
@@ -446,7 +446,7 @@ function settingsPage() {
             }
 
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/me/password', {
                     method: 'PUT',
                     credentials: 'include',
@@ -500,7 +500,7 @@ function settingsPage() {
 
         async loadCurrencyRates() {
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/finance/settings', {
                     credentials: 'include',
                     headers: {
@@ -525,7 +525,7 @@ function settingsPage() {
         async saveCurrencyRates() {
             this.savingCurrency = true;
             try {
-                const token = window.api?.getToken() || localStorage.getItem('auth_token');
+                const token = (() => { const t = localStorage.getItem('_x_auth_token'); return t ? JSON.parse(t) : null; })();
                 const response = await fetch('/api/finance/settings', {
                     method: 'PUT',
                     credentials: 'include',

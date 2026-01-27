@@ -283,6 +283,11 @@ function telegramSettings() {
         linkCode: '',
         botUsername: '{{ config("telegram.bot_username") }}',
 
+        getToken() {
+            const t = localStorage.getItem('_x_auth_token');
+            return t ? JSON.parse(t) : null;
+        },
+
         async init() {
             await this.loadStatus();
             if (this.connected) {
@@ -294,7 +299,7 @@ function telegramSettings() {
             try {
                 const response = await fetch('/api/telegram/status', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 const data = await response.json();
@@ -311,7 +316,7 @@ function telegramSettings() {
             try {
                 const response = await fetch('/api/telegram/notification-settings', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 const data = await response.json();
@@ -327,7 +332,7 @@ function telegramSettings() {
                 const response = await fetch('/api/telegram/generate-link-code', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 const data = await response.json();
@@ -355,7 +360,7 @@ function telegramSettings() {
                 await fetch('/api/telegram/disconnect', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 this.connected = false;
@@ -378,7 +383,7 @@ function telegramSettings() {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                     body: JSON.stringify(payload),
                 });

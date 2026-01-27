@@ -309,6 +309,11 @@ function reviewsPage() {
             marketplace: '',
         },
 
+        getToken() {
+            const t = localStorage.getItem('_x_auth_token');
+            return t ? JSON.parse(t) : null;
+        },
+
         async init() {
             await Promise.all([
                 this.loadReviews(),
@@ -327,7 +332,7 @@ function reviewsPage() {
 
                 const response = await fetch(`/api/reviews?${params}`, {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -345,7 +350,7 @@ function reviewsPage() {
             try {
                 const response = await fetch('/api/reviews/templates', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -360,7 +365,7 @@ function reviewsPage() {
             try {
                 const response = await fetch('/api/reviews/statistics', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -376,7 +381,7 @@ function reviewsPage() {
                 const response = await fetch(`/api/reviews/${reviewId}/generate`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -406,7 +411,7 @@ function reviewsPage() {
                 const response = await fetch(`/api/reviews/${reviewId}/save-response`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -442,7 +447,7 @@ function reviewsPage() {
                 const response = await fetch('/api/reviews/bulk-generate', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
