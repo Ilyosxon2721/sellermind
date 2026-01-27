@@ -24,17 +24,17 @@ class AIUsageLogResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Лог ИИ';
+        return __('filament.resources.ai_usage_log.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Использование ИИ';
+        return __('filament.resources.ai_usage_log.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'ИИ и Контент';
+        return __('filament.nav_groups.ai_content');
     }
 
     public static function form(Schema $schema): Schema

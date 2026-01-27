@@ -17,7 +17,7 @@ class SyncProductVariantsToWarehouse extends Command
      *
      * @var string
      */
-    protected $signature = 'warehouse:sync-variants {--company_id=} {--dry-run}';
+    protected $signature = 'warehouse:sync-variants {--company_id=} {--dry-run} {--sync-stock : Also sync stock_default for existing SKUs}';
 
     /**
      * The console command description.
@@ -86,6 +86,14 @@ class SyncProductVariantsToWarehouse extends Command
                             'height_mm' => $variant->height_mm,
                             'is_active' => $variant->is_active,
                         ]);
+
+                        // Sync stock if option is set and variant has stock but ledger doesn't
+                        if ($this->option('sync-stock') && $variant->stock_default > 0) {
+                            $currentLedgerStock = StockLedger::where('sku_id', $warehouseSku->id)->sum('qty_delta');
+                            if ($currentLedgerStock == 0) {
+                                $this->syncInitialStock($warehouseSku, $variant);
+                            }
+                        }
                     }
                     $updated++;
                     $this->line("   ✓ Обновлен: {$variant->sku}");
@@ -148,6 +156,11 @@ class SyncProductVariantsToWarehouse extends Command
     /**
      * Создает начальные записи остатков в stock_ledger для всех складов компании
      */
+    /**
+     * Создает начальные записи остатков в stock_ledger
+     * cost_delta хранит закупочную цену за единицу в USD
+     * Себестоимость рассчитывается динамически: qty × cost_delta × usd_rate
+     */
     private function syncInitialStock(Sku $warehouseSku, ProductVariant $variant): void
     {
         // Получаем дефолтный склад компании
@@ -161,6 +174,9 @@ class SyncProductVariantsToWarehouse extends Command
         }
 
         if ($defaultWarehouse && $variant->stock_default > 0) {
+            // cost_delta = закупочная цена за единицу в USD
+            $purchasePrice = $variant->purchase_price ?? 0;
+
             // Создаем запись в stock_ledger как начальное оприходование
             StockLedger::create([
                 'company_id' => $variant->company_id,
@@ -169,7 +185,8 @@ class SyncProductVariantsToWarehouse extends Command
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $variant->stock_default,
-                'cost_delta' => 0,
+                'cost_delta' => $purchasePrice, // Закупочная цена за единицу в USD
+                'currency_code' => 'USD',
                 'document_id' => null,
                 'document_line_id' => null,
                 'source_type' => 'INITIAL_SYNC',
@@ -177,7 +194,8 @@ class SyncProductVariantsToWarehouse extends Command
                 'created_by' => null,
             ]);
 
-            $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'");
+            $costInfo = $purchasePrice > 0 ? ", закупка: \${$purchasePrice}/шт" : '';
+            $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'{$costInfo}");
         }
     }
 }

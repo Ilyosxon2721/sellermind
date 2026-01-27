@@ -31,7 +31,7 @@ function safePersist(defaultValue, key) {
 
 // Clean up any corrupted localStorage on load
 try {
-    const keysToCheck = ['auth_user', 'auth_token', 'current_company'];
+    const keysToCheck = ['auth_user', 'auth_token', 'current_company', 'nav_position', 'sidebar_collapsed'];
     keysToCheck.forEach(key => {
         const prefixedKey = '_x_' + key;
         const value = localStorage.getItem(prefixedKey);
@@ -98,7 +98,10 @@ Alpine.store('auth', {
 
     async loadCompanies() {
         try {
+            console.log('Loading companies...');
             this.companies = await companies.list();
+            console.log('Companies loaded:', this.companies);
+
             // Auto-select company: prefer user's company_id, then persisted, then first
             if (this.companies.length > 0) {
                 const currentExists = this.currentCompany &&
@@ -106,14 +109,20 @@ Alpine.store('auth', {
                 if (!currentExists) {
                     // Try to find user's primary company first
                     const userCompanyId = this.user?.company_id;
+                    console.log('User company_id:', userCompanyId);
                     const userCompany = userCompanyId
                         ? this.companies.find(c => c.id === userCompanyId)
                         : null;
                     this.currentCompany = userCompany || this.companies[0];
+                    console.log('Selected company:', this.currentCompany);
+
+                    // Ensure persist saves immediately
+                    localStorage.setItem('_x_current_company', JSON.stringify(this.currentCompany));
                 }
                 this.showCompanyPrompt = false;
             } else {
-                // No companies - show prompt to create one
+                // No companies found - check if user has company_id but no access
+                console.log('No companies found for user');
                 this.showCompanyPrompt = true;
                 this.currentCompany = null;
             }
@@ -330,6 +339,8 @@ Alpine.store('pwa', {
 // UI Store - For managing UI state
 Alpine.store('ui', {
     sidebarOpen: false,
+    navPosition: safePersist('left', 'nav_position'), // 'left', 'right', 'bottom'
+    sidebarCollapsed: safePersist(false, 'sidebar_collapsed'),
 
     toggleSidebar() {
         this.sidebarOpen = !this.sidebarOpen;
@@ -343,6 +354,16 @@ Alpine.store('ui', {
     openSidebar() {
         this.sidebarOpen = true;
         if (window.haptic) window.haptic.light();
+    },
+
+    toggleSidebarCollapse() {
+        this.sidebarCollapsed = !this.sidebarCollapsed;
+        if (window.haptic) window.haptic.light();
+    },
+
+    setNavPosition(position) {
+        this.navPosition = position;
+        if (window.haptic) window.haptic.selection();
     }
 });
 

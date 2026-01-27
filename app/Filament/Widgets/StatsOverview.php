@@ -19,24 +19,24 @@ class StatsOverview extends BaseWidget
         $totalSales = Sale::sum('total_amount');
         
         return [
-            Stat::make('Продажи', number_format($totalSales, 0, '.', ' ') . ' UZS')
-                ->description('Общая выручка')
+            Stat::make(__('filament.stats.sales'), number_format($totalSales, 0, '.', ' ') . ' UZS')
+                ->description(__('filament.stats.total_revenue'))
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success')
                 ->chart($this->getSalesTrend()),
 
-            Stat::make('Пользователи', User::count())
-                ->description('Всего в системе')
+            Stat::make(__('filament.stats.users'), User::count())
+                ->description(__('filament.stats.total_in_system'))
                 ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
                 
-            Stat::make('Активные подписки', $activeSubscriptions)
-                ->description('Платные аккаунты')
+            Stat::make(__('filament.stats.active_subscriptions'), $activeSubscriptions)
+                ->description(__('filament.stats.paid_accounts'))
                 ->descriptionIcon('heroicon-m-credit-card')
                 ->color('warning'),
                 
-            Stat::make('Подключения', MarketplaceAccount::count())
-                ->description('Маркетплейсы')
+            Stat::make(__('filament.stats.connections'), MarketplaceAccount::count())
+                ->description(__('filament.stats.marketplaces'))
                 ->descriptionIcon('heroicon-m-shopping-bag')
                 ->color('info'),
         ];

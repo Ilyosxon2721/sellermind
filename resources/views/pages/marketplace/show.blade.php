@@ -1,6 +1,85 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+    /* Brand Colors */
+    :root {
+        --wb-primary: #CB11AB;
+        --wb-primary-dark: #9B0D85;
+        --uzum-primary: #7B2D8E;
+        --uzum-primary-dark: #5A1F69;
+        --ozon-primary: #005BFF;
+        --ozon-primary-dark: #0047CC;
+        --ym-primary: #FFCC00;
+        --ym-primary-dark: #E6B800;
+    }
+
+    /* Wildberries */
+    .brand-wb { --brand-primary: #CB11AB; --brand-dark: #9B0D85; }
+    .brand-wb .brand-header { background: linear-gradient(135deg, #CB11AB 0%, #9B0D85 100%) !important; }
+    .brand-wb .brand-badge { background: #CB11AB; }
+    .brand-wb .brand-text { color: #CB11AB !important; }
+    .brand-wb .brand-border { border-color: #CB11AB !important; }
+    .brand-wb .brand-bg-light { background: #FCE4F6; }
+    .brand-wb .brand-icon-bg { background: rgba(203, 17, 171, 0.1); }
+
+    /* Uzum */
+    .brand-uzum { --brand-primary: #7B2D8E; --brand-dark: #5A1F69; }
+    .brand-uzum .brand-header { background: linear-gradient(135deg, #7B2D8E 0%, #5A1F69 100%) !important; }
+    .brand-uzum .brand-badge { background: #7B2D8E; }
+    .brand-uzum .brand-text { color: #7B2D8E !important; }
+    .brand-uzum .brand-border { border-color: #7B2D8E !important; }
+    .brand-uzum .brand-bg-light { background: #F3E8FF; }
+    .brand-uzum .brand-icon-bg { background: rgba(123, 45, 142, 0.1); }
+
+    /* Ozon */
+    .brand-ozon { --brand-primary: #005BFF; --brand-dark: #0047CC; }
+    .brand-ozon .brand-header { background: linear-gradient(135deg, #005BFF 0%, #0047CC 100%) !important; }
+    .brand-ozon .brand-badge { background: #005BFF; }
+    .brand-ozon .brand-text { color: #005BFF !important; }
+    .brand-ozon .brand-border { border-color: #005BFF !important; }
+    .brand-ozon .brand-bg-light { background: #E0EDFF; }
+    .brand-ozon .brand-icon-bg { background: rgba(0, 91, 255, 0.1); }
+
+    /* Yandex Market */
+    .brand-ym { --brand-primary: #FFCC00; --brand-dark: #E6B800; }
+    .brand-ym .brand-header { background: linear-gradient(135deg, #FFCC00 0%, #FFE066 100%) !important; }
+    .brand-ym .brand-badge { background: #FFCC00; color: #1A1A1A; }
+    .brand-ym .brand-text { color: #1A1A1A !important; }
+    .brand-ym .brand-border { border-color: #FFCC00 !important; }
+    .brand-ym .brand-bg-light { background: #FFFCE6; }
+    .brand-ym .brand-icon-bg { background: rgba(255, 204, 0, 0.15); }
+
+    /* Default brand header (before account loads) */
+    .brand-header {
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    }
+
+    .brand-card {
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        transition: all 0.2s ease;
+    }
+    .brand-card:hover {
+        border-color: var(--brand-primary, #6366F1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+
+    .brand-btn {
+        background: var(--brand-primary, #6366F1);
+        color: white;
+        font-weight: 600;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+    .brand-btn:hover {
+        background: var(--brand-dark, #4F46E5);
+        transform: translateY(-1px);
+    }
+</style>
+
 {{-- BROWSER MODE --}}
 <div class="browser-only" x-data="{
          account: null,
@@ -226,59 +305,95 @@
                  'error': 'bg-red-100 text-red-800'
              };
              return colors[status] || 'bg-gray-100 text-gray-800';
+         },
+         getBrandClass() {
+             const mp = this.account?.marketplace;
+             if (mp === 'wb' || mp === 'wildberries') return 'brand-wb';
+             if (mp === 'uzum') return 'brand-uzum';
+             if (mp === 'ozon') return 'brand-ozon';
+             if (mp === 'ym' || mp === 'yandex_market') return 'brand-ym';
+             return 'brand-wb';
+         },
+         getLogoText() {
+             const mp = this.account?.marketplace;
+             if (mp === 'wb' || mp === 'wildberries') return 'WB';
+             if (mp === 'uzum') return 'UZ';
+             if (mp === 'ozon') return 'OZ';
+             if (mp === 'ym' || mp === 'yandex_market') return 'YM';
+             return 'MP';
          }
      }"
-     class="flex h-screen bg-gray-50">
+     class="flex h-screen bg-gray-100" :class="[getBrandClass(), {
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }]">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <a href="/marketplace" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                    </a>
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
-                        <p class="text-gray-600 text-sm">Управление интеграцией</p>
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
+        <!-- Brand Header -->
+        <header class="brand-header shadow-lg">
+            <div class="px-6 py-5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/marketplace" class="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </a>
+                        <div class="flex items-center space-x-4">
+                            <!-- Logo Badge -->
+                            <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                                <span class="text-xl font-bold brand-text" x-text="getLogoText()"></span>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-bold text-white drop-shadow-sm" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
+                                <p class="text-white text-sm opacity-90" x-text="account?.name || 'Управление интеграцией'"></p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="flex space-x-2">
-                    <!-- Settings Button - links to marketplace-specific settings -->
-                    <a :href="getSettingsUrl()"
-                       class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        <span>Настройки</span>
-                    </a>
-                    <button @click="syncAll()" :disabled="syncing.all"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center space-x-2">
-                        <svg x-show="syncing.all" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
-                        <span>Синхронизировать всё</span>
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <!-- Settings Button -->
+                        <a :href="getSettingsUrl()"
+                           class="px-4 py-2.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-xl font-semibold hover:bg-white/20 transition flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span>Настройки</span>
+                        </a>
+                        <button @click="syncAll()" :disabled="syncing.all"
+                                class="px-5 py-2.5 bg-white text-gray-900 rounded-xl font-bold hover:bg-gray-100 transition disabled:opacity-50 flex items-center space-x-2 shadow-lg">
+                            <svg x-show="syncing.all" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <svg x-show="!syncing.all" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>Синхронизировать</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="mt-4 flex space-x-4 border-b border-gray-200 -mb-px">
-                <button @click="activeTab = 'overview'"
-                        :class="activeTab === 'overview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                        class="pb-3 px-1 border-b-2 font-medium transition">
-                    Обзор
-                </button>
-                <button @click="activeTab = 'logs'"
-                        :class="activeTab === 'logs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                        class="pb-3 px-1 border-b-2 font-medium transition">
-                    История синхронизаций
-                </button>
+            <!-- Tabs - White Background -->
+            <div class="bg-white px-6 border-b border-gray-200">
+                <div class="flex space-x-1">
+                    <button @click="activeTab = 'overview'"
+                            :class="activeTab === 'overview' ? 'border-b-2 brand-border brand-text font-semibold' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700'"
+                            class="py-3.5 px-4 transition text-sm">
+                        Обзор
+                    </button>
+                    <button @click="activeTab = 'logs'"
+                            :class="activeTab === 'logs' ? 'border-b-2 brand-border brand-text font-semibold' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700'"
+                            class="py-3.5 px-4 transition text-sm">
+                        История
+                    </button>
+                </div>
             </div>
         </header>
 

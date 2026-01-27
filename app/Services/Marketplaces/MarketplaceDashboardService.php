@@ -4,17 +4,21 @@
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceReturn;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
-use App\Models\MarketplaceOrderItem;
+use App\Models\UzumOrder;
+use App\Models\WildberriesOrder;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
 class MarketplaceDashboardService
 {
+    /**
+     * Статусы отменённых заказов (исключаются из расчёта выручки)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
     /**
      * Построение всех данных для дашборда.
      *
@@ -106,23 +110,51 @@ class MarketplaceDashboardService
                 'avg_check' => 0.0,
                 'return_rate' => 0.0,
                 'active_skus' => 0,
+                'cancelled_amount' => 0.0,
+                'cancelled_count' => 0,
             ];
         }
 
         $accountIds = $accounts->pluck('id');
 
-        $orders = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
+        // Собираем заказы из всех маркетплейсов (исключая отменённые из выручки)
+        $uzumOrders = UzumOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('ordered_at', [$from, $to])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->get();
 
-        $revenue = (float) $orders->sum('total_amount');
-        $ordersCount = $orders->count();
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->get();
+
+        $allOrders = $uzumOrders->concat($wbOrders);
+
+        $revenue = (float) $uzumOrders->sum('total_amount') + (float) $wbOrders->sum('for_pay');
+        $ordersCount = $allOrders->count();
         $avgCheck = $ordersCount > 0 ? $revenue / $ordersCount : 0.0;
 
-        // Возвраты за период
-        $orderIds = $orders->pluck('id');
-        $returnsCount = MarketplaceReturn::whereIn('marketplace_order_id', $orderIds)->count();
-        $returnRate = $ordersCount > 0 ? ($returnsCount / $ordersCount) * 100.0 : 0.0;
+        // Отменённые заказы отдельно
+        $cancelledUzum = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$from, $to])
+            ->whereIn('status_normalized', self::CANCELLED_STATUSES)
+            ->get();
+
+        $cancelledWb = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to])
+            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+            ->get();
+
+        $cancelledOrders = $cancelledUzum->concat($cancelledWb);
+        $cancelledAmount = (float) $cancelledUzum->sum('total_amount') + (float) $cancelledWb->sum('for_pay');
+        $cancelledCount = $cancelledOrders->count();
+
+        // Возвраты за период (по всем заказам, включая отменённые)
+        $allOrderIds = $allOrders->pluck('id')->concat($cancelledOrders->pluck('id'));
+        $returnsCount = MarketplaceReturn::whereIn('marketplace_order_id', $allOrderIds)->count();
+        $totalOrdersCount = $ordersCount + $cancelledCount;
+        $returnRate = $totalOrdersCount > 0 ? ($returnsCount / $totalOrdersCount) * 100.0 : 0.0;
 
         // Кол-во активных SKU
         $activeSkus = MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
@@ -135,6 +167,8 @@ class MarketplaceDashboardService
             'avg_check' => $avgCheck,
             'return_rate' => $returnRate,
             'active_skus' => $activeSkus,
+            'cancelled_amount' => $cancelledAmount,
+            'cancelled_count' => $cancelledCount,
         ];
     }
 
@@ -148,6 +182,8 @@ class MarketplaceDashboardService
      *      'orders_count'  => int,
      *      'avg_check'     => float,
      *      'return_rate'   => float,
+     *      'cancelled_amount' => float,
+     *      'cancelled_count'  => int,
      *      'last_sync_at'  => ?Carbon,
      *      'last_sync_status' => string,
      *    ],
@@ -158,17 +194,21 @@ class MarketplaceDashboardService
         $result = [];
 
         foreach ($accounts as $account) {
-            $orders = MarketplaceOrder::where('marketplace_account_id', $account->id)
-                ->whereBetween('ordered_at', [$from, $to])
-                ->get();
+            // Получаем заказы в зависимости от маркетплейса
+            $orders = $this->getOrdersForAccount($account, $from, $to, excludeCancelled: true);
+            $cancelledOrders = $this->getOrdersForAccount($account, $from, $to, onlyCancelled: true);
 
             $revenue = (float) $orders->sum('total_amount');
             $ordersCount = $orders->count();
             $avgCheck = $ordersCount > 0 ? $revenue / $ordersCount : 0.0;
 
-            $orderIds = $orders->pluck('id');
-            $returnsCount = MarketplaceReturn::whereIn('marketplace_order_id', $orderIds)->count();
-            $returnRate = $ordersCount > 0 ? ($returnsCount / $ordersCount) * 100.0 : 0.0;
+            $cancelledAmount = (float) $cancelledOrders->sum('total_amount');
+            $cancelledCount = $cancelledOrders->count();
+
+            $allOrderIds = $orders->pluck('id')->concat($cancelledOrders->pluck('id'));
+            $returnsCount = MarketplaceReturn::whereIn('marketplace_order_id', $allOrderIds)->count();
+            $totalOrdersCount = $ordersCount + $cancelledCount;
+            $returnRate = $totalOrdersCount > 0 ? ($returnsCount / $totalOrdersCount) * 100.0 : 0.0;
 
             $lastSync = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
                 ->orderByDesc('created_at')
@@ -179,12 +219,56 @@ class MarketplaceDashboardService
                 'orders_count' => $ordersCount,
                 'avg_check' => $avgCheck,
                 'return_rate' => $returnRate,
+                'cancelled_amount' => $cancelledAmount,
+                'cancelled_count' => $cancelledCount,
                 'last_sync_at' => $lastSync?->finished_at ?? $lastSync?->created_at,
                 'last_sync_status' => $lastSync?->status ?? null,
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * Получить заказы для конкретного аккаунта маркетплейса.
+     */
+    protected function getOrdersForAccount(
+        MarketplaceAccount $account,
+        Carbon $from,
+        Carbon $to,
+        bool $excludeCancelled = false,
+        bool $onlyCancelled = false
+    ): Collection {
+        $marketplace = $account->marketplace;
+
+        if ($marketplace === 'uzum') {
+            $query = UzumOrder::where('marketplace_account_id', $account->id)
+                ->whereBetween('ordered_at', [$from, $to]);
+
+            if ($excludeCancelled) {
+                $query->whereNotIn('status_normalized', self::CANCELLED_STATUSES);
+            } elseif ($onlyCancelled) {
+                $query->whereIn('status_normalized', self::CANCELLED_STATUSES);
+            }
+
+            return $query->get();
+        }
+
+        if ($marketplace === 'wb') {
+            $query = WildberriesOrder::where('marketplace_account_id', $account->id)
+                ->whereBetween('order_date', [$from, $to]);
+
+            if ($excludeCancelled) {
+                $query->where('is_cancel', false)->where('is_return', false);
+            } elseif ($onlyCancelled) {
+                $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+            }
+
+            return $query->get();
+        }
+
+        // Для других маркетплейсов возвращаем пустую коллекцию
+        return collect();
     }
 
     /**
@@ -201,53 +285,62 @@ class MarketplaceDashboardService
             return [];
         }
 
-        $accountIds = $accounts->pluck('id');
+        // Собираем все items из заказов (исключая отменённые)
+        $allItems = collect();
 
-        // Берём все заказы за период
-        $orders = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to])
-            ->get();
+        foreach ($accounts as $account) {
+            $orders = $this->getOrdersForAccount($account, $from, $to, excludeCancelled: true);
 
-        if ($orders->isEmpty()) {
-            return [];
+            if ($orders->isEmpty()) {
+                continue;
+            }
+
+            foreach ($orders as $order) {
+                if (method_exists($order, 'items')) {
+                    $items = $order->items;
+                    foreach ($items as $item) {
+                        $allItems->push([
+                            'marketplace_account_id' => $account->id,
+                            'marketplace_order_id' => $order->id,
+                            'external_offer_id' => $item->external_offer_id,
+                            'name' => $item->name,
+                            'quantity' => $item->quantity,
+                            'total_price' => $item->total_price,
+                        ]);
+                    }
+                }
+            }
         }
 
-        $orderIds = $orders->pluck('id');
-
-        $items = MarketplaceOrderItem::whereIn('marketplace_order_id', $orderIds)
-            ->with('order')
-            ->get();
-
-        if ($items->isEmpty()) {
+        if ($allItems->isEmpty()) {
             return [];
         }
 
         // Группировка по external_offer_id + marketplace_account_id
-        $grouped = $items->groupBy(function ($item) {
-            return $item->external_offer_id . ':' . $item->order->marketplace_account_id;
+        $grouped = $allItems->groupBy(function ($item) {
+            return $item['external_offer_id'] . ':' . $item['marketplace_account_id'];
         });
 
         $problemList = [];
 
         foreach ($grouped as $key => $group) {
-            /** @var MarketplaceOrderItem $first */
             $first = $group->first();
-            $accountId = $first->order->marketplace_account_id;
-            $externalOfferId = $first->external_offer_id;
+            $accountId = $first['marketplace_account_id'];
+            $externalOfferId = $first['external_offer_id'];
 
             $totalQty = (int) $group->sum('quantity');
             $totalRevenue = (float) $group->sum('total_price');
 
             // Возвраты по этим заказам
-            $orderIdsForGroup = $group->pluck('marketplace_order_id');
+            $orderIdsForGroup = $group->pluck('marketplace_order_id')->unique();
             $returnsCount = MarketplaceReturn::whereIn('marketplace_order_id', $orderIdsForGroup)->count();
-            $ordersCount = $group->pluck('marketplace_order_id')->unique()->count();
+            $ordersCount = $orderIdsForGroup->count();
             $returnRate = $ordersCount > 0 ? ($returnsCount / $ordersCount) * 100.0 : 0.0;
 
             $problemList[] = [
                 'account_id' => $accountId,
                 'external_offer_id' => $externalOfferId,
-                'name' => $first->name,
+                'name' => $first['name'],
                 'total_qty' => $totalQty,
                 'total_revenue' => $totalRevenue,
                 'return_rate' => $returnRate,
@@ -316,24 +409,34 @@ class MarketplaceDashboardService
 
         $overallRevenue = array_fill(0, count($labels), 0.0);
         $overallOrders = array_fill(0, count($labels), 0);
+        $overallCancelledRevenue = array_fill(0, count($labels), 0.0);
+        $overallCancelledOrders = array_fill(0, count($labels), 0);
 
         // Use marketplace codes from the project
         $byMarketplace = [
             'wb' => [
                 'revenue' => array_fill(0, count($labels), 0.0),
                 'orders' => array_fill(0, count($labels), 0),
+                'cancelled_revenue' => array_fill(0, count($labels), 0.0),
+                'cancelled_orders' => array_fill(0, count($labels), 0),
             ],
             'ozon' => [
                 'revenue' => array_fill(0, count($labels), 0.0),
                 'orders' => array_fill(0, count($labels), 0),
+                'cancelled_revenue' => array_fill(0, count($labels), 0.0),
+                'cancelled_orders' => array_fill(0, count($labels), 0),
             ],
             'uzum' => [
                 'revenue' => array_fill(0, count($labels), 0.0),
                 'orders' => array_fill(0, count($labels), 0),
+                'cancelled_revenue' => array_fill(0, count($labels), 0.0),
+                'cancelled_orders' => array_fill(0, count($labels), 0),
             ],
             'ym' => [
                 'revenue' => array_fill(0, count($labels), 0.0),
                 'orders' => array_fill(0, count($labels), 0),
+                'cancelled_revenue' => array_fill(0, count($labels), 0.0),
+                'cancelled_orders' => array_fill(0, count($labels), 0),
             ],
         ];
 
@@ -343,24 +446,8 @@ class MarketplaceDashboardService
                 'overall' => [
                     'revenue' => $overallRevenue,
                     'orders' => $overallOrders,
-                ],
-                'by_marketplace' => $byMarketplace,
-            ];
-        }
-
-        $accountIds = $accounts->pluck('id');
-
-        // Load all orders for the period
-        $orders = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->get();
-
-        if ($orders->isEmpty()) {
-            return [
-                'labels' => $labels,
-                'overall' => [
-                    'revenue' => $overallRevenue,
-                    'orders' => $overallOrders,
+                    'cancelled_revenue' => $overallCancelledRevenue,
+                    'cancelled_orders' => $overallCancelledOrders,
                 ],
                 'by_marketplace' => $byMarketplace,
             ];
@@ -372,42 +459,57 @@ class MarketplaceDashboardService
         // Index by date
         $labelIndex = array_flip($labels);
 
-        foreach ($orders as $order) {
-            if (!$order->ordered_at) {
-                continue;
-            }
-
-            $dateKey = $order->ordered_at->copy()->startOfDay()->format('Y-m-d');
-            if (!isset($labelIndex[$dateKey])) {
-                continue;
-            }
-
-            $idx = $labelIndex[$dateKey];
-
-            $revenue = (float) $order->total_amount;
-            $overallRevenue[$idx] += $revenue;
-            $overallOrders[$idx]++;
-
-            $account = $accountsById->get($order->marketplace_account_id);
-            if (!$account) {
-                continue;
-            }
+        // Load all orders for the period from each marketplace
+        foreach ($accounts as $account) {
+            $orders = $this->getOrdersForAccount($account, $from->copy()->startOfDay(), $to->copy()->endOfDay(), excludeCancelled: true);
+            $cancelledOrders = $this->getOrdersForAccount($account, $from->copy()->startOfDay(), $to->copy()->endOfDay(), onlyCancelled: true);
 
             $mp = $account->marketplace;
 
-            if (isset($byMarketplace[$mp])) {
-                $byMarketplace[$mp]['revenue'][$idx] += $revenue;
-                $byMarketplace[$mp]['orders'][$idx]++;
-            } else {
-                // Create new marketplace key if not exists
-                if (!isset($byMarketplace[$mp])) {
-                    $byMarketplace[$mp] = [
-                        'revenue' => array_fill(0, count($labels), 0.0),
-                        'orders' => array_fill(0, count($labels), 0),
-                    ];
+            // Process non-cancelled orders
+            foreach ($orders as $order) {
+                if (!$order->ordered_at) {
+                    continue;
                 }
-                $byMarketplace[$mp]['revenue'][$idx] += $revenue;
-                $byMarketplace[$mp]['orders'][$idx]++;
+
+                $dateKey = $order->ordered_at->copy()->startOfDay()->format('Y-m-d');
+                if (!isset($labelIndex[$dateKey])) {
+                    continue;
+                }
+
+                $idx = $labelIndex[$dateKey];
+                $revenue = (float) $order->total_amount;
+
+                $overallRevenue[$idx] += $revenue;
+                $overallOrders[$idx]++;
+
+                if (isset($byMarketplace[$mp])) {
+                    $byMarketplace[$mp]['revenue'][$idx] += $revenue;
+                    $byMarketplace[$mp]['orders'][$idx]++;
+                }
+            }
+
+            // Process cancelled orders separately
+            foreach ($cancelledOrders as $order) {
+                if (!$order->ordered_at) {
+                    continue;
+                }
+
+                $dateKey = $order->ordered_at->copy()->startOfDay()->format('Y-m-d');
+                if (!isset($labelIndex[$dateKey])) {
+                    continue;
+                }
+
+                $idx = $labelIndex[$dateKey];
+                $revenue = (float) $order->total_amount;
+
+                $overallCancelledRevenue[$idx] += $revenue;
+                $overallCancelledOrders[$idx]++;
+
+                if (isset($byMarketplace[$mp])) {
+                    $byMarketplace[$mp]['cancelled_revenue'][$idx] += $revenue;
+                    $byMarketplace[$mp]['cancelled_orders'][$idx]++;
+                }
             }
         }
 
@@ -416,6 +518,8 @@ class MarketplaceDashboardService
             'overall' => [
                 'revenue' => $overallRevenue,
                 'orders' => $overallOrders,
+                'cancelled_revenue' => $overallCancelledRevenue,
+                'cancelled_orders' => $overallCancelledOrders,
             ],
             'by_marketplace' => $byMarketplace,
         ];

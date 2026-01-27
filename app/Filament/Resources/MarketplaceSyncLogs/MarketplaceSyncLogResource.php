@@ -24,17 +24,17 @@ class MarketplaceSyncLogResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Лог синхронизации';
+        return __('filament.resources.marketplace_sync_log.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Логи синхронизации';
+        return __('filament.resources.marketplace_sync_log.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Маркетплейсы';
+        return __('filament.nav_groups.marketplaces');
     }
 
     public static function form(Schema $schema): Schema

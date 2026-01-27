@@ -134,6 +134,13 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ], 201);
         } catch (\Exception $e) {
+            \Log::error('Failed to create sale', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->except(['items']),
+                'items_count' => count($request->input('items', [])),
+            ]);
+
             return response()->json([
                 'message' => 'Failed to create sale',
                 'error' => $e->getMessage(),
@@ -495,10 +502,20 @@ class SalesManagementController extends Controller
             })
             ->orderBy('sku')
             ->limit(50)
-            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price', 'metadata']);
+            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price']);
 
-        // Добавляем доступные остатки по складу
-        $products->each(function($variant) use ($warehouseId) {
+        // Получить все связанные SKU из складской системы
+        $variantIds = $products->pluck('id')->all();
+        $warehouseSkus = \App\Models\Warehouse\Sku::whereIn('product_variant_id', $variantIds)
+            ->get()
+            ->keyBy('product_variant_id');
+
+        // Добавляем доступные остатки по складу и warehouse_sku_id
+        $products->each(function($variant) use ($warehouseId, $warehouseSkus) {
+            // Добавить warehouse_sku_id для использования в документах оприходования
+            $warehouseSku = $warehouseSkus->get($variant->id);
+            $variant->warehouse_sku_id = $warehouseSku?->id;
+
             if ($warehouseId) {
                 $variant->available_stock = $this->reservationService->getAvailableStock($variant, $warehouseId);
             } else {
@@ -516,23 +533,18 @@ class SalesManagementController extends Controller
     {
         $companyId = $this->getCompanyId($request);
 
-        if (auth()->check()) {
-            // Получаем склады пользователя
-            $warehouses = auth()->user()->warehouses()
-                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get(['id', 'name', 'code', 'address']);
-        } else {
-            // Если не авторизован, показываем все активные склады
-            $warehouses = Warehouse::query()
-                ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                ->where('is_active', true)
-                ->orderBy('is_default', 'desc')
-                ->orderBy('name')
-                ->get(['id', 'name', 'code', 'address']);
-        }
+        // Get warehouses directly from Warehouse model
+        $warehouses = Warehouse::select([
+                'warehouses.id as id',
+                'warehouses.name as name',
+                'warehouses.code as code',
+                'warehouses.address as address'
+            ])
+            ->when($companyId, fn($q) => $q->where('warehouses.company_id', $companyId))
+            ->where('warehouses.is_active', true)
+            ->orderBy('warehouses.is_default', 'desc')
+            ->orderBy('warehouses.name')
+            ->get();
 
         return response()->json(['data' => $warehouses]);
     }

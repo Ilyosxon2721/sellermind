@@ -10,6 +10,113 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        /* Force white text on blue buttons */
+        .bg-blue-600 a,
+        .bg-blue-600,
+        a.bg-blue-600 {
+            color: white !important;
+        }
+        
+        /* Improved Fullpage Scroll Snap */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            scroll-padding-top: 0;
+        }
+        
+        section {
+            scroll-snap-align: start;
+            scroll-snap-stop: normal;
+        }
+        
+        /* Scroll Reveal Animations - Faster */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Stagger animation for cards - Shorter delays */
+        .scroll-reveal-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .scroll-reveal-card.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Faster stagger delays */
+        .scroll-reveal-card:nth-child(1).revealed { transition-delay: 0.05s; }
+        .scroll-reveal-card:nth-child(2).revealed { transition-delay: 0.1s; }
+        .scroll-reveal-card:nth-child(3).revealed { transition-delay: 0.15s; }
+        .scroll-reveal-card:nth-child(4).revealed { transition-delay: 0.2s; }
+        .scroll-reveal-card:nth-child(5).revealed { transition-delay: 0.25s; }
+        .scroll-reveal-card:nth-child(6).revealed { transition-delay: 0.3s; }
+        
+        /* Smooth hover effects */
+        .hover-lift {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Section Indicators - Smoother */
+        .section-indicators {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .section-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+        
+        .section-indicator:hover {
+            background: #94a3b8;
+            transform: scale(1.2);
+        }
+        
+        .section-indicator.active {
+            background: #2563eb;
+            transform: scale(1.3);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .section-indicators {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="antialiased bg-white text-gray-900" x-data="{ mobileMenuOpen: false, faqOpen: null }">
@@ -27,21 +134,75 @@
                     <span class="font-bold text-xl text-gray-900">SellerMind</span>
                 </div>
                 
-                <nav class="hidden lg:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Возможности</a>
-                    <a href="#how-it-works" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Как работает</a>
-                    <a href="#integrations" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Интеграции</a>
-                    <a href="#testimonials" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Отзывы</a>
-                    <a href="#pricing" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Тарифы</a>
-                    <a href="#faq" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">FAQ</a>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_features') }}</a>
+                    <a href="#integrations" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_integrations') }}</a>
+                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_pricing') }}</a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_faq') }}</a>
+                    
+                    <!-- Language Switcher in Navbar -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button 
+                            @click="open = !open" 
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
+                        >
+                            <span class="text-lg">
+                                @if(app()->getLocale() === 'uz') 🇺🇿
+                                @elseif(app()->getLocale() === 'ru') 🇷🇺
+                                @else 🇬🇧
+                                @endif
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div 
+                            x-show="open" 
+                            @click.away="open = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform scale-95"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform scale-100"
+                            x-transition:leave-end="opacity-0 transform scale-95"
+                            class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden"
+                            style="display: none;"
+                        >
+                            <a href="{{ route('home.uz') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'uz' ? 'bg-blue-50' : '' }}">
+                                <span class="text-2xl">🇺🇿</span>
+                                <span class="font-medium text-gray-700">O'zbekcha</span>
+                                @if(app()->getLocale() === 'uz')
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                @endif
+                            </a>
+                            <a href="{{ route('home.ru') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'ru' ? 'bg-blue-50' : '' }}">
+                                <span class="text-2xl">🇷🇺</span>
+                                <span class="font-medium text-gray-700">Русский</span>
+                                @if(app()->getLocale() === 'ru')
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                @endif
+                            </a>
+                            <a href="{{ route('home.en') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition {{ app()->getLocale() === 'en' ? 'bg-blue-50' : '' }}">
+                                <span class="text-2xl">🇬🇧</span>
+                                <span class="font-medium text-gray-700">English</span>
+                                @if(app()->getLocale() === 'en')
+                                    <svg class="w-5 h-5 ml-auto text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                @endif
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <a href="/{{ app()->getLocale() }}/login" class="text-gray-600 hover:text-blue-600 transition">{{ __('landing.nav_login') }}</a>
+                    <a href="/{{ app()->getLocale() }}/register" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">{{ __('landing.nav_register') }}</a>
                 </nav>
                 
-                <div class="hidden md:flex items-center space-x-4">
-                    <a href="/login" class="text-gray-600 hover:text-gray-900 transition text-sm font-medium">Вход</a>
-                    <a href="/register" class="px-5 py-2.5 bg-blue-600 text-sm font-semibold rounded-lg hover:bg-blue-700 transition" style="color: white !important;">
-                        Попробовать бесплатно
-                    </a>
-                </div>
                 
                 <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,9 +221,9 @@
                 <a href="#testimonials" class="block py-2 text-gray-600">Отзывы</a>
                 <a href="#pricing" class="block py-2 text-gray-600">Тарифы</a>
                 <a href="#faq" class="block py-2 text-gray-600">FAQ</a>
-                <div class="pt-4 border-t border-gray-100 flex gap-3">
-                    <a href="/login" class="flex-1 py-2 text-center text-gray-600 border border-gray-200 rounded-lg">Вход</a>
-                    <a href="/register" class="flex-1 py-2 text-center bg-blue-600 rounded-lg font-medium" style="color: white !important;">Регистрация</a>
+                <div class="flex gap-2 mt-4">
+                    <a href="/{{ app()->getLocale() }}/login" class="flex-1 py-2 text-center border border-gray-200 rounded-lg font-medium text-gray-700">{{ __('landing.nav_login') }}</a>
+                    <a href="/{{ app()->getLocale() }}/register" class="flex-1 py-2 text-center bg-blue-600 text-white rounded-lg font-medium">{{ __('landing.nav_register') }}</a>
                 </div>
             </div>
         </div>
@@ -77,19 +238,19 @@
                     Uzum • Wildberries • Ozon • Yandex Market
                 </div>
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                    Управляйте продажами на <span class="text-blue-600">всех маркетплейсах</span> из одного окна
+                    {{ __('landing.hero_title') }} <span class="text-blue-600">{{ __('landing.hero_title_highlight') }}</span> {{ __('landing.hero_title_end') }}
                 </h1>
                 <p class="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-                    Синхронизация остатков, умное ценообразование, складской учёт и AI-помощник для масштабирования вашего бизнеса
+                    {{ __('landing.hero_subtitle') }}
                 </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                    <a href="/register" class="px-8 py-4 bg-blue-600 font-semibold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30" style="color: white !important;">
-                        Начать бесплатно →
-                    </a>
-                    <a href="#demo" class="px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition text-lg border border-gray-200">
-                        Смотреть демо
-                    </a>
-                </div>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/register" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    {{ __('landing.cta_primary') }}
+                </a>
+                <a href="#pricing" class="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition text-lg border-2 border-gray-200">
+                    {{ __('landing.cta_secondary') }}
+                </a>
+            </div>
             </div>
         </div>
     </section>
@@ -97,22 +258,30 @@
     <!-- Stats Section -->
     <section class="py-16 bg-white border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">500+</div>
-                    <div class="text-gray-600">Компаний</div>
+                    <div class="text-gray-600">{{ __('landing.stat_companies') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">50K+</div>
-                    <div class="text-gray-600">Товаров</div>
+                    <div class="text-gray-600">{{ __('landing.stat_products') }}</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-blue-600 mb-2">₸2M+</div>
-                    <div class="text-gray-600">Обработано продаж</div>
+                    <div class="text-4xl font-bold text-blue-600 mb-2">$2M+</div>
+                    <div class="text-gray-600">{{ __('landing.stat_processed') }}</div>
                 </div>
                 <div class="text-center">
                     <div class="text-4xl font-bold text-blue-600 mb-2">99.9%</div>
-                    <div class="text-gray-600">Uptime</div>
+                    <div class="text-gray-600">{{ __('landing.stat_uptime') }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-green-600 mb-2">70%</div>
+                    <div class="text-gray-600">{{ __('landing.stat_time_saved') }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-orange-600 mb-2">-25%</div>
+                    <div class="text-gray-600">{{ __('landing.stat_dead_stock') }}</div>
                 </div>
             </div>
         </div>
@@ -121,47 +290,135 @@
     <!-- Features Section -->
     <section id="features" class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Возможности</div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Всё для управления продажами</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Полный набор инструментов для работы с маркетплейсами в одной платформе</p>
+            <div class="text-center mb-16 scroll-reveal">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.features_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.features_subtitle') }}</p>
             </div>
             
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Синхронизация остатков</h3>
-                    <p class="text-gray-600">Автоматическое обновление остатков на всех маркетплейсах в реальном времени. Без пересортов и отмен.</p>
+            <!-- Product Management -->
+            <div class="mb-12 scroll-reveal">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_products') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">📦</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_sync_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_sync_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">⚡</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_bulk_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_bulk_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-indigo-600 group-hover:text-white transition">📋</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_catalog_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_catalog_desc') }}</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Управление ценами</h3>
-                    <p class="text-gray-600">Централизованное управление ценами. Массовое изменение и формулы автоматического расчёта.</p>
+            </div>
+
+            <!-- Pricing -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_pricing') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">💰</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_pricing_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_pricing_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🎯</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_promo_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_promo_desc') }}</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">📊</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Аналитика и отчёты</h3>
-                    <p class="text-gray-600">Детальная статистика продаж, прибыли и рентабельности по каждому товару и площадке.</p>
+            </div>
+
+            <!-- Warehouse -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_warehouse') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-yellow-600 group-hover:text-white transition">📊</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_wms_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_wms_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-red-600 group-hover:text-white transition">📝</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_movements_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_movements_desc') }}</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-orange-600 group-hover:text-white transition">🏭</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Складской учёт (WMS)</h3>
-                    <p class="text-gray-600">Полноценный учёт товаров: поступления, списания, перемещения, инвентаризации.</p>
+            </div>
+
+            <!-- Orders & Analytics -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_orders') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">🛒</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_orders_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_orders_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-teal-600 group-hover:text-white transition">📈</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_analytics_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_analytics_desc') }}</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-pink-100 text-pink-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-pink-600 group-hover:text-white transition">🤖</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">AI-помощник</h3>
-                    <p class="text-gray-600">Генерация описаний товаров, ответы на отзывы, создание промо-фото с помощью ИИ.</p>
+            </div>
+
+            <!-- AI Features -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_ai') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-violet-100 text-violet-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-violet-600 group-hover:text-white transition">🤖</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_ai_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-fuchsia-100 text-fuchsia-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-fuchsia-600 group-hover:text-white transition">💬</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_ai_reviews_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_ai_reviews_desc') }}</p>
+                    </div>
                 </div>
-                
-                <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group">
-                    <div class="w-14 h-14 bg-cyan-100 text-cyan-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-cyan-600 group-hover:text-white transition">📋</div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Управление заказами</h3>
-                    <p class="text-gray-600">Все заказы со всех маркетплейсов в едином интерфейсе с фильтрами и поиском.</p>
+            </div>
+
+            <!-- Additional Features -->
+            <div class="mb-12">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 px-4">{{ __('landing.category_additional') }}</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-sky-600 group-hover:text-white transition">📱</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_telegram_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_telegram_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-emerald-600 group-hover:text-white transition">💳</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_finance_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_finance_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-amber-600 group-hover:text-white transition">🔮</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_forecast_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_forecast_desc') }}</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-8 border border-gray-100 hover:border-blue-200 hover:shadow-xl transition-all group scroll-reveal-card hover-lift">
+                        <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-rose-600 group-hover:text-white transition">👥</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">{{ __('landing.feature_team_title') }}</h3>
+                        <p class="text-gray-600">{{ __('landing.feature_team_desc') }}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -278,6 +535,144 @@
         </div>
     </section>
 
+    <!-- Business Impact Section - NEW -->
+    <section class="py-20 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 scroll-reveal">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.testimonials_title') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.impact_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.impact_subtitle') }}</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-green-600">+40%</div>
+                        <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl">📈</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_sales') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_sales_desc') }}</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-blue-600">-70%</div>
+                        <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">⏱️</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_time') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_time_desc') }}</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-purple-600">0</div>
+                        <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl">✅</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_oversells') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_oversells_desc') }}</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-orange-600">-25%</div>
+                        <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl">📦</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_dead_stock') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_dead_stock_desc') }}</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-indigo-600">24/7</div>
+                        <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl">🔔</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_monitoring') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_monitoring_desc') }}</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all scroll-reveal-card hover-lift">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-5xl font-bold text-teal-600">80%</div>
+                        <div class="w-14 h-14 bg-teal-100 rounded-2xl flex items-center justify-center text-2xl">⚡</div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ __('landing.impact_efficiency') }}</h3>
+                    <p class="text-gray-600">{{ __('landing.impact_efficiency_desc') }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Automation Showcase Section - NEW -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 scroll-reveal">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">{{ __('landing.nav_features') }}</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.automation_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.automation_subtitle') }}</p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-8 md:p-12 scroll-reveal">
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-blue-600">{!! __('landing.automation_10min') !!}</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_10min_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_10min_desc') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-green-600">{!! __('landing.automation_hour') !!}</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-green-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_hour_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_hour_desc') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-orange-600">{!! __('landing.automation_daily') !!}</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-orange-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_daily_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_daily_desc') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-6">
+                            <div class="flex-shrink-0 w-24 text-right">
+                                <div class="text-sm font-semibold text-purple-600">{!! __('landing.automation_weekly') !!}</div>
+                            </div>
+                            <div class="flex-shrink-0 w-3 h-3 bg-purple-600 rounded-full mt-2"></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-900 mb-2">{{ __('landing.automation_weekly_title') }}</h3>
+                                <p class="text-gray-600">{{ __('landing.automation_weekly_desc') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-10 p-6 bg-white rounded-2xl border-2 border-blue-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-gray-900 mb-1">{{ __('landing.automation_tech') }}</h4>
+                                <p class="text-sm text-gray-600">{{ __('landing.automation_tech_desc') }}</p>
+                            </div>
+                            <div class="text-4xl">⚙️</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Integrations -->
     <section id="integrations" class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -301,12 +696,12 @@
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">O</div>
                     <div class="font-bold text-gray-900 text-lg">Ozon</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
                 <div class="bg-white rounded-2xl p-8 text-center border border-gray-100 hover:shadow-xl transition">
                     <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold shadow-lg">Я</div>
                     <div class="font-bold text-gray-900 text-lg">Яндекс Маркет</div>
-                    <div class="text-sm text-amber-600 font-medium mt-2">◐ Скоро</div>
+                    <div class="text-sm text-green-600 font-medium mt-2">● Активно</div>
                 </div>
             </div>
         </div>
@@ -378,71 +773,80 @@
             <div class="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
                 @foreach($plans as $plan)
                 @if($plan->is_popular)
-                <div class="bg-blue-600 rounded-2xl p-8 relative shadow-xl shadow-blue-600/30">
+                <div class="bg-blue-600 rounded-2xl relative shadow-xl shadow-blue-600/30 flex flex-col" style="min-height: 550px;">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-400 text-orange-900 text-xs font-bold rounded-full">
-                        Популярный
+                        {{ __('landing.pricing_popular') }}
                     </div>
-                    <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
-                    <div class="text-4xl font-bold text-white mb-1">
-                        @if($plan->price == 0)
-                            Бесплатно
-                        @elseif($plan->slug === 'enterprise')
-                            от {{ number_format($plan->price, 0, ',', ' ') }}
-                        @else
-                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
-                        @endif
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-white/80 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-4xl font-bold text-white mb-1">
+                            @if($plan->price == 0)
+                                {{ __('landing.pricing_free') }}
+                            @elseif($plan->slug === 'enterprise')
+                                {{ number_format($plan->price, 0, ',', ' ') }} {{ __('landing.pricing_currency') }} {{ __('landing.pricing_from') }}
+                            @else
+                                {{ number_format($plan->price, 0, ',', ' ') }} <span class="text-xl font-normal">{{ __('landing.pricing_currency') }}/{{ __('landing.pricing_month') }}</span>
+                            @endif
+                        </div>
+                        <div class="text-white/80 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else &nbsp; @endif</div>
+                        <ul class="space-y-3 mb-8 text-white text-sm flex-grow">
+                            <li class="flex items-center"><span class="mr-2">✓</span> 
+                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="mr-2">✓</span>
+                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                            </li>
+                            @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
+                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
+                            @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
+                            @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/{{ app()->getLocale() }}/register?plan={{ $plan->id }}" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition" style="color: #2563eb !important;">
+                                {{ __('landing.pricing_cta') }}
+                            </a>
+                        </div>
                     </div>
-                    <div class="text-white/80 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
-                    <ul class="space-y-3 mb-8 text-white text-sm">
-                        <li class="flex items-center"><span class="mr-2">✓</span> 
-                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} маркетплейса @endif
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
-                        </li>
-                        <li class="flex items-center"><span class="mr-2">✓</span>
-                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
-                        </li>
-                        @if($plan->has_analytics)<li class="flex items-center"><span class="mr-2">✓</span> Аналитика</li>@endif
-                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="mr-2">✓</span> Автоценообразование</li>@endif
-                        @if($plan->has_api_access)<li class="flex items-center"><span class="mr-2">✓</span> API доступ</li>@endif
-                        @if($plan->has_priority_support)<li class="flex items-center"><span class="mr-2">✓</span> Приоритетная поддержка</li>@endif
-                    </ul>
-                    <a href="/register" class="block w-full py-3 text-center bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
-                        Выбрать план
-                    </a>
                 </div>
                 @else
-                <div class="bg-white rounded-2xl p-8 border border-gray-200">
-                    <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
-                    <div class="text-4xl font-bold text-gray-900 mb-1">
-                        @if($plan->price == 0)
-                            Бесплатно
-                        @elseif($plan->slug === 'enterprise')
-                            от {{ number_format($plan->price, 0, ',', ' ') }}
-                        @else
-                            {{ number_format($plan->price, 0, ',', ' ') }}<span class="text-xl font-normal">/мес</span>
-                        @endif
+                <div class="bg-white rounded-2xl border border-gray-200 flex flex-col" style="min-height: 550px;">
+                    <div class="p-8 flex flex-col flex-grow">
+                        <div class="text-gray-500 text-sm font-medium mb-2">{{ $plan->name }}</div>
+                        <div class="text-4xl font-bold text-gray-900 mb-1">
+                            @if($plan->price == 0)
+                                {{ __('landing.pricing_free') }}
+                            @elseif($plan->slug === 'enterprise')
+                                {{ number_format($plan->price, 0, ',', ' ') }} {{ __('landing.pricing_currency') }} {{ __('landing.pricing_from') }}
+                            @else
+                                {{ number_format($plan->price, 0, ',', ' ') }} <span class="text-xl font-normal">{{ __('landing.pricing_currency') }}/{{ __('landing.pricing_month') }}</span>
+                            @endif
+                        </div>
+                        <div class="text-gray-500 mb-6">@if($plan->price == 0) {{ __('landing.pricing_forever') }} @else &nbsp; @endif</div>
+                        <ul class="space-y-3 mb-8 text-sm flex-grow">
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_marketplace_accounts == -1) {{ __('landing.pricing_unlimited_accounts') }} @else {{ $plan->max_marketplace_accounts }} {{ __('landing.pricing_marketplaces') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_products == -1) {{ __('landing.pricing_unlimited_products') }} @else {{ number_format($plan->max_products) }} {{ __('landing.pricing_products_count') }} @endif
+                            </li>
+                            <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
+                                @if($plan->max_orders_per_month == -1) {{ __('landing.pricing_unlimited_orders') }} @else {{ number_format($plan->max_orders_per_month) }} {{ __('landing.pricing_orders_month') }} @endif
+                            </li>
+                            @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_analytics') }}</li>@endif
+                            @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_auto_pricing') }}</li>@endif
+                            @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_api') }}</li>@endif
+                            @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> {{ __('landing.pricing_priority_support') }}</li>@endif
+                        </ul>
+                        <div class="mt-auto">
+                            <a href="/{{ app()->getLocale() }}/{{ $plan->slug === 'enterprise' ? 'contact' : 'register' }}?plan={{ $plan->id }}" 
+                               class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
+                                {{ $plan->slug === 'enterprise' ? __('landing.pricing_contact') : __('landing.pricing_cta') }}
+                            </a>
+                        </div>
                     </div>
-                    <div class="text-gray-500 mb-6">@if($plan->price == 0) навсегда @else сум @endif</div>
-                    <ul class="space-y-3 mb-8 text-gray-600 text-sm">
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span> 
-                            @if($plan->max_marketplace_accounts == -1) Безлимит аккаунтов @else {{ $plan->max_marketplace_accounts }} {{ $plan->max_marketplace_accounts == 1 ? 'маркетплейс' : 'маркетплейса' }} @endif
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            @if($plan->max_products == -1) Безлимит товаров @else {{ number_format($plan->max_products) }} товаров @endif
-                        </li>
-                        <li class="flex items-center"><span class="text-green-500 mr-2">✓</span>
-                            @if($plan->max_orders_per_month == -1) Безлимит заказов @else {{ number_format($plan->max_orders_per_month) }} заказов/мес @endif
-                        </li>
-                        @if($plan->has_analytics)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Аналитика</li>@endif
-                        @if($plan->has_auto_pricing)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Автоценообразование</li>@endif
-                        @if($plan->has_api_access)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> API доступ</li>@endif
-                        @if($plan->has_priority_support)<li class="flex items-center"><span class="text-green-500 mr-2">✓</span> Приоритетная поддержка</li>@endif
-                    </ul>
-                    <a href="{{ $plan->slug === 'enterprise' ? '#' : '/register' }}" class="block w-full py-3 text-center border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-medium">
-                        {{ $plan->slug === 'enterprise' ? 'Связаться' : 'Выбрать план' }}
-                    </a>
                 </div>
                 @endif
                 @endforeach
@@ -522,6 +926,126 @@
         </div>
     </section>
 
+    <!-- Comparison Section - NEW -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 scroll-reveal">
+                <div class="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Сравнение</div>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{{ __('landing.comparison_title') }}</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">{{ __('landing.comparison_subtitle') }}</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="py-4 px-4 text-left text-gray-900 font-bold">Функция</th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-blue-600 font-bold text-lg mb-1">SellerMind</div>
+                                <div class="text-xs text-gray-500">Наша система</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 1</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 2</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                            <th class="py-4 px-4 text-center">
+                                <div class="text-gray-700 font-semibold mb-1">Компания 3</div>
+                                <div class="text-xs text-gray-500">Конкурент</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Синхронизация остатков</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">AI-помощник</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Складской учёт (WMS)</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Автоматические промо-акции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Умное ценообразование</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50 bg-blue-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">
+                                <div class="flex items-center gap-2">
+                                    <span>Интеграция с 4+ маркетплейсами</span>
+                                    <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">ТОЛЬКО У НАС</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Аналитика и дашборды</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Telegram уведомления</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-4 px-4 font-medium text-gray-900">Массовые операции</td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-green-600">✓</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-3xl text-gray-300">✗</span></td>
+                        </tr>
+                        <tr class="bg-blue-50">
+                            <td class="py-4 px-4 font-bold text-gray-900">Всего функций</td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-blue-600">9/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">3/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">4/9</span></td>
+                            <td class="py-4 px-4 text-center"><span class="text-2xl font-bold text-gray-600">2/9</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-12 text-center">
+                <a href="/register" class="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition text-lg shadow-lg shadow-blue-600/30">
+                    {{ __('landing.comparison_cta') }}
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA -->
     <section class="py-20 bg-blue-600">
         <div class="max-w-4xl mx-auto px-4 text-center">
@@ -539,7 +1063,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-gray-400 py-12">
+    <footer class="bg-gray-900 py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid md:grid-cols-4 gap-8">
                 <div>
@@ -556,32 +1080,125 @@
                 <div>
                     <h4 class="text-white font-semibold mb-4">Продукт</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#features" class="text-gray-500 hover:text-white transition">Возможности</a></li>
-                        <li><a href="#pricing" class="text-gray-500 hover:text-white transition">Тарифы</a></li>
-                        <li><a href="#integrations" class="text-gray-500 hover:text-white transition">Интеграции</a></li>
+                        <li><a href="#features" class="text-gray-300 hover:text-white transition">Возможности</a></li>
+                        <li><a href="#pricing" class="text-gray-300 hover:text-white transition">Тарифы</a></li>
+                        <li><a href="#integrations" class="text-gray-300 hover:text-white transition">Интеграции</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Ресурсы</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Документация</a></li>
-                        <li><a href="#faq" class="text-gray-500 hover:text-white transition">FAQ</a></li>
-                        <li><a href="#" class="text-gray-500 hover:text-white transition">Блог</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Документация</a></li>
+                        <li><a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-white transition">Блог</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4">Контакты</h4>
-                    <ul class="space-y-2 text-sm text-gray-500">
+                    <ul class="space-y-2 text-sm text-gray-300">
                         <li>info@sellermind.uz</li>
                         <li>+998 90 123 45 67</li>
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-600">
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
                 © 2025 SellerMind. Все права защищены.
             </div>
         </div>
     </footer>
+
+<!-- Section Indicators -->
+<div class="section-indicators">
+    <div class="section-indicator" data-section="hero" title="Главная"></div>
+    <div class="section-indicator" data-section="features" title="Возможности"></div>
+    <div class="section-indicator" data-section="impact" title="Результаты"></div>
+    <div class="section-indicator" data-section="automation" title="Автоматизация"></div>
+    <div class="section-indicator" data-section="integrations" title="Интеграции"></div>
+    <div class="section-indicator" data-section="comparison" title="Сравнение"></div>
+    <div class="section-indicator" data-section="pricing" title="Тарифы"></div>
+    <div class="section-indicator" data-section="faq" title="FAQ"></div>
+</div>
+
+<script>
+// Intersection Observer for scroll reveal animations - Optimized
+document.addEventListener('DOMContentLoaded', function() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+            }
+        });
+    }, {
+        threshold: 0.15,
+        rootMargin: '0px 0px -30px 0px'
+    });
+    
+    // Observe all elements with scroll-reveal classes
+    document.querySelectorAll('.scroll-reveal, .scroll-reveal-card').forEach(el => {
+        observer.observe(el);
+    });
+    
+    // Section Indicators - Optimized
+    const sections = {
+        'hero': document.querySelector('section:first-of-type'),
+        'features': document.querySelector('#features'),
+        'impact': document.querySelectorAll('section')[5],
+        'automation': document.querySelectorAll('section')[6],
+        'integrations': document.querySelector('#integrations'),
+        'comparison': document.querySelectorAll('section')[9],
+        'pricing': document.querySelector('#pricing'),
+        'faq': document.querySelector('#faq')
+    };
+    
+    const indicators = document.querySelectorAll('.section-indicator');
+    
+    // Click handler for indicators
+    indicators.forEach(indicator => {
+        indicator.addEventListener('click', () => {
+            const sectionName = indicator.dataset.section;
+            const section = sections[sectionName];
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+    
+    // Debounce для производительности
+    let ticking = false;
+    
+    // Update active indicator on scroll - Faster response
+    const sectionObserver = new IntersectionObserver((entries) => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+                        for (const [name, section] of Object.entries(sections)) {
+                            if (section === entry.target) {
+                                indicators.forEach(ind => ind.classList.remove('active'));
+                                const activeIndicator = document.querySelector(`.section-indicator[data-section="${name}"]`);
+                                if (activeIndicator) {
+                                    activeIndicator.classList.add('active');
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, {
+        threshold: [0.3, 0.6, 0.9],
+        rootMargin: '-10% 0px -10% 0px'
+    });
+    
+    // Observe all sections
+    Object.values(sections).forEach(section => {
+        if (section) sectionObserver.observe(section);
+    });
+});
+</script>
 
 </body>
 </html>

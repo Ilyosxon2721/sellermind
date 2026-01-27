@@ -5,10 +5,13 @@ namespace App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sku extends Model
 {
     use HasFactory;
+
+    protected $table = 'skus';
 
     protected $fillable = [
         'product_id',
@@ -42,6 +45,11 @@ class Sku extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(\App\Models\ProductVariant::class);
+    }
+
+    public function stockLedger(): HasMany
+    {
+        return $this->hasMany(StockLedger::class, 'sku_id');
     }
 
     /**

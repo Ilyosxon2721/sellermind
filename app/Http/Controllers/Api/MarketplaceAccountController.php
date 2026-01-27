@@ -25,7 +25,8 @@ class MarketplaceAccountController extends Controller
 
         $accounts = MarketplaceAccount::where('company_id', $request->company_id)->get();
 
-        $response = response()->json([
+        // No caching - always return fresh data to prevent stale reads after create/delete
+        return response()->json([
             'accounts' => $accounts->map(fn($a) => [
                 'id' => $a->id,
                 'marketplace' => $a->marketplace,
@@ -36,13 +37,9 @@ class MarketplaceAccountController extends Controller
                 'connected_at' => $a->connected_at,
             ]),
             'available_marketplaces' => MarketplaceAccount::getMarketplaceLabels(),
-        ]);
-
-        // Add cache headers for better performance
-        $response->header('Cache-Control', 'private, max-age=60');
-        $response->header('ETag', md5($response->getContent()));
-
-        return $response;
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
     public function store(Request $request): JsonResponse
@@ -61,10 +58,55 @@ class MarketplaceAccountController extends Controller
                 'errors' => $e->errors(),
                 'error' => implode(', ', array_map(fn($errors) => implode(', ', $errors), $e->errors()))
             ], 422);
+        } catch (\Exception $e) {
+            \Log::error('MarketplaceAccountController@store validation error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Ошибка при создании аккаунта',
+                'error' => $e->getMessage(),
+            ], 500);
         }
 
-        if (!$request->user()->isOwnerOf($request->company_id)) {
-            return response()->json(['message' => 'Только владелец может подключать маркетплейсы.'], 403);
+        try {
+            return $this->processStoreRequest($request);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Duplicate entry - account already exists
+            $marketplaceLabel = MarketplaceAccount::getMarketplaceLabels()[$request->marketplace] ?? $request->marketplace;
+
+            return response()->json([
+                'message' => "Аккаунт {$marketplaceLabel} для этой компании уже существует",
+                'error' => "Вы можете обновить существующий аккаунт или удалить его перед созданием нового.",
+            ], 409); // 409 Conflict
+        } catch (\Exception $e) {
+            \Log::error('MarketplaceAccountController@store error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => [
+                    'company_id' => $request->company_id,
+                    'marketplace' => $request->marketplace,
+                    'name' => $request->name,
+                ],
+            ]);
+            return response()->json([
+                'message' => 'Ошибка при создании аккаунта',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Process store request (extracted for better error handling)
+     */
+    protected function processStoreRequest(Request $request): JsonResponse
+    {
+        $companyId = (int) $request->company_id;
+
+        // Проверяем доступ - владелец или сотрудник с правами
+        $user = $request->user();
+        if (!$user->hasCompanyAccess($companyId)) {
+            return response()->json(['message' => 'У вас нет доступа к этой компании.'], 403);
         }
 
         // Валидация credentials в зависимости от маркетплейса
@@ -90,9 +132,10 @@ class MarketplaceAccountController extends Controller
                 $existing->name = $request->name;
             }
 
-            // For Wildberries: save category-specific tokens
+            // For Wildberries: save category-specific tokens and main API key
             if ($request->marketplace === 'wb') {
                 $creds = $request->credentials;
+                $existing->api_key = $creds['api_token'] ?? null;
                 $existing->wb_content_token = $creds['wb_content_token'] ?? null;
                 $existing->wb_marketplace_token = $creds['wb_marketplace_token'] ?? null;
                 $existing->wb_prices_token = $creds['wb_prices_token'] ?? null;
@@ -151,9 +194,10 @@ class MarketplaceAccountController extends Controller
             'credentials' => $request->credentials,
         ];
 
-        // For Wildberries: save category-specific tokens
+        // For Wildberries: save category-specific tokens and main API key
         if ($request->marketplace === 'wb') {
             $creds = $request->credentials;
+            $accountData['api_key'] = $creds['api_token'] ?? null;
             $accountData['wb_content_token'] = $creds['wb_content_token'] ?? null;
             $accountData['wb_marketplace_token'] = $creds['wb_marketplace_token'] ?? null;
             $accountData['wb_prices_token'] = $creds['wb_prices_token'] ?? null;
@@ -225,6 +269,10 @@ class MarketplaceAccountController extends Controller
                     if (count($shops) > 3) {
                         $shopsInfo .= '...';
                     }
+
+                    // Запускаем полную синхронизацию финансовых заказов в фоне
+                    \App\Jobs\SyncUzumFinanceOrdersJob::dispatch($account, true)->delay(now()->addSeconds(5));
+                    $shopsInfo .= ' Синхронизация финансовых данных запущена.';
                 }
             } catch (\Exception $e) {
                 \Log::warning('Failed to auto-fetch Uzum shops', [
@@ -451,8 +499,12 @@ class MarketplaceAccountController extends Controller
             abort(401);
         }
 
+        // URL decode the token in case it was encoded (e.g., | becomes %7C)
+        $token = urldecode($token);
+
         $pat = PersonalAccessToken::findToken($token);
         if (!$pat || !$pat->tokenable) {
+            \Log::warning('SSE stream auth failed', ['token_prefix' => substr($token, 0, 10) . '...']);
             abort(401);
         }
 
@@ -1091,11 +1143,12 @@ class MarketplaceAccountController extends Controller
                     return 'API-ключ слишком короткий. Убедитесь что вы скопировали полный ключ из личного кабинета Яндекс.Маркет.';
                 }
 
-                // Проверка формата токена (буквы, цифры, дефисы, подчеркивания)
+                // Проверка формата токена (буквы, цифры, дефисы, подчеркивания, двоеточия)
+                // Yandex Market токены могут содержать двоеточия (формат: XXXX:token:hash)
                 $token = trim($credentials['oauth_token']);
-                if (!preg_match('/^[a-zA-Z0-9_\-]+$/i', $token)) {
+                if (!preg_match('/^[a-zA-Z0-9_\-:]+$/i', $token)) {
                     return 'API-ключ содержит недопустимые символы. ' .
-                           'API-ключ Яндекс.Маркет обычно состоит из букв, цифр, дефисов и подчеркиваний.';
+                           'API-ключ Яндекс.Маркет обычно состоит из букв, цифр, дефисов, подчеркиваний и двоеточий.';
                 }
                 break;
         }
@@ -1326,58 +1379,36 @@ class MarketplaceAccountController extends Controller
             $httpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'uzum');
             $client = new \App\Services\Marketplaces\UzumClient($httpClient, app(\App\Services\Marketplaces\IssueDetectorService::class));
 
-            // Пробуем получить список магазинов - это проверит валидность токена
-            // без необходимости знать shop_ids заранее
-            $shops = $client->fetchShops($account);
+            // Используем ping() для проверки подключения (запрашивает /v1/shops)
+            $pingResult = $client->ping($account);
 
-            if (!empty($shops)) {
-                $shopNames = array_column($shops, 'name');
-                $shopsList = implode(', ', array_slice($shopNames, 0, 3));
-                $message = 'Подключение к Uzum API успешно проверено. Найдено магазинов: ' . count($shops);
-                if (!empty($shopsList)) {
-                    $message .= ' (' . $shopsList;
-                    if (count($shops) > 3) {
-                        $message .= '...';
+            if ($pingResult['success']) {
+                $shops = $pingResult['data']['payload'] ?? $pingResult['data'] ?? [];
+                $shopCount = is_array($shops) ? count($shops) : 0;
+
+                $message = 'Подключение к Uzum API успешно проверено.';
+                if ($shopCount > 0) {
+                    $shopNames = array_map(fn($s) => $s['name'] ?? 'Shop', array_slice($shops, 0, 3));
+                    $message .= " Найдено магазинов: {$shopCount}. " . implode(', ', $shopNames);
+                    if ($shopCount > 3) {
+                        $message .= " и ещё " . ($shopCount - 3);
                     }
-                    $message .= ')';
                 }
 
                 return [
                     'success' => true,
                     'message' => $message,
-                    'details' => 'Магазины: ' . $shopsList,
-                    'shops_count' => count($shops)
-                ];
-            }
-
-            // Если магазинов нет, пробуем ping
-            $pingResult = $client->ping($account);
-            if ($pingResult['success'] ?? false) {
-                return [
-                    'success' => true,
-                    'message' => 'Подключение к Uzum API успешно проверено. Магазины не найдены.',
-                    'details' => 'API токен действителен, но магазины не найдены.'
+                    'details' => $pingResult
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => 'API токен действителен, но магазины не найдены. Убедитесь что токен имеет доступ к магазинам.'
+                'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения к Uzum API'
             ];
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
-            $userMessage = 'Не удалось подключиться к Uzum API.';
-
-            if (str_contains($errorMessage, '401') || str_contains($errorMessage, 'Unauthorized')) {
-                $userMessage = 'API токен Uzum недействителен или истёк. Получите новый токен в личном кабинете Uzum.';
-            } elseif (str_contains($errorMessage, '403') || str_contains($errorMessage, 'open-api-005') ||
-                      str_contains($errorMessage, 'Shops ids is not available')) {
-                $userMessage = 'API токен не имеет доступа к магазинам. Проверьте права токена в личном кабинете Uzum.';
-            } elseif (str_contains($errorMessage, '429') || str_contains($errorMessage, 'Too Many Requests')) {
-                $userMessage = 'Превышен лимит запросов к API Uzum. Попробуйте через несколько минут.';
-            } elseif (str_contains($errorMessage, 'cURL error') || str_contains($errorMessage, 'Connection')) {
-                $userMessage = 'Не удалось подключиться к серверу Uzum. Проверьте подключение к интернету.';
-            }
+            $userMessage = $this->formatUzumError($errorMessage);
 
             return [
                 'success' => false,
@@ -1385,5 +1416,92 @@ class MarketplaceAccountController extends Controller
                 'technical_details' => $errorMessage
             ];
         }
+    }
+
+    /**
+     * Get sync settings for a marketplace account
+     */
+    public function getSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        return response()->json([
+            'sync_settings' => $account->getAllSyncSettings(),
+        ]);
+    }
+
+    /**
+     * Update sync settings for a marketplace account
+     */
+    public function updateSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $validated = $request->validate([
+            'sync_settings' => ['required', 'array'],
+            'sync_settings.stock_sync_enabled' => ['boolean'],
+            'sync_settings.auto_sync_stock_on_link' => ['boolean'],
+            'sync_settings.auto_sync_stock_on_change' => ['boolean'],
+        ]);
+
+        $currentSettings = $account->sync_settings ?? [];
+        $newSettings = array_merge($currentSettings, $validated['sync_settings']);
+
+        $account->sync_settings = $newSettings;
+        $account->save();
+
+        return response()->json([
+            'message' => 'Настройки синхронизации сохранены.',
+            'sync_settings' => $account->getAllSyncSettings(),
+        ]);
+    }
+
+    /**
+     * Форматирует ошибку Uzum API в понятное сообщение
+     */
+    protected function formatUzumError(string $errorMessage): string
+    {
+        // Проверяем известные коды ошибок Uzum
+        $errorPatterns = [
+            // Ошибки токена
+            'open-api-001' => 'Неверный API токен. Проверьте, что вы скопировали токен полностью из личного кабинета Uzum.',
+            'Token not found' => 'Неверный API токен. Проверьте, что вы скопировали токен полностью из личного кабинета Uzum.',
+            'open-api-002' => 'API токен истёк. Создайте новый токен в личном кабинете Uzum (Настройки → API).',
+            'Token expired' => 'API токен истёк. Создайте новый токен в личном кабинете Uzum (Настройки → API).',
+            'open-api-003' => 'У токена нет необходимых прав. Создайте новый токен с полными правами в личном кабинете Uzum.',
+            'open-api-005' => 'API токен не имеет доступа к указанным магазинам. Проверьте права токена.',
+            'Shops ids is not available' => 'API токен не имеет доступа к магазинам. Создайте токен с правами на все магазины.',
+
+            // HTTP ошибки
+            '401' => 'API токен недействителен. Проверьте токен в личном кабинете Uzum (Настройки → API).',
+            'Unauthorized' => 'API токен недействителен. Проверьте токен в личном кабинете Uzum.',
+            '403' => 'Доступ запрещён. Проверьте, что токен активен и имеет необходимые права.',
+            'Forbidden' => 'Доступ запрещён. Проверьте права токена в личном кабинете Uzum.',
+            '404' => 'Ресурс не найден. Возможно, неверный токен или ID магазина.',
+            '429' => 'Превышен лимит запросов. Подождите минуту и попробуйте снова.',
+            'Too Many Requests' => 'Превышен лимит запросов. Подождите минуту и попробуйте снова.',
+
+            // Сетевые ошибки
+            'cURL error' => 'Ошибка сети. Проверьте подключение к интернету.',
+            'Connection' => 'Не удалось подключиться к серверу Uzum. Проверьте интернет.',
+            'timeout' => 'Сервер Uzum не ответил. Попробуйте позже.',
+        ];
+
+        foreach ($errorPatterns as $pattern => $userMessage) {
+            if (stripos($errorMessage, $pattern) !== false) {
+                return $userMessage;
+            }
+        }
+
+        // Если сообщение уже на русском (из formatUserFriendlyError), возвращаем его
+        if (preg_match('/[а-яА-ЯёЁ]/u', $errorMessage)) {
+            return $errorMessage;
+        }
+
+        return 'Не удалось подключиться к Uzum API. Проверьте правильность токена.';
     }
 }

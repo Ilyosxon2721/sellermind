@@ -15,7 +15,7 @@ class MarketplaceAutomationRuleForm
     {
         return $schema
             ->components([
-                Section::make('Логика правила')
+                Section::make(__('filament.sections.rule_logic'))
                     ->schema([
                         Select::make('marketplace_account_id')
                             ->label('Аккаунт')
@@ -36,7 +36,7 @@ class MarketplaceAutomationRuleForm
                             ->placeholder('Например: send_telegram'),
                     ])->columns(2),
 
-                Section::make('Параметры и Условия')
+                Section::make(__('filament.sections.params_conditions'))
                     ->schema([
                         Textarea::make('conditions_json')
                             ->label('Условия (JSON)')

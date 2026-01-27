@@ -1,11 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="ymOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only">
-    
-    <x-sidebar />
-    
-    <div class="flex-1 flex flex-col overflow-hidden font-['YS_Text',_'Helvetica_Neue',_Arial,_sans-serif]">
+<div x-data="ymOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 flex flex-col overflow-hidden font-['YS_Text',_'Helvetica_Neue',_Arial,_sans-serif]"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- YM Header -->
         <header class="bg-white border-b border-gray-200">
             <div class="px-6 py-4">
@@ -375,7 +382,7 @@
                                             </p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="font-medium text-[#1a1a1a]" x-text="(item.count || 1) + ' × ' + formatPrice(item.buyerPrice || item.price)"></p>
+                                            <p class="font-medium text-[#1a1a1a]" x-text="parseInt(item.count || 1) + ' × ' + formatPrice(item.buyerPrice || item.price)"></p>
                                             <p class="text-sm text-green-600 font-medium" x-text="formatPrice((item.buyerPrice || item.price) * (item.count || 1))"></p>
                                         </div>
                                     </div>
@@ -1013,7 +1020,7 @@ function ymOrdersPage() {
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="font-medium text-sm" x-text="item.offerName || item.offerId"></p>
                                     <div class="flex justify-between mt-1">
-                                        <span class="native-caption text-gray-500" x-text="(item.count || 1) + ' шт.'"></span>
+                                        <span class="native-caption text-gray-500" x-text="parseInt(item.count || 1) + ' шт.'"></span>
                                         <span class="font-medium" x-text="formatPrice(item.buyerPrice || item.price)"></span>
                                     </div>
                                 </div>

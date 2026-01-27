@@ -331,8 +331,12 @@ class WildberriesFinanceService
     /**
      * Calculate financial summary from detailed report
      *
+     * IMPORTANT: WB API returns amounts in the seller's account currency (currency_name field).
+     * For Uzbekistan sellers, this is UZS, NOT RUB despite field names like "delivery_rub".
+     * The currency is determined from the first record's currency_name field.
+     *
      * @param array $reportData Detailed report data
-     * @return array Summary statistics
+     * @return array Summary statistics with currency info
      */
     public function calculateSummary(array $reportData): array
     {
@@ -342,30 +346,53 @@ class WildberriesFinanceService
             'total_commission' => 0,
             'total_logistics' => 0,
             'total_penalty' => 0,
+            'total_storage' => 0,
             'net_profit' => 0,
             'orders_count' => 0,
             'returns_count' => 0,
+            'currency' => 'RUB', // Default, will be detected from data
         ];
 
-        foreach ($reportData as $record) {
-            $realizationReportId = $record['realizationreport_id'] ?? null;
+        // Detect currency from first record (WB returns currency_name in each record)
+        if (!empty($reportData)) {
+            $firstRecord = $reportData[0] ?? null;
+            if ($firstRecord && isset($firstRecord['currency_name'])) {
+                $summary['currency'] = $firstRecord['currency_name'];
+            }
+        }
 
-            // Sale
-            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Продажа') {
+        foreach ($reportData as $record) {
+            $operationType = $record['supplier_oper_name'] ?? '';
+
+            // Sale - use supplier_oper_name, not sa_name (which is article code)
+            if ($operationType === 'Продажа') {
                 $summary['total_sales'] += $record['retail_amount'] ?? 0;
-                $summary['total_commission'] += abs($record['commission_amount'] ?? 0);
-                $summary['total_logistics'] += abs($record['delivery_rub'] ?? 0);
+                // Commission is in ppvz_sales_commission field
+                $summary['total_commission'] += abs($record['ppvz_sales_commission'] ?? 0);
                 $summary['orders_count']++;
             }
 
             // Return
-            if ($realizationReportId && ($record['sa_name'] ?? '') === 'Возврат') {
+            if ($operationType === 'Возврат') {
                 $summary['total_returns'] += abs($record['retail_amount'] ?? 0);
+                // Returns also have negative commission (refunded)
+                $summary['total_commission'] -= abs($record['ppvz_sales_commission'] ?? 0);
                 $summary['returns_count']++;
             }
 
-            // Penalty
-            if (isset($record['penalty'])) {
+            // Logistics - separate operation type
+            // Note: field is called "delivery_rub" but contains amount in account currency
+            if ($operationType === 'Логистика') {
+                $summary['total_logistics'] += abs($record['delivery_rub'] ?? 0);
+            }
+
+            // Storage fee from report (in addition to paid_storage API)
+            if ($operationType === 'Хранение') {
+                $summary['total_storage'] += abs($record['storage_fee'] ?? 0);
+            }
+
+            // Penalty - can be in any record type
+            if (isset($record['penalty']) && $record['penalty'] != 0) {
                 $summary['total_penalty'] += abs($record['penalty']);
             }
         }
@@ -374,9 +401,117 @@ class WildberriesFinanceService
             - $summary['total_returns']
             - $summary['total_commission']
             - $summary['total_logistics']
+            - $summary['total_storage']
             - $summary['total_penalty'];
 
         return $summary;
+    }
+
+    /**
+     * Get paid storage fees for period
+     * GET /api/v1/paid_storage
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon $dateTo
+     * @return float Total storage fees in RUB
+     */
+    public function getPaidStorageFees(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        Carbon $dateTo
+    ): float {
+        try {
+            $params = [
+                'dateFrom' => $dateFrom->format('Y-m-d'),
+                'dateTo' => $dateTo->format('Y-m-d'),
+            ];
+
+            $response = $this->httpClient->get('statistics', '/api/v1/paid_storage', $params);
+
+            // Response is array of storage records with warehousePrice field
+            $totalStorage = 0;
+            if (is_array($response)) {
+                foreach ($response as $record) {
+                    $totalStorage += abs((float) ($record['warehousePrice'] ?? 0));
+                }
+            }
+
+            Log::info('WB paid storage fees fetched', [
+                'account_id' => $account->id,
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'total' => $totalStorage,
+            ]);
+
+            return $totalStorage;
+        } catch (\Exception $e) {
+            Log::warning('Failed to get WB paid storage fees', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Return 0 if API not available or error
+            return 0;
+        }
+    }
+
+    /**
+     * Get full expense summary including storage
+     *
+     * IMPORTANT: WB API returns amounts in the seller's account currency.
+     * For Uzbekistan sellers, amounts are in UZS, NOT RUB.
+     * The currency is detected from the API response (currency_name field).
+     *
+     * @param MarketplaceAccount $account
+     * @param Carbon $dateFrom
+     * @param Carbon $dateTo
+     * @return array Full expense summary with detected currency
+     */
+    public function getExpensesSummary(
+        MarketplaceAccount $account,
+        Carbon $dateFrom,
+        Carbon $dateTo
+    ): array {
+        // Get base summary from detailed report
+        $reportData = $this->getFullDetailedReport($account, $dateFrom, $dateTo);
+        $summary = $this->calculateSummary($reportData);
+
+        // Detect currency from report data (UZS for Uzbekistan sellers)
+        $currency = $summary['currency'] ?? 'RUB';
+
+        // Storage from report + paid_storage API (they may overlap, take max)
+        $paidStorageFees = $this->getPaidStorageFees($account, $dateFrom, $dateTo);
+        $reportStorageFees = $summary['total_storage'] ?? 0;
+        $totalStorage = max($paidStorageFees, $reportStorageFees);
+
+        $commission = $summary['total_commission'];
+        $logistics = $summary['total_logistics'];
+        $penalties = $summary['total_penalty'];
+
+        Log::info('WB getExpensesSummary calculated', [
+            'account_id' => $account->id,
+            'currency' => $currency,
+            'commission' => $commission,
+            'logistics' => $logistics,
+            'storage' => $totalStorage,
+            'penalties' => $penalties,
+        ]);
+
+        return [
+            'commission' => $commission,
+            'logistics' => $logistics,
+            'storage' => $totalStorage,
+            'advertising' => 0, // TODO: Add advertising API if needed
+            'penalties' => $penalties,
+            'returns' => $summary['total_returns'],
+            'other' => 0,
+            'total' => $commission + $logistics + $totalStorage + $penalties,
+            'orders_count' => $summary['orders_count'],
+            'returns_count' => $summary['returns_count'],
+            'gross_revenue' => $summary['total_sales'],
+            'currency' => $currency, // Actual currency from API (UZS for Uzbekistan)
+        ];
     }
 
     /**

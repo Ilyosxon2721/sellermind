@@ -4,41 +4,100 @@ namespace App\Jobs;
 
 use App\Events\MarketplaceDataChanged;
 use App\Events\MarketplaceSyncProgress;
+use App\Jobs\Concerns\HandlesMarketplaceRateLimiting;
 use App\Models\MarketplaceAccount;
 use App\Models\Supply;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncWildberriesSupplies implements ShouldQueue
+class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, HandlesMarketplaceRateLimiting;
 
-    protected MarketplaceAccount $account;
+    /**
+     * Таймаут выполнения job (10 минут - поставки могут быть большими)
+     */
+    public int $timeout = 600;
 
+    /**
+     * Количество попыток
+     */
+    public int $tries = 3;
+
+    /**
+     * Время уникальности job
+     */
+    public int $uniqueFor = 600; // 10 минут
+
+    protected int $accountId;
+
+    /**
+     * Create a new job instance.
+     */
     public function __construct(MarketplaceAccount $account)
     {
-        $this->account = $account;
+        $this->accountId = $account->id;
+        $this->onQueue('marketplace-sync');
     }
 
+    /**
+     * Уникальный ID для предотвращения дублирования
+     */
+    public function uniqueId(): string
+    {
+        return 'sync-wb-supplies-' . $this->accountId;
+    }
+
+    /**
+     * Получить аккаунт
+     */
+    protected function getAccount(): ?MarketplaceAccount
+    {
+        return MarketplaceAccount::find($this->accountId);
+    }
+
+    /**
+     * Execute the job.
+     */
     public function handle(): void
     {
-        Log::info('Starting WB supplies sync', ['account_id' => $this->account->id]);
+        $account = $this->getAccount();
+
+        if (!$account) {
+            Log::warning('SyncWildberriesSupplies: Account not found', [
+                'account_id' => $this->accountId,
+            ]);
+            return;
+        }
+
+        if (!$account->is_active) {
+            Log::info('SyncWildberriesSupplies: Skipped inactive account', [
+                'account_id' => $account->id,
+            ]);
+            return;
+        }
+
+        Log::info('SyncWildberriesSupplies: Starting', [
+            'account_id' => $account->id,
+            'attempt' => $this->attempts(),
+        ]);
 
         // Создаём HTTP клиент и сервис заказов
-        $httpClient = new WildberriesHttpClient($this->account);
+        $httpClient = new WildberriesHttpClient($account);
         $orderService = new WildberriesOrderService($httpClient);
 
         // Отправляем событие о начале синхронизации
         event(new MarketplaceSyncProgress(
-            $this->account->company_id,
-            $this->account->id,
+            $account->company_id,
+            $account->id,
             'started',
             'Начата синхронизация поставок',
             0
@@ -54,7 +113,7 @@ class SyncWildberriesSupplies implements ShouldQueue
 
             do {
                 // Получаем список поставок из WB
-                $response = $orderService->getSupplies($this->account, 1000, $next);
+                $response = $orderService->getSupplies($account, 1000, $next);
                 $wbSupplies = $response['supplies'] ?? [];
 
                 foreach ($wbSupplies as $wbSupply) {
@@ -70,14 +129,14 @@ class SyncWildberriesSupplies implements ShouldQueue
                         $wbSupplyIds[] = $externalSupplyId;
 
                         // Ищем поставку в нашей системе
-                        $supply = Supply::where('marketplace_account_id', $this->account->id)
+                        $supply = Supply::where('marketplace_account_id', $account->id)
                             ->where('external_supply_id', $externalSupplyId)
                             ->first();
 
                         $statusData = $this->mapWbStatusData($wbSupply);
 
                         $data = [
-                            'marketplace_account_id' => $this->account->id,
+                            'marketplace_account_id' => $account->id,
                             'external_supply_id' => $externalSupplyId,
                             'name' => $wbSupply['name'] ?? "WB Supply {$externalSupplyId}",
                             'status' => $statusData['status'],
@@ -105,15 +164,15 @@ class SyncWildberriesSupplies implements ShouldQueue
                         }
 
                         // Синхронизируем заказы в поставке
-                        $this->syncSupplyOrders($orderService, $supply, $externalSupplyId);
+                        $this->syncSupplyOrders($orderService, $supply, $externalSupplyId, $account);
 
                         // Синхронизируем короба (tares) поставки
-                        $this->syncSupplyTares($orderService, $supply, $externalSupplyId);
+                        $this->syncSupplyTares($orderService, $supply, $externalSupplyId, $account);
 
                         $synced++;
                     } catch (\Exception $e) {
                         Log::error('Failed to sync WB supply', [
-                            'account_id' => $this->account->id,
+                            'account_id' => $account->id,
                             'supply' => $wbSupply,
                             'error' => $e->getMessage(),
                         ]);
@@ -125,7 +184,7 @@ class SyncWildberriesSupplies implements ShouldQueue
             } while ($next > 0);
 
             // Удаляем поставки, которых нет в WB (только те, что с external_supply_id)
-            $suppliesToDelete = Supply::where('marketplace_account_id', $this->account->id)
+            $suppliesToDelete = Supply::where('marketplace_account_id', $account->id)
                 ->whereNotNull('external_supply_id')
                 ->whereNotIn('external_supply_id', $wbSupplyIds)
                 ->get();
@@ -140,10 +199,10 @@ class SyncWildberriesSupplies implements ShouldQueue
             }
 
             // После синхронизации поставок пересчитываем статусы заказов по статусу поставки
-            $ordersUpdatedBySupplies = $orderService->refreshOrdersStatusFromSupplies($this->account);
+            $ordersUpdatedBySupplies = $orderService->refreshOrdersStatusFromSupplies($account);
 
-            Log::info('WB supplies sync completed', [
-                'account_id' => $this->account->id,
+            Log::info('SyncWildberriesSupplies: Completed', [
+                'account_id' => $account->id,
                 'synced' => $synced,
                 'created' => $created,
                 'updated' => $updated,
@@ -153,8 +212,8 @@ class SyncWildberriesSupplies implements ShouldQueue
 
             // Отправляем событие об успешном завершении
             event(new MarketplaceSyncProgress(
-                $this->account->company_id,
-                $this->account->id,
+                $account->company_id,
+                $account->id,
                 'completed',
                 'Синхронизация поставок завершена',
                 100,
@@ -169,8 +228,8 @@ class SyncWildberriesSupplies implements ShouldQueue
 
             // Сообщаем фронту об изменениях поставок
             event(new MarketplaceDataChanged(
-                $this->account->company_id,
-                $this->account->id,
+                $account->company_id,
+                $account->id,
                 'supplies',
                 'updated',
                 $synced,
@@ -181,8 +240,8 @@ class SyncWildberriesSupplies implements ShouldQueue
             // И об изменённых заказах (изменение статуса из-за поставок)
             if (($ordersUpdatedBySupplies['updated'] ?? 0) > 0) {
                 event(new MarketplaceDataChanged(
-                    $this->account->company_id,
-                    $this->account->id,
+                    $account->company_id,
+                    $account->id,
                     'orders',
                     'updated',
                     $ordersUpdatedBySupplies['updated'],
@@ -192,19 +251,27 @@ class SyncWildberriesSupplies implements ShouldQueue
             }
 
         } catch (\Exception $e) {
-            Log::error('WB supplies sync failed', [
-                'account_id' => $this->account->id,
+            Log::error('SyncWildberriesSupplies: Failed', [
+                'account_id' => $account->id,
                 'error' => $e->getMessage(),
+                'attempt' => $this->attempts(),
             ]);
 
             // Отправляем событие об ошибке
             event(new MarketplaceSyncProgress(
-                $this->account->company_id,
-                $this->account->id,
+                $account->company_id,
+                $account->id,
                 'error',
                 'Ошибка синхронизации: ' . $e->getMessage(),
                 null
             ));
+
+            // Проверяем, нужен ли retry
+            if ($this->shouldRetry($e)) {
+                $delay = $this->getRetryAfterSeconds($e) ?? $this->backoff()[$this->attempts() - 1] ?? 60;
+                $this->release($delay);
+                return;
+            }
 
             throw $e;
         }
@@ -213,7 +280,7 @@ class SyncWildberriesSupplies implements ShouldQueue
     /**
      * Sync orders within a supply from WB API
      */
-    protected function syncSupplyOrders(WildberriesOrderService $orderService, Supply $supply, string $externalSupplyId): void
+    protected function syncSupplyOrders(WildberriesOrderService $orderService, Supply $supply, string $externalSupplyId, MarketplaceAccount $account): void
     {
         try {
             Log::info('Syncing orders for supply', [
@@ -221,7 +288,7 @@ class SyncWildberriesSupplies implements ShouldQueue
                 'external_supply_id' => $externalSupplyId,
             ]);
 
-            $result = $orderService->syncSupplyOrders($this->account, $externalSupplyId);
+            $result = $orderService->syncSupplyOrders($account, $externalSupplyId);
 
             Log::info('Supply orders sync completed', [
                 'supply_id' => $supply->id,
@@ -243,7 +310,7 @@ class SyncWildberriesSupplies implements ShouldQueue
     /**
      * Sync tares (boxes) for a supply from WB API
      */
-    protected function syncSupplyTares(WildberriesOrderService $orderService, Supply $supply, string $externalSupplyId): void
+    protected function syncSupplyTares(WildberriesOrderService $orderService, Supply $supply, string $externalSupplyId, MarketplaceAccount $account): void
     {
         try {
             Log::info('Syncing tares for supply', [
@@ -252,7 +319,7 @@ class SyncWildberriesSupplies implements ShouldQueue
             ]);
 
             // Получаем короба из WB API
-            $wbTares = $orderService->getTares($this->account, $externalSupplyId);
+            $wbTares = $orderService->getTares($account, $externalSupplyId);
 
             $synced = 0;
             $created = 0;
@@ -358,5 +425,17 @@ class SyncWildberriesSupplies implements ShouldQueue
             'delivered_at' => $deliveredAt,
             'delivery_started_at' => $deliveryStartedAt,
         ];
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SyncWildberriesSupplies: Job failed permanently', [
+            'account_id' => $this->accountId,
+            'error' => $exception->getMessage(),
+            'attempts' => $this->attempts(),
+        ]);
     }
 }

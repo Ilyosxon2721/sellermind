@@ -114,6 +114,11 @@ class MarketplaceHttpClient
         $request = Http::timeout(30)
             ->baseUrl($config['base_url'] ?? '');
 
+        // SSL verification (disable for local development on Windows if needed)
+        if (!($config['verify_ssl'] ?? true)) {
+            $request = $request->withOptions(['verify' => false]);
+        }
+
         // Apply authentication based on marketplace type
         $request = $this->applyAuthentication($request, $account, $config);
 
@@ -160,6 +165,19 @@ class MarketplaceHttpClient
                         ?? $credentials['api_token']
                         ?? $credentials['api_key']
                         ?? '';
+
+                    // Debug: log what we're sending
+                    \Log::debug('Uzum auth debug', [
+                        'account_id' => $account->id,
+                        'header' => $header,
+                        'prefix' => $prefix,
+                        'prefix_from_config' => $config['auth_prefix'] ?? 'NOT_SET',
+                        'api_key_length' => strlen($apiKey),
+                        'api_key_preview' => $apiKey ? (substr($apiKey, 0, 8) . '...' . substr($apiKey, -4)) : 'EMPTY',
+                        'has_uzum_access_token' => !empty($credentials['uzum_access_token']),
+                        'has_uzum_api_key' => !empty($credentials['uzum_api_key']),
+                        'has_api_key' => !empty($credentials['api_key']),
+                    ]);
                 } else {
                     $apiKey = $credentials['api_key'] ?? '';
                 }
@@ -248,7 +266,7 @@ class MarketplaceHttpClient
         ]);
 
         throw new \RuntimeException(
-            "Marketplace API error ({$statusCode}): " . mb_substr($body, 0, 500)
+            $this->formatUserFriendlyError($account->marketplace, $statusCode, $body)
         );
     }
 
@@ -269,6 +287,40 @@ class MarketplaceHttpClient
         });
 
         return $options;
+    }
+
+    /**
+     * Форматирует сообщение об ошибке в понятном для пользователя виде
+     */
+    protected function formatUserFriendlyError(string $marketplace, int $status, ?string $body): string
+    {
+        $marketplaceNames = [
+            'wb' => 'Wildberries',
+            'ozon' => 'Ozon',
+            'uzum' => 'Uzum',
+            'ym' => 'Яндекс.Маркет',
+        ];
+
+        $name = $marketplaceNames[$marketplace] ?? ucfirst($marketplace);
+
+        // Ошибки по HTTP статусу
+        $statusMessages = [
+            400 => "Неверный запрос к {$name}. Проверьте данные и попробуйте снова.",
+            401 => "Ошибка авторизации {$name}. Проверьте токен API в настройках.",
+            403 => "Доступ к {$name} запрещён. Проверьте права токена.",
+            404 => "Ресурс не найден в {$name}.",
+            429 => "Слишком много запросов к {$name}. Подождите минуту.",
+            500 => "Ошибка сервера {$name}. Попробуйте позже.",
+            502 => "Сервер {$name} временно недоступен. Попробуйте позже.",
+            503 => "Сервис {$name} на обслуживании. Попробуйте позже.",
+            504 => "Сервер {$name} не ответил вовремя. Попробуйте позже.",
+        ];
+
+        if (isset($statusMessages[$status])) {
+            return $statusMessages[$status];
+        }
+
+        return "Ошибка соединения с {$name} ({$status}). Попробуйте позже.";
     }
 
     /**

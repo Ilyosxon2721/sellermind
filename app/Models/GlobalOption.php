@@ -40,17 +40,67 @@ class GlobalOption extends Model
         return $this->values()->where('is_active', true);
     }
 
-    public static function sizes(int $companyId)
+    /**
+     * Получить глобальную опцию размеров (без привязки к компании)
+     */
+    public static function sizes(?int $companyId = null)
     {
-        return static::where('company_id', $companyId)
+        return static::whereNull('company_id')
             ->where('code', 'size')
             ->first();
     }
 
-    public static function colors(int $companyId)
+    /**
+     * Получить глобальную опцию цветов (без привязки к компании)
+     */
+    public static function colors(?int $companyId = null)
     {
-        return static::where('company_id', $companyId)
+        return static::whereNull('company_id')
             ->where('code', 'color')
             ->first();
+    }
+
+    /**
+     * Получить все значения размеров (глобальные + компании)
+     */
+    public static function sizesWithCompany(?int $companyId = null)
+    {
+        $option = static::sizes();
+        if (!$option) {
+            return collect();
+        }
+
+        return GlobalOptionValue::where('global_option_id', $option->id)
+            ->where('is_active', true)
+            ->where(function ($q) use ($companyId) {
+                $q->whereNull('company_id');
+                if ($companyId) {
+                    $q->orWhere('company_id', $companyId);
+                }
+            })
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    /**
+     * Получить все значения цветов (глобальные + компании)
+     */
+    public static function colorsWithCompany(?int $companyId = null)
+    {
+        $option = static::colors();
+        if (!$option) {
+            return collect();
+        }
+
+        return GlobalOptionValue::where('global_option_id', $option->id)
+            ->where('is_active', true)
+            ->where(function ($q) use ($companyId) {
+                $q->whereNull('company_id');
+                if ($companyId) {
+                    $q->orWhere('company_id', $companyId);
+                }
+            })
+            ->orderBy('sort_order')
+            ->get();
     }
 }

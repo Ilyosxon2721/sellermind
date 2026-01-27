@@ -14,7 +14,7 @@ class VpcSessionForm
     {
         return $schema
             ->components([
-                Section::make('Субъект')
+                Section::make(__('filament.sections.subject'))
                     ->schema([
                         Select::make('user_id')
                             ->label('Пользователь')
@@ -29,7 +29,7 @@ class VpcSessionForm
                             ->preload(),
                     ])->columns(2),
 
-                Section::make('Контекст задачи')
+                Section::make(__('filament.sections.task_context'))
                     ->schema([
                         Select::make('agent_task_id')
                             ->label('Задача агента')
@@ -40,7 +40,7 @@ class VpcSessionForm
                             ->label('Название сессии'),
                     ])->columns(2),
 
-                Section::make('Статус и Управление')
+                Section::make(__('filament.sections.status_control'))
                     ->schema([
                         Select::make('status')
                             ->label('Статус')
@@ -66,7 +66,7 @@ class VpcSessionForm
                             ->label('Точка доступа (URL)'),
                     ])->columns(3),
 
-                Section::make('Временные метки')
+                Section::make(__('filament.sections.timestamps'))
                     ->schema([
                         DateTimePicker::make('started_at')
                             ->label('Запущена'),

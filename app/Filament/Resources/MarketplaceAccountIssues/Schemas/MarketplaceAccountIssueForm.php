@@ -15,7 +15,7 @@ class MarketplaceAccountIssueForm
     {
         return $schema
             ->components([
-                Section::make('Объект проблемы')
+                Section::make(__('filament.sections.issue_object'))
                     ->schema([
                         Select::make('marketplace_account_id')
                             ->label('Аккаунт')
@@ -27,7 +27,7 @@ class MarketplaceAccountIssueForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Детали ошибки')
+                Section::make(__('filament.sections.error_details'))
                     ->schema([
                         Select::make('type')
                             ->label('Тип проблемы')
@@ -58,7 +58,7 @@ class MarketplaceAccountIssueForm
                             ->columnSpanFull(),
                     ])->columns(3),
 
-                Section::make('Технические данные')
+                Section::make(__('filament.sections.technical_data'))
                     ->schema([
                         TextInput::make('http_status')
                             ->label('HTTP Статус')
@@ -70,7 +70,7 @@ class MarketplaceAccountIssueForm
                             ->columnSpanFull(),
                     ])->columns(2),
 
-                Section::make('Статус и Частота')
+                Section::make(__('filament.sections.status_frequency'))
                     ->schema([
                         Select::make('status')
                             ->label('Статус')

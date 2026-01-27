@@ -77,14 +77,16 @@ class UzumSyncStocks extends Command
         foreach ($links as $link) {
             $stock = $link->getCurrentStock();
 
-            // Для Uzum нужны productId и skuId
-            $productId = $link->external_offer_id; // или external_product_id
+            // Для Uzum нужны productId (из MarketplaceProduct) и skuId (из связи)
+            $productId = $link->marketplaceProduct?->external_product_id;
             $skuId = $link->external_sku_id;
 
             if (!$productId || !$skuId) {
-                $this->warn("  Пропуск связи #{$link->id}: отсутствует productId или skuId");
+                $this->warn("  Пропуск связи #{$link->id}: отсутствует productId ({$productId}) или skuId ({$skuId})");
                 continue;
             }
+
+            $this->line("    SKU {$skuId} (product {$productId}): остаток {$stock}");
 
             $stocksData[] = [
                 'productId' => $productId,
@@ -101,17 +103,38 @@ class UzumSyncStocks extends Command
         $synced = 0;
         $errors = 0;
 
-        try {
-            // Отправить остатки в Uzum (используем метод syncStocks из UzumClient)
-            $client->syncStocks($account, $stocksData);
-            $synced = count($stocksData);
-        } catch (\Exception $e) {
-            $errors++;
-            Log::error('Failed to sync Uzum stocks', [
-                'account_id' => $account->id,
-                'error' => $e->getMessage(),
-            ]);
-            $this->error("  Ошибка синхронизации: " . $e->getMessage());
+        // Синхронизируем каждый SKU отдельно через updateStock
+        // Добавляем задержку между запросами чтобы избежать rate limiting от Uzum API
+        foreach ($stocksData as $index => $stockItem) {
+            try {
+                $client->updateStock(
+                    $account,
+                    (string) $stockItem['productId'],
+                    (string) $stockItem['skuId'],
+                    (int) $stockItem['stock']
+                );
+                $synced++;
+
+                // Задержка 500ms между запросами для избежания rate limiting
+                if ($index < count($stocksData) - 1) {
+                    usleep(500000); // 500ms
+                }
+            } catch (\Exception $e) {
+                $errors++;
+                Log::error('Failed to sync Uzum stock for SKU', [
+                    'account_id' => $account->id,
+                    'product_id' => $stockItem['productId'],
+                    'sku_id' => $stockItem['skuId'],
+                    'error' => $e->getMessage(),
+                ]);
+                $this->error("  Ошибка для SKU {$stockItem['skuId']}: " . $e->getMessage());
+
+                // Если rate limit - подождать дольше перед следующим запросом
+                if (str_contains($e->getMessage(), 'много запросов') || str_contains($e->getMessage(), 'rate') || str_contains($e->getMessage(), 'Подождите')) {
+                    $this->warn("    Rate limit, ждём 3 секунды...");
+                    sleep(3);
+                }
+            }
         }
 
         $duration = round(microtime(true) - $startTime, 2);

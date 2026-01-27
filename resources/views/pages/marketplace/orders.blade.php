@@ -37,6 +37,8 @@
         lastDataChange: null,
         dataChangeNotifications: [],
         wsConnectedFlag: false,
+        _wsDebounceTimer: null,
+        _lastWsEventTime: 0,
 @php
 $__uzumShopsJson = ($uzumShops ?? collect())
     ->map(fn($s) => [
@@ -70,6 +72,10 @@ $__uzumShopsJson = ($uzumShops ?? collect())
          confirmingOrderId: null,
          showCancelModal: false,
          orderToCancel: null,
+         // FBO orders (Склад WB)
+         fboOrders: [],
+         fboStats: { total: 0, by_status: {} },
+         fboLoading: false,
          accountId: {{ $accountId }},
          accountMarketplace: '{{ $accountMarketplace ?? 'wb' }}',
          accountName: '{{ addslashes($accountName ?? '') }}',
@@ -400,24 +406,39 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              window.addEventListener('websocket:message', (e) => {
                  const { channel, event, data } = e.detail;
 
-                // Обрабатываем событие обновления заказов
+                // Обрабатываем событие обновления заказов с дебаунсингом
                 if (event === 'orders.updated' || (event === 'data.changed' && data && data.data_type === 'orders')) {
-                    console.log('📦 Orders updated:', data);
-
-                    const newOrdersCount = (data && typeof data.new_orders_count !== 'undefined')
-                        ? data.new_orders_count
-                        : (data && data.metadata && typeof data.metadata.new_orders_count !== 'undefined'
-                            ? data.metadata.new_orders_count
-                            : (data && typeof data.affected_count !== 'undefined' ? data.affected_count : 0));
-
-                    // Обновляем только если есть изменения
-                    if (newOrdersCount > 0 || (data && data.change_type === 'updated')) {
-                        this.loadOrders(true);
-                        this.loadStats();
-                        if (newOrdersCount > 0) {
-                            this.showNotification('Получено ' + newOrdersCount + ' новых заказов');
-                        }
+                    // Дебаунсинг: игнорируем события чаще чем раз в 3 секунды
+                    const now = Date.now();
+                    if (now - this._lastWsEventTime < 3000) {
+                        return; // Игнорируем частые события
                     }
+
+                    // Отменяем предыдущий таймер если есть
+                    if (this._wsDebounceTimer) {
+                        clearTimeout(this._wsDebounceTimer);
+                    }
+
+                    // Устанавливаем новый таймер с задержкой 500мс
+                    this._wsDebounceTimer = setTimeout(() => {
+                        this._lastWsEventTime = Date.now();
+                        console.log('📦 Orders updated (debounced):', data);
+
+                        const newOrdersCount = (data && typeof data.new_orders_count !== 'undefined')
+                            ? data.new_orders_count
+                            : (data && data.metadata && typeof data.metadata.new_orders_count !== 'undefined'
+                                ? data.metadata.new_orders_count
+                                : (data && typeof data.affected_count !== 'undefined' ? data.affected_count : 0));
+
+                        // Обновляем только если есть изменения
+                        if (newOrdersCount > 0 || (data && data.change_type === 'updated')) {
+                            this.loadOrders(true);
+                            this.loadStats();
+                            if (newOrdersCount > 0) {
+                                this.showNotification('Получено ' + newOrdersCount + ' новых заказов');
+                            }
+                        }
+                    }, 500);
                 }
 
                  // Обрабатываем событие прогресса синхронизации
@@ -525,38 +546,79 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  });
              }
          },
+        _loadOrdersInProgress: false,
+        _loadOrdersRetryCount: 0,
         async loadOrders(silent = false) {
-            if (!silent) this.loading = true;
-            let url = '/api/marketplace/orders?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
-            // Всегда грузим все статусы/даты, фильтруем на клиенте
-            if (this.dateFrom) url += '&from=' + this.dateFrom;
-            if (this.dateTo) url += '&to=' + this.dateTo;
-            if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
-
-            const res = await fetch(url, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                this.orders = (data.orders || []).map(o => {
-                    // Для Uzum используем фактическую дату из API без преобразований
-                    if (this.accountMarketplace === 'uzum' && o.raw_payload?.dateCreated) {
-                        o.ordered_at = o.raw_payload.dateCreated;
-                    }
-                    return o;
-                });
-            } else if (res.status === 401) {
-                window.location.href = '/login';
+            // Prevent concurrent requests
+            if (this._loadOrdersInProgress) {
+                console.log('loadOrders already in progress, skipping');
+                return;
             }
-            if (!silent) this.loading = false;
-        },
-        async loadStats() {
-            let url = '/api/marketplace/orders/stats?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
-            if (this.dateFrom) url += '&from=' + this.dateFrom;
-            if (this.dateTo) url += '&to=' + this.dateTo;
-            if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+            this._loadOrdersInProgress = true;
+            if (!silent) this.loading = true;
 
-            const res = await fetch(url, { headers: this.getAuthHeaders() });
-            if (res.ok) {
-                this.stats = await res.json();
+            try {
+                let url = '/api/marketplace/orders?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+                // Всегда грузим все статусы/даты, фильтруем на клиенте
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.orders = (data.orders || []).map(o => {
+                        // Для Uzum используем фактическую дату из API без преобразований
+                        if (this.accountMarketplace === 'uzum' && o.raw_payload?.dateCreated) {
+                            o.ordered_at = o.raw_payload.dateCreated;
+                        }
+                        return o;
+                    });
+                    this._loadOrdersRetryCount = 0; // Reset retry count on success
+                } else if (res.status === 401) {
+                    window.location.href = '/login';
+                } else if (res.status === 429) {
+                    // Rate limited - wait and don't retry immediately
+                    console.warn('Rate limited (429), waiting before retry...');
+                    this._loadOrdersRetryCount++;
+                    if (this._loadOrdersRetryCount < 3) {
+                        await new Promise(r => setTimeout(r, 5000 * this._loadOrdersRetryCount)); // Wait 5s, 10s, 15s
+                    }
+                } else {
+                    console.error('loadOrders failed with status:', res.status);
+                }
+            } catch (error) {
+                console.error('loadOrders error:', error);
+            } finally {
+                this._loadOrdersInProgress = false;
+                if (!silent) this.loading = false;
+            }
+        },
+        _loadStatsInProgress: false,
+        async loadStats() {
+            // Prevent concurrent requests
+            if (this._loadStatsInProgress) {
+                console.log('loadStats already in progress, skipping');
+                return;
+            }
+            this._loadStatsInProgress = true;
+
+            try {
+                let url = '/api/marketplace/orders/stats?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) url += '&shop_id=' + this.selectedShopIds.join(',');
+
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.stats = await res.json();
+                } else if (res.status === 429) {
+                    console.warn('loadStats rate limited (429)');
+                }
+            } catch (error) {
+                console.error('loadStats error:', error);
+            } finally {
+                this._loadStatsInProgress = false;
             }
          },
          // ========== Tares (Boxes) Management ==========
@@ -1353,8 +1415,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             } else {
                 this.startAssembly(order);
             }
-        }
-,
+        },
         startAssembly(order) {
             if (!order) return;
             // Временное клиентское действие: помечаем заказ как «В сборке» в UI
@@ -1393,6 +1454,10 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         },
         switchDeliveryType(type) {
             this.deliveryTypeFilter = type;
+            // При выборе FBO загружаем FBO заказы (для WB и Uzum)
+            if (type === 'fbo') {
+                this.loadFboOrders();
+            }
         },
         async triggerSync() {
              if (this.syncInProgress) {
@@ -1400,6 +1465,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  return;
              }
 
+             console.log('🚀 Starting sync for account {{ $accountId }}');
              this.syncInProgress = true;
              this.syncProgress = 0;
              this.syncMessage = 'Запуск синхронизации...';
@@ -1408,6 +1474,10 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              try {
                  const url = '/api/marketplace/accounts/{{ $accountId }}/sync/orders';
                  const payload = { async: true };
+                 const token = this.getToken();
+                 console.log('📤 Sending sync request to:', url);
+                 console.log('🔑 Token present:', !!token);
+
                  const res = await fetch(url, {
                      method: 'POST',
                      headers: {
@@ -1417,16 +1487,19 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                      body: JSON.stringify(payload)
                  });
 
+                 console.log('📥 Response status:', res.status);
                  const data = await res.json();
+                 console.log('📥 Response data:', data);
 
                  if (!res.ok) {
                      throw new Error(data.message || 'Ошибка синхронизации');
                  }
 
-                 console.log('Sync response:', data);
+                 console.log('✅ Sync response:', data);
+                 this.showNotification('Синхронизация запущена в фоновом режиме');
                  // Прогресс и завершение будут обработаны через WebSocket события
              } catch (error) {
-                 console.error('Sync error:', error);
+                 console.error('❌ Sync error:', error);
                  this.syncInProgress = false;
                  this.syncProgress = 0;
                  this.syncMessage = 'Ошибка: ' + error.message;
@@ -1488,12 +1561,17 @@ $__uzumShopsJson = ($uzumShops ?? collect())
          },
         normalizeStatus(order) {
             if (!order) return null;
-            // Uzum: принудительно мапим в новые вкладки
+            // Uzum: приоритет - статус из БД, затем из raw_payload
             if (this.accountMarketplace === 'uzum') {
                 const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
                 const validStatuses = ['new', 'in_assembly', 'in_supply', 'accepted_uzum', 'waiting_pickup', 'issued', 'cancelled', 'returns'];
 
-                // Используем только статусы, поддерживаемые API Uzum Market
+                // Если в БД уже есть валидный статус - используем его (приоритет БД)
+                if (validStatuses.includes(dbStatus)) {
+                    return dbStatus;
+                }
+
+                // Иначе мапим из raw_payload.status (для новых заказов из API)
                 const rawStatus = (order.raw_payload?.status || '').toString().toUpperCase();
                 const map = {
                     'CREATED': 'new',
@@ -1504,34 +1582,51 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'SHIPPED': 'in_supply',
                     'DELIVERING': 'accepted_uzum',
                     'ACCEPTED_AT_DP': 'accepted_uzum',
-                    'DELIVERED': 'accepted_uzum', // Доставлен в ПВЗ
+                    'DELIVERED': 'accepted_uzum',
                     'DELIVERED_TO_CUSTOMER_DELIVERY_POINT': 'waiting_pickup',
-                    'COMPLETED': 'issued', // Выдан клиенту
+                    'COMPLETED': 'issued',
                     'CANCELED': 'cancelled',
                     'CANCELLED': 'cancelled',
                     'PENDING_CANCELLATION': 'cancelled',
                     'RETURNED': 'returns',
                 };
                 const mapped = map[rawStatus] || null;
-
-                if (mapped && ['cancelled', 'returns'].includes(mapped) && mapped !== dbStatus) {
+                if (mapped) {
                     order.status_normalized = mapped;
-                    return mapped;
                 }
+                return mapped;
+            }
+            // Wildberries: приоритет - статус из БД, затем wb_status_group, затем wb_status
+            if (this.accountMarketplace === 'wb') {
+                const dbStatus = (order.status_normalized || order.status || '').toString().toLowerCase();
+                const validStatuses = ['new', 'in_assembly', 'in_delivery', 'completed', 'cancelled'];
 
+                // Маппинг внешних статусов WB на внутренние
+                const statusMapping = {
+                    'delivered': 'completed',
+                    'sold': 'completed',
+                    'canceled': 'cancelled',
+                    'on_delivery': 'in_delivery',
+                    'shipping': 'in_delivery',
+                    'sorted': 'in_assembly',
+                    'assembling': 'in_assembly',
+                    'waiting': 'new',
+                };
+
+                // Если статус напрямую валидный - используем его
                 if (validStatuses.includes(dbStatus)) {
-                    order.status_normalized = dbStatus;
                     return dbStatus;
                 }
 
-                order.status_normalized = mapped;
-                return mapped;
-            }
-            // Wildberries: мапим wb_status_group / wb_status / status в нормализованные вкладки
-            if (this.accountMarketplace === 'wb') {
+                // Если статус можно смаппить на валидный - делаем это
+                if (statusMapping[dbStatus]) {
+                    order.status_normalized = statusMapping[dbStatus];
+                    return statusMapping[dbStatus];
+                }
+
+                // Иначе мапим из wb_status_group / wb_status
                 const group = (order.wb_status_group || '').toString().toLowerCase();
                 const wbStatus = (order.wb_status || '').toString().toLowerCase();
-                const status = (order.status || '').toString().toLowerCase();
                 const mapGroup = {
                     'new': 'new',
                     'assembling': 'in_assembly',
@@ -1539,7 +1634,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'archive': 'completed',
                     'canceled': 'cancelled',
                 };
-                const mapStatus = {
+                const mapStatusFromWb = {
                     'new': 'new',
                     'waiting': 'new',
                     'sorted': 'in_assembly',
@@ -1551,103 +1646,49 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     'canceled': 'cancelled',
                     'cancelled': 'cancelled',
                 };
-                const mapped = mapGroup[group] || mapStatus[wbStatus] || mapStatus[status] || null;
+                const mapped = mapGroup[group] || mapStatusFromWb[wbStatus] || null;
                 if (mapped) {
                     order.status_normalized = mapped;
                     return mapped;
                 }
             }
+            // Fallback: если статус уже установлен, возвращаем его
             if (order.status_normalized) return order.status_normalized;
-            // Учитываем статус поставки, если заказ привязан
-            const supply = this.supplies.find(s =>
-                s.external_supply_id === order.supply_id ||
-                s.id === order.supply_id ||
-                ('SUPPLY-' + s.id) === order.supply_id
-            );
-            if (supply) {
-                if (supply.status === 'sent') {
-                    order.status_normalized = 'in_delivery';
-                    return order.status_normalized;
+
+            // Для WB: учитываем статус поставки как дополнительный fallback
+            if (this.accountMarketplace === 'wb') {
+                // Учитываем статус поставки, если заказ привязан
+                const supply = this.supplies.find(s =>
+                    s.external_supply_id === order.supply_id ||
+                    s.id === order.supply_id ||
+                    ('SUPPLY-' + s.id) === order.supply_id
+                );
+                if (supply) {
+                    if (supply.status === 'sent') {
+                        order.status_normalized = 'in_delivery';
+                        return order.status_normalized;
+                    }
+                    if (supply.status === 'delivered') {
+                        order.status_normalized = 'completed';
+                        return order.status_normalized;
+                    }
+                    if (supply.status === 'ready' || supply.status === 'in_assembly' || supply.status === 'draft') {
+                        order.status_normalized = 'in_assembly';
+                        return order.status_normalized;
+                    }
                 }
-                if (supply.status === 'delivered') {
-                    order.status_normalized = 'completed';
-                    return order.status_normalized;
-                }
-                if (supply.status === 'ready' || supply.status === 'in_assembly' || supply.status === 'draft') {
+                // Принудительно считаем заказы в поставке 'На сборке'
+                if ((order.supply_id || order.supplyId) && (order.status === 'new' || !order.status)) {
                     order.status_normalized = 'in_assembly';
                     return order.status_normalized;
                 }
             }
-            // Принудительно считаем заказы в поставке 'На сборке'
-            if ((order.supply_id || order.supplyId) && (order.status === 'new' || !order.status)) {
-                order.status_normalized = 'in_assembly';
-                return order.status_normalized;
-            }
-            // Статусы WB сортировки
-            const wbStatus = (order.wb_status || '').toLowerCase();
-            if ((order.supply_id || order.supplyId) || wbStatus === 'sort' || wbStatus === 'sorted') {
-                order.status_normalized = 'in_assembly';
-                return order.status_normalized;
-            }
 
-            // WB групповый статус из базы (assembling/shipping/canceled)
-            const group = (order.wb_status_group || '').toLowerCase();
-            if (group) {
-                const groupMap = {
-                    'assembling': 'in_assembly',
-                    'shipping': 'in_delivery',
-                    'archive': 'completed',
-                    'canceled': 'cancelled',
-                };
-                if (groupMap[group]) {
-                    order.status_normalized = groupMap[group];
-                    return order.status_normalized;
-                }
-            }
-            const fromOrder = order.status;
-            if (fromOrder) {
-                order.status_normalized = fromOrder;
-                return order.status_normalized;
-            }
-            const supplier = (order.wb_supplier_status || '').toLowerCase();
-            if (supplier) {
-                const map = {
-                    'new': 'new',
-                     'confirm': 'in_assembly',
-                     'complete': 'in_delivery',
-                     'receive': 'completed',
-                     'cancel': 'cancelled',
-                     'reject': 'cancelled'
-                 };
-                 if (map[supplier]) {
-                     order.status_normalized = map[supplier];
-                     return map[supplier];
-                 }
-             }
-            const wb = (order.wb_status || '').toLowerCase();
-            if (wb) {
-                const map = {
-                    'waiting': 'new',
-                    'sorted': 'in_assembly',
-                    'sold': 'completed',
-                    'sold_from_store': 'completed',
-                    'ready_for_pickup': 'in_delivery',
-                    'on_way_to_client': 'in_delivery',
-                    'on_way_from_client': 'in_delivery',
-                    'delivered': 'completed',
-                    'canceled': 'cancelled',
-                     'canceled_by_client': 'cancelled',
-                     'defect': 'cancelled'
-                 };
-                 if (map[wb]) {
-                     order.status_normalized = map[wb];
-                     return map[wb];
-                 }
-             }
-             return null;
+            return null;
          },
         get filteredOrders() {
             const baseFiltered = this.baseFiltered;
+
            // Карта статусов для фильтрации по вкладкам
             const statusMap = this.accountMarketplace === 'uzum'
                 ? {
@@ -1678,9 +1719,20 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              });
          },
         get baseFiltered() {
-            // Убрали фильтр по типу доставки, чтобы разделы показывали все заказы
              return this.orders
                 .filter(order => {
+                    // Фильтр по типу доставки (FBS/DBS/eDBS) - для всех маркетплейсов
+                    if (this.deliveryTypeFilter && this.deliveryTypeFilter !== 'all' && this.deliveryTypeFilter !== 'fbo') {
+                        // WB: wb_delivery_type
+                        // Uzum: raw_payload.scheme
+                        let orderDeliveryType = '';
+                        if (this.accountMarketplace === 'wb') {
+                            orderDeliveryType = (order.wb_delivery_type || order.details?.wb_delivery_type || '').toLowerCase();
+                        } else if (this.accountMarketplace === 'uzum') {
+                            orderDeliveryType = (order.raw_payload?.scheme || order.delivery_type || '').toLowerCase();
+                        }
+                        if (orderDeliveryType !== this.deliveryTypeFilter.toLowerCase()) return false;
+                    }
                     // Фильтр по магазину (Uzum)
                     if (this.accountMarketplace === 'uzum' && this.selectedShopIds.length > 0) {
                         const sid = order.raw_payload?.shopId ? String(order.raw_payload.shopId) : '';
@@ -1787,11 +1839,24 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             };
 
             let amount = 0;
+            const byDeliveryType = { fbs: 0, dbs: 0, edbs: 0 };
+
             filtered.forEach(order => {
                 const st = this.normalizeStatus(order);
                 if (st && byStatus.hasOwnProperty(st)) {
                     byStatus[st] += 1;
                 }
+                // Подсчёт по типу доставки (для всех маркетплейсов)
+                let dt = '';
+                if (this.accountMarketplace === 'wb') {
+                    dt = (order.wb_delivery_type || order.details?.wb_delivery_type || '').toLowerCase();
+                } else if (this.accountMarketplace === 'uzum') {
+                    dt = (order.raw_payload?.scheme || order.delivery_type || '').toLowerCase();
+                }
+                if (dt === 'fbs') byDeliveryType.fbs++;
+                else if (dt === 'dbs') byDeliveryType.dbs++;
+                else if (dt === 'edbs') byDeliveryType.edbs++;
+
                 const priceKopecks = order.wb_final_price
                     ?? (order.total_amount ? Math.round(order.total_amount * 100) : 0)
                     ?? (order.raw_payload?.price ? Math.round(order.raw_payload.price * 100) : 0);
@@ -1801,7 +1866,8 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             return {
                 total_orders: filtered.length,
                 total_amount: amount / 100,
-                by_status: byStatus
+                by_status: byStatus,
+                by_delivery_type: byDeliveryType
             };
         },
         get displayStats() {
@@ -1877,13 +1943,40 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 'bg-green-100 text-green-700': st === 'completed',
                 'bg-red-100 text-red-700': st === 'cancelled'
             };
+        },
+        async loadFboOrders() {
+            // FBO доступен для WB и Uzum
+            this.fboLoading = true;
+            try {
+                let url = '/api/marketplace/orders/fbo?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id=' + this.accountId;
+                if (this.dateFrom) url += '&from=' + this.dateFrom;
+                if (this.dateTo) url += '&to=' + this.dateTo;
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.fboOrders = data.orders || [];
+                    this.fboStats = data.stats || { total: 0, by_status: {} };
+                } else if (res.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (e) {
+                console.error('Error loading FBO orders:', e);
+            }
+            this.fboLoading = false;
         }
     }"
-     class="flex h-screen bg-gray-50 browser-only">
+     class="flex h-screen bg-gray-50 browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
@@ -1933,23 +2026,40 @@ $__uzumShopsJson = ($uzumShops ?? collect())
 
             <!-- Sync Progress Bar removed; percentage shown near status indicator -->
 
-            <!-- Delivery type tabs -->
+            <!-- Delivery type tabs (for all marketplaces) -->
             <div class="mt-4 flex space-x-3 overflow-x-auto pb-2">
+                <button @click="switchDeliveryType('all')"
+                        :class="deliveryTypeFilter === 'all' ? 'bg-gray-100 text-gray-900 border-gray-300' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
+                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap flex items-center gap-2">
+                    Все
+                    <span class="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-xs" x-text="baseStats?.total_orders || 0"></span>
+                </button>
                 <button @click="switchDeliveryType('fbs')"
                         :class="deliveryTypeFilter === 'fbs' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
-                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap">
+                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap flex items-center gap-2">
                     FBS
+                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs" x-text="baseStats?.by_delivery_type?.fbs || 0"></span>
                 </button>
                 <button @click="switchDeliveryType('dbs')"
                         :class="deliveryTypeFilter === 'dbs' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
-                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap">
+                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap flex items-center gap-2">
                     DBS
+                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs" x-text="baseStats?.by_delivery_type?.dbs || 0"></span>
                 </button>
                 <button @click="switchDeliveryType('edbs')"
                         :class="deliveryTypeFilter === 'edbs' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
-                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap">
+                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap flex items-center gap-2">
                     eDBS
+                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs" x-text="baseStats?.by_delivery_type?.edbs || 0"></span>
                 </button>
+                <!-- FBO for all marketplaces -->
+                <button @click="switchDeliveryType('fbo')"
+                        :class="deliveryTypeFilter === 'fbo' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
+                        class="px-3 py-2 rounded-lg border text-sm font-medium transition whitespace-nowrap flex items-center gap-2">
+                    FBO
+                    <span class="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs" x-text="fboStats?.total || 0"></span>
+                </button>
+                <!-- Uzum shop filter -->
                 <template x-if="isUzum()">
                     <div class="relative ml-2">
                         <button @click="shopAccordionOpen = !shopAccordionOpen; if (shopAccordionOpen && shopOptions().length === 0) { loadUzumShops(); }"
@@ -2061,8 +2171,8 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
         </header>
 
-        <!-- Status Tabs -->
-        <div class="bg-white border-b border-gray-200 px-6">
+        <!-- Status Tabs (hidden when FBO is selected) -->
+        <div x-show="deliveryTypeFilter !== 'fbo'" class="bg-white border-b border-gray-200 px-6">
             <template x-if="isUzum()">
                 <nav class="flex space-x-4 overflow-x-auto">
                     <template x-for="tab in [
@@ -2116,8 +2226,8 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         </div>
 
         <main class="flex-1 overflow-y-auto p-6">
-            <!-- Stats - Min height to prevent CLS -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style="min-height: 140px;">
+            <!-- Stats - Min height to prevent CLS (hidden when FBO is selected) -->
+            <div x-show="deliveryTypeFilter !== 'fbo'" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style="min-height: 140px;">
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
                     <div class="flex items-center justify-between">
                         <div>
@@ -2206,7 +2316,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
 
             <!-- Empty State -->
-            <div x-show="!loading && tabOrders.length === 0" class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+            <div x-show="!loading && tabOrders.length === 0 && deliveryTypeFilter !== 'fbo'" class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                 <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -2221,7 +2331,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
 
             <!-- Uzum table view -->
-            <div x-show="isUzum() && !loading && tabOrders.length > 0" class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+            <div x-show="isUzum() && !loading && tabOrders.length > 0 && deliveryTypeFilter !== 'fbo'" class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -2280,7 +2390,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                                                 <span class="font-semibold">SKU:</span>
                                                 <span x-text="item.skuId || item.productId || item.barcode || '—'"></span>
                                             </div>
-                                            <div class="text-xs text-gray-500" x-text="(item.amount || 0) + ' шт'"></div>
+                                            <div class="text-xs text-gray-500" x-text="parseInt(item.amount || 0) + ' шт'"></div>
                                         </div>
                                     </div>
                                 </template>
@@ -2328,7 +2438,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
 
             <!-- Orders List (with supply grouping for "На сборке" tab) - WB only -->
-            <div x-show="isWb() && !loading && activeTab === 'in_assembly'" class="space-y-6">
+            <div x-show="isWb() && !loading && activeTab === 'in_assembly' && deliveryTypeFilter !== 'fbo'" class="space-y-6">
                 <!-- Create Supply Button -->
                 <div class="flex justify-end mb-4">
                     <button @click="openCreateSupplyModal()"
@@ -2668,7 +2778,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
 
             <!-- Shipping Tab - Grouped by Supply -->
-            <div x-show="isWb() && !loading && tabOrders.length > 0 && activeTab === 'in_delivery'" class="space-y-6">
+            <div x-show="isWb() && !loading && tabOrders.length > 0 && activeTab === 'in_delivery' && deliveryTypeFilter !== 'fbo'" class="space-y-6">
                 <!-- Supplies with Orders -->
                 <template x-for="supply in supplies.filter(s => s.status === 'sent' && tabOrders.some(o => o.supply_id === s.external_supply_id))" :key="supply.id">
                     <div class="bg-white rounded-xl border-2 border-gray-300 overflow-hidden">
@@ -2829,7 +2939,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             </div>
 
             <!-- Orders List (for all other tabs except in_assembly and in_delivery) -->
-            <div x-show="!isUzum() && !loading && tabOrders.length > 0 && activeTab !== 'in_assembly' && activeTab !== 'in_delivery'" class="space-y-4">
+            <div x-show="!isUzum() && !loading && tabOrders.length > 0 && activeTab !== 'in_assembly' && activeTab !== 'in_delivery' && deliveryTypeFilter !== 'fbo'" class="space-y-4">
                 <template x-for="order in tabOrders" :key="order.id">
                     <div class="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition overflow-hidden">
                         <div class="p-5 cursor-pointer" @click="viewOrder(order)">
@@ -2971,6 +3081,154 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                         </div>
                     </div>
                 </template>
+            </div>
+
+            <!-- FBO Orders Section (Склад маркетплейса) -->
+            <div x-show="deliveryTypeFilter === 'fbo'" class="space-y-4">
+                <!-- FBO Loading State -->
+                <div x-show="fboLoading" class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-purple-200 border-t-purple-600"></div>
+                </div>
+
+                <!-- FBO Stats Header -->
+                <div x-show="!fboLoading" class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-3 bg-purple-600 rounded-lg">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-purple-900" x-text="isWb() ? 'FBO заказы (Склад WB)' : 'FBO заказы (Склад Uzum)'"></h3>
+                                <p class="text-sm text-purple-700" x-text="isWb() ? 'Заказы, отгруженные со склада Wildberries' : 'Заказы, отгруженные со склада Uzum (Fulfillment)'"></p>
+                            </div>
+                        </div>
+                        <button @click="loadFboOrders()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>Обновить</span>
+                        </button>
+                    </div>
+
+                    <!-- FBO Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-lg p-4 border border-purple-200">
+                            <div class="text-2xl font-bold text-purple-900" x-text="fboStats.total || 0"></div>
+                            <div class="text-sm text-purple-600">Всего заказов</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-green-200">
+                            <div class="text-2xl font-bold text-green-700" x-text="fboStats.by_status?.completed || 0"></div>
+                            <div class="text-sm text-green-600">Выполнено</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-red-200">
+                            <div class="text-2xl font-bold text-red-700" x-text="fboStats.by_status?.cancelled || 0"></div>
+                            <div class="text-sm text-red-600">Отменено</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 border border-orange-200">
+                            <div class="text-2xl font-bold text-orange-700" x-text="fboStats.by_status?.returned || 0"></div>
+                            <div class="text-sm text-orange-600">Возвраты</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FBO Orders List -->
+                <div x-show="!fboLoading && fboOrders.length === 0" class="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Нет FBO заказов</h4>
+                    <p class="text-gray-600">FBO заказы появятся здесь после синхронизации данных из Statistics API</p>
+                </div>
+
+                <div x-show="!fboLoading && fboOrders.length > 0" class="space-y-4">
+                    <template x-for="order in fboOrders" :key="order.id">
+                        <div class="bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition overflow-hidden">
+                            <div class="p-5 cursor-pointer" @click="viewOrder(order)">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="flex-1 flex items-start space-x-4">
+                                        <!-- Product Image -->
+                                        <img x-show="loadImages && order.nm_id"
+                                             :src="loadImages ? getWbProductImageUrl(order.nm_id) : ''"
+                                             :alt="order.article"
+                                             class="w-20 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                                             loading="lazy"
+                                             x-on:error.once="handleImageError($event)">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3 mb-2">
+                                                <h3 class="text-lg font-bold text-gray-900">
+                                                    #<span x-text="order.external_order_id"></span>
+                                                </h3>
+                                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">
+                                                    FBO
+                                                </span>
+                                                <span class="px-2 py-1 text-xs font-medium rounded"
+                                                      :class="{
+                                                          'bg-green-100 text-green-700': order.wb_status_group === 'archive' && !order.details?.is_cancel && !order.details?.is_return,
+                                                          'bg-red-100 text-red-700': order.details?.is_cancel,
+                                                          'bg-orange-100 text-orange-700': order.details?.is_return
+                                                      }"
+                                                      x-text="order.details?.is_cancel ? 'Отменён' : (order.details?.is_return ? 'Возврат' : 'Выполнен')"></span>
+                                            </div>
+                                            <p class="text-gray-700 font-medium mb-1" x-text="order.product_name || 'Товар'"></p>
+                                            <p class="text-sm text-gray-500" x-text="order.meta_info || ''"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold text-gray-900" x-text="formatPrice(order.total_amount)"></div>
+                                            <div class="text-sm text-gray-500" x-text="formatDateTime(order.ordered_at)"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-gray-100">
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Артикул</div>
+                                        <div class="font-medium text-gray-900" x-text="order.article || '-'"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Штрихкод</div>
+                                        <div class="font-mono text-sm text-gray-900" x-text="order.sku || '-'"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">NM ID</div>
+                                        <div class="font-medium text-gray-900" x-text="order.nm_id || '-'"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Склад</div>
+                                        <div class="font-medium text-gray-900" x-text="order.details?.warehouse_name || 'Склад WB'"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Регион</div>
+                                        <div class="font-medium text-gray-900" x-text="order.details?.region_name || '-'"></div>
+                                    </div>
+                                </div>
+
+                                <!-- FBO Financial Details -->
+                                <div class="mt-4 p-3 bg-purple-50 rounded-lg">
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                            <span class="text-purple-600">Цена:</span>
+                                            <span class="font-medium text-gray-900" x-text="formatPrice(order.details?.price)"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-purple-600">К выплате:</span>
+                                            <span class="font-medium text-green-700" x-text="formatPrice(order.details?.for_pay)"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-purple-600">Скидка:</span>
+                                            <span class="font-medium text-gray-900" x-text="(order.details?.discount_percent || 0) + '%'"></span>
+                                        </div>
+                                        <div>
+                                            <span class="text-purple-600">СПП:</span>
+                                            <span class="font-medium text-gray-900" x-text="(order.details?.spp || 0) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </main>
     </div>
@@ -4259,6 +4517,27 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         if (this.dateTo) url += '&to=' + this.dateTo;
         const res = await fetch(url, { headers: this.getAuthHeaders() });
         if (res.ok) { this.stats = await res.json(); }
+    },
+
+    async loadFboOrders() {
+        // FBO доступен для WB и Uzum
+        this.fboLoading = true;
+        try {
+            let url = '/api/marketplace/orders/fbo?company_id=' + this.$store.auth.currentCompany.id + '&marketplace_account_id={{ $accountId }}';
+            if (this.dateFrom) url += '&from=' + this.dateFrom;
+            if (this.dateTo) url += '&to=' + this.dateTo;
+            const res = await fetch(url, { headers: this.getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                this.fboOrders = data.orders || [];
+                this.fboStats = data.stats || { total: 0, by_status: {} };
+            } else if (res.status === 401) {
+                window.location.href = '/login';
+            }
+        } catch (e) {
+            console.error('Error loading FBO orders:', e);
+        }
+        this.fboLoading = false;
     },
 
     tabLabel(tab) {

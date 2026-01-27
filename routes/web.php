@@ -5,10 +5,58 @@ use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Web\Products\ProductWebController;
 use App\Http\Controllers\Web\Warehouse\WarehouseController;
 use App\Models\AP\Supplier;
+use App\Models\MarketplaceAccount;
 use Illuminate\Support\Facades\Route;
 // VPC Sessions - DISABLED: Module not complete, enable via VPC_ENABLED=true in .env
 use App\Http\Controllers\VpcSessionController;
 use App\Http\Controllers\VpcControlApiController;
+
+// Localized Landing Pages
+Route::get('/uz', function (Illuminate\Http\Request $request) {
+    App::setLocale('uz');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.uz');
+
+Route::get('/ru', function (Illuminate\Http\Request $request) {
+    App::setLocale('ru');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.ru');
+
+Route::get('/en', function (Illuminate\Http\Request $request) {
+    App::setLocale('en');
+    $plans = \App\Models\Plan::where('is_active', true)
+        ->orderBy('sort_order')
+        ->get();
+    return view('welcome', compact('plans'));
+})->name('home.en');
+
+// Localized auth routes
+Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function () {
+    Route::get('/login', function ($locale) {
+        App::setLocale($locale);
+        return view('pages.login');
+    })->name('login.localized');
+    
+    Route::get('/register', function ($locale) {
+        App::setLocale($locale);
+        return view('pages.register');
+    })->name('register.localized');
+});
+
+// Root redirect to Uzbek
+Route::get('/', function () {
+    if (request()->header('X-Requested-With') === 'com.sellermind.pwa') {
+        $plans = \App\Models\Plan::where('is_active', true)->orderBy('sort_order')->get();
+        return view('welcome', compact('plans'));
+    }
+    return redirect('/uz');
+});
 
 // Public pages - Smart routing based on PWA mode
 Route::get('/', function (Illuminate\Http\Request $request) {
@@ -26,12 +74,10 @@ Route::get('/', function (Illuminate\Http\Request $request) {
         }
     }
 
-    // Browser Mode: Show landing page for marketing
-    $plans = \App\Models\Plan::where('is_active', true)
-        ->orderBy('sort_order')
-        ->get();
-    return view('welcome', compact('plans'));
+    // Browser Mode: Redirect to Uzbek landing by default
+    return redirect('/uz');
 })->name('home');
+
 
 Route::get('/login', function () {
     return view('pages.login');
@@ -167,6 +213,15 @@ Route::middleware('auth.any')->group(function () {
         return view('sales.create');
     })->name('sales.create');
 
+    Route::get('/sales/{id}', function ($id) {
+        return view('sales.show', ['orderId' => $id]);
+    })->name('sales.show');
+
+    // Sale print routes
+    Route::get('/sales/{sale}/print/receipt', [\App\Http\Controllers\SalePrintController::class, 'receipt'])->name('sales.print.receipt');
+    Route::get('/sales/{sale}/print/invoice', [\App\Http\Controllers\SalePrintController::class, 'invoice'])->name('sales.print.invoice');
+    Route::get('/sales/{sale}/print/waybill', [\App\Http\Controllers\SalePrintController::class, 'waybill'])->name('sales.print.waybill');
+
     Route::get('/companies', function () {
         return view('companies.index');
     })->name('companies.index');
@@ -199,6 +254,10 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('ap.index');
 
+    Route::get('/finance', function () {
+        return view('finance.index');
+    })->name('finance.index');
+
     Route::get('/pricing', function () {
         return view('pricing.index');
     })->name('pricing.index');
@@ -226,7 +285,7 @@ Route::middleware('auth.any')->group(function () {
     })->name('marketplace.show');
 
 Route::get('/marketplace/{accountId}/products', function ($accountId) {
-    $account = MarketplaceAccount::findOrFail($accountId);
+    $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
     return view('pages.marketplace.products', [
         'accountId' => $accountId,
         'accountMarketplace' => $account->marketplace,
@@ -343,40 +402,34 @@ Route::get('/marketplace/{accountId}/products/{productId}/json', function (\Illu
     ]);
 })->name('marketplace.products.show.json');
 
+// Generic orders route - redirects to marketplace-specific page
 Route::get('/marketplace/{accountId}/orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
 
-    return view('pages.marketplace.orders', [
-        'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
-        'accountName' => $account->name,
-        'uzumShops' => $uzumShops,
-    ]);
+    // Redirect to marketplace-specific orders page
+    return match($account->marketplace) {
+        'wb' => redirect()->route('marketplace.wb-orders', $accountId),
+        'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
+        'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
+        'ym' => redirect()->route('marketplace.ym-orders', $accountId),
+        default => abort(404, 'Unsupported marketplace'),
+    };
 })->name('marketplace.orders');
 
-// Явные URL по маркетплейсу, чтобы разделить страницы заказов
+// Explicit URL by marketplace - redirects to dedicated page
 Route::get('/marketplace/{accountId}/{marketplace}/orders', function ($accountId, $marketplace) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
     if (strtolower($marketplace) !== strtolower($account->marketplace)) {
         abort(404);
     }
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
 
-    return view('pages.marketplace.orders', [
-        'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
-        'accountName' => $account->name,
-        'uzumShops' => $uzumShops,
-    ]);
+    return match($account->marketplace) {
+        'wb' => redirect()->route('marketplace.wb-orders', $accountId),
+        'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
+        'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
+        'ym' => redirect()->route('marketplace.ym-orders', $accountId),
+        default => abort(404, 'Unsupported marketplace'),
+    };
 })->name('marketplace.orders.specific');
 
 Route::get('/marketplace/{accountId}/supplies', function ($accountId) {
@@ -397,15 +450,13 @@ Route::get('/marketplace/{accountId}/wb-products', function ($accountId) {
     return view('pages.marketplace.wb-products', ['accountId' => $accountId]);
 })->name('marketplace.wb-products');
 
-// Wildberries Orders
+// Wildberries FBS Orders (new dedicated page)
 Route::get('/marketplace/{accountId}/wb-orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
 
-    return view('pages.marketplace.orders', [
+    return view('pages.marketplace.wb-orders', [
         'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
         'accountName' => $account->name,
-        'uzumShops' => collect(),
     ]);
 })->name('marketplace.wb-orders');
 
@@ -454,18 +505,15 @@ Route::get('/marketplace/{accountId}/ym-orders/json', function (\Illuminate\Http
     ]);
 })->name('marketplace.ym-orders.json');
 
-// Uzum Orders
+// Uzum FBS Orders (new dedicated page with brand design)
 Route::get('/marketplace/{accountId}/uzum-orders', function ($accountId) {
     $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-    $uzumShops = $account->marketplace === 'uzum'
-        ? \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['external_id', 'name'])
-        : collect();
+    $uzumShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
+        ->orderBy('name')
+        ->get(['id', 'external_id', 'name']);
 
-    return view('pages.marketplace.orders', [
+    return view('pages.marketplace.uzum-fbs-orders', [
         'accountId' => $accountId,
-        'accountMarketplace' => $account->marketplace,
         'accountName' => $account->name,
         'uzumShops' => $uzumShops,
     ]);

@@ -7,6 +7,7 @@ use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +18,14 @@ class UzumSyncOrders extends Command
                             {--days=7 : Количество дней для синхронизации (по умолчанию 7)}';
 
     protected $description = 'Синхронизация заказов Uzum Market';
+
+    protected OrderStockService $orderStockService;
+
+    public function __construct(OrderStockService $orderStockService)
+    {
+        parent::__construct();
+        $this->orderStockService = $orderStockService;
+    }
 
     public function handle(): int
     {
@@ -113,6 +122,8 @@ class UzumSyncOrders extends Command
                 );
 
                 $wasRecentlyCreated = $order->wasRecentlyCreated;
+                $oldStatus = $wasRecentlyCreated ? null : $order->getOriginal('status');
+                $newStatus = $order->status;
 
                 // Синхронизировать товары в заказе
                 if (!empty($orderData['items'])) {
@@ -123,12 +134,41 @@ class UzumSyncOrders extends Command
                     foreach ($orderData['items'] as $item) {
                         UzumOrderItem::create([
                             'uzum_order_id' => $order->id,
-                            'external_product_id' => $item['external_product_id'] ?? $item['product_id'] ?? null,
-                            'sku' => $item['sku'] ?? null,
+                            'external_offer_id' => $item['external_offer_id'] ?? $item['skuId'] ?? null,
                             'name' => $item['name'] ?? null,
                             'quantity' => $item['quantity'] ?? 1,
                             'price' => $item['price'] ?? 0,
-                            'total' => $item['total'] ?? ($item['price'] * $item['quantity']),
+                            'total_price' => $item['total_price'] ?? ($item['price'] * $item['quantity']),
+                            'raw_payload' => $item['raw_payload'] ?? $item,
+                        ]);
+                    }
+                }
+
+                // Обработка остатков (резервы, списание, возврат)
+                if ($wasRecentlyCreated || $oldStatus !== $newStatus) {
+                    try {
+                        $items = $this->orderStockService->getOrderItems($order, 'uzum');
+                        $stockResult = $this->orderStockService->processOrderStatusChange(
+                            $account,
+                            $order,
+                            $oldStatus,
+                            $newStatus,
+                            $items
+                        );
+
+                        if ($stockResult['action'] !== 'none') {
+                            Log::info('Uzum order stock processed', [
+                                'order_id' => $order->id,
+                                'external_order_id' => $externalOrderId,
+                                'old_status' => $oldStatus,
+                                'new_status' => $newStatus,
+                                'action' => $stockResult['action'] ?? 'unknown',
+                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to process Uzum order stock', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }

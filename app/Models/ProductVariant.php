@@ -147,18 +147,13 @@ class ProductVariant extends Model
 
     /**
      * Обновить остаток
+     *
+     * StockUpdated event fires automatically via ProductVariantObserver
+     * when stock_default changes. No need to fire it manually here.
      */
     public function updateStock(int $newStock): bool
     {
-        $oldStock = $this->stock_default;
-        $result = $this->update(['stock_default' => $newStock]);
-        
-        // Trigger event for marketplace sync
-        if ($result && $oldStock !== $newStock) {
-            event(new \App\Events\StockUpdated($this, $oldStock, $newStock));
-        }
-        
-        return $result;
+        return $this->update(['stock_default' => $newStock]);
     }
 
     /**

@@ -27,7 +27,16 @@ class CheckSubscription
             return $next($request);
         }
 
-        $company = $user->companies()->where('companies.id', $companyId)->first();
+        // Get company - try direct relation first, then many-to-many if available
+        $company = $user->company;
+
+        // If company doesn't match company_id, user might have switched companies
+        if (!$company || $company->id !== $companyId) {
+            // Try to find in user's companies (if many-to-many exists)
+            if (method_exists($user, 'companies') && $user->companies()->exists()) {
+                $company = $user->companies()->where('companies.id', $companyId)->first();
+            }
+        }
 
         if (!$company) {
             return $this->handleNoSubscription($request);

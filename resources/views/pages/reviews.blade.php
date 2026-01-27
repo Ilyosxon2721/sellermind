@@ -2,12 +2,18 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div x-data="reviewsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50">
-
-    <x-sidebar></x-sidebar>
+<div x-data="reviewsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
@@ -303,6 +309,11 @@ function reviewsPage() {
             marketplace: '',
         },
 
+        getToken() {
+            const t = localStorage.getItem('_x_auth_token');
+            return t ? JSON.parse(t) : null;
+        },
+
         async init() {
             await Promise.all([
                 this.loadReviews(),
@@ -321,7 +332,7 @@ function reviewsPage() {
 
                 const response = await fetch(`/api/reviews?${params}`, {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -339,7 +350,7 @@ function reviewsPage() {
             try {
                 const response = await fetch('/api/reviews/templates', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -354,7 +365,7 @@ function reviewsPage() {
             try {
                 const response = await fetch('/api/reviews/statistics', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 
@@ -370,7 +381,7 @@ function reviewsPage() {
                 const response = await fetch(`/api/reviews/${reviewId}/generate`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -400,7 +411,7 @@ function reviewsPage() {
                 const response = await fetch(`/api/reviews/${reviewId}/save-response`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -436,7 +447,7 @@ function reviewsPage() {
                 const response = await fetch('/api/reviews/bulk-generate', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({

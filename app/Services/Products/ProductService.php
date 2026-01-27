@@ -75,7 +75,14 @@ class ProductService
         $mapById = [];
         $mapBySku = [];
 
-        foreach ($variants as $variantData) {
+        \Log::info('syncVariants called', [
+            'product_id' => $product->id,
+            'incoming_variants' => count($variants),
+            'existing_variants' => $existing->count(),
+            'existing_ids' => $existing->keys()->all(),
+        ]);
+
+        foreach ($variants as $idx => $variantData) {
             $variantId = $variantData['id'] ?? null;
             $payload = Arr::only($variantData, [
                 'sku',
@@ -96,11 +103,30 @@ class ProductService
             ]);
             $payload['company_id'] = $product->company_id;
 
+            \Log::info("syncVariants processing variant #{$idx}", [
+                'variant_id' => $variantId,
+                'sku' => $payload['sku'] ?? null,
+                'has_in_existing' => $variantId ? $existing->has($variantId) : false,
+            ]);
+
             if ($variantId && $existing->has($variantId)) {
                 $variant = $existing->get($variantId);
                 $variant->update($payload);
+                \Log::info("Updated existing variant by ID", ['id' => $variant->id]);
             } else {
-                $variant = $product->variants()->create($payload);
+                // Check if variant with this SKU already exists for this product
+                $existingBySku = $product->variants()
+                    ->where('sku', $payload['sku'] ?? null)
+                    ->first();
+
+                if ($existingBySku) {
+                    $existingBySku->update($payload);
+                    $variant = $existingBySku;
+                    \Log::info("Updated existing variant by SKU", ['id' => $variant->id, 'sku' => $payload['sku']]);
+                } else {
+                    $variant = $product->variants()->create($payload);
+                    \Log::info("Created new variant", ['id' => $variant->id, 'sku' => $payload['sku']]);
+                }
             }
 
             $keptIds[] = $variant->id;
@@ -215,9 +241,16 @@ class ProductService
             $payload = Arr::only($imageData, ['variant_id', 'file_path', 'alt_text', 'is_main', 'sort_order']);
             $payload['company_id'] = $product->company_id;
             
-            // Fix: Convert empty string to null for variant_id
-            if (array_key_exists('variant_id', $payload) && ($payload['variant_id'] === '' || $payload['variant_id'] === 0)) {
-                $payload['variant_id'] = null;
+            // Fix: Convert empty string, 0, or non-numeric string to null for variant_id
+            if (array_key_exists('variant_id', $payload)) {
+                $variantId = $payload['variant_id'];
+                if ($variantId === '' || $variantId === 0 || $variantId === '0' || $variantId === null) {
+                    $payload['variant_id'] = null;
+                } elseif (is_string($variantId) && !ctype_digit($variantId)) {
+                    // variant_id is a SKU string, try to find actual variant ID
+                    $variant = $product->variants()->where('sku', $variantId)->first();
+                    $payload['variant_id'] = $variant?->id;
+                }
             }
 
             if ($imageId && $existing->has($imageId)) {

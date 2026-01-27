@@ -42,6 +42,7 @@ return [
     ],
 
     'timeout' => 30,
+    'verify_ssl' => env('WB_VERIFY_SSL', true), // Disable for local development on Windows
 
     // Default tokens (if not using per-account tokens)
     'tokens' => [

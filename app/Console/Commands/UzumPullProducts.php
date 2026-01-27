@@ -30,55 +30,26 @@ class UzumPullProducts extends Command
 
         $this->info("Загружаем товары Uzum для аккаунта #{$account->id} ({$account->name})");
 
-        $products = $client->fetchProducts($account);
-        $this->info("Получено товаров: " . count($products));
+        // Используем syncCatalog который правильно сохраняет shop_id для каждого товара
+        $result = $client->syncCatalog($account);
 
-        $created = 0;
-        $updated = 0;
+        $this->info("Синхронизировано магазинов: " . count($result['shops']));
+        foreach ($result['shops'] as $shopId) {
+            $this->line("  - Shop ID: {$shopId}");
+        }
 
-        foreach ($products as $product) {
-            $productId = Arr::get($product, 'productId', Arr::get($product, 'id'));
-            $status = Arr::get($product, 'status.value') ?? Arr::get($product, 'status');
-            $skuList = Arr::get($product, 'skuList', []);
-
-            // если нет skuList, создаём одну запись на продукт
-            if (empty($skuList)) {
-                [$result, $isNew] = $this->upsertMpProduct($account, $productId, null, null, $status);
-                $isNew ? $created++ : $updated++;
-                continue;
-            }
-
-            foreach ($skuList as $sku) {
-                $skuId = Arr::get($sku, 'skuId', Arr::get($sku, 'id'));
-                $barcode = Arr::get($sku, 'barcode');
-                [$result, $isNew] = $this->upsertMpProduct($account, $productId, $skuId, $barcode, $status);
-                $isNew ? $created++ : $updated++;
+        // Show failed shops if any
+        $failedShops = $result['failed_shops'] ?? [];
+        if (!empty($failedShops)) {
+            $this->warn("Пропущено магазинов (нет доступа): " . count($failedShops));
+            foreach ($failedShops as $shopId) {
+                $this->line("  - Shop ID: {$shopId} (403 Access Denied)");
             }
         }
 
-        $this->info("Сохранено: создано {$created}, обновлено {$updated}");
+        $this->info("Сохранено товаров: {$result['synced']}");
+        $this->info("API запросов: {$result['requests']}");
+
         return self::SUCCESS;
-    }
-
-    /**
-     * @return array{MarketplaceProduct,bool} [$model, $isNew]
-     */
-    protected function upsertMpProduct(MarketplaceAccount $account, $productId, $skuId, $barcode, $status): array
-    {
-        $attrs = [
-            'marketplace_account_id' => $account->id,
-            'external_offer_id' => $skuId ? (string) $skuId : null,
-        ];
-
-        $values = [
-            'external_product_id' => $productId ? (string) $productId : null,
-            'external_sku' => $barcode ? (string) $barcode : null,
-            'status' => $status ? (string) $status : null,
-        ];
-
-        $existing = MarketplaceProduct::where($attrs)->first();
-        $model = MarketplaceProduct::updateOrCreate($attrs, $values);
-
-        return [$model, !$existing];
     }
 }

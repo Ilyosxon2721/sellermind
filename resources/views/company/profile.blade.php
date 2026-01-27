@@ -1,10 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="flex h-screen bg-gray-50 browser-only" x-data="companyProfilePage()">
-    <x-sidebar />
+<div class="flex h-screen bg-gray-50 browser-only" x-data="companyProfilePage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -35,12 +42,14 @@
                     :class="activeTab === 'access' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
                     Доступы
                 </button>
+                {{-- Биллинг - временно скрыт до завершения разработки
                 <button
                     @click="activeTab = 'billing'"
                     class="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition"
                     :class="activeTab === 'billing' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
                     Биллинг
                 </button>
+                --}}
             </nav>
         </div>
 
@@ -60,10 +69,11 @@
                 @include('company.tabs.access')
             </div>
 
-            <!-- Billing Tab -->
+            {{-- Billing Tab - временно скрыт до завершения разработки
             <div x-show="activeTab === 'billing'">
                 @include('company.tabs.billing')
             </div>
+            --}}
         </main>
     </div>
 </div>
@@ -76,7 +86,7 @@ function companyProfilePage() {
         init() {
             // Get tab from URL hash if present
             const hash = window.location.hash.substring(1);
-            if (['companies', 'employees', 'access', 'billing'].includes(hash)) {
+            if (['companies', 'employees', 'access'].includes(hash)) {
                 this.activeTab = hash;
             }
         }
@@ -96,8 +106,8 @@ function companyProfilePage() {
     inviteForm: { email: '', role: 'manager' },
     tabs: [
         { key: 'companies', label: 'Компании', icon: 'building' },
-        { key: 'employees', label: 'Сотрудники', icon: 'users' },
-        { key: 'billing', label: 'Биллинг', icon: 'card' }
+        { key: 'employees', label: 'Сотрудники', icon: 'users' }
+        // { key: 'billing', label: 'Биллинг', icon: 'card' } - временно скрыт до завершения разработки
     ],
     getToken() {
         const t = localStorage.getItem('_x_auth_token');
@@ -243,33 +253,7 @@ function companyProfilePage() {
             </template>
         </div>
 
-        {{-- Billing Tab --}}
-        <div x-show="activeTab === 'billing'" class="space-y-3">
-            <div class="native-card bg-blue-50 p-4">
-                <div class="flex items-center">
-                    <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-blue-700 text-sm">Функция в разработке</p>
-                </div>
-            </div>
-
-            <div class="native-card p-4">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="native-caption text-gray-500">Текущий баланс</span>
-                    <span class="text-2xl font-bold">15 000 ₽</span>
-                </div>
-                <button class="native-btn native-btn-primary w-full mt-3">Пополнить</button>
-            </div>
-
-            <div class="native-card p-4">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="native-caption text-gray-500">Подписка</span>
-                    <span class="font-bold">Базовый</span>
-                </div>
-                <button class="native-btn w-full mt-3 bg-gray-100 text-gray-700">Изменить план</button>
-            </div>
-        </div>
+        {{-- Billing Tab - временно скрыт до завершения разработки --}}
     </main>
 
     {{-- Create Company Modal --}}

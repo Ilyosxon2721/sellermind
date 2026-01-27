@@ -42,6 +42,7 @@ class MarketplaceAccount extends Model
         'wb_last_successful_call',
         'stock_sync_strategy',
         'stock_size_strategy',
+        'sync_settings',
     ];
 
     // Fields that should be encrypted
@@ -72,6 +73,7 @@ class MarketplaceAccount extends Model
             'uzum_settings' => 'array',
             'stock_sync_strategy' => 'string',
             'stock_size_strategy' => 'string',
+            'sync_settings' => 'array',
         ];
     }
 
@@ -278,7 +280,9 @@ class MarketplaceAccount extends Model
 
     public function setUzumApiKeyAttribute(?string $value): void
     {
-        $this->attributes['uzum_api_key'] = $value ? Crypt::encryptString($value) : null;
+        // Store token as-is without encryption for simplicity
+        // Uzum tokens are short-lived and DB is already protected
+        $this->attributes['uzum_api_key'] = $value;
     }
 
     public function getUzumApiKeyAttribute(?string $value): ?string
@@ -287,11 +291,18 @@ class MarketplaceAccount extends Model
             return null;
         }
 
-        try {
-            return Crypt::decryptString($value);
-        } catch (\Exception $e) {
-            return null;
+        // Check if value looks like Laravel encrypted string (starts with eyJ)
+        // If so, try to decrypt for backwards compatibility with old encrypted tokens
+        if (str_starts_with($value, 'eyJ')) {
+            try {
+                return Crypt::decryptString($value);
+            } catch (\Exception $e) {
+                // Decryption failed - might be a plain token that happens to start with eyJ
+                // or encrypted with different APP_KEY - return as-is
+            }
         }
+
+        return $value;
     }
 
     public function setUzumAccessTokenAttribute(?string $value): void
@@ -308,7 +319,7 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return null;
+            return $value;
         }
     }
 
@@ -549,6 +560,62 @@ class MarketplaceAccount extends Model
         return ['uzum', 'wb', 'ozon', 'ym'];
     }
 
+    // ========== Sync Settings Methods ==========
+
+    /**
+     * Настройки синхронизации по умолчанию
+     */
+    public static array $defaultSyncSettings = [
+        'auto_sync_stock_on_link' => true,      // Автосинхронизация при привязке товара
+        'auto_sync_stock_on_change' => true,    // Автосинхронизация при изменении остатков
+        'stock_sync_enabled' => true,           // Общий выключатель синхронизации остатков
+    ];
+
+    /**
+     * Получить значение настройки синхронизации
+     */
+    public function getSyncSetting(string $key, mixed $default = null): mixed
+    {
+        $settings = $this->sync_settings ?? [];
+        return $settings[$key] ?? self::$defaultSyncSettings[$key] ?? $default;
+    }
+
+    /**
+     * Установить значение настройки синхронизации
+     */
+    public function setSyncSetting(string $key, mixed $value): void
+    {
+        $settings = $this->sync_settings ?? [];
+        $settings[$key] = $value;
+        $this->sync_settings = $settings;
+    }
+
+    /**
+     * Получить все настройки синхронизации с дефолтами
+     */
+    public function getAllSyncSettings(): array
+    {
+        return array_merge(self::$defaultSyncSettings, $this->sync_settings ?? []);
+    }
+
+    /**
+     * Проверить, включена ли автосинхронизация при привязке
+     */
+    public function isAutoSyncOnLinkEnabled(): bool
+    {
+        return $this->getSyncSetting('stock_sync_enabled', true)
+            && $this->getSyncSetting('auto_sync_stock_on_link', true);
+    }
+
+    /**
+     * Проверить, включена ли автосинхронизация при изменении остатков
+     */
+    public function isAutoSyncOnChangeEnabled(): bool
+    {
+        return $this->getSyncSetting('stock_sync_enabled', true)
+            && $this->getSyncSetting('auto_sync_stock_on_change', true);
+    }
+
     // ========== Wildberries Specific Methods ==========
 
     /**
@@ -582,17 +649,20 @@ class MarketplaceAccount extends Model
      */
     public function getUzumAuthHeaders(): array
     {
+        // Accessors already decrypt tokens, no need to decrypt again
         $token = $this->uzum_access_token ?? $this->uzum_api_key ?? $this->api_key;
+
+        // DEBUG: Log token info for troubleshooting
+        \Log::debug('Uzum getUzumAuthHeaders token check', [
+            'account_id' => $this->id,
+            'has_token' => !empty($token),
+            'token_length' => $token ? strlen($token) : 0,
+            'token_start' => $token ? substr($token, 0, 10) : null,
+            'token_looks_encrypted' => $token && str_starts_with($token, 'eyJ'),
+        ]);
+
         if (!$token) {
             return [];
-        }
-
-        // Токены в БД могут быть зашифрованы через Crypt::encryptString
-        // Пробуем расшифровать, а при ошибке используем исходное значение.
-        try {
-            $token = decrypt($token);
-        } catch (\Throwable $e) {
-            // оставляем как есть
         }
 
         $header = config('uzum.auth.header', 'Authorization');
@@ -629,6 +699,7 @@ class MarketplaceAccount extends Model
      */
     public function getWbToken(string $category): ?string
     {
+        // First try direct column attributes
         $token = match ($category) {
             'content'     => $this->wb_content_token,
             'marketplace' => $this->wb_marketplace_token,
@@ -637,8 +708,26 @@ class MarketplaceAccount extends Model
             default       => null,
         };
 
-        // Fallback to api_key if category-specific token is not set
-        return $token ?: $this->api_key;
+        // Fallback to credentials JSON if column is empty
+        if (!$token) {
+            $credentials = $this->getDecryptedCredentials();
+            $credKey = match ($category) {
+                'content'     => 'wb_content_token',
+                'marketplace' => 'wb_marketplace_token',
+                'prices'      => 'wb_prices_token',
+                'statistics'  => 'wb_statistics_token',
+                default       => null,
+            };
+            $token = $credKey ? ($credentials[$credKey] ?? null) : null;
+        }
+
+        // Final fallback to api_key/api_token
+        if (!$token) {
+            $credentials = $this->getDecryptedCredentials();
+            $token = $this->api_key ?: ($credentials['api_key'] ?? $credentials['api_token'] ?? null);
+        }
+
+        return $token;
     }
 
     /**

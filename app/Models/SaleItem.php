@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Warehouse\Sku as WarehouseSku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 
 /**
  * Модель элемента продажи (товарная позиция)
@@ -127,6 +130,9 @@ class SaleItem extends Model
         $result = $variant->decrementStock((int)$this->quantity);
 
         if ($result) {
+            // Create warehouse stock ledger entry
+            $this->createWarehouseStockLedger($variant, -(int)$this->quantity, 'offline_sale');
+
             $this->update([
                 'stock_deducted' => true,
                 'stock_deducted_at' => now(),
@@ -161,6 +167,9 @@ class SaleItem extends Model
         $result = $variant->incrementStock((int)$this->quantity);
 
         if ($result) {
+            // Create warehouse stock ledger entry (positive to return stock)
+            $this->createWarehouseStockLedger($variant, (int)$this->quantity, 'offline_sale_return');
+
             $this->update([
                 'stock_deducted' => false,
                 'stock_deducted_at' => null,
@@ -200,6 +209,115 @@ class SaleItem extends Model
         }
 
         return ($this->getMargin() / $this->total) * 100;
+    }
+
+    /**
+     * Create warehouse stock ledger entry for offline sale
+     * 
+     * @param ProductVariant $variant
+     * @param int $qtyDelta Quantity change (negative for sale, positive for return)
+     * @param string $sourceType 'offline_sale' or 'offline_sale_return'
+     * @return void
+     */
+    protected function createWarehouseStockLedger(
+        ProductVariant $variant,
+        int $qtyDelta,
+        string $sourceType
+    ): void {
+        try {
+            // Find or create warehouse SKU
+            $warehouseSku = WarehouseSku::firstOrCreate(
+                [
+                    'product_variant_id' => $variant->id,
+                    'company_id' => $this->sale->company_id,
+                ],
+                [
+                    'product_id' => $variant->product_id,
+                    'sku_code' => $variant->sku,
+                    'barcode_ean13' => $variant->barcode,
+                    'is_active' => true,
+                ]
+            );
+
+            // Determine warehouse from sale or use default
+            $warehouseId = $this->sale->warehouse_id ?? $this->getDefaultWarehouse($this->sale->company_id);
+
+            if (!$warehouseId) {
+                \Log::warning('SaleItem: No warehouse found for stock ledger entry', [
+                    'sale_item_id' => $this->id,
+                    'variant_id' => $variant->id,
+                ]);
+                return;
+            }
+
+            // Create stock ledger entry
+            StockLedger::create([
+                'company_id' => $this->sale->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouseId,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'cost_delta' => 0,
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => $sourceType,
+                'source_id' => $this->id,
+                'created_by' => $this->sale->created_by,
+            ]);
+
+            \Log::info('SaleItem: Warehouse stock ledger entry created', [
+                'sale_item_id' => $this->id,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'warehouse_id' => $warehouseId,
+                'qty_delta' => $qtyDelta,
+                'source_type' => $sourceType,
+            ]);
+
+        } catch (\Throwable $e) {
+            \Log::error('SaleItem: Failed to create warehouse stock ledger', [
+                'sale_item_id' => $this->id,
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get default warehouse for company
+     * 
+     * @param int $companyId
+     * @return int|null
+     */
+    protected function getDefaultWarehouse(int $companyId): ?int
+    {
+        try {
+            $warehouse = Warehouse::where('company_id', $companyId)
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->first();
+
+            if ($warehouse) {
+                return $warehouse->id;
+            }
+
+            // Create default warehouse if none exists
+            $warehouse = Warehouse::create([
+                'company_id' => $companyId,
+                'name' => 'Склад по умолчанию',
+                'code' => 'DEFAULT',
+                'is_active' => true,
+            ]);
+
+            return $warehouse->id;
+        } catch (\Throwable $e) {
+            \Log::error('SaleItem: Failed to get/create default warehouse', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     /**

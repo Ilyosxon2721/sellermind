@@ -2,8 +2,10 @@
 
 namespace App\Models\Warehouse;
 
+use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockReservation extends Model
 {
@@ -35,5 +37,25 @@ class StockReservation extends Model
     public function scopeByCompany($query, int $companyId)
     {
         return $query->where('company_id', $companyId);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function sku(): BelongsTo
+    {
+        return $this->belongsTo(Sku::class);
     }
 }

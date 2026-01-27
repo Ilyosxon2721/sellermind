@@ -11,14 +11,112 @@
         50% { opacity: 0.5; }
     }
 
+    /* Brand Colors */
+    :root {
+        /* Wildberries */
+        --wb-primary: #CB11AB;
+        --wb-primary-dark: #9B0D85;
+        --wb-gradient: linear-gradient(135deg, #CB11AB 0%, #9B0D85 100%);
+
+        /* Uzum Market - Indigo/Purple */
+        --uzum-primary: #7B2D8E;
+        --uzum-primary-dark: #5A1F69;
+        --uzum-gradient: linear-gradient(135deg, #7B2D8E 0%, #5A1F69 100%);
+
+        /* Ozon */
+        --ozon-primary: #005BFF;
+        --ozon-primary-dark: #0047CC;
+        --ozon-gradient: linear-gradient(135deg, #005BFF 0%, #0047CC 100%);
+
+        /* Yandex Market */
+        --ym-primary: #FFCC00;
+        --ym-primary-dark: #FF9500;
+        --ym-gradient: linear-gradient(135deg, #FFCC00 0%, #FF9500 100%);
+    }
+
+    /* Marketplace Section Headers */
+    .mp-section-wb {
+        background: linear-gradient(135deg, rgba(203, 17, 171, 0.08) 0%, rgba(155, 13, 133, 0.04) 100%);
+        border-left: 4px solid var(--wb-primary);
+    }
+    .mp-section-uzum {
+        background: linear-gradient(135deg, rgba(123, 45, 142, 0.08) 0%, rgba(90, 31, 105, 0.04) 100%);
+        border-left: 4px solid var(--uzum-primary);
+    }
+    .mp-section-ozon {
+        background: linear-gradient(135deg, rgba(0, 91, 255, 0.08) 0%, rgba(0, 71, 204, 0.04) 100%);
+        border-left: 4px solid var(--ozon-primary);
+    }
+    .mp-section-ym {
+        background: linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%);
+        border-left: 4px solid var(--ym-primary);
+    }
+
+    /* Brand Accent Cards */
+    .mp-card-wb {
+        border: 2px solid rgba(203, 17, 171, 0.2);
+        transition: all 0.3s ease;
+    }
+    .mp-card-wb:hover {
+        border-color: var(--wb-primary);
+        box-shadow: 0 8px 30px rgba(203, 17, 171, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .mp-card-uzum {
+        border: 2px solid rgba(123, 45, 142, 0.2);
+        transition: all 0.3s ease;
+    }
+    .mp-card-uzum:hover {
+        border-color: var(--uzum-primary);
+        box-shadow: 0 8px 30px rgba(123, 45, 142, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .mp-card-ozon {
+        border: 2px solid rgba(0, 91, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+    .mp-card-ozon:hover {
+        border-color: var(--ozon-primary);
+        box-shadow: 0 8px 30px rgba(0, 91, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .mp-card-ym {
+        border: 2px solid rgba(255, 204, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    .mp-card-ym:hover {
+        border-color: var(--ym-primary);
+        box-shadow: 0 8px 30px rgba(255, 149, 0, 0.2);
+        transform: translateY(-2px);
+    }
+
+    /* Brand Buttons */
+    .mp-btn-wb { background: var(--wb-gradient); color: white; }
+    .mp-btn-wb:hover { filter: brightness(1.1); }
+    .mp-btn-uzum { background: var(--uzum-gradient); color: white; }
+    .mp-btn-uzum:hover { filter: brightness(1.1); }
+    .mp-btn-ozon { background: var(--ozon-gradient); color: white; }
+    .mp-btn-ozon:hover { filter: brightness(1.1); }
+    .mp-btn-ym { background: var(--ym-gradient); color: #1a1a1a; }
+    .mp-btn-ym:hover { filter: brightness(1.05); }
+
+    /* Brand Secondary Buttons */
+    .mp-btn-secondary-wb { background: rgba(203, 17, 171, 0.1); color: var(--wb-primary); }
+    .mp-btn-secondary-wb:hover { background: rgba(203, 17, 171, 0.2); }
+    .mp-btn-secondary-uzum { background: rgba(123, 45, 142, 0.1); color: var(--uzum-primary); }
+    .mp-btn-secondary-uzum:hover { background: rgba(123, 45, 142, 0.2); }
+    .mp-btn-secondary-ozon { background: rgba(0, 91, 255, 0.1); color: var(--ozon-primary); }
+    .mp-btn-secondary-ozon:hover { background: rgba(0, 91, 255, 0.2); }
+    .mp-btn-secondary-ym { background: rgba(255, 204, 0, 0.2); color: #8B6914; }
+    .mp-btn-secondary-ym:hover { background: rgba(255, 204, 0, 0.35); }
+
     /* Shimmer effect для новых аккаунтов */
     @keyframes shimmer {
-        0% {
-            background-position: -1000px 0;
-        }
-        100% {
-            background-position: 1000px 0;
-        }
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
     }
     .shimmer {
         animation: shimmer 2s infinite;
@@ -28,47 +126,66 @@
 
     /* Появление с анимацией */
     @keyframes slideInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .slide-in-up {
-        animation: slideInUp 0.5s ease-out;
-    }
+    .slide-in-up { animation: slideInUp 0.5s ease-out; }
 
     /* Notification styles */
-    .notification {
-        transition: all 0.3s ease-in-out;
-    }
-    .notification-enter {
-        opacity: 0;
-        transform: translateX(100%);
-    }
-    .notification-leave {
-        opacity: 0;
-        transform: translateX(100%);
-    }
+    .notification { transition: all 0.3s ease-in-out; }
+    .notification-enter { opacity: 0; transform: translateX(100%); }
+    .notification-leave { opacity: 0; transform: translateX(100%); }
+
+    /* Logo Glow Effects */
+    .mp-logo-wb { box-shadow: 0 4px 15px rgba(203, 17, 171, 0.3); }
+    .mp-logo-uzum { box-shadow: 0 4px 15px rgba(123, 45, 142, 0.3); }
+    .mp-logo-ozon { box-shadow: 0 4px 15px rgba(0, 91, 255, 0.3); }
+    .mp-logo-ym { box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4); }
+
+    /* Add Account Button Brand Styles */
+    .mp-add-wb { border-color: rgba(203, 17, 171, 0.3); }
+    .mp-add-wb:hover { border-color: var(--wb-primary); background: rgba(203, 17, 171, 0.05); }
+    .mp-add-uzum { border-color: rgba(123, 45, 142, 0.3); }
+    .mp-add-uzum:hover { border-color: var(--uzum-primary); background: rgba(123, 45, 142, 0.05); }
+    .mp-add-ozon { border-color: rgba(0, 91, 255, 0.3); }
+    .mp-add-ozon:hover { border-color: var(--ozon-primary); background: rgba(0, 91, 255, 0.05); }
+    .mp-add-ym { border-color: rgba(255, 204, 0, 0.4); }
+    .mp-add-ym:hover { border-color: var(--ym-primary); background: rgba(255, 204, 0, 0.1); }
 </style>
 <script>
     window.marketplaceCredentialFields = {!! json_encode(config('marketplaces.credential_fields')) !!};
 </script>
 
 {{-- BROWSER MODE --}}
-<div x-data="marketplacePage()" class="browser-only flex h-screen bg-gray-50">
+<div x-data="marketplacePage()" class="browser-only flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
+        <header class="bg-white border-b border-gray-200 px-6 py-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Маркетплейсы</h1>
-                    <p class="text-gray-600 text-sm">Подключение и управление интеграциями</p>
+                    <h1 class="text-2xl font-bold text-gray-900 flex items-center space-x-3">
+                        <span>{{ __('marketplace.title') }}</span>
+                        <span class="text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full" x-text="accounts.length + ' аккаунт' + (accounts.length !== 1 ? 'ов' : '')"></span>
+                    </h1>
+                    <p class="text-gray-500 text-sm mt-1">{{ __('marketplace.subtitle') }}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <!-- Quick Stats -->
+                    <div class="hidden md:flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-xl">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span class="text-sm text-gray-600"><span class="font-semibold text-gray-900" x-text="accounts.filter(a => a.is_active).length"></span> активных</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -178,60 +295,110 @@
             <div x-show="!loading" x-cloak>
                 <!-- Connected Accounts -->
                 <div class="mb-8">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Подключённые аккаунты</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('marketplace.connected_accounts') }}</h2>
 
                     <p x-show="accounts.length === 0 && !creatingAccount" class="text-sm text-gray-500 mb-4">
-                        Пока нет подключённых аккаунтов. Нажмите «+», чтобы добавить первый.
+                        {{ __('marketplace.no_accounts') }}
                     </p>
 
-                    <div class="divide-y divide-gray-200">
+                    <div class="space-y-6">
                         <template x-for="(marketplace, index) in getMarketplaceList()" :key="marketplace.code">
-                            <div class="py-6" :class="index === 0 ? 'pt-0' : ''">
-                                <div class="flex items-center space-x-3 mb-3">
-                                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-bold text-base"
-                                         :class="{
-                                             'from-purple-500 to-purple-700': marketplace.code === 'wb',
-                                             'from-blue-500 to-blue-700': marketplace.code === 'ozon',
-                                             'from-green-500 to-green-700': marketplace.code === 'uzum',
-                                             'from-yellow-500 to-orange-500': marketplace.code === 'ym'
-                                         }">
-                                        <span x-text="marketplace.code.toUpperCase().substring(0, 2)"></span>
+                            <div class="rounded-xl overflow-hidden"
+                                 :class="{
+                                     'mp-section-wb': marketplace.code === 'wb',
+                                     'mp-section-uzum': marketplace.code === 'uzum',
+                                     'mp-section-ozon': marketplace.code === 'ozon',
+                                     'mp-section-ym': marketplace.code === 'ym'
+                                 }">
+                                <div class="flex items-center justify-between px-5 py-4">
+                                    <div class="flex items-center space-x-4">
+                                        <!-- Brand Logo -->
+                                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                                             :class="{
+                                                 'bg-gradient-to-br from-[#CB11AB] to-[#9B0D85] mp-logo-wb': marketplace.code === 'wb',
+                                                 'bg-gradient-to-br from-[#7B2D8E] to-[#5A1F69] mp-logo-uzum': marketplace.code === 'uzum',
+                                                 'bg-gradient-to-br from-[#005BFF] to-[#0047CC] mp-logo-ozon': marketplace.code === 'ozon',
+                                                 'bg-gradient-to-br from-[#FFCC00] to-[#FF9500] mp-logo-ym': marketplace.code === 'ym'
+                                             }">
+                                            <span x-text="marketplace.code.toUpperCase().substring(0, 2)"
+                                                  :class="marketplace.code === 'ym' ? 'text-gray-900' : 'text-white'"></span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold"
+                                                :class="{
+                                                    'text-[#CB11AB]': marketplace.code === 'wb',
+                                                    'text-[#7B2D8E]': marketplace.code === 'uzum',
+                                                    'text-[#005BFF]': marketplace.code === 'ozon',
+                                                    'text-[#8B6914]': marketplace.code === 'ym'
+                                                }"
+                                                x-text="marketplace.label"></h3>
+                                            <p class="text-sm text-gray-600"
+                                               x-text="getMarketplaceAccounts(marketplace.code).length ? getMarketplaceAccounts(marketplace.code).length + ' аккаунт' + (getMarketplaceAccounts(marketplace.code).length > 1 ? 'а' : '') : 'Нет подключённых аккаунтов'"></p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 class="font-medium text-gray-900" x-text="marketplace.label"></h3>
-                                        <p class="text-sm text-gray-500"
-                                           x-text="getMarketplaceAccounts(marketplace.code).length ? 'Аккаунтов: ' + getMarketplaceAccounts(marketplace.code).length : 'Нет подключённых аккаунтов'"></p>
+                                    <!-- Quick Stats -->
+                                    <div class="hidden md:flex items-center space-x-6">
+                                        <div class="text-center">
+                                            <p class="text-2xl font-bold"
+                                               :class="{
+                                                   'text-[#CB11AB]': marketplace.code === 'wb',
+                                                   'text-[#7B2D8E]': marketplace.code === 'uzum',
+                                                   'text-[#005BFF]': marketplace.code === 'ozon',
+                                                   'text-[#8B6914]': marketplace.code === 'ym'
+                                               }"
+                                               x-text="getMarketplaceAccounts(marketplace.code).filter(a => a.is_active).length"></p>
+                                            <p class="text-xs text-gray-500">Активных</p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <!-- Existing accounts -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-5 pb-5">
+                                    <!-- Existing accounts - Brand-styled cards -->
                                     <template x-for="account in getMarketplaceAccounts(marketplace.code)" :key="account.id">
-                                        <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition"
-                                             :class="{'slide-in-up': account.isNew}">
+                                        <div @click="window.location.href = '/marketplace/' + account.id"
+                                             class="bg-white rounded-2xl p-5 relative cursor-pointer group"
+                                             :class="{
+                                                 'slide-in-up': account.isNew,
+                                                 'opacity-50 pointer-events-none': account.isDeleting,
+                                                 'mp-card-wb': normalizeMarketplace(account.marketplace) === 'wb',
+                                                 'mp-card-uzum': normalizeMarketplace(account.marketplace) === 'uzum',
+                                                 'mp-card-ozon': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                 'mp-card-ym': normalizeMarketplace(account.marketplace) === 'ym'
+                                             }">
+                                            <!-- Deleting overlay -->
+                                            <div x-show="account.isDeleting" class="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-10">
+                                                <div class="flex items-center space-x-2 text-gray-600">
+                                                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span class="text-sm font-medium">{{ __('marketplace.deleting') }}</span>
+                                                </div>
+                                            </div>
                                             <div class="flex items-start justify-between mb-4">
                                                 <div class="flex items-center space-x-3">
-                                                    <div class="w-12 h-12 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg"
+                                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-105 transition-transform"
                                                          :class="{
-                                                             'from-purple-500 to-purple-700': normalizeMarketplace(account.marketplace) === 'wb',
-                                                             'from-blue-500 to-blue-700': normalizeMarketplace(account.marketplace) === 'ozon',
-                                                             'from-green-500 to-green-700': normalizeMarketplace(account.marketplace) === 'uzum',
-                                                             'from-yellow-500 to-orange-500': normalizeMarketplace(account.marketplace) === 'ym'
+                                                             'from-[#CB11AB] to-[#9B0D85]': normalizeMarketplace(account.marketplace) === 'wb',
+                                                             'from-[#005BFF] to-[#0047CC]': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                             'from-[#7B2D8E] to-[#5A1F69]': normalizeMarketplace(account.marketplace) === 'uzum',
+                                                             'from-[#FFCC00] to-[#FF9500]': normalizeMarketplace(account.marketplace) === 'ym'
                                                          }">
-                                                        <span x-text="getMarketplaceShort(account.marketplace)"></span>
+                                                        <span x-text="getMarketplaceShort(account.marketplace)"
+                                                              :class="normalizeMarketplace(account.marketplace) === 'ym' ? 'text-gray-900' : 'text-white'"></span>
                                                     </div>
                                                     <div>
                                                         <h3 class="font-medium text-gray-900" x-text="account.display_name || account.marketplace_label"></h3>
                                                         <p class="text-sm text-gray-500">
-                                                            <span x-show="account.is_active" class="text-green-600">Активен</span>
-                                                            <span x-show="!account.is_active" class="text-gray-400">Отключён</span>
+                                                            <span x-show="account.is_active" class="text-green-600">{{ __('marketplace.active') }}</span>
+                                                            <span x-show="!account.is_active" class="text-gray-400">{{ __('marketplace.disabled') }}</span>
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div class="flex space-x-1">
-                                                    <button @click="testConnection(account.id)"
-                                                            :disabled="testingAccountId === account.id"
-                                                            class="p-2 text-gray-400 hover:text-blue-600 transition disabled:opacity-50"
+                                                    <button @click.stop="testConnection(account.id)"
+                                                            :disabled="testingConnection"
+                                                            class="p-2 text-gray-400 hover:text-blue-600 transition"
                                                             title="Проверить подключение">
                                                         <svg x-show="testingAccountId !== account.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -242,6 +409,7 @@
                                                         </svg>
                                                     </button>
                                                     <a :href="getAccountSettingsUrl(account)"
+                                                       @click.stop
                                                        class="p-2 text-gray-400 hover:text-gray-600 transition"
                                                        title="Настройки">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,6 +420,8 @@
                                                     <button @click="confirmDeleteAccount(account)"
                                                             :disabled="deletingAccountId === account.id"
                                                             class="p-2 text-gray-400 hover:text-red-600 transition disabled:opacity-50"
+                                                    <button @click.stop="confirmDeleteAccount(account)"
+                                                            class="p-2 text-gray-400 hover:text-red-600 transition"
                                                             title="Удалить аккаунт">
                                                         <svg x-show="deletingAccountId !== account.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -267,22 +437,38 @@
                                             <div class="space-y-2">
                                                 <div class="flex space-x-2">
                                                     <a :href="getAccountProductsUrl(account)"
-                                                       class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
-                                                        Товары
+                                                       @click.stop
+                                                       class="flex-1 px-3 py-2 text-sm font-medium rounded-lg text-center transition"
+                                                       :class="{
+                                                           'mp-btn-secondary-wb': normalizeMarketplace(account.marketplace) === 'wb',
+                                                           'mp-btn-secondary-uzum': normalizeMarketplace(account.marketplace) === 'uzum',
+                                                           'mp-btn-secondary-ozon': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                           'mp-btn-secondary-ym': normalizeMarketplace(account.marketplace) === 'ym'
+                                                       }">
+                                                        {{ __('marketplace.products') }}
                                                     </a>
                                                     <a :href="getAccountOrdersUrl(account)"
-                                                       class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 text-center transition">
-                                                        Заказы
+                                                       @click.stop
+                                                       class="flex-1 px-3 py-2 text-sm font-medium rounded-lg text-center transition"
+                                                       :class="{
+                                                           'mp-btn-wb': normalizeMarketplace(account.marketplace) === 'wb',
+                                                           'mp-btn-uzum': normalizeMarketplace(account.marketplace) === 'uzum',
+                                                           'mp-btn-ozon': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                           'mp-btn-ym': normalizeMarketplace(account.marketplace) === 'ym'
+                                                       }">
+                                                        {{ __('marketplace.orders') }}
                                                     </a>
                                                 </div>
-                                                <div class="flex space-x-2" x-show="account.marketplace === 'wb'">
+                                                <div class="flex space-x-2" x-show="normalizeMarketplace(account.marketplace) === 'wb'">
                                                     <a :href="'/marketplace/' + account.id + '/supplies'"
-                                                       class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
-                                                        Поставки
+                                                       @click.stop
+                                                       class="flex-1 px-3 py-2 mp-btn-secondary-wb text-sm font-medium rounded-lg text-center transition">
+                                                        {{ __('marketplace.supplies') }}
                                                     </a>
                                                     <a :href="'/marketplace/' + account.id + '/passes'"
-                                                       class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 text-center transition">
-                                                        Пропуски
+                                                       @click.stop
+                                                       class="flex-1 px-3 py-2 mp-btn-secondary-wb text-sm font-medium rounded-lg text-center transition">
+                                                        {{ __('marketplace.passes') }}
                                                     </a>
                                                 </div>
                                             </div>
@@ -315,10 +501,32 @@
 
                                     <button type="button"
                                             @click="openConnectModal(marketplace.code)"
-                                            class="bg-white rounded-xl border-2 border-dashed border-gray-200 p-5 hover:border-blue-400 transition flex flex-col items-center justify-center text-gray-400"
+                                            class="bg-white rounded-2xl border-2 border-dashed p-5 transition-all flex flex-col items-center justify-center min-h-[160px]"
+                                            :class="{
+                                                'mp-add-wb': marketplace.code === 'wb',
+                                                'mp-add-uzum': marketplace.code === 'uzum',
+                                                'mp-add-ozon': marketplace.code === 'ozon',
+                                                'mp-add-ym': marketplace.code === 'ym'
+                                            }"
                                             :aria-label="'Добавить аккаунт: ' + marketplace.label">
-                                        <span class="text-4xl leading-none">+</span>
-                                        <span class="mt-2 text-sm text-gray-500">Добавить аккаунт</span>
+                                        <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                                             :class="{
+                                                 'bg-[#CB11AB]/10 text-[#CB11AB]': marketplace.code === 'wb',
+                                                 'bg-[#7B2D8E]/10 text-[#7B2D8E]': marketplace.code === 'uzum',
+                                                 'bg-[#005BFF]/10 text-[#005BFF]': marketplace.code === 'ozon',
+                                                 'bg-[#FFCC00]/20 text-[#8B6914]': marketplace.code === 'ym'
+                                             }">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm font-medium"
+                                              :class="{
+                                                  'text-[#CB11AB]': marketplace.code === 'wb',
+                                                  'text-[#7B2D8E]': marketplace.code === 'uzum',
+                                                  'text-[#005BFF]': marketplace.code === 'ozon',
+                                                  'text-[#8B6914]': marketplace.code === 'ym'
+                                              }">{{ __('marketplace.add_account') }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -334,23 +542,74 @@
          class="fixed inset-0 z-50 overflow-y-auto"
          @keydown.escape.window="showConnectModal = false">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 bg-black/50" @click="showConnectModal = false"></div>
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="showConnectModal = false"></div>
 
-            <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">
-                    Подключить <span x-text="availableMarketplaces[selectedMarketplace] || defaultMarketplaces[selectedMarketplace] || selectedMarketplace"></span>
-                </h2>
+            <div class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                <!-- Modal Header with Brand Color -->
+                <div class="px-6 py-4 border-b"
+                     :class="{
+                         'bg-gradient-to-r from-[#CB11AB]/10 to-[#CB11AB]/5 border-[#CB11AB]/20': selectedMarketplace === 'wb',
+                         'bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 border-[#7B2D8E]/20': selectedMarketplace === 'uzum',
+                         'bg-gradient-to-r from-[#005BFF]/10 to-[#005BFF]/5 border-[#005BFF]/20': selectedMarketplace === 'ozon',
+                         'bg-gradient-to-r from-[#FFCC00]/20 to-[#FFCC00]/10 border-[#FFCC00]/30': selectedMarketplace === 'ym'
+                     }">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
+                             :class="{
+                                 'bg-gradient-to-br from-[#CB11AB] to-[#9B0D85]': selectedMarketplace === 'wb',
+                                 'bg-gradient-to-br from-[#7B2D8E] to-[#5A1F69]': selectedMarketplace === 'uzum',
+                                 'bg-gradient-to-br from-[#005BFF] to-[#0047CC]': selectedMarketplace === 'ozon',
+                                 'bg-gradient-to-br from-[#FFCC00] to-[#FF9500]': selectedMarketplace === 'ym'
+                             }">
+                            <span :class="selectedMarketplace === 'ym' ? 'text-gray-900' : 'text-white'"
+                                  x-text="selectedMarketplace ? selectedMarketplace.toUpperCase().substring(0, 2) : ''"></span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold"
+                                :class="{
+                                    'text-[#CB11AB]': selectedMarketplace === 'wb',
+                                    'text-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                    'text-[#005BFF]': selectedMarketplace === 'ozon',
+                                    'text-[#8B6914]': selectedMarketplace === 'ym'
+                                }">
+                                Подключить <span x-text="availableMarketplaces[selectedMarketplace] || defaultMarketplaces[selectedMarketplace] || selectedMarketplace"></span>
+                            </h2>
+                            <p class="text-sm text-gray-500">Введите данные для подключения</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto" style="max-height: calc(90vh - 180px);">
 
                 <!-- Setup Guide (если есть) -->
                 <template x-if="marketplaceRequirements && marketplaceRequirements.setup_guide">
-                    <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h3 class="font-semibold text-blue-900 mb-2" x-text="marketplaceRequirements.setup_guide.title"></h3>
-                        <p class="text-sm text-blue-800 mb-3" x-text="marketplaceRequirements.setup_guide.subtitle"></p>
+                    <div class="mb-6 p-4 rounded-xl border"
+                         :class="{
+                             'bg-[#CB11AB]/5 border-[#CB11AB]/20': selectedMarketplace === 'wb',
+                             'bg-[#7B2D8E]/5 border-[#7B2D8E]/20': selectedMarketplace === 'uzum',
+                             'bg-[#005BFF]/5 border-[#005BFF]/20': selectedMarketplace === 'ozon',
+                             'bg-[#FFCC00]/10 border-[#FFCC00]/30': selectedMarketplace === 'ym'
+                         }">
+                        <h3 class="font-semibold mb-2"
+                            :class="{
+                                'text-[#CB11AB]': selectedMarketplace === 'wb',
+                                'text-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                'text-[#005BFF]': selectedMarketplace === 'ozon',
+                                'text-[#8B6914]': selectedMarketplace === 'ym'
+                            }"
+                            x-text="marketplaceRequirements.setup_guide.title"></h3>
+                        <p class="text-sm text-gray-600 mb-3" x-text="marketplaceRequirements.setup_guide.subtitle"></p>
 
                         <template x-if="marketplaceRequirements.setup_guide.link">
                             <a :href="marketplaceRequirements.setup_guide.link"
                                target="_blank"
-                               class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 mb-3">
+                               class="inline-flex items-center text-sm font-medium mb-3 hover:underline"
+                               :class="{
+                                   'text-[#CB11AB]': selectedMarketplace === 'wb',
+                                   'text-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                   'text-[#005BFF]': selectedMarketplace === 'ozon',
+                                   'text-[#8B6914]': selectedMarketplace === 'ym'
+                               }">
                                 <span x-text="marketplaceRequirements.setup_guide.link_text || 'Открыть личный кабинет'"></span>
                                 <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
@@ -362,9 +621,22 @@
                         <template x-if="marketplaceRequirements.setup_guide.tokens && marketplaceRequirements.setup_guide.tokens.length > 0">
                             <div class="space-y-3 mt-3">
                                 <template x-for="token in marketplaceRequirements.setup_guide.tokens" :key="token.number">
-                                    <div class="bg-white rounded-lg p-3 border border-blue-200">
+                                    <div class="bg-white rounded-xl p-3 border"
+                                         :class="{
+                                             'border-[#CB11AB]/20': selectedMarketplace === 'wb',
+                                             'border-[#7B2D8E]/20': selectedMarketplace === 'uzum',
+                                             'border-[#005BFF]/20': selectedMarketplace === 'ozon',
+                                             'border-[#FFCC00]/30': selectedMarketplace === 'ym'
+                                         }">
                                         <div class="flex items-start">
-                                            <div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3" x-text="token.number"></div>
+                                            <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold mr-3 text-white"
+                                                 :class="{
+                                                     'bg-[#CB11AB]': selectedMarketplace === 'wb',
+                                                     'bg-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                                     'bg-[#005BFF]': selectedMarketplace === 'ozon',
+                                                     'bg-[#FFCC00] !text-gray-900': selectedMarketplace === 'ym'
+                                                 }"
+                                                 x-text="token.number"></div>
                                             <div class="flex-1">
                                                 <h4 class="font-medium text-gray-900 text-sm mb-1" x-text="token.name"></h4>
                                                 <template x-if="token.permissions && token.permissions.length > 0">
@@ -394,7 +666,13 @@
                             <input type="text"
                                    x-model="accountName"
                                    placeholder="Например: Основной магазин, Оптовый склад"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:outline-none transition"
+                                   :class="{
+                                       'focus:ring-[#CB11AB]/30 focus:border-[#CB11AB]': selectedMarketplace === 'wb',
+                                       'focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                       'focus:ring-[#005BFF]/30 focus:border-[#005BFF]': selectedMarketplace === 'ozon',
+                                       'focus:ring-[#FFCC00]/40 focus:border-[#FFCC00]': selectedMarketplace === 'ym'
+                                   }">
                         </div>
 
                         <!-- API credentials -->
@@ -404,7 +682,13 @@
                                 <input :type="field.type === 'password' ? 'password' : 'text'"
                                        x-model="credentials[key]"
                                        :required="field.required"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:outline-none transition"
+                                       :class="{
+                                           'focus:ring-[#CB11AB]/30 focus:border-[#CB11AB]': selectedMarketplace === 'wb',
+                                           'focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]': selectedMarketplace === 'uzum',
+                                           'focus:ring-[#005BFF]/30 focus:border-[#005BFF]': selectedMarketplace === 'ozon',
+                                           'focus:ring-[#FFCC00]/40 focus:border-[#FFCC00]': selectedMarketplace === 'ym'
+                                       }">
                             </div>
                         </template>
                     </div>
@@ -421,13 +705,19 @@
                         <button type="button"
                                 @click="showConnectModal = false"
                                 :disabled="creatingAccount"
-                                class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Отмена
+                                class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            {{ __('marketplace.cancel') }}
                         </button>
                         <button type="submit"
                                 :disabled="creatingAccount"
-                                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
-                            <svg x-show="creatingAccount" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                class="flex-1 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition"
+                                :class="{
+                                    'mp-btn-wb': selectedMarketplace === 'wb',
+                                    'mp-btn-uzum': selectedMarketplace === 'uzum',
+                                    'mp-btn-ozon': selectedMarketplace === 'ozon',
+                                    'mp-btn-ym': selectedMarketplace === 'ym'
+                                }">
+                            <svg x-show="creatingAccount" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
@@ -435,6 +725,7 @@
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
     </div>
@@ -541,6 +832,18 @@ function marketplacePage() {
             return normalized ? normalized.toUpperCase().substring(0, 2) : '';
         },
 
+        getMarketplaceShortName(marketplace) {
+            const normalized = this.normalizeMarketplace(marketplace);
+            const shortNames = { 'wb': 'WB', 'ozon': 'OZ', 'uzum': 'U', 'ym': 'YM' };
+            return shortNames[normalized] || normalized.charAt(0).toUpperCase();
+        },
+
+        getMarketplaceDisplayName(marketplace) {
+            const normalized = this.normalizeMarketplace(marketplace);
+            const names = { 'wb': 'Wildberries', 'ozon': 'Ozon', 'uzum': 'Uzum', 'ym': 'Yandex Market' };
+            return names[normalized] || normalized;
+        },
+
         getMarketplaceList() {
             const source = Object.keys(this.availableMarketplaces || {}).length
                 ? this.availableMarketplaces
@@ -639,37 +942,73 @@ function marketplacePage() {
                     return;
                 }
 
+                // Mark account as deleting for UI feedback
+                const accountToDelete = this.accounts.find(a => a.id === accountId);
+                if (accountToDelete) {
+                    accountToDelete.isDeleting = true;
+                }
+
                 const res = await fetch(`/api/marketplace/accounts/${accountId}?company_id=${this.$store.auth.currentCompany.id}`, {
                     method: 'DELETE',
                     headers: this.getAuthHeaders()
                 });
 
                 if (res.ok) {
+                    // Remove from local list immediately
                     this.accounts = this.accounts.filter(a => a.id !== accountId);
                     this.showNotification('success', 'Успешно', 'Аккаунт удалён');
+
+                    // Verify deletion by reloading with cache bypass
+                    // Small delay to ensure database transaction completed
+                    setTimeout(async () => {
+                        await this.loadAccounts(true);
+                    }, 500);
                 } else {
+                    // Remove deleting state on error
+                    if (accountToDelete) {
+                        accountToDelete.isDeleting = false;
+                    }
                     const data = await res.json();
                     this.showNotification('error', 'Ошибка', data.message || 'Не удалось удалить аккаунт');
                 }
             } catch (e) {
+                // Remove deleting state on error
+                const accountToDelete = this.accounts.find(a => a.id === accountId);
+                if (accountToDelete) {
+                    accountToDelete.isDeleting = false;
+                }
                 this.showNotification('error', 'Ошибка', 'Ошибка соединения: ' + e.message);
             } finally {
                 this.deletingAccountId = null;
             }
         },
 
-        async loadAccounts() {
+        async loadAccounts(skipCache = false) {
             this.loading = true;
             try {
                 // Ensure companies are loaded
                 if (!this.$store.auth.currentCompany) {
                     console.log('No current company, loading companies...');
                     await this.$store.auth.loadCompanies();
+                    // Wait for Alpine persist to update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // If still no company, try to get from user's company_id
+                if (!this.$store.auth.currentCompany && this.$store.auth.user?.company_id) {
+                    console.log('Trying to load company from user.company_id:', this.$store.auth.user.company_id);
+                    // Force reload companies
+                    await this.$store.auth.loadCompanies();
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
 
                 // If still no company, show error
                 if (!this.$store.auth.currentCompany) {
-                    console.error('No company available after loading');
+                    console.error('No company available after loading. Auth state:', {
+                        user: this.$store.auth.user,
+                        companies: this.$store.auth.companies,
+                        currentCompany: this.$store.auth.currentCompany
+                    });
                     this.availableMarketplaces = this.defaultMarketplaces;
                     this.loading = false;
                     return;
@@ -677,8 +1016,11 @@ function marketplacePage() {
 
                 console.log('Loading accounts for company:', this.$store.auth.currentCompany.id);
 
-                const res = await fetch(`/api/marketplace/accounts?company_id=${this.$store.auth.currentCompany.id}`, {
-                    headers: this.getAuthHeaders()
+                // Add cache-busting parameter to force fresh data after create/delete
+                const cacheBuster = skipCache ? `&_t=${Date.now()}` : '';
+                const res = await fetch(`/api/marketplace/accounts?company_id=${this.$store.auth.currentCompany.id}${cacheBuster}`, {
+                    headers: this.getAuthHeaders(),
+                    cache: 'no-store' // Disable browser cache
                 });
 
                 if (res.ok) {
@@ -760,19 +1102,27 @@ function marketplacePage() {
                     // Close modal
                     this.showConnectModal = false;
 
-                    // Reload accounts and mark new one
-                    const oldAccountIds = this.accounts.map(a => a.id);
-                    await this.loadAccounts();
+                    // If server returned the new account data, add it directly to the list
+                    if (data.account && data.account.id) {
+                        const newAccount = {
+                            ...data.account,
+                            marketplace_label: this.availableMarketplaces[data.account.marketplace] ||
+                                              this.defaultMarketplaces[data.account.marketplace] ||
+                                              data.account.marketplace,
+                            display_name: data.account.name || data.account.marketplace_label,
+                            isNew: true
+                        };
+                        this.accounts.push(newAccount);
 
-                    // Mark the new account with isNew flag for animation
-                    const newAccount = this.accounts.find(a => !oldAccountIds.includes(a.id));
-                    if (newAccount) {
-                        newAccount.isNew = true;
-                        // Remove flag after animation completes
+                        // Remove isNew flag after animation
                         setTimeout(() => {
-                            newAccount.isNew = false;
+                            const acc = this.accounts.find(a => a.id === newAccount.id);
+                            if (acc) acc.isNew = false;
                         }, 500);
                     }
+
+                    // Also reload from server to ensure consistency (with cache bypass)
+                    await this.loadAccounts(true);
                 } else {
                     const data = await res.json().catch(() => ({}));
 
@@ -878,24 +1228,28 @@ function marketplacePage() {
         {{-- Accounts List --}}
         <div x-show="!loading && accounts.length > 0" class="px-4 space-y-3 pb-4">
             <template x-for="account in accounts" :key="account.id">
-                <div class="native-card native-pressable" @click="window.location.href = `/marketplace/${account.id}`">
+                <div class="native-card native-pressable border-l-4"
+                     :class="{
+                         'border-l-[#7B2D8E]': normalizeMarketplace(account.marketplace) === 'uzum',
+                         'border-l-[#CB11AB]': normalizeMarketplace(account.marketplace) === 'wb',
+                         'border-l-[#005BFF]': normalizeMarketplace(account.marketplace) === 'ozon',
+                         'border-l-[#FFCC00]': normalizeMarketplace(account.marketplace) === 'ym'
+                     }"
+                     @click="window.location.href = `/marketplace/${account.id}`">
                     <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
-                            'bg-blue-100': account.marketplace === 'uzum',
-                            'bg-purple-100': account.marketplace === 'wildberries',
-                            'bg-blue-100': account.marketplace === 'ozon',
-                            'bg-red-100': account.marketplace === 'yandex_market'
-                        }">
-                            <span class="text-xl font-bold" :class="{
-                                'text-blue-600': account.marketplace === 'uzum',
-                                'text-purple-600': account.marketplace === 'wildberries',
-                                'text-blue-600': account.marketplace === 'ozon',
-                                'text-red-600': account.marketplace === 'yandex_market'
-                            }" x-text="account.marketplace.charAt(0).toUpperCase()"></span>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
+                             :class="{
+                                 'bg-gradient-to-br from-[#7B2D8E] to-[#5A1F69]': normalizeMarketplace(account.marketplace) === 'uzum',
+                                 'bg-gradient-to-br from-[#CB11AB] to-[#9B0D85]': normalizeMarketplace(account.marketplace) === 'wb',
+                                 'bg-gradient-to-br from-[#005BFF] to-[#0047CC]': normalizeMarketplace(account.marketplace) === 'ozon',
+                                 'bg-gradient-to-br from-[#FFCC00] to-[#FF9500]': normalizeMarketplace(account.marketplace) === 'ym'
+                             }">
+                            <span :class="normalizeMarketplace(account.marketplace) === 'ym' ? 'text-gray-900' : 'text-white'"
+                                  x-text="getMarketplaceShortName(account.marketplace)"></span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="native-body font-semibold truncate" x-text="account.name"></p>
-                            <p class="native-caption capitalize" x-text="account.marketplace.replace('_', ' ')"></p>
+                            <p class="native-body font-semibold truncate" x-text="account.name || account.display_name"></p>
+                            <p class="native-caption capitalize" x-text="getMarketplaceDisplayName(account.marketplace)"></p>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="w-2.5 h-2.5 rounded-full" :class="account.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
@@ -910,17 +1264,29 @@ function marketplacePage() {
         <div class="px-4 pb-4">
             <p class="native-caption px-2 mb-2">ДОСТУПНЫЕ МАРКЕТПЛЕЙСЫ</p>
             <div class="grid grid-cols-2 gap-3">
-                <button @click="selectedMarketplace = 'uzum'; showConnectModal = true" class="native-card native-pressable text-center py-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                        <span class="text-xl font-bold text-blue-600">U</span>
+                <button @click="selectedMarketplace = 'uzum'; showConnectModal = true" class="native-card native-pressable text-center py-4 border-2 border-transparent active:border-[#7B2D8E]">
+                    <div class="w-12 h-12 bg-gradient-to-br from-[#7B2D8E] to-[#5A1F69] rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-purple-200">
+                        <span class="text-xl font-bold text-white">U</span>
                     </div>
-                    <p class="native-body font-semibold">Uzum</p>
+                    <p class="native-body font-semibold text-[#7B2D8E]">Uzum</p>
                 </button>
-                <button @click="selectedMarketplace = 'wildberries'; showConnectModal = true" class="native-card native-pressable text-center py-4">
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                        <span class="text-xl font-bold text-purple-600">W</span>
+                <button @click="selectedMarketplace = 'wb'; showConnectModal = true" class="native-card native-pressable text-center py-4 border-2 border-transparent active:border-[#CB11AB]">
+                    <div class="w-12 h-12 bg-gradient-to-br from-[#CB11AB] to-[#9B0D85] rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-pink-200">
+                        <span class="text-xl font-bold text-white">WB</span>
                     </div>
-                    <p class="native-body font-semibold">Wildberries</p>
+                    <p class="native-body font-semibold text-[#CB11AB]">Wildberries</p>
+                </button>
+                <button @click="selectedMarketplace = 'ozon'; showConnectModal = true" class="native-card native-pressable text-center py-4 border-2 border-transparent active:border-[#005BFF]">
+                    <div class="w-12 h-12 bg-gradient-to-br from-[#005BFF] to-[#0047CC] rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-blue-200">
+                        <span class="text-xl font-bold text-white">OZ</span>
+                    </div>
+                    <p class="native-body font-semibold text-[#005BFF]">Ozon</p>
+                </button>
+                <button @click="selectedMarketplace = 'ym'; showConnectModal = true" class="native-card native-pressable text-center py-4 border-2 border-transparent active:border-[#FFCC00]">
+                    <div class="w-12 h-12 bg-gradient-to-br from-[#FFCC00] to-[#FF9500] rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-yellow-200">
+                        <span class="text-xl font-bold text-gray-900">YM</span>
+                    </div>
+                    <p class="native-body font-semibold text-[#8B6914]">Yandex Market</p>
                 </button>
             </div>
         </div>

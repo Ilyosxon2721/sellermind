@@ -15,7 +15,7 @@ class ProductForm
     {
         return $schema
             ->components([
-                Section::make('Основная информация')
+                Section::make(__('filament.sections.basic_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -38,7 +38,7 @@ class ProductForm
                             ->preload(),
                     ])->columns(2),
 
-                Section::make('Описание')
+                Section::make(__('filament.sections.description'))
                     ->schema([
                         Textarea::make('description_short')
                             ->label('Краткое описание')
@@ -48,7 +48,7 @@ class ProductForm
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('Характеристики')
+                Section::make(__('filament.sections.characteristics'))
                     ->schema([
                         TextInput::make('country_of_origin')
                             ->label('Страна происхождения'),
@@ -61,7 +61,7 @@ class ProductForm
                             ->columnSpanFull(),
                     ])->columns(3),
 
-                Section::make('Габариты упаковки')
+                Section::make(__('filament.sections.package_dimensions'))
                     ->schema([
                         TextInput::make('package_weight_g')
                             ->label('Вес (г)')
@@ -77,7 +77,7 @@ class ProductForm
                             ->numeric(),
                     ])->columns(4),
 
-                Section::make('Статус')
+                Section::make(__('filament.sections.status'))
                     ->schema([
                         Toggle::make('is_active')
                             ->label('Активен')

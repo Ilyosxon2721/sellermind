@@ -17,7 +17,8 @@ class StockUpdated
     public function __construct(
         public ProductVariant $variant,
         public int $oldStock,
-        public int $newStock
+        public int $newStock,
+        public ?int $sourceLinkId = null // ID связи (VariantMarketplaceLink) откуда пришло изменение (исключаем из синхронизации)
     ) {}
 
     /**

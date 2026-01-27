@@ -24,17 +24,17 @@ class SubscriptionResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Подписка';
+        return __('filament.resources.subscription.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Подписки';
+        return __('filament.resources.subscription.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Биллинг';
+        return __('filament.nav_groups.billing');
     }
 
     public static function form(Schema $schema): Schema

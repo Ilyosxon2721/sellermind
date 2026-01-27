@@ -48,11 +48,12 @@
     {{-- Right Actions --}}
     <div class="native-header-right">
         {{ $slot }}
-        @if(!$slot->isEmpty())
-        @elseif($showProfile)
-            <div class="w-10"></div>
-        @else
-            <div class="w-10"></div>
+        @if($slot->isEmpty())
+            @if($showProfile)
+                <div class="w-10"></div>
+            @else
+                <div class="w-10"></div>
+            @endif
         @endif
     </div>
 </header>

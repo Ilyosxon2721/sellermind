@@ -146,6 +146,36 @@ Schedule::command('uzum:sync-orders')
     })
     ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
 
+// Uzum Market: Синхронизация финансовых заказов (для аналитики продаж)
+// Запускаем каждые 2 часа, синхронизируем данные за последние 90 дней
+Schedule::command('uzum:sync-finance-orders --days=90')
+    ->everyTwoHours()
+    ->withoutOverlapping(60) // Таймаут 60 минут для длительной синхронизации
+    ->onFailure(function () {
+        \Log::error('Uzum finance orders sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
+
+// Uzum Market: Синхронизация расходов маркетплейса (для модуля финансов)
+// Запускаем каждые 4 часа, синхронизируем данные за последние 365 дней
+Schedule::command('uzum:sync-expenses --days=365')
+    ->everyFourHours()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Uzum expenses sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
+
+// Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
+// Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
+Schedule::command('marketplace:sync-expenses --period=30days')
+    ->everyFourHours()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Marketplace expenses cache sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-expenses-cache.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Quick Wins Scheduled Tasks
@@ -246,3 +276,36 @@ Schedule::command('subscriptions:check-expiring --notify-days=7,3,1 --mark-expir
         \Log::error('Subscription check failed');
     })
     ->appendOutputTo(storage_path('logs/subscriptions.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Stock Reservation Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Automatically process stock reservations for marketplace orders
+|
+*/
+
+// Обработка резервов для заказов (обрабатывает заказы, которые могли быть пропущены)
+Schedule::command('orders:process-stocks')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->onSuccess(function () {
+        \Log::info('Order stocks processing completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Order stocks processing failed');
+    })
+    ->appendOutputTo(storage_path('logs/stock-processing.log'));
+
+// Автоматическая привязка товаров маркетплейсов к внутренним вариантам (раз в день)
+Schedule::command('marketplace:auto-link --all')
+    ->dailyAt('03:00')
+    ->withoutOverlapping(60)
+    ->onSuccess(function () {
+        \Log::info('Marketplace auto-link completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Marketplace auto-link failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));

@@ -17,7 +17,7 @@ class InventoryForm
     {
         return $schema
             ->components([
-                Section::make('Параметры инвентаризации')
+                Section::make(__('filament.sections.inventory_params'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -41,7 +41,7 @@ class InventoryForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Статус и Тип')
+                Section::make(__('filament.sections.status_type'))
                     ->schema([
                         Select::make('status')
                             ->label('Статус')
@@ -63,7 +63,7 @@ class InventoryForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Итоги (расчетные данные)')
+                Section::make(__('filament.sections.totals_calculated'))
                     ->schema([
                         TextInput::make('total_items')
                             ->label('Всего позиций')
@@ -97,7 +97,7 @@ class InventoryForm
                             ->disabled(),
                     ])->columns(3),
 
-                Section::make('Применение результатов')
+                Section::make(__('filament.sections.apply_results'))
                     ->schema([
                         Toggle::make('is_applied')
                             ->label('Результаты применены к остаткам')
@@ -107,7 +107,7 @@ class InventoryForm
                             ->disabled(),
                     ])->columns(2),
 
-                Section::make('Дополнительно')
+                Section::make(__('filament.sections.additional'))
                     ->schema([
                         Textarea::make('notes')
                             ->label('Заметки')

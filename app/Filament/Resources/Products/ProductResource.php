@@ -24,17 +24,17 @@ class ProductResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Товар';
+        return __('filament.resources.product.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Все товары';
+        return __('filament.resources.product.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Каталог';
+        return __('filament.nav_groups.catalog');
     }
 
     public static function form(Schema $schema): Schema

@@ -20,6 +20,22 @@ class UzumOrderItem extends Model
         'raw_payload',
     ];
 
+    /**
+     * Get barcode from raw_payload
+     */
+    public function getBarcodeAttribute(): ?string
+    {
+        return $this->raw_payload['barcode'] ?? null;
+    }
+
+    /**
+     * Get skuId from raw_payload (for variant matching)
+     */
+    public function getSkuIdAttribute(): ?string
+    {
+        return $this->raw_payload['skuId'] ?? $this->external_offer_id;
+    }
+
     protected $casts = [
         'quantity' => 'integer',
         'price' => 'decimal:2',

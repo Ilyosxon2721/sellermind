@@ -3,9 +3,16 @@
 @section('content')
 
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gray-50" x-data="chatPage()" @click.away="showModelSelector = false">
-    <x-sidebar />
-    <div class="flex-1 flex flex-col">
+<div class="browser-only flex h-screen bg-gray-50" x-data="chatPage()" @click.away="showModelSelector = false"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+    <div class="flex-1 flex flex-col"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <h1 class="text-2xl font-bold text-gray-900">Чат</h1>
         </header>

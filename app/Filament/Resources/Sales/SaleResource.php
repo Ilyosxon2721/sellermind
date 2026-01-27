@@ -24,17 +24,17 @@ class SaleResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Продажа';
+        return __('filament.resources.sale.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Продажи';
+        return __('filament.resources.sale.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Финансы';
+        return __('filament.nav_groups.finance');
     }
 
     public static function form(Schema $schema): Schema

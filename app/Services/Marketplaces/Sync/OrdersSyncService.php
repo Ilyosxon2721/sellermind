@@ -10,15 +10,21 @@ use App\Models\WbOrderItem;
 use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
 use App\Services\Marketplaces\MarketplaceClientFactory;
+use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrdersSyncService
 {
+    protected OrderStockService $orderStockService;
+
     public function __construct(
-        protected MarketplaceClientFactory $clientFactory
-    ) {}
+        protected MarketplaceClientFactory $clientFactory,
+        ?OrderStockService $orderStockService = null
+    ) {
+        $this->orderStockService = $orderStockService ?? new OrderStockService();
+    }
 
     /**
      * Sync orders for all active accounts (or filtered by marketplace)
@@ -164,6 +170,50 @@ class OrdersSyncService
     }
 
     /**
+     * Обработать изменение статуса заказа для остатков
+     */
+    protected function processOrderStockChange(
+        MarketplaceAccount $account,
+        $order,
+        ?string $oldStatus,
+        string $newStatus,
+        string $marketplace
+    ): void {
+        // Обрабатываем только если статус изменился или это новый заказ
+        if ($oldStatus === $newStatus) {
+            return;
+        }
+
+        try {
+            $items = $this->orderStockService->getOrderItems($order, $marketplace);
+
+            $stockResult = $this->orderStockService->processOrderStatusChange(
+                $account,
+                $order,
+                $oldStatus,
+                $newStatus,
+                $items
+            );
+
+            Log::info('Order stock processed', [
+                'marketplace' => $marketplace,
+                'order_id' => $order->id,
+                'external_order_id' => $order->external_order_id,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'stock_result' => $stockResult,
+            ]);
+        } catch (\Throwable $e) {
+            // Не прерываем синхронизацию из-за ошибки остатков
+            Log::error('Order stock processing failed', [
+                'marketplace' => $marketplace,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Persist WB order
      */
     protected function persistWbOrder(MarketplaceAccount $account, array $orderData): string
@@ -177,6 +227,8 @@ class OrdersSyncService
         $existingOrder = WbOrder::where('marketplace_account_id', $account->id)
             ->where('external_order_id', $externalOrderId)
             ->first();
+
+        $oldStatus = $existingOrder?->status;
 
         // Parse ordered_at date
         $orderedAt = null;
@@ -237,7 +289,7 @@ class OrdersSyncService
             'raw_payload' => $orderData['raw_payload'] ?? $orderData,
         ];
 
-        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+        $result = DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
             if ($existingOrder) {
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
@@ -256,17 +308,31 @@ class OrdersSyncService
                 }
 
                 $order = $existingOrder;
-                $result = 'updated';
+                $resultType = 'updated';
             } else {
                 $order = WbOrder::create($orderPayload);
-                $result = 'created';
+                $resultType = 'created';
             }
 
             // Sync order items
             $this->syncWbOrderItems($order, $orderData['items'] ?? []);
 
-            return $result;
+            return ['result' => $resultType, 'order' => $order];
         });
+
+        // Обрабатываем изменение статуса для остатков
+        $order = $result['order'];
+        $newStatus = $order->status;
+        $isCreated = $result['result'] === 'created';
+
+        if ($isCreated || $oldStatus !== $newStatus) {
+            $this->processOrderStockChange($account, $order, $oldStatus, $newStatus, 'wb');
+        }
+
+        // Дополнительная проверка: если заказ отменён, но резерв всё ещё активен - освободить
+        $this->ensureCancelledOrderStockReleased($account, $order, 'wb');
+
+        return $result['result'];
     }
 
     /**
@@ -283,6 +349,8 @@ class OrdersSyncService
         $existingOrder = UzumOrder::where('marketplace_account_id', $account->id)
             ->where('external_order_id', $externalOrderId)
             ->first();
+
+        $oldStatus = $existingOrder?->status;
 
         // Parse ordered_at date with millisecond support
         $orderedAt = null;
@@ -305,21 +373,29 @@ class OrdersSyncService
             }
         }
 
+        // Extract delivery_type/scheme from raw_payload or wb_delivery_type (uzum mapOrderData sets it there)
+        $rawPayload = $orderData['raw_payload'] ?? $orderData;
+        $deliveryType = $orderData['wb_delivery_type']
+            ?? $rawPayload['scheme']
+            ?? $rawPayload['deliveryScheme']
+            ?? 'FBS';
+
         $orderPayload = [
             'marketplace_account_id' => $account->id,
             'external_order_id' => $externalOrderId,
             'status' => $orderData['status'] ?? 'new',
             'status_normalized' => $orderData['status_normalized'] ?? ($orderData['status'] ?? 'new'),
             'uzum_status' => $orderData['uzum_status'] ?? null,
+            'delivery_type' => strtoupper($deliveryType), // FBS, DBS, EDBS
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,
             'total_amount' => $orderData['total_amount'] ?? 0,
             'currency' => $orderData['currency'] ?? 'UZS',
             'ordered_at' => $orderedAt,
-            'raw_payload' => $orderData['raw_payload'] ?? $orderData,
+            'raw_payload' => $rawPayload,
         ];
 
-        return DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
+        $result = DB::transaction(function () use ($existingOrder, $orderPayload, $orderData) {
             if ($existingOrder) {
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
@@ -347,8 +423,23 @@ class OrdersSyncService
             // Sync order items
             $this->syncUzumOrderItems($order, $orderData['items'] ?? []);
 
-            return $result;
+            return ['result' => $result, 'order' => $order];
         });
+
+        // Обрабатываем изменение статуса для остатков
+        $order = $result['order'];
+        $newStatus = $order->status;
+        $isCreated = $result['result'] === 'created';
+
+        if ($isCreated || $oldStatus !== $newStatus) {
+            $this->processOrderStockChange($account, $order, $oldStatus, $newStatus, 'uzum');
+        }
+
+        // Дополнительная проверка: если заказ отменён, но резерв всё ещё активен - освободить
+        // Это нужно для случаев, когда отмена была пропущена при предыдущих синхронизациях
+        $this->ensureCancelledOrderStockReleased($account, $order, 'uzum');
+
+        return $result['result'];
     }
 
     /**
@@ -389,6 +480,66 @@ class OrdersSyncService
                 'price' => $itemData['price'] ?? 0,
                 'total_price' => $itemData['total_price'] ?? ($itemData['price'] ?? 0) * ($itemData['quantity'] ?? 1),
                 'raw_payload' => $itemData['raw_payload'] ?? $itemData,
+            ]);
+        }
+    }
+
+    /**
+     * Убедиться, что резерв освобождён для отменённого заказа
+     *
+     * Обрабатывает случаи, когда заказ был отменён, но резерв не был освобождён
+     * (например, из-за ошибки или пропуска при предыдущих синхронизациях)
+     *
+     * ВАЖНО: Освобождаем только если заказ был в статусе "новый" или "в сборке"
+     * (т.е. до отправки клиенту)
+     */
+    protected function ensureCancelledOrderStockReleased(
+        MarketplaceAccount $account,
+        $order,
+        string $marketplace
+    ): void {
+        // Проверяем, является ли статус статусом отмены
+        $cancelledStatuses = OrderStockService::CANCELLED_STATUSES[$marketplace] ?? [];
+        $isCancelled = in_array($order->status, $cancelledStatuses, true);
+
+        if (!$isCancelled) {
+            return;
+        }
+
+        // Проверяем, есть ли активный резерв
+        $currentStockStatus = $order->stock_status ?? 'none';
+
+        if ($currentStockStatus !== 'reserved') {
+            return; // Уже освобождён, продан, или не было резерва
+        }
+
+        Log::info('OrdersSyncService: Found cancelled order with active reservation, releasing', [
+            'marketplace' => $marketplace,
+            'order_id' => $order->id,
+            'external_order_id' => $order->external_order_id,
+            'order_status' => $order->status,
+            'stock_status' => $currentStockStatus,
+        ]);
+
+        try {
+            $items = $this->orderStockService->getOrderItems($order, $marketplace);
+
+            $result = $this->orderStockService->processOrderStatusChange(
+                $account,
+                $order,
+                null, // Передаём null как oldStatus, чтобы логика отмены сработала
+                $order->status,
+                $items
+            );
+
+            Log::info('OrdersSyncService: Cancelled order stock released', [
+                'order_id' => $order->id,
+                'result' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('OrdersSyncService: Failed to release cancelled order stock', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }

@@ -1,0 +1,60 @@
+<?php
+
+return [
+    // Navigation
+    'dashboard' => 'Панель управления',
+    'products' => 'Товары',
+    'orders' => 'Заказы',
+    'warehouse' => 'Склад',
+    'settings' => 'Настройки',
+    'logout' => 'Выход',
+    'profile' => 'Профиль',
+    'home' => 'Главная',
+    'marketplace' => 'Маркетплейсы',
+    'sales' => 'Продажи',
+    'counterparties' => 'Контрагенты',
+    'inventory' => 'Инвентаризация',
+    'sync_logs' => 'Журнал логов',
+    'tasks' => 'Задачи',
+    'planning' => 'Планирование',
+    'finance' => 'Финансы',
+    'accounts_payable' => 'Счета (AP)',
+    'pricing' => 'Цены',
+    'company_profile' => 'Профиль компании',
+    
+    // Warehouse submenu
+    'warehouse_section' => 'Склад',
+    'warehouse_dashboard' => 'Дашборд',
+    'warehouse_inventory' => 'Остатки',
+    'warehouse_documents' => 'Остатки/док-ты',
+    'warehouse_balance' => 'Остатки',
+    'warehouse_receipt' => 'Оприходование',
+    'warehouse_list' => 'Склады',
+    'warehouse_docs' => 'Документы',
+    'warehouse_reservations' => 'Резервы',
+    'warehouse_ledger' => 'Журнал движений',
+    
+    // Company modal
+    'create_company' => 'Создайте компанию',
+    'create_company_desc' => 'Для работы с системой необходимо создать компанию. Это займет всего минуту!',
+    'company_name' => 'Название компании',
+    'company_name_required' => 'Введите название компании',
+    'company_placeholder' => 'ООО Моя компания',
+    'later' => 'Позже',
+    'creating' => 'Создание...',
+    'create' => 'Создать компанию',
+    'company_created' => 'Компания успешно создана!',
+    'company_create_error' => 'Произошла ошибка при создании компании. Попробуйте еще раз.',
+    'additional_info_later' => 'Вы сможете добавить дополнительную информацию о компании позже в настройках',
+    'close' => 'Закрыть',
+    
+    // Common
+    'welcome' => 'Добро пожаловать',
+    'select_company' => 'Выберите компанию',
+    'multiple_companies' => 'У вас несколько компаний',
+    'main_navigation' => 'Главная навигация',
+    'user_menu' => 'Меню пользователя',
+    'logout_button' => 'Выйти из системы',
+    'warehouse_menu' => 'Меню склада и документов',
+    'open_navigation' => 'Открыть меню навигации',
+];

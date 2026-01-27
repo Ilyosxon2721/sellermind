@@ -4,7 +4,8 @@
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
+use App\Models\UzumOrder;
+use App\Models\WildberriesOrder;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceReturn;
 use App\Models\MarketplacePayout;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\DB;
  */
 class MarketplaceInsightsService
 {
+    /**
+     * Статусы отменённых заказов (исключаются из расчёта выручки)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
     /**
      * Get comprehensive summary for a period
      *
@@ -56,30 +61,68 @@ class MarketplaceInsightsService
      */
     protected function getSalesSummary(Collection $accountIds, string $from, string $to): array
     {
-        $orders = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+        // Собираем заказы из всех маркетплейсов
+        $uzumOrders = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
             ->get();
 
-        $delivered = $orders->where('internal_status', MarketplaceOrder::INTERNAL_STATUS_DELIVERED);
-        $cancelled = $orders->where('internal_status', MarketplaceOrder::INTERNAL_STATUS_CANCELLED);
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->get();
 
-        $byMarketplace = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
-            ->join('marketplace_accounts', 'marketplace_orders.marketplace_account_id', '=', 'marketplace_accounts.id')
-            ->select('marketplace_accounts.marketplace', DB::raw('count(*) as count'), DB::raw('sum(total_amount) as revenue'))
-            ->groupBy('marketplace_accounts.marketplace')
-            ->get()
-            ->mapWithKeys(fn($r) => [$r->marketplace => ['count' => $r->count, 'revenue' => (float) $r->revenue]]);
+        // Фильтруем по статусам
+        $uzumDelivered = $uzumOrders->filter(function ($order) {
+            $status = $order->status_normalized ?? $order->status;
+            return in_array($status, ['delivered', 'completed', 'issued', 'DELIVERED']);
+        });
+        $wbDelivered = $wbOrders->filter(fn($o) => $o->is_realization && !$o->is_cancel && !$o->is_return);
+
+        $uzumCancelled = $uzumOrders->filter(function ($order) {
+            $status = $order->status_normalized ?? $order->status;
+            return in_array($status, self::CANCELLED_STATUSES);
+        });
+        $wbCancelled = $wbOrders->filter(fn($o) => $o->is_cancel || $o->is_return);
+
+        // Не отменённые заказы для расчёта выручки
+        $uzumNotCancelled = $uzumOrders->filter(function ($order) {
+            $status = $order->status_normalized ?? $order->status;
+            return !in_array($status, self::CANCELLED_STATUSES);
+        });
+        $wbNotCancelled = $wbOrders->filter(fn($o) => !$o->is_cancel && !$o->is_return);
+
+        // По маркетплейсам (только не отменённые)
+        $byMarketplace = [];
+
+        // Uzum
+        if ($uzumNotCancelled->isNotEmpty()) {
+            $byMarketplace['uzum'] = [
+                'count' => $uzumNotCancelled->count(),
+                'revenue' => (float) $uzumNotCancelled->sum('total_amount'),
+            ];
+        }
+
+        // WB
+        if ($wbNotCancelled->isNotEmpty()) {
+            $byMarketplace['wb'] = [
+                'count' => $wbNotCancelled->count(),
+                'revenue' => (float) $wbNotCancelled->sum('for_pay'),
+            ];
+        }
+
+        $totalNotCancelledCount = $uzumNotCancelled->count() + $wbNotCancelled->count();
+        $totalRevenue = (float) $uzumNotCancelled->sum('total_amount') + (float) $wbNotCancelled->sum('for_pay');
+        $cancelledAmount = (float) $uzumCancelled->sum('total_amount') + (float) $wbCancelled->sum('for_pay');
 
         return [
-            'total_orders' => $orders->count(),
-            'delivered_orders' => $delivered->count(),
-            'cancelled_orders' => $cancelled->count(),
-            'total_revenue' => round($delivered->sum('total_amount'), 2),
-            'average_order_value' => $delivered->count() > 0
-                ? round($delivered->sum('total_amount') / $delivered->count(), 2)
+            'total_orders' => $totalNotCancelledCount,
+            'delivered_orders' => $uzumDelivered->count() + $wbDelivered->count(),
+            'cancelled_orders' => $uzumCancelled->count() + $wbCancelled->count(),
+            'cancelled_amount' => round($cancelledAmount, 2),
+            'total_revenue' => round($totalRevenue, 2),
+            'average_order_value' => $totalNotCancelledCount > 0
+                ? round($totalRevenue / $totalNotCancelledCount, 2)
                 : 0,
-            'by_marketplace' => $byMarketplace->toArray(),
+            'by_marketplace' => $byMarketplace,
         ];
     }
 
@@ -88,15 +131,23 @@ class MarketplaceInsightsService
      */
     protected function getReturnsSummary(Collection $accountIds, string $from, string $to): array
     {
-        $returns = MarketplaceReturn::whereHas('order', function ($q) use ($accountIds) {
-            $q->whereIn('marketplace_account_id', $accountIds);
-        })
+        $returns = MarketplaceReturn::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
             ->get();
 
-        $totalOrders = MarketplaceOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+        // Считаем общее количество заказов (исключая отменённые)
+        $uzumOrdersCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
+
+        $wbOrdersCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->count();
+
+        $totalOrders = $uzumOrdersCount + $wbOrdersCount;
 
         $topReasons = $returns->groupBy('reason_code')
             ->map(fn($group) => [
@@ -182,29 +233,68 @@ class MarketplaceInsightsService
      */
     protected function getTopProducts(Collection $accountIds, string $from, string $to, int $limit = 10): array
     {
-        return MarketplaceOrder::whereIn('marketplace_orders.marketplace_account_id', $accountIds)
-            ->whereBetween('marketplace_orders.created_at', [$from, $to . ' 23:59:59'])
-            ->where('marketplace_orders.internal_status', MarketplaceOrder::INTERNAL_STATUS_DELIVERED)
-            ->join('marketplace_order_items', 'marketplace_orders.id', '=', 'marketplace_order_items.marketplace_order_id')
-            ->select(
-                'marketplace_order_items.sku',
-                'marketplace_order_items.name',
-                DB::raw('sum(marketplace_order_items.quantity) as total_quantity'),
-                DB::raw('sum(marketplace_order_items.price * marketplace_order_items.quantity) as total_revenue'),
-                DB::raw('count(distinct marketplace_orders.id) as orders_count')
-            )
-            ->groupBy('marketplace_order_items.sku', 'marketplace_order_items.name')
-            ->orderByDesc('total_revenue')
-            ->limit($limit)
-            ->get()
-            ->map(fn($item) => [
-                'sku' => $item->sku,
-                'name' => $item->name,
-                'quantity_sold' => (int) $item->total_quantity,
-                'revenue' => round((float) $item->total_revenue, 2),
-                'orders_count' => (int) $item->orders_count,
-            ])
-            ->toArray();
+        $topProducts = [];
+
+        // Uzum orders (excluding cancelled)
+        $uzumOrders = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->with('items')
+            ->get();
+
+        foreach ($uzumOrders as $order) {
+            foreach ($order->items as $item) {
+                $key = $item->external_offer_id ?? $item->name;
+                if (!isset($topProducts[$key])) {
+                    $topProducts[$key] = [
+                        'sku' => $item->external_offer_id,
+                        'name' => $item->name,
+                        'total_quantity' => 0,
+                        'total_revenue' => 0.0,
+                        'orders_count' => 0,
+                    ];
+                }
+                $topProducts[$key]['total_quantity'] += (int) $item->quantity;
+                $topProducts[$key]['total_revenue'] += (float) $item->total_price;
+                $topProducts[$key]['orders_count']++;
+            }
+        }
+
+        // WB orders (excluding cancelled) - each WildberriesOrder row is one item
+        $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->get();
+
+        foreach ($wbOrders as $order) {
+            $key = $order->supplier_article ?? $order->barcode ?? $order->subject;
+            if (!isset($topProducts[$key])) {
+                $topProducts[$key] = [
+                    'sku' => $order->supplier_article ?? $order->barcode,
+                    'name' => $order->subject,
+                    'total_quantity' => 0,
+                    'total_revenue' => 0.0,
+                    'orders_count' => 0,
+                ];
+            }
+            $topProducts[$key]['total_quantity'] += 1;
+            $topProducts[$key]['total_revenue'] += (float) ($order->for_pay ?? $order->finished_price ?? 0);
+            $topProducts[$key]['orders_count']++;
+        }
+
+        // Sort by revenue and limit
+        usort($topProducts, fn($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
+
+        return array_slice(array_map(function ($item) {
+            return [
+                'sku' => $item['sku'],
+                'name' => $item['name'],
+                'quantity_sold' => $item['total_quantity'],
+                'revenue' => round($item['total_revenue'], 2),
+                'orders_count' => $item['orders_count'],
+            ];
+        }, $topProducts), 0, $limit);
     }
 
     /**

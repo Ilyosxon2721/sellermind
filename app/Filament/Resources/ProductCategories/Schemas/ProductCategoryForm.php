@@ -15,7 +15,7 @@ class ProductCategoryForm
     {
         return $schema
             ->components([
-                Section::make('Основная информация')
+                Section::make(__('filament.sections.basic_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -37,7 +37,7 @@ class ProductCategoryForm
                             ->unique(ignoreRecord: true),
                     ])->columns(2),
 
-                Section::make('Дополнительно')
+                Section::make(__('filament.sections.additional'))
                     ->schema([
                         Textarea::make('description')
                             ->label('Описание')

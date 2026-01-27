@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inReceiptsPage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-green-50" x-data="inReceiptsPage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>

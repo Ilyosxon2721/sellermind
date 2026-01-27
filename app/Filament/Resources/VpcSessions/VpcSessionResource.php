@@ -24,17 +24,17 @@ class VpcSessionResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'VPC сессия';
+        return __('filament.resources.vpc_session.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'VPC сессии';
+        return __('filament.resources.vpc_session.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Система';
+        return __('filament.nav_groups.system');
     }
 
     public static function form(Schema $schema): Schema

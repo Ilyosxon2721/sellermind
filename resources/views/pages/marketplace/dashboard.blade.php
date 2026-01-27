@@ -2,11 +2,18 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div x-data="marketplaceDashboard()" class="browser-only flex h-screen bg-gray-50">
+<div x-data="marketplaceDashboard()" class="browser-only flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
 
-    <x-sidebar />
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -238,7 +245,7 @@
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-4 py-3 font-mono text-sm" x-text="sku.external_offer_id || '-'"></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" x-text="sku.name || '-'"></td>
-                                            <td class="px-4 py-3 text-right" x-text="sku.total_qty"></td>
+                                            <td class="px-4 py-3 text-right" x-text="parseInt(sku.total_qty)"></td>
                                             <td class="px-4 py-3 text-right" x-text="formatNumber(sku.total_revenue)"></td>
                                             <td class="px-4 py-3 text-right">
                                                 <span :class="sku.return_rate > 10 ? 'text-red-600 font-medium' : (sku.return_rate > 5 ? 'text-yellow-600' : 'text-gray-600')" x-text="sku.return_rate.toFixed(1) + '%'"></span>

@@ -30,6 +30,11 @@ class OzonOrder extends Model
         'shipment_date',
         'in_process_at',
         'created_at_ozon',
+        // Stock tracking fields
+        'stock_status',
+        'stock_reserved_at',
+        'stock_sold_at',
+        'stock_released_at',
     ];
 
     protected function casts(): array
@@ -42,12 +47,117 @@ class OzonOrder extends Model
             'cancelled_at' => 'datetime',
             'shipment_date' => 'datetime',
             'in_process_at' => 'datetime',
+            'stock_reserved_at' => 'datetime',
+            'stock_sold_at' => 'datetime',
+            'stock_released_at' => 'datetime',
         ];
     }
 
     public function marketplaceAccount(): BelongsTo
     {
         return $this->belongsTo(MarketplaceAccount::class);
+    }
+
+    /**
+     * Alias for marketplaceAccount for consistency with other models
+     */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(MarketplaceAccount::class, 'marketplace_account_id');
+    }
+
+    // ========== Stock Status Methods ==========
+
+    /**
+     * Check if order is a completed sale (revenue)
+     * stock_sold_at is set when order reaches delivering/delivered/driver_pickup status
+     */
+    public function isSold(): bool
+    {
+        return $this->stock_status === 'sold' && $this->stock_sold_at !== null;
+    }
+
+    /**
+     * Check if order is in transit (not yet completed)
+     */
+    public function isInTransit(): bool
+    {
+        return in_array($this->status, ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress', 'delivering'])
+            && !$this->isCancelled()
+            && !$this->isSold();
+    }
+
+    /**
+     * Check if order is awaiting pickup at delivery point (ПВЗ)
+     * driver_pickup = у водителя/в ПВЗ
+     */
+    public function isAwaitingPickup(): bool
+    {
+        return in_array($this->status, ['driver_pickup'])
+            && !$this->isCancelled()
+            && !$this->isSold();
+    }
+
+    /**
+     * Check if order is cancelled
+     */
+    public function isCancelled(): bool
+    {
+        return in_array($this->status, ['cancelled', 'canceled']);
+    }
+
+    /**
+     * Get normalized status for unified reporting
+     */
+    public function getNormalizedStatus(): string
+    {
+        if ($this->isCancelled()) {
+            return 'cancelled';
+        }
+        if ($this->isSold()) {
+            return 'delivered';
+        }
+        return 'processing';
+    }
+
+    // ========== Scopes ==========
+
+    public function scopeForAccount($query, int $accountId)
+    {
+        return $query->where('marketplace_account_id', $accountId);
+    }
+
+    public function scopeSold($query)
+    {
+        return $query->where('stock_status', 'sold')->whereNotNull('stock_sold_at');
+    }
+
+    public function scopeInTransit($query)
+    {
+        return $query->whereIn('status', ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress', 'delivering'])
+            ->whereNotIn('status', ['cancelled', 'canceled'])
+            ->where(function ($q) {
+                $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');
+            });
+    }
+
+    public function scopeAwaitingPickup($query)
+    {
+        return $query->whereIn('status', ['driver_pickup'])
+            ->whereNotIn('status', ['cancelled', 'canceled'])
+            ->where(function ($q) {
+                $q->where('stock_status', '!=', 'sold')->orWhereNull('stock_sold_at');
+            });
+    }
+
+    public function scopeCancelled($query)
+    {
+        return $query->whereIn('status', ['cancelled', 'canceled']);
+    }
+
+    public function scopeInPeriod($query, $from, $to)
+    {
+        return $query->whereBetween('created_at_ozon', [$from, $to]);
     }
 
     /**

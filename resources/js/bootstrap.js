@@ -16,13 +16,20 @@ const BASE_RECONNECT_DELAY = 5000; // 5 seconds
 function buildWsUrl() {
     // Prefer Vite envs (standard Laravel Reverb defaults)
     const scheme = (import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase();
-    const host = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+    let host = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
     const port = import.meta.env.VITE_REVERB_PORT || (scheme === 'https' ? 443 : 80);
     const key = import.meta.env.VITE_REVERB_APP_KEY;
     const path = import.meta.env.VITE_REVERB_APP_PATH || '';
 
     if (!key || key === 'undefined' || key === '') {
         // WebSocket disabled - no key configured
+        return null;
+    }
+
+    // In production, if host is localhost but we're on a real domain, disable WebSocket
+    // This prevents connection errors when Reverb is not configured for production
+    if (host === 'localhost' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.info('ℹ️ WebSocket disabled: Reverb not configured for production');
         return null;
     }
 

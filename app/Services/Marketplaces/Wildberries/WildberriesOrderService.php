@@ -11,6 +11,7 @@ use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Services\Marketplaces\Sync\OrdersSyncService;
 use App\Services\Marketplaces\WildberriesClient;
+use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -26,11 +27,27 @@ use Illuminate\Support\Facades\Log;
  */
 class WildberriesOrderService
 {
-    protected WildberriesHttpClient $httpClient;
+    protected ?WildberriesHttpClient $httpClient = null;
+    protected ?MarketplaceAccount $currentAccount = null;
+    protected OrderStockService $orderStockService;
 
-    public function __construct(WildberriesHttpClient $httpClient)
+    public function __construct(?WildberriesHttpClient $httpClient = null, ?OrderStockService $orderStockService = null)
     {
         $this->httpClient = $httpClient;
+        $this->orderStockService = $orderStockService ?? new OrderStockService();
+    }
+
+    /**
+     * Get HTTP client for the specified account
+     */
+    protected function getHttpClient(MarketplaceAccount $account): WildberriesHttpClient
+    {
+        // If account changed or no client, create new one
+        if (!$this->httpClient || $this->currentAccount?->id !== $account->id) {
+            $this->httpClient = new WildberriesHttpClient($account);
+            $this->currentAccount = $account;
+        }
+        return $this->httpClient;
     }
 
     /**
@@ -58,7 +75,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v3/orders/new
-            $response = $this->httpClient->get('marketplace', '/api/v3/orders/new');
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders/new');
 
             $orders = $response['orders'] ?? [];
 
@@ -157,7 +174,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v3/orders - получаем ВСЕ заказы (не только новые)
-            $response = $this->httpClient->get('marketplace', '/api/v3/orders', [
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders', [
                 'limit' => $limit,
                 'next' => $next,
             ]);
@@ -189,16 +206,41 @@ class WildberriesOrderService
             // Помечаем заказы, которых нет в ответе API, как отменённые
             // Но только те, которые ещё не в статусе archive или canceled
             if (!empty($syncedOrderIds)) {
-                $archivedCount = WbOrder::where('marketplace_account_id', $account->id)
+                // Сначала получаем заказы для обработки остатков
+                $ordersToCancel = WbOrder::where('marketplace_account_id', $account->id)
                     ->whereNotIn('external_order_id', $syncedOrderIds)
-                    ->whereNotIn('status', ['archive', 'canceled'])
-                    ->update([
+                    ->whereNotIn('status', ['archive', 'canceled', 'completed'])
+                    ->get();
+
+                foreach ($ordersToCancel as $orderToCancel) {
+                    $oldStatus = $orderToCancel->status;
+
+                    // Обновляем статус
+                    $orderToCancel->update([
                         'status' => 'canceled',
                         'wb_status_group' => 'canceled',
                     ]);
 
-                if ($archivedCount > 0) {
-                    Log::info("Marked {$archivedCount} orders as canceled (not in API response)");
+                    // Обрабатываем остатки (отменяем резерв если был)
+                    try {
+                        $items = $this->orderStockService->getOrderItems($orderToCancel, 'wb');
+                        $this->orderStockService->processOrderStatusChange(
+                            $account,
+                            $orderToCancel,
+                            $oldStatus,
+                            'canceled',
+                            $items
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to process stock for cancelled order', [
+                            'order_id' => $orderToCancel->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                if ($ordersToCancel->count() > 0) {
+                    Log::info("Marked {$ordersToCancel->count()} orders as canceled (not in API response)");
                 }
             }
 
@@ -282,7 +324,7 @@ class WildberriesOrderService
 
         try {
             // GET /api/v1/supplier/orders
-            $response = $this->httpClient->get('statistics', '/api/v1/supplier/orders', [
+            $response = $this->getHttpClient($account)->get('statistics', '/api/v1/supplier/orders', [
                 'dateFrom' => $dateFrom->format('Y-m-d'),
                 'flag' => $flag,
             ]);
@@ -366,6 +408,19 @@ class WildberriesOrderService
             throw new \RuntimeException('Order data missing id');
         }
 
+        // Получаем существующий заказ для определения oldStatus
+        $existingOrder = WbOrder::where('marketplace_account_id', $account->id)
+            ->where('external_order_id', $orderId)
+            ->first();
+        $oldStatus = $existingOrder?->status;
+
+        // Терминальные статусы которые НЕ должны перезаписываться при синхронизации "новых" заказов
+        $terminalStatuses = ['cancelled', 'canceled', 'completed'];
+
+        // Если заказ уже существует с терминальным статусом - пропускаем обновление статуса
+        // чтобы не перезаписать cancelled на new
+        $preserveTerminalStatus = $existingOrder && in_array($oldStatus, $terminalStatuses, true);
+
         // Используем WildberriesClient для мапинга данных
         $marketplaceHttpClient = new \App\Services\Marketplaces\MarketplaceHttpClient($account, 'wb');
         $client = new WildberriesClient($marketplaceHttpClient);
@@ -376,7 +431,7 @@ class WildberriesOrderService
             $mapped['supply_id'] = $orderData['supplyId'];
         }
 
-        // Устанавливаем wb_status_group на основе статуса поставки
+        // Устанавливаем wb_status_group на основе статуса поставки или API статуса
         if (!empty($orderData['supply_status_group'])) {
             $mapped['wb_status_group'] = $orderData['supply_status_group'];
         } elseif (!empty($mapped['supply_id'])) {
@@ -388,38 +443,60 @@ class WildberriesOrderService
             if ($supply) {
                 // Определяем статус на основе статуса поставки
                 $mapped['wb_status_group'] = match($supply->status) {
-                    'draft' => 'assembling',
-                    'sent' => 'shipping',
+                    'draft', 'in_assembly' => 'assembling',
+                    'ready' => 'assembling',
+                    'sent', 'in_delivery' => 'shipping',
                     'delivered' => 'archive',
                     'cancelled' => 'canceled',
                     default => 'new'
                 };
             } else {
-                // Поставка не найдена - помещаем в доставку по умолчанию
-                $mapped['wb_status_group'] = 'shipping';
+                // Поставка не найдена - определяем по API статусу
+                $mapped['wb_status_group'] = $this->mapWbStatusToGroup(
+                    $mapped['wb_supplier_status'] ?? null,
+                    $mapped['wb_status'] ?? null
+                );
             }
         } else {
-            // Если нет поставки - помещаем в архив (старые заказы или FBO)
-            $mapped['wb_status_group'] = 'archive';
+            // Если нет поставки - определяем по API статусу (supplierStatus + wbStatus)
+            $mapped['wb_status_group'] = $this->mapWbStatusToGroup(
+                $mapped['wb_supplier_status'] ?? null,
+                $mapped['wb_status'] ?? null
+            );
         }
 
-        if (!empty($orderData['supply_status'])) {
+        // Если существующий заказ имеет терминальный статус - сохраняем его
+        if ($preserveTerminalStatus) {
+            $mapped['status'] = $oldStatus;
+            $mapped['status_normalized'] = $oldStatus;
+            // Также сохраняем существующий wb_status_group
+            $mapped['wb_status_group'] = $existingOrder->wb_status_group;
+
+            Log::info('Preserving terminal status for existing order', [
+                'order_id' => $orderId,
+                'preserved_status' => $oldStatus,
+            ]);
+        } elseif (!empty($orderData['supply_status'])) {
             $mapped['status'] = $orderData['supply_status'];
             $mapped['status_normalized'] = $orderData['supply_status'];
         } elseif (!empty($mapped['wb_status_group'])) {
             // Устанавливаем status на основе wb_status_group
             $mapped['status'] = match($mapped['wb_status_group']) {
+                'new' => 'new',
                 'assembling' => 'in_assembly',
                 'shipping' => 'in_delivery',
                 'archive' => 'completed',
-                'canceled' => 'canceled',
+                'canceled' => 'cancelled',
                 default => 'new'
             };
             $mapped['status_normalized'] = $mapped['status'];
-        } elseif (empty($mapped['supply_id'])) {
-            // Заказы без поставки считаем завершёнными
-            $mapped['status'] = 'completed';
-            $mapped['status_normalized'] = 'completed';
+        } else {
+            // Если wb_status_group не установлен, вычисляем статус напрямую
+            $mapped['status'] = $this->mapWbStatusToInternal(
+                $mapped['wb_supplier_status'] ?? null,
+                $mapped['wb_status'] ?? null
+            );
+            $mapped['status_normalized'] = $mapped['status'];
         }
 
         // Используем OrdersSyncService для сохранения
@@ -438,6 +515,42 @@ class WildberriesOrderService
         $order = WbOrder::where('marketplace_account_id', $account->id)
             ->where('external_order_id', $orderId)
             ->first();
+
+        // Обрабатываем изменение остатков
+        if ($order) {
+            $newStatus = $order->status;
+
+            // Обрабатываем только если статус изменился или это новый заказ
+            if ($created || $oldStatus !== $newStatus) {
+                try {
+                    // Получаем позиции заказа
+                    $items = $this->orderStockService->getOrderItems($order, 'wb');
+
+                    // Обрабатываем изменение статуса
+                    $stockResult = $this->orderStockService->processOrderStatusChange(
+                        $account,
+                        $order,
+                        $oldStatus,
+                        $newStatus,
+                        $items
+                    );
+
+                    Log::info('WB order stock processed', [
+                        'order_id' => $order->id,
+                        'external_order_id' => $orderId,
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'stock_result' => $stockResult,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Не прерываем синхронизацию из-за ошибки остатков
+                    Log::error('WB order stock processing failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         return ['order' => $order, 'created' => $created];
     }
@@ -477,12 +590,14 @@ class WildberriesOrderService
             'subject' => $orderData['subject'] ?? null,
             'category' => $orderData['category'] ?? null,
             'warehouse_name' => $orderData['warehouseName'] ?? null,
-            'warehouse_type' => $orderData['isSupply'] ?? false ? 'FBS' : 'FBO',
+            // warehouseType: "Склад продавца" = FBS, "Склад WB" = FBW/FBO
+            'warehouse_type' => $orderData['warehouseType'] ?? null,
             'status' => $this->mapStatisticsStatus($orderData),
             'wb_status' => $orderData['orderType'] ?? null,
             'is_cancel' => (bool)($orderData['isCancel'] ?? false),
             'is_return' => (bool)($orderData['isReturn'] ?? false),
-            'is_realization' => ($orderData['orderType'] ?? null) === 'Продажа',
+            // isRealization - boolean field from Statistics API indicating completed sale
+            'is_realization' => (bool)($orderData['isRealization'] ?? false),
             'price' => $orderData['priceWithDisc'] ?? null,
             'discount_percent' => $orderData['discountPercent'] ?? null,
             'total_price' => $orderData['totalPrice'] ?? null,
@@ -492,9 +607,11 @@ class WildberriesOrderService
             'region_name' => $orderData['regionName'] ?? null,
             'oblast_okrug_name' => $orderData['oblastOkrugName'] ?? null,
             'country_name' => $orderData['countryName'] ?? null,
-            'order_date' => isset($orderData['date']) ? Carbon::parse($orderData['date']) : null,
-            'cancel_date' => isset($orderData['cancelDt']) ? Carbon::parse($orderData['cancelDt']) : null,
-            'last_change_date' => isset($orderData['lastChangeDate']) ? Carbon::parse($orderData['lastChangeDate']) : now(),
+            // WB API возвращает время в московском часовом поясе (UTC+3)
+            // Конвертируем в ташкентское время (UTC+5)
+            'order_date' => isset($orderData['date']) ? Carbon::parse($orderData['date'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : null,
+            'cancel_date' => isset($orderData['cancelDt']) ? Carbon::parse($orderData['cancelDt'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : null,
+            'last_change_date' => isset($orderData['lastChangeDate']) ? Carbon::parse($orderData['lastChangeDate'], 'Europe/Moscow')->setTimezone('Asia/Tashkent') : now(),
             'income_id' => $orderData['incomeID'] ?? null,
             'raw_data' => $orderData,
         ]);
@@ -554,7 +671,89 @@ class WildberriesOrderService
     }
 
     /**
+     * Map WB API statuses to internal status
+     * Based on supplierStatus and wbStatus from WB API
+     */
+    protected function mapWbStatusToInternal(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. Отменённые (высший приоритет)
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'cancelled';
+        }
+
+        // 2. Завершённые (доставлено клиенту)
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'completed';
+        }
+
+        // 3. В доставке
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'accepted_by_carrier', 'sent_to_carrier'])) {
+            return 'in_delivery';
+        }
+
+        // 4. На сборке
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'in_assembly';
+        }
+
+        // 5. Новые
+        return 'new';
+    }
+
+    /**
+     * Map WB API statuses to status group
+     * Based on supplierStatus and wbStatus from WB API
+     *
+     * supplierStatus: new, confirm, complete, cancel
+     * wbStatus: waiting, sorted, sold, canceled, canceled_by_client, declined_by_client,
+     *           defect, ready_for_pickup, on_way_to_client, delivered, etc.
+     */
+    protected function mapWbStatusToGroup(?string $supplierStatus, ?string $wbStatus): string
+    {
+        // 1. Отменённые (высший приоритет)
+        if (in_array($supplierStatus, ['cancel', 'reject']) ||
+            in_array($wbStatus, ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'])) {
+            return 'canceled';
+        }
+
+        // 2. Завершённые/Архив (доставлено клиенту)
+        if (in_array($wbStatus, ['delivered', 'sold_from_store', 'sold']) ||
+            $supplierStatus === 'receive') {
+            return 'archive';
+        }
+
+        // 3. В доставке (поставка передана в WB, доставляется клиенту)
+        if ($supplierStatus === 'complete' ||
+            in_array($wbStatus, ['on_way_to_client', 'on_way_from_client', 'ready_for_pickup', 'accepted_by_carrier', 'sent_to_carrier'])) {
+            return 'shipping';
+        }
+
+        // 4. На сборке (заказ подтверждён, собирается)
+        if ($supplierStatus === 'confirm' ||
+            in_array($wbStatus, ['sorted'])) {
+            return 'assembling';
+        }
+
+        // 5. Новые (ожидают подтверждения/добавления в поставку)
+        if ($supplierStatus === 'new' ||
+            $wbStatus === 'waiting') {
+            return 'new';
+        }
+
+        // По умолчанию - новые
+        return 'new';
+    }
+
+    /**
      * Map Statistics API order to internal status
+     *
+     * isRealization = true means item was sold and money received (completed sale)
+     * isCancel = true means order was cancelled
+     * isReturn = true means item was returned
      */
     protected function mapStatisticsStatus(array $orderData): string
     {
@@ -566,7 +765,8 @@ class WildberriesOrderService
             return 'returned';
         }
 
-        if (($orderData['orderType'] ?? null) === 'Продажа') {
+        // isRealization = true означает завершённую продажу (деньги получены)
+        if ($orderData['isRealization'] ?? false) {
             return 'delivered';
         }
 
@@ -603,7 +803,7 @@ class WildberriesOrderService
     {
         try {
             // Получаем бинарные данные через GET запрос с параметром type
-            $fileContent = $this->httpClient->getBinary(
+            $fileContent = $this->getHttpClient($account)->getBinary(
                 'marketplace',
                 "/api/v3/supplies/{$supplyId}/barcode",
                 ['type' => $type]
@@ -675,7 +875,7 @@ class WildberriesOrderService
 
         try {
             // Use postBinary for sticker generation
-            $response = $this->httpClient->postBinary(
+            $response = $this->getHttpClient($account)->postBinary(
                 'marketplace',
                 '/api/v3/orders/stickers',
                 ['orders' => array_map('intval', $orderIds)],
@@ -739,7 +939,7 @@ class WildberriesOrderService
     public function createTare(MarketplaceAccount $account, string $supplyId, int $amount = 1): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx", [
+            $response = $this->getHttpClient($account)->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx", [
                 'amount' => $amount,
             ]);
 
@@ -776,7 +976,7 @@ class WildberriesOrderService
     public function addOrdersToTare(MarketplaceAccount $account, string $supplyId, string $trbxId, array $orderIds): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/supplies/{$supplyId}/trbx/{$trbxId}", [
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/supplies/{$supplyId}/trbx/{$trbxId}", [
                 'orderIds' => $orderIds,
             ]);
 
@@ -811,7 +1011,7 @@ class WildberriesOrderService
     public function getTares(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}/trbx");
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/v3/supplies/{$supplyId}/trbx");
 
             Log::info('WB tares fetched', [
                 'account_id' => $account->id,
@@ -843,7 +1043,7 @@ class WildberriesOrderService
     public function getTareStickers(MarketplaceAccount $account, string $supplyId, string $type = 'png'): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx/stickers", [
+            $response = $this->getHttpClient($account)->post('marketplace', "/api/v3/supplies/{$supplyId}/trbx/stickers", [
                 'type' => $type,
             ]);
 
@@ -878,7 +1078,7 @@ class WildberriesOrderService
     {
         try {
             // Получаем бинарные данные через GET запрос с параметром type
-            $fileContent = $this->httpClient->getBinary(
+            $fileContent = $this->getHttpClient($account)->getBinary(
                 'marketplace',
                 "/api/v3/supplies/{$supplyId}/tares/{$tareId}/barcode",
                 ['type' => $type]
@@ -959,7 +1159,7 @@ class WildberriesOrderService
     public function removeOrderFromSupply(MarketplaceAccount $account, string $supplyId, int $orderId): bool
     {
         try {
-            $this->httpClient->delete('marketplace', "/api/v3/supplies/{$supplyId}/orders/{$orderId}");
+            $this->getHttpClient($account)->delete('marketplace', "/api/v3/supplies/{$supplyId}/orders/{$orderId}");
 
             Log::info('WB order removed from supply', [
                 'account_id' => $account->id,
@@ -989,7 +1189,7 @@ class WildberriesOrderService
     public function getReshipmentOrders(MarketplaceAccount $account): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', '/api/v3/supplies/orders/reshipment');
+            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/supplies/orders/reshipment');
 
             Log::info('WB reshipment orders fetched', [
                 'account_id' => $account->id,
@@ -1017,7 +1217,7 @@ class WildberriesOrderService
     public function getSupplyDetails(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}");
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/v3/supplies/{$supplyId}");
 
             Log::info('WB supply details fetched', [
                 'account_id' => $account->id,
@@ -1037,24 +1237,71 @@ class WildberriesOrderService
     }
 
     /**
-     * Get orders in supply
+     * Get order IDs in supply (new API method)
      *
      * @param MarketplaceAccount $account
      * @param string $supplyId Supply ID (UUID)
-     * @return array Orders in the supply
+     * @return array Order IDs in the supply
+     */
+    public function getSupplyOrderIds(MarketplaceAccount $account, string $supplyId): array
+    {
+        try {
+            // New API endpoint (replaces deprecated GET /api/v3/supplies/{supplyId}/orders)
+            $response = $this->getHttpClient($account)->get('marketplace', "/api/marketplace/v3/supplies/{$supplyId}/order-ids");
+
+            $orderIds = $response['orderIds'] ?? [];
+
+            Log::info('WB supply order IDs fetched', [
+                'account_id' => $account->id,
+                'supply_id' => $supplyId,
+                'count' => count($orderIds),
+            ]);
+
+            return $orderIds;
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB supply order IDs', [
+                'account_id' => $account->id,
+                'supply_id' => $supplyId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get orders in supply with full details
+     *
+     * @param MarketplaceAccount $account
+     * @param string $supplyId Supply ID (UUID)
+     * @return array Orders in the supply with details
      */
     public function getSupplyOrders(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->get('marketplace', "/api/v3/supplies/{$supplyId}/orders");
+            // Step 1: Get order IDs from the supply
+            $orderIds = $this->getSupplyOrderIds($account, $supplyId);
+
+            if (empty($orderIds)) {
+                Log::info('WB supply has no orders', [
+                    'account_id' => $account->id,
+                    'supply_id' => $supplyId,
+                ]);
+                return [];
+            }
+
+            // Step 2: Get order details via POST /api/v3/orders/status
+            $statusResponse = $this->getOrdersStatus($account, $orderIds);
+            $orders = $statusResponse['orders'] ?? [];
 
             Log::info('WB supply orders fetched', [
                 'account_id' => $account->id,
                 'supply_id' => $supplyId,
-                'count' => count($response['orders'] ?? []),
+                'order_ids_count' => count($orderIds),
+                'orders_fetched' => count($orders),
             ]);
 
-            return $response['orders'] ?? [];
+            return $orders;
         } catch (\Exception $e) {
             Log::error('Failed to get WB supply orders', [
                 'account_id' => $account->id,
@@ -1442,8 +1689,8 @@ class WildberriesOrderService
     public function getOrdersStatus(MarketplaceAccount $account, array $orderIds): array
     {
         try {
-            $response = $this->httpClient->post('marketplace', '/api/v3/orders/status', [
-                'orders' => $orderIds,
+            $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/status', [
+                'orders' => array_map('intval', $orderIds),
             ]);
 
             Log::info('WB orders status fetched', [
@@ -1482,8 +1729,8 @@ class WildberriesOrderService
         int $height = 40
     ): array {
         try {
-            $response = $this->httpClient->post('marketplace', '/api/v3/orders/stickers', [
-                'orders' => $orderIds,
+            $response = $this->getHttpClient($account)->post('marketplace', '/api/v3/orders/stickers', [
+                'orders' => array_map('intval', $orderIds),
             ], [
                 'type' => $type,
                 'width' => $width,
@@ -1519,7 +1766,7 @@ class WildberriesOrderService
     public function cancelOrder(MarketplaceAccount $account, string $orderId): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/orders/{$orderId}/cancel");
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/orders/{$orderId}/cancel");
 
             Log::info('WB order cancelled', [
                 'account_id' => $account->id,
@@ -1549,7 +1796,7 @@ class WildberriesOrderService
     public function deliverSupply(MarketplaceAccount $account, string $supplyId): array
     {
         try {
-            $response = $this->httpClient->patch('marketplace', "/api/v3/supplies/{$supplyId}/deliver");
+            $response = $this->getHttpClient($account)->patch('marketplace', "/api/v3/supplies/{$supplyId}/deliver");
 
             Log::info('WB supply delivered', [
                 'account_id' => $account->id,

@@ -14,7 +14,7 @@ class GenerationTaskForm
     {
         return $schema
             ->components([
-                Section::make('Общая информация')
+                Section::make(__('filament.sections.general_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -43,7 +43,7 @@ class GenerationTaskForm
                             ->required(),
                     ])->columns(2),
 
-                Section::make('Данные и прогресс')
+                Section::make(__('filament.sections.data_progress'))
                     ->schema([
                         TextInput::make('progress')
                             ->label('Прогресс (%)')

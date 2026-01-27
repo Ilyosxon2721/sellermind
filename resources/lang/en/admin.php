@@ -1,0 +1,60 @@
+<?php
+
+return [
+    // Navigation
+    'dashboard' => 'Dashboard',
+    'products' => 'Products',
+    'orders' => 'Orders',
+    'warehouse' => 'Warehouse',
+    'settings' => 'Settings',
+    'logout' => 'Logout',
+    'profile' => 'Profile',
+    'home' => 'Home',
+    'marketplace' => 'Marketplaces',
+    'sales' => 'Sales',
+    'counterparties' => 'Counterparties',
+    'inventory' => 'Inventory',
+    'sync_logs' => 'Sync logs',
+    'tasks' => 'Tasks',
+    'planning' => 'Planning',
+    'finance' => 'Finance',
+    'accounts_payable' => 'Accounts Payable',
+    'pricing' => 'Pricing',
+    'company_profile' => 'Company profile',
+    
+    // Warehouse submenu
+    'warehouse_section' => 'Warehouse',
+    'warehouse_dashboard' => 'Dashboard',
+    'warehouse_inventory' => 'Inventory',
+    'warehouse_documents' => 'Inventory/Docs',
+    'warehouse_balance' => 'Balance',
+    'warehouse_receipt' => 'Receipt',
+    'warehouse_list' => 'Warehouses',
+    'warehouse_docs' => 'Documents',
+    'warehouse_reservations' => 'Reservations',
+    'warehouse_ledger' => 'Movement ledger',
+    
+    // Company modal
+    'create_company' => 'Create company',
+    'create_company_desc' => 'To work with the system, you need to create a company. It will only take a minute!',
+    'company_name' => 'Company name',
+    'company_name_required' => 'Enter company name',
+    'company_placeholder' => 'My Company LLC',
+    'later' => 'Later',
+    'creating' => 'Creating...',
+    'create' => 'Create company',
+    'company_created' => 'Company created successfully!',
+    'company_create_error' => 'An error occurred while creating the company. Please try again.',
+    'additional_info_later' => 'You can add additional information about the company later in settings',
+    'close' => 'Close',
+    
+    // Common
+    'welcome' => 'Welcome',
+    'select_company' => 'Select company',
+    'multiple_companies' => 'You have multiple companies',
+    'main_navigation' => 'Main navigation',
+    'user_menu' => 'User menu',
+    'logout_button' => 'Logout',
+    'warehouse_menu' => 'Warehouse and documents menu',
+    'open_navigation' => 'Open navigation menu',
+];

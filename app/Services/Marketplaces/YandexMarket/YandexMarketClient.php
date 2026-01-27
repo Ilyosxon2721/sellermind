@@ -2,8 +2,12 @@
 
 namespace App\Services\Marketplaces\YandexMarket;
 
+use App\Events\StockUpdated;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
+use App\Models\Warehouse\Sku;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 use App\Services\Marketplaces\MarketplaceClientInterface;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Log;
@@ -31,13 +35,17 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function ping(MarketplaceAccount $account): array
     {
         $start = microtime(true);
-        
+
         try {
             // Получаем информацию о кампаниях
             $response = $this->http->get($account, '/campaigns');
             $duration = round((microtime(true) - $start) * 1000);
 
             $campaigns = $response['campaigns'] ?? [];
+
+            // Также получим список бизнесов
+            $businesses = $this->getBusinesses($account);
+            $configuredBusinessId = $this->http->getBusinessId($account);
 
             return [
                 'success' => true,
@@ -48,6 +56,13 @@ class YandexMarketClient implements MarketplaceClientInterface
                     'id' => $c['id'] ?? null,
                     'name' => $c['domain'] ?? $c['clientId'] ?? 'Campaign',
                 ], array_slice($campaigns, 0, 5)),
+                'businesses_count' => count($businesses),
+                'businesses' => array_map(fn($b) => [
+                    'id' => $b['id'] ?? null,
+                    'name' => $b['name'] ?? 'Business',
+                ], array_slice($businesses, 0, 5)),
+                'configured_business_id' => $configuredBusinessId,
+                'business_id_valid' => $configuredBusinessId && in_array($configuredBusinessId, array_column($businesses, 'id')),
             ];
         } catch (\Exception $e) {
             return [
@@ -67,14 +82,44 @@ class YandexMarketClient implements MarketplaceClientInterface
     }
 
     /**
+     * Получить список бизнесов, доступных для API-ключа
+     */
+    public function getBusinesses(MarketplaceAccount $account): array
+    {
+        try {
+            $response = $this->http->get($account, '/businesses');
+            return $response['businesses'] ?? [];
+        } catch (\Exception $e) {
+            Log::warning('YandexMarket: Failed to fetch businesses', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
      * Загрузка товаров из Yandex Market
      */
     public function fetchProducts(MarketplaceAccount $account, array $shopIds = [], int $pageSize = 100): array
     {
         $businessId = $this->http->getBusinessId($account);
-        
+
         if (!$businessId) {
-            throw new \RuntimeException('Business ID не настроен для аккаунта');
+            // Попробуем получить business_id автоматически
+            $businesses = $this->getBusinesses($account);
+            if (!empty($businesses)) {
+                $businessId = $businesses[0]['id'] ?? null;
+                Log::info('YandexMarket: Auto-detected business_id', [
+                    'account_id' => $account->id,
+                    'business_id' => $businessId,
+                    'available_businesses' => count($businesses),
+                ]);
+            }
+
+            if (!$businessId) {
+                throw new \RuntimeException('Business ID не настроен для аккаунта и не удалось определить автоматически');
+            }
         }
 
         $all = [];
@@ -542,19 +587,94 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ->first();
 
             if ($link && $link->variant) {
-                \Illuminate\Support\Facades\Log::info("Order stock {$action}", [
+                $oldStock = $link->variant->stock_default ?? 0;
+
+                Log::info("Yandex Market order stock {$action}", [
                     'offer_id' => $offerId,
                     'count' => $count,
                     'variant_id' => $link->variant->id,
-                    'current_stock' => $link->variant->stock_default,
+                    'current_stock' => $oldStock,
                 ]);
 
+                // Update stock_default WITHOUT triggering ProductVariantObserver
+                // (to avoid duplicate ledger entries - we create our own below)
                 if ($action === 'decrement') {
-                    $link->variant->decrementStock($count);
+                    $link->variant->stock_default = max(0, $oldStock - $count);
+                    $qtyDelta = -$count;
+                    $sourceType = 'YM_ORDER';
                 } else {
-                    $link->variant->incrementStock($count);
+                    $link->variant->stock_default = $oldStock + $count;
+                    $qtyDelta = $count;
+                    $sourceType = 'YM_ORDER_CANCEL';
                 }
+                $newStock = $link->variant->stock_default;
+                $link->variant->saveQuietly();
+
+                // Create ledger entry for warehouse system
+                $this->updateWarehouseStock($link->variant, $qtyDelta, $sourceType, $offerId);
+
+                // Fire StockUpdated event to sync to OTHER marketplaces
+                // Pass link_id to exclude this specific link from sync
+                event(new StockUpdated($link->variant, $oldStock, $newStock, $link->id));
             }
+        }
+    }
+
+    /**
+     * Update stock in warehouse system (stock_ledger)
+     */
+    protected function updateWarehouseStock($variant, int $qtyDelta, string $sourceType, ?string $orderId = null): void
+    {
+        try {
+            // Find warehouse SKU linked to this variant
+            $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
+
+            if (!$warehouseSku) {
+                return;
+            }
+
+            // Get default warehouse for company
+            $warehouse = Warehouse::where('company_id', $variant->company_id)
+                ->where('is_default', true)
+                ->first();
+
+            if (!$warehouse) {
+                $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
+            }
+
+            if (!$warehouse) {
+                return;
+            }
+
+            // Create ledger entry
+            StockLedger::create([
+                'company_id' => $variant->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouse->id,
+                'location_id' => null,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'cost_delta' => 0,
+                'currency_code' => 'UZS',
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => $sourceType,
+                'source_id' => null,
+                'created_by' => null,
+            ]);
+
+            Log::info('Warehouse stock updated for Yandex Market order', [
+                'order_id' => $orderId,
+                'warehouse_sku_id' => $warehouseSku->id,
+                'qty_delta' => $qtyDelta,
+                'source_type' => $sourceType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update warehouse stock for YM order', [
+                'variant_id' => $variant->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

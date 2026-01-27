@@ -24,17 +24,17 @@ class AgentResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Агент';
+        return __('filament.resources.agent.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'ИИ-Агенты';
+        return __('filament.resources.agent.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'ИИ и Контент';
+        return __('filament.nav_groups.ai_content');
     }
 
     public static function form(Schema $schema): Schema

@@ -1,0 +1,60 @@
+<?php
+
+return [
+    // Navigation
+    'dashboard' => 'Boshqaruv paneli',
+    'products' => 'Mahsulotlar',
+    'orders' => 'Buyurtmalar',
+    'warehouse' => 'Ombor',
+    'settings' => 'Sozlamalar',
+    'logout' => 'Chiqish',
+    'profile' => 'Profil',
+    'home' => 'Bosh sahifa',
+    'marketplace' => 'Marketpleyslar',
+    'sales' => 'Savdo',
+    'counterparties' => 'Hamkorlar',
+    'inventory' => 'Inventarizatsiya',
+    'sync_logs' => 'Loglar jurnali',
+    'tasks' => 'Vazifalar',
+    'planning' => 'Rejalashtirish',
+    'finance' => 'Moliya',
+    'accounts_payable' => 'Hisoblar (AP)',
+    'pricing' => 'Narxlar',
+    'company_profile' => 'Kompaniya profili',
+    
+    // Warehouse submenu
+    'warehouse_section' => 'Ombor',
+    'warehouse_dashboard' => 'Dashboard',
+    'warehouse_inventory' => 'Qoldiqlar',
+    'warehouse_documents' => 'Ombor/Hujjatlar',
+    'warehouse_balance' => 'Qoldiqlar',
+    'warehouse_receipt' => 'Qabul qilish',
+    'warehouse_list' => 'Omborlar',
+    'warehouse_docs' => 'Hujjatlar',
+    'warehouse_reservations' => 'Zahiralar',
+    'warehouse_ledger' => 'Harakatlar jurnali',
+    
+    // Company modal
+    'create_company' => 'Kompaniya yaratish',
+    'create_company_desc' => 'Tizim bilan ishlash uchun kompaniya yaratish kerak. Bu faqat bir daqiqa vaqt oladi!',
+    'company_name' => 'Kompaniya nomi',
+    'company_name_required' => 'Kompaniya nomini kiriting',
+    'company_placeholder' => 'Mening kompaniyam',
+    'later' => 'Keyinroq',
+    'creating' => 'Yaratilmoqda...',
+    'create' => 'Yaratish',
+    'company_created' => 'Kompaniya muvaffaqiyatli yaratildi!',
+    'company_create_error' => 'Kompaniya yaratishda xatolik yuz berdi. Yana urinib ko\'ring.',
+    'additional_info_later' => 'Kompaniya haqida qo\'shimcha ma\'lumotni keyinchalik sozlamalarda qo\'shishingiz mumkin',
+    'close' => 'Yopish',
+    
+    // Common
+    'welcome' => 'Xush kelibsiz',
+    'select_company' => 'Kompaniya tanlang',
+    'multiple_companies' => 'Sizda bir nechta kompaniya bor',
+    'main_navigation' => 'Asosiy navigatsiya',
+    'user_menu' => 'Foydalanuvchi menyusi',
+    'logout_button' => 'Tizimdan chiqish',
+    'warehouse_menu' => 'Ombor va hujjatlar menyusi',
+    'open_navigation' => 'Navigatsiya menyusini ochish',
+];

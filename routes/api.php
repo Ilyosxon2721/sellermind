@@ -63,8 +63,17 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 
 // Sales API (uses web session auth)
 Route::middleware(['web', 'auth.any'])->group(function () {
+    // Global Option Values (custom sizes/colors)
+    Route::prefix('option-values')->group(function () {
+        Route::post('/', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'store']);
+        Route::get('/sizes', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'sizes']);
+        Route::get('/colors', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'colors']);
+    });
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
+    Route::get('sales/sync-status', [\App\Http\Controllers\Api\SalesController::class, 'syncStatus']);
+    Route::post('sales/trigger-sync', [\App\Http\Controllers\Api\SalesController::class, 'triggerSync']);
+    Route::get('sales/{id}', [\App\Http\Controllers\Api\SalesController::class, 'show']);
     Route::post('sales/manual', [\App\Http\Controllers\Api\SalesController::class, 'storeManual']);
 
     // Sales Management (CRUD for Sales model)
@@ -90,6 +99,19 @@ Route::middleware(['web', 'auth.any'])->group(function () {
 
     // Dashboard API
     Route::get('dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index']);
+    Route::get('dashboard/full', [\App\Http\Controllers\Api\DashboardController::class, 'full']);
+    Route::get('dashboard/alerts', [\App\Http\Controllers\Api\DashboardController::class, 'alerts']);
+    Route::get('dashboard/ai-status', [\App\Http\Controllers\Api\DashboardController::class, 'aiStatus']);
+    Route::get('dashboard/subscription', [\App\Http\Controllers\Api\DashboardController::class, 'subscription']);
+    Route::get('dashboard/team', [\App\Http\Controllers\Api\DashboardController::class, 'team']);
+
+    // Currency Settings API
+    Route::prefix('currency')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'index']);
+        Route::put('/display', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'updateDisplayCurrency']);
+        Route::put('/rate', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'updateRate']);
+        Route::post('/convert', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'convert']);
+    });
     
     // Counterparties API
     Route::get('counterparties', [\App\Http\Controllers\Api\CounterpartyController::class, 'index']);
@@ -117,6 +139,9 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     
     // Warehouses for inventory
     Route::get('warehouses', [\App\Http\Controllers\Api\InventoryController::class, 'warehouses']);
+    
+    // Companies list for web-authenticated users (used by sales/create page)
+    Route::get('companies', [CompanyController::class, 'index']);
 });
 // Broadcasting auth routes (must be before protected routes to avoid middleware issues)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
@@ -129,9 +154,18 @@ Route::middleware('auth.any')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
     });
 
+    // Stock Recalculation API (for Forge without terminal)
+    Route::prefix('stock')->group(function () {
+        Route::get('recalculate-preview', [\App\Http\Controllers\Api\StockRecalculateController::class, 'preview']);
+        Route::post('set-initial', [\App\Http\Controllers\Api\StockRecalculateController::class, 'setInitialStock']);
+        Route::post('recalculate', [\App\Http\Controllers\Api\StockRecalculateController::class, 'recalculate']);
+        Route::get('variants', [\App\Http\Controllers\Api\StockRecalculateController::class, 'variants']);
+    });
+
     // Current user
     Route::get('me', [AuthController::class, 'me']);
     Route::put('me', [AuthController::class, 'updateProfile']);
+    Route::put('me/locale', [AuthController::class, 'updateLocale']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
     // Telegram Notifications
@@ -165,6 +199,7 @@ Route::middleware('auth.any')->group(function () {
         ->middleware('plan.limits:users,1')
         ->name('api.companies.addMember');
     Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember'])->name('api.companies.removeMember');
+    Route::post('companies/{company}/transfer-ownership', [CompanyController::class, 'transferOwnership'])->name('api.companies.transferOwnership');
 
     // Plans (Public - can view without auth, but included in auth group for consistency)
     Route::get('plans', [PlanController::class, 'index'])->name('api.plans.index');
@@ -193,6 +228,10 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
     // Products
+    // IMPORTANT: upload-image must be before apiResource to avoid being caught by {product} param
+    // Uses web middleware for session-based auth from product edit page
+    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
+
     Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
     Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
     Route::post('products/{product}/publish', [ProductController::class, 'publish']);
@@ -219,9 +258,6 @@ Route::middleware('auth.any')->group(function () {
     Route::post('products/{product}/images/generate', [ProductImageController::class, 'generate']);
     Route::put('products/{product}/images/{image}/primary', [ProductImageController::class, 'setPrimary']);
     Route::delete('products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
-    
-    // Generic image upload (for new products without ID)
-    Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp']);
 
     // Promotions (Smart Promotions)
     Route::prefix('promotions')->group(function () {
@@ -302,7 +338,7 @@ Route::middleware('auth.any')->group(function () {
 
         // Accounts
         Route::get('accounts/requirements', [MarketplaceAccountController::class, 'requirements'])
-            ->withoutMiddleware('auth:sanctum'); // Публичный доступ для просмотра требований
+            ->withoutMiddleware('auth.any'); // Публичный доступ для просмотра требований
         Route::get('accounts', [MarketplaceAccountController::class, 'index']);
         Route::post('accounts', [MarketplaceAccountController::class, 'store'])
             ->middleware('plan.limits:marketplace_accounts,1');
@@ -311,10 +347,14 @@ Route::middleware('auth.any')->group(function () {
         Route::post('accounts/{account}/test', [MarketplaceAccountController::class, 'test']);
         Route::get('accounts/{account}/logs', [MarketplaceAccountController::class, 'syncLogs']);
         Route::get('accounts/{account}/logs/stream', [MarketplaceAccountController::class, 'syncLogsStream'])
-            ->withoutMiddleware('auth:sanctum'); // SSE авторизация токеном в query/bearer внутри контроллера
+            ->withoutMiddleware('auth.any'); // SSE авторизация токеном в query/bearer внутри контроллера
         Route::post('accounts/{account}/monitoring/start', [MarketplaceAccountController::class, 'startMonitoring']);
         Route::post('accounts/{account}/monitoring/stop', [MarketplaceAccountController::class, 'stopMonitoring']);
+        Route::get('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'getSyncSettings']);
+        Route::put('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'updateSyncSettings']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
+        Route::get('uzum/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'uzumFinanceOrders']);
+        Route::get('wb/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'wbFinanceOrders']);
 
         // Sync operations
         Route::post('accounts/{account}/sync/prices', [MarketplaceSyncController::class, 'syncPrices']);
@@ -347,17 +387,29 @@ Route::middleware('auth.any')->group(function () {
                 Route::get('products/{productId}/links', [\App\Http\Controllers\Api\VariantLinkController::class, 'getProductLinks']);
                 Route::post('products/{productId}/sync-stock', [\App\Http\Controllers\Api\VariantLinkController::class, 'syncProductStock']);
                 Route::post('sync-all-stocks', [\App\Http\Controllers\Api\VariantLinkController::class, 'syncAllStocks']);
+                Route::post('auto-link', [\App\Http\Controllers\Api\VariantLinkController::class, 'autoLink']);
             });
         });
 
         // Marketplace Orders
         Route::get('orders', [MarketplaceOrderController::class, 'index']);
         Route::get('orders/stats', [MarketplaceOrderController::class, 'stats']);
+        Route::get('orders/fbo', [MarketplaceOrderController::class, 'fboOrders']);
         Route::get('orders/new', [MarketplaceOrderController::class, 'getNew']);
         Route::post('orders/stickers', [MarketplaceOrderController::class, 'getStickers']);
         Route::get('orders/{order}', [MarketplaceOrderController::class, 'show']);
         Route::post('orders/{order}/confirm', [MarketplaceOrderController::class, 'confirm']);
         Route::post('orders/{order}/cancel', [MarketplaceOrderController::class, 'cancel']);
+
+        // Order Stock Returns (для ручной обработки возвратов)
+        Route::prefix('returns')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'index']);
+            Route::get('/stats', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'stats']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'show']);
+            Route::post('/{id}/return-to-stock', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'returnToStock']);
+            Route::post('/{id}/write-off', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'writeOff']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'reject']);
+        });
 
         // Internal Supplies Management
         Route::get('supplies', [\App\Http\Controllers\Api\SupplyController::class, 'index']);
@@ -539,6 +591,7 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('stock')->group(function () {
             Route::get('balance', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'balance']);
             Route::get('ledger', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'ledger']);
+            Route::post('update-cost', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'updateCost']);
 
             Route::get('reservations', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'index']);
             Route::post('reserve', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'reserve']);
@@ -633,10 +686,135 @@ Route::middleware('auth.any')->group(function () {
         });
     });
 
+    // Finance Module
+    Route::prefix('finance')->group(function () {
+        // Overview and reports
+        Route::get('overview', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'overview']);
+        Route::get('categories', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'categories']);
+        Route::get('categories/all', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'allCategories']);
+        Route::post('categories', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'storeCategory']);
+        Route::get('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'settings']);
+        Route::put('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateSettings']);
+        Route::get('reports', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'reports']);
+
+        // Transactions
+        Route::get('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'index']);
+        Route::post('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'store']);
+        Route::get('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'show']);
+        Route::put('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'update']);
+        Route::delete('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'destroy']);
+        Route::post('transactions/{id}/confirm', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'confirm']);
+        Route::post('transactions/{id}/cancel', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'cancel']);
+
+        // Debts
+        Route::get('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'index']);
+        Route::post('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'store']);
+        Route::get('debts/summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'summary']);
+        Route::get('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'show']);
+        Route::put('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'update']);
+        Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);
+        Route::post('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'addPayment']);
+        Route::post('debts/{id}/write-off', [\App\Http\Controllers\Api\Finance\DebtController::class, 'writeOff']);
+
+        // Employees
+        Route::get('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'index']);
+        Route::post('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'store']);
+        Route::get('employees/summary', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'summary']);
+        Route::get('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'show']);
+        Route::put('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'update']);
+        Route::delete('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'destroy']);
+        Route::post('employees/{id}/pay-salary', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'paySalary']);
+        Route::post('employees/{id}/penalty', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'addPenalty']);
+        Route::post('employees/{id}/expense', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'addExpense']);
+        Route::get('employees/{id}/transactions', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'transactions']);
+
+        // Salary
+        Route::get('salary/calculations', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'calculations']);
+        Route::post('salary/calculate', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'calculate']);
+        Route::get('salary/calculations/{id}', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'showCalculation']);
+        Route::put('salary/calculations/{id}/items/{itemId}', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'updateItem']);
+        Route::post('salary/calculations/{id}/approve', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'approveCalculation']);
+        Route::post('salary/calculations/{id}/pay', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'payCalculation']);
+        Route::post('salary/calculations/{id}/items/{itemId}/pay', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'payItem']);
+
+        // Taxes
+        Route::get('taxes', [\App\Http\Controllers\Api\Finance\TaxController::class, 'index']);
+        Route::post('taxes/calculate', [\App\Http\Controllers\Api\Finance\TaxController::class, 'calculate']);
+        Route::get('taxes/summary', [\App\Http\Controllers\Api\Finance\TaxController::class, 'summary']);
+        Route::get('taxes/{id}', [\App\Http\Controllers\Api\Finance\TaxController::class, 'show']);
+        Route::post('taxes/{id}/pay', [\App\Http\Controllers\Api\Finance\TaxController::class, 'pay']);
+
+        // Marketplace Expenses & Income
+        Route::get('marketplace-expenses', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceExpenses']);
+        Route::get('marketplace-income', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'marketplaceIncome']);
+        Route::post('marketplace-expenses/sync-uzum', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'syncUzumExpenses']);
+
+        // Cash Accounts (касса, банк)
+        Route::get('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'index']);
+        Route::post('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'store']);
+        Route::get('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'show']);
+        Route::put('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'update']);
+        Route::delete('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'destroy']);
+        Route::get('cash-accounts/{id}/transactions', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transactions']);
+        Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
+        Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
+        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
+
+        // Offline Sales (Офлайн/Оптовые продажи)
+        Route::get('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'index']);
+        Route::post('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'store']);
+        Route::get('offline-sales/summary', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'summary']);
+        Route::get('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'show']);
+        Route::put('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'update']);
+        Route::delete('offline-sales/{id}', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'destroy']);
+        Route::post('offline-sales/{id}/confirm', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'confirm']);
+        Route::post('offline-sales/{id}/deliver', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'deliver']);
+        Route::post('offline-sales/{id}/cancel', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'cancel']);
+        Route::post('offline-sales/{id}/pay', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'markPaid']);
+    });
+
     // Admin Routes
     Route::prefix('admin')->group(function () {
         Route::get('dialogs/hidden', [DialogAdminController::class, 'hiddenDialogs']);
         Route::get('dialogs/hidden/{dialog}', [DialogAdminController::class, 'showHiddenDialog']);
         Route::get('dialogs/stats', [DialogAdminController::class, 'stats']);
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Client API (для Risment)
+|--------------------------------------------------------------------------
+| API endpoints для клиентов фулфилмент-компании через Risment портал
+*/
+
+use App\Http\Controllers\Api\ClientApiController;
+
+// Регистрация и авторизация клиентов (без auth middleware)
+Route::prefix('client/auth')->group(function () {
+    Route::post('register', [AuthController::class, 'registerClient']);
+    Route::post('login', [AuthController::class, 'loginClient']);
+});
+
+// Client API endpoints (требуется auth:sanctum)
+Route::prefix('client')->middleware(['auth:sanctum'])->group(function () {
+    // Профиль
+    Route::get('/profile', [ClientApiController::class, 'getProfile']);
+    
+    // Товары (READ)
+    Route::get('/products', [ClientApiController::class, 'getProducts']);
+    
+    // Товары (WRITE)
+    Route::post('/products', [ClientApiController::class, 'createProduct']);
+    Route::put('/products/{id}', [ClientApiController::class, 'updateProduct']);
+    Route::delete('/products/{id}', [ClientApiController::class, 'deleteProduct']);
+    
+    // Заказы
+    Route::get('/orders', [ClientApiController::class, 'getOrders']);
+    
+    // Остатки
+    Route::get('/inventory', [ClientApiController::class, 'getInventory']);
+    
+    // Статистика
+    Route::get('/statistics', [ClientApiController::class, 'getStatistics']);
 });

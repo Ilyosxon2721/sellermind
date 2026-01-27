@@ -15,7 +15,7 @@ class UserForm
     {
         return $schema
             ->components([
-                Section::make('Личные данные')
+                Section::make(__('filament.sections.personal_data'))
                     ->schema([
                         TextInput::make('name')
                             ->label('Имя')
@@ -32,7 +32,7 @@ class UserForm
                             ->required(fn (string $context): bool => $context === 'create'),
                     ])->columns(2),
 
-                Section::make('Настройки и доступ')
+                Section::make(__('filament.sections.settings_access'))
                     ->schema([
                         Toggle::make('is_admin')
                             ->label('Администратор')

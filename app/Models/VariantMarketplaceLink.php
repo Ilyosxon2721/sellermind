@@ -35,6 +35,7 @@ class VariantMarketplaceLink extends Model
         'external_offer_id',
         'external_sku_id',
         'external_sku',
+        'marketplace_barcode', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
         'is_active',
         'sync_stock_enabled',
         'sync_price_enabled',
@@ -80,38 +81,67 @@ class VariantMarketplaceLink extends Model
     {
         $account = $this->account;
         $companyId = $account->company_id ?? null;
-        
+
         if (!$companyId) {
             return $this->variant?->stock_default ?? 0;
         }
-        
+
         // Get sync mode from account settings
-        $syncMode = $account->credentials_json['sync_mode'] ?? 'basic';
-        
+        $syncMode = $account->credentials_json['stock_sync_mode'] ?? $account->credentials_json['sync_mode'] ?? 'basic';
+
         // Get variant SKU
-        $variantSku = $this->variant?->sku;
+        $variant = $this->variant;
+        $variantSku = $variant?->sku;
         if (!$variantSku) {
-            return $this->variant?->stock_default ?? 0;
+            return $variant?->stock_default ?? 0;
         }
-        
-        // Get SKU ID
+
+        // Try to find SKU in warehouse system
         $skuId = \DB::table('skus')
             ->where('company_id', $companyId)
             ->where('sku_code', $variantSku)
             ->value('id');
-        
-        if (!$skuId) {
-            return $this->variant?->stock_default ?? 0;
+
+        // If no SKU in warehouse system, try by barcode
+        if (!$skuId && $variant?->barcode) {
+            $skuId = \DB::table('skus')
+                ->where('company_id', $companyId)
+                ->where('barcode_ean13', $variant->barcode)
+                ->value('id');
         }
-        
+
+        // If still no SKU, fallback to stock_default
+        if (!$skuId) {
+            \Log::debug('No SKU in warehouse system, using stock_default', [
+                'variant_sku' => $variantSku,
+                'variant_id' => $variant?->id,
+                'stock_default' => $variant?->stock_default,
+            ]);
+            return $variant?->stock_default ?? 0;
+        }
+
         if ($syncMode === 'aggregated') {
             // Суммированный режим: сумма с выбранных складов
             return $this->getAggregatedStock($companyId, $skuId, $account);
         } else {
-            // Базовый режим: остаток с конкретного склада (для 1:1 маппинга)
-            // В этом режиме остаток берётся из склада, который замаплен на WB склад
-            // Это будет определяться в WildberriesStockService
-            return $this->getBasicStock($companyId, $skuId);
+            // Базовый режим: остаток со склада из настроек или общий
+            // ВАЖНО: local_warehouse_id - это ЛОКАЛЬНЫЙ склад для расчёта остатков
+            // warehouse_id - это склад МАРКЕТПЛЕЙСА для API (напр. Ozon warehouse ID)
+            // Не путать! Для локального расчёта используем local_warehouse_id
+            $localWarehouseId = $account->credentials_json['local_warehouse_id'] ?? null;
+
+            // Проверяем что local_warehouse_id существует в наших складах
+            if ($localWarehouseId) {
+                $exists = \DB::table('warehouses')
+                    ->where('id', $localWarehouseId)
+                    ->where('company_id', $companyId)
+                    ->exists();
+                if (!$exists) {
+                    $localWarehouseId = null;
+                }
+            }
+
+            return $this->getBasicStock($companyId, $skuId, $localWarehouseId);
         }
     }
     
@@ -138,11 +168,12 @@ class VariantMarketplaceLink extends Model
             ->sum('qty_delta');
         
         // Subtract reservations from selected warehouses
+        // Status ACTIVE = active reservation (pending/confirmed are legacy)
         $reservedQty = \DB::table('stock_reservations')
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId)
             ->whereIn('warehouse_id', $sourceWarehouseIds)
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['ACTIVE', 'pending', 'confirmed'])
             ->sum('qty');
         
         $availableStock = max(0, $totalStock - $reservedQty);
@@ -160,23 +191,29 @@ class VariantMarketplaceLink extends Model
     
     /**
      * Получить остаток для базового режима (basic mode)
-     * Возвращает общий остаток, конкретный склад определяется при синхронизации
+     * Если указан warehouseId - берёт с конкретного склада, иначе общий
      */
-    protected function getBasicStock($companyId, $skuId): int
+    protected function getBasicStock($companyId, $skuId, $warehouseId = null): int
     {
-        // В базовом режиме возвращаем общий остаток
-        // Конкретный склад будет определён в WildberriesStockService при синхронизации
-        $totalStock = \DB::table('stock_ledger')
+        $query = \DB::table('stock_ledger')
+            ->where('company_id', $companyId)
+            ->where('sku_id', $skuId);
+
+        // Status ACTIVE = active reservation (pending/confirmed are legacy)
+        $reserveQuery = \DB::table('stock_reservations')
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId)
-            ->sum('qty_delta');
-        
-        $reservedQty = \DB::table('stock_reservations')
-            ->where('company_id', $companyId)
-            ->where('sku_id', $skuId)
-            ->whereIn('status', ['pending', 'confirmed'])
-            ->sum('qty');
-        
+            ->whereIn('status', ['ACTIVE', 'pending', 'confirmed']);
+
+        // Если указан конкретный склад
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+            $reserveQuery->where('warehouse_id', $warehouseId);
+        }
+
+        $totalStock = $query->sum('qty_delta');
+        $reservedQty = $reserveQuery->sum('qty');
+
         return (int) max(0, $totalStock - $reservedQty);
     }
 

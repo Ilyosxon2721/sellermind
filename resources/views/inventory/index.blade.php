@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gray-50" x-data="inventoryPage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gray-50" x-data="inventoryPage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -242,7 +249,7 @@
                                         <span class="font-medium" x-text="item.product?.name || 'Товар #' + item.product_id"></span>
                                     </td>
                                     <td class="text-right">
-                                        <span x-text="item.expected_quantity"></span>
+                                        <span x-text="parseInt(item.expected_quantity)"></span>
                                     </td>
                                     <td class="text-right">
                                         <template x-if="selectedInventory?.status === 'in_progress' && !selectedInventory?.is_applied">
@@ -251,7 +258,7 @@
                                                    @change="updateItemQuantity(item)">
                                         </template>
                                         <template x-if="selectedInventory?.status !== 'in_progress' || selectedInventory?.is_applied">
-                                            <span x-text="item.actual_quantity ?? '—'"></span>
+                                            <span x-text="item.actual_quantity != null ? parseInt(item.actual_quantity) : '—'"></span>
                                         </template>
                                     </td>
                                     <td class="text-right">

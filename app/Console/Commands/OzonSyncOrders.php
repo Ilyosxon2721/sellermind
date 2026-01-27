@@ -6,6 +6,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -55,6 +56,7 @@ class OzonSyncOrders extends Command
     {
         $httpClient = app(MarketplaceHttpClient::class);
         $client = new OzonClient($httpClient);
+        $orderStockService = new OrderStockService();
 
         $this->line('  Начинаем синхронизацию заказов...');
         $startTime = microtime(true);
@@ -71,6 +73,7 @@ class OzonSyncOrders extends Command
         $created = 0;
         $updated = 0;
         $errors = 0;
+        $stockProcessed = 0;
 
         foreach ($orders as $orderData) {
             try {
@@ -95,6 +98,14 @@ class OzonSyncOrders extends Command
                     throw new \Exception('Missing posting_number in order data');
                 }
 
+                // Сохраняем старый статус для обработки остатков
+                $existingOrder = OzonOrder::where('marketplace_account_id', $account->id)
+                    ->where('posting_number', $postingNumber)
+                    ->first();
+                $oldStatus = $existingOrder?->status;
+
+                $newStatus = $rawPayload['status'] ?? $orderData['status'] ?? 'unknown';
+
                 // Найти или создать заказ
                 $order = OzonOrder::updateOrCreate(
                     [
@@ -103,7 +114,7 @@ class OzonSyncOrders extends Command
                     ],
                     [
                         'order_id' => $orderId,
-                        'status' => $rawPayload['status'] ?? $orderData['status'] ?? 'unknown',
+                        'status' => $newStatus,
                         'substatus' => $rawPayload['substatus'] ?? null,
                         'total_price' => $orderData['total_amount'] ?? 0,
                         'currency' => $orderData['currency'] ?? 'RUB',
@@ -119,13 +130,46 @@ class OzonSyncOrders extends Command
                     ]
                 );
 
-                if ($order->wasRecentlyCreated) {
+                $wasCreated = $order->wasRecentlyCreated;
+
+                if ($wasCreated) {
                     $created++;
                 } else {
                     $updated++;
                 }
 
                 $synced++;
+
+                // Обработка изменения остатков
+                if ($wasCreated || $oldStatus !== $newStatus) {
+                    try {
+                        $items = $orderStockService->getOrderItems($order, 'ozon');
+                        $stockResult = $orderStockService->processOrderStatusChange(
+                            $account,
+                            $order,
+                            $oldStatus,
+                            $newStatus,
+                            $items
+                        );
+
+                        if (($stockResult['action'] ?? 'none') !== 'none') {
+                            $stockProcessed++;
+                        }
+
+                        Log::info('OZON order stock processed', [
+                            'order_id' => $order->id,
+                            'posting_number' => $postingNumber,
+                            'old_status' => $oldStatus,
+                            'new_status' => $newStatus,
+                            'stock_result' => $stockResult,
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to process OZON order stock', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             } catch (\Exception $e) {
                 $errors++;
                 Log::error('Failed to sync OZON order', [
@@ -143,6 +187,7 @@ class OzonSyncOrders extends Command
         $this->line("    Всего обработано: {$synced}");
         $this->line("    Новых заказов: {$created}");
         $this->line("    Обновлено: {$updated}");
+        $this->line("    Остатки обработаны: {$stockProcessed}");
 
         if ($errors > 0) {
             $this->warn("    Ошибок: {$errors}");
@@ -153,6 +198,7 @@ class OzonSyncOrders extends Command
             'synced' => $synced,
             'created' => $created,
             'updated' => $updated,
+            'stock_processed' => $stockProcessed,
             'errors' => $errors,
             'duration' => $duration,
         ]);

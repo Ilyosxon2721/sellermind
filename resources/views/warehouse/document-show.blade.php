@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentPage({{ $documentId }})">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" x-data="documentPage({{ $documentId }})"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -100,7 +107,7 @@
                         <template x-for="line in lines" :key="line.id">
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="line.sku?.sku_code || line.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right" x-text="line.qty"></td>
+                                <td class="px-6 py-4 text-sm text-right" x-text="parseInt(line.qty)"></td>
                                 <td class="px-6 py-4 text-sm text-right text-gray-600" x-text="line.unit_cost ?? '—'"></td>
                                 <td class="px-6 py-4 text-sm text-right font-medium" x-text="line.total_cost ?? '—'"></td>
                             </tr>
@@ -131,7 +138,7 @@
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(row.occurred_at)"></td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + parseInt(row.qty_delta)"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
                             </tr>
                         </template>
@@ -284,7 +291,7 @@
                         <div class="p-3 bg-gray-50 rounded-xl">
                             <div class="flex items-center justify-between">
                                 <p class="native-body font-semibold" x-text="line.sku?.sku_code || line.sku_id"></p>
-                                <p class="native-body" x-text="line.qty"></p>
+                                <p class="native-body" x-text="parseInt(line.qty)"></p>
                             </div>
                             <div class="flex items-center justify-between mt-1">
                                 <p class="native-caption" x-text="line.unit_cost ? `Цена: ${line.unit_cost}` : ''"></p>
@@ -306,7 +313,7 @@
                         <div class="p-3 bg-gray-50 rounded-xl">
                             <div class="flex items-center justify-between">
                                 <p class="native-body font-semibold" x-text="row.sku?.sku_code || row.sku_id"></p>
-                                <p class="native-body font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></p>
+                                <p class="native-body font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + parseInt(row.qty_delta)"></p>
                             </div>
                             <div class="flex items-center justify-between mt-1">
                                 <p class="native-caption" x-text="formatDate(row.occurred_at)"></p>

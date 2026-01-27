@@ -1,11 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="ozonOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only">
-    
-    <x-sidebar />
-    
-    <div class="flex-1 flex flex-col overflow-hidden font-sans">
+<div x-data="ozonOrdersPage()" x-init="init()" class="flex h-screen bg-[#f5f5f5] browser-only"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 flex flex-col overflow-hidden font-sans"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Ozon Header -->
         <header class="bg-white border-b border-gray-200">
             <div class="px-6 py-4">
@@ -191,7 +198,7 @@
                                                 <div class="font-medium text-[#1a1a1a]" x-text="product.name || product.offer_id"></div>
                                                 <div class="text-gray-500 text-xs mt-1">
                                                     <span>SKU: </span><span x-text="product.sku || product.offer_id"></span>
-                                                    <span class="ml-3">Кол-во: </span><span x-text="product.quantity"></span>
+                                                    <span class="ml-3">Кол-во: </span><span x-text="parseInt(product.quantity)"></span>
                                                 </div>
                                             </div>
                                             <div class="text-right">
@@ -954,7 +961,7 @@ function ozonOrdersPage() {
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="font-medium text-sm" x-text="product.name || product.offer_id"></p>
                                     <div class="flex justify-between mt-1">
-                                        <span class="native-caption text-gray-500" x-text="(product.quantity || 1) + ' шт.'"></span>
+                                        <span class="native-caption text-gray-500" x-text="parseInt(product.quantity || 1) + ' шт.'"></span>
                                         <span class="font-medium" x-text="formatPrice(product.price)"></span>
                                     </div>
                                 </div>

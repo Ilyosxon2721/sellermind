@@ -15,7 +15,7 @@ class SaleForm
     {
         return $schema
             ->components([
-                Section::make('Основная информация')
+                Section::make(__('filament.sections.basic_info'))
                     ->schema([
                         Select::make('company_id')
                             ->label('Компания')
@@ -47,7 +47,7 @@ class SaleForm
                             ]),
                     ])->columns(2),
 
-                Section::make('Детали заказа')
+                Section::make(__('filament.sections.order_details'))
                     ->schema([
                         Select::make('counterparty_id')
                             ->label('Контрагент')
@@ -64,7 +64,7 @@ class SaleForm
                             ->numeric(),
                     ])->columns(3),
 
-                Section::make('Сумма и Оплата')
+                Section::make(__('filament.sections.amount_payment'))
                     ->schema([
                         TextInput::make('subtotal')
                             ->label('Подытог')
@@ -87,7 +87,7 @@ class SaleForm
                             ->default('UZS'),
                     ])->columns(4),
 
-                Section::make('Статус и Даты')
+                Section::make(__('filament.sections.status_dates'))
                     ->schema([
                         Select::make('status')
                             ->label('Статус')
@@ -105,7 +105,7 @@ class SaleForm
                             ->label('Завершен'),
                     ])->columns(3),
 
-                Section::make('Дополнительно')
+                Section::make(__('filament.sections.additional'))
                     ->schema([
                         Textarea::make('notes')
                             ->label('Заметки')

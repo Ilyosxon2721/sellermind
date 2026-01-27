@@ -24,17 +24,17 @@ class MarketplaceAccountIssueResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'Проблема аккаунта';
+        return __('filament.resources.marketplace_account_issue.label');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Проблемы аккаунтов';
+        return __('filament.resources.marketplace_account_issue.plural');
     }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Маркетплейсы';
+        return __('filament.nav_groups.marketplaces');
     }
 
     public static function form(Schema $schema): Schema

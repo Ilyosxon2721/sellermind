@@ -20,6 +20,7 @@ class StockLedger extends Model
         'sku_id',
         'qty_delta',
         'cost_delta',
+        'currency_code',
         'document_id',
         'document_line_id',
         'source_type',

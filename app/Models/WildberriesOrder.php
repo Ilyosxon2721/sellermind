@@ -168,6 +168,44 @@ class WildberriesOrder extends Model
     }
 
     /**
+     * Get currency code for this order
+     * Statistics API returns amounts in RUB, but we can detect country-based currency
+     *
+     * @return string 3-letter currency code
+     */
+    public function getCurrencyCode(): string
+    {
+        // Statistics API always returns amounts in RUB
+        // (WB converts all to RUB for reporting)
+        return 'RUB';
+    }
+
+    /**
+     * Get the original sale currency based on country
+     * This is informational - amounts in DB are already in RUB
+     *
+     * @return string|null Original currency code or null
+     */
+    public function getOriginalSaleCurrency(): ?string
+    {
+        $country = $this->country_name ?? ($this->raw_data['countryName'] ?? null);
+
+        if (!$country) {
+            return null;
+        }
+
+        return match ($country) {
+            'Россия' => 'RUB',
+            'Беларусь' => 'BYN',
+            'Казахстан' => 'KZT',
+            'Кыргызстан' => 'KGS',
+            'Армения' => 'AMD',
+            'Узбекистан' => 'UZS',
+            default => null,
+        };
+    }
+
+    /**
      * Check if order is completed sale
      */
     public function isCompletedSale(): bool
@@ -200,5 +238,48 @@ class WildberriesOrder extends Model
     public function scopeByStatus($query, string $status)
     {
         return $query->where('status', $status);
+    }
+
+    /**
+     * Scope: completed sales (is_realization=true)
+     */
+    public function scopeSold($query)
+    {
+        return $query->where('is_realization', true)
+            ->where('is_cancel', false)
+            ->where('is_return', false);
+    }
+
+    /**
+     * Scope: orders in transit (not realized, not cancelled)
+     */
+    public function scopeInTransit($query)
+    {
+        return $query->where('is_realization', false)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->where(function ($q) {
+                $q->whereNull('wb_status')
+                  ->orWhereNotIn('wb_status', ['ready_for_pickup']);
+            });
+    }
+
+    /**
+     * Scope: orders awaiting pickup at ПВЗ
+     */
+    public function scopeAwaitingPickup($query)
+    {
+        return $query->where('is_realization', false)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->where('wb_status', 'ready_for_pickup');
+    }
+
+    /**
+     * Scope: cancelled orders
+     */
+    public function scopeCancelled($query)
+    {
+        return $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
     }
 }

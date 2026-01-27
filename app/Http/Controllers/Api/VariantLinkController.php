@@ -31,6 +31,7 @@ class VariantLinkController extends Controller
         $validated = $request->validate([
             'product_variant_id' => 'required|integer|exists:product_variants,id',
             'external_sku_id' => 'nullable|string', // For Uzum SKU-level linking
+            'marketplace_barcode' => 'nullable|string', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
             'sync_stock_enabled' => 'boolean',
             'sync_price_enabled' => 'boolean',
         ]);
@@ -60,6 +61,25 @@ class VariantLinkController extends Controller
             $externalSku = $mpProduct->external_sku ?? $variant->sku;
         }
 
+        // Для Uzum: автоматически получаем marketplace_barcode из skuList, если не передан вручную
+        $marketplaceBarcode = $validated['marketplace_barcode'] ?? null;
+        if (!$marketplaceBarcode && $account->marketplace === 'uzum') {
+            $skuList = $mpProduct->raw_payload['skuList'] ?? [];
+            $externalSkuId = $validated['external_sku_id'] ?? null;
+
+            foreach ($skuList as $sku) {
+                // Ищем SKU по ID или берём первый с баркодом
+                if ($externalSkuId && (string)($sku['skuId'] ?? '') === $externalSkuId) {
+                    $marketplaceBarcode = $sku['barcode'] ?? null;
+                    break;
+                }
+            }
+            // Если не нашли по ID, берём первый баркод
+            if (!$marketplaceBarcode && !empty($skuList[0]['barcode'])) {
+                $marketplaceBarcode = $skuList[0]['barcode'];
+            }
+        }
+
         // Build unique key for the link (include SKU ID for multi-SKU products like Uzum)
         $linkKey = [
             'product_variant_id' => $variant->id,
@@ -81,16 +101,36 @@ class VariantLinkController extends Controller
                 'external_offer_id' => $externalOfferId,
                 'external_sku_id' => $validated['external_sku_id'] ?? null,
                 'external_sku' => $externalSku,
+                'marketplace_barcode' => $marketplaceBarcode, // Баркод маркетплейса (автозаполнение из API или ручной ввод)
                 'is_active' => true,
                 'sync_stock_enabled' => $validated['sync_stock_enabled'] ?? true,
                 'sync_price_enabled' => $validated['sync_price_enabled'] ?? false,
             ]
         );
 
+        // Автоматическая синхронизация остатков после привязки (если включена в настройках аккаунта)
+        $syncResult = null;
+        $autoSyncEnabled = $account->isAutoSyncOnLinkEnabled();
+
+        if ($link->sync_stock_enabled && $autoSyncEnabled) {
+            try {
+                $syncResult = $this->stockSyncService->syncLinkStock($link);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto stock sync after linking failed', [
+                    'link_id' => $link->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $warehouseStock = $variant->getTotalWarehouseStock();
+
         return response()->json([
             'success' => true,
-            'message' => 'Товар успешно привязан',
+            'message' => 'Товар успешно привязан' . ($syncResult ? ' и остатки синхронизированы' : ''),
             'link' => $link->load(['variant']),
+            'stock_synced' => $syncResult !== null,
+            'current_stock' => (int) $warehouseStock,
         ]);
     }
 
@@ -151,19 +191,25 @@ class VariantLinkController extends Controller
             ->where('is_active', true)
             ->with(['variant.product', 'variant.mainImage'])
             ->get()
-            ->map(fn($link) => [
-                'id' => $link->id,
-                'external_sku_id' => $link->external_sku_id,
-                'external_sku' => $link->external_sku,
-                'variant' => $link->variant ? [
-                    'id' => $link->variant->id,
-                    'sku' => $link->variant->sku,
-                    'name' => $link->variant->product?->name,
-                    'stock' => $link->variant->stock_default,
-                    'options' => $link->variant->option_values_summary,
-                    'barcode' => $link->variant->barcode,
-                ] : null,
-            ]);
+            ->map(function($link) {
+                $warehouseStock = $link->variant ? $link->variant->getTotalWarehouseStock() : 0;
+                return [
+                    'id' => $link->id,
+                    'external_sku_id' => $link->external_sku_id,
+                    'external_sku' => $link->external_sku,
+                    'marketplace_barcode' => $link->marketplace_barcode, // Баркод маркетплейса
+                    'variant' => $link->variant ? [
+                        'id' => $link->variant->id,
+                        'sku' => $link->variant->sku,
+                        'name' => $link->variant->product?->name,
+                        'stock' => (int) $warehouseStock,
+                        'warehouse_stock' => (int) $warehouseStock,
+                        'stock_default' => $link->variant->stock_default,
+                        'options' => $link->variant->option_values_summary,
+                        'barcode' => $link->variant->barcode,
+                    ] : null,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -301,23 +347,27 @@ class VariantLinkController extends Controller
 
         return response()->json([
             'success' => true,
-            'variants' => $variants->map(fn($v) => [
-                'id' => $v->id,
-                'sku' => $v->sku,
-                'barcode' => $v->barcode,
-                'name' => $v->product?->name,
-                'product' => $v->product ? [
-                    'id' => $v->product->id,
-                    'name' => $v->product->name,
-                ] : null,
-                'option_values_summary' => $v->option_values_summary,
-                'options' => $v->option_values_summary,
-                'stock' => $v->stock_default,
-                'stock_default' => $v->stock_default,
-                'price' => $v->price_default,
-                'price_default' => $v->price_default,
-                'image' => $v->mainImage?->url,
-            ]),
+            'variants' => $variants->map(function($v) {
+                $warehouseStock = $v->getTotalWarehouseStock();
+                return [
+                    'id' => $v->id,
+                    'sku' => $v->sku,
+                    'barcode' => $v->barcode,
+                    'name' => $v->product?->name,
+                    'product' => $v->product ? [
+                        'id' => $v->product->id,
+                        'name' => $v->product->name,
+                    ] : null,
+                    'option_values_summary' => $v->option_values_summary,
+                    'options' => $v->option_values_summary,
+                    'stock' => (int) $warehouseStock,
+                    'stock_default' => $v->stock_default,
+                    'warehouse_stock' => (int) $warehouseStock,
+                    'price' => $v->price_default,
+                    'price_default' => $v->price_default,
+                    'image' => $v->mainImage?->url,
+                ];
+            }),
         ]);
     }
 
@@ -336,14 +386,40 @@ class VariantLinkController extends Controller
             ->with(['account', 'marketplaceProduct'])
             ->get();
 
+        $warehouseStock = $variant->getTotalWarehouseStock();
+
         return response()->json([
             'success' => true,
             'variant' => [
                 'id' => $variant->id,
                 'sku' => $variant->sku,
-                'stock' => $variant->stock_default,
+                'stock' => (int) $warehouseStock,
+                'warehouse_stock' => (int) $warehouseStock,
+                'stock_default' => $variant->stock_default,
             ],
             'links' => $links,
+        ]);
+    }
+
+    /**
+     * Автоматически привязать товары маркетплейса к внутренним вариантам
+     */
+    public function autoLink(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        $this->authorizeAccount($request, $account);
+
+        $autoLinkService = app(\App\Services\Marketplaces\AutoLinkService::class);
+        $stats = $autoLinkService->autoLinkForAccount($account);
+
+        $newlyLinked = $stats['linked_by_barcode'] + $stats['linked_by_sku'] + $stats['linked_by_article'];
+
+        return response()->json([
+            'success' => true,
+            'message' => $newlyLinked > 0
+                ? "Привязано {$newlyLinked} товаров"
+                : 'Новых привязок не найдено',
+            'stats' => $stats,
+            'newly_linked' => $newlyLinked,
         ]);
     }
 

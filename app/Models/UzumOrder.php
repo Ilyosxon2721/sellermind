@@ -16,6 +16,7 @@ class UzumOrder extends Model
         'external_order_id',
         'status',
         'status_normalized',
+        'uzum_status', // Оригинальный статус из API Uzum
         'delivery_type',
         'shop_id',
         'customer_name',
@@ -32,6 +33,11 @@ class UzumOrder extends Model
         'delivery_longitude',
         'delivery_latitude',
         'raw_payload',
+        // Stock tracking fields
+        'stock_status',
+        'stock_reserved_at',
+        'stock_sold_at',
+        'stock_released_at',
     ];
 
     protected $casts = [
@@ -39,6 +45,9 @@ class UzumOrder extends Model
         'delivered_at' => 'datetime',
         'raw_payload' => 'array',
         'total_amount' => 'decimal:2',
+        'stock_reserved_at' => 'datetime',
+        'stock_sold_at' => 'datetime',
+        'stock_released_at' => 'datetime',
     ];
 
     public function account(): BelongsTo

@@ -2,12 +2,18 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div x-data="promotionsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50">
-
-    <x-sidebar></x-sidebar>
+<div x-data="promotionsPage()" x-init="init()" class="browser-only flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
@@ -145,6 +151,11 @@ function promotionsPage() {
         promotions: [],
         loading: false,
 
+        getToken() {
+            const t = localStorage.getItem('_x_auth_token');
+            return t ? JSON.parse(t) : null;
+        },
+
         async init() {
             await this.loadPromotions();
         },
@@ -154,7 +165,7 @@ function promotionsPage() {
             try {
                 const response = await fetch('/api/promotions', {
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
                 const data = await response.json();
@@ -177,7 +188,7 @@ function promotionsPage() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                     body: JSON.stringify({
                         apply_immediately: true,
@@ -220,7 +231,7 @@ function promotionsPage() {
                 const response = await fetch(`/api/promotions/${promotion.id}/${action}`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${window.api.getToken()}`,
+                        'Authorization': `Bearer ${this.getToken()}`,
                     },
                 });
 

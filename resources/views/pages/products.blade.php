@@ -1,19 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="productPage()" class="flex h-screen bg-gray-50">
+<div x-data="productPage()" class="flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
 
-    <!-- Sidebar -->
-    <x-sidebar />
+    <!-- Sidebar (hidden when top/bottom nav is active) -->
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Товары</h1>
-                    <p class="text-gray-600 text-sm">Создание карточек с полями маркетплейсов</p>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ __('products.title') }}</h1>
+                    <p class="text-gray-600 text-sm">{{ __('products.subtitle') }}</p>
                 </div>
                 <div class="flex items-center space-x-3">
                     <button @click="exportProducts()"
@@ -21,7 +28,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
-                        <span>Экспорт</span>
+                        <span>{{ __('products.export') }}</span>
                     </button>
 
                     <button @click="openImportModal()"
@@ -29,14 +36,14 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                         </svg>
-                        <span>Импорт</span>
+                        <span>{{ __('products.import') }}</span>
                     </button>
 
                     <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center space-x-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        <span>Добавить товар</span>
+                        <span>{{ __('products.add_product') }}</span>
                     </button>
                 </div>
             </div>
@@ -51,7 +58,7 @@
                            x-model="search"
                            @input.debounce.300ms="loadProducts()"
                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                           placeholder="Поиск по названию, SKU, бренду...">
+                           placeholder="{{ __('products.search_placeholder') }}">
                 </div>
             </div>
         </header>
@@ -66,10 +73,10 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">Нет товаров</h3>
-                    <p class="text-gray-600 mb-4">Добавьте первый товар, чтобы начать</p>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">{{ __('products.no_products') }}</h3>
+                    <p class="text-gray-600 mb-4">{{ __('products.add_first_product') }}</p>
                     <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
-                        Добавить товар
+                        {{ __('products.add_product') }}
                     </button>
                 </div>
 
@@ -92,23 +99,23 @@
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between">
                                     <h3 class="font-semibold text-gray-900 truncate" x-text="product.name_internal"></h3>
-                                    <span class="text-xs text-gray-500" x-text="product.sku || 'SKU нет'"></span>
+                                    <span class="text-xs text-gray-500" x-text="product.sku || '{{ __('products.no_sku') }}'"></span>
                                 </div>
-                                <p class="text-xs text-gray-500" x-text="product.brand || 'Бренд не указан'"></p>
+                                <p class="text-xs text-gray-500" x-text="product.brand || '{{ __('products.no_brand') }}'"></p>
                                 <div class="flex items-center space-x-2 mt-2 text-sm text-gray-700">
-                                    <span x-text="product.category || 'Категория'"></span>
+                                    <span x-text="product.category || '{{ __('products.category') }}'"></span>
                                     <span class="text-gray-300">•</span>
-                                    <span x-text="product.barcode || 'Штрихкод'"></span>
+                                    <span x-text="product.barcode || '{{ __('products.barcode') }}'"></span>
                                 </div>
                                 <div class="flex items-center space-x-3 mt-2 text-sm">
-                                    <span class="text-gray-900 font-medium" x-text="product.price ? formatMoney(product.price) : 'Цена'"></span>
-                                    <span class="text-gray-500">Остаток:</span>
-                                    <span class="text-gray-900 font-medium" x-text="product.stock_quantity ?? 0"></span>
+                                    <span class="text-gray-900 font-medium" x-text="product.price ? formatMoney(product.price) : '{{ __('products.price') }}'"></span>
+                                    <span class="text-gray-500">{{ __('products.stock') }}</span>
+                                    <span class="text-gray-900 font-medium" x-text="parseInt(product.stock_quantity ?? 0)"></span>
                                 </div>
                             </div>
                             <div class="flex flex-col space-y-2">
-                                <button @click.stop="edit(product)" class="text-indigo-600 hover:text-indigo-700 text-sm">Редактировать</button>
-                                <button @click.stop="confirmDelete(product)" class="text-red-600 hover:text-red-700 text-sm">Удалить</button>
+                                <button @click.stop="edit(product)" class="text-indigo-600 hover:text-indigo-700 text-sm">{{ __('products.edit') }}</button>
+                                <button @click.stop="confirmDelete(product)" class="text-red-600 hover:text-red-700 text-sm">{{ __('products.delete') }}</button>
                             </div>
                         </div>
                     </template>
@@ -120,8 +127,8 @@
                 <div class="p-6 space-y-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-500" x-text="isEditing ? 'Редактирование' : 'Создание'"></p>
-                            <h2 class="text-xl font-semibold text-gray-900">Карточка товара</h2>
+                            <p class="text-sm text-gray-500" x-text="isEditing ? '{{ __('products.editing') }}' : '{{ __('products.creating') }}'"></p>
+                            <h2 class="text-xl font-semibold text-gray-900">{{ __('products.product_card') }}</h2>
                         </div>
                         <button @click="closeForm()" class="text-gray-400 hover:text-gray-600">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,9 +139,9 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-4">
-                            <h3 class="text-sm font-semibold text-gray-900">Основное</h3>
+                            <h3 class="text-sm font-semibold text-gray-900">{{ __('products.main') }}</h3>
                             <div>
-                                <label class="block text-sm text-gray-700 mb-1">Название *</label>
+                                <label class="block text-sm text-gray-700 mb-1">{{ __('products.name') }} *</label>
                                 <input type="text" x-model="form.name_internal" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                             </div>
                             <div class="grid grid-cols-2 gap-4">
@@ -143,77 +150,77 @@
                                     <input type="text" x-model="form.sku" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Штрихкод</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.barcode') }}</label>
                                     <input type="text" x-model="form.barcode" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Категория</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.category') }}</label>
                                     <input type="text" x-model="form.category" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Бренд</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.brand') }}</label>
                                     <input type="text" x-model="form.brand" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm text-gray-700 mb-1">Описание</label>
+                                <label class="block text-sm text-gray-700 mb-1">{{ __('products.description') }}</label>
                                 <textarea x-model="form.description" rows="4" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                             </div>
                         </div>
 
                         <div class="space-y-4">
-                            <h3 class="text-sm font-semibold text-gray-900">Цены и остатки</h3>
+                            <h3 class="text-sm font-semibold text-gray-900">{{ __('products.prices_and_stock') }}</h3>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Цена</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.price') }}</label>
                                     <input type="number" step="0.01" x-model="form.price" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Остаток</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.stock') }}</label>
                                     <input type="number" x-model="form.stock_quantity" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                             </div>
 
-                            <h3 class="text-sm font-semibold text-gray-900">Габариты</h3>
+                            <h3 class="text-sm font-semibold text-gray-900">{{ __('products.dimensions') }}</h3>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Вес, кг</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.weight_kg') }}</label>
                                     <input type="number" step="0.001" x-model="form.weight_kg" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Длина, см</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.length_cm') }}</label>
                                     <input type="number" x-model="form.length_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Ширина, см</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.width_cm') }}</label>
                                     <input type="number" x-model="form.width_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm text-gray-700 mb-1">Высота, см</label>
+                                    <label class="block text-sm text-gray-700 mb-1">{{ __('products.height_cm') }}</label>
                                     <input type="number" x-model="form.height_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
                             </div>
 
-                            <h3 class="text-sm font-semibold text-gray-900">Характеристики</h3>
+                            <h3 class="text-sm font-semibold text-gray-900">{{ __('products.attributes') }}</h3>
                             <div class="space-y-2">
                                 <template x-for="(attr, index) in attributes" :key="index">
                                     <div class="flex space-x-2">
-                                        <input type="text" x-model="attr.key" placeholder="Имя" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                        <input type="text" x-model="attr.value" placeholder="Значение" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                        <input type="text" x-model="attr.key" placeholder="{{ __('products.attr_name') }}" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                        <input type="text" x-model="attr.value" placeholder="{{ __('products.attr_value') }}" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                         <button type="button" @click="removeAttribute(index)" class="px-3 py-2 text-red-600 hover:text-red-700">×</button>
                                     </div>
                                 </template>
-                                <button type="button" @click="addAttribute()" class="text-indigo-600 text-sm hover:text-indigo-700">+ Добавить характеристику</button>
+                                <button type="button" @click="addAttribute()" class="text-indigo-600 text-sm hover:text-indigo-700">{{ __('products.add_attribute') }}</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex justify-end space-x-3">
-                        <button @click="closeForm()" class="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Отмена</button>
+                        <button @click="closeForm()" class="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">{{ __('products.cancel') }}</button>
                         <button @click="saveProduct()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                            <span x-text="isEditing ? 'Сохранить' : 'Создать'"></span>
+                            <span x-text="isEditing ? '{{ __('products.save') }}' : '{{ __('products.create') }}'"></span>
                         </button>
                     </div>
                 </div>

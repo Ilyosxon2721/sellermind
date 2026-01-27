@@ -12,7 +12,48 @@ class Company extends Model
     protected $fillable = [
         'name',
         'slug',
+        'settings',
     ];
+
+    protected $casts = [
+        'settings' => 'array',
+    ];
+
+    /**
+     * Настройки по умолчанию
+     */
+    public static array $defaultSettings = [
+        'auto_sync_stock_on_link' => true,      // Автосинхронизация при привязке товара
+        'auto_sync_stock_on_change' => true,    // Автосинхронизация при изменении остатков
+        'stock_sync_enabled' => true,           // Общий выключатель синхронизации остатков
+    ];
+
+    /**
+     * Получить значение настройки
+     */
+    public function getSetting(string $key, mixed $default = null): mixed
+    {
+        $settings = $this->settings ?? [];
+        return $settings[$key] ?? self::$defaultSettings[$key] ?? $default;
+    }
+
+    /**
+     * Установить значение настройки
+     */
+    public function setSetting(string $key, mixed $value): void
+    {
+        $settings = $this->settings ?? [];
+        $settings[$key] = $value;
+        $this->settings = $settings;
+    }
+
+    /**
+     * Получить все настройки с дефолтами
+     */
+    public function getAllSettings(): array
+    {
+        return array_merge(self::$defaultSettings, $this->settings ?? []);
+    }
 
     protected static function boot()
     {

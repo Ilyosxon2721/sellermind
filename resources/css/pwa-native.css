@@ -128,7 +128,42 @@
    NATIVE BUTTONS
    ============================================ */
 
-/* iOS-style filled button */
+/* Base button styles - works in both PWA and regular browser */
+.native-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    padding: 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    background: #007AFF;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.native-btn:hover {
+    opacity: 0.9;
+}
+
+.native-btn:active {
+    opacity: 0.7;
+}
+
+.native-btn-secondary {
+    background: rgba(0, 122, 255, 0.1);
+    color: #007AFF;
+}
+
+.native-btn-destructive {
+    background: #dc2626;
+    color: white;
+}
+
+/* iOS-style filled button (PWA overrides) */
 .pwa-mode .native-btn {
     display: flex;
     align-items: center;
@@ -365,7 +400,38 @@
    NATIVE MODALS & SHEETS
    ============================================ */
 
-/* Full-screen modal overlay */
+/* Full-screen modal overlay - works in both PWA and regular browser */
+.native-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* iOS-style sheet - works in both PWA and regular browser */
+.native-sheet {
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Sheet handle - visible in regular mode too */
+.native-sheet-handle {
+    width: 36px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    margin: -10px auto 20px;
+}
+
+/* PWA mode overrides - bottom sheet style */
 .pwa-mode .native-modal-overlay {
     position: fixed;
     inset: 0;
@@ -413,6 +479,31 @@
    NATIVE TYPOGRAPHY
    ============================================ */
 
+/* Base typography styles - works in both PWA and regular browser */
+.native-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #000;
+}
+
+.native-headline {
+    font-size: 17px;
+    font-weight: 600;
+    color: #000;
+}
+
+.native-body {
+    font-size: 15px;
+    font-weight: 400;
+    color: #000;
+}
+
+.native-caption {
+    font-size: 13px;
+    color: #8e8e93;
+}
+
+/* PWA mode overrides */
 .pwa-mode .native-title {
     font-size: 34px;
     font-weight: 700;

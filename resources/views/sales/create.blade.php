@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gray-50" x-data="saleCreatePage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gray-50" x-data="saleCreatePage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -80,7 +87,7 @@
                                 <select class="form-select" x-model="sale.company_id" @change="onCompanyChange()">
                                     <option value="">Выберите компанию</option>
                                     <template x-for="company in companies" :key="company.id">
-                                        <option :value="company.id" x-text="company.name"></option>
+                                        <option :value="String(company.id)" x-text="company.name"></option>
                                     </template>
                                 </select>
                                 <p class="text-xs text-gray-500 mt-1" x-show="companies.length === 0">
@@ -129,7 +136,7 @@
                                 <select class="form-select" x-model="sale.warehouse_id" @change="onWarehouseChange()">
                                     <option value="">Выберите склад</option>
                                     <template x-for="wh in warehouses" :key="wh.id">
-                                        <option :value="wh.id" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')"></option>
+                                        <option :value="String(wh.id)" x-text="wh.name + (wh.code ? ' (' + wh.code + ')' : '')"></option>
                                     </template>
                                 </select>
                             </div>
@@ -405,6 +412,22 @@
 
 <script>
 function saleCreatePage() {
+    // Helper function to get headers with CSRF token and Bearer token
+    const getHeaders = () => {
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        };
+        // Try to get Bearer token from Alpine store (for API auth)
+        const token = window.Alpine?.store?.('auth')?.token || localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    };
+
     return {
         saving: false,
         autoGenerateNumber: true,
@@ -420,7 +443,7 @@ function saleCreatePage() {
         sale: {
             sale_number: '',
             sale_date: new Date().toISOString().split('T')[0],
-            company_id: null,
+            company_id: '',
             company_name: '',
             counterparty_id: null,
             warehouse_id: '',
@@ -468,18 +491,18 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/companies', {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
-                    this.companies = data.data || [];
-                    // Select first company by default
+                    // API returns { companies: [...] }
+                    this.companies = data.companies || data.data || [];
+                    // Select first company by default (use String for select compatibility)
                     if (this.companies.length > 0) {
-                        this.sale.company_id = this.companies[0].id;
-                        this.sale.company_name = this.companies[0].name;
+                        this.$nextTick(() => {
+                            this.sale.company_id = String(this.companies[0].id);
+                            this.sale.company_name = this.companies[0].name;
+                        });
                     }
                 } else {
                     console.error('Load companies failed:', resp.status, resp.statusText);
@@ -495,17 +518,17 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/sales-management/warehouses', {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
-                    this.warehouses = data.data || [];
-                    // Select first warehouse by default
+                    // API returns { data: [...] }
+                    this.warehouses = data.warehouses || data.data || [];
+                    // Select first warehouse by default (use String for select compatibility)
                     if (this.warehouses.length > 0) {
-                        this.sale.warehouse_id = this.warehouses[0].id;
+                        this.$nextTick(() => {
+                            this.sale.warehouse_id = String(this.warehouses[0].id);
+                        });
                     }
                 } else {
                     console.error('Load warehouses failed:', resp.status, resp.statusText);
@@ -516,7 +539,8 @@ function saleCreatePage() {
         },
 
         onCompanyChange() {
-            const company = this.companies.find(c => c.id == this.sale.company_id);
+            const companyId = parseInt(this.sale.company_id);
+            const company = this.companies.find(c => c.id === companyId);
             if (company) {
                 this.sale.company_name = company.name;
             }
@@ -540,10 +564,7 @@ function saleCreatePage() {
                 const params = new URLSearchParams({ search: this.counterpartySearch });
                 const resp = await fetch(`/api/sales-management/counterparties?${params}`, {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -573,10 +594,8 @@ function saleCreatePage() {
             try {
                 const resp = await fetch('/api/counterparties', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    credentials: 'same-origin',
+                    headers: getHeaders(),
                     body: JSON.stringify({
                         name: this.newCounterparty.name,
                         inn: this.newCounterparty.inn,
@@ -625,10 +644,7 @@ function saleCreatePage() {
                 });
                 const resp = await fetch(`/api/sales-management/products?${params}`, {
                     credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    headers: getHeaders()
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -749,9 +765,9 @@ function saleCreatePage() {
                     type: 'manual',
                     source: 'manual',
                     sale_number: this.sale.sale_number,
-                    company_id: this.sale.company_id,
+                    company_id: parseInt(this.sale.company_id) || null,
                     counterparty_id: this.sale.counterparty_id || null,
-                    warehouse_id: this.sale.warehouse_id,
+                    warehouse_id: parseInt(this.sale.warehouse_id) || null,
                     currency: this.sale.currency,
                     notes: this.sale.notes,
                     status: status,
@@ -760,10 +776,8 @@ function saleCreatePage() {
 
                 const resp = await fetch('/api/sales-management', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    credentials: 'same-origin',
+                    headers: getHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -773,11 +787,17 @@ function saleCreatePage() {
                     return data.data.id;
                 } else {
                     const error = await resp.json();
-                    alert('Ошибка: ' + (error.message || 'Не удалось сохранить'));
+                    console.error('Save sale error response:', error);
+                    let errorMsg = error.error || error.message || 'Не удалось сохранить';
+                    if (error.errors) {
+                        // Validation errors
+                        errorMsg = Object.values(error.errors).flat().join('\n');
+                    }
+                    alert('Ошибка: ' + errorMsg);
                 }
             } catch (e) {
                 console.error('Save sale error:', e);
-                alert('Ошибка сохранения продажи');
+                alert('Ошибка сохранения: ' + e.message);
             } finally {
                 this.saving = false;
             }
@@ -788,10 +808,8 @@ function saleCreatePage() {
             try {
                 const resp = await fetch(`/api/sales-management/${saleId}/confirm`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
+                    credentials: 'same-origin',
+                    headers: getHeaders()
                 });
 
                 if (resp.ok) {
@@ -799,10 +817,13 @@ function saleCreatePage() {
                     window.location.href = '/sales';
                 } else {
                     const error = await resp.json();
-                    alert('Ошибка подтверждения: ' + (error.message || error.error));
+                    console.error('Confirm sale error response:', error);
+                    const errorDetails = error.error || error.message || 'Неизвестная ошибка';
+                    alert('Ошибка подтверждения: ' + errorDetails);
                 }
             } catch (e) {
                 console.error('Confirm sale error:', e);
+                alert('Ошибка сети: ' + e.message);
             }
         },
 
@@ -869,7 +890,7 @@ function saleCreatePage() {
                         <select class="native-input w-full mt-1" x-model="sale.company_id" @change="onCompanyChange()">
                             <option value="">Выберите</option>
                             <template x-for="company in companies" :key="company.id">
-                                <option :value="company.id" x-text="company.name"></option>
+                                <option :value="String(company.id)" x-text="company.name"></option>
                             </template>
                         </select>
                     </div>
@@ -879,7 +900,7 @@ function saleCreatePage() {
                         <select class="native-input w-full mt-1" x-model="sale.warehouse_id" @change="onWarehouseChange()">
                             <option value="">Выберите</option>
                             <template x-for="wh in warehouses" :key="wh.id">
-                                <option :value="wh.id" x-text="wh.name"></option>
+                                <option :value="String(wh.id)" x-text="wh.name"></option>
                             </template>
                         </select>
                     </div>

@@ -7,6 +7,22 @@
     <title>{{ config('app.name', 'SellerMind') }}</title>
     <meta name="description" content="Платформа управления продажами на маркетплейсах">
 
+    <!-- SEO & Social Media Meta Tags -->
+    <meta property="og:title" content="SellerMind - Управление маркетплейсами">
+    <meta property="og:description" content="Платформа управления продажами на маркетплейсах Wildberries, Ozon, Uzum">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ config('app.url') }}">
+    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+    
+    <!--  Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SellerMind - Управление маркетплейсами">
+    <meta name="twitter:description" content="Платформа управления продажами на маркетплейсах">
+    <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
+    
+    <!-- Robots (noindex for internal app pages) -->
+    <meta name="robots" content="noindex, nofollow">
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -108,6 +124,9 @@
     <x-splash-screen />
 
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
+        <!-- Hamburger Menu & Sidebar Overlay (Mobile Only) -->
+        <x-hamburger-menu />
+        
         @yield('content')
     </div>
 

@@ -2,10 +2,17 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="ledgerPage()">
-    <x-sidebar />
+<div class="browser-only flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50" x-data="ledgerPage()"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -100,7 +107,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + row.qty_delta"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + parseInt(row.qty_delta)"></td>
                             </tr>
                         </template>
                         </tbody>
@@ -251,7 +258,7 @@
                 <div class="native-card">
                     <div class="flex items-start justify-between mb-2">
                         <p class="native-body font-semibold text-indigo-600" x-text="item.sku_code"></p>
-                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty > 0 ? '+' : '') + item.qty"></span>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty > 0 ? '+' : '') + parseInt(item.qty)"></span>
                     </div>
                     <p class="native-caption" x-text="item.product_name || '—'"></p>
                     <div class="flex items-center justify-between mt-2">

@@ -357,8 +357,16 @@ class ProductBulkController extends Controller
 
                 case 'update_stock':
                     if (isset($request->data['stock_default'])) {
-                        $updated = ProductVariant::whereIn('id', $validVariants)
-                            ->update(['stock_default' => (int) $request->data['stock_default']]);
+                        $newStock = (int) $request->data['stock_default'];
+                        // Use Eloquent model updates to trigger ProductVariantObserver
+                        // which fires StockUpdated event for marketplace sync
+                        $variants = ProductVariant::whereIn('id', $validVariants)->get();
+                        foreach ($variants as $variant) {
+                            if ($variant->stock_default !== $newStock) {
+                                $variant->update(['stock_default' => $newStock]);
+                                $updated++;
+                            }
+                        }
                     }
                     break;
 

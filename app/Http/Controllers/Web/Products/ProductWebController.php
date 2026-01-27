@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Products;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
+use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -85,16 +86,21 @@ class ProductWebController extends Controller
         $user = $request->user();
         $companyId = $user?->company_id;
 
+        // Global options for sizes and colors (universal + company-specific)
+        $globalSizes = \App\Models\GlobalOption::sizesWithCompany($companyId);
+        $globalColors = \App\Models\GlobalOption::colorsWithCompany($companyId);
+
         // Redirect to company setup if no company
         if (!$companyId) {
             return view('products.edit', [
                 'product' => new Product(),
                 'categories' => collect(),
                 'attributesList' => collect(),
-                'globalSizes' => collect(),
-                'globalColors' => collect(),
+                'globalSizes' => $globalSizes,
+                'globalColors' => $globalColors,
                 'initialState' => $this->buildInitialState(null),
                 'noCompany' => true,
+                'currency' => 'UZS',
             ]);
         }
 
@@ -105,9 +111,9 @@ class ProductWebController extends Controller
 
         $attributes = Attribute::orderBy('name')->get();
 
-        // Global options for sizes and colors
-        $globalSizes = \App\Models\GlobalOption::sizes($companyId)?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors($companyId)?->activeValues ?? collect();
+        // Get company currency
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $currency = $financeSettings->base_currency_code ?? 'UZS';
 
         return view('products.edit', [
             'product' => new Product(['company_id' => $companyId]),
@@ -117,6 +123,7 @@ class ProductWebController extends Controller
             'globalColors' => $globalColors,
             'initialState' => $this->buildInitialState(null),
             'noCompany' => false,
+            'currency' => $currency,
         ]);
     }
 
@@ -144,9 +151,13 @@ class ProductWebController extends Controller
 
         $attributes = Attribute::orderBy('name')->get();
 
-        // Global options for sizes and colors
-        $globalSizes = \App\Models\GlobalOption::sizes($companyId)?->activeValues ?? collect();
-        $globalColors = \App\Models\GlobalOption::colors($companyId)?->activeValues ?? collect();
+        // Global options for sizes and colors (universal + company-specific)
+        $globalSizes = \App\Models\GlobalOption::sizesWithCompany($companyId);
+        $globalColors = \App\Models\GlobalOption::colorsWithCompany($companyId);
+
+        // Get company currency
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $currency = $financeSettings->base_currency_code ?? 'UZS';
 
         return view('products.edit', [
             'product' => $product,
@@ -155,13 +166,39 @@ class ProductWebController extends Controller
             'globalSizes' => $globalSizes,
             'globalColors' => $globalColors,
             'initialState' => $this->buildInitialState($product),
+            'currency' => $currency,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Debug: Log incoming variants count
+        $variantsJson = $request->input('variants');
+        $variants = json_decode($variantsJson, true) ?? [];
+        \Log::info('Product store request', [
+            'variants_json_length' => strlen($variantsJson ?? ''),
+            'variants_count' => count($variants),
+            'request_size' => strlen(serialize($request->all())),
+        ]);
+
+        // Check if user has a company
+        if (!$user?->company_id) {
+            return back()
+                ->withInput()
+                ->withErrors(['company' => 'Для создания товаров необходимо создать или выбрать компанию']);
+        }
+
         $dto = $this->buildDto($request);
-        $product = $this->productService->createProductFromDto($dto);
+
+        try {
+            $product = $this->productService->createProductFromDto($dto);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['article' => 'Товар с таким артикулом уже существует']);
+        }
 
         return redirect()
             ->route('web.products.index', ['saved' => 'created'])
@@ -173,6 +210,20 @@ class ProductWebController extends Controller
         $this->authorizeCompany($request, $product);
 
         $dto = $this->buildDto($request, $product);
+
+        // Debug logging
+        \Log::info('Product update request', [
+            'product_id' => $product->id,
+            'options_count' => count($dto['options'] ?? []),
+            'variants_count' => count($dto['variants'] ?? []),
+            'options' => $dto['options'] ?? [],
+            'variants' => array_map(fn($v) => [
+                'id' => $v['id'] ?? null,
+                'sku' => $v['sku'] ?? null,
+                'option_value_ids' => $v['option_value_ids'] ?? [],
+            ], $dto['variants'] ?? []),
+        ]);
+
         $product = $this->productService->updateProductFromDto($product, $dto);
 
         return redirect()
@@ -333,27 +384,30 @@ class ProductWebController extends Controller
             ];
         })->values()->all();
 
-        $variants = $product->variants->map(function ($variant) {
-            return [
-                'id' => $variant->id,
-                'sku' => $variant->sku,
-                'barcode' => $variant->barcode,
-                'article_suffix' => $variant->article_suffix,
-                'option_values_summary' => $variant->option_values_summary,
-                'purchase_price' => $variant->purchase_price,
-                'price_default' => $variant->price_default,
-                'old_price_default' => $variant->old_price_default,
-                'stock_default' => $variant->stock_default,
-                'weight_g' => $variant->weight_g,
-                'length_mm' => $variant->length_mm,
-                'width_mm' => $variant->width_mm,
-                'height_mm' => $variant->height_mm,
-                'main_image_id' => $variant->main_image_id,
-                'is_active' => $variant->is_active,
-                'is_deleted' => $variant->is_deleted,
-                'option_value_ids' => $variant->optionValues->pluck('id')->all(),
-            ];
-        })->values()->all();
+        // Filter out deleted variants - they should not be shown in edit form
+        $variants = $product->variants
+            ->where('is_deleted', false)
+            ->map(function ($variant) {
+                return [
+                    'id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'barcode' => $variant->barcode,
+                    'article_suffix' => $variant->article_suffix,
+                    'option_values_summary' => $variant->option_values_summary,
+                    'purchase_price' => $variant->purchase_price,
+                    'price_default' => $variant->price_default,
+                    'old_price_default' => $variant->old_price_default,
+                    'stock_default' => $variant->stock_default,
+                    'weight_g' => $variant->weight_g,
+                    'length_mm' => $variant->length_mm,
+                    'width_mm' => $variant->width_mm,
+                    'height_mm' => $variant->height_mm,
+                    'main_image_id' => $variant->main_image_id,
+                    'is_active' => $variant->is_active,
+                    'is_deleted' => $variant->is_deleted,
+                    'option_value_ids' => $variant->optionValues->pluck('id')->all(),
+                ];
+            })->values()->all();
 
         $images = $product->images->map(function ($image) {
             return [

@@ -85,9 +85,9 @@ class MonitorPricesJob implements ShouldQueue
                 $this->account->id,
                 'prices',
                 'synced',
-                [
-                    'synced_at' => now()->toIso8601String(),
-                ]
+                0, // affectedCount
+                null, // changes
+                ['synced_at' => now()->toIso8601String()] // metadata
             ))->toOthers();
 
             Log::info("Prices synced for account {$this->account->id}");
