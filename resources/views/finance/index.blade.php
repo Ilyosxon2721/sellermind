@@ -1452,8 +1452,11 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransactionForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="createTransaction()" :disabled="!transactionForm.amount || !transactionForm.category_id">Сохранить</button>
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransactionForm = false" :disabled="savingTransaction">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createTransaction()" :disabled="!transactionForm.amount || !transactionForm.category_id || savingTransaction">
+                    <svg x-show="savingTransaction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span x-text="savingTransaction ? 'Сохранение...' : 'Сохранить'"></span>
+                </button>
             </div>
         </div>
     </div>
@@ -1491,8 +1494,11 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showDebtForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl" @click="createDebt()">Сохранить</button>
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showDebtForm = false" :disabled="savingDebt">Отмена</button>
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createDebt()" :disabled="savingDebt">
+                    <svg x-show="savingDebt" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span x-text="savingDebt ? 'Сохранение...' : 'Сохранить'"></span>
+                </button>
             </div>
         </div>
     </div>
@@ -1528,8 +1534,11 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showDebtPaymentForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="createDebtPayment()">Погасить</button>
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showDebtPaymentForm = false" :disabled="savingDebtPayment">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createDebtPayment()" :disabled="savingDebtPayment">
+                    <svg x-show="savingDebtPayment" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span x-text="savingDebtPayment ? 'Погашение...' : 'Погасить'"></span>
+                </button>
             </div>
         </div>
     </div>
@@ -1566,8 +1575,11 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
-                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showEmployeeForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl" @click="createEmployee()">Сохранить</button>
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showEmployeeForm = false" :disabled="savingEmployee">Отмена</button>
+                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createEmployee()" :disabled="savingEmployee">
+                    <svg x-show="savingEmployee" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span x-text="savingEmployee ? 'Сохранение...' : 'Сохранить'"></span>
+                </button>
             </div>
         </div>
     </div>
@@ -1963,9 +1975,13 @@ function financePage() {
         filtersTaxes: { year: new Date().getFullYear() },
 
         showTransactionForm: false,
+        savingTransaction: false,
         showDebtForm: false,
+        savingDebt: false,
         showDebtPaymentForm: false,
+        savingDebtPayment: false,
         showEmployeeForm: false,
+        savingEmployee: false,
         showCalculateSalaryForm: false,
         showCalculateTaxForm: false,
         showCurrencyModal: false,
@@ -2223,6 +2239,8 @@ function financePage() {
         },
 
         async createTransaction() {
+            if (this.savingTransaction) return;
+            this.savingTransaction = true;
             try {
                 const resp = await fetch('/api/finance/transactions', { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.transactionForm) });
                 const json = await resp.json();
@@ -2230,7 +2248,7 @@ function financePage() {
                 this.showTransactionForm = false;
                 this.showToast('Транзакция создана');
                 this.loadTransactions();
-            } catch (e) { this.showToast(e.message, 'error'); }
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingTransaction = false; }
         },
 
         async confirmTransaction(id) {
@@ -2244,6 +2262,8 @@ function financePage() {
         },
 
         async createDebt() {
+            if (this.savingDebt) return;
+            this.savingDebt = true;
             try {
                 const resp = await fetch('/api/finance/debts', { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.debtForm) });
                 const json = await resp.json();
@@ -2251,7 +2271,7 @@ function financePage() {
                 this.showDebtForm = false;
                 this.showToast('Долг создан');
                 this.loadDebts();
-            } catch (e) { this.showToast(e.message, 'error'); }
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingDebt = false; }
         },
 
         openPaymentForm(debt) {
@@ -2261,6 +2281,8 @@ function financePage() {
         },
 
         async createDebtPayment() {
+            if (this.savingDebtPayment) return;
+            this.savingDebtPayment = true;
             try {
                 const resp = await fetch(`/api/finance/debts/${this.selectedDebt.id}/payments`, { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.debtPaymentForm) });
                 const json = await resp.json();
@@ -2268,10 +2290,12 @@ function financePage() {
                 this.showDebtPaymentForm = false;
                 this.showToast('Платёж создан');
                 this.loadDebts();
-            } catch (e) { this.showToast(e.message, 'error'); }
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingDebtPayment = false; }
         },
 
         async createEmployee() {
+            if (this.savingEmployee) return;
+            this.savingEmployee = true;
             try {
                 const resp = await fetch('/api/finance/employees', { method: 'POST', headers: this.getAuthHeaders(), body: JSON.stringify(this.employeeForm) });
                 const json = await resp.json();
@@ -2279,7 +2303,7 @@ function financePage() {
                 this.showEmployeeForm = false;
                 this.showToast('Сотрудник добавлен');
                 this.loadEmployees();
-            } catch (e) { this.showToast(e.message, 'error'); }
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployee = false; }
         },
 
         async calculateSalary() {
