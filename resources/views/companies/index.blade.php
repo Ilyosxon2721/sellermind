@@ -85,8 +85,16 @@
                                         <button class="btn btn-sm btn-ghost" @click="openEditModal(company)">
                                             Изменить
                                         </button>
-                                        <button class="btn btn-sm btn-ghost text-red-600" @click="deleteCompany(company)">
-                                            Удалить
+                                        <button class="btn btn-sm btn-ghost text-red-600 disabled:opacity-50"
+                                                @click="deleteCompany(company)"
+                                                :disabled="deletingId === company.id">
+                                            <span x-show="deletingId !== company.id">Удалить</span>
+                                            <span x-show="deletingId === company.id" class="flex items-center">
+                                                <svg class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </span>
                                         </button>
                                     </div>
                                 </td>
@@ -142,8 +150,14 @@
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 mt-6">
-                        <button type="button" class="btn btn-ghost" @click="closeModal()">Отмена</button>
-                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <button type="button" class="btn btn-ghost" @click="closeModal()" :disabled="saving">Отмена</button>
+                        <button type="submit" class="btn btn-primary disabled:opacity-50 flex items-center" :disabled="saving">
+                            <svg x-show="saving" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="saving ? 'Сохранение...' : 'Сохранить'"></span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -156,6 +170,8 @@ function companiesPage() {
     return {
         companies: [],
         loading: false,
+        saving: false,
+        deletingId: null,
         showModal: false,
         editingCompany: null,
         search: '',
@@ -221,6 +237,7 @@ function companiesPage() {
         },
 
         async saveCompany() {
+            this.saving = true;
             try {
                 const url = this.editingCompany
                     ? `/api/companies/${this.editingCompany.id}`
@@ -251,6 +268,8 @@ function companiesPage() {
             } catch (error) {
                 console.error('Error saving company:', error);
                 alert('Ошибка при сохранении компании');
+            } finally {
+                this.saving = false;
             }
         },
 
@@ -259,6 +278,7 @@ function companiesPage() {
                 return;
             }
 
+            this.deletingId = company.id;
             try {
                 const response = await fetch(`/api/companies/${company.id}`, {
                     method: 'DELETE',
@@ -279,6 +299,8 @@ function companiesPage() {
             } catch (error) {
                 console.error('Error deleting company:', error);
                 alert('Ошибка при удалении компании');
+            } finally {
+                this.deletingId = null;
             }
         }
     };
@@ -332,7 +354,15 @@ function companiesPage() {
                     </div>
                     <p class="native-caption mt-2" x-show="company.address" x-text="company.address"></p>
                     <div class="mt-3 pt-3 border-t border-gray-100">
-                        <button @click.stop="deleteCompany(company)" class="text-sm text-red-600">Удалить</button>
+                        <button @click.stop="deleteCompany(company)"
+                                :disabled="deletingId === company.id"
+                                class="text-sm text-red-600 disabled:opacity-50 flex items-center">
+                            <svg x-show="deletingId === company.id" class="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span x-text="deletingId === company.id ? 'Удаление...' : 'Удалить'"></span>
+                        </button>
                     </div>
                 </div>
             </template>
@@ -360,8 +390,14 @@ function companiesPage() {
                 <textarea class="native-input w-full" rows="2" x-model="form.address" placeholder="Адрес"></textarea>
             </div>
             <div class="p-5 border-t border-gray-100 flex gap-2">
-                <button @click="saveCompany()" class="native-btn native-btn-primary flex-1">Сохранить</button>
-                <button @click="closeModal()" class="native-btn flex-1">Отмена</button>
+                <button @click="saveCompany()" :disabled="saving" class="native-btn native-btn-primary flex-1 disabled:opacity-50 flex items-center justify-center">
+                    <svg x-show="saving" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="saving ? 'Сохранение...' : 'Сохранить'"></span>
+                </button>
+                <button @click="closeModal()" :disabled="saving" class="native-btn flex-1">Отмена</button>
             </div>
         </div>
     </div>
