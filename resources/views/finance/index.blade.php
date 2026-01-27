@@ -161,24 +161,32 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Прибыль за период -->
+                    <!-- Транзакции за период (Приход / Расход) -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
-                        <div class="text-sm text-slate-400 mb-2">Прибыль за период</div>
-                        <div class="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                                <span class="text-slate-400">Доходы</span>
-                                <div class="text-emerald-400 font-medium" x-text="formatMoney(overview.balance?.period_profit?.total_income || 0)"></div>
+                        <div class="text-sm text-slate-400 mb-2">Транзакции за период</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="bg-emerald-500/10 rounded-xl p-3">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <span class="text-slate-400">Приход</span>
+                                </div>
+                                <div class="text-xl font-bold text-emerald-400" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                             </div>
-                            <div>
-                                <span class="text-slate-400">Расходы</span>
-                                <div class="text-red-400 font-medium" x-text="formatMoney(overview.balance?.period_profit?.total_expense || 0)"></div>
-                            </div>
-                            <div>
-                                <span class="text-slate-400">Чистая прибыль</span>
-                                <div class="font-bold" :class="(overview.balance?.period_profit?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
-                                     x-text="formatMoney(overview.balance?.period_profit?.net_profit || 0)"></div>
+                            <div class="bg-red-500/10 rounded-xl p-3">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                                    <span class="text-slate-400">Расход</span>
+                                </div>
+                                <div class="text-xl font-bold text-red-400" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
                             </div>
                         </div>
+                    </div>
+                    <!-- Прибыль за период -->
+                    <div class="mt-4 pt-4 border-t border-slate-700">
+                        <div class="text-sm text-slate-400 mb-2">Чистая прибыль за период</div>
+                        <div class="text-2xl font-bold" :class="(overview.summary?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
+                             x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
+                        <div class="text-xs text-slate-500 mt-1">Приход - Расход = Прибыль</div>
                     </div>
                     <!-- Ожидаемые поступления (транзит) — отдельно -->
                     <div x-show="overview.balance?.pending_income?.transit_orders > 0" class="mt-4 pt-4 border-t border-slate-700">
@@ -1084,27 +1092,61 @@
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900">Сотрудники</h2>
-                            <p class="text-sm text-gray-500">Пользователи, прикреплённые к компании</p>
+                            <p class="text-sm text-gray-500">Управление сотрудниками для учёта зарплат и расходов</p>
                         </div>
-                        <a href="/settings" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all flex items-center space-x-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m9 5.197v1"/></svg>
-                            <span>Управление командой</span>
-                        </a>
+                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all flex items-center space-x-2"
+                                @click="showEmployeeForm = true; employeeForm = { first_name: '', last_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' }">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Добавить сотрудника</span>
+                        </button>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <template x-for="emp in employees" :key="emp.id">
-                            <div class="p-4 bg-gray-50 rounded-xl">
-                                <div class="flex items-center justify-between mb-1">
-                                    <div class="font-semibold text-gray-900" x-text="emp.name || (emp.last_name + ' ' + emp.first_name)"></div>
-                                    <span x-show="emp.is_owner" class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Владелец</span>
+                            <div class="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="font-semibold text-gray-900" x-text="emp.name || emp.full_name || (emp.last_name + ' ' + emp.first_name)"></div>
+                                    <div class="flex items-center space-x-1">
+                                        <span x-show="emp.has_user_account" class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700" title="Связан с аккаунтом">
+                                            <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        </span>
+                                        <span x-show="!emp.is_active" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Неактивен</span>
+                                    </div>
                                 </div>
-                                <div class="text-sm text-gray-500" x-text="emp.position || 'Сотрудник'"></div>
-                                <div class="text-xs text-gray-400 mt-1" x-text="emp.email"></div>
+                                <div class="text-sm text-gray-500" x-text="emp.position || 'Без должности'"></div>
+                                <div class="text-xs text-gray-400 mt-1" x-text="emp.email || emp.phone || ''"></div>
                                 <div class="text-lg font-bold text-purple-600 mt-2" x-text="formatMoney(emp.base_salary || 0) + ' ' + (emp.currency_code || 'UZS')"></div>
+
+                                <!-- Action buttons -->
+                                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+                                    <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                            @click="openPaySalaryModal(emp)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Зарплата</span>
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                            @click="openPenaltyModal(emp)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Штраф</span>
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                            @click="openExpenseModal(emp)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        <span>Расход</span>
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                            @click="openEmployeeHistoryModal(emp)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                        <span>История</span>
+                                    </button>
+                                </div>
                             </div>
                         </template>
                         <template x-if="employees.length === 0">
-                            <div class="col-span-full text-center py-8 text-gray-500">Нет сотрудников в компании</div>
+                            <div class="col-span-full text-center py-8 text-gray-500">
+                                <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                <p>Нет сотрудников</p>
+                                <button class="mt-2 text-purple-600 hover:text-purple-700 font-medium" @click="showEmployeeForm = true">Добавить первого сотрудника</button>
+                            </div>
                         </template>
                     </div>
                 </div>
@@ -1553,25 +1595,41 @@
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Фамилия</label>
-                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.last_name">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Фамилия <span class="text-red-500">*</span></label>
+                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.last_name" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Имя</label>
-                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.first_name">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Имя <span class="text-red-500">*</span></label>
+                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.first_name" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Отчество</label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.middle_name" placeholder="Необязательно">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                        <input type="tel" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.phone" placeholder="+998 90 123 45 67">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.email" placeholder="employee@company.com">
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Должность</label>
-                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.position">
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.position" placeholder="Менеджер, Продавец и т.д.">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Зарплата</label>
-                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.base_salary">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата найма</label>
-                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.hire_date">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Зарплата</label>
+                        <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.base_salary" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Дата найма</label>
+                        <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="employeeForm.hire_date">
+                    </div>
                 </div>
             </div>
             <div class="flex justify-end space-x-3">
@@ -1580,6 +1638,186 @@
                     <svg x-show="savingEmployee" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span x-text="savingEmployee ? 'Сохранение...' : 'Сохранить'"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Salary to Employee Modal -->
+    <div x-show="showPaySalaryModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showPaySalaryModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Выплата зарплаты</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showPaySalaryModal = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="bg-purple-50 rounded-xl p-4">
+                <div class="text-sm text-purple-600">Сотрудник</div>
+                <div class="font-semibold text-purple-900" x-text="selectedEmployeeForAction?.full_name || selectedEmployeeForAction?.name"></div>
+                <div class="text-sm text-purple-700 mt-1">Оклад: <span x-text="formatMoney(selectedEmployeeForAction?.base_salary || 0) + ' ' + (selectedEmployeeForAction?.currency_code || 'UZS')"></span></div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Сумма <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="paySalaryForm.amount" :placeholder="selectedEmployeeForAction?.base_salary || 0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата выплаты</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="paySalaryForm.payment_date">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Способ оплаты</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="paySalaryForm.payment_method">
+                        <option value="cash">Наличные</option>
+                        <option value="bank">Банковский перевод</option>
+                        <option value="card">Карта</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Комментарий</label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="paySalaryForm.description" placeholder="Зарплата за месяц">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showPaySalaryModal = false" :disabled="savingEmployeeAction">Отмена</button>
+                <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50" @click="submitPaySalary()" :disabled="savingEmployeeAction || !paySalaryForm.amount">
+                    <svg x-show="savingEmployeeAction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Выплатить</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Penalty Modal -->
+    <div x-show="showPenaltyModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showPenaltyModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Штраф сотруднику</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showPenaltyModal = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4">
+                <div class="text-sm text-red-600">Сотрудник</div>
+                <div class="font-semibold text-red-900" x-text="selectedEmployeeForAction?.full_name || selectedEmployeeForAction?.name"></div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Сумма штрафа <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="penaltyForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Причина <span class="text-red-500">*</span></label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="penaltyForm.reason" placeholder="Опоздание, брак и т.д.">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="penaltyForm.penalty_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showPenaltyModal = false" :disabled="savingEmployeeAction">Отмена</button>
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50" @click="submitPenalty()" :disabled="savingEmployeeAction || !penaltyForm.amount || !penaltyForm.reason">
+                    <svg x-show="savingEmployeeAction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Добавить штраф</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Expense Modal -->
+    <div x-show="showExpenseModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showExpenseModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Расход на сотрудника</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showExpenseModal = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="bg-amber-50 rounded-xl p-4">
+                <div class="text-sm text-amber-600">Сотрудник</div>
+                <div class="font-semibold text-amber-900" x-text="selectedEmployeeForAction?.full_name || selectedEmployeeForAction?.name"></div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Тип расхода</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="expenseForm.expense_type">
+                        <option value="advance">Аванс</option>
+                        <option value="equipment">Оборудование</option>
+                        <option value="training">Обучение</option>
+                        <option value="travel">Командировка</option>
+                        <option value="other">Прочее</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Сумма <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="expenseForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Описание <span class="text-red-500">*</span></label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="expenseForm.description" placeholder="Описание расхода">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="expenseForm.expense_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showExpenseModal = false" :disabled="savingEmployeeAction">Отмена</button>
+                <button class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50" @click="submitExpense()" :disabled="savingEmployeeAction || !expenseForm.amount || !expenseForm.description">
+                    <svg x-show="savingEmployeeAction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Добавить расход</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee History Modal -->
+    <div x-show="showEmployeeHistoryModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showEmployeeHistoryModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 space-y-6 max-h-[80vh] overflow-hidden flex flex-col" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">История операций</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showEmployeeHistoryModal = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="bg-blue-50 rounded-xl p-4">
+                <div class="text-sm text-blue-600">Сотрудник</div>
+                <div class="font-semibold text-blue-900" x-text="selectedEmployeeForAction?.full_name || selectedEmployeeForAction?.name"></div>
+            </div>
+            <!-- Summary -->
+            <div class="grid grid-cols-3 gap-4" x-show="employeeHistory.summary">
+                <div class="bg-green-50 rounded-xl p-3 text-center">
+                    <div class="text-xs text-green-600">Выплачено зарплат</div>
+                    <div class="text-lg font-bold text-green-700" x-text="formatMoney(employeeHistory.summary?.total_salary_paid || 0)"></div>
+                </div>
+                <div class="bg-red-50 rounded-xl p-3 text-center">
+                    <div class="text-xs text-red-600">Штрафы</div>
+                    <div class="text-lg font-bold text-red-700" x-text="formatMoney(employeeHistory.summary?.total_penalties || 0)"></div>
+                </div>
+                <div class="bg-amber-50 rounded-xl p-3 text-center">
+                    <div class="text-xs text-amber-600">Расходы</div>
+                    <div class="text-lg font-bold text-amber-700" x-text="formatMoney(employeeHistory.summary?.total_expenses || 0)"></div>
+                </div>
+            </div>
+            <!-- Transactions -->
+            <div class="flex-1 overflow-y-auto space-y-2">
+                <template x-if="loadingHistory">
+                    <div class="text-center py-8 text-gray-500">
+                        <svg class="animate-spin h-8 w-8 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p class="mt-2">Загрузка...</p>
+                    </div>
+                </template>
+                <template x-for="tx in employeeHistory.transactions || []" :key="tx.id">
+                    <div class="p-3 bg-gray-50 rounded-xl flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900" x-text="tx.description"></div>
+                            <div class="text-xs text-gray-500" x-text="formatDate(tx.transaction_date)"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold" :class="tx.type === 'expense' ? 'text-red-600' : 'text-green-600'" x-text="(tx.type === 'expense' ? '-' : '+') + formatMoney(tx.amount)"></div>
+                            <div class="text-xs text-gray-400" x-text="tx.category?.name || ''"></div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!loadingHistory && (!employeeHistory.transactions || employeeHistory.transactions.length === 0)">
+                    <div class="text-center py-8 text-gray-500">Нет операций</div>
+                </template>
+            </div>
+            <div class="flex justify-end">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showEmployeeHistoryModal = false">Закрыть</button>
             </div>
         </div>
     </div>
@@ -1986,13 +2224,26 @@ function financePage() {
         showCalculateTaxForm: false,
         showCurrencyModal: false,
 
+        // Employee action modals
+        showPaySalaryModal: false,
+        showPenaltyModal: false,
+        showExpenseModal: false,
+        showEmployeeHistoryModal: false,
+        savingEmployeeAction: false,
+        loadingHistory: false,
+        selectedEmployeeForAction: null,
+        employeeHistory: { transactions: [], summary: {} },
+
         transactionForm: { type: 'expense', amount: '', transaction_date: '', description: '', category_id: '' },
         currencyForm: { usd_rate: 12700, rub_rate: 140, eur_rate: 13800 },
         debtForm: { type: 'payable', original_amount: '', debt_date: '', description: '', due_date: '' },
         debtPaymentForm: { amount: '', payment_date: new Date().toISOString().slice(0,10), payment_method: 'cash' },
-        employeeForm: { first_name: '', last_name: '', position: '', base_salary: '', hire_date: '' },
+        employeeForm: { first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' },
         salaryCalcForm: { year: new Date().getFullYear(), month: new Date().getMonth() + 1 },
         taxCalcForm: { tax_type: 'simplified', period_type: 'month', year: new Date().getFullYear(), month: new Date().getMonth() + 1, quarter: 1 },
+        paySalaryForm: { amount: '', payment_date: '', description: '', payment_method: 'cash' },
+        penaltyForm: { amount: '', reason: '', penalty_date: '' },
+        expenseForm: { amount: '', description: '', expense_date: '', expense_type: 'advance' },
 
         selectedDebt: null,
         toast: { show: false, message: '', type: 'success' },
@@ -2301,9 +2552,115 @@ function financePage() {
                 const json = await resp.json();
                 if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
                 this.showEmployeeForm = false;
+                this.employeeForm = { first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' };
                 this.showToast('Сотрудник добавлен');
                 this.loadEmployees();
             } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployee = false; }
+        },
+
+        // Employee action modal openers
+        openPaySalaryModal(emp) {
+            this.selectedEmployeeForAction = emp;
+            const today = new Date();
+            this.paySalaryForm = {
+                amount: emp.base_salary || '',
+                payment_date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`,
+                description: '',
+                payment_method: 'cash'
+            };
+            this.showPaySalaryModal = true;
+        },
+
+        openPenaltyModal(emp) {
+            this.selectedEmployeeForAction = emp;
+            const today = new Date();
+            this.penaltyForm = {
+                amount: '',
+                reason: '',
+                penalty_date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+            };
+            this.showPenaltyModal = true;
+        },
+
+        openExpenseModal(emp) {
+            this.selectedEmployeeForAction = emp;
+            const today = new Date();
+            this.expenseForm = {
+                amount: '',
+                description: '',
+                expense_date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`,
+                expense_type: 'advance'
+            };
+            this.showExpenseModal = true;
+        },
+
+        async openEmployeeHistoryModal(emp) {
+            this.selectedEmployeeForAction = emp;
+            this.employeeHistory = { transactions: [], summary: {} };
+            this.showEmployeeHistoryModal = true;
+            this.loadingHistory = true;
+            try {
+                const resp = await fetch(`/api/finance/employees/${emp.id}/transactions`, { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.employeeHistory = json.data || { transactions: [], summary: {} };
+                }
+            } catch (e) {
+                this.showToast('Не удалось загрузить историю', 'error');
+            } finally {
+                this.loadingHistory = false;
+            }
+        },
+
+        async submitPaySalary() {
+            if (this.savingEmployeeAction) return;
+            this.savingEmployeeAction = true;
+            try {
+                const resp = await fetch(`/api/finance/employees/${this.selectedEmployeeForAction.id}/pay-salary`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.paySalaryForm)
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка');
+                this.showPaySalaryModal = false;
+                this.showToast('Зарплата выплачена');
+                this.loadEmployees();
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployeeAction = false; }
+        },
+
+        async submitPenalty() {
+            if (this.savingEmployeeAction) return;
+            this.savingEmployeeAction = true;
+            try {
+                const resp = await fetch(`/api/finance/employees/${this.selectedEmployeeForAction.id}/penalty`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.penaltyForm)
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка');
+                this.showPenaltyModal = false;
+                this.showToast('Штраф добавлен');
+                this.loadEmployees();
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployeeAction = false; }
+        },
+
+        async submitExpense() {
+            if (this.savingEmployeeAction) return;
+            this.savingEmployeeAction = true;
+            try {
+                const resp = await fetch(`/api/finance/employees/${this.selectedEmployeeForAction.id}/expense`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.expenseForm)
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка');
+                this.showExpenseModal = false;
+                this.showToast('Расход добавлен');
+                this.loadEmployees();
+            } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployeeAction = false; }
         },
 
         async calculateSalary() {

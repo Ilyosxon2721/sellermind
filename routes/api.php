@@ -723,6 +723,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'show']);
         Route::put('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'update']);
         Route::delete('employees/{id}', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'destroy']);
+        Route::post('employees/{id}/pay-salary', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'paySalary']);
+        Route::post('employees/{id}/penalty', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'addPenalty']);
+        Route::post('employees/{id}/expense', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'addExpense']);
+        Route::get('employees/{id}/transactions', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'transactions']);
 
         // Salary
         Route::get('salary/calculations', [\App\Http\Controllers\Api\Finance\SalaryController::class, 'calculations']);
