@@ -365,7 +365,10 @@
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([k, v]) => v ? params.append(k, v) : null);
                 try {
-                    const resp = await fetch(`/api/marketplace/stock/reservations?${params.toString()}`, {headers: this.getAuthHeaders()});
+                    const resp = await fetch(`/api/marketplace/stock/reservations?${params.toString()}`, {
+                        headers: this.getAuthHeaders(),
+                        credentials: 'include'
+                    });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     this.items = json.data || [];
@@ -387,7 +390,7 @@
 
             async simpleAction(url) {
                 try {
-                    const resp = await fetch(url, { method: 'POST', headers: this.getAuthHeaders() });
+                    const resp = await fetch(url, { method: 'POST', headers: this.getAuthHeaders(), credentials: 'include' });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка операции');
                     this.showToast('Операция выполнена', 'success');
@@ -413,6 +416,7 @@
                     const resp = await fetch('/api/marketplace/stock/reserve', {
                         method: 'POST',
                         headers: this.getAuthHeaders(),
+                        credentials: 'include',
                         body: JSON.stringify(this.form),
                     });
                     const json = await resp.json();

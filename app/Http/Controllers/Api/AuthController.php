@@ -60,6 +60,15 @@ class AuthController extends Controller
             // Auth::attempt already logged in, but let's ensure it's saved
             $request->session()->regenerate();
             $request->session()->save(); // Force save session
+
+            \Log::debug('AuthController::login - session created', [
+                'session_id' => $request->session()->getId(),
+                'user_id' => $user->id,
+                'auth_check' => Auth::check(),
+                'web_guard_check' => Auth::guard('web')->check(),
+            ]);
+        } else {
+            \Log::warning('AuthController::login - NO SESSION AVAILABLE');
         }
 
         return response()->json([

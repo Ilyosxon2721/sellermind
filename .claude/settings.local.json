@@ -13,7 +13,6 @@
       "Bash(git checkout:*)",
       "Bash(git rebase:*)",
       "Bash(GIT_EDITOR=true git rebase:*)",
-      "Bash(gh pr create --title \"Fix marketplace account create/delete cache issues\" --body \"$\\(cat <<''EOF''\n## Summary\n- Исправлена проблема с кэшированием при создании аккаунта маркетплейса \\(аккаунт не отображался сразу\\)\n- Исправлена проблема с кэшированием при удалении аккаунта \\(аккаунт возвращался при обновлении страницы\\)\n- Добавлен визуальный индикатор \"Удаление...\" для улучшения UX\n\n## Test plan\n- [ ] Создать новый аккаунт маркетплейса → должен сразу появиться в списке\n- [ ] Удалить аккаунт → должен исчезнуть и не возвращаться при обновлении страницы\n- [ ] Проверить индикатор загрузки при удалении\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\nEOF\n\\)\" --base main)",
       "Bash(npm run build:*)",
       "Bash(npm install:*)",
       "Bash(php artisan tinker:*)",
@@ -33,7 +32,6 @@
       "Bash(/Applications/MAMP/Library/sbin/nginx:*)",
       "Bash(php artisan view:clear:*)",
       "Bash(php artisan view:cache:*)",
-      "Bash(ssh forge@89.39.95.162 \"cd /home/forge/sellermind.uz && php artisan tinker --execute=\"\"\n\\\\$companyId = 3;\n\\\\$weekAgo = now\\(\\)->subDays\\(7\\)->format\\(''Y-m-d''\\);\n\\\\$monthAgo = now\\(\\)->subDays\\(30\\)->format\\(''Y-m-d''\\);\n\\\\$today = now\\(\\)->format\\(''Y-m-d''\\);\n\necho ''Date range \\(week\\): '' . \\\\$weekAgo . '' to '' . \\\\$today . PHP_EOL;\necho ''Date range \\(month\\): '' . \\\\$monthAgo . '' to '' . \\\\$today . PHP_EOL;\necho PHP_EOL;\n\necho ''Uzum orders \\(week\\): '' . \\\\App\\\\Models\\\\UzumOrder::whereHas\\(''account'', fn\\(\\\\$q\\) => \\\\$q->where\\(''company_id'', \\\\$companyId\\)\\)->whereDate\\(''ordered_at'', ''>='', \\\\$weekAgo\\)->count\\(\\) . PHP_EOL;\necho ''WB orders \\(week\\): '' . \\\\App\\\\Models\\\\WbOrder::whereHas\\(''account'', fn\\(\\\\$q\\) => \\\\$q->where\\(''company_id'', \\\\$companyId\\)\\)->whereDate\\(''ordered_at'', ''>='', \\\\$weekAgo\\)->count\\(\\) . PHP_EOL;\necho PHP_EOL;\necho ''Uzum orders \\(month\\): '' . \\\\App\\\\Models\\\\UzumOrder::whereHas\\(''account'', fn\\(\\\\$q\\) => \\\\$q->where\\(''company_id'', \\\\$companyId\\)\\)->whereDate\\(''ordered_at'', ''>='', \\\\$monthAgo\\)->count\\(\\) . PHP_EOL;\necho ''WB orders \\(month\\): '' . \\\\App\\\\Models\\\\WbOrder::whereHas\\(''account'', fn\\(\\\\$q\\) => \\\\$q->where\\(''company_id'', \\\\$companyId\\)\\)->whereDate\\(''ordered_at'', ''>='', \\\\$monthAgo\\)->count\\(\\) . PHP_EOL;\n\n\\\\$lastWb = \\\\App\\\\Models\\\\WbOrder::whereHas\\(''account'', fn\\(\\\\$q\\) => \\\\$q->where\\(''company_id'', \\\\$companyId\\)\\)->orderByDesc\\(''ordered_at''\\)->first\\(\\);\necho PHP_EOL . ''Last WB order: '' . \\(\\\\$lastWb?->ordered_at ?? ''none''\\) . PHP_EOL;\n\"\"\")",
       "Bash(ssh-keygen:*)",
       "Bash(ssh-keyscan:*)",
       "Bash(~/.ssh/known_hosts)",
@@ -41,13 +39,10 @@
       "Bash(php artisan migrate:*)",
       "Bash(php artisan uzum:sync-finance-orders:*)",
       "Bash(php artisan wb:sync-orders:*)",
-      "Bash(1 <<'EOF'\n$accounts = \\\\App\\\\Models\\\\MarketplaceAccount::where\\('marketplace', 'wildberries'\\)->get\\(\\);\nforeach \\($accounts as $a\\) {\n    echo \"ID: {$a->id}, Name: {$a->name}, Active: \" . \\($a->is_active ? 'Yes' : 'No'\\) . \"\\\\n\";\n}\nEOF)",
       "Bash(echo:*)",
       "Bash(php:*)",
       "Bash(mysql:*)",
       "Bash(/Applications/MAMP/Library/bin/mysql:*)",
-      "Bash(# Test with Bearer prefix echo \"\"=== With Bearer prefix ===\"\" && curl -s -w \"\"\\\\nHTTP:%{http_code}\"\" \"\"https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=2025-01-01\"\" \\\\ -H \"\"Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwMTE1djEiLCJ0eXAiOiJKV1QifQ.eyJlbnQiOjEsImV4cCI6MTc1MjY3MDY2NCwiaWQiOiIwMTk0YjdjYi0yZWQ3LTc2YWItODM3MC1jZWJhZjhlMGI0ZTciLCJpaWQiOjE3Mjc0NTgzLCJvaWQiOjMwNTYwMywicyI6MTAzNCwidWlkIjoxNzI3NDU4M30.Hl3swhpK5zGYnYTfh3FPxN7xC-k3hy12lIzqgHK3BNDvSP2K_A-Lzjbr1Z1cBVpU6E1FMjO5Vx2iSfJmGDBi8A\"\")",
-      "Bash(# Test new Statistics token echo \"\"=== NEW Statistics Token ===\"\" && curl -s -w \"\"\\\\nHTTP:%{http_code}\"\" \"\"https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=2025-01-01\"\" \\\\ -H \"\"Authorization: eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwOTA0djEiLCJ0eXAiOiJKV1QifQ.eyJhY2MiOjEsImVudCI6MSwiZXhwIjoxNzg0NDQ1NzE1LCJpZCI6IjAxOWJjZDY4LTJkOWYtNzZlOC05NzNhLTE5ODc5YzQzNzA3ZCIsImlpZCI6MTEzNDM1NDE5LCJvaWQiOjEzMjI0MDYsInMiOjIwODQsInNpZCI6IjYxOTJlNjI3LWJhY2MtNDBhNS04MWM1LWUwYTFhODRmYWI3MyIsInQiOmZhbHNlLCJ1aWQiOjExMzQzNTQxOX0.KqZ-5FVQpPDRiAgguRavKkY0vNb7m6NR9kzz5LM4kKrmKcSQSMiLz-oXEtZVJy30XT03P-RAIoLLPWj-Leg-Bw\"\")",
       "Bash(git status:*)",
       "Bash(wc:*)",
       "Bash(git hash-object:*)",
@@ -57,15 +52,12 @@
       "Bash(xargs:*)",
       "Bash(ssh-add:*)",
       "Bash(git remote set-url:*)",
+      "Bash(git fetch:*)",
       "Bash(findstr:*)",
       "Bash(tasklist:*)",
-      "Bash(if [ -f storage/logs/marketplace-sync.log ])",
-      "Bash(then tail -50 storage/logs/marketplace-sync.log)",
-      "Bash(else echo \"Log file not found\")",
-      "Bash(fi)",
       "Bash(dir:*)",
       "Bash(composer dump-autoload:*)",
-      "Bash(del check_order_items.php)"
+      "Bash(php artisan cache:clear:*)"
     ]
   }
 }

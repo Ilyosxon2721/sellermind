@@ -11,6 +11,7 @@ use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReservationController extends Controller
 {
@@ -31,6 +32,13 @@ class ReservationController extends Controller
     public function index(Request $request)
     {
         $companyId = $this->getCompanyId();
+
+        Log::debug('ReservationController::index', [
+            'user_id' => Auth::id(),
+            'company_id' => $companyId,
+            'filters' => $request->only(['warehouse_id', 'status', 'reason']),
+        ]);
+
         if (!$companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
@@ -45,10 +53,23 @@ class ReservationController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->reason) {
-            $query->where('reason', $request->reason);
+            // Support both exact reason and source_type filtering
+            if (in_array($request->reason, ['MARKETPLACE_ORDER', 'marketplace_order'])) {
+                $query->where('source_type', 'marketplace_order');
+            } elseif (in_array($request->reason, ['MANUAL', 'manual'])) {
+                $query->where(function ($q) {
+                    $q->where('source_type', 'manual')->orWhereNull('source_type');
+                });
+            } else {
+                $query->where('reason', 'like', '%' . $request->reason . '%');
+            }
         }
 
         $reservations = $query->orderByDesc('id')->limit(500)->get();
+
+        Log::debug('ReservationController::index results', [
+            'count' => $reservations->count(),
+        ]);
 
         // Load order information for marketplace orders
         $reservations = $reservations->map(function ($reservation) {

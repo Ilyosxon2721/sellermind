@@ -1,6 +1,6 @@
 {
-  "_alpine-B58kCZLe.js": {
-    "file": "assets/alpine-B58kCZLe.js",
+  "_alpine-w3y3or6b.js": {
+    "file": "assets/alpine-w3y3or6b.js",
     "name": "alpine"
   },
   "_vendor-Dos3PyFQ.js": {
@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-Dbsv5pvD.css",
+    "file": "assets/app-CR-GRqU_.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-B3yElfqi.css",
+    "file": "assets/pwa-native-BWo7F4oS.css",
     "src": "resources/css/pwa-native.css",
     "isEntry": true,
     "name": "pwa-native",
@@ -32,13 +32,13 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Dv9iIzcE.js",
+    "file": "assets/app-DRgtQCwx.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
       "_vendor-Dos3PyFQ.js",
-      "_alpine-B58kCZLe.js"
+      "_alpine-w3y3or6b.js"
     ]
   },
   "resources/js/pwa-detector.js": {

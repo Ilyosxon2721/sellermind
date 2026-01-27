@@ -19,8 +19,10 @@ class AuthenticateAnyGuard
             'method' => $request->method(),
             'has_session' => $request->hasSession(),
             'session_id' => $request->hasSession() ? $request->session()->getId() : null,
+            'session_user_id' => $request->hasSession() ? $request->session()->get('_auth.web.id') : null,
             'has_bearer' => $request->bearerToken() ? true : false,
             'guards_to_check' => $guards,
+            'cookies' => array_keys($request->cookies->all()),
         ]);
 
         foreach ($guards as $guard) {
