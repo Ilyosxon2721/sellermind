@@ -229,12 +229,17 @@
                                 </button>
                                 
                                 <!-- Download Label -->
-                                <button @click.stop="downloadLabel(order.order_id)" 
-                                        class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 flex items-center space-x-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <button @click.stop="downloadLabel(order.order_id)"
+                                        :disabled="downloadingLabelId === order.order_id"
+                                        class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 flex items-center space-x-1 disabled:opacity-50">
+                                    <svg x-show="downloadingLabelId !== order.order_id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                     </svg>
-                                    <span>1 ярлык</span>
+                                    <svg x-show="downloadingLabelId === order.order_id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span x-text="downloadingLabelId === order.order_id ? 'Загрузка...' : '1 ярлык'"></span>
                                 </button>
                                 
                                 <!-- Add Box -->
@@ -451,7 +456,13 @@
                 
                 <div class="flex justify-end space-x-3 mt-6">
                     <button @click="boxModalOrder = null" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
-                    <button @click="saveBox()" class="px-4 py-2 bg-[#FFCC00] hover:bg-[#FFD633] text-black rounded-lg font-medium">Сохранить</button>
+                    <button @click="saveBox()" :disabled="savingBox" class="px-4 py-2 bg-[#FFCC00] hover:bg-[#FFD633] text-black rounded-lg font-medium disabled:opacity-50 flex items-center">
+                        <svg x-show="savingBox" class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="savingBox ? 'Сохранение...' : 'Сохранить'"></span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -465,6 +476,8 @@ function ymOrdersPage() {
         loading: true,
         syncing: false,
         actionLoading: null,
+        downloadingLabelId: null,
+        savingBox: false,
         searchQuery: '',
         activeTab: 'all',
         fulfillmentType: 'FBS',
@@ -630,6 +643,7 @@ function ymOrdersPage() {
         },
         
         async downloadLabel(orderId) {
+            this.downloadingLabelId = orderId;
             const format = this.labelFormat === '75×120' ? 'A7' : 'A9_HORIZONTALLY';
             try {
                 const res = await fetch(`/api/marketplace/yandex-market/accounts/{{ $accountId }}/orders/${orderId}/labels?format=${format}`, {
@@ -638,7 +652,7 @@ function ymOrdersPage() {
                         'Accept': 'application/pdf'
                     }
                 });
-                
+
                 if (!res.ok) {
                     // Try to parse as JSON, fallback to text
                     let errorMessage = 'Ошибка загрузки ярлыка';
@@ -654,7 +668,7 @@ function ymOrdersPage() {
                     setTimeout(() => this.syncMessage = '', 5000);
                     return;
                 }
-                
+
                 const blob = await res.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -664,7 +678,7 @@ function ymOrdersPage() {
                 a.click();
                 window.URL.revokeObjectURL(url);
                 a.remove();
-                
+
                 this.syncMessage = 'Ярлык загружен!';
                 this.syncSuccess = true;
                 setTimeout(() => this.syncMessage = '', 3000);
@@ -672,6 +686,8 @@ function ymOrdersPage() {
                 this.syncMessage = 'Ошибка: ' + e.message;
                 this.syncSuccess = false;
                 setTimeout(() => this.syncMessage = '', 5000);
+            } finally {
+                this.downloadingLabelId = null;
             }
         },
         
@@ -695,10 +711,11 @@ function ymOrdersPage() {
         
         async saveBox() {
             if (!this.boxModalOrder) return;
-            
+
+            this.savingBox = true;
             const orderId = this.boxModalOrder.order_id;
             const items = this.boxModalOrder.order_data?.items || [];
-            
+
             const box = {
                 fulfilmentId: orderId + '-1',
                 weight: parseInt(this.boxData.weight),
@@ -710,7 +727,7 @@ function ymOrdersPage() {
                     count: item.count || 1
                 }))
             };
-            
+
             try {
                 const res = await fetch(`/api/marketplace/yandex-market/accounts/{{ $accountId }}/orders/${orderId}/boxes`, {
                     method: 'PUT',
@@ -718,7 +735,7 @@ function ymOrdersPage() {
                     body: JSON.stringify({ boxes: [box] })
                 });
                 const data = await res.json();
-                
+
                 if (data.success) {
                     this.syncMessage = 'Грузоместо добавлено!';
                     this.syncSuccess = true;
@@ -730,8 +747,10 @@ function ymOrdersPage() {
             } catch (e) {
                 this.syncMessage = 'Ошибка: ' + e.message;
                 this.syncSuccess = false;
+            } finally {
+                this.savingBox = false;
+                this.boxModalOrder = null;
             }
-            this.boxModalOrder = null;
         },
         
         openOrderModal(order) {
