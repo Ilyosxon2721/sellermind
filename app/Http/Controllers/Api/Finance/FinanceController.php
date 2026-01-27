@@ -1082,6 +1082,12 @@ class FinanceController extends Controller
 
     /**
      * Получить детальную информацию о доходах с маркетплейсов
+     *
+     * Возвращает 4 категории:
+     * 1. Заказы - все заказы независимо от типа (FBO/FBS/DBS и т.д.)
+     * 2. Продано - проданные товары (delivered/issued/completed)
+     * 3. Возвраты - возвраты товаров
+     * 4. Отменены - отменённые заказы (до доставки)
      */
     public function marketplaceIncome(Request $request)
     {
@@ -1096,195 +1102,232 @@ class FinanceController extends Controller
         $financeSettings = FinanceSettings::getForCompany($companyId);
         $rubToUzs = $financeSettings->rub_rate ?? 140;
 
-        $result = [
+        // Инициализация итогов
+        $totals = [
+            'orders' => ['count' => 0, 'amount' => 0],      // Все заказы
+            'sold' => ['count' => 0, 'amount' => 0],        // Проданные (delivered)
+            'returns' => ['count' => 0, 'amount' => 0],     // Возвраты
+            'cancelled' => ['count' => 0, 'amount' => 0],   // Отменённые
+            'avg_order_value' => 0,
+        ];
+
+        $marketplaces = [];
+
+        // ========== UZUM ==========
+        try {
+            if (class_exists(\App\Models\UzumOrder::class)) {
+                $uzumQuery = fn() => \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereDate('ordered_at', '>=', $from)
+                    ->whereDate('ordered_at', '<=', $to);
+
+                // Все заказы (независимо от типа доставки)
+                $uzumAll = $uzumQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Проданные (issued = доставлено клиенту)
+                $uzumSold = $uzumQuery()
+                    ->where('status', 'issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Возвраты
+                $uzumReturns = $uzumQuery()
+                    ->where('status', 'returns')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                // Отменённые
+                $uzumCancelled = $uzumQuery()
+                    ->where('status', 'cancelled')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($uzumAll?->cnt ?? 0);
+                $ordersAmount = (float) ($uzumAll?->amount ?? 0);
+                $soldCount = (int) ($uzumSold?->cnt ?? 0);
+                $soldAmount = (float) ($uzumSold?->amount ?? 0);
+                $returnsCount = (int) ($uzumReturns?->cnt ?? 0);
+                $returnsAmount = (float) ($uzumReturns?->amount ?? 0);
+                $cancelledCount = (int) ($uzumCancelled?->cnt ?? 0);
+                $cancelledAmount = (float) ($uzumCancelled?->amount ?? 0);
+
+                $marketplaces['uzum'] = [
+                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
+                    'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
+                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
+                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
+                    'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
+                    'currency' => 'UZS',
+                ];
+
+                // Добавляем к итогам (Uzum уже в UZS)
+                $totals['orders']['count'] += $ordersCount;
+                $totals['orders']['amount'] += $ordersAmount;
+                $totals['sold']['count'] += $soldCount;
+                $totals['sold']['amount'] += $soldAmount;
+                $totals['returns']['count'] += $returnsCount;
+                $totals['returns']['amount'] += $returnsAmount;
+                $totals['cancelled']['count'] += $cancelledCount;
+                $totals['cancelled']['amount'] += $cancelledAmount;
+            }
+        } catch (\Exception $e) {
+            $marketplaces['uzum'] = ['error' => $e->getMessage()];
+        }
+
+        // ========== WILDBERRIES ==========
+        try {
+            if (class_exists(\App\Models\WildberriesOrder::class)) {
+                $wbQuery = fn() => \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to);
+
+                // Все заказы
+                $wbAll = $wbQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->first();
+
+                // Проданные (is_realization=true, не отменённые, не возвраты)
+                $wbSold = $wbQuery()
+                    ->where('is_realization', true)
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->first();
+
+                // Возвраты
+                $wbReturns = $wbQuery()
+                    ->where('is_return', true)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->first();
+
+                // Отменённые
+                $wbCancelled = $wbQuery()
+                    ->where('is_cancel', true)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($wbAll?->cnt ?? 0);
+                $ordersAmountRub = (float) ($wbAll?->amount ?? 0);
+                $soldCount = (int) ($wbSold?->cnt ?? 0);
+                $soldAmountRub = (float) ($wbSold?->amount ?? 0);
+                $returnsCount = (int) ($wbReturns?->cnt ?? 0);
+                $returnsAmountRub = (float) ($wbReturns?->amount ?? 0);
+                $cancelledCount = (int) ($wbCancelled?->cnt ?? 0);
+                $cancelledAmountRub = (float) ($wbCancelled?->amount ?? 0);
+
+                $marketplaces['wb'] = [
+                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmountRub * $rubToUzs, 'amount_rub' => $ordersAmountRub],
+                    'sold' => ['count' => $soldCount, 'amount' => $soldAmountRub * $rubToUzs, 'amount_rub' => $soldAmountRub],
+                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmountRub * $rubToUzs, 'amount_rub' => $returnsAmountRub],
+                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmountRub * $rubToUzs, 'amount_rub' => $cancelledAmountRub],
+                    'avg_order_value' => $soldCount > 0 ? ($soldAmountRub / $soldCount) * $rubToUzs : 0,
+                    'avg_order_value_rub' => $soldCount > 0 ? $soldAmountRub / $soldCount : 0,
+                    'currency' => 'RUB',
+                    'rub_rate' => $rubToUzs,
+                ];
+
+                // Добавляем к итогам (конвертируем RUB -> UZS)
+                $totals['orders']['count'] += $ordersCount;
+                $totals['orders']['amount'] += $ordersAmountRub * $rubToUzs;
+                $totals['sold']['count'] += $soldCount;
+                $totals['sold']['amount'] += $soldAmountRub * $rubToUzs;
+                $totals['returns']['count'] += $returnsCount;
+                $totals['returns']['amount'] += $returnsAmountRub * $rubToUzs;
+                $totals['cancelled']['count'] += $cancelledCount;
+                $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
+            }
+        } catch (\Exception $e) {
+            $marketplaces['wb'] = ['error' => $e->getMessage()];
+        }
+
+        // ========== OZON ==========
+        try {
+            if (class_exists(\App\Models\OzonOrder::class)) {
+                $ozonQuery = fn() => \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereDate('created_at_ozon', '>=', $from)
+                    ->whereDate('created_at_ozon', '<=', $to);
+
+                // Все заказы
+                $ozonAll = $ozonQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Проданные (delivered, completed)
+                $ozonSold = $ozonQuery()
+                    ->whereIn('status', ['delivered', 'completed'])
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Возвраты
+                $ozonReturns = $ozonQuery()
+                    ->whereIn('status', ['returned'])
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                // Отменённые
+                $ozonCancelled = $ozonQuery()
+                    ->where('status', 'cancelled')
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
+                    ->first();
+
+                $ordersCount = (int) ($ozonAll?->cnt ?? 0);
+                $ordersAmountRub = (float) ($ozonAll?->amount ?? 0);
+                $soldCount = (int) ($ozonSold?->cnt ?? 0);
+                $soldAmountRub = (float) ($ozonSold?->amount ?? 0);
+                $returnsCount = (int) ($ozonReturns?->cnt ?? 0);
+                $returnsAmountRub = (float) ($ozonReturns?->amount ?? 0);
+                $cancelledCount = (int) ($ozonCancelled?->cnt ?? 0);
+                $cancelledAmountRub = (float) ($ozonCancelled?->amount ?? 0);
+
+                $marketplaces['ozon'] = [
+                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmountRub * $rubToUzs, 'amount_rub' => $ordersAmountRub],
+                    'sold' => ['count' => $soldCount, 'amount' => $soldAmountRub * $rubToUzs, 'amount_rub' => $soldAmountRub],
+                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmountRub * $rubToUzs, 'amount_rub' => $returnsAmountRub],
+                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmountRub * $rubToUzs, 'amount_rub' => $cancelledAmountRub],
+                    'avg_order_value' => $soldCount > 0 ? ($soldAmountRub / $soldCount) * $rubToUzs : 0,
+                    'avg_order_value_rub' => $soldCount > 0 ? $soldAmountRub / $soldCount : 0,
+                    'currency' => 'RUB',
+                    'rub_rate' => $rubToUzs,
+                ];
+
+                // Добавляем к итогам (конвертируем RUB -> UZS)
+                $totals['orders']['count'] += $ordersCount;
+                $totals['orders']['amount'] += $ordersAmountRub * $rubToUzs;
+                $totals['sold']['count'] += $soldCount;
+                $totals['sold']['amount'] += $soldAmountRub * $rubToUzs;
+                $totals['returns']['count'] += $returnsCount;
+                $totals['returns']['amount'] += $returnsAmountRub * $rubToUzs;
+                $totals['cancelled']['count'] += $cancelledCount;
+                $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
+            }
+        } catch (\Exception $e) {
+            $marketplaces['ozon'] = ['error' => $e->getMessage()];
+        }
+
+        // Рассчитываем средний чек по проданным
+        if ($totals['sold']['count'] > 0) {
+            $totals['avg_order_value'] = $totals['sold']['amount'] / $totals['sold']['count'];
+        }
+
+        return $this->successResponse([
             'period' => [
                 'from' => $from->format('Y-m-d'),
                 'to' => $to->format('Y-m-d'),
             ],
-            'uzum' => null,
-            'wb' => null,
-            'ozon' => null,
+            'totals' => $totals,
+            'marketplaces' => $marketplaces,
+            // Legacy fields for backward compatibility
             'total' => [
-                'gross_revenue' => 0,
-                'net_payout' => 0,
-                'orders_count' => 0,
-                'returns_count' => 0,
-                'avg_order_value' => 0,
+                'gross_revenue' => $totals['sold']['amount'],
+                'orders_count' => $totals['orders']['count'],
+                'returns_count' => $totals['returns']['count'],
+                'avg_order_value' => $totals['avg_order_value'],
             ],
-        ];
-
-        // Uzum income (UZS) - использует uzum_orders таблицу
-        try {
-            if (class_exists(\App\Models\UzumOrder::class)) {
-                // Выполненные заказы (issued = доставлено клиенту)
-                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'issued')
-                    ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to)
-                    ->selectRaw('
-                        COUNT(*) as orders_count,
-                        SUM(total_amount) as gross_revenue
-                    ')
-                    ->first();
-
-                // Возвраты
-                $uzumReturns = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'returns')
-                    ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
-
-                // Отмены
-                $uzumCancelled = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('status', 'cancelled')
-                    ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
-
-                $ordersCount = (int) ($uzumSales?->orders_count ?? 0);
-                $grossRevenue = (float) ($uzumSales?->gross_revenue ?? 0);
-                // Net payout приблизительно 85% от выручки (после комиссий Uzum)
-                $netPayout = $grossRevenue * 0.85;
-                $returnsCount = (int) ($uzumReturns?->cnt ?? 0) + (int) ($uzumCancelled?->cnt ?? 0);
-                $returnsAmount = (float) ($uzumReturns?->amount ?? 0) + (float) ($uzumCancelled?->amount ?? 0);
-
-                $result['uzum'] = [
-                    'orders_count' => $ordersCount,
-                    'gross_revenue' => $grossRevenue,
-                    'net_payout' => $netPayout,
-                    'returns_count' => $returnsCount,
-                    'returns_amount' => $returnsAmount,
-                    'avg_order_value' => $ordersCount > 0 ? $grossRevenue / $ordersCount : 0,
-                    'profit_margin' => $grossRevenue > 0 ? round(($netPayout / $grossRevenue) * 100, 1) : 0,
-                    'currency' => 'UZS',
-                    'note' => 'Net payout estimated at 85% of gross',
-                ];
-
-                $result['total']['gross_revenue'] += $grossRevenue;
-                $result['total']['net_payout'] += $netPayout;
-                $result['total']['orders_count'] += $ordersCount;
-                $result['total']['returns_count'] += $returnsCount;
-            }
-        } catch (\Exception $e) {
-            $result['uzum'] = ['error' => $e->getMessage()];
-        }
-
-        // WB income (RUB -> UZS)
-        try {
-            if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('is_realization', true)
-                    ->where('is_cancel', false)
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to)
-                    ->selectRaw('
-                        COUNT(*) as orders_count,
-                        SUM(COALESCE(total_price, 0)) as gross_revenue,
-                        SUM(COALESCE(for_pay, finished_price, 0)) as net_payout
-                    ')
-                    ->first();
-
-                // Возвраты / отмены
-                $wbReturns = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where('is_cancel', true)
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
-                    ->first();
-
-                $ordersCount = (int) ($wbSales?->orders_count ?? 0);
-                $grossRevenueRub = (float) ($wbSales?->gross_revenue ?? 0);
-                $netPayoutRub = (float) ($wbSales?->net_payout ?? 0);
-                $returnsCount = (int) ($wbReturns?->cnt ?? 0);
-                $returnsAmountRub = (float) ($wbReturns?->amount ?? 0);
-
-                $result['wb'] = [
-                    'orders_count' => $ordersCount,
-                    'gross_revenue' => $grossRevenueRub * $rubToUzs,
-                    'gross_revenue_rub' => $grossRevenueRub,
-                    'net_payout' => $netPayoutRub * $rubToUzs,
-                    'net_payout_rub' => $netPayoutRub,
-                    'returns_count' => $returnsCount,
-                    'returns_amount' => $returnsAmountRub * $rubToUzs,
-                    'returns_amount_rub' => $returnsAmountRub,
-                    'avg_order_value' => $ordersCount > 0 ? ($grossRevenueRub / $ordersCount) * $rubToUzs : 0,
-                    'avg_order_value_rub' => $ordersCount > 0 ? $grossRevenueRub / $ordersCount : 0,
-                    'profit_margin' => $grossRevenueRub > 0 ? round(($netPayoutRub / $grossRevenueRub) * 100, 1) : 0,
-                    'currency' => 'RUB',
-                    'rub_rate' => $rubToUzs,
-                ];
-
-                $result['total']['gross_revenue'] += $grossRevenueRub * $rubToUzs;
-                $result['total']['net_payout'] += $netPayoutRub * $rubToUzs;
-                $result['total']['orders_count'] += $ordersCount;
-                $result['total']['returns_count'] += $returnsCount;
-            }
-        } catch (\Exception $e) {
-            $result['wb'] = ['error' => $e->getMessage()];
-        }
-
-        // Ozon income (RUB -> UZS)
-        try {
-            if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['delivered', 'completed'])
-                    ->whereDate('created_at_ozon', '>=', $from)
-                    ->whereDate('created_at_ozon', '<=', $to)
-                    ->selectRaw('
-                        COUNT(*) as orders_count,
-                        SUM(COALESCE(total_price, 0)) as gross_revenue
-                    ')
-                    ->first();
-
-                // Возвраты / отмены
-                $ozonReturns = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['cancelled', 'returned'])
-                    ->whereDate('created_at_ozon', '>=', $from)
-                    ->whereDate('created_at_ozon', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as amount')
-                    ->first();
-
-                $ordersCount = (int) ($ozonSales?->orders_count ?? 0);
-                $grossRevenueRub = (float) ($ozonSales?->gross_revenue ?? 0);
-                // Для Ozon net_payout примерно = gross - комиссия (берём из expenses или оценка ~85%)
-                $netPayoutRub = $grossRevenueRub * 0.85; // Приблизительно
-                $returnsCount = (int) ($ozonReturns?->cnt ?? 0);
-                $returnsAmountRub = (float) ($ozonReturns?->amount ?? 0);
-
-                $result['ozon'] = [
-                    'orders_count' => $ordersCount,
-                    'gross_revenue' => $grossRevenueRub * $rubToUzs,
-                    'gross_revenue_rub' => $grossRevenueRub,
-                    'net_payout' => $netPayoutRub * $rubToUzs,
-                    'net_payout_rub' => $netPayoutRub,
-                    'returns_count' => $returnsCount,
-                    'returns_amount' => $returnsAmountRub * $rubToUzs,
-                    'returns_amount_rub' => $returnsAmountRub,
-                    'avg_order_value' => $ordersCount > 0 ? ($grossRevenueRub / $ordersCount) * $rubToUzs : 0,
-                    'avg_order_value_rub' => $ordersCount > 0 ? $grossRevenueRub / $ordersCount : 0,
-                    'profit_margin' => $grossRevenueRub > 0 ? round(($netPayoutRub / $grossRevenueRub) * 100, 1) : 0,
-                    'currency' => 'RUB',
-                    'rub_rate' => $rubToUzs,
-                    'note' => 'Net payout estimated at 85% of gross',
-                ];
-
-                $result['total']['gross_revenue'] += $grossRevenueRub * $rubToUzs;
-                $result['total']['net_payout'] += $netPayoutRub * $rubToUzs;
-                $result['total']['orders_count'] += $ordersCount;
-                $result['total']['returns_count'] += $returnsCount;
-            }
-        } catch (\Exception $e) {
-            $result['ozon'] = ['error' => $e->getMessage()];
-        }
-
-        // Calculate total avg order value
-        if ($result['total']['orders_count'] > 0) {
-            $result['total']['avg_order_value'] = $result['total']['gross_revenue'] / $result['total']['orders_count'];
-        }
-
-        return $this->successResponse($result);
+            'uzum' => $marketplaces['uzum'] ?? null,
+            'wb' => $marketplaces['wb'] ?? null,
+            'ozon' => $marketplaces['ozon'] ?? null,
+        ]);
     }
 
     /**

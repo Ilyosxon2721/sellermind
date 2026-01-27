@@ -33,7 +33,8 @@ class StockController extends Controller
             'sku_id' => ['nullable', 'integer'],
             'sku_ids' => ['nullable', 'array'],
             'query' => ['nullable', 'string'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $companyId = $this->getCompanyId();
@@ -67,8 +68,10 @@ class StockController extends Controller
             ]);
         }
 
-        // Query mode: find SKUs by code/barcode and return balances list
-        $limit = $request->integer('limit', 50);
+        // Paginated mode: find SKUs by code/barcode and return balances list with pagination
+        $perPage = min(max((int) ($request->per_page ?? 30), 1), 100);
+        $page = max((int) ($request->page ?? 1), 1);
+
         $query = \App\Models\Warehouse\Sku::query()
             ->byCompany($companyId)
             ->with(['product.images', 'productVariant.mainImage', 'productVariant.optionValues'])
@@ -84,16 +87,26 @@ class StockController extends Controller
             });
         }
 
-        $skus = $query->limit($limit)->get();
-        if ($skus->isEmpty()) {
-            return $this->successResponse(['items' => []]);
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+        $skus = $paginator->items();
+
+        if (empty($skus)) {
+            return $this->successResponse([
+                'items' => [],
+                'pagination' => [
+                    'total' => 0,
+                    'per_page' => $perPage,
+                    'current_page' => $page,
+                    'last_page' => 1,
+                ],
+            ]);
         }
 
-        $skuIds = $skus->pluck('id')->all();
+        $skuIds = collect($skus)->pluck('id')->all();
         $balances = $service->bulkBalance($companyId, $warehouseId, $skuIds);
         $costs = $service->bulkCost($companyId, $warehouseId, $skuIds);
 
-        $items = $skus->map(function ($sku) use ($balances, $costs) {
+        $items = collect($skus)->map(function ($sku) use ($balances, $costs) {
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
             $cost = $costs[$sku->id] ?? ['total_cost' => 0, 'unit_cost' => 0];
 
@@ -118,6 +131,7 @@ class StockController extends Controller
                 'sku_code' => $sku->sku_code,
                 'barcode' => $sku->barcode_ean13,
                 'product_name' => $sku->product?->name,
+                'product_id' => $sku->product_id,
                 'image_url' => $imageUrl,
                 'options_summary' => $optionsSummary,
                 'on_hand' => $balance['on_hand'] ?? 0,
@@ -128,7 +142,15 @@ class StockController extends Controller
             ];
         });
 
-        return $this->successResponse(['items' => $items]);
+        return $this->successResponse([
+            'items' => $items,
+            'pagination' => [
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ]);
     }
 
     public function ledger(Request $request)
