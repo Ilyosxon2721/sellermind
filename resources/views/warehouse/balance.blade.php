@@ -98,11 +98,13 @@
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">На складе</th>
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Резерв</th>
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Доступно</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Себестоимость</th>
+                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -110,7 +112,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="6" class="px-6 py-12 text-center">
+                            <tr><td colspan="8" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 </div>
@@ -123,16 +125,112 @@
                                 <td class="px-6 py-4 text-sm font-semibold text-blue-600" x-text="row.sku_code"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.barcode || '—'"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.product_name || '—'"></td>
-                                <td class="px-6 py-4 text-sm text-right font-medium" x-text="row.on_hand.toFixed(3)"></td>
-                                <td class="px-6 py-4 text-sm text-right text-amber-600" x-text="row.reserved.toFixed(3)"></td>
-                                <td class="px-6 py-4 text-sm text-right font-bold text-green-600" x-text="row.available.toFixed(3)"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium" x-text="row.on_hand.toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right text-amber-600" x-text="row.reserved.toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold text-green-600" x-text="row.available.toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right">
+                                    <button class="group flex items-center justify-end space-x-1 w-full hover:text-blue-600 transition-colors"
+                                            @click="openCostModal(row)"
+                                            :class="row.unit_cost > 0 ? 'text-gray-700' : 'text-red-500'">
+                                        <span x-text="row.unit_cost > 0 ? formatMoney(row.unit_cost) : 'Не указана'"></span>
+                                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-right font-medium text-gray-700" x-text="formatMoney(row.total_cost || 0)"></td>
                             </tr>
                         </template>
                         </tbody>
+                        <!-- Footer with totals -->
+                        <tfoot x-show="items.length > 0" class="bg-gray-50 border-t-2 border-gray-200">
+                            <tr>
+                                <td colspan="3" class="px-6 py-4 text-sm font-semibold text-gray-700">Итого:</td>
+                                <td class="px-6 py-4 text-sm text-right font-bold text-gray-900" x-text="totalOnHand.toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold text-amber-600" x-text="totalReserved.toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right font-bold text-green-600" x-text="(totalOnHand - totalReserved).toFixed(0)"></td>
+                                <td class="px-6 py-4 text-sm text-right text-gray-500">—</td>
+                                <td class="px-6 py-4 text-sm text-right font-bold text-gray-900" x-text="formatMoney(totalCost)"></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Cost Edit Modal -->
+    <div x-show="showCostModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.escape.window="showCostModal = false">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="showCostModal = false"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Редактировать себестоимость</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showCostModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <template x-if="selectedItem">
+                <div class="space-y-4">
+                    <div class="p-4 bg-gray-50 rounded-xl">
+                        <div class="text-sm text-gray-500 mb-1">Товар</div>
+                        <div class="font-semibold text-gray-900" x-text="selectedItem.product_name || 'Без названия'"></div>
+                        <div class="text-sm text-blue-600 mt-1" x-text="selectedItem.sku_code"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="p-3 bg-green-50 rounded-xl">
+                            <div class="text-green-600">На складе</div>
+                            <div class="font-bold text-green-700" x-text="selectedItem.on_hand.toFixed(0) + ' шт'"></div>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-xl">
+                            <div class="text-blue-600">Текущая себестоимость</div>
+                            <div class="font-bold text-blue-700" x-text="selectedItem.unit_cost > 0 ? formatMoney(selectedItem.unit_cost) + ' сум' : 'Не указана'"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Новая себестоимость за единицу (сум)</label>
+                        <input type="number"
+                               step="1"
+                               min="0"
+                               class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                               x-model.number="newCost"
+                               @keydown.enter="saveCost()">
+                        <p class="text-xs text-gray-500 mt-2">Укажите закупочную цену за 1 единицу товара в сумах</p>
+                    </div>
+
+                    <div x-show="newCost > 0 && selectedItem.on_hand > 0" class="p-4 bg-amber-50 rounded-xl">
+                        <div class="text-sm text-amber-700">
+                            <span class="font-medium">Новая общая стоимость:</span>
+                            <span class="font-bold" x-text="formatMoney(newCost * selectedItem.on_hand) + ' сум'"></span>
+                        </div>
+                    </div>
+
+                    <template x-if="costError">
+                        <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="costError"></div>
+                    </template>
+
+                    <div class="flex items-center space-x-3 pt-2">
+                        <button class="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium" @click="showCostModal = false">
+                            Отмена
+                        </button>
+                        <button class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium"
+                                @click="saveCost()"
+                                :disabled="savingCost || newCost < 0">
+                            <span x-show="!savingCost">Сохранить</span>
+                            <span x-show="savingCost">Сохранение...</span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
+        <div class="px-6 py-4 rounded-2xl shadow-xl"
+             :class="toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'">
+            <span x-text="toast.message"></span>
+        </div>
     </div>
 </div>
 
@@ -144,12 +242,30 @@
             error: '',
             loading: false,
             items: [],
+            showCostModal: false,
+            selectedItem: null,
+            newCost: 0,
+            costError: '',
+            savingCost: false,
+            toast: { show: false, message: '', type: 'success' },
 
             get totalOnHand() {
                 return this.items.reduce((sum, r) => sum + (r.on_hand || 0), 0);
             },
             get totalReserved() {
                 return this.items.reduce((sum, r) => sum + (r.reserved || 0), 0);
+            },
+            get totalCost() {
+                return this.items.reduce((sum, r) => sum + (r.total_cost || 0), 0);
+            },
+
+            formatMoney(value) {
+                return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value || 0);
+            },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
             getAuthHeaders() {
@@ -171,7 +287,8 @@
                 this.loading = true;
                 try {
                     const resp = await fetch(`/api/marketplace/stock/balance?warehouse_id=${this.warehouseId}&query=${encodeURIComponent(this.query)}`, {
-                        headers: this.getAuthHeaders()
+                        headers: this.getAuthHeaders(),
+                        credentials: 'include'
                     });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) {
@@ -185,6 +302,59 @@
                     this.loading = false;
                 }
             },
+
+            openCostModal(item) {
+                this.selectedItem = item;
+                this.newCost = item.unit_cost || 0;
+                this.costError = '';
+                this.showCostModal = true;
+            },
+
+            async saveCost() {
+                if (this.newCost < 0) {
+                    this.costError = 'Себестоимость не может быть отрицательной';
+                    return;
+                }
+                if (!this.selectedItem || this.selectedItem.on_hand <= 0) {
+                    this.costError = 'Нет остатка на складе для обновления себестоимости';
+                    return;
+                }
+
+                this.costError = '';
+                this.savingCost = true;
+
+                try {
+                    const resp = await fetch('/api/marketplace/stock/update-cost', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            warehouse_id: this.warehouseId,
+                            sku_id: this.selectedItem.sku_id,
+                            unit_cost: this.newCost
+                        })
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) {
+                        throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка сохранения');
+                    }
+
+                    // Update local item
+                    const item = this.items.find(i => i.sku_id === this.selectedItem.sku_id);
+                    if (item) {
+                        item.unit_cost = this.newCost;
+                        item.total_cost = this.newCost * item.on_hand;
+                    }
+
+                    this.showCostModal = false;
+                    this.showToast('Себестоимость обновлена', 'success');
+                } catch (e) {
+                    console.error(e);
+                    this.costError = e.message || 'Ошибка сохранения';
+                } finally {
+                    this.savingCost = false;
+                }
+            }
         }
     }
 </script>
@@ -258,21 +428,83 @@
             </div>
         </div>
 
+        {{-- Total Cost Card --}}
+        <div x-show="!loading && items.length > 0" class="px-4 pb-4">
+            <div class="native-card bg-gradient-to-r from-blue-50 to-cyan-50">
+                <div class="flex items-center justify-between">
+                    <span class="native-caption">Общая себестоимость</span>
+                    <span class="native-body font-bold text-blue-600" x-text="formatMoney(totalCost) + ' сум'"></span>
+                </div>
+            </div>
+        </div>
+
         {{-- Items List --}}
         <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
             <template x-for="row in items" :key="row.sku_id">
-                <div class="native-card">
+                <div class="native-card" @click="openCostModal(row)">
                     <div class="flex items-start justify-between mb-2">
                         <p class="native-body font-semibold text-blue-600" x-text="row.sku_code"></p>
                         <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium" x-text="row.available.toFixed(0) + ' шт'"></span>
                     </div>
                     <p class="native-caption truncate" x-text="row.product_name || '—'"></p>
-                    <div class="flex items-center space-x-4 mt-2 text-xs">
-                        <span class="text-gray-500">На складе: <span class="font-medium" x-text="row.on_hand.toFixed(0)"></span></span>
-                        <span class="text-amber-600">Резерв: <span class="font-medium" x-text="row.reserved.toFixed(0)"></span></span>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-gray-500">На складе: <span class="font-medium" x-text="row.on_hand.toFixed(0)"></span></span>
+                            <span class="text-amber-600">Резерв: <span class="font-medium" x-text="row.reserved.toFixed(0)"></span></span>
+                        </div>
+                        <div class="flex items-center space-x-1" :class="row.unit_cost > 0 ? 'text-gray-700' : 'text-red-500'">
+                            <span x-text="row.unit_cost > 0 ? formatMoney(row.unit_cost) + ' сум' : 'Нет цены'"></span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        </div>
                     </div>
                 </div>
             </template>
+        </div>
+
+        {{-- PWA Cost Modal --}}
+        <div x-show="showCostModal" x-cloak class="fixed inset-0 z-50 bg-white" style="padding-top: env(safe-area-inset-top, 0px);">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                <button class="text-blue-600 font-medium" @click="showCostModal = false">Отмена</button>
+                <span class="font-semibold">Себестоимость</span>
+                <button class="text-blue-600 font-medium" @click="saveCost()" :disabled="savingCost">
+                    <span x-show="!savingCost">Сохранить</span>
+                    <span x-show="savingCost">...</span>
+                </button>
+            </div>
+            <div class="p-4 space-y-4" x-show="selectedItem">
+                <div class="native-card">
+                    <p class="native-body font-semibold" x-text="selectedItem?.product_name || 'Без названия'"></p>
+                    <p class="native-caption text-blue-600" x-text="selectedItem?.sku_code"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="native-card text-center bg-green-50">
+                        <p class="native-caption text-green-600">На складе</p>
+                        <p class="native-body font-bold text-green-700" x-text="(selectedItem?.on_hand || 0).toFixed(0) + ' шт'"></p>
+                    </div>
+                    <div class="native-card text-center bg-blue-50">
+                        <p class="native-caption text-blue-600">Текущая цена</p>
+                        <p class="native-body font-bold text-blue-700" x-text="selectedItem?.unit_cost > 0 ? formatMoney(selectedItem.unit_cost) : '—'"></p>
+                    </div>
+                </div>
+                <div>
+                    <label class="native-caption">Новая себестоимость (сум)</label>
+                    <input type="number" class="native-input mt-1 text-lg" x-model.number="newCost" min="0" step="1">
+                </div>
+                <div x-show="newCost > 0 && selectedItem?.on_hand > 0" class="native-card bg-amber-50">
+                    <p class="native-caption text-amber-700">Итого: <span class="font-bold" x-text="formatMoney(newCost * (selectedItem?.on_hand || 0)) + ' сум'"></span></p>
+                </div>
+                <template x-if="costError">
+                    <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="costError"></div>
+                </template>
+            </div>
+        </div>
+
+        {{-- PWA Toast --}}
+        <div x-show="toast.show" x-transition class="fixed bottom-20 left-4 right-4 z-50">
+            <div class="px-4 py-3 rounded-xl shadow-lg text-center"
+                 :class="toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'">
+                <span x-text="toast.message"></span>
+            </div>
         </div>
     </main>
 </div>

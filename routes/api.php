@@ -591,6 +591,7 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('stock')->group(function () {
             Route::get('balance', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'balance']);
             Route::get('ledger', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'ledger']);
+            Route::post('update-cost', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'updateCost']);
 
             Route::get('reservations', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'index']);
             Route::post('reserve', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'reserve']);

@@ -8,6 +8,7 @@ use App\Services\Warehouse\StockBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StockController extends Controller
 {
@@ -88,10 +89,13 @@ class StockController extends Controller
             return $this->successResponse(['items' => []]);
         }
 
-        $balances = $service->bulkBalance($companyId, $warehouseId, $skus->pluck('id')->all());
+        $skuIds = $skus->pluck('id')->all();
+        $balances = $service->bulkBalance($companyId, $warehouseId, $skuIds);
+        $costs = $service->bulkCost($companyId, $warehouseId, $skuIds);
 
-        $items = $skus->map(function ($sku) use ($balances) {
+        $items = $skus->map(function ($sku) use ($balances, $costs) {
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
+            $cost = $costs[$sku->id] ?? ['total_cost' => 0, 'unit_cost' => 0];
 
             // Get image URL (variant image first, then product image)
             $imageUrl = null;
@@ -119,6 +123,8 @@ class StockController extends Controller
                 'on_hand' => $balance['on_hand'] ?? 0,
                 'reserved' => $balance['reserved'] ?? 0,
                 'available' => $balance['available'] ?? 0,
+                'unit_cost' => $cost['unit_cost'] ?? 0,
+                'total_cost' => $cost['total_cost'] ?? 0,
             ];
         });
 
@@ -181,5 +187,52 @@ class StockController extends Controller
                 'last_page' => $paginator->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Update cost for a SKU
+     * Creates an adjustment entry in stock_ledger to correct the cost
+     */
+    public function updateCost(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => ['required', 'integer'],
+            'sku_id' => ['required', 'integer'],
+            'unit_cost' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        try {
+            $service = app(StockBalanceService::class);
+            $result = $service->updateCost(
+                $companyId,
+                (int) $request->warehouse_id,
+                (int) $request->sku_id,
+                (float) $request->unit_cost,
+                Auth::id()
+            );
+
+            Log::info('Stock cost updated', [
+                'company_id' => $companyId,
+                'warehouse_id' => $request->warehouse_id,
+                'sku_id' => $request->sku_id,
+                'user_id' => Auth::id(),
+                'result' => $result,
+            ]);
+
+            return $this->successResponse($result);
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), 'update_cost_failed', null, 422);
+        } catch (\Throwable $e) {
+            Log::error('Failed to update stock cost', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse('Failed to update cost', 'error', null, 500);
+        }
     }
 }
