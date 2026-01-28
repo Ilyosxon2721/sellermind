@@ -58,6 +58,11 @@
                     Налоги
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                        :class="activeTab === 'accounts' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'"
+                        @click="activeTab = 'accounts'; loadCashAccounts()">
+                    Счета
+                </button>
+                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                         :class="activeTab === 'reports' ? 'bg-cyan-100 text-cyan-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'reports'">
                     Отчёты
@@ -1361,6 +1366,173 @@
                 </div>
             </section>
 
+            <!-- Cash Accounts Tab -->
+            <section x-show="activeTab === 'accounts'" class="space-y-6">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Всего счетов</div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="cashAccounts.length"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (UZS)</div>
+                        <div class="text-2xl font-bold text-emerald-600" x-text="formatMoney(cashAccountsTotalByCurrency('UZS'))"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (RUB)</div>
+                        <div class="text-2xl font-bold text-blue-600" x-text="formatMoney(cashAccountsTotalByCurrency('RUB'))"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (USD)</div>
+                        <div class="text-2xl font-bold text-green-600" x-text="formatMoney(cashAccountsTotalByCurrency('USD'))"></div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="showCashAccountModal = true; resetCashAccountForm()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Добавить счёт</span>
+                        </button>
+                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="showTransferModal = true">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            <span>Перевод</span>
+                        </button>
+                    </div>
+                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="loadCashAccounts()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                </div>
+
+                <!-- Accounts List -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="account in cashAccounts" :key="account.id">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                             @click="selectCashAccount(account)">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                                         :class="{
+                                             'bg-green-100 text-green-600': account.type === 'cash',
+                                             'bg-blue-100 text-blue-600': account.type === 'bank',
+                                             'bg-purple-100 text-purple-600': account.type === 'card',
+                                             'bg-amber-100 text-amber-600': account.type === 'ewallet',
+                                             'bg-indigo-100 text-indigo-600': account.type === 'marketplace',
+                                             'bg-gray-100 text-gray-600': account.type === 'other'
+                                         }">
+                                        <template x-if="account.type === 'cash'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'bank'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'card'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'ewallet'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'marketplace'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'other'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                                        </template>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900" x-text="account.name"></div>
+                                        <div class="text-xs text-gray-500" x-text="getAccountTypeName(account.type)"></div>
+                                    </div>
+                                </div>
+                                <template x-if="account.is_default">
+                                    <span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">По умолч.</span>
+                                </template>
+                            </div>
+                            <div class="text-2xl font-bold mb-2"
+                                 :class="account.balance >= 0 ? 'text-emerald-600' : 'text-red-600'"
+                                 x-text="formatMoney(account.balance) + ' ' + currencySymbol(account.currency_code)"></div>
+                            <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span x-text="account.currency_code"></span>
+                                <template x-if="account.marketplace">
+                                    <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded" x-text="account.marketplace.toUpperCase()"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="cashAccounts.length === 0" class="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Нет денежных счетов</h3>
+                    <p class="text-gray-500 mb-4">Добавьте кассу, банковский счёт или карту для учёта денежных средств</p>
+                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" @click="showCashAccountModal = true; resetCashAccountForm()">
+                        Добавить счёт
+                    </button>
+                </div>
+
+                <!-- Selected Account Transactions -->
+                <div x-show="selectedCashAccount" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <button class="p-2 hover:bg-gray-100 rounded-lg" @click="selectedCashAccount = null">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <h3 class="text-lg font-semibold text-gray-900">Движения: <span x-text="selectedCashAccount?.name"></span></h3>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl text-sm"
+                                    @click="showIncomeModal = true">
+                                + Приход
+                            </button>
+                            <button class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-sm"
+                                    @click="showAccountExpenseModal = true">
+                                - Расход
+                            </button>
+                        </div>
+                    </div>
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-sm text-gray-500 border-b">
+                                <th class="pb-3">Дата</th>
+                                <th class="pb-3">Операция</th>
+                                <th class="pb-3">Описание</th>
+                                <th class="pb-3 text-right">Сумма</th>
+                                <th class="pb-3 text-right">Баланс</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="tx in accountTransactions" :key="tx.id">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="py-3 text-sm text-gray-600" x-text="formatDate(tx.transaction_date)"></td>
+                                    <td class="py-3">
+                                        <span class="px-2 py-1 rounded-full text-xs"
+                                              :class="{
+                                                  'bg-emerald-100 text-emerald-700': tx.type === 'income',
+                                                  'bg-red-100 text-red-700': tx.type === 'expense',
+                                                  'bg-blue-100 text-blue-700': tx.type === 'transfer_in',
+                                                  'bg-purple-100 text-purple-700': tx.type === 'transfer_out'
+                                              }"
+                                              x-text="getTransactionTypeName(tx.type)"></span>
+                                    </td>
+                                    <td class="py-3 text-sm text-gray-700" x-text="tx.description || '-'"></td>
+                                    <td class="py-3 text-right font-medium"
+                                        :class="['income', 'transfer_in'].includes(tx.type) ? 'text-emerald-600' : 'text-red-600'"
+                                        x-text="(['income', 'transfer_in'].includes(tx.type) ? '+' : '-') + formatMoney(tx.amount)"></td>
+                                    <td class="py-3 text-right text-sm text-gray-600" x-text="formatMoney(tx.balance_after)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="accountTransactions.length === 0" class="text-center py-8 text-gray-500">
+                        Нет движений по счёту
+                    </div>
+                </div>
+            </section>
+
             <!-- Reports Tab -->
             <section x-show="activeTab === 'reports'" class="space-y-6" x-init="$watch('activeTab', val => { if (val === 'reports') { if (!reportData) loadReportWithCharts(); else setTimeout(() => initReportCharts(), 100) } })">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -2148,6 +2320,207 @@
         </div>
     </div>
 
+    <!-- Cash Account Modal -->
+    <div x-show="showCashAccountModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCashAccountModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Новый денежный счёт</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showCashAccountModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.name" placeholder="Основная касса">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.type">
+                            <option value="cash">Касса</option>
+                            <option value="bank">Банковский счёт</option>
+                            <option value="card">Карта</option>
+                            <option value="ewallet">Электронный кошелёк</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Валюта</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.currency_code">
+                            <option value="UZS">UZS (сум)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="RUB">RUB (₽)</option>
+                            <option value="EUR">EUR (€)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Начальный остаток</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.initial_balance" placeholder="0">
+                </div>
+                <div x-show="cashAccountForm.type === 'bank'" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название банка</label>
+                        <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.bank_name" placeholder="Kapital Bank">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Номер счёта</label>
+                            <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.account_number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">БИК</label>
+                            <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.bik">
+                        </div>
+                    </div>
+                </div>
+                <div x-show="cashAccountForm.type === 'card'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Последние 4 цифры карты</label>
+                    <input type="text" maxlength="4" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.card_number" placeholder="1234">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCashAccountModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50" :disabled="savingCashAccount || !cashAccountForm.name" @click="saveCashAccount()">
+                    <span x-show="!savingCashAccount">Создать</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Modal -->
+    <div x-show="showTransferModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showTransferModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Перевод между счетами</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showTransferModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Со счёта</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.from_account_id">
+                        <option value="">Выберите счёт</option>
+                        <template x-for="acc in cashAccounts" :key="acc.id">
+                            <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + currencySymbol(acc.currency_code) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">На счёт</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.to_account_id">
+                        <option value="">Выберите счёт</option>
+                        <template x-for="acc in cashAccounts.filter(a => a.id != transferForm.from_account_id)" :key="acc.id">
+                            <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + currencySymbol(acc.currency_code) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.description" placeholder="Пополнение кассы">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransferModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !transferForm.from_account_id || !transferForm.to_account_id || !transferForm.amount"
+                        @click="saveTransfer()">
+                    <span x-show="!savingCashAccount">Перевести</span>
+                    <span x-show="savingCashAccount">Перевод...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Modal -->
+    <div x-show="showIncomeModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showIncomeModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Приход на счёт: <span x-text="selectedCashAccount?.name"></span></h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showIncomeModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.description" placeholder="Выручка за день">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Номер документа</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.reference" placeholder="ПКО-001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showIncomeModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !incomeForm.amount"
+                        @click="saveAccountIncome()">
+                    <span x-show="!savingCashAccount">Добавить</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Expense Modal -->
+    <div x-show="showAccountExpenseModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAccountExpenseModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Расход со счёта: <span x-text="selectedCashAccount?.name"></span></h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showAccountExpenseModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.description" placeholder="Оплата поставщику">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Номер документа</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.reference" placeholder="РКО-001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showAccountExpenseModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !accountExpenseForm.amount"
+                        @click="saveAccountExpense()">
+                    <span x-show="!savingCashAccount">Добавить</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
         <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'"><span x-text="toast.message"></span></div>
@@ -2432,6 +2805,20 @@ function financePage() {
         showCalculateTaxForm: false,
         showCurrencyModal: false,
 
+        // Cash Accounts
+        cashAccounts: [],
+        selectedCashAccount: null,
+        accountTransactions: [],
+        showCashAccountModal: false,
+        showTransferModal: false,
+        showIncomeModal: false,
+        showAccountExpenseModal: false,
+        savingCashAccount: false,
+        cashAccountForm: { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' },
+        transferForm: { from_account_id: '', to_account_id: '', amount: '', description: '', transaction_date: '' },
+        incomeForm: { amount: '', description: '', reference: '', transaction_date: '' },
+        accountExpenseForm: { amount: '', description: '', reference: '', transaction_date: '' },
+
         // Employee action modals
         showPaySalaryModal: false,
         showPenaltyModal: false,
@@ -2647,6 +3034,176 @@ function financePage() {
                 console.error('Failed to load marketplace income:', e);
             }
             this.loadingIncome = false;
+        },
+
+        // ========== Cash Accounts ==========
+        async loadCashAccounts() {
+            try {
+                const resp = await fetch('/api/finance/cash-accounts', { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.cashAccounts = json.data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load cash accounts:', e);
+            }
+        },
+
+        cashAccountsTotalByCurrency(currency) {
+            return this.cashAccounts
+                .filter(a => a.currency_code === currency)
+                .reduce((sum, a) => sum + Number(a.balance || 0), 0);
+        },
+
+        getAccountTypeName(type) {
+            const types = {
+                'cash': 'Касса',
+                'bank': 'Банковский счёт',
+                'card': 'Карта',
+                'ewallet': 'Электронный кошелёк',
+                'marketplace': 'Маркетплейс',
+                'other': 'Прочее'
+            };
+            return types[type] || type;
+        },
+
+        getTransactionTypeName(type) {
+            const types = {
+                'income': 'Приход',
+                'expense': 'Расход',
+                'transfer_in': 'Перевод (вход)',
+                'transfer_out': 'Перевод (выход)'
+            };
+            return types[type] || type;
+        },
+
+        resetCashAccountForm() {
+            this.cashAccountForm = { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' };
+        },
+
+        async selectCashAccount(account) {
+            this.selectedCashAccount = account;
+            await this.loadAccountTransactions(account.id);
+        },
+
+        async loadAccountTransactions(accountId) {
+            try {
+                const resp = await fetch(`/api/finance/cash-accounts/${accountId}/transactions`, { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.accountTransactions = json.data?.data || json.data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load account transactions:', e);
+            }
+        },
+
+        async saveCashAccount() {
+            this.savingCashAccount = true;
+            try {
+                const resp = await fetch('/api/finance/cash-accounts', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.cashAccountForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Счёт успешно создан', 'success');
+                    this.showCashAccountModal = false;
+                    await this.loadCashAccounts();
+                } else {
+                    this.showToast(json.message || 'Ошибка создания счёта', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save cash account:', e);
+                this.showToast('Ошибка создания счёта', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveTransfer() {
+            this.savingCashAccount = true;
+            try {
+                this.transferForm.transaction_date = this.transferForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch('/api/finance/cash-accounts/transfer', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.transferForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Перевод выполнен успешно', 'success');
+                    this.showTransferModal = false;
+                    this.transferForm = { from_account_id: '', to_account_id: '', amount: '', description: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                } else {
+                    this.showToast(json.message || 'Ошибка перевода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save transfer:', e);
+                this.showToast('Ошибка перевода', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveAccountIncome() {
+            if (!this.selectedCashAccount) return;
+            this.savingCashAccount = true;
+            try {
+                this.incomeForm.transaction_date = this.incomeForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch(`/api/finance/cash-accounts/${this.selectedCashAccount.id}/income`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.incomeForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Приход добавлен', 'success');
+                    this.showIncomeModal = false;
+                    this.incomeForm = { amount: '', description: '', reference: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                    await this.loadAccountTransactions(this.selectedCashAccount.id);
+                    // Update selected account balance
+                    const updated = this.cashAccounts.find(a => a.id === this.selectedCashAccount.id);
+                    if (updated) this.selectedCashAccount = updated;
+                } else {
+                    this.showToast(json.message || 'Ошибка добавления прихода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save income:', e);
+                this.showToast('Ошибка добавления прихода', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveAccountExpense() {
+            if (!this.selectedCashAccount) return;
+            this.savingCashAccount = true;
+            try {
+                this.accountExpenseForm.transaction_date = this.accountExpenseForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch(`/api/finance/cash-accounts/${this.selectedCashAccount.id}/expense`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.accountExpenseForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Расход добавлен', 'success');
+                    this.showAccountExpenseModal = false;
+                    this.accountExpenseForm = { amount: '', description: '', reference: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                    await this.loadAccountTransactions(this.selectedCashAccount.id);
+                    // Update selected account balance
+                    const updated = this.cashAccounts.find(a => a.id === this.selectedCashAccount.id);
+                    if (updated) this.selectedCashAccount = updated;
+                } else {
+                    this.showToast(json.message || 'Ошибка добавления расхода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save expense:', e);
+                this.showToast('Ошибка добавления расхода', 'error');
+            }
+            this.savingCashAccount = false;
         },
 
         async loadCategories() {

@@ -756,14 +756,17 @@ Route::middleware('auth.any')->group(function () {
 
         // Cash Accounts (касса, банк)
         Route::get('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'index']);
+        Route::get('cash-accounts/summary', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'summary']);
+        Route::get('cash-accounts/marketplace', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'marketplaceAccounts']);
         Route::post('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'store']);
+        Route::post('cash-accounts/marketplace', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'createForMarketplace']);
+        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
         Route::get('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'show']);
         Route::put('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'update']);
         Route::delete('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'destroy']);
         Route::get('cash-accounts/{id}/transactions', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transactions']);
         Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
         Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
-        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
 
         // Offline Sales (Офлайн/Оптовые продажи)
         Route::get('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'index']);
