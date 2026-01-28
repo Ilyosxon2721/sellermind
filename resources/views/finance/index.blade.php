@@ -161,32 +161,39 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Транзакции за период (Приход / Расход) -->
+                    <!-- Транзакции за период (Приход / Расход / Себестоимость) -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
-                        <div class="text-sm text-slate-400 mb-2">Транзакции за период</div>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="text-sm text-slate-400 mb-2">Финансы за период</div>
+                        <div class="grid grid-cols-3 gap-3 text-sm">
                             <div class="bg-emerald-500/10 rounded-xl p-3">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     <span class="text-slate-400">Приход</span>
                                 </div>
-                                <div class="text-xl font-bold text-emerald-400" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
+                                <div class="text-lg font-bold text-emerald-400" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                             </div>
                             <div class="bg-red-500/10 rounded-xl p-3">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                     <span class="text-slate-400">Расход</span>
                                 </div>
-                                <div class="text-xl font-bold text-red-400" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                                <div class="text-lg font-bold text-red-400" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                            </div>
+                            <div class="bg-slate-500/10 rounded-xl p-3">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                    <span class="text-slate-400">Себестоимость</span>
+                                </div>
+                                <div class="text-lg font-bold text-slate-300" x-text="formatMoney(overview.summary?.total_cogs || 0)"></div>
                             </div>
                         </div>
                     </div>
-                    <!-- Прибыль за период -->
+                    <!-- Чистая прибыль за период -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
                         <div class="text-sm text-slate-400 mb-2">Чистая прибыль за период</div>
                         <div class="text-2xl font-bold" :class="(overview.summary?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
                              x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
-                        <div class="text-xs text-slate-500 mt-1">Приход - Расход = Прибыль</div>
+                        <div class="text-xs text-slate-500 mt-1">Приход − Расход − Себестоимость = Чистая прибыль</div>
                     </div>
                     <!-- Ожидаемые поступления (транзит) — отдельно -->
                     <div x-show="overview.balance?.pending_income?.transit_orders > 0" class="mt-4 pt-4 border-t border-slate-700">
@@ -282,23 +289,27 @@
                     </div>
                 </div>
 
-                <!-- Summary Cards (Доходы/Расходы за период) -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Доходы за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
+                <!-- Summary Cards (Доходы/Расходы/Себестоимость/Прибыль за период) -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Доходы</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Расходы за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                    <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Расходы</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Прибыль за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
+                    <div class="bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Себестоимость</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_cogs || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Неоплаченные налоги</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.taxes?.unpaid_total || 0)"></div>
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Чистая прибыль</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
+                    </div>
+                    <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Налоги</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.taxes?.unpaid_total || 0)"></div>
                     </div>
                 </div>
 
@@ -377,6 +388,80 @@
                                 <span class="text-gray-600 font-medium">Средний чек (по продажам)</span>
                                 <span class="text-xl font-bold text-gray-900" x-text="formatMoney(marketplaceIncome.totals?.avg_order_value || 0) + ' сум'"></span>
                             </div>
+
+                            <!-- Себестоимость проданных товаров (COGS) -->
+                            <template x-if="marketplaceIncome.cogs">
+                                <div class="bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl p-5 mt-4">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-semibold text-slate-800">Себестоимость проданных товаров</h4>
+                                                <p class="text-xs text-slate-500">COGS (Cost of Goods Sold) — закупочная стоимость товаров</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Себестоимость</div>
+                                            <div class="text-xl font-bold text-slate-800" x-text="formatMoney(marketplaceIncome.cogs?.total || 0)"></div>
+                                            <div class="text-xs text-slate-500 mt-1" x-text="(marketplaceIncome.cogs?.total_items || 0) + ' товаров'"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Выручка</div>
+                                            <div class="text-xl font-bold text-emerald-600" x-text="formatMoney(marketplaceIncome.cogs?.total_revenue || 0)"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Валовая прибыль</div>
+                                            <div class="text-xl font-bold" :class="(marketplaceIncome.cogs?.gross_margin || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="formatMoney(marketplaceIncome.cogs?.gross_margin || 0)"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Маржа</div>
+                                            <div class="text-xl font-bold" :class="(marketplaceIncome.cogs?.margin_percent || 0) >= 20 ? 'text-emerald-600' : (marketplaceIncome.cogs?.margin_percent || 0) >= 10 ? 'text-amber-600' : 'text-red-600'" x-text="(marketplaceIncome.cogs?.margin_percent || 0) + '%'"></div>
+                                        </div>
+                                    </div>
+                                    <!-- COGS by marketplace -->
+                                    <template x-if="Object.keys(marketplaceIncome.cogs?.by_marketplace || {}).length > 0">
+                                        <div class="mt-4 pt-4 border-t border-slate-300">
+                                            <div class="text-sm text-slate-600 mb-2">По каналам продаж:</div>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                                                <template x-for="(mp, key) in marketplaceIncome.cogs?.by_marketplace || {}" :key="key">
+                                                    <div class="bg-white/70 rounded-lg p-3 text-sm">
+                                                        <div class="flex items-center justify-between mb-1">
+                                                            <span class="font-medium text-slate-700 capitalize" x-text="key === 'wb' ? 'Wildberries' : key === 'offline' ? 'Ручные продажи' : key.charAt(0).toUpperCase() + key.slice(1)"></span>
+                                                            <span class="text-xs px-2 py-0.5 rounded-full" :class="(mp.margin_percent || 0) >= 20 ? 'bg-emerald-100 text-emerald-700' : (mp.margin_percent || 0) >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'" x-text="(mp.margin_percent || 0) + '%'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-500">
+                                                            <span>Себест:</span>
+                                                            <span x-text="formatMoney(mp.cogs || 0)"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-500">
+                                                            <span>Прибыль:</span>
+                                                            <span :class="(mp.margin || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="formatMoney(mp.margin || 0)"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                                            <span>Связано:</span>
+                                                            <span x-text="(mp.items_with_cogs || 0) + ' / ' + (mp.items_count || 0) + ' шт'"></span>
+                                                        </div>
+                                                        <template x-if="mp.from_internal > 0 || mp.from_marketplace > 0">
+                                                            <div class="text-xs text-slate-400 mt-1">
+                                                                <span x-show="mp.from_internal > 0" class="text-emerald-600" x-text="'Из товаров: ' + mp.from_internal"></span>
+                                                                <span x-show="mp.from_internal > 0 && mp.from_marketplace > 0"> / </span>
+                                                                <span x-show="mp.from_marketplace > 0" class="text-blue-600" x-text="'Из МП: ' + mp.from_marketplace"></span>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="mp.note">
+                                                            <div class="text-xs text-amber-600 mt-1" x-text="mp.note"></div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
 
                             <!-- Breakdown by Marketplace -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">

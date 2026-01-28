@@ -63,7 +63,13 @@ class FinanceController extends Controller
         // Расходы маркетплейсов теперь хранятся в FinanceTransaction
         // и автоматически включаются в $totalExpense
 
-        $netProfit = $totalIncome - $totalExpense;
+        // ========== СЕБЕСТОИМОСТЬ ПРОДАННЫХ ТОВАРОВ ==========
+        $rubToUzs = $financeSettings->rub_rate ?? 140;
+        $cogs = $this->calculateCogs($companyId, $from, $to, $rubToUzs);
+        $totalCogs = $cogs['total'] ?? 0;
+
+        // Чистая прибыль = Доходы - Расходы - Себестоимость
+        $netProfit = $totalIncome - $totalExpense - $totalCogs;
 
         // Долги
         $debtsReceivable = FinanceDebt::byCompany($companyId)->receivable()->active()->sum('amount_outstanding');
@@ -143,8 +149,10 @@ class FinanceController extends Controller
             'summary' => [
                 'total_income' => $totalIncome,
                 'total_expense' => $totalExpense,
+                'total_cogs' => $totalCogs,
                 'net_profit' => $netProfit,
             ],
+            'cogs' => $cogs,
             'marketplace_sales' => $marketplaceSales,
             'balance' => $balance,
             'stock' => $stockData,
@@ -1449,12 +1457,16 @@ class FinanceController extends Controller
             $totals['avg_order_value'] = $totals['sold']['amount'] / $totals['sold']['count'];
         }
 
+        // ========== СЕБЕСТОИМОСТЬ ПРОДАННЫХ ТОВАРОВ (COGS) ==========
+        $cogs = $this->calculateCogs($companyId, $from, $to, $rubToUzs);
+
         return $this->successResponse([
             'period' => [
                 'from' => $from->format('Y-m-d'),
                 'to' => $to->format('Y-m-d'),
             ],
             'totals' => $totals,
+            'cogs' => $cogs,
             'marketplaces' => $marketplaces,
             // Legacy fields for backward compatibility
             'total' => [
@@ -1636,6 +1648,371 @@ class FinanceController extends Controller
             $result['total']['other'] += $aggregated['other'] * $conversionRate;
             $result['total']['total'] += $aggregated['total_uzs'] ?: ($aggregated['total'] * $conversionRate);
         }
+
+        return $result;
+    }
+
+    /**
+     * Рассчитать себестоимость проданных товаров (COGS - Cost of Goods Sold)
+     *
+     * Приоритет получения себестоимости:
+     * 1. СНАЧАЛА ищем связь с внутренним товаром (ProductVariant.purchase_price)
+     * 2. Если связи нет - берём из маркетплейса (UzumFinanceOrder.purchase_price и т.д.)
+     *
+     * ВАЖНО: purchase_price в ProductVariant хранится в UZS!
+     *
+     * @param int $companyId
+     * @param Carbon $from
+     * @param Carbon $to
+     * @param float $rubToUzs
+     * @return array
+     */
+    protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
+    {
+        $result = [
+            'total' => 0,
+            'total_items' => 0,
+            'by_marketplace' => [],
+            'gross_margin' => 0,
+            'margin_percent' => 0,
+        ];
+
+        $totalRevenue = 0;
+
+        // ========== 1. UZUM COGS ==========
+        try {
+            if (class_exists(\App\Models\UzumFinanceOrder::class)) {
+                $uzumOrders = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
+                    ->where('status', '!=', 'CANCELED')
+                    ->where(function($q) use ($from, $to) {
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->select('sku_id', 'offer_id', 'barcode', 'amount', 'purchase_price', 'marketplace_account_id')
+                    ->get();
+
+                $uzumCogs = 0;
+                $uzumRevenue = 0;
+                $uzumItemsCount = $uzumOrders->count();
+                $uzumWithCogs = 0;
+                $uzumFromInternal = 0;
+                $uzumFromMarketplace = 0;
+
+                foreach ($uzumOrders as $order) {
+                    $revenue = (float) ($order->amount ?? 0);
+                    $uzumRevenue += $revenue;
+
+                    $purchasePrice = null;
+                    $fromInternal = false;
+
+                    // 1. СНАЧАЛА ищем связь с внутренним товаром через offer_id
+                    if ($order->offer_id) {
+                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
+                            ->where('external_offer_id', $order->offer_id)
+                            ->with('variant')
+                            ->first();
+                        if ($link && $link->variant && $link->variant->purchase_price) {
+                            $purchasePrice = $link->variant->purchase_price;
+                            $fromInternal = true;
+                        }
+                    }
+
+                    // 2. Если не нашли - пробуем через barcode
+                    if (!$purchasePrice && $order->barcode) {
+                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
+                            ->where('marketplace_barcode', $order->barcode)
+                            ->with('variant')
+                            ->first();
+                        if ($link && $link->variant && $link->variant->purchase_price) {
+                            $purchasePrice = $link->variant->purchase_price;
+                            $fromInternal = true;
+                        }
+                    }
+
+                    // 3. Если связи нет - берём из маркетплейса
+                    if (!$purchasePrice && $order->purchase_price) {
+                        $purchasePrice = (float) $order->purchase_price;
+                        $fromInternal = false;
+                    }
+
+                    if ($purchasePrice) {
+                        $uzumCogs += (float) $purchasePrice;
+                        $uzumWithCogs++;
+                        if ($fromInternal) {
+                            $uzumFromInternal++;
+                        } else {
+                            $uzumFromMarketplace++;
+                        }
+                    }
+                }
+
+                if ($uzumItemsCount > 0) {
+                    $result['by_marketplace']['uzum'] = [
+                        'cogs' => $uzumCogs,
+                        'items_count' => $uzumItemsCount,
+                        'items_with_cogs' => $uzumWithCogs,
+                        'from_internal' => $uzumFromInternal,
+                        'from_marketplace' => $uzumFromMarketplace,
+                        'revenue' => $uzumRevenue,
+                        'margin' => $uzumRevenue - $uzumCogs,
+                        'margin_percent' => $uzumRevenue > 0 ? round((($uzumRevenue - $uzumCogs) / $uzumRevenue) * 100, 1) : 0,
+                        'currency' => 'UZS',
+                        'note' => $uzumWithCogs < $uzumItemsCount ? 'Не все товары имеют закупочную цену' : null,
+                    ];
+                    $result['total'] += $uzumCogs;
+                    $result['total_items'] += $uzumItemsCount;
+                    $totalRevenue += $uzumRevenue;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Uzum COGS calculation error', ['error' => $e->getMessage()]);
+        }
+
+        // ========== 2. WILDBERRIES COGS ==========
+        try {
+            if (class_exists(\App\Models\WildberriesOrder::class)) {
+                $wbOrders = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('is_realization', true)
+                    ->where('is_cancel', false)
+                    ->where('is_return', false)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
+                    ->select('barcode', 'nm_id', 'supplier_article', 'for_pay', 'finished_price', 'total_price', 'marketplace_account_id')
+                    ->get();
+
+                $wbCogs = 0; // В UZS (себестоимость внутренних товаров хранится в UZS)
+                $wbRevenue = 0; // В RUB
+                $wbItemsCount = $wbOrders->count();
+                $wbWithCogs = 0;
+                $wbFromInternal = 0;
+
+                foreach ($wbOrders as $order) {
+                    $revenue = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
+                    $wbRevenue += $revenue;
+
+                    $purchasePrice = null;
+
+                    // 1. Ищем связь с внутренним товаром через barcode
+                    if ($order->barcode) {
+                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
+                            ->where('marketplace_barcode', $order->barcode)
+                            ->with('variant')
+                            ->first();
+                        if ($link && $link->variant && $link->variant->purchase_price) {
+                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $wbFromInternal++;
+                        }
+                    }
+
+                    // 2. Fallback: искать по nm_id через marketplace_product
+                    if (!$purchasePrice && $order->nm_id) {
+                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
+                            ->whereHas('marketplaceProduct', function($q) use ($order) {
+                                $q->where('external_id', $order->nm_id);
+                            })
+                            ->with('variant')
+                            ->first();
+                        if ($link && $link->variant && $link->variant->purchase_price) {
+                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $wbFromInternal++;
+                        }
+                    }
+
+                    // 3. Fallback: искать по supplier_article (артикул продавца)
+                    if (!$purchasePrice && $order->supplier_article) {
+                        $variant = \App\Models\ProductVariant::where('company_id', $companyId)
+                            ->where('sku', $order->supplier_article)
+                            ->first();
+                        if ($variant && $variant->purchase_price) {
+                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $wbFromInternal++;
+                        }
+                    }
+
+                    if ($purchasePrice) {
+                        $wbCogs += (float) $purchasePrice; // В UZS
+                        $wbWithCogs++;
+                    }
+                }
+
+                // Выручка в RUB -> конвертируем в UZS для расчёта маржи
+                $wbRevenueUzs = $wbRevenue * $rubToUzs;
+
+                if ($wbItemsCount > 0) {
+                    $result['by_marketplace']['wb'] = [
+                        'cogs' => $wbCogs, // Уже в UZS
+                        'items_count' => $wbItemsCount,
+                        'items_with_cogs' => $wbWithCogs,
+                        'from_internal' => $wbFromInternal,
+                        'revenue' => $wbRevenueUzs,
+                        'revenue_rub' => $wbRevenue,
+                        'margin' => $wbRevenueUzs - $wbCogs,
+                        'margin_percent' => $wbRevenueUzs > 0 ? round((($wbRevenueUzs - $wbCogs) / $wbRevenueUzs) * 100, 1) : 0,
+                        'currency' => 'UZS',
+                        'note' => $wbWithCogs < $wbItemsCount ? 'Не все товары связаны с внутренними' : null,
+                    ];
+                    $result['total'] += $wbCogs;
+                    $result['total_items'] += $wbItemsCount;
+                    $totalRevenue += $wbRevenueUzs;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('WB COGS calculation error', ['error' => $e->getMessage()]);
+        }
+
+        // ========== 3. OZON COGS ==========
+        try {
+            if (class_exists(\App\Models\OzonOrder::class)) {
+                $ozonOrders = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', ['delivered', 'completed'])
+                    ->whereDate('created_at_ozon', '>=', $from)
+                    ->whereDate('created_at_ozon', '<=', $to)
+                    ->select('offer_id', 'sku', 'total_price', 'marketplace_account_id')
+                    ->get();
+
+                $ozonCogs = 0; // В UZS
+                $ozonRevenue = 0; // В RUB
+                $ozonItemsCount = $ozonOrders->count();
+                $ozonWithCogs = 0;
+                $ozonFromInternal = 0;
+
+                foreach ($ozonOrders as $order) {
+                    $revenue = (float) ($order->total_price ?? 0);
+                    $ozonRevenue += $revenue;
+
+                    $purchasePrice = null;
+
+                    // 1. Ищем связь с внутренним товаром через offer_id
+                    if ($order->offer_id) {
+                        $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
+                            ->where('external_offer_id', $order->offer_id)
+                            ->with('variant')
+                            ->first();
+                        if ($link && $link->variant && $link->variant->purchase_price) {
+                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $ozonFromInternal++;
+                        }
+                    }
+
+                    // 2. Fallback: искать по sku
+                    if (!$purchasePrice && $order->sku) {
+                        $variant = \App\Models\ProductVariant::where('company_id', $companyId)
+                            ->where('sku', $order->sku)
+                            ->first();
+                        if ($variant && $variant->purchase_price) {
+                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $ozonFromInternal++;
+                        }
+                    }
+
+                    if ($purchasePrice) {
+                        $ozonCogs += (float) $purchasePrice;
+                        $ozonWithCogs++;
+                    }
+                }
+
+                // Выручка в RUB -> конвертируем в UZS
+                $ozonRevenueUzs = $ozonRevenue * $rubToUzs;
+
+                if ($ozonItemsCount > 0) {
+                    $result['by_marketplace']['ozon'] = [
+                        'cogs' => $ozonCogs, // Уже в UZS
+                        'items_count' => $ozonItemsCount,
+                        'items_with_cogs' => $ozonWithCogs,
+                        'from_internal' => $ozonFromInternal,
+                        'revenue' => $ozonRevenueUzs,
+                        'revenue_rub' => $ozonRevenue,
+                        'margin' => $ozonRevenueUzs - $ozonCogs,
+                        'margin_percent' => $ozonRevenueUzs > 0 ? round((($ozonRevenueUzs - $ozonCogs) / $ozonRevenueUzs) * 100, 1) : 0,
+                        'currency' => 'UZS',
+                        'note' => $ozonWithCogs < $ozonItemsCount ? 'Не все товары связаны с внутренними' : null,
+                    ];
+                    $result['total'] += $ozonCogs;
+                    $result['total_items'] += $ozonItemsCount;
+                    $totalRevenue += $ozonRevenueUzs;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Ozon COGS calculation error', ['error' => $e->getMessage()]);
+        }
+
+        // ========== 4. РУЧНЫЕ ПРОДАЖИ (Sale) COGS ==========
+        try {
+            if (class_exists(\App\Models\Sale::class)) {
+                $offlineSales = \App\Models\Sale::byCompany($companyId)
+                    ->where('type', 'manual')
+                    ->where('status', 'completed')
+                    ->whereDate('created_at', '>=', $from)
+                    ->whereDate('created_at', '<=', $to)
+                    ->with(['items.productVariant'])
+                    ->get();
+
+                $totalOfflineCogs = 0;
+                $totalOfflineRevenue = 0;
+                $offlineItemsCount = 0;
+                $offlineWithCogs = 0;
+                $offlineFromInternal = 0;
+                $offlineFromSaleItem = 0;
+
+                foreach ($offlineSales as $sale) {
+                    $totalOfflineRevenue += $sale->total_amount;
+                    foreach ($sale->items as $item) {
+                        $offlineItemsCount++;
+                        $costPrice = null;
+
+                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара
+                        if ($item->productVariant && $item->productVariant->purchase_price) {
+                            $costPrice = (float) $item->productVariant->purchase_price;
+                            $offlineFromInternal++;
+                        }
+                        // 2. Если нет - берём из SaleItem.cost_price
+                        elseif ($item->cost_price) {
+                            $costPrice = (float) $item->cost_price;
+                            $offlineFromSaleItem++;
+                        }
+
+                        if ($costPrice) {
+                            $totalOfflineCogs += $costPrice * $item->quantity;
+                            $offlineWithCogs++;
+                        }
+                    }
+                }
+
+                if ($offlineItemsCount > 0) {
+                    $result['by_marketplace']['offline'] = [
+                        'cogs' => $totalOfflineCogs,
+                        'items_count' => $offlineItemsCount,
+                        'items_with_cogs' => $offlineWithCogs,
+                        'from_internal' => $offlineFromInternal,
+                        'from_sale_item' => $offlineFromSaleItem,
+                        'revenue' => $totalOfflineRevenue,
+                        'margin' => $totalOfflineRevenue - $totalOfflineCogs,
+                        'margin_percent' => $totalOfflineRevenue > 0 ? round((($totalOfflineRevenue - $totalOfflineCogs) / $totalOfflineRevenue) * 100, 1) : 0,
+                        'currency' => 'UZS',
+                        'note' => $offlineWithCogs < $offlineItemsCount ? 'Не все товары имеют закупочную цену' : null,
+                    ];
+                    $result['total'] += $totalOfflineCogs;
+                    $result['total_items'] += $offlineItemsCount;
+                    $totalRevenue += $totalOfflineRevenue;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Offline COGS calculation error', ['error' => $e->getMessage()]);
+        }
+
+        // Рассчитываем общую маржу
+        $result['gross_margin'] = $totalRevenue - $result['total'];
+        $result['margin_percent'] = $totalRevenue > 0 ? round((($totalRevenue - $result['total']) / $totalRevenue) * 100, 1) : 0;
+        $result['total_revenue'] = $totalRevenue;
 
         return $result;
     }
