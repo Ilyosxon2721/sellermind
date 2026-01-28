@@ -239,27 +239,63 @@ class WildberriesPriceService
 
     /**
      * Gather price updates from local products that need updating
-     * TODO: Implement logic to detect products that need price sync
+     * Сравнивает локальные цены с ценами на WB и возвращает список для обновления
      */
     protected function gatherPriceUpdates(MarketplaceAccount $account): array
     {
-        // TODO: Implement logic to compare local prices with WB prices
-        // and return array of products that need updating
-
         $updates = [];
 
-        // Example: get products with pending price changes
-        // $products = WildberriesProduct::where('marketplace_account_id', $account->id)
-        //     ->where('needs_price_sync', true)
-        //     ->get();
-        //
-        // foreach ($products as $product) {
-        //     $updates[] = [
-        //         'nmID' => $product->nm_id,
-        //         'price' => (int) $product->price,
-        //         'discount' => (int) $product->discount_percent,
-        //     ];
-        // }
+        // Получаем все MarketplaceProduct для этого аккаунта WB,
+        // у которых есть связанный Product с ценой
+        $marketplaceProducts = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->whereNotNull('external_product_id') // Должен быть nmId
+            ->whereHas('product', function ($query) {
+                $query->whereNotNull('price')->where('price', '>', 0);
+            })
+            ->with('product')
+            ->get();
+
+        foreach ($marketplaceProducts as $mp) {
+            $product = $mp->product;
+            if (!$product) {
+                continue;
+            }
+
+            $nmId = (int) $mp->external_product_id;
+            $localPrice = (int) $product->price;
+            $lastSyncedPrice = (int) ($mp->last_synced_price ?? 0);
+
+            // Проверяем нужно ли обновлять цену
+            // 1. Если цена никогда не синхронизировалась
+            // 2. Если локальная цена отличается от последней синхронизированной
+            if ($lastSyncedPrice === 0 || $localPrice !== $lastSyncedPrice) {
+                // Получаем скидку если есть
+                $discount = 0;
+                if (!empty($product->old_price) && $product->old_price > $localPrice) {
+                    $discount = (int) round((1 - $localPrice / $product->old_price) * 100);
+                    $discount = min(max($discount, 0), 99); // WB допускает 0-99%
+                }
+
+                $updates[] = [
+                    'nmID' => $nmId,
+                    'price' => $localPrice,
+                    'discount' => $discount,
+                ];
+
+                Log::debug('WB price update needed', [
+                    'nm_id' => $nmId,
+                    'local_price' => $localPrice,
+                    'last_synced_price' => $lastSyncedPrice,
+                    'discount' => $discount,
+                ]);
+            }
+        }
+
+        Log::info('WB gatherPriceUpdates complete', [
+            'account_id' => $account->id,
+            'products_checked' => $marketplaceProducts->count(),
+            'updates_needed' => count($updates),
+        ]);
 
         return $updates;
     }

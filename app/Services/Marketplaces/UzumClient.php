@@ -489,57 +489,171 @@ class UzumClient implements MarketplaceClientInterface
 
     public function syncProducts(MarketplaceAccount $account, array $products): void
     {
-        // TODO: Implement Uzum product sync
-        //
-        // Uzum Seller OpenAPI endpoints (based on documentation):
-        // - POST /v1/products - создание товара
-        // - PUT /v1/products/{id} - обновление товара
-        // - GET /v1/products - список товаров
-        //
-        // Необходимые данные для создания товара:
-        // - sku (артикул продавца)
-        // - title
-        // - description
-        // - category_id
-        // - brand
-        // - price
-        // - stock
-        // - images
-        // - attributes
+        /**
+         * Uzum Seller API для публикации товаров:
+         * - POST /v1/product/import - создание/импорт товара
+         * - PUT /v1/product/{productId} - обновление товара
+         */
+
+        // Получаем shopId из аккаунта
+        $shopIds = $this->resolveShopIds($account);
+        if (empty($shopIds)) {
+            Log::error('Uzum syncProducts: No shop IDs configured for account', ['account_id' => $account->id]);
+            foreach ($products as $mp) {
+                $mp->markAsFailed('Shop ID не настроен для аккаунта Uzum');
+            }
+            return;
+        }
+        $shopId = $shopIds[0]; // Используем первый магазин
 
         foreach ($products as $marketplaceProduct) {
+            $product = $marketplaceProduct->product;
+            if (!$product) {
+                $marketplaceProduct->markAsFailed('Product not found');
+                continue;
+            }
+
             try {
-                // TODO: Map internal product to Uzum product format
-                // TODO: Create or update product via API
-                // TODO: Update MarketplaceProduct with external_product_id
+                // Маппим товар в формат Uzum
+                $uzumData = $this->mapProductToUzumFormat($marketplaceProduct, $product, $shopId);
+
+                if (!empty($marketplaceProduct->external_product_id)) {
+                    // Обновляем существующий товар
+                    $response = $this->request(
+                        $account,
+                        'PUT',
+                        "/v1/product/{$marketplaceProduct->external_product_id}",
+                        [],
+                        $uzumData
+                    );
+                } else {
+                    // Создаём новый товар
+                    $response = $this->request(
+                        $account,
+                        'POST',
+                        '/v1/product/import',
+                        [],
+                        $uzumData
+                    );
+
+                    // Получаем ID созданного товара
+                    $productId = $response['payload']['productId'] ?? $response['productId'] ?? null;
+                    if ($productId) {
+                        $marketplaceProduct->update([
+                            'external_product_id' => (string) $productId,
+                            'shop_id' => (string) $shopId,
+                        ]);
+                    }
+                }
 
                 $marketplaceProduct->markAsSynced();
+
             } catch (\Exception $e) {
+                Log::error('Uzum product sync failed', [
+                    'product_id' => $product->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $marketplaceProduct->markAsFailed($e->getMessage());
             }
         }
     }
 
+    /**
+     * Маппинг внутреннего товара в формат Uzum
+     */
+    protected function mapProductToUzumFormat($marketplaceProduct, $product, string $shopId): array
+    {
+        // Артикул продавца
+        $sku = $product->article ?? $product->sku ?? 'SKU-' . $product->id;
+
+        // Получаем категорию Uzum
+        $categoryId = $marketplaceProduct->external_category_id ?? null;
+        if (!$categoryId) {
+            throw new \Exception('Категория Uzum не указана. Укажите категорию перед публикацией.');
+        }
+
+        // Цена (Uzum использует сум, без деления на 100)
+        $price = (int) ($product->price ?? 0);
+
+        // Собираем изображения
+        $images = [];
+        if (!empty($product->main_image)) {
+            $images[] = ['url' => $product->main_image, 'main' => true];
+        }
+        if (!empty($product->images) && is_array($product->images)) {
+            foreach ($product->images as $img) {
+                $url = is_string($img) ? $img : ($img['url'] ?? null);
+                if ($url) {
+                    $images[] = ['url' => $url, 'main' => false];
+                }
+            }
+        }
+
+        return [
+            'shopId' => (int) $shopId,
+            'categoryId' => (int) $categoryId,
+            'title' => $product->name,
+            'description' => strip_tags($product->description_full ?? $product->description_short ?? ''),
+            'brand' => $product->brand_name ?? '',
+            'vendorCode' => $sku,
+            'skuList' => [
+                [
+                    'skuTitle' => $product->name,
+                    'vendorCode' => $sku,
+                    'barcode' => $product->barcode ?? $sku,
+                    'price' => $price,
+                    'quantityFbs' => (int) ($product->stock_quantity ?? 0),
+                    'characteristics' => $this->buildUzumCharacteristics($product),
+                ],
+            ],
+            'images' => array_slice($images, 0, 10), // Максимум 10 изображений
+            'weight' => (int) ($product->package_weight_g ?? 100),
+            'dimensions' => [
+                'length' => (int) ($product->package_length_mm ?? 100),
+                'width' => (int) ($product->package_width_mm ?? 100),
+                'height' => (int) ($product->package_height_mm ?? 100),
+            ],
+        ];
+    }
+
+    /**
+     * Сборка характеристик для Uzum
+     */
+    protected function buildUzumCharacteristics($product): array
+    {
+        $characteristics = [];
+
+        if (!empty($product->composition)) {
+            $characteristics[] = [
+                'title' => 'Состав',
+                'value' => $product->composition,
+            ];
+        }
+
+        if (!empty($product->country_of_origin)) {
+            $characteristics[] = [
+                'title' => 'Страна производства',
+                'value' => $product->country_of_origin,
+            ];
+        }
+
+        if (!empty($product->manufacturer)) {
+            $characteristics[] = [
+                'title' => 'Производитель',
+                'value' => $product->manufacturer,
+            ];
+        }
+
+        return $characteristics;
+    }
+
     public function syncPrices(MarketplaceAccount $account, array $products): void
     {
-        // TODO: Implement Uzum price sync
-        //
-        // Uzum Price API endpoints:
-        // - PUT /v1/products/{id}/price - обновление цены товара
-        // - POST /v1/products/prices - массовое обновление цен
-        //
-        // Формат:
-        // {
-        //   "items": [
-        //     {
-        //       "product_id": "123456",
-        //       "price": 100000,
-        //       "old_price": 120000
-        //     }
-        //   ]
-        // }
-
-        $priceUpdates = [];
+        /**
+         * Uzum Price API:
+         * - PUT /v2/fbs/sku/price - обновление цены SKU
+         * Цены в Uzum указываются в сумах (без деления)
+         */
 
         foreach ($products as $marketplaceProduct) {
             if (!$marketplaceProduct->external_product_id) {
@@ -547,24 +661,61 @@ class UzumClient implements MarketplaceClientInterface
             }
 
             $product = $marketplaceProduct->product;
-            if (!$product) {
+            if (!$product || !$product->price) {
                 continue;
             }
 
-            // TODO: Get price from product (Uzum uses tiyin = 1/100 sum)
-            // $priceUpdates[] = [
-            //     'product_id' => $marketplaceProduct->external_product_id,
-            //     'price' => (int) ($product->price * 100), // Convert to tiyin
-            //     'old_price' => (int) (($product->old_price ?? $product->price) * 100),
-            // ];
-        }
+            // Получаем SKU ID из raw_payload
+            $skuId = $marketplaceProduct->external_offer_id;
+            if (!$skuId && !empty($marketplaceProduct->raw_payload['skuList'][0]['skuId'])) {
+                $skuId = $marketplaceProduct->raw_payload['skuList'][0]['skuId'];
+            }
 
-        if (empty($priceUpdates)) {
-            return;
-        }
+            if (!$skuId) {
+                Log::warning('Uzum syncPrices: SKU ID not found', [
+                    'product_id' => $marketplaceProduct->external_product_id,
+                ]);
+                continue;
+            }
 
-        // TODO: Send price updates to Uzum API
-        // $this->http->post($account, '/v1/products/prices', ['items' => $priceUpdates]);
+            try {
+                // Uzum цены в сумах
+                $price = (int) $product->price;
+                $oldPrice = (int) ($product->old_price ?? $product->price);
+
+                $response = $this->request(
+                    $account,
+                    'PUT',
+                    '/v2/fbs/sku/price',
+                    [],
+                    [
+                        'skuPriceList' => [
+                            [
+                                'skuId' => (int) $skuId,
+                                'price' => $price,
+                                'oldPrice' => $oldPrice > $price ? $oldPrice : null,
+                            ],
+                        ],
+                    ]
+                );
+
+                $marketplaceProduct->update([
+                    'last_synced_price' => $price,
+                    'last_synced_at' => now(),
+                ]);
+
+                Log::info('Uzum price updated', [
+                    'sku_id' => $skuId,
+                    'price' => $price,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Uzum price sync failed', [
+                    'sku_id' => $skuId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
