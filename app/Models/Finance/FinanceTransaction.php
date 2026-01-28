@@ -20,6 +20,7 @@ class FinanceTransaction extends Model
     public const STATUS_DRAFT = 'draft';
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_DELETED = 'deleted';
 
     protected $fillable = [
         'company_id',
@@ -110,6 +111,39 @@ class FinanceTransaction extends Model
         return $this->status === self::STATUS_CANCELLED;
     }
 
+    public function isDeleted(): bool
+    {
+        return $this->status === self::STATUS_DELETED;
+    }
+
+    /**
+     * Soft delete - mark as deleted but keep in database
+     */
+    public function softDelete(): bool
+    {
+        if ($this->isDeleted()) {
+            return false;
+        }
+
+        return $this->update([
+            'status' => self::STATUS_DELETED,
+        ]);
+    }
+
+    /**
+     * Restore from soft deleted state back to draft
+     */
+    public function restore(): bool
+    {
+        if (!$this->isDeleted()) {
+            return false;
+        }
+
+        return $this->update([
+            'status' => self::STATUS_DRAFT,
+        ]);
+    }
+
     public function confirm(int $userId): bool
     {
         if (!$this->isDraft()) {
@@ -167,5 +201,26 @@ class FinanceTransaction extends Model
     public function scopeByCategory($query, int $categoryId)
     {
         return $query->where('category_id', $categoryId);
+    }
+
+    /**
+     * Exclude deleted transactions (for calculations)
+     */
+    public function scopeNotDeleted($query)
+    {
+        return $query->where('status', '!=', self::STATUS_DELETED);
+    }
+
+    /**
+     * Only active transactions (confirmed, not deleted)
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_CONFIRMED);
+    }
+
+    public function scopeDeleted($query)
+    {
+        return $query->where('status', self::STATUS_DELETED);
     }
 }

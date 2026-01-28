@@ -168,6 +168,10 @@ Route::middleware('auth.any')->group(function () {
     Route::put('me/locale', [AuthController::class, 'updateLocale']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
+    // Company settings (for current user's company)
+    Route::get('company/settings', [CompanyController::class, 'getSettings']);
+    Route::put('company/settings', [CompanyController::class, 'updateSettings']);
+
     // Telegram Notifications
     Route::prefix('telegram')->group(function () {
         Route::get('status', [TelegramController::class, 'status']);
@@ -705,6 +709,7 @@ Route::middleware('auth.any')->group(function () {
         Route::delete('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'destroy']);
         Route::post('transactions/{id}/confirm', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'confirm']);
         Route::post('transactions/{id}/cancel', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'cancel']);
+        Route::post('transactions/{id}/restore', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'restore']);
 
         // Debts
         Route::get('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'index']);

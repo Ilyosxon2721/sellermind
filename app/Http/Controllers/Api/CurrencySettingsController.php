@@ -21,7 +21,8 @@ class CurrencySettingsController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $company = $request->user()->currentCompany;
+        $user = $request->user();
+        $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
         if (!$company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
@@ -37,8 +38,9 @@ class CurrencySettingsController extends Controller
             'available_currencies' => [
                 ['code' => 'UZS', 'name' => 'Узбекский сум', 'symbol' => 'сўм'],
                 ['code' => 'RUB', 'name' => 'Российский рубль', 'symbol' => '₽'],
-                ['code' => 'KZT', 'name' => 'Казахстанский тенге', 'symbol' => '₸'],
                 ['code' => 'USD', 'name' => 'Доллар США', 'symbol' => '$'],
+                ['code' => 'EUR', 'name' => 'Евро', 'symbol' => '€'],
+                ['code' => 'KZT', 'name' => 'Казахстанский тенге', 'symbol' => '₸'],
             ],
         ]);
     }
@@ -49,10 +51,11 @@ class CurrencySettingsController extends Controller
     public function updateDisplayCurrency(Request $request): JsonResponse
     {
         $request->validate([
-            'currency' => 'required|string|in:UZS,RUB,KZT,USD,EUR',
+            'currency' => 'required|string|in:UZS,RUB,USD,EUR,KZT',
         ]);
 
-        $company = $request->user()->currentCompany;
+        $user = $request->user();
+        $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
         if (!$company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
@@ -79,7 +82,8 @@ class CurrencySettingsController extends Controller
             'rate' => 'required|numeric|min:0.0001',
         ]);
 
-        $company = $request->user()->currentCompany;
+        $user = $request->user();
+        $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
         if (!$company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
@@ -108,7 +112,8 @@ class CurrencySettingsController extends Controller
             'from' => 'nullable|string|size:3',
         ]);
 
-        $company = $request->user()->currentCompany;
+        $user = $request->user();
+        $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
         if (!$company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);

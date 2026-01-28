@@ -114,13 +114,32 @@ class TransactionController extends Controller
 
         $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
 
-        if (!$transaction->isDraft()) {
-            return $this->errorResponse('Only draft transactions can be deleted', 'invalid_state', null, 422);
+        if ($transaction->isDeleted()) {
+            return $this->errorResponse('Transaction already deleted', 'invalid_state', null, 422);
         }
 
-        $transaction->delete();
+        // Soft delete - mark as deleted but keep in database
+        $transaction->softDelete();
 
-        return $this->successResponse(['deleted' => true]);
+        return $this->successResponse(['deleted' => true, 'transaction' => $transaction->fresh(['category', 'subcategory', 'counterparty', 'employee'])]);
+    }
+
+    public function restore($id)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
+
+        if (!$transaction->isDeleted()) {
+            return $this->errorResponse('Transaction is not deleted', 'invalid_state', null, 422);
+        }
+
+        $transaction->restore();
+
+        return $this->successResponse($transaction->fresh(['category', 'subcategory', 'counterparty', 'employee']));
     }
 
     public function confirm($id)

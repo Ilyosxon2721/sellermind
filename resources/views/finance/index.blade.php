@@ -978,22 +978,30 @@
                         <template x-if="loading"><tr><td colspan="7" class="px-6 py-12 text-center"><svg class="animate-spin w-5 h-5 text-emerald-600 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/></svg></td></tr></template>
                         <template x-if="!loading && transactions.length === 0"><tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">Транзакции не найдены</td></tr></template>
                         <template x-for="tx in transactions" :key="tx.id">
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(tx.transaction_date)"></td>
+                            <tr class="hover:bg-gray-50 transition-colors" :class="tx.status === 'deleted' ? 'opacity-50 bg-gray-50' : ''">
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="formatDate(tx.transaction_date)"></td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                          :class="tx.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                          :class="tx.status === 'deleted' ? 'bg-gray-100 text-gray-400' : (tx.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')"
                                           x-text="tx.type === 'income' ? 'Доход' : 'Расход'"></span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tx.category?.name || '—'"></td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tx.description || '—'"></td>
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="tx.category?.name || '—'"></td>
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="tx.description || '—'"></td>
                                 <td class="px-6 py-4 text-sm text-right font-semibold"
-                                    :class="tx.type === 'income' ? 'text-green-600' : 'text-red-600'"
+                                    :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : (tx.type === 'income' ? 'text-green-600' : 'text-red-600')"
                                     x-text="formatMoney(tx.amount)"></td>
                                 <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-medium" :class="statusClass(tx.status)" x-text="statusLabel(tx.status)"></span></td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right space-x-2">
                                     <template x-if="tx.status === 'draft'">
                                         <button class="text-emerald-600 hover:text-emerald-700 text-sm font-medium" @click="confirmTransaction(tx.id)">Подтвердить</button>
+                                    </template>
+                                    <template x-if="tx.status !== 'deleted'">
+                                        <button class="text-red-500 hover:text-red-600 text-sm" @click="deleteTransaction(tx.id)" title="Удалить">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </template>
+                                    <template x-if="tx.status === 'deleted'">
+                                        <button class="text-blue-500 hover:text-blue-600 text-sm font-medium" @click="restoreTransaction(tx.id)">Восстановить</button>
                                     </template>
                                 </td>
                             </tr>
@@ -2274,11 +2282,12 @@ function financePage() {
                 'bg-green-100 text-green-700': st === 'confirmed',
                 'bg-amber-100 text-amber-700': st === 'draft',
                 'bg-red-100 text-red-700': st === 'cancelled',
+                'bg-gray-200 text-gray-500': st === 'deleted',
             };
         },
 
         statusLabel(st) {
-            return { draft: 'Черновик', confirmed: 'Подтверждён', cancelled: 'Отменён' }[st] || st;
+            return { draft: 'Черновик', confirmed: 'Подтверждён', cancelled: 'Отменён', deleted: 'Удалён' }[st] || st;
         },
 
         debtStatusClass(st) {
@@ -2508,6 +2517,27 @@ function financePage() {
                 const json = await resp.json();
                 if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
                 this.showToast('Транзакция подтверждена');
+                this.loadTransactions();
+            } catch (e) { this.showToast(e.message, 'error'); }
+        },
+
+        async deleteTransaction(id) {
+            if (!confirm('Удалить транзакцию? Она останется в списке, но не будет учитываться в расчётах.')) return;
+            try {
+                const resp = await fetch(`/api/finance/transactions/${id}`, { method: 'DELETE', headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                this.showToast('Транзакция удалена');
+                this.loadTransactions();
+            } catch (e) { this.showToast(e.message, 'error'); }
+        },
+
+        async restoreTransaction(id) {
+            try {
+                const resp = await fetch(`/api/finance/transactions/${id}/restore`, { method: 'POST', headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                this.showToast('Транзакция восстановлена');
                 this.loadTransactions();
             } catch (e) { this.showToast(e.message, 'error'); }
         },
