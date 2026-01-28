@@ -69,33 +69,288 @@ class WildberriesClient implements MarketplaceClientInterface
 
     public function syncProducts(MarketplaceAccount $account, array $products): void
     {
-        // TODO: Implement WB product sync
-        //
-        // WB Content API endpoints:
-        // - POST /content/v2/cards/upload - создание карточки
-        // - POST /content/v2/cards/update - обновление карточки
-        // - GET /content/v2/get/cards/list - получение списка карточек
-        //
-        // Необходимые данные для создания карточки:
-        // - vendorCode (артикул)
-        // - title
-        // - description
-        // - brand
-        // - dimensions (width, height, length)
-        // - characteristics
-        // - photos
+        /**
+         * WB Content API для публикации товаров:
+         * - POST /content/v2/cards/upload - создание карточки
+         * - POST /content/v2/cards/update - обновление карточки
+         */
+
+        // Используем WildberriesHttpClient для работы с Content API
+        $wbHttpClient = new \App\Services\Marketplaces\Wildberries\WildberriesHttpClient($account);
+
+        // Группируем товары: на создание и на обновление
+        $toCreate = [];
+        $toUpdate = [];
 
         foreach ($products as $marketplaceProduct) {
-            try {
-                // TODO: Map internal product to WB card format
-                // TODO: Create or update card via API
-                // TODO: Update MarketplaceProduct with external_product_id (nmId)
+            $product = $marketplaceProduct->product;
+            if (!$product) {
+                $marketplaceProduct->markAsFailed('Product not found');
+                continue;
+            }
 
-                $marketplaceProduct->markAsSynced();
+            try {
+                $cardData = $this->mapProductToWbCard($marketplaceProduct, $product, $account);
+
+                if (!empty($marketplaceProduct->external_product_id)) {
+                    // Есть nmId - обновляем
+                    $cardData['nmID'] = (int) $marketplaceProduct->external_product_id;
+                    $toUpdate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
+                } else {
+                    // Нет nmId - создаём
+                    $toCreate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
+                }
             } catch (\Exception $e) {
-                $marketplaceProduct->markAsFailed($e->getMessage());
+                $marketplaceProduct->markAsFailed('Mapping error: ' . $e->getMessage());
             }
         }
+
+        // Создаём новые карточки (батчами по 100)
+        if (!empty($toCreate)) {
+            $this->createWbCards($wbHttpClient, $toCreate, $account);
+        }
+
+        // Обновляем существующие карточки (батчами по 100)
+        if (!empty($toUpdate)) {
+            $this->updateWbCards($wbHttpClient, $toUpdate);
+        }
+    }
+
+    /**
+     * Создание новых карточек в WB
+     */
+    protected function createWbCards($wbHttpClient, array $items, MarketplaceAccount $account): void
+    {
+        $batches = array_chunk($items, 100);
+
+        foreach ($batches as $batch) {
+            $cards = array_map(fn($item) => $item['card'], $batch);
+
+            try {
+                $response = $wbHttpClient->post('content', '/content/v2/cards/upload', $cards);
+
+                // WB возвращает error если есть ошибки
+                if (!empty($response['error'])) {
+                    foreach ($batch as $item) {
+                        $item['marketplaceProduct']->markAsFailed('WB API: ' . ($response['errorText'] ?? $response['error']));
+                    }
+                    continue;
+                }
+
+                // Успешно создано - нужно получить nmId через повторный запрос по vendorCode
+                // WB не возвращает nmId сразу при создании
+                foreach ($batch as $item) {
+                    $item['marketplaceProduct']->update([
+                        'status' => 'pending', // Ожидаем модерацию
+                        'last_synced_at' => now(),
+                    ]);
+                }
+
+                // Пытаемся получить nmId для созданных карточек
+                $this->fetchAndUpdateNmIds($wbHttpClient, $batch, $account);
+
+            } catch (\Exception $e) {
+                \Log::error('WB cards upload error', ['error' => $e->getMessage()]);
+                foreach ($batch as $item) {
+                    $item['marketplaceProduct']->markAsFailed('API error: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Обновление существующих карточек в WB
+     */
+    protected function updateWbCards($wbHttpClient, array $items): void
+    {
+        $batches = array_chunk($items, 100);
+
+        foreach ($batches as $batch) {
+            $cards = array_map(fn($item) => $item['card'], $batch);
+
+            try {
+                $response = $wbHttpClient->post('content', '/content/v2/cards/update', $cards);
+
+                if (!empty($response['error'])) {
+                    foreach ($batch as $item) {
+                        $item['marketplaceProduct']->markAsFailed('WB API: ' . ($response['errorText'] ?? $response['error']));
+                    }
+                    continue;
+                }
+
+                foreach ($batch as $item) {
+                    $item['marketplaceProduct']->markAsSynced();
+                }
+
+            } catch (\Exception $e) {
+                \Log::error('WB cards update error', ['error' => $e->getMessage()]);
+                foreach ($batch as $item) {
+                    $item['marketplaceProduct']->markAsFailed('API error: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Получить nmId для созданных карточек по vendorCode
+     */
+    protected function fetchAndUpdateNmIds($wbHttpClient, array $items, MarketplaceAccount $account): void
+    {
+        // Ждём немного, пока WB обработает карточки
+        sleep(2);
+
+        $vendorCodes = [];
+        foreach ($items as $item) {
+            $vendorCode = $item['card']['vendorCode'] ?? null;
+            if ($vendorCode) {
+                $vendorCodes[$vendorCode] = $item['marketplaceProduct'];
+            }
+        }
+
+        if (empty($vendorCodes)) {
+            return;
+        }
+
+        try {
+            // Запрашиваем карточки по vendorCode
+            $response = $wbHttpClient->post('content', '/content/v2/get/cards/list', [
+                'settings' => [
+                    'cursor' => ['limit' => 100],
+                    'filter' => [
+                        'textSearch' => '',
+                        'withPhoto' => -1,
+                    ],
+                ],
+            ]);
+
+            foreach ($response['cards'] ?? [] as $card) {
+                $vendorCode = $card['vendorCode'] ?? null;
+                $nmId = $card['nmID'] ?? null;
+
+                if ($vendorCode && $nmId && isset($vendorCodes[$vendorCode])) {
+                    $vendorCodes[$vendorCode]->update([
+                        'external_product_id' => (string) $nmId,
+                        'status' => 'synced',
+                        'last_synced_at' => now(),
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('WB fetchAndUpdateNmIds error', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Маппинг внутреннего товара в формат карточки WB
+     */
+    protected function mapProductToWbCard($marketplaceProduct, $product, MarketplaceAccount $account): array
+    {
+        // vendorCode - обязательное поле (артикул продавца)
+        $vendorCode = $product->article ?? $product->sku ?? 'ART-' . $product->id;
+
+        // Получаем категорию WB (subjectID) - должна быть настроена в MarketplaceProduct
+        $subjectId = $marketplaceProduct->external_category_id ?? null;
+        if (!$subjectId) {
+            throw new \Exception('Категория WB (subjectID) не указана. Укажите категорию перед публикацией.');
+        }
+
+        // Базовая структура карточки
+        $card = [
+            'vendorCode' => $vendorCode,
+            'subjectID' => (int) $subjectId,
+            'variants' => [
+                [
+                    'vendorCode' => $vendorCode,
+                    'title' => $product->name,
+                    'description' => strip_tags($product->description_full ?? $product->description_short ?? ''),
+                    'brand' => $product->brand_name ?? $account->credentials_json['default_brand'] ?? 'Без бренда',
+                    'dimensions' => [
+                        'length' => (int) ($product->package_length_mm ?? 100),
+                        'width' => (int) ($product->package_width_mm ?? 100),
+                        'height' => (int) ($product->package_height_mm ?? 100),
+                        'weightBrutto' => (int) ($product->package_weight_g ?? 100),
+                    ],
+                    'sizes' => [
+                        [
+                            'techSize' => '0', // Размер (для товаров без размера)
+                            'wbSize' => '',
+                            'price' => (int) ($product->price ?? 0),
+                            'skus' => [$vendorCode], // Баркод/SKU
+                        ],
+                    ],
+                    'characteristics' => $this->buildWbCharacteristics($product, $subjectId),
+                ],
+            ],
+        ];
+
+        // Добавляем фото, если есть
+        $photos = $this->getProductPhotos($product);
+        if (!empty($photos)) {
+            $card['variants'][0]['photos'] = $photos;
+        }
+
+        return $card;
+    }
+
+    /**
+     * Сборка характеристик для карточки WB
+     */
+    protected function buildWbCharacteristics($product, int $subjectId): array
+    {
+        $characteristics = [];
+
+        // Состав
+        if (!empty($product->composition)) {
+            $characteristics[] = [
+                'id' => 14, // ID характеристики "Состав"
+                'value' => $product->composition,
+            ];
+        }
+
+        // Страна производства
+        if (!empty($product->country_of_origin)) {
+            $characteristics[] = [
+                'id' => 8, // ID характеристики "Страна производства"
+                'value' => $product->country_of_origin,
+            ];
+        }
+
+        // Комплектация
+        if (!empty($product->package_contents)) {
+            $characteristics[] = [
+                'id' => 15, // ID "Комплектация"
+                'value' => $product->package_contents,
+            ];
+        }
+
+        return $characteristics;
+    }
+
+    /**
+     * Получить фотографии товара
+     */
+    protected function getProductPhotos($product): array
+    {
+        $photos = [];
+
+        // Главное изображение
+        if (!empty($product->main_image)) {
+            $photos[] = $product->main_image;
+        }
+
+        // Дополнительные изображения
+        if (!empty($product->images) && is_array($product->images)) {
+            foreach ($product->images as $image) {
+                if (is_string($image)) {
+                    $photos[] = $image;
+                } elseif (isset($image['url'])) {
+                    $photos[] = $image['url'];
+                }
+            }
+        }
+
+        // WB принимает до 30 фото
+        return array_slice($photos, 0, 30);
     }
 
     public function syncPrices(MarketplaceAccount $account, array $products): void

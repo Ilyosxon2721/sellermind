@@ -679,19 +679,179 @@ class YandexMarketClient implements MarketplaceClientInterface
     }
 
     /**
-     * Синхронизация товаров (заглушка)
+     * Синхронизация товаров в Yandex Market
+     *
+     * API: POST /businesses/{businessId}/offer-mappings/update
      */
     public function syncProducts(MarketplaceAccount $account, array $products): void
     {
-        // TODO: Реализовать отправку товаров в Yandex Market
+        $businessId = $this->http->getBusinessId($account);
+
+        if (!$businessId) {
+            Log::error('YM syncProducts: Business ID не настроен', ['account_id' => $account->id]);
+            foreach ($products as $mp) {
+                $mp->markAsFailed('Business ID не настроен для аккаунта Yandex Market');
+            }
+            return;
+        }
+
+        // Собираем товары в батч
+        $offerMappings = [];
+        $productMap = []; // offerId => marketplaceProduct
+
         foreach ($products as $marketplaceProduct) {
+            $product = $marketplaceProduct->product;
+            if (!$product) {
+                $marketplaceProduct->markAsFailed('Product not found');
+                continue;
+            }
+
             try {
-                // TODO: Map и отправить
-                $marketplaceProduct->markAsSynced();
+                $offerData = $this->mapProductToYmFormat($marketplaceProduct, $product);
+                $offerMappings[] = $offerData;
+                $productMap[$offerData['offer']['offerId']] = $marketplaceProduct;
             } catch (\Exception $e) {
-                $marketplaceProduct->markAsFailed($e->getMessage());
+                $marketplaceProduct->markAsFailed('Mapping error: ' . $e->getMessage());
             }
         }
+
+        if (empty($offerMappings)) {
+            return;
+        }
+
+        // Yandex Market принимает до 500 товаров за раз
+        $batches = array_chunk($offerMappings, 500);
+
+        foreach ($batches as $batch) {
+            try {
+                $response = $this->http->post(
+                    $account,
+                    "/businesses/{$businessId}/offer-mappings/update",
+                    ['offerMappings' => $batch]
+                );
+
+                // Проверяем результат
+                $results = $response['results'] ?? [];
+
+                foreach ($results as $result) {
+                    $offerId = $result['offerId'] ?? null;
+                    $status = $result['status'] ?? null;
+                    $errors = $result['errors'] ?? [];
+
+                    if (isset($productMap[$offerId])) {
+                        $mp = $productMap[$offerId];
+
+                        if ($status === 'OK' || empty($errors)) {
+                            $mp->update([
+                                'external_offer_id' => $offerId,
+                                'status' => 'synced',
+                                'last_synced_at' => now(),
+                            ]);
+                        } else {
+                            $errorMsg = collect($errors)->pluck('message')->implode('; ');
+                            $mp->markAsFailed('YM API: ' . ($errorMsg ?: 'Unknown error'));
+                        }
+                    }
+                }
+
+                // Если нет детального ответа, помечаем все как синхронизированные
+                if (empty($results)) {
+                    foreach ($batch as $item) {
+                        $offerId = $item['offer']['offerId'] ?? null;
+                        if ($offerId && isset($productMap[$offerId])) {
+                            $productMap[$offerId]->update([
+                                'external_offer_id' => $offerId,
+                                'status' => 'synced',
+                                'last_synced_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+
+            } catch (\Exception $e) {
+                Log::error('YM offer-mappings update error', ['error' => $e->getMessage()]);
+
+                // Помечаем все товары из батча как неудачные
+                foreach ($batch as $item) {
+                    $offerId = $item['offer']['offerId'] ?? null;
+                    if ($offerId && isset($productMap[$offerId])) {
+                        $productMap[$offerId]->markAsFailed('API error: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Маппинг внутреннего товара в формат Yandex Market
+     */
+    protected function mapProductToYmFormat($marketplaceProduct, $product): array
+    {
+        // offerId - обязательное поле (артикул продавца)
+        $offerId = $product->article ?? $product->sku ?? 'SKU-' . $product->id;
+
+        // Получаем категорию YM
+        $categoryId = $marketplaceProduct->external_category_id ?? null;
+
+        // Собираем изображения
+        $pictures = [];
+        if (!empty($product->main_image)) {
+            $pictures[] = $product->main_image;
+        }
+        if (!empty($product->images) && is_array($product->images)) {
+            foreach ($product->images as $img) {
+                $url = is_string($img) ? $img : ($img['url'] ?? null);
+                if ($url) {
+                    $pictures[] = $url;
+                }
+            }
+        }
+
+        // Базовая структура offer
+        $offer = [
+            'offerId' => $offerId,
+            'name' => $product->name,
+            'description' => strip_tags($product->description_full ?? $product->description_short ?? ''),
+            'vendor' => $product->brand_name ?? '',
+            'vendorCode' => $product->article ?? $offerId,
+        ];
+
+        // Добавляем категорию если указана
+        if ($categoryId) {
+            $offer['category'] = (string) $categoryId;
+        }
+
+        // Добавляем изображения (максимум 10)
+        if (!empty($pictures)) {
+            $offer['pictures'] = array_slice($pictures, 0, 10);
+        }
+
+        // Добавляем штрихкод
+        if (!empty($product->barcode)) {
+            $offer['barcodes'] = [$product->barcode];
+        }
+
+        // Добавляем вес и размеры
+        if ($product->package_weight_g) {
+            $offer['weightDimensions'] = [
+                'weight' => round($product->package_weight_g / 1000, 3), // в кг
+            ];
+
+            if ($product->package_length_mm && $product->package_width_mm && $product->package_height_mm) {
+                $offer['weightDimensions']['length'] = round($product->package_length_mm / 10, 1); // в см
+                $offer['weightDimensions']['width'] = round($product->package_width_mm / 10, 1);
+                $offer['weightDimensions']['height'] = round($product->package_height_mm / 10, 1);
+            }
+        }
+
+        // Страна производства
+        if (!empty($product->country_of_origin)) {
+            $offer['manufacturerCountries'] = [$product->country_of_origin];
+        }
+
+        return [
+            'offer' => $offer,
+        ];
     }
 
     /**
