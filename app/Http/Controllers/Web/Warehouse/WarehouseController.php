@@ -158,10 +158,27 @@ class WarehouseController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('warehouse.documents', [
+        // Get or create write-off reasons for this company
+        $reasons = WriteOffReason::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'requires_comment']);
+
+        // If no reasons exist, create default ones
+        if ($reasons->isEmpty() && $companyId) {
+            $this->seedWriteOffReasons($companyId);
+            $reasons = WriteOffReason::query()
+                ->where('company_id', $companyId)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'requires_comment']);
+        }
+
+        return view('warehouse.write-off', [
             'warehouses' => $warehouses,
             'selectedWarehouseId' => $warehouses->first()?->id,
-            'filterType' => InventoryDocument::TYPE_WRITE_OFF,
+            'reasons' => $reasons,
         ]);
     }
 
