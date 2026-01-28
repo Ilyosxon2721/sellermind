@@ -54,6 +54,10 @@ class TaxCalculation extends Model
         'due_date' => 'date',
     ];
 
+    protected $appends = [
+        'due_date_formatted',
+    ];
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -100,6 +104,11 @@ class TaxCalculation extends Model
     public function getAmountOutstandingAttribute(): float
     {
         return max(0, $this->calculated_amount - $this->paid_amount);
+    }
+
+    public function getDueDateFormattedAttribute(): ?string
+    {
+        return $this->due_date ? $this->due_date->format('d.m.Y') : null;
     }
 
     public function isOverdue(): bool

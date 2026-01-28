@@ -1348,7 +1348,7 @@
                                 <td class="px-6 py-4 text-sm text-right" x-text="tax.tax_rate + '%'"></td>
                                 <td class="px-6 py-4 text-sm text-right font-semibold" x-text="formatMoney(tax.calculated_amount)"></td>
                                 <td class="px-6 py-4 text-sm text-right text-green-600" x-text="formatMoney(tax.paid_amount)"></td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tax.due_date || '—'"></td>
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tax.due_date_formatted || '—'"></td>
                                 <td class="px-6 py-4 text-right">
                                     <template x-if="tax.status !== 'paid'">
                                         <button class="text-amber-600 hover:text-amber-700 text-sm font-medium" @click="payTax(tax.id)">Оплатить</button>
@@ -1362,7 +1362,7 @@
             </section>
 
             <!-- Reports Tab -->
-            <section x-show="activeTab === 'reports'" class="space-y-6" x-init="$watch('activeTab', val => { if (val === 'reports') setTimeout(() => initReportCharts(), 100) })">
+            <section x-show="activeTab === 'reports'" class="space-y-6" x-init="$watch('activeTab', val => { if (val === 'reports') { if (!reportData) loadReportWithCharts(); else setTimeout(() => initReportCharts(), 100) } })">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчёты</h2>
                     <div class="flex flex-wrap items-center gap-4">
@@ -3102,11 +3102,13 @@ function financePage() {
             if (!confirm('Удалить транзакцию? Она останется в списке, но не будет учитываться в расчётах.')) return;
             try {
                 const resp = await fetch(`/api/finance/transactions/${id}`, { method: 'DELETE', headers: this.getAuthHeaders() });
+                if (resp.status === 404) throw new Error('Транзакция не найдена');
+                if (resp.status === 403) throw new Error('Нет доступа');
                 const json = await resp.json();
-                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка удаления');
                 this.showToast('Транзакция удалена');
                 this.loadTransactions();
-            } catch (e) { this.showToast(e.message, 'error'); }
+            } catch (e) { this.showToast(e.message || 'Ошибка удаления транзакции', 'error'); }
         },
 
         async restoreTransaction(id) {
