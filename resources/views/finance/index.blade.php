@@ -2325,6 +2325,22 @@ function financePagePwa() {
 
         formatMoney(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
 
+        currencySymbol(code) {
+            const symbols = { 'UZS': 'сум', 'USD': '$', 'RUB': '₽', 'EUR': '€', 'KZT': '₸' };
+            return symbols[code] || code || 'сум';
+        },
+
+        formatDebtsByCurrency(debtsByCurrency) {
+            if (!debtsByCurrency || Object.keys(debtsByCurrency).length === 0) return '0';
+            const parts = [];
+            for (const [currency, amount] of Object.entries(debtsByCurrency)) {
+                if (amount > 0) {
+                    parts.push(this.formatMoney(amount) + ' ' + this.currencySymbol(currency));
+                }
+            }
+            return parts.length > 0 ? parts.join(', ') : '0';
+        },
+
         formatDate(dateStr) {
             if (!dateStr) return '';
             const d = new Date(dateStr);
