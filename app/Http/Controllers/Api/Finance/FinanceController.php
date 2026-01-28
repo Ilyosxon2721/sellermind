@@ -17,8 +17,10 @@ use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
+use App\Services\CurrencyConversionService;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceExpenseCache;
+use App\Models\Company;
 use App\Support\ApiResponder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -32,7 +34,8 @@ class FinanceController extends Controller
     public function __construct(
         protected FinanceReportService $reportService,
         protected UzumClient $uzumClient,
-        protected OzonClient $ozonClient
+        protected OzonClient $ozonClient,
+        protected CurrencyConversionService $currencyService
     ) {
     }
 
@@ -49,16 +52,26 @@ class FinanceController extends Controller
         // Получаем настройки финансов для курсов валют
         $financeSettings = FinanceSettings::getForCompany($companyId);
 
+        // ========== ВАЛЮТА ОТОБРАЖЕНИЯ ==========
+        $company = Company::find($companyId);
+        $currencyService = $this->currencyService->forCompany($company);
+        $displayCurrency = $currencyService->getDisplayCurrency();
+        $baseCurrency = 'UZS'; // Все данные хранятся в UZS
+
         $transactions = FinanceTransaction::byCompany($companyId)
             ->confirmed()
             ->inPeriod($from, $to);
 
-        $totalIncome = (clone $transactions)->income()->sum('amount');
-        $totalExpense = (clone $transactions)->expense()->sum('amount');
+        // Суммы в базовой валюте (UZS)
+        $totalIncomeBase = (clone $transactions)->income()->sum('amount');
+        $totalExpenseBase = (clone $transactions)->expense()->sum('amount');
 
         // ========== ПРОДАЖИ МАРКЕТПЛЕЙСОВ ==========
-        $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
-        $totalIncome += $marketplaceSales['total_revenue'];
+        $marketplaceSalesBase = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
+        $totalIncomeBase += $marketplaceSalesBase['total_revenue'];
+
+        // Конвертируем продажи в выбранную валюту для отображения
+        $marketplaceSales = $this->convertMarketplaceSales($marketplaceSalesBase, $currencyService, $baseCurrency, $displayCurrency);
 
         // Расходы маркетплейсов теперь хранятся в FinanceTransaction
         // и автоматически включаются в $totalExpense
@@ -66,37 +79,86 @@ class FinanceController extends Controller
         // ========== СЕБЕСТОИМОСТЬ ПРОДАННЫХ ТОВАРОВ ==========
         $rubToUzs = $financeSettings->rub_rate ?? 140;
         $cogs = $this->calculateCogs($companyId, $from, $to, $rubToUzs);
-        $totalCogs = $cogs['total'] ?? 0;
+        $totalCogsBase = $cogs['total'] ?? 0;
 
-        // Чистая прибыль = Доходы - Расходы - Себестоимость
-        $netProfit = $totalIncome - $totalExpense - $totalCogs;
+        // Чистая прибыль = Доходы - Расходы - Себестоимость (в базовой валюте)
+        $netProfitBase = $totalIncomeBase - $totalExpenseBase - $totalCogsBase;
 
-        // Долги
-        $debtsReceivable = FinanceDebt::byCompany($companyId)->receivable()->active()->sum('amount_outstanding');
-        $debtsPayable = FinanceDebt::byCompany($companyId)->payable()->active()->sum('amount_outstanding');
+        // ========== КОНВЕРТАЦИЯ В ВЫБРАННУЮ ВАЛЮТУ ==========
+        $totalIncome = $currencyService->convert($totalIncomeBase, $baseCurrency, $displayCurrency);
+        $totalExpense = $currencyService->convert($totalExpenseBase, $baseCurrency, $displayCurrency);
+        $totalCogs = $currencyService->convert($totalCogsBase, $baseCurrency, $displayCurrency);
+        $netProfit = $currencyService->convert($netProfitBase, $baseCurrency, $displayCurrency);
 
-        // Просроченные долги
-        $overdueReceivable = FinanceDebt::byCompany($companyId)->receivable()->overdue()->sum('amount_outstanding');
-        $overduePayable = FinanceDebt::byCompany($companyId)->payable()->overdue()->sum('amount_outstanding');
+        // ========== ДОЛГИ (в оригинальных валютах) ==========
+        // Группируем долги по валютам, чтобы показывать в оригинальной валюте
+        $debtsReceivableByCurrency = FinanceDebt::byCompany($companyId)
+            ->receivable()
+            ->active()
+            ->selectRaw('currency_code, SUM(amount_outstanding) as total')
+            ->groupBy('currency_code')
+            ->get()
+            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->toArray();
+
+        $debtsPayableByCurrency = FinanceDebt::byCompany($companyId)
+            ->payable()
+            ->active()
+            ->selectRaw('currency_code, SUM(amount_outstanding) as total')
+            ->groupBy('currency_code')
+            ->get()
+            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->toArray();
+
+        $overdueReceivableByCurrency = FinanceDebt::byCompany($companyId)
+            ->receivable()
+            ->overdue()
+            ->selectRaw('currency_code, SUM(amount_outstanding) as total')
+            ->groupBy('currency_code')
+            ->get()
+            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->toArray();
+
+        $overduePayableByCurrency = FinanceDebt::byCompany($companyId)
+            ->payable()
+            ->overdue()
+            ->selectRaw('currency_code, SUM(amount_outstanding) as total')
+            ->groupBy('currency_code')
+            ->get()
+            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->toArray();
+
+        // Также считаем общие суммы в displayCurrency для баланса
+        $debtsReceivableConverted = 0;
+        $debtsPayableConverted = 0;
+        foreach ($debtsReceivableByCurrency as $cur => $amount) {
+            $debtsReceivableConverted += $currencyService->convert($amount, $cur, $displayCurrency);
+        }
+        foreach ($debtsPayableByCurrency as $cur => $amount) {
+            $debtsPayableConverted += $currencyService->convert($amount, $cur, $displayCurrency);
+        }
 
         // ========== ОСТАТКИ НА СКЛАДАХ ==========
-        $stockData = $this->getStockSummary($companyId, $financeSettings);
+        $stockData = $this->getStockSummary($companyId, $financeSettings, $currencyService, $displayCurrency);
 
         // ========== ТОВАРЫ В ТРАНЗИТАХ ==========
-        $transitData = $this->getTransitSummary($companyId, $financeSettings);
+        $transitData = $this->getTransitSummary($companyId, $financeSettings, $currencyService, $displayCurrency);
 
         // Зарплата текущего месяца
         $currentSalary = SalaryCalculation::byCompany($companyId)
             ->forPeriod(now()->year, now()->month)
             ->first();
+        $currentSalaryNet = $currentSalary ? $currencyService->convert($currentSalary->total_net ?? 0, $baseCurrency, $displayCurrency) : 0;
 
-        // Налоги
-        $unpaidTaxes = TaxCalculation::byCompany($companyId)
+        // Налоги (в базовой валюте)
+        $unpaidTaxesBase = TaxCalculation::byCompany($companyId)
             ->unpaid()
             ->sum('calculated_amount');
+        $unpaidTaxes = $currencyService->convert($unpaidTaxesBase, $baseCurrency, $displayCurrency);
 
-        // Расходы по категориям
-        $expensesByCategory = $this->reportService->getExpensesByCategory($companyId, $from, $to);
+        // Расходы по категориям (конвертируем каждую категорию)
+        $expensesByCategoryBase = $this->reportService->getExpensesByCategory($companyId, $from, $to);
+        $expensesByCategory = $this->convertExpensesByCategory($expensesByCategoryBase, $currencyService, $baseCurrency, $displayCurrency);
 
         // Последние транзакции
         $recentTransactions = FinanceTransaction::byCompany($companyId)
@@ -118,14 +180,14 @@ class FinanceController extends Controller
         ]);
 
         // ========== ОСТАТКИ НА СЧЕТАХ (касса, банк) ==========
-        $cashBalance = $this->getCashBalance($companyId);
+        $cashBalance = $this->getCashBalance($companyId, $currencyService, $displayCurrency);
 
         // ========== ИТОГОВЫЙ БАЛАНС КОМПАНИИ ==========
         $balance = $this->calculateCompanyBalance(
             $stockData,
             $transitData,
-            $debtsReceivable,
-            $debtsPayable,
+            $debtsReceivableConverted,
+            $debtsPayableConverted,
             $unpaidTaxes,
             $currentSalary,
             $periodProfit,
@@ -139,6 +201,7 @@ class FinanceController extends Controller
             ],
             'currency' => [
                 'base' => $financeSettings->base_currency_code ?? 'UZS',
+                'display' => $displayCurrency,
                 'rates' => [
                     'USD' => $financeSettings->usd_rate,
                     'RUB' => $financeSettings->rub_rate,
@@ -158,15 +221,19 @@ class FinanceController extends Controller
             'stock' => $stockData,
             'transit' => $transitData,
             'debts' => [
-                'receivable' => $debtsReceivable,
-                'payable' => $debtsPayable,
-                'overdue_receivable' => $overdueReceivable,
-                'overdue_payable' => $overduePayable,
-                'net' => $debtsReceivable - $debtsPayable,
+                // Долги в оригинальных валютах
+                'receivable_by_currency' => $debtsReceivableByCurrency,
+                'payable_by_currency' => $debtsPayableByCurrency,
+                'overdue_receivable_by_currency' => $overdueReceivableByCurrency,
+                'overdue_payable_by_currency' => $overduePayableByCurrency,
+                // Конвертированные суммы для итогов
+                'receivable_converted' => $debtsReceivableConverted,
+                'payable_converted' => $debtsPayableConverted,
+                'net_converted' => $debtsReceivableConverted - $debtsPayableConverted,
             ],
             'salary' => [
                 'current_period' => $currentSalary?->period_label,
-                'total_net' => $currentSalary?->total_net ?? 0,
+                'total_net' => $currentSalaryNet,
                 'status' => $currentSalary?->status ?? 'none',
             ],
             'taxes' => [
@@ -179,6 +246,20 @@ class FinanceController extends Controller
 
     /**
      * Получить продажи маркетплейсов за период
+     *
+     * ВАЖНО: Используем ту же логику, что и SalesController для единообразия данных.
+     *
+     * Uzum: Продажа = TO_WITHDRAW или (PROCESSING + date_issued NOT NULL)
+     *       Фильтрация по date_issued (дата выкупа) для продаж
+     *
+     * WB: Продажа = is_realization=true AND is_cancel=false
+     *     Фильтрация по last_change_date для продаж
+     *
+     * Ozon: Продажа = stock_status='sold' AND stock_sold_at NOT NULL
+     *       Фильтрация по stock_sold_at (дата продажи)
+     *
+     * YM: Продажа = stock_status='sold' AND stock_sold_at NOT NULL
+     *     Фильтрация по stock_sold_at (дата продажи)
      */
     protected function getMarketplaceSales(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
     {
@@ -188,6 +269,7 @@ class FinanceController extends Controller
             'uzum' => ['orders' => 0, 'revenue' => 0, 'profit' => 0],
             'wb' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
             'ozon' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
+            'ym' => ['orders' => 0, 'revenue' => 0, 'revenue_rub' => 0, 'profit' => 0],
             'total_orders' => 0,
             'total_revenue' => 0,
             'total_profit' => 0,
@@ -200,9 +282,46 @@ class FinanceController extends Controller
             'rub_rate' => $rubToUzs,
         ]);
 
-        // Uzum продажи из uzum_orders (issued = доставлено клиенту)
+        // ==================== UZUM ====================
+        // Приоритет: UzumFinanceOrder (точные данные по выкупам)
+        // Продажа: TO_WITHDRAW или (PROCESSING + date_issued NOT NULL)
+        // Фильтрация: по date_issued (дата выкупа)
         try {
-            if (class_exists(\App\Models\UzumOrder::class)) {
+            $hasFinanceOrders = class_exists(\App\Models\UzumFinanceOrder::class)
+                && \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->exists();
+
+            if ($hasFinanceOrders) {
+                // Используем uzum_finance_orders - точные данные
+                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where(function($q) use ($from, $to) {
+                        // TO_WITHDRAW - деньги выведены = продажа
+                        $q->where(function($sub) use ($from, $to) {
+                            $sub->where('status', 'TO_WITHDRAW')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        // PROCESSING + date_issued = товар выкуплен = продажа
+                        ->orWhere(function($sub) use ($from, $to) {
+                            $sub->where('status', 'PROCESSING')
+                                ->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        });
+                    })
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as revenue, SUM(seller_profit) as profit')
+                    ->first();
+
+                $revenue = (float) ($uzumSales?->revenue ?? 0);
+                $profit = (float) ($uzumSales?->profit ?? 0);
+                $result['uzum'] = [
+                    'orders' => (int) ($uzumSales?->cnt ?? 0),
+                    'revenue' => $revenue,
+                    'profit' => $profit,
+                ];
+
+                \Log::info('Uzum sales fetched from uzum_finance_orders', $result['uzum']);
+            } elseif (class_exists(\App\Models\UzumOrder::class)) {
+                // Fallback: uzum_orders (менее точные данные)
                 $uzumSales = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('status', 'issued')
                     ->whereDate('ordered_at', '>=', $from)
@@ -217,21 +336,22 @@ class FinanceController extends Controller
                     'profit' => $revenue * 0.85, // Примерная прибыль после комиссий
                 ];
 
-                \Log::info('Uzum sales fetched', $result['uzum']);
+                \Log::info('Uzum sales fetched from uzum_orders (fallback)', $result['uzum']);
             }
         } catch (\Exception $e) {
             \Log::error('Uzum sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
-        // WB продажи (is_realization = true, не отменённые, не возвраты)
+        // ==================== WILDBERRIES ====================
+        // Продажа: is_realization=true AND is_cancel=false
+        // Фильтрация: по last_change_date (дата завершения)
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
                 $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
-                    ->where('is_return', false)
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to)
+                    ->whereDate('last_change_date', '>=', $from)
+                    ->whereDate('last_change_date', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as revenue')
                     ->first();
 
@@ -249,13 +369,16 @@ class FinanceController extends Controller
             \Log::error('WB sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
-        // Ozon продажи (статусы delivered, completed = завершённые продажи)
+        // ==================== OZON ====================
+        // Продажа: stock_status='sold' AND stock_sold_at NOT NULL
+        // Фильтрация: по stock_sold_at (дата продажи)
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
                 $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', ['delivered', 'completed'])
-                    ->whereDate('created_at_ozon', '>=', $from)
-                    ->whereDate('created_at_ozon', '<=', $to)
+                    ->where('stock_status', 'sold')
+                    ->whereNotNull('stock_sold_at')
+                    ->whereDate('stock_sold_at', '>=', $from)
+                    ->whereDate('stock_sold_at', '<=', $to)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
                     ->first();
 
@@ -273,10 +396,37 @@ class FinanceController extends Controller
             \Log::error('Ozon sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
 
+        // ==================== YANDEX MARKET ====================
+        // Продажа: stock_status='sold' AND stock_sold_at NOT NULL
+        // Фильтрация: по stock_sold_at (дата продажи)
+        try {
+            if (class_exists(\App\Models\YandexMarketOrder::class)) {
+                $ymSales = \App\Models\YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->where('stock_status', 'sold')
+                    ->whereNotNull('stock_sold_at')
+                    ->whereDate('stock_sold_at', '>=', $from)
+                    ->whereDate('stock_sold_at', '<=', $to)
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
+                    ->first();
+
+                $revenueRub = (float) ($ymSales?->revenue ?? 0);
+                $result['ym'] = [
+                    'orders' => (int) ($ymSales?->cnt ?? 0),
+                    'revenue' => $revenueRub * $rubToUzs,
+                    'revenue_rub' => $revenueRub,
+                    'profit' => 0,
+                ];
+
+                \Log::info('YM sales fetched', $result['ym']);
+            }
+        } catch (\Exception $e) {
+            \Log::error('YM sales error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
+
         // Итого
-        $result['total_orders'] = $result['uzum']['orders'] + $result['wb']['orders'] + $result['ozon']['orders'];
-        $result['total_revenue'] = $result['uzum']['revenue'] + $result['wb']['revenue'] + $result['ozon']['revenue'];
-        $result['total_profit'] = $result['uzum']['profit'] + $result['wb']['profit'] + $result['ozon']['profit'];
+        $result['total_orders'] = $result['uzum']['orders'] + $result['wb']['orders'] + $result['ozon']['orders'] + $result['ym']['orders'];
+        $result['total_revenue'] = $result['uzum']['revenue'] + $result['wb']['revenue'] + $result['ozon']['revenue'] + $result['ym']['revenue'];
+        $result['total_profit'] = $result['uzum']['profit'] + $result['wb']['profit'] + $result['ozon']['profit'] + $result['ym']['profit'];
 
         \Log::info('getMarketplaceSales totals', [
             'total_orders' => $result['total_orders'],
@@ -297,8 +447,10 @@ class FinanceController extends Controller
      * Формула: SUM(cost_delta) для всех записей
      * Это автоматически учитывает поступления и списания
      */
-    protected function getStockSummary(int $companyId, FinanceSettings $settings): array
+    protected function getStockSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
+        $baseCurrency = 'UZS';
+
         try {
             // Получаем текущее количество и себестоимость
             // cost_delta уже в UZS и уже учитывает направление (+ для поступлений, - для списаний)
@@ -307,7 +459,12 @@ class FinanceController extends Controller
                 ->first();
 
             $totalQty = max(0, (float) ($summary?->total_qty ?? 0));
-            $totalCost = max(0, (float) ($summary?->total_cost ?? 0));
+            $totalCostBase = max(0, (float) ($summary?->total_cost ?? 0));
+
+            // Конвертируем в выбранную валюту
+            $totalCost = $currencyService
+                ? $currencyService->convert($totalCostBase, $baseCurrency, $displayCurrency)
+                : $totalCostBase;
 
             // Группировка по складам
             $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
@@ -317,12 +474,19 @@ class FinanceController extends Controller
                 ->having('qty', '>', 0)
                 ->get();
 
-            $warehouseData = $byWarehouse->map(fn($w) => [
-                'id' => $w->id,
-                'name' => $w->name,
-                'qty' => (float) $w->qty,
-                'cost' => max(0, (float) $w->cost),
-            ])->toArray();
+            $warehouseData = $byWarehouse->map(function($w) use ($currencyService, $baseCurrency, $displayCurrency) {
+                $costBase = max(0, (float) $w->cost);
+                $cost = $currencyService
+                    ? $currencyService->convert($costBase, $baseCurrency, $displayCurrency)
+                    : $costBase;
+
+                return [
+                    'id' => $w->id,
+                    'name' => $w->name,
+                    'qty' => (float) $w->qty,
+                    'cost' => $cost,
+                ];
+            })->toArray();
 
             return [
                 'total_qty' => $totalQty,
@@ -341,11 +505,12 @@ class FinanceController extends Controller
 
     /**
      * Получить сводку по товарам в транзитах
-     * Все суммы конвертируются в UZS
+     * Все суммы конвертируются в выбранную валюту
      */
-    protected function getTransitSummary(int $companyId, FinanceSettings $settings): array
+    protected function getTransitSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
         $rubToUzs = $settings->rub_rate ?? 140;
+        $baseCurrency = 'UZS';
 
         $result = [
             'orders_in_transit' => [
@@ -450,6 +615,18 @@ class FinanceController extends Controller
 
         $result['total_amount'] = $result['orders_in_transit']['amount'] + $result['purchases_in_transit']['amount'];
 
+        // Конвертируем суммы в выбранную валюту (из UZS)
+        if ($currencyService && $displayCurrency !== $baseCurrency) {
+            $result['orders_in_transit']['amount'] = $currencyService->convert($result['orders_in_transit']['amount'], $baseCurrency, $displayCurrency);
+            $result['purchases_in_transit']['amount'] = $currencyService->convert($result['purchases_in_transit']['amount'], $baseCurrency, $displayCurrency);
+            $result['total_amount'] = $currencyService->convert($result['total_amount'], $baseCurrency, $displayCurrency);
+
+            // Конвертируем суммы по маркетплейсам
+            foreach ($result['orders_in_transit']['by_marketplace'] as $key => &$mp) {
+                $mp['amount'] = $currencyService->convert($mp['amount'], $baseCurrency, $displayCurrency);
+            }
+        }
+
         return $result;
     }
 
@@ -546,6 +723,71 @@ class FinanceController extends Controller
     }
 
     /**
+     * Конвертировать расходы по категориям в выбранную валюту
+     */
+    protected function convertExpensesByCategory($expensesByCategory, $currencyService, string $baseCurrency, string $displayCurrency): array
+    {
+        if (!$currencyService || $displayCurrency === $baseCurrency) {
+            return $expensesByCategory instanceof \Illuminate\Support\Collection
+                ? $expensesByCategory->toArray()
+                : (array) $expensesByCategory;
+        }
+
+        $result = [];
+        $items = $expensesByCategory instanceof \Illuminate\Support\Collection
+            ? $expensesByCategory->toArray()
+            : (array) $expensesByCategory;
+
+        foreach ($items as $item) {
+            $amount = $item['amount'] ?? $item['total'] ?? 0;
+            $converted = [
+                'category_id' => $item['category_id'] ?? null,
+                'category_name' => $item['category_name'] ?? $item['name'] ?? '',
+                'amount' => $currencyService->convert($amount, $baseCurrency, $displayCurrency),
+            ];
+            $result[] = $converted;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Конвертировать продажи маркетплейсов в выбранную валюту
+     */
+    protected function convertMarketplaceSales(array $sales, $currencyService, string $baseCurrency, string $displayCurrency): array
+    {
+        if (!$currencyService || $displayCurrency === $baseCurrency) {
+            return $sales;
+        }
+
+        $result = $sales;
+
+        // Конвертируем Uzum (уже в UZS)
+        $result['uzum']['revenue'] = $currencyService->convert($sales['uzum']['revenue'] ?? 0, $baseCurrency, $displayCurrency);
+        $result['uzum']['profit'] = $currencyService->convert($sales['uzum']['profit'] ?? 0, $baseCurrency, $displayCurrency);
+
+        // Конвертируем WB (конвертировано из RUB в UZS)
+        $result['wb']['revenue'] = $currencyService->convert($sales['wb']['revenue'] ?? 0, $baseCurrency, $displayCurrency);
+        $result['wb']['profit'] = $currencyService->convert($sales['wb']['profit'] ?? 0, $baseCurrency, $displayCurrency);
+
+        // Конвертируем Ozon (конвертировано из RUB в UZS)
+        $result['ozon']['revenue'] = $currencyService->convert($sales['ozon']['revenue'] ?? 0, $baseCurrency, $displayCurrency);
+        $result['ozon']['profit'] = $currencyService->convert($sales['ozon']['profit'] ?? 0, $baseCurrency, $displayCurrency);
+
+        // Конвертируем YM (конвертировано из RUB в UZS)
+        if (isset($sales['ym'])) {
+            $result['ym']['revenue'] = $currencyService->convert($sales['ym']['revenue'] ?? 0, $baseCurrency, $displayCurrency);
+            $result['ym']['profit'] = $currencyService->convert($sales['ym']['profit'] ?? 0, $baseCurrency, $displayCurrency);
+        }
+
+        // Конвертируем итоги
+        $result['total_revenue'] = $currencyService->convert($sales['total_revenue'] ?? 0, $baseCurrency, $displayCurrency);
+        $result['total_profit'] = $currencyService->convert($sales['total_profit'] ?? 0, $baseCurrency, $displayCurrency);
+
+        return $result;
+    }
+
+    /**
      * Получить прибыль за указанный период
      * Включает: транзакции + продажи маркетплейсов
      */
@@ -583,8 +825,9 @@ class FinanceController extends Controller
 
     /**
      * Получить остатки на денежных счетах (касса, банк)
+     * Каждый счёт показывается в своей валюте, total конвертируется в displayCurrency
      */
-    protected function getCashBalance(int $companyId): array
+    protected function getCashBalance(int $companyId, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
         try {
             // Проверяем есть ли модель CashAccount
@@ -596,17 +839,29 @@ class FinanceController extends Controller
                 ->where('is_active', true)
                 ->get();
 
-            $total = $accounts->sum('balance');
+            // Каждый счёт показываем в своей валюте
+            $accountsData = $accounts->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'type' => $a->type,
+                'balance' => $a->balance,
+                'currency_code' => $a->currency_code,
+            ])->toArray();
+
+            // Total конвертируем в выбранную валюту
+            $totalConverted = 0;
+            foreach ($accounts as $account) {
+                $accountCurrency = $account->currency_code ?? 'UZS';
+                if ($currencyService) {
+                    $totalConverted += $currencyService->convert($account->balance, $accountCurrency, $displayCurrency);
+                } else {
+                    $totalConverted += $account->balance;
+                }
+            }
 
             return [
-                'total' => $total,
-                'accounts' => $accounts->map(fn($a) => [
-                    'id' => $a->id,
-                    'name' => $a->name,
-                    'type' => $a->type,
-                    'balance' => $a->balance,
-                    'currency_code' => $a->currency_code,
-                ])->toArray(),
+                'total' => $totalConverted,
+                'accounts' => $accountsData,
             ];
         } catch (\Exception $e) {
             return ['total' => 0, 'accounts' => []];

@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endpush
+
 @section('content')
 <div class="flex h-screen bg-gradient-to-br from-slate-50 to-emerald-50 browser-only" x-data="financePage()"
      :class="{
@@ -116,7 +120,7 @@
                         </div>
                     </div>
                     <div class="text-4xl font-bold mb-6" :class="(overview.balance?.net_balance || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
-                         x-text="formatMoney(overview.balance?.net_balance || 0) + ' сум'"></div>
+                         x-text="formatWithCurrency(overview.balance?.net_balance || 0)"></div>
                     <div class="grid grid-cols-2 gap-6">
                         <div>
                             <div class="text-sm text-slate-400 mb-2">Активы</div>
@@ -343,7 +347,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.orders?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.orders?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.orders?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Продано (Delivered) -->
@@ -355,7 +359,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.sold?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.sold?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.sold?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Возвраты -->
@@ -367,7 +371,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.returns?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.returns?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.returns?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Отменены -->
@@ -379,14 +383,14 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.cancelled?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.cancelled?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.cancelled?.amount || 0)"></div>
                                 </div>
                             </div>
 
                             <!-- Средний чек -->
                             <div class="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
                                 <span class="text-gray-600 font-medium">Средний чек (по продажам)</span>
-                                <span class="text-xl font-bold text-gray-900" x-text="formatMoney(marketplaceIncome.totals?.avg_order_value || 0) + ' сум'"></span>
+                                <span class="text-xl font-bold text-gray-900" x-text="formatWithCurrency(marketplaceIncome.totals?.avg_order_value || 0)"></span>
                             </div>
 
                             <!-- Себестоимость проданных товаров (COGS) -->
@@ -951,22 +955,22 @@
                     </template>
                 </div>
 
-                <!-- Debts Summary -->
+                <!-- Debts Summary (показываем в оригинальных валютах) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Дебиторская задолженность</h3>
                         <p class="text-xs text-gray-500 mb-2">Нам должны</p>
-                        <div class="text-3xl font-bold text-green-600" x-text="formatMoney(overview.debts?.receivable || 0)"></div>
-                        <template x-if="overview.debts?.overdue_receivable > 0">
-                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_receivable)"></span></div>
+                        <div class="text-3xl font-bold text-green-600" x-text="formatDebtsByCurrency(overview.debts?.receivable_by_currency)"></div>
+                        <template x-if="Object.keys(overview.debts?.overdue_receivable_by_currency || {}).length > 0">
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatDebtsByCurrency(overview.debts.overdue_receivable_by_currency)"></span></div>
                         </template>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Кредиторская задолженность</h3>
                         <p class="text-xs text-gray-500 mb-2">Мы должны</p>
-                        <div class="text-3xl font-bold text-red-600" x-text="formatMoney(overview.debts?.payable || 0)"></div>
-                        <template x-if="overview.debts?.overdue_payable > 0">
-                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_payable)"></span></div>
+                        <div class="text-3xl font-bold text-red-600" x-text="formatDebtsByCurrency(overview.debts?.payable_by_currency)"></div>
+                        <template x-if="Object.keys(overview.debts?.overdue_payable_by_currency || {}).length > 0">
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatDebtsByCurrency(overview.debts.overdue_payable_by_currency)"></span></div>
                         </template>
                     </div>
                 </div>
@@ -1358,7 +1362,7 @@
             </section>
 
             <!-- Reports Tab -->
-            <section x-show="activeTab === 'reports'" class="space-y-6">
+            <section x-show="activeTab === 'reports'" class="space-y-6" x-init="$watch('activeTab', val => { if (val === 'reports') setTimeout(() => initReportCharts(), 100) })">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчёты</h2>
                     <div class="flex flex-wrap items-center gap-4">
@@ -1371,7 +1375,7 @@
                             <option value="by_category">По категориям</option>
                             <option value="debts_aging">Анализ долгов</option>
                         </select>
-                        <button class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl" @click="loadReport()">Сформировать</button>
+                        <button class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl" @click="loadReportWithCharts()">Сформировать</button>
                     </div>
                 </div>
 
@@ -1380,38 +1384,84 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-4" x-text="reportTypeLabel(reportType)"></h3>
 
                     <!-- P&L Report -->
-                    <div x-show="reportType === 'pnl'" class="space-y-4">
+                    <div x-show="reportType === 'pnl'" class="space-y-6">
                         <div class="grid grid-cols-3 gap-4">
                             <div class="p-4 bg-green-50 rounded-xl">
                                 <div class="text-sm text-green-600">Доходы</div>
-                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.income?.total || 0)"></div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatWithCurrency(reportData?.data?.income?.total || 0)"></div>
                             </div>
                             <div class="p-4 bg-red-50 rounded-xl">
                                 <div class="text-sm text-red-600">Расходы</div>
-                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.expenses?.total || 0)"></div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatWithCurrency(reportData?.data?.expenses?.total || 0)"></div>
                             </div>
                             <div class="p-4 bg-blue-50 rounded-xl">
                                 <div class="text-sm text-blue-600">Прибыль</div>
-                                <div class="text-xl font-bold" :class="(reportData?.data?.gross_profit || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(reportData?.data?.gross_profit || 0)"></div>
+                                <div class="text-xl font-bold" :class="(reportData?.data?.gross_profit || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatWithCurrency(reportData?.data?.gross_profit || 0)"></div>
                             </div>
                         </div>
                         <div class="text-sm text-gray-500 text-center" x-text="'Маржа: ' + (reportData?.data?.profit_margin || 0) + '%'"></div>
+
+                        <!-- P&L Bar Chart -->
+                        <div class="mt-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Сравнение доходов и расходов</h4>
+                            <div class="h-64">
+                                <canvas id="pnlBarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- P&L Pie Chart -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Структура доходов</h4>
+                                <div class="h-48">
+                                    <canvas id="incomePieChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Структура расходов</h4>
+                                <div class="h-48">
+                                    <canvas id="expensePieChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Cash Flow Report -->
-                    <div x-show="reportType === 'cash_flow'" class="space-y-2">
+                    <div x-show="reportType === 'cash_flow'" class="space-y-6">
+                        <!-- Cash Flow Line Chart -->
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Динамика движения денег</h4>
+                            <div class="h-72">
+                                <canvas id="cashFlowLineChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Cash Flow Table -->
                         <template x-if="Array.isArray(reportData?.data) && reportData.data.length > 0">
                             <div>
-                                <template x-for="(item, idx) in reportData.data" :key="idx">
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-2">
-                                        <span class="font-medium" x-text="item.period || item.date"></span>
-                                        <div class="flex items-center space-x-4">
-                                            <span class="text-green-600" x-text="'+' + formatMoney(item.income || 0)"></span>
-                                            <span class="text-red-600" x-text="'-' + formatMoney(item.expense || 0)"></span>
-                                            <span class="font-bold" :class="(item.net || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net || 0)"></span>
-                                        </div>
-                                    </div>
-                                </template>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3">Детализация по периодам</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-200">
+                                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-600">Период</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-green-600">Приход</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-red-600">Расход</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-gray-600">Итого</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="(item, idx) in reportData.data" :key="idx">
+                                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td class="py-3 px-4 font-medium" x-text="item.period || item.date"></td>
+                                                    <td class="py-3 px-4 text-right text-green-600" x-text="'+' + formatMoney(item.income || 0)"></td>
+                                                    <td class="py-3 px-4 text-right text-red-600" x-text="'-' + formatMoney(item.expense || 0)"></td>
+                                                    <td class="py-3 px-4 text-right font-bold" :class="(item.net || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net || 0)"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </template>
                         <template x-if="!Array.isArray(reportData?.data) || reportData.data.length === 0">
@@ -1421,18 +1471,39 @@
 
                     <!-- By Category Report -->
                     <div x-show="reportType === 'by_category'" class="space-y-6">
+                        <!-- Doughnut Charts -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <h4 class="font-medium text-green-700 mb-3 text-center">Доходы по категориям</h4>
+                                <div class="h-56">
+                                    <canvas id="categoryIncomeDoughnut"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-red-700 mb-3 text-center">Расходы по категориям</h4>
+                                <div class="h-56">
+                                    <canvas id="categoryExpenseDoughnut"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category Lists -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Income -->
                             <div>
-                                <h4 class="font-medium text-green-700 mb-3">Доходы по категориям</h4>
+                                <h4 class="font-medium text-green-700 mb-3">Детализация доходов</h4>
                                 <template x-if="reportData?.data?.income?.length > 0">
                                     <div class="space-y-2">
                                         <template x-for="(cat, idx) in reportData.data.income" :key="'inc-' + idx">
                                             <div class="p-3 bg-green-50 rounded-xl">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-green-800" x-text="cat.category"></span>
-                                                    <span class="font-bold text-green-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                    <span class="font-bold text-green-700" x-text="formatWithCurrency(cat.total || 0)"></span>
                                                 </div>
+                                                <div class="mt-1 bg-green-200 rounded-full h-2">
+                                                    <div class="bg-green-600 h-2 rounded-full" :style="'width: ' + (cat.percentage || 0) + '%'"></div>
+                                                </div>
+                                                <div class="text-xs text-green-600 mt-1" x-text="(cat.percentage || 0).toFixed(1) + '%'"></div>
                                             </div>
                                         </template>
                                     </div>
@@ -1443,15 +1514,19 @@
                             </div>
                             <!-- Expense -->
                             <div>
-                                <h4 class="font-medium text-red-700 mb-3">Расходы по категориям</h4>
+                                <h4 class="font-medium text-red-700 mb-3">Детализация расходов</h4>
                                 <template x-if="reportData?.data?.expense?.length > 0">
                                     <div class="space-y-2">
                                         <template x-for="(cat, idx) in reportData.data.expense" :key="'exp-' + idx">
                                             <div class="p-3 bg-red-50 rounded-xl">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-red-800" x-text="cat.category"></span>
-                                                    <span class="font-bold text-red-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                    <span class="font-bold text-red-700" x-text="formatWithCurrency(cat.total || 0)"></span>
                                                 </div>
+                                                <div class="mt-1 bg-red-200 rounded-full h-2">
+                                                    <div class="bg-red-600 h-2 rounded-full" :style="'width: ' + (cat.percentage || 0) + '%'"></div>
+                                                </div>
+                                                <div class="text-xs text-red-600 mt-1" x-text="(cat.percentage || 0).toFixed(1) + '%'"></div>
                                             </div>
                                         </template>
                                     </div>
@@ -1464,37 +1539,61 @@
                     </div>
 
                     <!-- Debts Aging Report -->
-                    <div x-show="reportType === 'debts_aging'" class="space-y-4">
+                    <div x-show="reportType === 'debts_aging'" class="space-y-6">
+                        <!-- Debts Aging Bar Chart -->
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Просрочка по периодам</h4>
+                            <div class="h-56">
+                                <canvas id="debtsAgingBarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Aging Summary Cards -->
                         <div class="grid grid-cols-5 gap-4">
                             <div class="p-3 bg-green-100 rounded-xl text-center">
                                 <div class="text-xs text-green-600">Текущие</div>
                                 <div class="font-bold text-green-700" x-text="formatMoney(reportData?.data?.summary?.current?.amount || 0)"></div>
+                                <div class="text-xs text-green-500 mt-1" x-text="(reportData?.data?.summary?.current?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-yellow-100 rounded-xl text-center">
                                 <div class="text-xs text-yellow-600">1-30 дней</div>
                                 <div class="font-bold text-yellow-700" x-text="formatMoney(reportData?.data?.summary?.['1_30']?.amount || 0)"></div>
+                                <div class="text-xs text-yellow-500 mt-1" x-text="(reportData?.data?.summary?.['1_30']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-orange-100 rounded-xl text-center">
                                 <div class="text-xs text-orange-600">31-60 дней</div>
                                 <div class="font-bold text-orange-700" x-text="formatMoney(reportData?.data?.summary?.['31_60']?.amount || 0)"></div>
+                                <div class="text-xs text-orange-500 mt-1" x-text="(reportData?.data?.summary?.['31_60']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-red-100 rounded-xl text-center">
                                 <div class="text-xs text-red-600">61-90 дней</div>
                                 <div class="font-bold text-red-700" x-text="formatMoney(reportData?.data?.summary?.['61_90']?.amount || 0)"></div>
+                                <div class="text-xs text-red-500 mt-1" x-text="(reportData?.data?.summary?.['61_90']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-red-200 rounded-xl text-center">
                                 <div class="text-xs text-red-700">90+ дней</div>
                                 <div class="font-bold text-red-800" x-text="formatMoney(reportData?.data?.summary?.over_90?.amount || 0)"></div>
+                                <div class="text-xs text-red-600 mt-1" x-text="(reportData?.data?.summary?.over_90?.count || 0) + ' шт'"></div>
                             </div>
                         </div>
+
+                        <!-- Totals -->
                         <div class="grid grid-cols-2 gap-4 mt-4">
                             <div class="p-4 bg-green-50 rounded-xl">
                                 <div class="text-sm text-green-600">Всего дебиторки</div>
-                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.total_receivable || 0)"></div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatWithCurrency(reportData?.data?.total_receivable || 0)"></div>
                             </div>
                             <div class="p-4 bg-red-50 rounded-xl">
                                 <div class="text-sm text-red-600">Всего кредиторки</div>
-                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.total_payable || 0)"></div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatWithCurrency(reportData?.data?.total_payable || 0)"></div>
+                            </div>
+                        </div>
+
+                        <!-- Debts Comparison Pie -->
+                        <div class="mt-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Соотношение дебиторки и кредиторки</h4>
+                            <div class="h-48 max-w-xs mx-auto">
+                                <canvas id="debtsComparisonPie"></canvas>
                             </div>
                         </div>
                     </div>
@@ -2106,17 +2205,17 @@
                          x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
                 </div>
 
-                <!-- Debts -->
+                <!-- Debts (в оригинальных валютах) -->
                 <div class="native-card p-4">
                     <div class="native-caption mb-3">Долги</div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <div class="text-xs text-green-600">Нам должны</div>
-                            <div class="font-bold text-green-700" x-text="formatMoney(overview.debts?.receivable || 0)"></div>
+                            <div class="font-bold text-green-700" x-text="formatDebtsByCurrency(overview.debts?.receivable_by_currency)"></div>
                         </div>
                         <div>
                             <div class="text-xs text-red-600">Мы должны</div>
-                            <div class="font-bold text-red-700" x-text="formatMoney(overview.debts?.payable || 0)"></div>
+                            <div class="font-bold text-red-700" x-text="formatDebtsByCurrency(overview.debts?.payable_by_currency)"></div>
                         </div>
                     </div>
                 </div>
@@ -2356,6 +2455,31 @@ function financePage() {
 
         formatNumber(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
 
+        // Получить символ валюты
+        currencySymbol(code) {
+            const symbols = { 'UZS': 'сум', 'USD': '$', 'RUB': '₽', 'EUR': '€', 'KZT': '₸' };
+            return symbols[code] || code || 'сум';
+        },
+
+        // Форматировать сумму с валютой отображения
+        formatWithCurrency(v, currencyCode = null) {
+            const amount = this.formatMoney(v);
+            const currency = currencyCode || this.overview.currency?.display || 'UZS';
+            return amount + ' ' + this.currencySymbol(currency);
+        },
+
+        // Форматировать долги по валютам
+        formatDebtsByCurrency(debtsByCurrency) {
+            if (!debtsByCurrency || Object.keys(debtsByCurrency).length === 0) return '0';
+            const parts = [];
+            for (const [currency, amount] of Object.entries(debtsByCurrency)) {
+                if (amount > 0) {
+                    parts.push(this.formatMoney(amount) + ' ' + this.currencySymbol(currency));
+                }
+            }
+            return parts.length > 0 ? parts.join(', ') : '0';
+        },
+
         formatDate(dateStr) {
             if (!dateStr) return '';
             const d = new Date(dateStr);
@@ -2566,6 +2690,374 @@ function financePage() {
             const resp = await fetch('/api/finance/reports?' + params, { headers: this.getAuthHeaders() });
             const json = await resp.json();
             if (resp.ok && !json.errors) this.reportData = json.data || {};
+        },
+
+        // Загрузить отчёт и построить графики
+        async loadReportWithCharts() {
+            await this.loadReport();
+            // Небольшая задержка чтобы DOM обновился
+            setTimeout(() => this.renderCharts(), 100);
+        },
+
+        // Инициализация графиков при переходе на вкладку
+        initReportCharts() {
+            if (this.reportData && this.reportData.data) {
+                this.renderCharts();
+            }
+        },
+
+        // Хранилище для chart instances
+        charts: {},
+
+        // Уничтожить существующий график
+        destroyChart(chartId) {
+            if (this.charts[chartId]) {
+                this.charts[chartId].destroy();
+                delete this.charts[chartId];
+            }
+        },
+
+        // Основной метод рендеринга графиков
+        renderCharts() {
+            if (!this.reportData?.data) return;
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js not loaded');
+                return;
+            }
+
+            switch (this.reportType) {
+                case 'pnl':
+                    this.renderPnlCharts();
+                    break;
+                case 'cash_flow':
+                    this.renderCashFlowChart();
+                    break;
+                case 'by_category':
+                    this.renderCategoryCharts();
+                    break;
+                case 'debts_aging':
+                    this.renderDebtsCharts();
+                    break;
+            }
+        },
+
+        // Графики P&L
+        renderPnlCharts() {
+            const data = this.reportData.data;
+
+            // Bar chart: Доходы vs Расходы
+            this.destroyChart('pnlBarChart');
+            const barCtx = document.getElementById('pnlBarChart');
+            if (barCtx) {
+                this.charts['pnlBarChart'] = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Доходы', 'Расходы', 'Прибыль'],
+                        datasets: [{
+                            data: [
+                                data.income?.total || 0,
+                                data.expenses?.total || 0,
+                                data.gross_profit || 0
+                            ],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                                (data.gross_profit || 0) >= 0 ? 'rgba(59, 130, 246, 0.7)' : 'rgba(239, 68, 68, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(239, 68, 68)',
+                                (data.gross_profit || 0) >= 0 ? 'rgb(59, 130, 246)' : 'rgb(239, 68, 68)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => this.formatMoney(ctx.raw) + ' ' + this.currencySymbol(this.overview.currency?.display)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Pie chart: Структура доходов
+            this.destroyChart('incomePieChart');
+            const incomeCtx = document.getElementById('incomePieChart');
+            if (incomeCtx && data.income?.by_category?.length > 0) {
+                const incomeData = data.income.by_category.slice(0, 6);
+                this.charts['incomePieChart'] = new Chart(incomeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: incomeData.map(c => c.category || c.name),
+                        datasets: [{
+                            data: incomeData.map(c => c.total || c.amount || 0),
+                            backgroundColor: [
+                                '#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#ecfdf5'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            // Pie chart: Структура расходов
+            this.destroyChart('expensePieChart');
+            const expenseCtx = document.getElementById('expensePieChart');
+            if (expenseCtx && data.expenses?.by_category?.length > 0) {
+                const expenseData = data.expenses.by_category.slice(0, 6);
+                this.charts['expensePieChart'] = new Chart(expenseCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: expenseData.map(c => c.category || c.name),
+                        datasets: [{
+                            data: expenseData.map(c => c.total || c.amount || 0),
+                            backgroundColor: [
+                                '#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2', '#fef2f2'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+        },
+
+        // График Cash Flow
+        renderCashFlowChart() {
+            const data = this.reportData.data;
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            this.destroyChart('cashFlowLineChart');
+            const ctx = document.getElementById('cashFlowLineChart');
+            if (!ctx) return;
+
+            this.charts['cashFlowLineChart'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => item.period || item.date),
+                    datasets: [
+                        {
+                            label: 'Приход',
+                            data: data.map(item => item.income || 0),
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Расход',
+                            data: data.map(item => item.expense || 0),
+                            borderColor: 'rgb(239, 68, 68)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Итого',
+                            data: data.map(item => item.net || 0),
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + this.formatMoney(ctx.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        },
+
+        // Графики по категориям
+        renderCategoryCharts() {
+            const data = this.reportData.data;
+
+            // Doughnut: Доходы
+            this.destroyChart('categoryIncomeDoughnut');
+            const incomeCtx = document.getElementById('categoryIncomeDoughnut');
+            if (incomeCtx && data.income?.length > 0) {
+                const incomeData = data.income.slice(0, 8);
+                this.charts['categoryIncomeDoughnut'] = new Chart(incomeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: incomeData.map(c => c.category),
+                        datasets: [{
+                            data: incomeData.map(c => c.total || 0),
+                            backgroundColor: [
+                                '#10b981', '#34d399', '#6ee7b7', '#a7f3d0',
+                                '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Doughnut: Расходы
+            this.destroyChart('categoryExpenseDoughnut');
+            const expenseCtx = document.getElementById('categoryExpenseDoughnut');
+            if (expenseCtx && data.expense?.length > 0) {
+                const expenseData = data.expense.slice(0, 8);
+                this.charts['categoryExpenseDoughnut'] = new Chart(expenseCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: expenseData.map(c => c.category),
+                        datasets: [{
+                            data: expenseData.map(c => c.total || 0),
+                            backgroundColor: [
+                                '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+                                '#f97316', '#fb923c', '#fdba74', '#fed7aa'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
+        // Графики анализа долгов
+        renderDebtsCharts() {
+            const data = this.reportData.data;
+            const summary = data.summary || {};
+
+            // Bar: Просрочка по периодам
+            this.destroyChart('debtsAgingBarChart');
+            const barCtx = document.getElementById('debtsAgingBarChart');
+            if (barCtx) {
+                this.charts['debtsAgingBarChart'] = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Текущие', '1-30 дней', '31-60 дней', '61-90 дней', '90+ дней'],
+                        datasets: [{
+                            label: 'Сумма долгов',
+                            data: [
+                                summary.current?.amount || 0,
+                                summary['1_30']?.amount || 0,
+                                summary['31_60']?.amount || 0,
+                                summary['61_90']?.amount || 0,
+                                summary.over_90?.amount || 0
+                            ],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.7)',
+                                'rgba(234, 179, 8, 0.7)',
+                                'rgba(249, 115, 22, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                                'rgba(185, 28, 28, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(234, 179, 8)',
+                                'rgb(249, 115, 22)',
+                                'rgb(239, 68, 68)',
+                                'rgb(185, 28, 28)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => this.formatMoney(ctx.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Pie: Дебиторка vs Кредиторка
+            this.destroyChart('debtsComparisonPie');
+            const pieCtx = document.getElementById('debtsComparisonPie');
+            if (pieCtx && (data.total_receivable > 0 || data.total_payable > 0)) {
+                this.charts['debtsComparisonPie'] = new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Дебиторка (нам должны)', 'Кредиторка (мы должны)'],
+                        datasets: [{
+                            data: [data.total_receivable || 0, data.total_payable || 0],
+                            backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                            borderColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         },
 
         async saveCurrencyRates() {
