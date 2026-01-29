@@ -205,9 +205,10 @@ class OrderStockService
 
                 $stockBefore = $variant->stock_default;
 
-                // Decrease stock in ProductVariant (for marketplace sync)
-                $variant->decrementStock($quantity);
-                $stockAfter = $variant->fresh()->stock_default;
+                // Decrease stock in ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
+                // Observer would create stock_adjustment ledger entry, but we create our own below
+                $variant->decrementStockQuietly($quantity);
+                $stockAfter = $variant->stock_default;
 
                 // Create warehouse stock ledger entry (actual deduction)
                 $warehouseSku = $this->createWarehouseStockLedger(
@@ -369,9 +370,9 @@ class OrderStockService
                     if ($variant) {
                         $stockBefore = $variant->stock_default;
 
-                        // Возвращаем остатки
-                        $variant->incrementStock($qty);
-                        $stockAfter = $variant->fresh()->stock_default;
+                        // Возвращаем остатки (quietly to avoid Observer creating duplicate ledger entry)
+                        $variant->incrementStockQuietly($qty);
+                        $stockAfter = $variant->stock_default;
 
                         // Создаём запись в журнале
                         StockLedger::create([
@@ -416,9 +417,9 @@ class OrderStockService
 
                     $stockBefore = $variant->stock_default;
 
-                    // Return stock to ProductVariant (for marketplace sync)
-                    $variant->incrementStock($quantity);
-                    $stockAfter = $variant->fresh()->stock_default;
+                    // Return stock to ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
+                    $variant->incrementStockQuietly($quantity);
+                    $stockAfter = $variant->stock_default;
 
                     // Create warehouse stock ledger entry (positive to return stock)
                     $this->createWarehouseStockLedger(

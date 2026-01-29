@@ -92,9 +92,9 @@ class ConsumeInSupplyReservations extends Command
                         // Отменяем резерв
                         $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
 
-                        // Возвращаем остаток
+                        // Возвращаем остаток (quietly to avoid Observer creating duplicate ledger entry)
                         if ($variant) {
-                            $variant->incrementStock($qty);
+                            $variant->incrementStockQuietly($qty);
 
                             // Запись в журнал склада
                             StockLedger::create([
