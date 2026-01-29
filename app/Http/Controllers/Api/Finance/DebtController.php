@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Counterparty;
+use App\Models\Finance\Employee;
 use App\Models\Finance\FinanceDebt;
 use App\Models\Finance\FinanceDebtPayment;
 use App\Services\Finance\DebtPaymentService;
 use App\Support\ApiResponder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DebtController extends Controller
 {
@@ -26,10 +30,13 @@ class DebtController extends Controller
         }
 
         $query = FinanceDebt::byCompany($companyId)
-            ->with(['counterparty', 'employee', 'payments']);
+            ->with(['counterparty', 'counterpartyEntity', 'employee', 'payments']);
 
         if ($type = $request->type) {
             $query->where('type', $type);
+        }
+        if ($purpose = $request->purpose) {
+            $query->byPurpose($purpose);
         }
         if ($status = $request->status) {
             $query->where('status', $status);
@@ -43,8 +50,18 @@ class DebtController extends Controller
         if ($counterpartyId = $request->counterparty_id) {
             $query->where('counterparty_id', $counterpartyId);
         }
+        if ($counterpartyEntityId = $request->counterparty_entity_id) {
+            $query->byCounterpartyEntity($counterpartyEntityId);
+        }
         if ($employeeId = $request->employee_id) {
             $query->where('employee_id', $employeeId);
+        }
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('reference', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%");
+            });
         }
 
         $debts = $query->orderByDesc('debt_date')
@@ -63,7 +80,7 @@ class DebtController extends Controller
         }
 
         $debt = FinanceDebt::byCompany($companyId)
-            ->with(['counterparty', 'employee', 'payments.transaction', 'createdBy'])
+            ->with(['counterparty', 'counterpartyEntity', 'employee', 'payments.transaction', 'createdBy', 'writtenOffByUser', 'cashAccount'])
             ->findOrFail($id);
 
         return $this->successResponse($debt);
@@ -84,7 +101,7 @@ class DebtController extends Controller
 
         $debt = FinanceDebt::create($data);
 
-        return $this->successResponse($debt->load(['counterparty', 'employee']));
+        return $this->successResponse($debt->load(['counterparty', 'counterpartyEntity', 'employee']));
     }
 
     public function update($id, Request $request)
@@ -106,11 +123,14 @@ class DebtController extends Controller
             'due_date' => ['nullable', 'date'],
             'interest_rate' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'purpose' => ['nullable', 'in:debt,prepayment,advance,loan,other'],
+            'counterparty_entity_id' => ['nullable', 'integer', 'exists:counterparties,id'],
+            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
         ]);
 
         $debt->update($data);
 
-        return $this->successResponse($debt->fresh(['counterparty', 'employee']));
+        return $this->successResponse($debt->fresh(['counterparty', 'counterpartyEntity', 'employee']));
     }
 
     public function addPayment($id, Request $request)
@@ -132,6 +152,7 @@ class DebtController extends Controller
             'payment_method' => ['nullable', 'in:cash,bank,card'],
             'reference' => ['nullable', 'string', 'max:64'],
             'notes' => ['nullable', 'string'],
+            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
         ]);
 
         if ($data['amount'] > $debt->amount_outstanding) {
@@ -142,7 +163,7 @@ class DebtController extends Controller
 
         return $this->successResponse([
             'payment' => $payment,
-            'debt' => $debt->fresh(['counterparty', 'employee', 'payments']),
+            'debt' => $debt->fresh(['counterparty', 'counterpartyEntity', 'employee', 'payments']),
         ]);
     }
 
@@ -163,7 +184,7 @@ class DebtController extends Controller
         return $this->successResponse($payments);
     }
 
-    public function writeOff($id)
+    public function writeOff($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
         if (!$companyId) {
@@ -180,9 +201,10 @@ class DebtController extends Controller
             return $this->errorResponse('Debt is already written off', 'invalid_state', null, 422);
         }
 
-        $debt->writeOff();
+        $reason = $request->input('reason');
+        $debt->writeOff(Auth::id(), $reason);
 
-        return $this->successResponse($debt->fresh(['counterparty', 'employee', 'payments']));
+        return $this->successResponse($debt->fresh(['counterparty', 'counterpartyEntity', 'employee', 'payments']));
     }
 
     public function summary(Request $request)
@@ -211,11 +233,139 @@ class DebtController extends Controller
         ]);
     }
 
+    public function counterpartySummary(Request $request): JsonResponse
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $summary = FinanceDebt::byCompany($companyId)
+            ->active()
+            ->whereNotNull('counterparty_entity_id')
+            ->select(
+                'counterparty_entity_id',
+                DB::raw("SUM(CASE WHEN type = 'receivable' THEN amount_outstanding ELSE 0 END) as receivable_total"),
+                DB::raw("SUM(CASE WHEN type = 'payable' THEN amount_outstanding ELSE 0 END) as payable_total"),
+                DB::raw('COUNT(*) as debt_count')
+            )
+            ->groupBy('counterparty_entity_id')
+            ->get();
+
+        $counterpartyIds = $summary->pluck('counterparty_entity_id')->filter();
+        $counterparties = Counterparty::whereIn('id', $counterpartyIds)->get()->keyBy('id');
+
+        $result = $summary->map(function ($row) use ($counterparties) {
+            $cp = $counterparties->get($row->counterparty_entity_id);
+            return [
+                'counterparty_entity_id' => $row->counterparty_entity_id,
+                'counterparty_name' => $cp?->getDisplayName(),
+                'counterparty_type' => $cp?->type,
+                'receivable_total' => (float) $row->receivable_total,
+                'payable_total' => (float) $row->payable_total,
+                'balance' => (float) $row->receivable_total - (float) $row->payable_total,
+                'debt_count' => (int) $row->debt_count,
+            ];
+        });
+
+        return $this->successResponse($result);
+    }
+
+    public function employeeSummary(Request $request): JsonResponse
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $summary = FinanceDebt::byCompany($companyId)
+            ->active()
+            ->whereNotNull('employee_id')
+            ->select(
+                'employee_id',
+                DB::raw("SUM(CASE WHEN type = 'receivable' THEN amount_outstanding ELSE 0 END) as receivable_total"),
+                DB::raw("SUM(CASE WHEN type = 'payable' THEN amount_outstanding ELSE 0 END) as payable_total"),
+                DB::raw('COUNT(*) as debt_count')
+            )
+            ->groupBy('employee_id')
+            ->get();
+
+        $employeeIds = $summary->pluck('employee_id')->filter();
+        $employees = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
+
+        $result = $summary->map(function ($row) use ($employees) {
+            $emp = $employees->get($row->employee_id);
+            return [
+                'employee_id' => $row->employee_id,
+                'employee_name' => $emp?->full_name,
+                'employee_position' => $emp?->position,
+                'receivable_total' => (float) $row->receivable_total,
+                'payable_total' => (float) $row->payable_total,
+                'balance' => (float) $row->receivable_total - (float) $row->payable_total,
+                'debt_count' => (int) $row->debt_count,
+            ];
+        });
+
+        return $this->successResponse($result);
+    }
+
+    public function counterpartyLedger(int $counterpartyId): JsonResponse
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $counterparty = Counterparty::where('company_id', $companyId)->findOrFail($counterpartyId);
+
+        $debts = FinanceDebt::byCompany($companyId)
+            ->byCounterpartyEntity($counterpartyId)
+            ->with(['payments.createdBy', 'createdBy'])
+            ->orderByDesc('debt_date')
+            ->get();
+
+        return $this->successResponse([
+            'counterparty' => $counterparty,
+            'debts' => $debts,
+            'totals' => [
+                'receivable' => $debts->where('type', 'receivable')->sum('amount_outstanding'),
+                'payable' => $debts->where('type', 'payable')->sum('amount_outstanding'),
+            ],
+        ]);
+    }
+
+    public function employeeLedger(int $employeeId): JsonResponse
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $employee = Employee::where('company_id', $companyId)->findOrFail($employeeId);
+
+        $debts = FinanceDebt::byCompany($companyId)
+            ->where('employee_id', $employeeId)
+            ->with(['payments.createdBy', 'createdBy'])
+            ->orderByDesc('debt_date')
+            ->get();
+
+        return $this->successResponse([
+            'employee' => $employee,
+            'debts' => $debts,
+            'totals' => [
+                'receivable' => $debts->where('type', 'receivable')->sum('amount_outstanding'),
+                'payable' => $debts->where('type', 'payable')->sum('amount_outstanding'),
+            ],
+        ]);
+    }
+
     protected function validateData(Request $request): array
     {
         return $request->validate([
             'type' => ['required', 'in:receivable,payable'],
+            'purpose' => ['nullable', 'in:debt,prepayment,advance,loan,other'],
             'counterparty_id' => ['nullable', 'integer'],
+            'counterparty_entity_id' => ['nullable', 'integer', 'exists:counterparties,id'],
             'employee_id' => ['nullable', 'integer'],
             'description' => ['required', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:64'],
@@ -224,6 +374,7 @@ class DebtController extends Controller
             'debt_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date'],
             'interest_rate' => ['nullable', 'numeric', 'min:0'],
+            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
             'notes' => ['nullable', 'string'],
         ]);
     }

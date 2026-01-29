@@ -26,6 +26,7 @@ class DebtPaymentService
                 'payment_method' => $data['payment_method'] ?? 'cash',
                 'reference' => $data['reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'cash_account_id' => $data['cash_account_id'] ?? null,
                 'status' => FinanceDebtPayment::STATUS_POSTED,
                 'created_by' => $userId,
             ]);

@@ -715,6 +715,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'index']);
         Route::post('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'store']);
         Route::get('debts/summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'summary']);
+        Route::get('debts/counterparty-summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'counterpartySummary']);
+        Route::get('debts/employee-summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'employeeSummary']);
+        Route::get('debts/counterparty/{id}/ledger', [\App\Http\Controllers\Api\Finance\DebtController::class, 'counterpartyLedger']);
+        Route::get('debts/employee/{id}/ledger', [\App\Http\Controllers\Api\Finance\DebtController::class, 'employeeLedger']);
         Route::get('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'show']);
         Route::put('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'update']);
         Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);

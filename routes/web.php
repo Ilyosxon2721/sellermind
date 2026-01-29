@@ -266,6 +266,14 @@ Route::middleware('auth.any')->group(function () {
         return view('finance.index');
     })->name('finance.index');
 
+    Route::get('/debts', function () {
+        return view('debts.index');
+    })->name('debts.index');
+
+    Route::get('/debts/{id}', function ($id) {
+        return view('debts.show', ['debtId' => $id]);
+    })->name('debts.show');
+
     Route::get('/pricing', function () {
         return view('pricing.index');
     })->name('pricing.index');
