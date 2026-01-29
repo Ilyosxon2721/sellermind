@@ -133,8 +133,8 @@ class OrderStockService
 
         // 3. Отмена заказа
         if ($isCancelledStatus) {
-            // Если был резерв или статус не установлен - отменяем резерв
-            if ($currentStockStatus === 'reserved' || $currentStockStatus === 'none') {
+            // Если был резерв, статус не установлен или skipped - отменяем резерв и возвращаем остаток
+            if (in_array($currentStockStatus, ['reserved', 'none', 'skipped'])) {
                 return $this->releaseReserve($account, $order, $items, $marketplace);
             }
             // Если уже продан - ничего не делаем (возврат вручную)
