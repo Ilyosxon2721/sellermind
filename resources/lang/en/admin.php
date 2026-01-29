@@ -20,7 +20,7 @@ return [
     'finance' => 'Finance',
     'accounts_payable' => 'Accounts Payable',
     'pricing' => 'Pricing',
-    'debts' => 'Debts',
+    'debts' => 'Money',
     'company_profile' => 'Company profile',
     
     // Warehouse submenu

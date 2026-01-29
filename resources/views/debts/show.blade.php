@@ -108,6 +108,17 @@
                                 </div>
                             </div>
 
+                            {{-- Sale source --}}
+                            <template x-if="debt.source_type && debt.source_type.includes('Sale')">
+                                <div class="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                        <span class="text-xs font-medium text-blue-700">{{ __('debts.auto_from_sale') }}</span>
+                                    </div>
+                                    <span class="text-xs text-blue-600" x-text="debt.reference || ''"></span>
+                                </div>
+                            </template>
+
                             <hr class="border-gray-100">
 
                             <div class="space-y-2 text-xs text-gray-400">
@@ -223,6 +234,20 @@
                             <option value="bank">{{ __('debts.method_bank') }}</option>
                             <option value="card">{{ __('debts.method_card') }}</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('debts.cash_account') }}</label>
+                        <select class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" x-model="paymentForm.cash_account_id">
+                            <option value="">{{ __('debts.select_cash_account') }}</option>
+                            <template x-for="acc in cashAccounts" :key="acc.id">
+                                <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + (acc.currency_code || 'UZS') + ')'"></option>
+                            </template>
+                        </select>
+                        <p x-show="paymentForm.cash_account_id" class="text-xs mt-1 flex items-center gap-1"
+                           :class="debt?.type === 'receivable' ? 'text-green-600' : 'text-red-600'">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span x-text="debt?.type === 'receivable' ? '{{ __('debts.cash_income') }}' : '{{ __('debts.cash_expense') }}'"></span>
+                        </p>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">{{ __('debts.notes') }}</label>
@@ -346,17 +371,23 @@ function debtShowPage(debtId) {
         showWriteOffModal: false,
         writeOffReason: '',
 
+        cashAccounts: [],
+
         paymentForm: {
             amount: '',
             payment_date: new Date().toISOString().slice(0, 10),
             payment_method: 'cash',
+            cash_account_id: '',
             notes: '',
         },
 
         toast: { show: false, message: '', type: 'success' },
 
         async init() {
-            await this.loadDebt();
+            await Promise.all([
+                this.loadDebt(),
+                this.loadCashAccounts(),
+            ]);
         },
 
         getAuthHeaders() {
@@ -384,11 +415,22 @@ function debtShowPage(debtId) {
             }
         },
 
+        async loadCashAccounts() {
+            try {
+                const resp = await fetch('/api/finance/cash-accounts', { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.cashAccounts = json.data || [];
+                }
+            } catch (e) { /* ignore */ }
+        },
+
         openPaymentModal() {
             this.paymentForm = {
                 amount: this.debt.amount_outstanding,
                 payment_date: new Date().toISOString().slice(0, 10),
                 payment_method: 'cash',
+                cash_account_id: '',
                 notes: '',
             };
             this.showPaymentModal = true;
@@ -399,6 +441,7 @@ function debtShowPage(debtId) {
             this.savingPayment = true;
             try {
                 const body = { ...this.paymentForm };
+                if (!body.cash_account_id) delete body.cash_account_id;
                 if (!body.notes) delete body.notes;
                 const resp = await fetch(`/api/finance/debts/${this.debtId}/payments`, {
                     method: 'POST',

@@ -31,6 +31,7 @@ class CashTransaction extends Model
     public const OP_TRANSFER = 'transfer';
     public const OP_ADJUSTMENT = 'adjustment';
     public const OP_INITIAL = 'initial';
+    public const OP_DEBT_PAYMENT = 'debt_payment';
     public const OP_OTHER = 'other';
 
     protected $fillable = [
@@ -195,6 +196,7 @@ class CashTransaction extends Model
             self::OP_TRANSFER => 'Перевод',
             self::OP_ADJUSTMENT => 'Корректировка',
             self::OP_INITIAL => 'Начальный остаток',
+            self::OP_DEBT_PAYMENT => 'Погашение долга',
             default => 'Прочее',
         };
     }

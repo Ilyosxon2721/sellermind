@@ -94,4 +94,15 @@ return [
     'written_off_by' => 'Списал',
     'written_off_at' => 'Дата списания',
     'written_off_reason_label' => 'Причина списания',
+
+    // Авто-долги из продаж
+    'auto_from_sale' => 'Автоматически из продажи',
+    'source_sale' => 'Продажа',
+    'view_sale' => 'Посмотреть продажу',
+
+    // Касса
+    'select_cash_account' => 'Выберите счёт / кассу',
+    'cash_income' => 'Приход на кассу',
+    'cash_expense' => 'Расход с кассы',
+    'no_cash_accounts' => 'Нет доступных счетов',
 ];

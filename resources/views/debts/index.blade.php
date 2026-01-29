@@ -171,7 +171,15 @@
                                 <tr class="hover:bg-gray-50 cursor-pointer" @click="viewDebt(debt)">
                                     <td class="px-4 py-3">
                                         <div class="font-medium text-gray-900 text-sm" x-text="debt.description"></div>
-                                        <div class="text-xs text-gray-400" x-text="debt.reference || ''"></div>
+                                        <div class="text-xs text-gray-400 flex items-center gap-1">
+                                            <span x-text="debt.reference || ''"></span>
+                                            <template x-if="debt.source_type && debt.source_type.includes('Sale')">
+                                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-medium">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                                    {{ __('debts.auto_from_sale') }}
+                                                </span>
+                                            </template>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3 hidden sm:table-cell">
                                         <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600" x-text="purposeLabel(debt.purpose)"></span>
@@ -464,11 +472,16 @@
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">{{ __('debts.cash_account') }}</label>
                         <select class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" x-model="paymentForm.cash_account_id">
-                            <option value="">--</option>
+                            <option value="">{{ __('debts.select_cash_account') }}</option>
                             <template x-for="acc in cashAccounts" :key="acc.id">
-                                <option :value="acc.id" x-text="acc.name"></option>
+                                <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + (acc.currency_code || 'UZS') + ')'"></option>
                             </template>
                         </select>
+                        <p x-show="paymentForm.cash_account_id" class="text-xs mt-1 flex items-center gap-1"
+                           :class="selectedDebt?.type === 'receivable' ? 'text-green-600' : 'text-red-600'">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span x-text="selectedDebt?.type === 'receivable' ? '{{ __('debts.cash_income') }}' : '{{ __('debts.cash_expense') }}'"></span>
+                        </p>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">{{ __('debts.notes') }}</label>
@@ -560,6 +573,11 @@
                     <div class="flex-1 min-w-0">
                         <p class="font-medium text-gray-900 text-sm truncate" x-text="debt.description"></p>
                         <p class="text-xs text-gray-500 mt-0.5" x-text="debt.counterparty_entity?.name || debt.counterparty?.name || debt.employee?.full_name || ''"></p>
+                        <template x-if="debt.source_type && debt.source_type.includes('Sale')">
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-medium mt-1">
+                                {{ __('debts.auto_from_sale') }}
+                            </span>
+                        </template>
                     </div>
                     <span class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 flex-shrink-0"
                           :class="debt.type === 'receivable' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"

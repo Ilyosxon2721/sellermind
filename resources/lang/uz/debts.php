@@ -94,4 +94,15 @@ return [
     'written_off_by' => 'Hisobdan chiqaruvchi',
     'written_off_at' => 'Hisobdan chiqarilgan sana',
     'written_off_reason_label' => 'Hisobdan chiqarish sababi',
+
+    // Savdodan avtomatik qarzlar
+    'auto_from_sale' => 'Savdodan avtomatik yaratilgan',
+    'source_sale' => 'Savdo',
+    'view_sale' => 'Savdoni ko\'rish',
+
+    // Kassa
+    'select_cash_account' => 'Hisob / kassani tanlang',
+    'cash_income' => 'Kassaga kirim',
+    'cash_expense' => 'Kassadan chiqim',
+    'no_cash_accounts' => 'Mavjud hisoblar yo\'q',
 ];

@@ -94,4 +94,15 @@ return [
     'written_off_by' => 'Written off by',
     'written_off_at' => 'Written off at',
     'written_off_reason_label' => 'Write-off reason',
+
+    // Auto debts from sales
+    'auto_from_sale' => 'Auto-created from sale',
+    'source_sale' => 'Sale',
+    'view_sale' => 'View sale',
+
+    // Cash accounts
+    'select_cash_account' => 'Select cash account',
+    'cash_income' => 'Cash income',
+    'cash_expense' => 'Cash expense',
+    'no_cash_accounts' => 'No cash accounts available',
 ];
