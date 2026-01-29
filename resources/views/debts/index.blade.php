@@ -7,7 +7,7 @@
     </template>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-        <x-top-nav />
+        <x-mobile-header />
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             {{-- Header --}}
@@ -527,12 +527,11 @@
 
 {{-- PWA version --}}
 <div class="pwa-only min-h-screen bg-gray-50 pb-20" x-data="debtsPage()">
-    <header class="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <h1 class="text-lg font-bold text-gray-900">{{ __('debts.title') }}</h1>
-            <button class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg" @click="openCreateModal()">+</button>
-        </div>
-    </header>
+    <x-pwa-header title="{{ __('debts.title') }}" backUrl="/">
+        <button @click="openCreateModal()" class="native-header-btn text-blue-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        </button>
+    </x-pwa-header>
     <div class="p-4 space-y-4">
         {{-- Summary cards (simplified) --}}
         <div class="grid grid-cols-2 gap-3">
@@ -579,7 +578,6 @@
             </div>
         </template>
     </div>
-    <x-bottom-nav />
 </div>
 
 <script>

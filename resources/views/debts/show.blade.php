@@ -7,7 +7,7 @@
     </template>
 
     <div class="flex-1 flex flex-col overflow-hidden">
-        <x-top-nav />
+        <x-mobile-header />
 
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             {{-- Header --}}
@@ -278,10 +278,8 @@
 
 {{-- PWA version --}}
 <div class="pwa-only min-h-screen bg-gray-50 pb-20" x-data="debtShowPage({{ $debtId }})">
-    <header class="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30 flex items-center gap-3">
-        <a href="/debts" class="p-1"><svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
-        <h1 class="text-lg font-bold text-gray-900 truncate" x-text="debt?.description || '...'"></h1>
-    </header>
+    <x-pwa-header title="{{ __('debts.view_details') }}" backUrl="/debts">
+    </x-pwa-header>
     <div class="p-4 space-y-4">
         <template x-if="loading">
             <div class="text-center py-12"><div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent"></div></div>
@@ -333,7 +331,6 @@
             </div>
         </template>
     </div>
-    <x-bottom-nav />
 </div>
 
 <script>
