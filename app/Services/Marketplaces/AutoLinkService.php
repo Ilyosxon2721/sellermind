@@ -313,22 +313,28 @@ class AutoLinkService
             $externalSku = $product->external_sku ?? $variant->sku;
         }
 
-        // Для Uzum включаем external_sku_id в ключ уникальности
-        $linkKey = [
-            'product_variant_id' => $variant->id,
-            'marketplace_product_id' => $product->id,
-            'marketplace_code' => $marketplace,
-        ];
-
-        if ($marketplace === 'uzum' && $externalSkuId) {
-            $linkKey['external_sku_id'] = $externalSkuId;
+        // Ключ updateOrCreate должен совпадать с уникальным индексом БД
+        // variant_mp_sku_unique = (marketplace_product_id, external_sku_id)
+        if ($externalSkuId) {
+            $linkKey = [
+                'marketplace_product_id' => $product->id,
+                'external_sku_id' => $externalSkuId,
+            ];
+        } else {
+            $linkKey = [
+                'product_variant_id' => $variant->id,
+                'marketplace_product_id' => $product->id,
+                'marketplace_code' => $marketplace,
+            ];
         }
 
         VariantMarketplaceLink::updateOrCreate(
             $linkKey,
             [
+                'product_variant_id' => $variant->id,
                 'company_id' => $account->company_id,
                 'marketplace_account_id' => $account->id,
+                'marketplace_code' => $marketplace,
                 'external_offer_id' => $externalOfferId,
                 'external_sku_id' => $externalSkuId,
                 'external_sku' => $externalSku,
