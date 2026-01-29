@@ -95,9 +95,11 @@ return [
     'written_off_at' => 'Written off at',
     'written_off_reason_label' => 'Write-off reason',
 
-    // Auto debts from sales
+    // Auto debts from sales / invoices
     'auto_from_sale' => 'Auto-created from sale',
+    'auto_from_invoice' => 'Auto-created from supplier invoice',
     'source_sale' => 'Sale',
+    'source_invoice' => 'Supplier invoice',
     'view_sale' => 'View sale',
 
     // Cash accounts

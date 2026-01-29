@@ -2,9 +2,12 @@
 
 namespace App\Services\AP;
 
+use App\Models\AP\Supplier;
 use App\Models\AP\SupplierInvoice;
 use App\Models\AP\SupplierInvoiceLine;
+use App\Models\Finance\FinanceDebt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class InvoiceService
@@ -45,12 +48,64 @@ class InvoiceService
                 throw new RuntimeException('Already confirmed');
             }
             $this->recalc($invoice->id);
+            $invoice->refresh();
             $invoice->status = SupplierInvoice::STATUS_CONFIRMED;
             $invoice->confirmed_at = now();
             $invoice->confirmed_by = $userId;
             $invoice->save();
+
+            // Автоматически создаём долг (мы должны поставщику)
+            if ($invoice->amount_total > 0) {
+                $this->createDebtFromInvoice($invoice, $userId);
+            }
+
             return $invoice;
         });
+    }
+
+    /**
+     * Создать долг из подтверждённого счёта поставщика
+     */
+    protected function createDebtFromInvoice(SupplierInvoice $invoice, ?int $userId = null): FinanceDebt
+    {
+        // Проверяем что долг ещё не создавался
+        $existing = FinanceDebt::where('source_type', SupplierInvoice::class)
+            ->where('source_id', $invoice->id)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $supplier = $invoice->supplier_id ? Supplier::find($invoice->supplier_id) : null;
+
+        $debt = FinanceDebt::create([
+            'company_id' => $invoice->company_id,
+            'type' => FinanceDebt::TYPE_PAYABLE,
+            'purpose' => FinanceDebt::PURPOSE_DEBT,
+            'counterparty_id' => $invoice->supplier_id,
+            'description' => 'Счёт поставщика ' . ($invoice->invoice_no ?? '#' . $invoice->id),
+            'reference' => $invoice->invoice_no,
+            'original_amount' => $invoice->amount_total,
+            'amount_paid' => 0,
+            'amount_outstanding' => $invoice->amount_total,
+            'currency_code' => $invoice->currency_code ?? 'UZS',
+            'debt_date' => $invoice->issue_date ?? now(),
+            'due_date' => $invoice->due_date,
+            'status' => FinanceDebt::STATUS_ACTIVE,
+            'source_type' => SupplierInvoice::class,
+            'source_id' => $invoice->id,
+            'created_by' => $userId,
+        ]);
+
+        Log::info('Debt auto-created from supplier invoice', [
+            'debt_id' => $debt->id,
+            'invoice_id' => $invoice->id,
+            'supplier_id' => $invoice->supplier_id,
+            'amount' => $invoice->amount_total,
+        ]);
+
+        return $debt;
     }
 
     public function replaceLines(SupplierInvoice $invoice, array $lines): void

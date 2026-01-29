@@ -179,6 +179,12 @@
                                                     {{ __('debts.auto_from_sale') }}
                                                 </span>
                                             </template>
+                                            <template x-if="debt.source_type && debt.source_type.includes('SupplierInvoice')">
+                                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 text-[10px] font-medium">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                    {{ __('debts.auto_from_invoice') }}
+                                                </span>
+                                            </template>
                                         </div>
                                     </td>
                                     <td class="px-4 py-3 hidden sm:table-cell">
@@ -576,6 +582,11 @@
                         <template x-if="debt.source_type && debt.source_type.includes('Sale')">
                             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-medium mt-1">
                                 {{ __('debts.auto_from_sale') }}
+                            </span>
+                        </template>
+                        <template x-if="debt.source_type && debt.source_type.includes('SupplierInvoice')">
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 text-[10px] font-medium mt-1">
+                                {{ __('debts.auto_from_invoice') }}
                             </span>
                         </template>
                     </div>

@@ -95,9 +95,11 @@ return [
     'written_off_at' => 'Hisobdan chiqarilgan sana',
     'written_off_reason_label' => 'Hisobdan chiqarish sababi',
 
-    // Savdodan avtomatik qarzlar
+    // Savdodan / hisob-fakturadan avtomatik qarzlar
     'auto_from_sale' => 'Savdodan avtomatik yaratilgan',
+    'auto_from_invoice' => 'Yetkazib beruvchi hisob-fakturasidan avtomatik yaratilgan',
     'source_sale' => 'Savdo',
+    'source_invoice' => 'Yetkazib beruvchi hisob-fakturasi',
     'view_sale' => 'Savdoni ko\'rish',
 
     // Kassa
