@@ -61,13 +61,10 @@ php artisan view:cache
 echo -e "${GREEN}✓ Cache rebuilt${NC}"
 echo ""
 
-# Step 5: Restart queue workers (if supervisor is available)
+# Step 5: Gracefully restart queue workers
 echo -e "${BLUE}[5/5] Restarting queue workers...${NC}"
-if command -v supervisorctl &> /dev/null; then
-    sudo supervisorctl restart sellermind-worker:* 2>/dev/null || echo -e "${YELLOW}Workers restart skipped${NC}"
-else
-    php artisan queue:restart 2>/dev/null || echo -e "${YELLOW}Queue restart signal sent${NC}"
-fi
+php artisan queue:restart
+echo -e "${GREEN}✓ Queue restart signal sent (workers will restart after current job)${NC}"
 echo ""
 
 echo -e "${GREEN}"
