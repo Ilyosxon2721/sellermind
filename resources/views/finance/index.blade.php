@@ -1401,6 +1401,11 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                             <span>Перевод</span>
                         </button>
+                        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="syncMarketplacePayouts()" :disabled="syncingPayouts">
+                            <svg class="w-5 h-5" :class="syncingPayouts ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span x-text="syncingPayouts ? 'Синхронизация...' : 'Синхр. выплат'"></span>
+                        </button>
                     </div>
                     <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="loadCashAccounts()">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -2814,6 +2819,7 @@ function financePage() {
         showIncomeModal: false,
         showAccountExpenseModal: false,
         savingCashAccount: false,
+        syncingPayouts: false,
         cashAccountForm: { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' },
         transferForm: { from_account_id: '', to_account_id: '', amount: '', description: '', transaction_date: '' },
         incomeForm: { amount: '', description: '', reference: '', transaction_date: '' },
@@ -3047,6 +3053,39 @@ function financePage() {
             } catch (e) {
                 console.error('Failed to load cash accounts:', e);
             }
+        },
+
+        async syncMarketplacePayouts() {
+            if (this.syncingPayouts) return;
+            this.syncingPayouts = true;
+            try {
+                const resp = await fetch('/api/finance/payouts/sync', {
+                    method: 'POST',
+                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    const r = json.data?.result || {};
+                    const total = r.total || r;
+                    const created = total.payouts_created || 0;
+                    const updated = total.payouts_updated || 0;
+                    const skipped = total.payouts_skipped || 0;
+                    const amount = total.total_amount || 0;
+                    if (created > 0 || updated > 0) {
+                        alert(`Синхронизация завершена!\n\nСоздано выплат: ${created}\nОбновлено: ${updated}\nПропущено: ${skipped}\nСумма: ${this.formatMoney(amount)} UZS`);
+                    } else {
+                        alert(`Синхронизация завершена.\nНовых выплат не найдено (пропущено: ${skipped})`);
+                    }
+                    await this.loadCashAccounts();
+                } else {
+                    alert('Ошибка синхронизации: ' + (json.message || 'unknown'));
+                }
+            } catch (e) {
+                console.error('Sync payouts failed:', e);
+                alert('Ошибка синхронизации выплат');
+            }
+            this.syncingPayouts = false;
         },
 
         cashAccountsTotalByCurrency(currency) {

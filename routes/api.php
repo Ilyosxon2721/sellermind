@@ -772,6 +772,11 @@ Route::middleware('auth.any')->group(function () {
         Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
         Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
 
+        // Marketplace Payouts (выплаты маркетплейсов)
+        Route::get('payouts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'payouts']);
+        Route::get('payouts/stats', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'payoutStats']);
+        Route::post('payouts/sync', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'syncPayouts']);
+
         // Offline Sales (Офлайн/Оптовые продажи)
         Route::get('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'index']);
         Route::post('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'store']);

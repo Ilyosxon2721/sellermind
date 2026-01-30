@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\Finance\CashAccount;
 use App\Models\Finance\CashTransaction;
+use App\Models\Finance\MarketplacePayout;
 use App\Models\MarketplaceAccount;
+use App\Services\Finance\MarketplacePayoutSyncService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -402,5 +404,78 @@ class CashAccountController extends Controller
             DB::rollBack();
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
+    }
+
+    /**
+     * Синхронизировать выплаты маркетплейсов
+     */
+    public function syncPayouts(Request $request, MarketplacePayoutSyncService $service)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $data = $request->validate([
+            'marketplace' => ['nullable', 'string', 'in:uzum,wb,ozon'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        try {
+            if (($data['marketplace'] ?? null) === 'uzum') {
+                $result = $service->syncUzum($companyId, $data['from'] ?? null, $data['to'] ?? null);
+            } else {
+                $result = $service->syncAll($companyId, $data['from'] ?? null, $data['to'] ?? null);
+            }
+
+            return $this->successResponse([
+                'success' => true,
+                'result' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), 'error', null, 500);
+        }
+    }
+
+    /**
+     * Получить статистику выплат
+     */
+    public function payoutStats(MarketplacePayoutSyncService $service)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $stats = $service->getStats($companyId);
+        $pending = $service->getPendingWithdrawals($companyId);
+
+        return $this->successResponse([
+            'stats' => $stats,
+            'pending' => $pending,
+        ]);
+    }
+
+    /**
+     * Список выплат маркетплейсов
+     */
+    public function payouts(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $payouts = MarketplacePayout::byCompany($companyId)
+            ->with(['marketplaceAccount', 'cashTransaction'])
+            ->when($request->marketplace, fn($q) => $q->forMarketplace($request->marketplace))
+            ->when($request->account_id, fn($q) => $q->forAccount($request->account_id))
+            ->when($request->from, fn($q) => $q->where('payout_date', '>=', $request->from))
+            ->when($request->to, fn($q) => $q->where('payout_date', '<=', $request->to))
+            ->orderByDesc('payout_date')
+            ->paginate($request->per_page ?? 50);
+
+        return $this->successResponse($payouts);
     }
 }
