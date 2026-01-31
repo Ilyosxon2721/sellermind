@@ -83,7 +83,7 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.warehouse_reservations') }}</span>
                         </a>
-                        <a href="/warehouse/write-off/create" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/write-off*') ? 'bg-red-50 text-red-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                        <a href="/warehouse/write-off" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/write-off*') ? 'bg-red-50 text-red-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs text-red-500">•</span>
                             <span class="text-sm">{{ __('warehouse.write_off') }}</span>
                         </a>
