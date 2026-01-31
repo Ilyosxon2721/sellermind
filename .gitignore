@@ -21,3 +21,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Large files / docs (not needed on server)
+/docs/ozon-docs/
+/docs/wb-docs/
+/docs/yandex-docs/
+/docs/wb_api_information.html
+*.zip
