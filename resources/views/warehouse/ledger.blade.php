@@ -177,8 +177,8 @@
             filters: {
                 warehouse_id: '{{ $selectedWarehouseId }}',
                 query: '',
-                from: '',
-                to: '',
+                from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+                to: new Date().toISOString().slice(0, 10),
             },
             items: [],
             cursor: {next: null, prev: null, page: 1},
@@ -225,8 +225,8 @@
 
             reset() {
                 this.filters.query = '';
-                this.filters.from = '';
-                this.filters.to = '';
+                this.filters.from = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+                this.filters.to = new Date().toISOString().slice(0, 10);
                 this.load();
             },
 
