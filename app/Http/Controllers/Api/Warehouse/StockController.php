@@ -3,6 +3,12 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Models\OzonOrder;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\UzumOrder;
+use App\Models\WbOrder;
+use App\Models\YandexMarketOrder;
 use App\Support\ApiResponder;
 use App\Services\Warehouse\StockBalanceService;
 use Illuminate\Http\Request;
@@ -213,8 +219,12 @@ class StockController extends Controller
         $page = max((int) ($request->page ?? 1), 1);
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
+        // Enrich ledger entries with order info (order number, marketplace, shop, order type)
+        $items = collect($paginator->items());
+        $enrichedItems = $this->enrichLedgerWithOrderInfo($items, $companyId);
+
         return $this->successResponse([
-            'data' => $paginator->items(),
+            'data' => $enrichedItems,
             'pagination' => [
                 'total' => $paginator->total(),
                 'per_page' => $paginator->perPage(),
@@ -222,6 +232,219 @@ class StockController extends Controller
                 'last_page' => $paginator->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Enrich ledger entries with order info: order_number, marketplace, shop_name, order_type
+     */
+    private function enrichLedgerWithOrderInfo($items, int $companyId): array
+    {
+        // Classify source_ids by type
+        $wbIds = [];
+        $uzumIds = [];
+        $ozonIds = [];
+        $ymIds = [];
+        $unifiedIds = []; // marketplace_order_reserve / marketplace_order_cancel
+        $saleItemIds = [];
+        $saleIds = [];
+
+        foreach ($items as $item) {
+            if (!$item->source_type || !$item->source_id) continue;
+
+            switch ($item->source_type) {
+                case 'WB_ORDER':
+                case 'WB_ORDER_CANCEL':
+                    $wbIds[] = $item->source_id;
+                    break;
+                case 'UZUM_ORDER':
+                    $uzumIds[] = $item->source_id;
+                    break;
+                case 'OZON_ORDER':
+                case 'OZON_ORDER_CANCEL':
+                    $ozonIds[] = $item->source_id;
+                    break;
+                case 'YANDEX_ORDER':
+                case 'YANDEX_ORDER_CANCEL':
+                    $ymIds[] = $item->source_id;
+                    break;
+                case 'marketplace_order_reserve':
+                case 'marketplace_order_cancel':
+                    $unifiedIds[] = $item->source_id;
+                    break;
+                case 'offline_sale':
+                case 'offline_sale_return':
+                    $saleItemIds[] = $item->source_id;
+                    break;
+                case Sale::class:
+                    $saleIds[] = $item->source_id;
+                    break;
+            }
+        }
+
+        // Batch fetch orders with account info
+        $wbOrders = !empty($wbIds) || !empty($unifiedIds)
+            ? WbOrder::with('account:id,name,marketplace')
+                ->whereIn('id', array_unique(array_merge($wbIds, $unifiedIds)))
+                ->get()->keyBy('id')
+            : collect();
+
+        $uzumOrders = !empty($uzumIds) || !empty($unifiedIds)
+            ? UzumOrder::with('account:id,name,marketplace')
+                ->whereIn('id', array_unique(array_merge($uzumIds, $unifiedIds)))
+                ->get()->keyBy('id')
+            : collect();
+
+        $ozonOrders = !empty($ozonIds) || !empty($unifiedIds)
+            ? OzonOrder::with('account:id,name,marketplace')
+                ->whereIn('id', array_unique(array_merge($ozonIds, $unifiedIds)))
+                ->get()->keyBy('id')
+            : collect();
+
+        $ymOrders = !empty($ymIds) || !empty($unifiedIds)
+            ? YandexMarketOrder::with('account:id,name,marketplace')
+                ->whereIn('id', array_unique(array_merge($ymIds, $unifiedIds)))
+                ->get()->keyBy('id')
+            : collect();
+
+        // Fetch sale items with sale info
+        $saleItems = !empty($saleItemIds)
+            ? SaleItem::with('sale:id,sale_number,source,type,counterparty_id')
+                ->whereIn('id', array_unique($saleItemIds))
+                ->get()->keyBy('id')
+            : collect();
+
+        $sales = !empty($saleIds)
+            ? Sale::whereIn('id', array_unique($saleIds))
+                ->get(['id', 'sale_number', 'source', 'type', 'counterparty_id'])
+                ->keyBy('id')
+            : collect();
+
+        // Marketplace labels
+        $marketplaceLabels = [
+            'wb' => 'Wildberries',
+            'uzum' => 'Uzum Market',
+            'ozon' => 'Ozon',
+            'ym' => 'Yandex Market',
+            'yandex_market' => 'Yandex Market',
+        ];
+
+        // Order type labels based on sale source
+        $orderTypeLabels = [
+            'uzum' => 'Маркетплейс',
+            'wb' => 'Маркетплейс',
+            'ozon' => 'Маркетплейс',
+            'ym' => 'Маркетплейс',
+            'manual' => 'Офлайн продажа',
+            'pos' => 'Офлайн продажа',
+            'instagram' => 'Инстаграм',
+            'online_store' => 'Интернет магазин',
+            'wholesale' => 'Оптовая продажа',
+        ];
+
+        // Enrich each item
+        $result = [];
+        foreach ($items as $item) {
+            $data = $item->toArray();
+            $data['order_number'] = null;
+            $data['marketplace'] = null;
+            $data['shop_name'] = null;
+            $data['order_type'] = null;
+
+            if (!$item->source_type || !$item->source_id) {
+                $result[] = $data;
+                continue;
+            }
+
+            $order = null;
+            $marketplace = null;
+
+            switch ($item->source_type) {
+                case 'WB_ORDER':
+                case 'WB_ORDER_CANCEL':
+                    $order = $wbOrders->get($item->source_id);
+                    $marketplace = 'wb';
+                    break;
+
+                case 'UZUM_ORDER':
+                    $order = $uzumOrders->get($item->source_id);
+                    $marketplace = 'uzum';
+                    break;
+
+                case 'OZON_ORDER':
+                case 'OZON_ORDER_CANCEL':
+                    $order = $ozonOrders->get($item->source_id);
+                    $marketplace = 'ozon';
+                    break;
+
+                case 'YANDEX_ORDER':
+                case 'YANDEX_ORDER_CANCEL':
+                    $order = $ymOrders->get($item->source_id);
+                    $marketplace = 'ym';
+                    break;
+
+                case 'marketplace_order_reserve':
+                case 'marketplace_order_cancel':
+                    // Try each marketplace model (unified source_type)
+                    if ($order = $wbOrders->get($item->source_id)) {
+                        $marketplace = 'wb';
+                    } elseif ($order = $uzumOrders->get($item->source_id)) {
+                        $marketplace = 'uzum';
+                    } elseif ($order = $ozonOrders->get($item->source_id)) {
+                        $marketplace = 'ozon';
+                    } elseif ($order = $ymOrders->get($item->source_id)) {
+                        $marketplace = 'ym';
+                    }
+                    break;
+
+                case 'offline_sale':
+                case 'offline_sale_return':
+                    $saleItem = $saleItems->get($item->source_id);
+                    if ($saleItem && $saleItem->sale) {
+                        $sale = $saleItem->sale;
+                        $data['order_number'] = $sale->sale_number;
+                        $data['order_type'] = $orderTypeLabels[$sale->source ?? ''] ?? 'Офлайн продажа';
+
+                        if ($sale->source && isset($marketplaceLabels[$sale->source])) {
+                            $data['marketplace'] = $marketplaceLabels[$sale->source];
+                        }
+                    }
+                    $result[] = $data;
+                    continue 2;
+
+                case Sale::class:
+                    $sale = $sales->get($item->source_id);
+                    if ($sale) {
+                        $data['order_number'] = $sale->sale_number;
+                        $data['order_type'] = $orderTypeLabels[$sale->source ?? ''] ?? 'Офлайн продажа';
+
+                        if ($sale->source && isset($marketplaceLabels[$sale->source])) {
+                            $data['marketplace'] = $marketplaceLabels[$sale->source];
+                        }
+                    }
+                    $result[] = $data;
+                    continue 2;
+
+                default:
+                    // Non-order source types (initial_stock, stock_adjustment, etc.)
+                    $result[] = $data;
+                    continue 2;
+            }
+
+            // Set marketplace order info
+            if ($order) {
+                $data['order_number'] = $order->external_order_id
+                    ?? $order->posting_number
+                    ?? $order->order_id
+                    ?? null;
+                $data['marketplace'] = $marketplaceLabels[$marketplace] ?? $marketplace;
+                $data['shop_name'] = $order->account?->name ?? null;
+                $data['order_type'] = 'Маркетплейс';
+            }
+
+            $result[] = $data;
+        }
+
+        return $result;
     }
 
     /**

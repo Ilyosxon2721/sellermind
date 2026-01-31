@@ -71,17 +71,21 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Документ</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Склад</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Δ Кол-во</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Документ</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">№ Заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Магазин</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип заказа</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Склад</th>
+                            <th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Δ Кол-во</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -89,7 +93,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="6" class="px-6 py-12 text-center">
+                            <tr><td colspan="10" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                                 </div>
@@ -98,16 +102,55 @@
                         </template>
                         <template x-for="row in items" :key="row.id">
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(row.occurred_at)"></td>
-                                <td class="px-6 py-4 text-sm">
-                                    <a :href="`/warehouse/documents/${row.document_id}`" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline" x-text="row.document?.doc_no || row.document_id"></a>
+                                <td class="px-4 py-4 text-sm text-gray-700 whitespace-nowrap" x-text="formatDate(row.occurred_at)"></td>
+                                <td class="px-4 py-4 text-sm">
+                                    <template x-if="row.document_id">
+                                        <a :href="`/warehouse/documents/${row.document_id}`" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline" x-text="row.document?.doc_no || row.document_id"></a>
+                                    </template>
+                                    <template x-if="!row.document_id">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg" x-text="row.document?.type"></span>
+                                <td class="px-4 py-4">
+                                    <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg" x-text="formatSourceType(row)"></span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + parseInt(row.qty_delta)"></td>
+                                <td class="px-4 py-4 text-sm font-medium text-gray-900 whitespace-nowrap" x-text="row.order_number || '—'"></td>
+                                <td class="px-4 py-4 text-sm whitespace-nowrap">
+                                    <template x-if="row.marketplace">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-lg"
+                                              :class="{
+                                                  'bg-purple-100 text-purple-700': row.marketplace === 'Wildberries',
+                                                  'bg-blue-100 text-blue-700': row.marketplace === 'Ozon',
+                                                  'bg-yellow-100 text-yellow-700': row.marketplace === 'Uzum Market',
+                                                  'bg-red-100 text-red-700': row.marketplace === 'Yandex Market',
+                                                  'bg-gray-100 text-gray-700': !['Wildberries','Ozon','Uzum Market','Yandex Market'].includes(row.marketplace)
+                                              }"
+                                              x-text="row.marketplace"></span>
+                                    </template>
+                                    <template x-if="!row.marketplace">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-4 py-4 text-sm text-gray-700" x-text="row.shop_name || '—'"></td>
+                                <td class="px-4 py-4 text-sm whitespace-nowrap">
+                                    <template x-if="row.order_type">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-lg"
+                                              :class="{
+                                                  'bg-indigo-100 text-indigo-700': row.order_type === 'Маркетплейс',
+                                                  'bg-pink-100 text-pink-700': row.order_type === 'Инстаграм',
+                                                  'bg-teal-100 text-teal-700': row.order_type === 'Интернет магазин',
+                                                  'bg-orange-100 text-orange-700': row.order_type === 'Оптовая продажа',
+                                                  'bg-gray-100 text-gray-700': row.order_type === 'Офлайн продажа'
+                                              }"
+                                              x-text="row.order_type"></span>
+                                    </template>
+                                    <template x-if="!row.order_type">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-4 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
+                                <td class="px-4 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
+                                <td class="px-4 py-4 text-sm text-right font-bold" :class="row.qty_delta >= 0 ? 'text-green-600' : 'text-red-600'" x-text="(row.qty_delta >= 0 ? '+' : '') + parseInt(row.qty_delta)"></td>
                             </tr>
                         </template>
                         </tbody>
@@ -156,6 +199,28 @@
             formatDate(val) {
                 if (!val) return '—';
                 return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            },
+
+            formatSourceType(row) {
+                if (row.document?.type) return row.document.type;
+                const labels = {
+                    'marketplace_order_reserve': 'Резерв',
+                    'marketplace_order_cancel': 'Отмена резерва',
+                    'WB_ORDER': 'WB заказ',
+                    'WB_ORDER_CANCEL': 'WB отмена',
+                    'UZUM_ORDER': 'Uzum заказ',
+                    'OZON_ORDER': 'Ozon заказ',
+                    'OZON_ORDER_CANCEL': 'Ozon отмена',
+                    'YANDEX_ORDER': 'YM заказ',
+                    'YANDEX_ORDER_CANCEL': 'YM отмена',
+                    'offline_sale': 'Продажа',
+                    'offline_sale_return': 'Возврат',
+                    'initial_stock': 'Начальный остаток',
+                    'stock_adjustment': 'Корректировка',
+                    'COST_ADJUSTMENT': 'Корр. себестоимости',
+                    'INITIAL_SYNC': 'Начальная синхр.',
+                };
+                return labels[row.source_type] || row.source_type || '—';
             },
 
             reset() {
@@ -257,13 +322,26 @@
             <template x-for="item in items" :key="item.id">
                 <div class="native-card">
                     <div class="flex items-start justify-between mb-2">
-                        <p class="native-body font-semibold text-indigo-600" x-text="item.sku_code"></p>
-                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty > 0 ? '+' : '') + parseInt(item.qty)"></span>
+                        <p class="native-body font-semibold text-indigo-600" x-text="item.sku?.sku_code || item.sku_code || item.sku_id"></p>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="(item.qty_delta || item.qty) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="((item.qty_delta || item.qty) >= 0 ? '+' : '') + parseInt(item.qty_delta || item.qty)"></span>
                     </div>
-                    <p class="native-caption" x-text="item.product_name || '—'"></p>
+                    <div class="flex items-center space-x-2 mb-1" x-show="item.order_number || item.marketplace">
+                        <template x-if="item.marketplace">
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700" x-text="item.marketplace"></span>
+                        </template>
+                        <template x-if="item.order_number">
+                            <span class="native-caption font-medium" x-text="'#' + item.order_number"></span>
+                        </template>
+                        <template x-if="item.shop_name">
+                            <span class="native-caption" x-text="item.shop_name"></span>
+                        </template>
+                    </div>
+                    <p class="native-caption" x-text="formatSourceType(item)"></p>
                     <div class="flex items-center justify-between mt-2">
-                        <span class="native-caption" x-text="item.posted_at ? new Date(item.posted_at).toLocaleDateString('ru-RU') : ''"></span>
-                        <span class="native-caption" x-text="'Док #' + (item.document_id || '—')"></span>
+                        <span class="native-caption" x-text="item.occurred_at ? new Date(item.occurred_at).toLocaleDateString('ru-RU') : (item.posted_at ? new Date(item.posted_at).toLocaleDateString('ru-RU') : '')"></span>
+                        <template x-if="item.order_type">
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600" x-text="item.order_type"></span>
+                        </template>
                     </div>
                 </div>
             </template>
