@@ -125,19 +125,27 @@ class ProcessOrderStocks extends Command
         if ($status) {
             $query->where('status', $status);
         } else {
-            // Process orders with reserve OR sold statuses (to handle historical orders)
-            $query->whereIn('status', [
-                // Reserve statuses
-                'new', 'in_assembly', 'CREATED', 'PACKING',
-                // Sold statuses (for historical orders that were never processed)
-                'in_supply', 'accepted_uzum', 'waiting_pickup', 'issued',
-                'PENDING_DELIVERY', 'DELIVERING', 'ACCEPTED_AT_DP',
-                'DELIVERED_TO_CUSTOMER_DELIVERY_POINT', 'DELIVERED', 'COMPLETED',
-            ]);
+            // Process orders with reserve, sold, or cancelled statuses
+            $query->whereIn('status', array_merge(
+                OrderStockService::RESERVE_STATUSES['uzum'] ?? [],
+                OrderStockService::SOLD_STATUSES['uzum'] ?? [],
+                OrderStockService::CANCELLED_STATUSES['uzum'] ?? []
+            ));
         }
 
         if (!$force) {
-            $query->where('stock_status', 'none');
+            // Process unprocessed orders (stock_status=none)
+            // AND orders stuck with 'reserved' in sold/cancelled statuses
+            $query->where(function ($q) {
+                $q->where('stock_status', 'none')
+                  ->orWhere(function ($q2) {
+                      $q2->where('stock_status', 'reserved')
+                         ->whereIn('status', array_merge(
+                             OrderStockService::SOLD_STATUSES['uzum'] ?? [],
+                             OrderStockService::CANCELLED_STATUSES['uzum'] ?? []
+                         ));
+                  });
+            });
         }
 
         $orders = $query->get();
@@ -213,12 +221,24 @@ class ProcessOrderStocks extends Command
         if ($status) {
             $query->where('status', $status);
         } else {
-            // By default, only process orders with reserve statuses
-            $query->whereIn('status', ['new', 'confirm', 'assembly', 'in_assembly']);
+            $query->whereIn('status', array_merge(
+                OrderStockService::RESERVE_STATUSES['wb'] ?? [],
+                OrderStockService::SOLD_STATUSES['wb'] ?? [],
+                OrderStockService::CANCELLED_STATUSES['wb'] ?? []
+            ));
         }
 
         if (!$force) {
-            $query->where('stock_status', 'none');
+            $query->where(function ($q) {
+                $q->where('stock_status', 'none')
+                  ->orWhere(function ($q2) {
+                      $q2->where('stock_status', 'reserved')
+                         ->whereIn('status', array_merge(
+                             OrderStockService::SOLD_STATUSES['wb'] ?? [],
+                             OrderStockService::CANCELLED_STATUSES['wb'] ?? []
+                         ));
+                  });
+            });
         }
 
         $orders = $query->get();
@@ -294,12 +314,24 @@ class ProcessOrderStocks extends Command
         if ($status) {
             $query->where('status', $status);
         } else {
-            // By default, only process orders with reserve statuses
-            $query->whereIn('status', ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress']);
+            $query->whereIn('status', array_merge(
+                OrderStockService::RESERVE_STATUSES['ozon'] ?? [],
+                OrderStockService::SOLD_STATUSES['ozon'] ?? [],
+                OrderStockService::CANCELLED_STATUSES['ozon'] ?? []
+            ));
         }
 
         if (!$force) {
-            $query->where('stock_status', 'none');
+            $query->where(function ($q) {
+                $q->where('stock_status', 'none')
+                  ->orWhere(function ($q2) {
+                      $q2->where('stock_status', 'reserved')
+                         ->whereIn('status', array_merge(
+                             OrderStockService::SOLD_STATUSES['ozon'] ?? [],
+                             OrderStockService::CANCELLED_STATUSES['ozon'] ?? []
+                         ));
+                  });
+            });
         }
 
         $orders = $query->get();
@@ -375,12 +407,24 @@ class ProcessOrderStocks extends Command
         if ($status) {
             $query->where('status', $status);
         } else {
-            // By default, only process orders with reserve statuses
-            $query->whereIn('status', ['PROCESSING', 'RESERVED']);
+            $query->whereIn('status', array_merge(
+                OrderStockService::RESERVE_STATUSES['ym'] ?? [],
+                OrderStockService::SOLD_STATUSES['ym'] ?? [],
+                OrderStockService::CANCELLED_STATUSES['ym'] ?? []
+            ));
         }
 
         if (!$force) {
-            $query->where('stock_status', 'none');
+            $query->where(function ($q) {
+                $q->where('stock_status', 'none')
+                  ->orWhere(function ($q2) {
+                      $q2->where('stock_status', 'reserved')
+                         ->whereIn('status', array_merge(
+                             OrderStockService::SOLD_STATUSES['ym'] ?? [],
+                             OrderStockService::CANCELLED_STATUSES['ym'] ?? []
+                         ));
+                  });
+            });
         }
 
         $orders = $query->get();
