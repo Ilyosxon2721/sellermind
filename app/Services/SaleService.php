@@ -453,7 +453,7 @@ class SaleService
             return auth()->user()->company_id;
         }
 
-        return \App\Models\Company::query()->value('id') ?? 1;
+        throw new \Illuminate\Auth\Access\AuthorizationException('Компания пользователя не определена');
     }
 
     /**

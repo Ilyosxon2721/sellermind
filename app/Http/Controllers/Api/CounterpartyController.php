@@ -275,7 +275,7 @@ class CounterpartyController extends Controller
         if (auth()->check() && auth()->user()->company_id) {
             return auth()->user()->company_id;
         }
-        
-        return \App\Models\Company::query()->value('id') ?? 1;
+
+        abort(403, 'Компания пользователя не определена');
     }
 }
