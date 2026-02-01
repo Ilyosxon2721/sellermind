@@ -277,14 +277,14 @@
                             <div class="bg-amber-50 rounded-xl p-4">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-sm text-amber-700">Заказы клиентов в пути</span>
-                                    <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.orders_in_transit?.count + ' шт'"></span>
+                                    <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full" x-text="(overview.transit?.orders_in_transit?.count || 0) + ' шт'"></span>
                                 </div>
                                 <div class="text-xl font-bold text-amber-700" x-text="formatMoney(overview.transit?.orders_in_transit?.amount || 0)"></div>
                             </div>
                             <div class="bg-blue-50 rounded-xl p-4">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-sm text-blue-700">Закупки в пути</span>
-                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.purchases_in_transit?.count + ' шт'"></span>
+                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full" x-text="(overview.transit?.purchases_in_transit?.count || 0) + ' шт'"></span>
                                 </div>
                                 <div class="text-xl font-bold text-blue-700" x-text="formatMoney(overview.transit?.purchases_in_transit?.amount || 0)"></div>
                             </div>
