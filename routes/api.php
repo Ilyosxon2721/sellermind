@@ -800,21 +800,60 @@ Route::prefix('client/auth')->group(function () {
 Route::prefix('client')->middleware(['auth:sanctum'])->group(function () {
     // Профиль
     Route::get('/profile', [ClientApiController::class, 'getProfile']);
-    
+
     // Товары (READ)
     Route::get('/products', [ClientApiController::class, 'getProducts']);
-    
+
     // Товары (WRITE)
     Route::post('/products', [ClientApiController::class, 'createProduct']);
     Route::put('/products/{id}', [ClientApiController::class, 'updateProduct']);
     Route::delete('/products/{id}', [ClientApiController::class, 'deleteProduct']);
-    
+
     // Заказы
     Route::get('/orders', [ClientApiController::class, 'getOrders']);
-    
+
     // Остатки
     Route::get('/inventory', [ClientApiController::class, 'getInventory']);
-    
+
     // Статистика
     Route::get('/statistics', [ClientApiController::class, 'getStatistics']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| RISMENT Integration API v1
+|--------------------------------------------------------------------------
+| API для интеграции с фулфилмент-платформой RISMENT.
+| Аутентификация через Bearer-токен (risment_api_tokens).
+*/
+
+use App\Http\Controllers\Api\Risment\IntegrationController;
+use App\Http\Controllers\Api\Risment\TokenController;
+use App\Http\Controllers\Api\Risment\WebhookController;
+
+// Token management (requires Sanctum/session auth — managed by SellerMind users)
+Route::prefix('v1/integration/tokens')->middleware('auth.any')->group(function () {
+    Route::get('/', [TokenController::class, 'index']);
+    Route::post('/', [TokenController::class, 'store']);
+    Route::delete('/{id}', [TokenController::class, 'destroy']);
+});
+
+// RISMENT Integration endpoints (requires RISMENT API token)
+Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
+    // Products
+    Route::post('products', [IntegrationController::class, 'createProduct']);
+    Route::put('products/{id}', [IntegrationController::class, 'updateProduct']);
+
+    // Stock
+    Route::post('stock/update', [IntegrationController::class, 'updateStock']);
+
+    // Orders
+    Route::get('orders', [IntegrationController::class, 'getOrders']);
+    Route::patch('orders/{id}/status', [IntegrationController::class, 'updateOrderStatus']);
+
+    // Webhooks management
+    Route::get('webhooks', [WebhookController::class, 'index']);
+    Route::post('webhooks', [WebhookController::class, 'store']);
+    Route::delete('webhooks/{id}', [WebhookController::class, 'destroy']);
+    Route::post('webhooks/{id}/test', [WebhookController::class, 'test']);
 });

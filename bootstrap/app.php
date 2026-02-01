@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
             'setlocale' => \App\Http\Middleware\SetLocale::class,
+            'risment.auth' => \App\Http\Middleware\AuthenticateRisment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
