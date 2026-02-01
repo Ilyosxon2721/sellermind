@@ -23,8 +23,6 @@ class SaleReservationService
     /**
      * Зарезервировать товары для продажи
      *
-     * @param Sale $sale
-     * @return array
      * @throws \Exception
      */
     public function reserveStock(Sale $sale): array
@@ -33,7 +31,7 @@ class SaleReservationService
             throw new \Exception('Можно резервировать только черновики продаж');
         }
 
-        if (!$sale->warehouse_id) {
+        if (! $sale->warehouse_id) {
             throw new \Exception('Не указан склад для списания');
         }
 
@@ -44,9 +42,11 @@ class SaleReservationService
                 'errors' => [],
             ];
 
+            $sale->loadMissing('items');
+
             foreach ($sale->items as $item) {
                 // Пропускаем расходы (expenses)
-                if (!$item->product_variant_id || ($item->metadata['is_expense'] ?? false)) {
+                if (! $item->product_variant_id || ($item->metadata['is_expense'] ?? false)) {
                     continue;
                 }
 
@@ -71,7 +71,7 @@ class SaleReservationService
 
             // Если хотя бы один товар не зарезервирован, откатываем всё
             if ($results['failed'] > 0) {
-                throw new \Exception('Не удалось зарезервировать все товары: ' . json_encode($results['errors']));
+                throw new \Exception('Не удалось зарезервировать все товары: '.json_encode($results['errors']));
             }
 
             return $results;
@@ -84,23 +84,20 @@ class SaleReservationService
      * 1. Остатки на маркетплейсах обновились и не было overselling
      * 2. Создаём stock_reservation для отслеживания (чтобы при отмене вернуть товар)
      *
-     * @param Sale $sale
-     * @param SaleItem $item
-     * @return StockReservation
      * @throws \Exception
      */
     protected function reserveItem(Sale $sale, SaleItem $item): StockReservation
     {
         $variant = $item->productVariant;
 
-        if (!$variant) {
+        if (! $variant) {
             throw new \Exception("Товар не найден (ID: {$item->product_variant_id})");
         }
 
         // Находим Warehouse\Sku для этого варианта
         $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $variant->id)->first();
 
-        if (!$warehouseSku) {
+        if (! $warehouseSku) {
             throw new \Exception("Товар '{$item->product_name}' не зарегистрирован на складе. Запустите синхронизацию: php artisan warehouse:sync-variants");
         }
 
@@ -172,14 +169,13 @@ class SaleReservationService
     /**
      * Отгрузить товары (перевести резерв в потребление)
      *
-     * @param Sale $sale
-     * @param array|null $itemIds Конкретные позиции для отгрузки (null = все)
-     * @return array
+     * @param  array|null  $itemIds  Конкретные позиции для отгрузки (null = все)
+     *
      * @throws \Exception
      */
     public function shipStock(Sale $sale, ?array $itemIds = null): array
     {
-        if (!in_array($sale->status, ['confirmed', 'completed'])) {
+        if (! in_array($sale->status, ['confirmed', 'completed'])) {
             throw new \Exception('Можно отгружать только подтверждённые продажи');
         }
 
@@ -197,7 +193,7 @@ class SaleReservationService
 
             foreach ($items as $item) {
                 // Пропускаем расходы и уже отгруженные товары
-                if (!$item->product_variant_id || ($item->metadata['is_expense'] ?? false)) {
+                if (! $item->product_variant_id || ($item->metadata['is_expense'] ?? false)) {
                     continue;
                 }
 
@@ -234,22 +230,19 @@ class SaleReservationService
      * ВАЖНО: Ledger entry уже создан при резервировании!
      * Здесь только обновляем статус резерва в CONSUMED.
      *
-     * @param Sale $sale
-     * @param SaleItem $item
-     * @return void
      * @throws \Exception
      */
     protected function shipItem(Sale $sale, SaleItem $item): void
     {
         $reservationId = $item->metadata['reservation_id'] ?? null;
 
-        if (!$reservationId) {
+        if (! $reservationId) {
             throw new \Exception('Резерв не найден для позиции');
         }
 
         $reservation = StockReservation::find($reservationId);
 
-        if (!$reservation) {
+        if (! $reservation) {
             throw new \Exception("Резерв #{$reservationId} не найден");
         }
 
@@ -277,8 +270,6 @@ class SaleReservationService
     /**
      * Отменить резервы и вернуть товар на склад
      *
-     * @param Sale $sale
-     * @return array
      * @throws \Exception
      */
     public function cancelReservations(Sale $sale): array
@@ -290,8 +281,10 @@ class SaleReservationService
                 'errors' => [],
             ];
 
+            $sale->loadMissing('items');
+
             foreach ($sale->items as $item) {
-                if (!$item->product_variant_id || !$item->stock_deducted) {
+                if (! $item->product_variant_id || ! $item->stock_deducted) {
                     continue;
                 }
 
@@ -302,6 +295,7 @@ class SaleReservationService
                         'product_name' => $item->product_name,
                         'error' => 'Товар уже отгружен, отмена невозможна',
                     ];
+
                     continue;
                 }
 
@@ -333,8 +327,6 @@ class SaleReservationService
      * ВАЖНО: При резервировании был создан ledger entry (списание),
      * поэтому при отмене нужно ВЕРНУТЬ товар обратно (положительный ledger entry).
      *
-     * @param SaleItem $item
-     * @return void
      * @throws \Exception
      */
     protected function cancelItemReservation(SaleItem $item): void
@@ -355,7 +347,7 @@ class SaleReservationService
 
         // Возвращаем остаток в ProductVariant (для маркетплейсов)
         if ($item->productVariant) {
-            $item->productVariant->incrementStock((int)$item->quantity);
+            $item->productVariant->incrementStock((int) $item->quantity);
 
             // Синхронизируем обновлённые остатки с маркетплейсами
             $this->stockSyncService->syncVariantStock($item->productVariant);
@@ -404,17 +396,13 @@ class SaleReservationService
     /**
      * Получить доступный остаток товара на складе
      * (реальный остаток - активные резервы)
-     *
-     * @param ProductVariant $variant
-     * @param int $warehouseId
-     * @return float
      */
     public function getAvailableStock(ProductVariant $variant, int $warehouseId): float
     {
         // Находим Warehouse\Sku для этого варианта
         $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $variant->id)->first();
 
-        if (!$warehouseSku) {
+        if (! $warehouseSku) {
             // Если товар не зарегистрирован в warehouse, возвращаем 0
             return 0;
         }
@@ -436,7 +424,6 @@ class SaleReservationService
     /**
      * Получить активные резервы для продажи
      *
-     * @param Sale $sale
      * @return \Illuminate\Support\Collection
      */
     public function getActiveReservations(Sale $sale)
@@ -449,9 +436,6 @@ class SaleReservationService
 
     /**
      * Проверить, все ли товары отгружены
-     *
-     * @param Sale $sale
-     * @return bool
      */
     public function isFullyShipped(Sale $sale): bool
     {
