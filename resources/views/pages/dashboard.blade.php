@@ -30,17 +30,16 @@
                         <p class="text-sm text-gray-500" x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <select x-model="period" @change="loadData()"
-                                class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        <x-ui.select x-model="period" @change="loadData()">
                             <option value="today">{{ __('dashboard.today') }}</option>
                             <option value="week" selected>{{ __('dashboard.7_days') }}</option>
                             <option value="month">{{ __('dashboard.30_days') }}</option>
-                        </select>
-                        <button @click="loadData()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="{{ __('dashboard.refresh') }}">
+                        </x-ui.select>
+                        <x-ui.button variant="ghost" size="sm" @click="loadData()" title="{{ __('dashboard.refresh') }}">
                             <svg class="w-5 h-5" :class="loading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                        </button>
+                        </x-ui.button>
                     </div>
                 </div>
             </header>
@@ -67,14 +66,9 @@
                 <div x-show="!loading" x-cloak class="space-y-6">
 
                     {{-- Alerts Banner --}}
-                    <div x-show="alerts.total_count > 0" class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                    <x-ui.alert x-show="alerts.total_count > 0" variant="warning">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                    </svg>
-                                </div>
                                 <div>
                                     <p class="font-medium text-amber-800">
                                         <span x-text="alerts.total_count"></span> {{ __('dashboard.alerts_attention') }}
@@ -85,31 +79,31 @@
                                     </p>
                                 </div>
                             </div>
-                            <button @click="showAlertsModal = true" class="text-amber-700 hover:text-amber-900 font-medium text-sm">
+                            <x-ui.button variant="link" @click="showAlertsModal = true">
                                 {{ __('dashboard.details') }} →
-                            </button>
+                            </x-ui.button>
                         </div>
-                    </div>
+                    </x-ui.alert>
 
                     {{-- Stats Cards Row 1 (4 cards) --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {{-- Revenue Card --}}
-                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+                        <x-ui.card padding="default" hover="true">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                 </div>
-                                <span class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-medium" x-text="periodLabel"></span>
+                                <x-ui.badge variant="primary" x-text="periodLabel"></x-ui.badge>
                             </div>
                             <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.revenue') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(stats.revenue)">0 сум</p>
                             <p class="text-sm text-gray-500" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
-                        </div>
+                        </x-ui.card>
 
                         {{-- Orders Today Card --}}
-                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+                        <x-ui.card padding="default" hover="true">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,10 +114,10 @@
                             <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.orders_today') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.today_orders">0</p>
                             <p class="text-sm text-gray-500" x-text="formatMoney(stats.today_revenue)"></p>
-                        </div>
+                        </x-ui.card>
 
                         {{-- Products Card --}}
-                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer" @click="window.location.href='/products'">
+                        <x-ui.card padding="default" hover="true" @click="window.location.href='/products'" class="cursor-pointer">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,10 +133,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
                             </p>
-                        </div>
+                        </x-ui.card>
 
                         {{-- Warehouse Value Card --}}
-                        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer" @click="window.location.href='/inventory'">
+                        <x-ui.card padding="default" hover="true" @click="window.location.href='/inventory'" class="cursor-pointer">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,13 +147,13 @@
                             <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.warehouse') }}</h3>
                             <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(warehouse.total_value)">0 сум</p>
                             <p class="text-sm text-gray-500" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
-                        </div>
+                        </x-ui.card>
                     </div>
 
                     {{-- Stats Cards Row 2 (4 smaller cards) --}}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {{-- Marketplaces --}}
-                        <div class="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" @click="window.location.href='/marketplaces'">
+                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/marketplaces'" class="cursor-pointer">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,10 +165,10 @@
                                     <p class="text-xs text-gray-500">{{ __('dashboard.marketplaces') }}</p>
                                 </div>
                             </div>
-                        </div>
+                        </x-ui.card>
 
                         {{-- Reviews --}}
-                        <div class="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" @click="window.location.href='/reviews'">
+                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/reviews'" class="cursor-pointer">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,10 +180,10 @@
                                     <p class="text-xs text-gray-500">{{ __('dashboard.new_reviews') }}</p>
                                 </div>
                             </div>
-                        </div>
+                        </x-ui.card>
 
                         {{-- Supplies --}}
-                        <div class="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" @click="window.location.href='/supplies'">
+                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/supplies'" class="cursor-pointer">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,10 +195,10 @@
                                     <p class="text-xs text-gray-500">{{ __('dashboard.supplies_in_transit') }}</p>
                                 </div>
                             </div>
-                        </div>
+                        </x-ui.card>
 
                         {{-- AI Tasks --}}
-                        <div class="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" @click="window.location.href='/ai'">
+                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/ai'" class="cursor-pointer">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
                                     <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +210,7 @@
                                     <p class="text-xs text-gray-500">{{ __('dashboard.ai_tasks') }}</p>
                                 </div>
                             </div>
-                        </div>
+                        </x-ui.card>
                     </div>
 
                     {{-- Two Column Layout --}}
@@ -225,10 +219,10 @@
                         <div class="lg:col-span-2 space-y-6">
 
                             {{-- Recent Orders Table --}}
-                            <div class="bg-white rounded-lg shadow">
+                            <x-ui.card padding="none">
                                 <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                                     <h2 class="text-lg font-semibold text-gray-900">{{ __('dashboard.recent_orders') }}</h2>
-                                    <a href="/sales" class="text-sm text-blue-600 hover:text-blue-700 font-medium">{{ __('dashboard.all_orders') }} →</a>
+                                    <x-ui.button variant="link" href="/sales" size="sm">{{ __('dashboard.all_orders') }} →</x-ui.button>
                                 </div>
 
                                 <div x-show="recentOrders.length > 0">
@@ -250,16 +244,12 @@
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center space-x-2">
-                                                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded"
-                                                                  :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                                                  x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                                            <x-ui.badge :variant="order.marketplace === 'wb' ? 'wildberries' : 'uzum'" x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></x-ui.badge>
                                                             <span class="text-sm text-gray-600" x-text="order.account_name"></span>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
-                                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded"
-                                                              :class="getStatusClass(order.status)"
-                                                              x-text="order.status_label || order.status"></span>
+                                                        <x-ui.badge :class="getStatusClass(order.status)" x-text="order.status_label || order.status"></x-ui.badge>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm font-semibold text-gray-900" x-text="formatMoney(order.amount)"></div>
@@ -273,20 +263,15 @@
                                     </table>
                                 </div>
 
-                                <div x-show="recentOrders.length === 0" class="px-6 py-12 text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                    </svg>
-                                    <h3 class="mt-2 text-sm font-medium text-gray-900">{{ __('dashboard.no_orders_yet') }}</h3>
-                                    <p class="mt-1 text-sm text-gray-500">{{ __('dashboard.orders_will_appear') }}</p>
-                                </div>
-                            </div>
+                                <x-ui.empty-state x-show="recentOrders.length === 0"
+                                    icon='<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>'
+                                    title="{{ __('dashboard.no_orders_yet') }}"
+                                    description="{{ __('dashboard.orders_will_appear') }}">
+                                </x-ui.empty-state>
+                            </x-ui.card>
 
                             {{-- Marketplace Stats --}}
-                            <div class="bg-white rounded-lg shadow">
-                                <div class="px-6 py-4 border-b border-gray-200">
-                                    <h2 class="text-lg font-semibold text-gray-900">{{ __('dashboard.marketplaces_section') }}</h2>
-                                </div>
+                            <x-ui.card title="{{ __('dashboard.marketplaces_section') }}" padding="none">
                                 <div class="p-6">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <template x-for="account in marketplace.accounts" :key="account.id">
@@ -305,33 +290,34 @@
                                                             <p class="text-xs text-gray-500" x-text="account.marketplace === 'wb' ? 'Wildberries' : 'Uzum'"></p>
                                                         </div>
                                                     </div>
-                                                    <span class="w-2 h-2 rounded-full" :class="account.is_active ? 'bg-green-500' : 'bg-gray-300'"></span>
+                                                    <x-ui.badge :variant="account.is_active ? 'success' : 'gray'" size="sm">
+                                                        <span class="w-2 h-2 rounded-full" :class="account.is_active ? 'bg-green-500' : 'bg-gray-300'"></span>
+                                                    </x-ui.badge>
                                                 </div>
                                             </div>
                                         </template>
                                     </div>
-                                    <div x-show="!marketplace.accounts || marketplace.accounts.length === 0" class="text-center py-8">
-                                        <p class="text-gray-500">{{ __('dashboard.no_marketplaces') }}</p>
-                                        <a href="/marketplaces" class="text-blue-600 hover:text-blue-700 text-sm font-medium">{{ __('dashboard.connect') }} →</a>
-                                    </div>
+                                    <x-ui.empty-state x-show="!marketplace.accounts || marketplace.accounts.length === 0"
+                                        description="{{ __('dashboard.no_marketplaces') }}">
+                                        <x-slot name="action">
+                                            <x-ui.button variant="link" href="/marketplaces" size="sm">{{ __('dashboard.connect') }} →</x-ui.button>
+                                        </x-slot>
+                                    </x-ui.empty-state>
                                 </div>
-                            </div>
+                            </x-ui.card>
                         </div>
 
                         {{-- Right Column (1/3) --}}
                         <div class="space-y-6">
 
                             {{-- Subscription Status --}}
-                            <div class="bg-white rounded-lg shadow">
-                                <div class="px-4 py-3 border-b border-gray-200">
-                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.subscription') }}</h3>
-                                </div>
+                            <x-ui.card title="{{ __('dashboard.subscription') }}" padding="none">
                                 <div class="p-4">
                                     <template x-if="subscription.has_subscription">
                                         <div>
                                             <div class="flex items-center justify-between mb-3">
                                                 <span class="text-lg font-bold text-gray-900" x-text="subscription.plan?.name"></span>
-                                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">{{ __('dashboard.active') }}</span>
+                                                <x-ui.badge variant="success">{{ __('dashboard.active') }}</x-ui.badge>
                                             </div>
                                             <div class="space-y-3">
                                                 {{-- Days remaining --}}
@@ -376,28 +362,27 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <a href="/pricing" class="block mt-4 text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                            <x-ui.button variant="link" href="/pricing" size="sm" class="block mt-4 w-full text-center">
                                                 {{ __('dashboard.manage_subscription') }} →
-                                            </a>
+                                            </x-ui.button>
                                         </div>
                                     </template>
                                     <template x-if="!subscription.has_subscription">
                                         <div class="text-center py-4">
                                             <p class="text-gray-500 mb-3">{{ __('dashboard.no_subscription') }}</p>
-                                            <a href="/pricing" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                                            <x-ui.button variant="primary" href="/pricing">
                                                 {{ __('dashboard.choose_plan') }}
-                                            </a>
+                                            </x-ui.button>
                                         </div>
                                     </template>
                                 </div>
-                            </div>
+                            </x-ui.card>
 
                             {{-- AI Status --}}
-                            <div class="bg-white rounded-lg shadow">
-                                <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.ai_agents') }}</h3>
-                                    <a href="/ai" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.all') }} →</a>
-                                </div>
+                            <x-ui.card title="{{ __('dashboard.ai_agents') }}" padding="none">
+                                <x-slot name="footer">
+                                    <x-ui.button variant="link" href="/ai" size="xs">{{ __('dashboard.all') }} →</x-ui.button>
+                                </x-slot>
                                 <div class="p-4">
                                     <div class="grid grid-cols-3 gap-3 mb-4">
                                         <div class="text-center">
@@ -421,29 +406,23 @@
                                                 <div class="flex-1 min-w-0">
                                                     <p class="text-sm font-medium text-gray-900 truncate" x-text="run.task_title || run.agent_name"></p>
                                                 </div>
-                                                <span class="ml-2 px-2 py-0.5 text-xs font-medium rounded-full"
-                                                      :class="{
-                                                          'bg-green-100 text-green-700': run.status === 'success',
-                                                          'bg-red-100 text-red-700': run.status === 'failed',
-                                                          'bg-blue-100 text-blue-700': run.status === 'running',
-                                                          'bg-gray-100 text-gray-700': run.status === 'pending'
-                                                      }"
-                                                      x-text="run.status"></span>
+                                                <x-ui.badge class="ml-2"
+                                                      x-bind:variant="run.status === 'success' ? 'success' : run.status === 'failed' ? 'danger' : run.status === 'running' ? 'primary' : 'gray'"
+                                                      x-text="run.status"></x-ui.badge>
                                             </div>
                                         </template>
                                     </div>
-                                    <div x-show="!ai.recent_runs || ai.recent_runs.length === 0" class="text-center py-4">
-                                        <p class="text-sm text-gray-500">{{ __('dashboard.no_recent_tasks') }}</p>
-                                    </div>
+                                    <x-ui.empty-state x-show="!ai.recent_runs || ai.recent_runs.length === 0"
+                                        description="{{ __('dashboard.no_recent_tasks') }}">
+                                    </x-ui.empty-state>
                                 </div>
-                            </div>
+                            </x-ui.card>
 
                             {{-- Reviews Summary --}}
-                            <div class="bg-white rounded-lg shadow">
-                                <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.reviews_section') }}</h3>
-                                    <a href="/reviews" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.all') }} →</a>
-                                </div>
+                            <x-ui.card title="{{ __('dashboard.reviews_section') }}" padding="none">
+                                <x-slot name="footer">
+                                    <x-ui.button variant="link" href="/reviews" size="xs">{{ __('dashboard.all') }} →</x-ui.button>
+                                </x-slot>
                                 <div class="p-4">
                                     <div class="flex items-center justify-between mb-4">
                                         <div class="flex items-center space-x-2">
@@ -470,14 +449,13 @@
                                         <span>👎 <span x-text="reviews.sentiment?.negative || 0"></span></span>
                                     </div>
                                 </div>
-                            </div>
+                            </x-ui.card>
 
                             {{-- Team --}}
-                            <div class="bg-white rounded-lg shadow">
-                                <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                                    <h3 class="font-semibold text-gray-900">{{ __('dashboard.team') }}</h3>
-                                    <a href="/settings/team" class="text-xs text-blue-600 hover:text-blue-700">{{ __('dashboard.manage') }} →</a>
-                                </div>
+                            <x-ui.card title="{{ __('dashboard.team') }}" padding="none">
+                                <x-slot name="footer">
+                                    <x-ui.button variant="link" href="/settings/team" size="xs">{{ __('dashboard.manage') }} →</x-ui.button>
+                                </x-slot>
                                 <div class="p-4">
                                     <div class="flex items-center justify-between mb-3">
                                         <span class="text-sm text-gray-500">{{ __('dashboard.members') }}</span>
@@ -499,13 +477,15 @@
                                             </div>
                                         </template>
                                     </div>
-                                    <button x-show="team.can_invite"
+                                    <x-ui.button x-show="team.can_invite"
                                             @click="window.location.href='/settings/team'"
-                                            class="mt-3 w-full py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            variant="ghost"
+                                            size="sm"
+                                            class="mt-3 w-full">
                                         + {{ __('dashboard.invite') }}
-                                    </button>
+                                    </x-ui.button>
                                 </div>
-                            </div>
+                            </x-ui.card>
                         </div>
                     </div>
                 </div>
@@ -661,9 +641,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex-1">
                                         <div class="flex items-center space-x-2 mb-1">
-                                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded"
-                                                  :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                                  x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                            <x-ui.badge :variant="order.marketplace === 'wb' ? 'wildberries' : 'uzum'" size="sm" x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></x-ui.badge>
                                             <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.order_number"></p>
                                         </div>
                                         <p class="text-xs text-gray-500" x-text="order.account_name"></p>
@@ -672,9 +650,9 @@
                                     <div class="text-right flex items-center space-x-2">
                                         <div>
                                             <p class="text-sm font-bold text-gray-900" x-text="formatMoney(order.amount)"></p>
-                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                            <x-ui.badge size="sm"
                                                   :class="getStatusClass(order.status)"
-                                                  x-text="order.status_label || order.status"></span>
+                                                  x-text="order.status_label || order.status"></x-ui.badge>
                                         </div>
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -708,25 +686,25 @@
                 <div class="native-sheet-handle"></div>
                 <h3 class="native-headline mb-4">{{ __('dashboard.select_period') }}</h3>
                 <div class="space-y-2">
-                    <button @click="period = 'today'; loadData(); showPeriodSheet = false"
-                            class="native-btn w-full"
-                            :class="period === 'today' ? '' : 'native-btn-secondary'">
+                    <x-ui.button @click="period = 'today'; loadData(); showPeriodSheet = false"
+                            class="w-full"
+                            :variant="period === 'today' ? 'primary' : 'secondary'">
                         {{ __('dashboard.today') }}
-                    </button>
-                    <button @click="period = 'week'; loadData(); showPeriodSheet = false"
-                            class="native-btn w-full"
-                            :class="period === 'week' ? '' : 'native-btn-secondary'">
+                    </x-ui.button>
+                    <x-ui.button @click="period = 'week'; loadData(); showPeriodSheet = false"
+                            class="w-full"
+                            :variant="period === 'week' ? 'primary' : 'secondary'">
                         {{ __('dashboard.7_days') }}
-                    </button>
-                    <button @click="period = 'month'; loadData(); showPeriodSheet = false"
-                            class="native-btn w-full"
-                            :class="period === 'month' ? '' : 'native-btn-secondary'">
+                    </x-ui.button>
+                    <x-ui.button @click="period = 'month'; loadData(); showPeriodSheet = false"
+                            class="w-full"
+                            :variant="period === 'month' ? 'primary' : 'secondary'">
                         {{ __('dashboard.30_days') }}
-                    </button>
-                    <button @click="showPeriodSheet = false"
-                            class="native-btn native-btn-secondary w-full mt-4">
+                    </x-ui.button>
+                    <x-ui.button @click="showPeriodSheet = false"
+                            variant="secondary" class="w-full mt-4">
                         {{ __('dashboard.cancel') }}
-                    </button>
+                    </x-ui.button>
                 </div>
             </div>
         </div>
@@ -800,10 +778,10 @@
                         </div>
                     </template>
                 </div>
-                <button @click="showAlertsModal = false"
-                        class="native-btn native-btn-secondary w-full mt-4">
+                <x-ui.button @click="showAlertsModal = false"
+                        variant="secondary" class="w-full mt-4">
                     {{ __('dashboard.close') }}
-                </button>
+                </x-ui.button>
             </div>
         </div>
     </div>
