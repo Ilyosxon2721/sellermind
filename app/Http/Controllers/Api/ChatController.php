@@ -313,11 +313,7 @@ IMPORTANT: Output ONLY the prompt text. Do not say you cannot generate images. D
     public function hideDialog(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $dialog = Dialog::findOrFail($id);
-
-        if ($dialog->user_id !== $user->id) {
-            return response()->json(['message' => 'Это не ваш диалог.'], 403);
-        }
+        $dialog = Dialog::where('user_id', $user->id)->findOrFail($id);
 
         $dialog->hide();
 

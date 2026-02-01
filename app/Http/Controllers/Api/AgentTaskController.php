@@ -127,11 +127,7 @@ class AgentTaskController extends Controller
     {
         $user = $request->user();
 
-        $task = AgentTask::findOrFail($id);
-
-        if ($task->user_id !== $user->id) {
-            return response()->json(['message' => 'Доступ запрещён.'], 403);
-        }
+        $task = AgentTask::where('user_id', $user->id)->findOrFail($id);
 
         // Create a new run
         $run = $this->taskService->createRun($task);
@@ -210,11 +206,7 @@ class AgentTaskController extends Controller
     {
         $user = $request->user();
 
-        $task = AgentTask::findOrFail($id);
-
-        if ($task->user_id !== $user->id) {
-            return response()->json(['message' => 'Доступ запрещён.'], 403);
-        }
+        $task = AgentTask::where('user_id', $user->id)->findOrFail($id);
 
         $task->delete();
 
