@@ -33,8 +33,9 @@ class SyncMarketplaceExpenses extends Command
         $periodType = $this->option('period');
         $force = $this->option('force');
 
-        if (!isset($this->periodDays[$periodType])) {
+        if (! isset($this->periodDays[$periodType])) {
             $this->error("Invalid period type: {$periodType}. Use: 7days, 30days, 90days");
+
             return self::FAILURE;
         }
 
@@ -58,6 +59,7 @@ class SyncMarketplaceExpenses extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('No active marketplace accounts found');
+
             return self::SUCCESS;
         }
 
@@ -74,12 +76,12 @@ class SyncMarketplaceExpenses extends Command
                     $synced++;
                     $this->info("  ✓ Synced: total={$result['total']}, currency={$result['currency']}");
                 } else {
-                    $this->line("  - Skipped (cache is fresh)");
+                    $this->line('  - Skipped (cache is fresh)');
                 }
             } catch (\Exception $e) {
                 $errors++;
                 $this->error("  ✗ Error: {$e->getMessage()}");
-                Log::error("Marketplace expense sync failed", [
+                Log::error('Marketplace expense sync failed', [
                     'account_id' => $account->id,
                     'marketplace' => $account->marketplace,
                     'error' => $e->getMessage(),
@@ -113,7 +115,7 @@ class SyncMarketplaceExpenses extends Command
         ]);
 
         // Skip if cache is fresh (unless forced)
-        if (!$force && !$cache->isStale(4)) {
+        if (! $force && ! $cache->isStale(4)) {
             return null;
         }
 
@@ -169,8 +171,13 @@ class SyncMarketplaceExpenses extends Command
 
     protected function syncOzon(MarketplaceAccount $account, Carbon $dateFrom, Carbon $dateTo): array
     {
-        // TODO: Implement Ozon expense sync
-        // For now return empty data
+        // Синхронизация расходов Ozon ещё не реализована — API не подключён
+        Log::info('SyncMarketplaceExpenses: Ozon expense sync not implemented', [
+            'account_id' => $account->id,
+            'date_from' => $dateFrom->toDateString(),
+            'date_to' => $dateTo->toDateString(),
+        ]);
+
         return [
             'commission' => 0,
             'logistics' => 0,
@@ -185,6 +192,8 @@ class SyncMarketplaceExpenses extends Command
             'returns_count' => 0,
             'currency' => 'RUB',
             'total_uzs' => 0,
+            '_not_implemented' => true,
+            '_message' => 'Синхронизация расходов Ozon ещё не реализована',
         ];
     }
 
@@ -232,7 +241,13 @@ class SyncMarketplaceExpenses extends Command
 
     protected function syncYandex(MarketplaceAccount $account, Carbon $dateFrom, Carbon $dateTo): array
     {
-        // TODO: Implement Yandex expense sync
+        // Синхронизация расходов Yandex Market ещё не реализована — API не подключён
+        Log::info('SyncMarketplaceExpenses: Yandex expense sync not implemented', [
+            'account_id' => $account->id,
+            'date_from' => $dateFrom->toDateString(),
+            'date_to' => $dateTo->toDateString(),
+        ]);
+
         return [
             'commission' => 0,
             'logistics' => 0,
@@ -247,6 +262,8 @@ class SyncMarketplaceExpenses extends Command
             'returns_count' => 0,
             'currency' => 'RUB',
             'total_uzs' => 0,
+            '_not_implemented' => true,
+            '_message' => 'Синхронизация расходов Yandex Market ещё не реализована',
         ];
     }
 }
