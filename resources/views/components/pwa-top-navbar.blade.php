@@ -116,7 +116,10 @@
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-gray-900">Уведомления</h3>
-                <button @click="markAllRead()" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <button @click="markAllRead()"
+                        class="text-xs font-medium"
+                        :class="notificationCount > 0 ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 cursor-not-allowed'"
+                        :disabled="notificationCount === 0">
                     Отметить все
                 </button>
             </div>
@@ -151,6 +154,7 @@
                           d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                 </svg>
                 <p class="text-sm text-gray-500 mt-2">Нет уведомлений</p>
+                <p class="text-xs text-gray-400 mt-1">Система уведомлений в разработке</p>
             </div>
         </div>
     </div>
@@ -181,10 +185,10 @@ function pwaTopNavbar() {
 
         async loadNotifications() {
             try {
-                // TODO: Load from API
-                // const response = await window.api.get('/notifications');
-                // this.notifications = response.data;
-                this.notificationCount = this.notifications.filter(n => !n.read).length;
+                // Система уведомлений в разработке
+                // TODO: Подключить API уведомлений: GET /api/notifications
+                this.notifications = [];
+                this.notificationCount = 0;
             } catch (error) {
                 console.error('Failed to load notifications:', error);
             }
