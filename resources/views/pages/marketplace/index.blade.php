@@ -11,75 +11,81 @@
         50% { opacity: 0.5; }
     }
 
-    /* Brand Colors */
+    /* Brand Colors - Neutral theme for WB, Uzum, Ozon; Yellow for Yandex Market */
     :root {
-        /* Wildberries */
-        --wb-primary: #CB11AB;
-        --wb-primary-dark: #9B0D85;
-        --wb-gradient: linear-gradient(135deg, #CB11AB 0%, #9B0D85 100%);
+        /* Wildberries - Neutral Gray */
+        --wb-primary: #4B5563;
+        --wb-primary-dark: #374151;
+        --wb-gradient: linear-gradient(135deg, #4B5563 0%, #374151 100%);
 
-        /* Uzum Market - Indigo/Purple */
-        --uzum-primary: #7B2D8E;
-        --uzum-primary-dark: #5A1F69;
-        --uzum-gradient: linear-gradient(135deg, #7B2D8E 0%, #5A1F69 100%);
+        /* Uzum Market - Neutral Gray */
+        --uzum-primary: #4B5563;
+        --uzum-primary-dark: #374151;
+        --uzum-gradient: linear-gradient(135deg, #4B5563 0%, #374151 100%);
 
-        /* Ozon */
-        --ozon-primary: #005BFF;
-        --ozon-primary-dark: #0047CC;
-        --ozon-gradient: linear-gradient(135deg, #005BFF 0%, #0047CC 100%);
+        /* Ozon - Neutral Gray */
+        --ozon-primary: #4B5563;
+        --ozon-primary-dark: #374151;
+        --ozon-gradient: linear-gradient(135deg, #4B5563 0%, #374151 100%);
 
-        /* Yandex Market */
+        /* Yandex Market - Keep Yellow (as requested) */
         --ym-primary: #FFCC00;
         --ym-primary-dark: #FF9500;
         --ym-gradient: linear-gradient(135deg, #FFCC00 0%, #FF9500 100%);
     }
 
-    /* Marketplace Section Headers */
+    /* Marketplace Section Headers - Neutral White for WB, Uzum, Ozon */
     .mp-section-wb {
-        background: linear-gradient(135deg, rgba(203, 17, 171, 0.08) 0%, rgba(155, 13, 133, 0.04) 100%);
-        border-left: 4px solid var(--wb-primary);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%);
+        border-left: 4px solid #E5E7EB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
     }
     .mp-section-uzum {
-        background: linear-gradient(135deg, rgba(123, 45, 142, 0.08) 0%, rgba(90, 31, 105, 0.04) 100%);
-        border-left: 4px solid var(--uzum-primary);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%);
+        border-left: 4px solid #E5E7EB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
     }
     .mp-section-ozon {
-        background: linear-gradient(135deg, rgba(0, 91, 255, 0.08) 0%, rgba(0, 71, 204, 0.04) 100%);
-        border-left: 4px solid var(--ozon-primary);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%);
+        border-left: 4px solid #E5E7EB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
     }
     .mp-section-ym {
         background: linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%);
         border-left: 4px solid var(--ym-primary);
     }
 
-    /* Brand Accent Cards */
+    /* Brand Accent Cards - Neutral for WB, Uzum, Ozon */
     .mp-card-wb {
-        border: 2px solid rgba(203, 17, 171, 0.2);
+        border: 2px solid #E5E7EB;
         transition: all 0.3s ease;
     }
     .mp-card-wb:hover {
-        border-color: var(--wb-primary);
-        box-shadow: 0 8px 30px rgba(203, 17, 171, 0.15);
+        border-color: #9CA3AF;
+        box-shadow: 0 8px 30px rgba(75, 85, 99, 0.15);
         transform: translateY(-2px);
     }
 
     .mp-card-uzum {
-        border: 2px solid rgba(123, 45, 142, 0.2);
+        border: 2px solid #E5E7EB;
         transition: all 0.3s ease;
     }
     .mp-card-uzum:hover {
-        border-color: var(--uzum-primary);
-        box-shadow: 0 8px 30px rgba(123, 45, 142, 0.15);
+        border-color: #9CA3AF;
+        box-shadow: 0 8px 30px rgba(75, 85, 99, 0.15);
         transform: translateY(-2px);
     }
 
     .mp-card-ozon {
-        border: 2px solid rgba(0, 91, 255, 0.2);
+        border: 2px solid #E5E7EB;
         transition: all 0.3s ease;
     }
     .mp-card-ozon:hover {
-        border-color: var(--ozon-primary);
-        box-shadow: 0 8px 30px rgba(0, 91, 255, 0.15);
+        border-color: #9CA3AF;
+        box-shadow: 0 8px 30px rgba(75, 85, 99, 0.15);
         transform: translateY(-2px);
     }
 
@@ -93,7 +99,7 @@
         transform: translateY(-2px);
     }
 
-    /* Brand Buttons */
+    /* Brand Buttons - Neutral for WB, Uzum, Ozon */
     .mp-btn-wb { background: var(--wb-gradient); color: white; }
     .mp-btn-wb:hover { filter: brightness(1.1); }
     .mp-btn-uzum { background: var(--uzum-gradient); color: white; }
@@ -103,13 +109,13 @@
     .mp-btn-ym { background: var(--ym-gradient); color: #1a1a1a; }
     .mp-btn-ym:hover { filter: brightness(1.05); }
 
-    /* Brand Secondary Buttons */
-    .mp-btn-secondary-wb { background: rgba(203, 17, 171, 0.1); color: var(--wb-primary); }
-    .mp-btn-secondary-wb:hover { background: rgba(203, 17, 171, 0.2); }
-    .mp-btn-secondary-uzum { background: rgba(123, 45, 142, 0.1); color: var(--uzum-primary); }
-    .mp-btn-secondary-uzum:hover { background: rgba(123, 45, 142, 0.2); }
-    .mp-btn-secondary-ozon { background: rgba(0, 91, 255, 0.1); color: var(--ozon-primary); }
-    .mp-btn-secondary-ozon:hover { background: rgba(0, 91, 255, 0.2); }
+    /* Brand Secondary Buttons - Neutral for WB, Uzum, Ozon */
+    .mp-btn-secondary-wb { background: rgba(75, 85, 99, 0.1); color: #4B5563; }
+    .mp-btn-secondary-wb:hover { background: rgba(75, 85, 99, 0.2); }
+    .mp-btn-secondary-uzum { background: rgba(75, 85, 99, 0.1); color: #4B5563; }
+    .mp-btn-secondary-uzum:hover { background: rgba(75, 85, 99, 0.2); }
+    .mp-btn-secondary-ozon { background: rgba(75, 85, 99, 0.1); color: #4B5563; }
+    .mp-btn-secondary-ozon:hover { background: rgba(75, 85, 99, 0.2); }
     .mp-btn-secondary-ym { background: rgba(255, 204, 0, 0.2); color: #8B6914; }
     .mp-btn-secondary-ym:hover { background: rgba(255, 204, 0, 0.35); }
 
@@ -136,19 +142,19 @@
     .notification-enter { opacity: 0; transform: translateX(100%); }
     .notification-leave { opacity: 0; transform: translateX(100%); }
 
-    /* Logo Glow Effects */
-    .mp-logo-wb { box-shadow: 0 4px 15px rgba(203, 17, 171, 0.3); }
-    .mp-logo-uzum { box-shadow: 0 4px 15px rgba(123, 45, 142, 0.3); }
-    .mp-logo-ozon { box-shadow: 0 4px 15px rgba(0, 91, 255, 0.3); }
+    /* Logo Glow Effects - Neutral for WB, Uzum, Ozon */
+    .mp-logo-wb { box-shadow: 0 4px 15px rgba(75, 85, 99, 0.3); }
+    .mp-logo-uzum { box-shadow: 0 4px 15px rgba(75, 85, 99, 0.3); }
+    .mp-logo-ozon { box-shadow: 0 4px 15px rgba(75, 85, 99, 0.3); }
     .mp-logo-ym { box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4); }
 
-    /* Add Account Button Brand Styles */
-    .mp-add-wb { border-color: rgba(203, 17, 171, 0.3); }
-    .mp-add-wb:hover { border-color: var(--wb-primary); background: rgba(203, 17, 171, 0.05); }
-    .mp-add-uzum { border-color: rgba(123, 45, 142, 0.3); }
-    .mp-add-uzum:hover { border-color: var(--uzum-primary); background: rgba(123, 45, 142, 0.05); }
-    .mp-add-ozon { border-color: rgba(0, 91, 255, 0.3); }
-    .mp-add-ozon:hover { border-color: var(--ozon-primary); background: rgba(0, 91, 255, 0.05); }
+    /* Add Account Button Brand Styles - Neutral for WB, Uzum, Ozon */
+    .mp-add-wb { border-color: #E5E7EB; }
+    .mp-add-wb:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
+    .mp-add-uzum { border-color: #E5E7EB; }
+    .mp-add-uzum:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
+    .mp-add-ozon { border-color: #E5E7EB; }
+    .mp-add-ozon:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
     .mp-add-ym { border-color: rgba(255, 204, 0, 0.4); }
     .mp-add-ym:hover { border-color: var(--ym-primary); background: rgba(255, 204, 0, 0.1); }
 </style>
@@ -315,9 +321,9 @@
                                         <!-- Brand Logo -->
                                         <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                                              :class="{
-                                                 'bg-gradient-to-br from-[#CB11AB] to-[#9B0D85] mp-logo-wb': marketplace.code === 'wb',
-                                                 'bg-gradient-to-br from-[#7B2D8E] to-[#5A1F69] mp-logo-uzum': marketplace.code === 'uzum',
-                                                 'bg-gradient-to-br from-[#005BFF] to-[#0047CC] mp-logo-ozon': marketplace.code === 'ozon',
+                                                 'bg-gradient-to-br from-[#4B5563] to-[#374151] mp-logo-wb': marketplace.code === 'wb',
+                                                 'bg-gradient-to-br from-[#4B5563] to-[#374151] mp-logo-uzum': marketplace.code === 'uzum',
+                                                 'bg-gradient-to-br from-[#4B5563] to-[#374151] mp-logo-ozon': marketplace.code === 'ozon',
                                                  'bg-gradient-to-br from-[#FFCC00] to-[#FF9500] mp-logo-ym': marketplace.code === 'ym'
                                              }">
                                             <span x-text="marketplace.code.toUpperCase().substring(0, 2)"
@@ -326,9 +332,9 @@
                                         <div>
                                             <h3 class="text-lg font-bold"
                                                 :class="{
-                                                    'text-[#CB11AB]': marketplace.code === 'wb',
-                                                    'text-[#7B2D8E]': marketplace.code === 'uzum',
-                                                    'text-[#005BFF]': marketplace.code === 'ozon',
+                                                    'text-[#4B5563]': marketplace.code === 'wb',
+                                                    'text-[#4B5563]': marketplace.code === 'uzum',
+                                                    'text-[#4B5563]': marketplace.code === 'ozon',
                                                     'text-[#8B6914]': marketplace.code === 'ym'
                                                 }"
                                                 x-text="marketplace.label"></h3>
@@ -341,9 +347,9 @@
                                         <div class="text-center">
                                             <p class="text-2xl font-bold"
                                                :class="{
-                                                   'text-[#CB11AB]': marketplace.code === 'wb',
-                                                   'text-[#7B2D8E]': marketplace.code === 'uzum',
-                                                   'text-[#005BFF]': marketplace.code === 'ozon',
+                                                   'text-[#4B5563]': marketplace.code === 'wb',
+                                                   'text-[#4B5563]': marketplace.code === 'uzum',
+                                                   'text-[#4B5563]': marketplace.code === 'ozon',
                                                    'text-[#8B6914]': marketplace.code === 'ym'
                                                }"
                                                x-text="getMarketplaceAccounts(marketplace.code).filter(a => a.is_active).length"></p>
@@ -379,9 +385,9 @@
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-105 transition-transform"
                                                          :class="{
-                                                             'from-[#CB11AB] to-[#9B0D85]': normalizeMarketplace(account.marketplace) === 'wb',
-                                                             'from-[#005BFF] to-[#0047CC]': normalizeMarketplace(account.marketplace) === 'ozon',
-                                                             'from-[#7B2D8E] to-[#5A1F69]': normalizeMarketplace(account.marketplace) === 'uzum',
+                                                             'from-[#4B5563] to-[#374151]': normalizeMarketplace(account.marketplace) === 'wb',
+                                                             'from-[#4B5563] to-[#374151]': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                             'from-[#4B5563] to-[#374151]': normalizeMarketplace(account.marketplace) === 'uzum',
                                                              'from-[#FFCC00] to-[#FF9500]': normalizeMarketplace(account.marketplace) === 'ym'
                                                          }">
                                                         <span x-text="getMarketplaceShort(account.marketplace)"
@@ -776,7 +782,6 @@ function marketplacePage() {
             // Get token from Alpine persist or localStorage
             const token = this.getToken();
             if (!token) {
-                console.log('No token found, redirecting to login');
                 window.location.href = '/login';
                 return;
             }
@@ -988,7 +993,6 @@ function marketplacePage() {
             try {
                 // Ensure companies are loaded
                 if (!this.$store.auth.currentCompany) {
-                    console.log('No current company, loading companies...');
                     await this.$store.auth.loadCompanies();
                     // Wait for Alpine persist to update
                     await new Promise(resolve => setTimeout(resolve, 100));
@@ -996,7 +1000,6 @@ function marketplacePage() {
 
                 // If still no company, try to get from user's company_id
                 if (!this.$store.auth.currentCompany && this.$store.auth.user?.company_id) {
-                    console.log('Trying to load company from user.company_id:', this.$store.auth.user.company_id);
                     // Force reload companies
                     await this.$store.auth.loadCompanies();
                     await new Promise(resolve => setTimeout(resolve, 100));
@@ -1014,8 +1017,6 @@ function marketplacePage() {
                     return;
                 }
 
-                console.log('Loading accounts for company:', this.$store.auth.currentCompany.id);
-
                 // Add cache-busting parameter to force fresh data after create/delete
                 const cacheBuster = skipCache ? `&_t=${Date.now()}` : '';
                 const res = await fetch(`/api/marketplace/accounts?company_id=${this.$store.auth.currentCompany.id}${cacheBuster}`, {
@@ -1025,7 +1026,6 @@ function marketplacePage() {
 
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Accounts loaded:', data.accounts);
                     this.accounts = data.accounts || [];
                     this.availableMarketplaces = data.available_marketplaces || this.defaultMarketplaces;
                 } else if (res.status === 401) {

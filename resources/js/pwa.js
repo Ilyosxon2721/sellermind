@@ -13,20 +13,13 @@ const updateSW = registerSW({
 
         if (shouldUpdate) {
             updateSW(true);
-        } else {
-            // Show a toast notification
-            console.log('⏭️ Update postponed. Reload page manually to update.');
         }
     },
     onOfflineReady() {
-        console.log('✅ PWA: App ready to work offline');
-
         // Optional: Show toast notification
         showToast('success', 'Приложение готово к работе офлайн');
     },
     onRegistered(registration) {
-        console.log('✅ PWA: Service Worker registered');
-
         // Check for updates periodically (every hour)
         if (registration) {
             setInterval(() => {
@@ -84,11 +77,9 @@ function detectPWAMode() {
     if (isStandalone) {
         // Set cookie to indicate PWA mode for server-side detection
         document.cookie = 'pwa_installed=true; path=/; max-age=31536000; SameSite=Lax';
-        console.log('📱 PWA Mode: Standalone (Installed App)');
     } else {
         // Set cookie to indicate browser mode
         document.cookie = 'pwa_installed=false; path=/; max-age=31536000; SameSite=Lax';
-        console.log('🌐 PWA Mode: Browser');
     }
 
     // Expose as global
@@ -104,7 +95,6 @@ const isPWA = detectPWAMode();
 window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
     if (e.matches) {
         document.cookie = 'pwa_installed=true; path=/; max-age=31536000; SameSite=Lax';
-        console.log('📱 PWA installed - switching to app mode');
         window.isPWAInstalled = true;
 
         // Reload to apply new routing
@@ -113,12 +103,7 @@ window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) =
         }
     } else {
         document.cookie = 'pwa_installed=false; path=/; max-age=31536000; SameSite=Lax';
-        console.log('🌐 PWA uninstalled - switching to browser mode');
         window.isPWAInstalled = false;
     }
 });
 
-// Log PWA info in console
-console.log('📱 PWA Mode: Enabled');
-console.log('💡 To manually update: window.updatePWA()');
-console.log('💡 Check PWA status: window.isPWAInstalled');

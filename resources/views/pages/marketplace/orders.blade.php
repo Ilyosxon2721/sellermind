@@ -422,7 +422,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                     // Устанавливаем новый таймер с задержкой 500мс
                     this._wsDebounceTimer = setTimeout(() => {
                         this._lastWsEventTime = Date.now();
-                        console.log('📦 Orders updated (debounced):', data);
 
                         const newOrdersCount = (data && typeof data.new_orders_count !== 'undefined')
                             ? data.new_orders_count
@@ -485,8 +484,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
 
                  // Обрабатываем событие изменения данных (live monitoring)
                 if (event === 'data.changed') {
-                    console.log('🔄 Data changed:', data);
-
                     this.lastDataChange = data;
                     this.liveMonitoringActive = true;
 
@@ -519,8 +516,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
 
                 // Обрабатываем событие обновления заказа Узум
                 if (event === 'uzum.order.updated') {
-                    console.log('📦 Uzum order updated:', data);
-
                     // Проверяем, что это наш аккаунт
                     if (data.marketplace_account_id === {{ $accountId }}) {
                         // Обновляем список заказов и статистику
@@ -551,7 +546,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         async loadOrders(silent = false) {
             // Prevent concurrent requests
             if (this._loadOrdersInProgress) {
-                console.log('loadOrders already in progress, skipping');
                 return;
             }
             this._loadOrdersInProgress = true;
@@ -598,7 +592,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         async loadStats() {
             // Prevent concurrent requests
             if (this._loadStatsInProgress) {
-                console.log('loadStats already in progress, skipping');
                 return;
             }
             this._loadStatsInProgress = true;
@@ -909,10 +902,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         },
         async loadOpenSupplies() {
             try {
-                console.log('Loading all supplies with params:', {
-                    company_id: this.$store.auth.currentCompany.id,
-                    marketplace_account_id: {{ $accountId }}
-                });
                 // Загружаем ВСЕ поставки, а не только открытые
                 const response = await axios.get('/api/marketplace/supplies', {
                     headers: this.getAuthHeaders(),
@@ -921,12 +910,9 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                         marketplace_account_id: {{ $accountId }}
                     }
                 });
-                console.log('All supplies response:', response.data);
                 this.supplies = response.data.supplies || [];
                 // Также обновляем openSupplies для совместимости со старым кодом
                 this.openSupplies = this.supplies.filter(s => s.status === 'draft' || s.status === 'in_assembly' || s.status === 'ready');
-                console.log('All supplies loaded:', this.supplies.length);
-                console.log('Open supplies:', this.openSupplies.length);
             } catch (error) {
                 console.error('Error loading supplies:', error);
                 console.error('Error response:', error.response?.data);
@@ -943,13 +929,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 return;
             }
 
-            console.log('Creating supply with data:', {
-                marketplace_account_id: {{ $accountId }},
-                company_id: this.$store.auth.currentCompany.id,
-                name: this.newSupply.name,
-                description: this.newSupply.description
-            });
-
             this.suppliesLoading = true;
             try {
                 const response = await axios.post('/api/marketplace/supplies', {
@@ -960,8 +939,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 }, {
                     headers: this.getAuthHeaders()
                 });
-
-                console.log('Supply created successfully:', response.data);
 
                 this.supplies.unshift(response.data.supply);
                 this.openSupplies.unshift(response.data.supply);
@@ -982,11 +959,9 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             }
         },
         async openAddToSupplyModal(order) {
-            console.log('Opening add to supply modal for order:', order);
             this.selectedOrderForSupply = order;
             this.selectedSupplyId = null;
             await this.loadOpenSupplies();
-            console.log('Open supplies loaded:', this.openSupplies);
             this.showAddToSupplyModal = true;
         },
         async addOrderToSupply() {
@@ -995,12 +970,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 return;
             }
 
-            console.log('Adding order to supply:', {
-                supplyId: this.selectedSupplyId,
-                orderId: this.selectedOrderForSupply?.id,
-                order: this.selectedOrderForSupply
-            });
-
             this.suppliesLoading = true;
             try {
                 const response = await axios.post(`/api/marketplace/supplies/${this.selectedSupplyId}/orders`, {
@@ -1008,8 +977,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 }, {
                     headers: this.getAuthHeaders()
                 });
-
-                console.log('Order added successfully:', response.data);
 
                 // Обновляем заказ в списке
                 const orderIndex = this.orders.findIndex(o => o.id === this.selectedOrderForSupply.id);
@@ -1461,11 +1428,9 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         },
         async triggerSync() {
              if (this.syncInProgress) {
-                 console.log('Sync already in progress');
                  return;
              }
 
-             console.log('🚀 Starting sync for account {{ $accountId }}');
              this.syncInProgress = true;
              this.syncProgress = 0;
              this.syncMessage = 'Запуск синхронизации...';
@@ -1475,8 +1440,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  const url = '/api/marketplace/accounts/{{ $accountId }}/sync/orders';
                  const payload = { async: true };
                  const token = this.getToken();
-                 console.log('📤 Sending sync request to:', url);
-                 console.log('🔑 Token present:', !!token);
 
                  const res = await fetch(url, {
                      method: 'POST',
@@ -1487,15 +1450,12 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                      body: JSON.stringify(payload)
                  });
 
-                 console.log('📥 Response status:', res.status);
                  const data = await res.json();
-                 console.log('📥 Response data:', data);
 
                  if (!res.ok) {
                      throw new Error(data.message || 'Ошибка синхронизации');
                  }
 
-                 console.log('✅ Sync response:', data);
                  this.showNotification('Синхронизация запущена в фоновом режиме');
                  // Прогресс и завершение будут обработаны через WebSocket события
              } catch (error) {
@@ -1527,7 +1487,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  if (res.ok) {
                      this.liveMonitoringEnabled = true;
                      this.showNotification('Live-мониторинг запущен');
-                     console.log('✅ Live monitoring started');
                  } else {
                      throw new Error(data.message || 'Ошибка запуска мониторинга');
                  }
@@ -1550,7 +1509,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                      this.liveMonitoringEnabled = false;
                      this.liveMonitoringActive = false;
                      this.showNotification('Live-мониторинг остановлен');
-                     console.log('⏹️ Live monitoring stopped');
                  } else {
                      throw new Error(data.message || 'Ошибка остановки мониторинга');
                  }

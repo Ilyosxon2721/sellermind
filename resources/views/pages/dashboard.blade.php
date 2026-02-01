@@ -854,19 +854,16 @@ function dashboardPage() {
 
                 this.$watch('$store.auth.currentCompany', (newCompany) => {
                     if (newCompany) {
-                        console.log('Company changed, reloading dashboard...');
                         this.loadData();
                     }
                 });
             } else {
-                console.log('Not authenticated, redirecting to login...');
                 window.location.href = '/login';
             }
         },
 
         async loadData() {
             if (!this.$store.auth.currentCompany) {
-                console.log('No company selected, skipping dashboard load');
                 return;
             }
 

@@ -410,8 +410,6 @@
                     });
                     if (resp.ok) {
                         const json = await resp.json();
-                        console.log('Search response:', json);
-
                         // Get already selected SKU IDs in this document (exclude current line)
                         const selectedSkuIds = this.form.lines
                             .filter((l, i) => i !== idx && l.sku_id)
@@ -430,7 +428,6 @@
                                 available: item.available
                             }));
                         line.noResults = line.suggestions.length === 0;
-                        console.log('Suggestions:', line.suggestions);
                     } else {
                         console.warn('Search failed:', resp.status, await resp.text());
                         line.noResults = true;

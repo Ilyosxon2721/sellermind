@@ -782,23 +782,16 @@ function wbProducts(accountId) {
                 return;
             }
 
-            console.log(`Unlinking product ID: ${product.id}, Variant: ${product.linked_variant.sku}`);
-
             try {
                 const url = `/api/marketplace/variant-links/accounts/${this.accountId}/products/${product.id}/unlink`;
-                console.log('Unlink URL:', url);
-                
                 const res = await fetch(url, {
                     method: 'DELETE',
                     headers: this.getHeaders(),
                     credentials: 'include',
                 });
 
-                console.log('Unlink response status:', res.status);
-
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Unlink success:', data);
                     await this.loadProducts(this.page);
                     this.showNotification('Вариант отвязан', 'success');
                 } else {
@@ -885,24 +878,17 @@ function wbProducts(accountId) {
                 return;
             }
 
-            console.log(`Syncing stock for product ID: ${product.id}, Variant: ${product.linked_variant.sku}`);
-            
             this.syncingStock = product.id;
             try {
                 const url = `/api/marketplace/variant-links/accounts/${this.accountId}/products/${product.id}/sync-stock`;
-                console.log('Stock sync URL:', url);
-                
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: this.getHeaders(),
                     credentials: 'include',
                 });
 
-                console.log('Stock sync response status:', res.status);
-
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Stock sync success:', data);
                     await this.loadProducts(this.page);
                     this.showNotification('Остатки синхронизированы', 'success');
                 } else {
@@ -929,7 +915,6 @@ function wbProducts(accountId) {
 
         showNotification(message, type = 'info') {
             // TODO: Implement notification system
-            console.log(`[${type}] ${message}`);
             alert(message);
         },
     };

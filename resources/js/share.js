@@ -12,11 +12,6 @@ class ShareManager {
     }
 
     init() {
-        if (this.supported) {
-            console.log('✅ Web Share API: Supported');
-        } else {
-            console.log('⏭️  Web Share API: Not supported, using fallback');
-        }
     }
 
     /**
@@ -84,7 +79,6 @@ class ShareManager {
             // User cancelled or error occurred
             if (error.name === 'AbortError') {
                 // User cancelled - this is normal, no error
-                console.log('Share cancelled by user');
                 return { success: false, cancelled: true };
             }
 
@@ -344,5 +338,3 @@ window.share = share;
 
 // Export
 export default share;
-
-console.log('✅ Web Share API: Loaded');

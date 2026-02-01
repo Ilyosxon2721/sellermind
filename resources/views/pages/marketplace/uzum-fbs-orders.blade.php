@@ -922,8 +922,6 @@ function uzumOrdersPage() {
                 dbs_only_count: dbsOrders.length,
                 edbs_count: edbsOrders.length,
             };
-
-            console.log('Order scheme stats:', this.schemeStats);
         },
 
         async loadFboOrders() {
@@ -1005,13 +1003,6 @@ function uzumOrdersPage() {
                         edbs_count: edbsOrders.length,
                     };
 
-                    console.log('Finance Orders loaded:', {
-                        total: this.fboOrders.length,
-                        fbs: fbsOrders.length,
-                        dbs: dbsOrders.length,
-                        edbs: edbsOrders.length,
-                        fbo: fboOnly.length,
-                    });
                 }
             } catch (e) {
                 console.error('Failed to load FBO orders', e);

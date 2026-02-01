@@ -36,8 +36,7 @@ class PollingManager {
 
         const poll = async () => {
             if (!this.isActive) {
-                console.log(`Polling приостановлен (вкладка скрыта). Ключ: ${key}`);
-                return;
+                    return;
             }
 
             try {
@@ -93,7 +92,6 @@ class PollingManager {
         const intervalId = setInterval(poll, interval);
         this.intervals.set(key, intervalId);
 
-        console.log(`✅ Polling запущен: ${key} (интервал: ${interval}ms)`);
     }
 
     /**
@@ -107,7 +105,6 @@ class PollingManager {
             this.intervals.delete(key);
             this.callbacks.delete(key);
             this.lastCheckTimes.delete(key);
-            console.log(`⏹️ Polling остановлен: ${key}`);
         } else {
             console.warn(`Polling "${key}" не найден`);
         }
@@ -117,15 +114,12 @@ class PollingManager {
      * Остановить все активные polling
      */
     stopAll() {
-        console.log('⏹️ Останавливаем все polling...');
         this.intervals.forEach((intervalId, key) => {
             clearInterval(intervalId);
-            console.log(`  - Остановлен: ${key}`);
         });
         this.intervals.clear();
         this.callbacks.clear();
         this.lastCheckTimes.clear();
-        console.log('✅ Все polling остановлены');
     }
 
     /**
@@ -133,7 +127,6 @@ class PollingManager {
      */
     pause() {
         this.isActive = false;
-        console.log('⏸️ Polling приостановлен (вкладка скрыта)');
     }
 
     /**
@@ -141,15 +134,13 @@ class PollingManager {
      */
     resume() {
         this.isActive = true;
-        console.log('▶️ Polling возобновлён (вкладка активна)');
-        
+
         // Сразу делаем poll для всех активных endpoints
         this.intervals.forEach((_, key) => {
             const callback = this.callbacks.get(key);
             if (callback) {
                 // Trigger immediate poll после resume
                 setTimeout(() => {
-                    console.log(`  - Немедленный poll: ${key}`);
                 }, 100);
             }
         });
@@ -231,8 +222,6 @@ if (import.meta.env.DEV) {
         console.table(stats);
         return stats;
     };
-    
-    console.log('📊 Polling Manager ready. Используйте pollingStats() для статистики.');
 }
 
 export default PollingManager;

@@ -54,12 +54,9 @@ class PWADetector {
             // Set cookie for server-side detection
             document.cookie = 'pwa_installed=true; path=/; max-age=31536000'; // 1 year
 
-            console.log('🚀 PWA Mode: Active');
-            console.log('📱 Platform:', this.isIOS ? 'iOS' : this.isAndroid ? 'Android' : 'Other');
         } else {
             document.documentElement.classList.add('browser-mode');
             document.cookie = 'pwa_installed=false; path=/; max-age=31536000';
-            console.log('🌐 Browser Mode: Active');
         }
 
         // Listen for display mode changes (when user installs PWA)
@@ -97,7 +94,6 @@ class PWADetector {
             standaloneQuery.addEventListener('change', (e) => {
                 if (e.matches && !this.isPWA) {
                     // User just installed PWA - reload to apply PWA mode
-                    console.log('🎉 PWA Installed! Reloading...');
                     window.location.reload();
                 }
             });
@@ -123,5 +119,3 @@ const pwaDetector = new PWADetector();
 // Export
 export default pwaDetector;
 window.pwaDetector = pwaDetector;
-
-console.log('✅ PWA Detector: Ready');

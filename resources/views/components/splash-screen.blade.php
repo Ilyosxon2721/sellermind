@@ -93,8 +93,6 @@ function splashScreen() {
 
                 // Dispatch event
                 window.dispatchEvent(new CustomEvent('splash-hidden'));
-
-                console.log('✅ Splash screen hidden');
             }, remaining);
         }
     };
@@ -127,7 +125,6 @@ document.head.appendChild(style);
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.style.display = 'none';
-                console.log('✅ Splash hidden via JS fallback');
             }, 500);
         }
     };

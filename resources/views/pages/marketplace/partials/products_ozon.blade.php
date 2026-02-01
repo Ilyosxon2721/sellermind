@@ -690,16 +690,12 @@ function ozonProducts(accountId) {
             this.linkModal.loadingVariants = true;
             try {
                 const query = this.linkModal.search || '';
-                console.log('Searching variants with query:', query);
                 const res = await fetch(`/api/marketplace/variant-links/variants/search?q=${encodeURIComponent(query)}`, {
                     headers: this.getHeaders(),
                 });
-                console.log('Search response status:', res.status);
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Search response data:', data);
                     this.linkModal.variants = data.variants || [];
-                    console.log('Loaded variants:', this.linkModal.variants.length);
                 } else {
                     const errorText = await res.text();
                     console.error('Search failed:', res.status, errorText);

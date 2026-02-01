@@ -199,8 +199,6 @@
 
             // Wait for user response
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`PWA install ${outcome}`);
-
             // Clear the prompt
             deferredPrompt = null;
             pwaInstallButton?.remove();
@@ -209,7 +207,6 @@
 
         // Track if app was installed
         window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA: App installed successfully');
             deferredPrompt = null;
             pwaInstallButton?.remove();
         });
