@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\Counterparty;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Validator;
 class SalesManagementController extends Controller
 {
     use HasCompanyScope;
+    use HasPaginatedResponse;
 
     public function __construct(
         protected SaleService $saleService,
@@ -72,17 +74,12 @@ class SalesManagementController extends Controller
         $query->orderBy($sortBy, $sortOrder);
 
         // Пагинация
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = $this->getPerPage($request);
         $sales = $query->paginate($perPage);
 
         return response()->json([
             'data' => $sales->items(),
-            'meta' => [
-                'current_page' => $sales->currentPage(),
-                'per_page' => $sales->perPage(),
-                'total' => $sales->total(),
-                'last_page' => $sales->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($sales),
         ]);
     }
 

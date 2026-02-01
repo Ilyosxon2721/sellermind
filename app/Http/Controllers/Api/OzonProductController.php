@@ -1,9 +1,11 @@
 <?php
+
 // file: app/Http/Controllers/Api/OzonProductController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonProduct;
 use App\Models\Product;
@@ -13,13 +15,15 @@ use Illuminate\Http\Request;
 
 class OzonProductController extends Controller
 {
+    use HasPaginatedResponse;
+
     /**
      * List Ozon products with pagination and filters.
      */
     public function index(Request $request, MarketplaceAccount $account): JsonResponse
     {
         // Auth middleware ensures user is logged in
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -37,7 +41,7 @@ class OzonProductController extends Controller
             'sort_dir' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $perPage = $request->integer('per_page', 50);
+        $perPage = $this->getPerPage($request, 50);
         $sortBy = $request->input('sort_by', 'last_synced_at');
         $sortDir = $request->input('sort_dir', 'desc');
 
@@ -107,7 +111,7 @@ class OzonProductController extends Controller
 
             // Get all links for this product
             $productLinks = $links->get($product->id, collect());
-            
+
             // Add linked variant info if exists (backward compatibility - first link)
             $firstLink = $productLinks->first();
             if ($firstLink && $firstLink->variant) {
@@ -140,12 +144,7 @@ class OzonProductController extends Controller
 
         return response()->json([
             'products' => $items,
-            'pagination' => [
-                'total' => $products->total(),
-                'per_page' => $products->perPage(),
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($products),
         ]);
     }
 
@@ -154,7 +153,7 @@ class OzonProductController extends Controller
      */
     public function suggestions(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -168,7 +167,7 @@ class OzonProductController extends Controller
         ]);
 
         $product = Product::find($data['local_product_id']);
-        if (!$product || $product->company_id !== $account->company_id) {
+        if (! $product || $product->company_id !== $account->company_id) {
             return response()->json(['message' => 'Товар не принадлежит компании'], 403);
         }
 
@@ -178,14 +177,14 @@ class OzonProductController extends Controller
 
         // Simple relevance heuristic: match category, SKU, name
         $query->orderByRaw(
-            "(name LIKE ?) desc,
+            '(name LIKE ?) desc,
              (external_offer_id LIKE ?) desc,
              (barcode LIKE ?) desc,
-             last_synced_at desc",
+             last_synced_at desc',
             [
-                '%' . ($product->name_internal ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->barcode ?? '') . '%',
+                '%'.($product->name_internal ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->barcode ?? '').'%',
             ]
         );
 
@@ -201,7 +200,7 @@ class OzonProductController extends Controller
      */
     public function search(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -216,7 +215,7 @@ class OzonProductController extends Controller
         ]);
 
         $product = Product::find($data['local_product_id']);
-        if (!$product || $product->company_id !== $account->company_id) {
+        if (! $product || $product->company_id !== $account->company_id) {
             return response()->json(['message' => 'Товар не принадлежит компании'], 403);
         }
 
@@ -232,14 +231,14 @@ class OzonProductController extends Controller
             });
 
         $query->orderByRaw(
-            "(name LIKE ?) desc,
+            '(name LIKE ?) desc,
              (external_offer_id LIKE ?) desc,
              (barcode LIKE ?) desc,
-             last_synced_at desc",
+             last_synced_at desc',
             [
-                '%' . ($product->name_internal ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->barcode ?? '') . '%',
+                '%'.($product->name_internal ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->barcode ?? '').'%',
             ]
         );
 
@@ -255,7 +254,7 @@ class OzonProductController extends Controller
      */
     public function show(Request $request, MarketplaceAccount $account, OzonProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -337,7 +336,7 @@ class OzonProductController extends Controller
      */
     public function store(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -368,7 +367,7 @@ class OzonProductController extends Controller
      */
     public function update(Request $request, MarketplaceAccount $account, OzonProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -399,7 +398,7 @@ class OzonProductController extends Controller
      */
     public function destroy(Request $request, MarketplaceAccount $account, OzonProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -419,7 +418,7 @@ class OzonProductController extends Controller
      */
     public function syncCatalog(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -474,7 +473,7 @@ class OzonProductController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
             ], 500);
         }
     }

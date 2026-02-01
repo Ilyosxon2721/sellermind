@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Resources\AgentResource;
 use App\Http\Resources\AgentTaskResource;
 use App\Http\Resources\AgentTaskRunResource;
-use App\Jobs\RunAgentTaskRunJob;
 use App\Jobs\ContinueAgentRunJob;
+use App\Jobs\RunAgentTaskRunJob;
 use App\Models\Agent;
 use App\Models\AgentTask;
 use App\Models\AgentTaskRun;
@@ -17,6 +18,8 @@ use Illuminate\Http\Request;
 
 class AgentTaskController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function __construct(
         private AgentTaskService $taskService
     ) {}
@@ -40,20 +43,17 @@ class AgentTaskController extends Controller
     {
         $user = $request->user();
 
+        $perPage = $this->getPerPage($request, 15);
+
         $tasks = AgentTask::forUser($user->id)
             ->with(['agent', 'latestRun'])
             ->withCount('runs')
             ->latest()
-            ->paginate($request->per_page ?? 15);
+            ->paginate($perPage);
 
         return response()->json([
             'tasks' => AgentTaskResource::collection($tasks),
-            'meta' => [
-                'current_page' => $tasks->currentPage(),
-                'last_page' => $tasks->lastPage(),
-                'per_page' => $tasks->perPage(),
-                'total' => $tasks->total(),
-            ],
+            'meta' => $this->paginationMeta($tasks),
         ]);
     }
 
@@ -76,7 +76,7 @@ class AgentTaskController extends Controller
         $agent = Agent::findOrFail($request->agent_id);
 
         // Check company access if company_id provided
-        if ($request->company_id && !$user->hasCompanyAccess($request->company_id)) {
+        if ($request->company_id && ! $user->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ к компании запрещён.'], 403);
         }
 
@@ -107,8 +107,8 @@ class AgentTaskController extends Controller
         $task = AgentTask::with(['agent', 'latestRun', 'runs' => function ($query) {
             $query->latest()->limit(10);
         }])
-        ->withCount('runs')
-        ->findOrFail($id);
+            ->withCount('runs')
+            ->findOrFail($id);
 
         if ($task->user_id !== $user->id) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);

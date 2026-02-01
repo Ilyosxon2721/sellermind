@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\Product;
 use App\Models\VariantMarketplaceLink;
@@ -14,6 +15,8 @@ use Illuminate\Http\Request;
 
 class WildberriesProductController extends Controller
 {
+    use HasPaginatedResponse;
+
     /**
      * List Wildberries products (cards) with pagination and filters.
      */
@@ -37,7 +40,7 @@ class WildberriesProductController extends Controller
             'sort_dir' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $perPage = $request->integer('per_page', 50);
+        $perPage = $this->getPerPage($request, 50, 200);
         $sortBy = $request->input('sort_by', 'synced_at');
         $sortDir = $request->input('sort_dir', 'desc');
 
@@ -163,12 +166,7 @@ class WildberriesProductController extends Controller
 
         return response()->json([
             'products' => $items,
-            'pagination' => [
-                'total' => $products->total(),
-                'per_page' => $products->perPage(),
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-            ],
+            'pagination' => $this->paginationMeta($products),
         ]);
     }
 

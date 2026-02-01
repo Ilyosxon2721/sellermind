@@ -1,9 +1,11 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceProductController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\Product;
@@ -12,6 +14,8 @@ use Illuminate\Http\Request;
 
 class MarketplaceProductController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -21,7 +25,7 @@ class MarketplaceProductController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -50,17 +54,14 @@ class MarketplaceProductController extends Controller
             $query->where('status', $request->status);
         }
 
+        $perPage = $this->getPerPage($request, 50);
+
         // Use PK index to avoid large filesort on wide JSON payloads
-        $products = $query->orderByDesc('id')->paginate(50);
+        $products = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
             'products' => $products->items(),
-            'pagination' => [
-                'total' => $products->total(),
-                'per_page' => $products->perPage(),
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($products),
         ]);
     }
 
@@ -75,7 +76,7 @@ class MarketplaceProductController extends Controller
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
         $product = Product::findOrFail($request->product_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -109,21 +110,21 @@ class MarketplaceProductController extends Controller
     {
         $account = $marketplaceProduct->account;
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         // Нормализуем пустые значения, чтобы валидация не падала на пустых строках
         foreach (['product_id', 'external_product_id', 'external_offer_id', 'external_sku'] as $field) {
-        if ($request->has($field) && $request->input($field) === '') {
-            $request->merge([$field => null]);
+            if ($request->has($field) && $request->input($field) === '') {
+                $request->merge([$field => null]);
+            }
         }
-    }
 
         // Приводим числовые внешние идентификаторы к строке, чтобы не срабатывать правило string
         foreach (['external_product_id', 'external_offer_id', 'external_sku'] as $field) {
             if ($request->has($field) && is_numeric($request->input($field))) {
-                $request->merge([$field => (string)$request->input($field)]);
+                $request->merge([$field => (string) $request->input($field)]);
             }
         }
 
@@ -137,7 +138,7 @@ class MarketplaceProductController extends Controller
 
         if ($request->filled('product_id')) {
             $product = Product::find($request->product_id);
-            if (!$product || $product->company_id !== $account->company_id) {
+            if (! $product || $product->company_id !== $account->company_id) {
                 return response()->json(['message' => 'Товар не принадлежит компании'], 400);
             }
         }
@@ -150,12 +151,12 @@ class MarketplaceProductController extends Controller
                 $payload[$field] = null;
             }
         }
-        if (array_key_exists('product_id', $payload) && !$payload['product_id']) {
+        if (array_key_exists('product_id', $payload) && ! $payload['product_id']) {
             $payload['product_id'] = null;
         }
 
         // Проверяем лимит 10 привязок
-        if (!empty($payload['product_id'])) {
+        if (! empty($payload['product_id'])) {
             $count = MarketplaceProduct::where('marketplace_account_id', $account->id)
                 ->where('product_id', $payload['product_id'])
                 ->where('id', '!=', $marketplaceProduct->id)
@@ -177,7 +178,7 @@ class MarketplaceProductController extends Controller
     {
         $account = $marketplaceProduct->account;
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -198,7 +199,7 @@ class MarketplaceProductController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -208,8 +209,9 @@ class MarketplaceProductController extends Controller
         foreach ($request->product_ids as $productId) {
             $product = Product::find($productId);
 
-            if (!$product || $product->company_id !== $account->company_id) {
+            if (! $product || $product->company_id !== $account->company_id) {
                 $skipped++;
+
                 continue;
             }
 
@@ -219,6 +221,7 @@ class MarketplaceProductController extends Controller
 
             if ($existing) {
                 $skipped++;
+
                 continue;
             }
 
@@ -247,7 +250,7 @@ class MarketplaceProductController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -281,7 +284,7 @@ class MarketplaceProductController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -300,10 +303,11 @@ class MarketplaceProductController extends Controller
             ->map(function ($product) use ($linked) {
                 $product->linked_marketplace_product_id = $linked[$product->id] ?? null;
                 $product->is_linked = $product->linked_marketplace_product_id !== null;
+
                 return $product;
             });
 
-            return response()->json([
+        return response()->json([
             'products' => $products,
         ]);
     }
@@ -320,7 +324,7 @@ class MarketplaceProductController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -333,16 +337,16 @@ class MarketplaceProductController extends Controller
         $products = Product::where('company_id', $account->company_id)
             ->where(function ($q) use ($query) {
                 $q->whereRaw('LOWER(name) LIKE ?', ["%{$query}%"])
-                  ->orWhereRaw('LOWER(article) LIKE ?', ["%{$query}%"])
-                  ->orWhereRaw('LOWER(brand_name) LIKE ?', ["%{$query}%"]);
+                    ->orWhereRaw('LOWER(article) LIKE ?', ["%{$query}%"])
+                    ->orWhereRaw('LOWER(brand_name) LIKE ?', ["%{$query}%"]);
             })
-            ->orderByRaw("
+            ->orderByRaw('
                 CASE 
                     WHEN LOWER(article) LIKE ? THEN 1
                     WHEN LOWER(name) LIKE ? THEN 2
                     ELSE 3
                 END
-            ", ["{$query}%", "{$query}%"])
+            ', ["{$query}%", "{$query}%"])
             ->limit(30)
             ->get([
                 'id',
@@ -353,6 +357,7 @@ class MarketplaceProductController extends Controller
             ->map(function ($product) use ($linked) {
                 $product->linked_marketplace_product_id = $linked[$product->id] ?? null;
                 $product->is_linked = $product->linked_marketplace_product_id !== null;
+
                 return $product;
             });
 

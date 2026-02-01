@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Services\Marketplaces\OzonClient;
@@ -14,6 +15,8 @@ use Illuminate\Http\Request;
  */
 class OzonOrderController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function __construct(
         protected OzonClient $ozonClient
     ) {}
@@ -48,18 +51,15 @@ class OzonOrderController extends Controller
             ->groupBy('status')
             ->pluck('count', 'status');
 
+        $perPage = $this->getPerPage($request);
+
         $orders = $query->orderBy('created_at_ozon', 'desc')
-            ->paginate($request->input('per_page', 20));
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'orders' => $orders->items(),
-            'pagination' => [
-                'total' => $orders->total(),
-                'per_page' => $orders->perPage(),
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($orders),
             'status_counts' => $statusCounts,
         ]);
     }

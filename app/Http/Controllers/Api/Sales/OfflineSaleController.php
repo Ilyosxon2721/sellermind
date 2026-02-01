@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\OfflineSale;
 use App\Models\OfflineSaleItem;
 use App\Support\ApiResponder;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 class OfflineSaleController extends Controller
 {
     use ApiResponder;
+    use HasPaginatedResponse;
 
     public function index(Request $request)
     {
@@ -55,20 +57,14 @@ class OfflineSaleController extends Controller
             });
         }
 
-        $perPage = min(max((int) ($request->per_page ?? 50), 1), 200);
-        $page = max((int) ($request->page ?? 1), 1);
+        $perPage = $this->getPerPage($request, 50, 200);
 
         $paginator = $query->orderByDesc('sale_date')->orderByDesc('id')
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->paginate($perPage);
 
         return $this->successResponse([
             'items' => $paginator->items(),
-            'pagination' => [
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'pagination' => $this->paginationMeta($paginator),
         ]);
     }
 

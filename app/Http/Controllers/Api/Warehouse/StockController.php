@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\OzonOrder;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -20,6 +21,7 @@ class StockController extends Controller
 {
     use ApiResponder;
     use HasCompanyScope;
+    use HasPaginatedResponse;
 
     public function balance(Request $request)
     {
@@ -65,7 +67,7 @@ class StockController extends Controller
         }
 
         // Paginated mode: find SKUs by code/barcode and return balances list with pagination
-        $perPage = min(max((int) ($request->per_page ?? 30), 1), 100);
+        $perPage = $this->getPerPage($request, 30);
         $page = max((int) ($request->page ?? 1), 1);
 
         $query = \App\Models\Warehouse\Sku::query()
@@ -90,12 +92,7 @@ class StockController extends Controller
         if (empty($skus)) {
             return $this->successResponse([
                 'items' => [],
-                'pagination' => [
-                    'total' => 0,
-                    'per_page' => $perPage,
-                    'current_page' => $page,
-                    'last_page' => 1,
-                ],
+                'meta' => $this->paginationMeta($paginator),
             ]);
         }
 
@@ -154,12 +151,7 @@ class StockController extends Controller
 
         return $this->successResponse([
             'items' => $items,
-            'pagination' => [
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($paginator),
         ]);
     }
 
@@ -206,7 +198,7 @@ class StockController extends Controller
             });
         }
 
-        $perPage = min(max((int) ($request->per_page ?? 50), 1), 200);
+        $perPage = $this->getPerPage($request, 50, 200);
         $page = max((int) ($request->page ?? 1), 1);
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
@@ -216,12 +208,7 @@ class StockController extends Controller
 
         return $this->successResponse([
             'data' => $enrichedItems,
-            'pagination' => [
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($paginator),
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Resources\DialogResource;
 use App\Models\Dialog;
 use Illuminate\Http\JsonResponse;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class DialogController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -26,7 +29,7 @@ class DialogController extends Controller
         }
 
         $category = $validated['category'] ?? null;
-        $perPage = $validated['per_page'] ?? 20;
+        $perPage = $this->getPerPage($request);
 
         // Мягкая проверка доступа: если метод есть и доступ запрещён, вернём пустой список (без 403, чтобы не ломать UI)
         if (method_exists($request->user(), 'hasCompanyAccess') && ! $request->user()->hasCompanyAccess($companyId)) {
@@ -46,12 +49,7 @@ class DialogController extends Controller
 
         return response()->json([
             'dialogs' => DialogResource::collection($dialogs),
-            'meta' => [
-                'current_page' => $dialogs->currentPage(),
-                'last_page' => $dialogs->lastPage(),
-                'per_page' => $dialogs->perPage(),
-                'total' => $dialogs->total(),
-            ],
+            'meta' => $this->paginationMeta($dialogs),
         ]);
     }
 

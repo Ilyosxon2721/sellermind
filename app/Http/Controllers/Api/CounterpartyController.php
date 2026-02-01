@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\Counterparty;
 use App\Models\CounterpartyContract;
 use App\Services\CounterpartyService;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 class CounterpartyController extends Controller
 {
     use HasCompanyScope;
+    use HasPaginatedResponse;
 
     public function __construct(
         protected CounterpartyService $counterpartyService,
@@ -46,17 +48,12 @@ class CounterpartyController extends Controller
             $query->suppliers();
         }
 
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = $this->getPerPage($request);
         $counterparties = $query->orderBy('name')->paginate($perPage);
 
         return response()->json([
             'data' => $counterparties->items(),
-            'meta' => [
-                'current_page' => $counterparties->currentPage(),
-                'last_page' => $counterparties->lastPage(),
-                'per_page' => $counterparties->perPage(),
-                'total' => $counterparties->total(),
-            ],
+            'meta' => $this->paginationMeta($counterparties),
         ]);
     }
 

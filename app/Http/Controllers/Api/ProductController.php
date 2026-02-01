@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
@@ -13,6 +14,8 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function __construct(
         protected ProductService $productService,
         protected ProductPublishService $publishService
@@ -21,7 +24,7 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
-        $perPage = min($request->integer('per_page', 20) ?: 20, 100);
+        $perPage = $this->getPerPage($request);
 
         $query = Product::query()
             ->forCompany($companyId)
@@ -80,12 +83,7 @@ class ProductController extends Controller
 
         return response()->json([
             'data' => $items,
-            'meta' => [
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
-            ],
+            'meta' => $this->paginationMeta($products),
         ]);
     }
 

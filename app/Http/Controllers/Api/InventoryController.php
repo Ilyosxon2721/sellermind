@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\Inventory;
 use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 class InventoryController extends Controller
 {
     use HasCompanyScope;
+    use HasPaginatedResponse;
 
     public function __construct(
         protected InventoryService $inventoryService,
@@ -36,17 +38,12 @@ class InventoryController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = $this->getPerPage($request);
         $inventories = $query->orderByDesc('date')->paginate($perPage);
 
         return response()->json([
             'data' => $inventories->items(),
-            'meta' => [
-                'current_page' => $inventories->currentPage(),
-                'last_page' => $inventories->lastPage(),
-                'per_page' => $inventories->perPage(),
-                'total' => $inventories->total(),
-            ],
+            'meta' => $this->paginationMeta($inventories),
         ]);
     }
 
