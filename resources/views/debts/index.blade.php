@@ -140,7 +140,7 @@
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{{ __('debts.amount') }}</th>
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{{ __('debts.outstanding') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">{{ __('debts.due_date') }}</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Статус</th>
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase"></th>
                             </tr>
                         </thead>
