@@ -16,18 +16,25 @@ class OverrideController extends Controller
     public function channel(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $request->validate(['scenario_id' => ['required', 'integer']]);
         $query = PricingChannelOverride::byCompany($companyId)
             ->where('scenario_id', $request->scenario_id);
-        if ($request->channel_code) $query->where('channel_code', $request->channel_code);
+        if ($request->channel_code) {
+            $query->where('channel_code', $request->channel_code);
+        }
+
         return $this->successResponse($query->get());
     }
 
     public function storeChannel(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $request->validate([
             'scenario_id' => ['required', 'integer'],
             'channel_code' => ['required', 'string'],
@@ -45,28 +52,37 @@ class OverrideController extends Controller
             ],
             $data
         );
+
         return $this->successResponse($override);
     }
 
     public function sku(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $request->validate(['scenario_id' => ['required', 'integer']]);
         $query = PricingSkuOverride::byCompany($companyId)
             ->where('scenario_id', $request->scenario_id);
-        if ($request->sku_id) $query->where('sku_id', $request->sku_id);
+        if ($request->sku_id) {
+            $query->where('sku_id', $request->sku_id);
+        }
         if ($search = $request->get('query')) {
+            $search = $this->escapeLike($search);
             $query->whereIn('sku_id', \App\Models\Warehouse\Sku::byCompany($companyId)
                 ->where('sku_code', 'like', "%{$search}%")->pluck('id'));
         }
+
         return $this->successResponse($query->limit(200)->get());
     }
 
     public function storeSku(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $request->validate([
             'scenario_id' => ['required', 'integer'],
             'sku_id' => ['required', 'integer'],
@@ -86,6 +102,7 @@ class OverrideController extends Controller
             ],
             $data
         );
+
         return $this->successResponse($override);
     }
 }

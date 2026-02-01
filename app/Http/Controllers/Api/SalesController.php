@@ -61,7 +61,7 @@ class SalesController extends Controller
         $dateTo = $validated['date_to'] ?? now()->format('Y-m-d');
         $marketplace = $validated['marketplace'] ?? null;
         $status = $validated['status'] ?? null;
-        $search = $validated['search'] ?? null;
+        $search = isset($validated['search']) ? $this->escapeLike($validated['search']) : null;
         $dateMode = $validated['date_mode'] ?? 'order_date';
         $perPage = $validated['per_page'] ?? 20;
 

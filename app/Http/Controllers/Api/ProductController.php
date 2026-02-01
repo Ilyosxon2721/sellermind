@@ -8,16 +8,15 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use App\Services\Products\ProductPublishService;
 use App\Services\Products\ProductService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
     public function __construct(
         protected ProductService $productService,
         protected ProductPublishService $publishService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -34,7 +33,7 @@ class ProductController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->get('search');
+            $search = $this->escapeLike($request->get('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('article', 'like', "%{$search}%");
@@ -53,7 +52,7 @@ class ProductController extends Controller
                     $q->where('status', $channelStatus);
                 }
                 if ($channelCode) {
-                    $q->whereHas('channel', fn($c) => $c->where('code', $channelCode));
+                    $q->whereHas('channel', fn ($c) => $c->where('code', $channelCode));
                 }
             });
         }
@@ -114,7 +113,7 @@ class ProductController extends Controller
             'attributes' => $product->attributeValues,
             'channel_settings' => $product->channelSettings,
             'channel_variant_settings' => $product->variants
-                ->flatMap(fn($variant) => $variant->channelVariantSettings)
+                ->flatMap(fn ($variant) => $variant->channelVariantSettings)
                 ->values(),
         ]);
     }

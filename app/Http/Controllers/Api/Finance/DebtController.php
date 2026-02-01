@@ -18,14 +18,12 @@ class DebtController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected DebtPaymentService $service)
-    {
-    }
+    public function __construct(protected DebtPaymentService $service) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -57,10 +55,11 @@ class DebtController extends Controller
             $query->where('employee_id', $employeeId);
         }
         if ($search = $request->search) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('reference', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%");
+                    ->orWhere('reference', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%");
             });
         }
 
@@ -75,7 +74,7 @@ class DebtController extends Controller
     public function show($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -89,7 +88,7 @@ class DebtController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -107,7 +106,7 @@ class DebtController extends Controller
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -136,7 +135,7 @@ class DebtController extends Controller
     public function addPayment($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -170,7 +169,7 @@ class DebtController extends Controller
     public function payments($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -187,7 +186,7 @@ class DebtController extends Controller
     public function writeOff($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -210,7 +209,7 @@ class DebtController extends Controller
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -236,7 +235,7 @@ class DebtController extends Controller
     public function counterpartySummary(Request $request): JsonResponse
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -257,6 +256,7 @@ class DebtController extends Controller
 
         $result = $summary->map(function ($row) use ($counterparties) {
             $cp = $counterparties->get($row->counterparty_entity_id);
+
             return [
                 'counterparty_entity_id' => $row->counterparty_entity_id,
                 'counterparty_name' => $cp?->getDisplayName(),
@@ -274,7 +274,7 @@ class DebtController extends Controller
     public function employeeSummary(Request $request): JsonResponse
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -295,6 +295,7 @@ class DebtController extends Controller
 
         $result = $summary->map(function ($row) use ($employees) {
             $emp = $employees->get($row->employee_id);
+
             return [
                 'employee_id' => $row->employee_id,
                 'employee_name' => $emp?->full_name,
@@ -312,7 +313,7 @@ class DebtController extends Controller
     public function counterpartyLedger(int $counterpartyId): JsonResponse
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -337,7 +338,7 @@ class DebtController extends Controller
     public function employeeLedger(int $employeeId): JsonResponse
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 

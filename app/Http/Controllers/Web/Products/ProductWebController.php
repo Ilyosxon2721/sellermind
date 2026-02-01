@@ -13,7 +13,6 @@ use App\Services\Products\ProductService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class ProductWebController extends Controller
@@ -21,8 +20,7 @@ class ProductWebController extends Controller
     public function __construct(
         protected ProductService $productService,
         protected ProductPublishService $publishService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -30,7 +28,7 @@ class ProductWebController extends Controller
         $companyId = $user?->company_id;
 
         // Если нет компании вовсе — отдаём пустой список, чтобы не падать
-        if (!$companyId) {
+        if (! $companyId) {
             return view('products.index', [
                 'products' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'categories' => collect(),
@@ -53,9 +51,10 @@ class ProductWebController extends Controller
             ->withCount('variants');
 
         if ($filters['search']) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('name', 'like', '%' . $filters['search'] . '%')
-                    ->orWhere('article', 'like', '%' . $filters['search'] . '%');
+            $escapedSearch = $this->escapeLike($filters['search']);
+            $query->where(function ($q) use ($escapedSearch) {
+                $q->where('name', 'like', '%'.$escapedSearch.'%')
+                    ->orWhere('article', 'like', '%'.$escapedSearch.'%');
             });
         }
 
@@ -63,7 +62,7 @@ class ProductWebController extends Controller
             $query->where('category_id', $filters['category_id']);
         }
 
-        if (!$filters['is_archived']) {
+        if (! $filters['is_archived']) {
             $query->where('is_archived', false);
         }
 
@@ -91,9 +90,9 @@ class ProductWebController extends Controller
         $globalColors = \App\Models\GlobalOption::colorsWithCompany($companyId);
 
         // Redirect to company setup if no company
-        if (!$companyId) {
+        if (! $companyId) {
             return view('products.edit', [
-                'product' => new Product(),
+                'product' => new Product,
                 'categories' => collect(),
                 'attributesList' => collect(),
                 'globalSizes' => $globalSizes,
@@ -184,7 +183,7 @@ class ProductWebController extends Controller
         ]);
 
         // Check if user has a company
-        if (!$user?->company_id) {
+        if (! $user?->company_id) {
             return back()
                 ->withInput()
                 ->withErrors(['company' => 'Для создания товаров необходимо создать или выбрать компанию']);
@@ -217,7 +216,7 @@ class ProductWebController extends Controller
             'options_count' => count($dto['options'] ?? []),
             'variants_count' => count($dto['variants'] ?? []),
             'options' => $dto['options'] ?? [],
-            'variants' => array_map(fn($v) => [
+            'variants' => array_map(fn ($v) => [
                 'id' => $v['id'] ?? null,
                 'sku' => $v['sku'] ?? null,
                 'option_value_ids' => $v['option_value_ids'] ?? [],
@@ -282,14 +281,14 @@ class ProductWebController extends Controller
         ]);
 
         // Convert checkbox "on" values to proper booleans (1/0)
-        $productData['is_active'] = !empty($productData['is_active']) ? 1 : 0;
-        $productData['is_archived'] = !empty($productData['is_archived']) ? 1 : 0;
+        $productData['is_active'] = ! empty($productData['is_active']) ? 1 : 0;
+        $productData['is_archived'] = ! empty($productData['is_archived']) ? 1 : 0;
 
         $productData['company_id'] = $user?->company_id;
 
         // Handle new category creation
         $newCategoryName = $request->input('product.new_category_name');
-        if (!empty($newCategoryName) && $user?->company_id) {
+        if (! empty($newCategoryName) && $user?->company_id) {
             $category = ProductCategory::firstOrCreate(
                 ['company_id' => $user->company_id, 'name' => trim($newCategoryName)],
                 ['name' => trim($newCategoryName), 'company_id' => $user->company_id]
@@ -323,7 +322,7 @@ class ProductWebController extends Controller
 
     protected function decodeJsonArray(?string $json): array
     {
-        if (!$json) {
+        if (! $json) {
             return [];
         }
 
@@ -334,7 +333,7 @@ class ProductWebController extends Controller
 
     protected function buildInitialState(?Product $product): array
     {
-        if (!$product) {
+        if (! $product) {
             return [
                 'product' => [
                     'name' => '',
@@ -517,7 +516,7 @@ class ProductWebController extends Controller
     protected function authorizeCompany(Request $request, Product $product): void
     {
         $user = $request->user();
-        if (!$user || $product->company_id !== $user->company_id) {
+        if (! $user || $product->company_id !== $user->company_id) {
             abort(403, 'Forbidden');
         }
     }

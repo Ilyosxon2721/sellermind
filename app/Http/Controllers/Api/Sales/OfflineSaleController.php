@@ -17,7 +17,7 @@ class OfflineSaleController extends Controller
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -47,10 +47,11 @@ class OfflineSaleController extends Controller
             $query->where('payment_status', $request->payment_status);
         }
         if ($search = $request->get('query')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
-                $q->where('sale_number', 'like', '%' . $search . '%')
-                    ->orWhere('customer_name', 'like', '%' . $search . '%')
-                    ->orWhere('customer_phone', 'like', '%' . $search . '%');
+                $q->where('sale_number', 'like', '%'.$search.'%')
+                    ->orWhere('customer_name', 'like', '%'.$search.'%')
+                    ->orWhere('customer_phone', 'like', '%'.$search.'%');
             });
         }
 
@@ -74,7 +75,7 @@ class OfflineSaleController extends Controller
     public function show($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -88,7 +89,7 @@ class OfflineSaleController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -145,6 +146,7 @@ class OfflineSaleController extends Controller
             }
 
             $sale->recalculateTotals();
+
             return $sale->fresh(['items']);
         });
 
@@ -154,7 +156,7 @@ class OfflineSaleController extends Controller
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -207,6 +209,7 @@ class OfflineSaleController extends Controller
             }
 
             $sale->recalculateTotals();
+
             return $sale->fresh(['items']);
         });
 
@@ -216,7 +219,7 @@ class OfflineSaleController extends Controller
     public function confirm($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -234,13 +237,13 @@ class OfflineSaleController extends Controller
     public function deliver($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $sale = OfflineSale::byCompany($companyId)->findOrFail($id);
 
-        if (!in_array($sale->status, [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED])) {
+        if (! in_array($sale->status, [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED])) {
             return $this->errorResponse('Sale must be confirmed or shipped', 'invalid_state', null, 422);
         }
 
@@ -257,7 +260,7 @@ class OfflineSaleController extends Controller
     public function cancel($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -279,7 +282,7 @@ class OfflineSaleController extends Controller
     public function markPaid($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -312,7 +315,7 @@ class OfflineSaleController extends Controller
     public function destroy($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -330,7 +333,7 @@ class OfflineSaleController extends Controller
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -387,16 +390,17 @@ class OfflineSaleController extends Controller
             $lastNumber = (int) $matches[1];
         }
 
-        return 'OS-' . now()->format('Y') . '-' . str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
+        return 'OS-'.now()->format('Y').'-'.str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
     }
 
     protected function calculateLineTotal(array $item): float
     {
         $subtotal = ($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0);
         $discountAmount = $item['discount_amount'] ?? 0;
-        if (!$discountAmount && isset($item['discount_percent'])) {
+        if (! $discountAmount && isset($item['discount_percent'])) {
             $discountAmount = $subtotal * ($item['discount_percent'] / 100);
         }
+
         return max(0, $subtotal - $discountAmount);
     }
 }

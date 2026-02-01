@@ -64,7 +64,7 @@ class SalesManagementController extends Controller
         }
 
         if ($search = $request->get('search')) {
-            $query->search($search);
+            $query->search($this->escapeLike($search));
         }
 
         // Сортировка
@@ -525,7 +525,7 @@ class SalesManagementController extends Controller
             ->where('company_id', $companyId)
             ->where('is_customer', true)
             ->where('is_active', true)
-            ->when($request->get('search'), fn ($q, $search) => $q->search($search))
+            ->when($request->get('search'), fn ($q, $search) => $q->search($this->escapeLike($search)))
             ->orderBy('name')
             ->limit(50)
             ->get(['id', 'name', 'short_name', 'inn', 'phone']);
@@ -547,6 +547,7 @@ class SalesManagementController extends Controller
             ->where('is_active', true)
             ->where('is_deleted', false)
             ->when($request->get('search'), function ($q, $search) {
+                $search = $this->escapeLike($search);
                 $q->where(function ($query) use ($search) {
                     $query->where('sku', 'like', "%{$search}%")
                         ->orWhere('barcode', 'like', "%{$search}%")

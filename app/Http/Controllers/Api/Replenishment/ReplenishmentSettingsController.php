@@ -16,17 +16,18 @@ class ReplenishmentSettingsController extends Controller
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $query = ReplenishmentSetting::byCompany($companyId)
-            ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id))
+            ->when($request->warehouse_id, fn ($q) => $q->where('warehouse_id', $request->warehouse_id))
             ->with(['sku' => function ($q) {
                 $q->select('id', 'sku_code', 'barcode_ean13', 'product_id');
             }]);
 
         if ($search = $request->get('query')) {
+            $search = $this->escapeLike($search);
             $query->whereIn('sku_id', Sku::query()
                 ->byCompany($companyId)
                 ->where(function ($q) use ($search) {
@@ -42,7 +43,7 @@ class ReplenishmentSettingsController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -64,7 +65,7 @@ class ReplenishmentSettingsController extends Controller
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 

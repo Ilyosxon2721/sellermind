@@ -74,6 +74,7 @@ class StockController extends Controller
             ->orderBy('sku_code');
 
         if ($search = $request->get('query')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('sku_code', 'like', '%'.$search.'%')
                     ->orWhere('barcode_ean13', 'like', '%'.$search.'%')
@@ -197,7 +198,7 @@ class StockController extends Controller
         }
 
         if ($request->query('query')) {
-            $search = $request->query('query');
+            $search = $this->escapeLike($request->query('query'));
             $query->where(function ($q) use ($search) {
                 $q->whereHas('document', fn ($dq) => $dq->where('doc_no', 'like', '%'.$search.'%'))
                     ->orWhereHas('sku', fn ($sq) => $sq->where('sku_code', 'like', '%'.$search.'%'))

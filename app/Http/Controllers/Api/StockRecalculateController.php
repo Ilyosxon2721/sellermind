@@ -286,6 +286,7 @@ class StockRecalculateController extends Controller
             ->where('is_deleted', false);
 
         if ($search) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('sku', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%");
