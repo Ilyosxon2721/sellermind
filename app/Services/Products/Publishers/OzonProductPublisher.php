@@ -1,13 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Products\Publishers;
 
 use App\Models\Product;
 
 class OzonProductPublisher
 {
+    /**
+     * Публикация товара на Ozon — в разработке
+     */
     public function publish(Product $product): void
     {
-        // TODO: implement Ozon publishing logic / queue dispatch
+        throw new \RuntimeException('Публикация на Ozon ещё не реализована. Функция будет доступна в следующем обновлении.');
     }
 }

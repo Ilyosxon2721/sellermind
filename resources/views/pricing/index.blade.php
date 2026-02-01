@@ -57,8 +57,9 @@
                         <button class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="calculate()">
                             Рассчитать
                         </button>
-                        <button class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/25" @click="createPublishJob()">
+                        <button class="relative px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 opacity-50 cursor-not-allowed" disabled title="В разработке">
                             Опубликовать
+                            <span class="ml-1 text-xs font-normal opacity-75">(в разработке)</span>
                         </button>
                     </div>
                 </div>
