@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log;
 use App\Models\Finance\FinanceCategory;
 use App\Models\Finance\FinanceDebt;
 use App\Models\Finance\FinanceSettings;
@@ -547,7 +548,9 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных Uzum', ['error' => $e->getMessage()]);
+        }
 
         // 2. WB заказы в пути (RUB -> UZS)
         try {
@@ -573,7 +576,9 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных WB', ['error' => $e->getMessage()]);
+        }
 
         // 3. Ozon заказы в пути (RUB -> UZS)
         try {
@@ -598,7 +603,9 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных Ozon', ['error' => $e->getMessage()]);
+        }
 
         // 4. Закупки в пути
         try {
@@ -611,7 +618,9 @@ class FinanceController extends Controller
                 $result['purchases_in_transit']['count'] = (int) ($purchaseTransit?->cnt ?? 0);
                 $result['purchases_in_transit']['amount'] = (float) ($purchaseTransit?->total ?? 0);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения данных о закупках в пути', ['error' => $e->getMessage()]);
+        }
 
         $result['total_amount'] = $result['orders_in_transit']['amount'] + $result['purchases_in_transit']['amount'];
 
