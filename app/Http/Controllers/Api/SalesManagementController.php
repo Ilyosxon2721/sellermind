@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Counterparty;
-use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Warehouse\Warehouse;
@@ -539,43 +538,10 @@ class SalesManagementController extends Controller
     public function getProducts(Request $request): JsonResponse
     {
         $companyId = $this->getCompanyId();
-        $warehouseId = $request->get('warehouse_id');
+        $search = $request->get('search') ? $this->escapeLike($request->get('search')) : null;
+        $warehouseId = $request->get('warehouse_id') ? (int) $request->get('warehouse_id') : null;
 
-        $products = ProductVariant::query()
-            ->with('product:id,name,category_id')
-            ->where('company_id', $companyId)
-            ->where('is_active', true)
-            ->where('is_deleted', false)
-            ->when($request->get('search'), function ($q, $search) {
-                $search = $this->escapeLike($search);
-                $q->where(function ($query) use ($search) {
-                    $query->where('sku', 'like', "%{$search}%")
-                        ->orWhere('barcode', 'like', "%{$search}%")
-                        ->orWhereHas('product', fn ($q2) => $q2->where('name', 'like', "%{$search}%"));
-                });
-            })
-            ->orderBy('sku')
-            ->limit(50)
-            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price']);
-
-        // Получить все связанные SKU из складской системы
-        $variantIds = $products->pluck('id')->all();
-        $warehouseSkus = \App\Models\Warehouse\Sku::whereIn('product_variant_id', $variantIds)
-            ->get()
-            ->keyBy('product_variant_id');
-
-        // Добавляем доступные остатки по складу и warehouse_sku_id
-        $products->each(function ($variant) use ($warehouseId, $warehouseSkus) {
-            // Добавить warehouse_sku_id для использования в документах оприходования
-            $warehouseSku = $warehouseSkus->get($variant->id);
-            $variant->warehouse_sku_id = $warehouseSku?->id;
-
-            if ($warehouseId) {
-                $variant->available_stock = $this->reservationService->getAvailableStock($variant, $warehouseId);
-            } else {
-                $variant->available_stock = $variant->stock_default;
-            }
-        });
+        $products = $this->saleService->getProductsForSale($companyId, $search, $warehouseId);
 
         return response()->json(['data' => $products]);
     }

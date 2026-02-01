@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Inventory;
-use App\Models\InventoryItem;
-use App\Models\WarehouseStock;
+use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
     use HasCompanyScope;
+
+    public function __construct(
+        protected InventoryService $inventoryService,
+    ) {}
 
     /**
      * List all inventories
@@ -84,42 +87,13 @@ class InventoryController extends Controller
         $inventory = Inventory::create($validated);
 
         // Добавляем товары
-        $this->addInventoryItems($inventory, $validated['product_ids'] ?? null);
+        $this->inventoryService->addInventoryItems($inventory, $validated['product_ids'] ?? null);
 
         return response()->json([
             'success' => true,
             'data' => $inventory->load(['items.product', 'warehouse']),
             'message' => 'Инвентаризация создана',
         ], 201);
-    }
-
-    /**
-     * Add items to inventory based on warehouse stock
-     */
-    private function addInventoryItems(Inventory $inventory, ?array $productIds = null): void
-    {
-        $query = WarehouseStock::where('warehouse_id', $inventory->warehouse_id)
-            ->where('quantity', '>', 0)
-            ->with('product');
-
-        if ($productIds && count($productIds) > 0) {
-            $query->whereIn('product_id', $productIds);
-        }
-
-        $stocks = $query->get();
-
-        foreach ($stocks as $stock) {
-            InventoryItem::create([
-                'inventory_id' => $inventory->id,
-                'product_id' => $stock->product_id,
-                'expected_quantity' => $stock->quantity,
-                'unit_price' => $stock->product->cost_price ?? 0,
-                'status' => 'pending',
-            ]);
-        }
-
-        $inventory->total_items = $stocks->count();
-        $inventory->save();
     }
 
     /**

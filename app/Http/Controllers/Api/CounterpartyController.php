@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Counterparty;
 use App\Models\CounterpartyContract;
+use App\Services\CounterpartyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CounterpartyController extends Controller
 {
     use HasCompanyScope;
+
+    public function __construct(
+        protected CounterpartyService $counterpartyService,
+    ) {}
 
     /**
      * List all counterparties
@@ -100,10 +105,7 @@ class CounterpartyController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $validated['company_id'] = $this->getCompanyId();
-        $validated['is_active'] = true;
-
-        $counterparty = Counterparty::create($validated);
+        $counterparty = $this->counterpartyService->createCounterparty($validated, $this->getCompanyId());
 
         return response()->json([
             'success' => true,
@@ -146,11 +148,11 @@ class CounterpartyController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $counterparty->update($validated);
+        $counterparty = $this->counterpartyService->updateCounterparty($counterparty, $validated);
 
         return response()->json([
             'success' => true,
-            'data' => $counterparty->fresh(),
+            'data' => $counterparty,
             'message' => 'Контрагент обновлён',
         ]);
     }
@@ -163,7 +165,7 @@ class CounterpartyController extends Controller
         $companyId = $this->getCompanyId();
         $counterparty = Counterparty::byCompany($companyId)->findOrFail($id);
 
-        $counterparty->delete();
+        $this->counterpartyService->deleteCounterparty($counterparty);
 
         return response()->json([
             'success' => true,
@@ -208,10 +210,7 @@ class CounterpartyController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $validated['counterparty_id'] = $counterparty->id;
-        $validated['company_id'] = $companyId;
-
-        $contract = CounterpartyContract::create($validated);
+        $contract = $this->counterpartyService->createContract($counterparty, $validated, $companyId);
 
         return response()->json([
             'success' => true,
@@ -246,11 +245,11 @@ class CounterpartyController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $contract->update($validated);
+        $contract = $this->counterpartyService->updateContract($contract, $validated);
 
         return response()->json([
             'success' => true,
-            'data' => $contract->fresh(),
+            'data' => $contract,
             'message' => 'Договор обновлён',
         ]);
     }
@@ -265,7 +264,7 @@ class CounterpartyController extends Controller
             ->where('counterparty_id', $id)
             ->findOrFail($contractId);
 
-        $contract->delete();
+        $this->counterpartyService->deleteContract($contract);
 
         return response()->json([
             'success' => true,
