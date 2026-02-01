@@ -5,12 +5,12 @@
     </div>
 
     <!-- Coming Soon Banner -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+    <div class="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-4">
         <div class="flex items-center">
-            <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <svg class="w-5 h-5 text-amber-500 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span class="text-blue-700 text-sm font-medium">Функция находится в разработке. Полная интеграция биллинга будет доступна в следующем обновлении.</span>
+            <span class="text-amber-800 text-sm font-medium">Данные на этой странице являются демонстрационными. Функция биллинга будет доступна в следующем обновлении.</span>
         </div>
     </div>
 
@@ -40,7 +40,7 @@
                         </svg>
                     </div>
                     <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(billing.balance)"></p>
-                    <button class="btn btn-sm btn-primary mt-3 w-full" @click="showTopUpModal = true">
+                    <button class="btn btn-sm btn-ghost mt-3 w-full opacity-50 cursor-not-allowed" disabled>
                         Пополнить
                     </button>
                 </div>
@@ -59,7 +59,7 @@
                     <p class="text-xs text-gray-500 mt-1" x-show="billing.expires_at">
                         до <span x-text="formatDate(billing.expires_at)"></span>
                     </p>
-                    <button class="btn btn-sm btn-ghost mt-3 w-full" @click="showPlansModal = true">
+                    <button class="btn btn-sm btn-ghost mt-3 w-full opacity-50 cursor-not-allowed" disabled>
                         Изменить план
                     </button>
                 </div>
@@ -168,7 +168,7 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-ghost text-sm" @click="downloadInvoice(invoice)">
+                                        <button class="btn btn-sm btn-ghost text-sm opacity-50 cursor-not-allowed" disabled>
                                             Скачать
                                         </button>
                                     </td>
@@ -249,7 +249,7 @@
                                 <ul class="space-y-2 mb-4 text-sm text-gray-600">
                                     <template x-for="feature in plan.features" :key="feature">
                                         <li class="flex items-start">
-                                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-5 h-5 text-green-500 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                             </svg>
                                             <span x-text="feature"></span>
@@ -279,13 +279,13 @@ function billingTab() {
         selectedCompanyId: '',
         billing: {
             balance: 0,
-            plan: 'Базовый',
+            plan: 'Бесплатный',
             expires_at: null,
             monthly_usage: 0,
             limits: [
-                { type: 'api_calls', name: 'API запросы', used: 1250, max: 10000 },
-                { type: 'products', name: 'Товары', used: 45, max: 100 },
-                { type: 'users', name: 'Пользователи', used: 3, max: 5 }
+                { type: 'api_calls', name: 'API запросы', used: 0, max: 10000 },
+                { type: 'products', name: 'Товары', used: 0, max: 100 },
+                { type: 'users', name: 'Пользователи', used: 0, max: 5 }
             ]
         },
         invoices: [],
@@ -356,17 +356,16 @@ function billingTab() {
         async loadBillingInfo() {
             if (!this.selectedCompanyId) return;
 
-            // TODO: Load from API
-            // For now using mock data
+            // Биллинг в разработке — данные демонстрационные
             this.billing = {
-                balance: 15000,
-                plan: 'Базовый',
-                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                monthly_usage: 1250,
+                balance: 0,
+                plan: 'Бесплатный',
+                expires_at: null,
+                monthly_usage: 0,
                 limits: [
-                    { type: 'api_calls', name: 'API запросы', used: 1250, max: 10000 },
-                    { type: 'products', name: 'Товары', used: 45, max: 100 },
-                    { type: 'users', name: 'Пользователи', used: 3, max: 5 }
+                    { type: 'api_calls', name: 'API запросы', used: 0, max: 10000 },
+                    { type: 'products', name: 'Товары', used: 0, max: 100 },
+                    { type: 'users', name: 'Пользователи', used: 0, max: 5 }
                 ]
             };
 
@@ -375,29 +374,10 @@ function billingTab() {
 
         async loadInvoices() {
             if (!this.selectedCompanyId) return;
-
             this.loadingInvoices = true;
             try {
-                // TODO: Load from API
-                // Mock data for now
-                this.invoices = [
-                    {
-                        id: 1,
-                        number: 'INV-2025-001',
-                        date: '2025-01-15',
-                        description: 'Пополнение баланса',
-                        amount: 10000,
-                        status: 'paid'
-                    },
-                    {
-                        id: 2,
-                        number: 'INV-2025-002',
-                        date: '2025-01-01',
-                        description: 'Подписка "Базовый"',
-                        amount: 0,
-                        status: 'paid'
-                    }
-                ];
+                // TODO: Подключить API биллинга
+                this.invoices = [];
             } catch (error) {
                 console.error('Error loading invoices:', error);
             } finally {
@@ -406,30 +386,23 @@ function billingTab() {
         },
 
         async topUpBalance() {
-            if (!this.topUpAmount || this.topUpAmount < 100) {
-                alert('Минимальная сумма пополнения: 100 ₽');
-                return;
+            if (window.toast) {
+                window.toast.info('Функция пополнения баланса находится в разработке');
             }
-
-            // TODO: Integrate payment gateway
-            alert(`Перенаправление на оплату ${this.topUpAmount} ₽...`);
             this.showTopUpModal = false;
         },
 
         async changePlan(plan) {
-            if (plan.id === this.billing.plan) return;
-
-            if (confirm(`Изменить тарифный план на "${plan.name}"?`)) {
-                // TODO: API call to change plan
-                this.billing.plan = plan.name;
-                this.showPlansModal = false;
-                alert('Тарифный план изменен');
+            if (window.toast) {
+                window.toast.info('Функция смены тарифа находится в разработке');
             }
+            this.showPlansModal = false;
         },
 
         async downloadInvoice(invoice) {
-            // TODO: Generate and download PDF invoice
-            alert(`Скачивание счета ${invoice.number}...`);
+            if (window.toast) {
+                window.toast.info('Функция скачивания счетов находится в разработке');
+            }
         },
 
         formatMoney(amount) {
