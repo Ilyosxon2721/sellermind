@@ -41,7 +41,7 @@ class CompanyController extends Controller
 
         // Update user's company_id to the newly created company
         $user = $request->user();
-        if (!$user->company_id) {
+        if (! $user->company_id) {
             $user->company_id = $company->id;
             $user->save();
             // Refresh the user instance
@@ -56,7 +56,7 @@ class CompanyController extends Controller
 
     public function show(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($company->id)) {
+        if (! $request->user()->hasCompanyAccess($company->id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -69,7 +69,7 @@ class CompanyController extends Controller
 
     public function update(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($company->id)) {
+        if (! $request->user()->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может изменять компанию.'], 403);
         }
 
@@ -88,7 +88,7 @@ class CompanyController extends Controller
 
     public function destroy(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($company->id)) {
+        if (! $request->user()->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может удалить компанию.'], 403);
         }
 
@@ -101,7 +101,7 @@ class CompanyController extends Controller
 
     public function addMember(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($company->id)) {
+        if (! $request->user()->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может добавлять участников.'], 403);
         }
 
@@ -116,7 +116,7 @@ class CompanyController extends Controller
         $role = strtolower(trim($request->role));
         if ($role === 'owner' || $role === 'владелец') {
             return response()->json([
-                'message' => 'Нельзя назначить роль "владелец". Владелец может быть только один. Используйте функцию передачи владения.'
+                'message' => 'Нельзя назначить роль "владелец". Владелец может быть только один. Используйте функцию передачи владения.',
             ], 422);
         }
 
@@ -157,7 +157,7 @@ class CompanyController extends Controller
             ]);
 
             // Устанавливаем компанию как основную, если у пользователя её нет
-            if (!$user->company_id) {
+            if (! $user->company_id) {
                 $user->update(['company_id' => $company->id]);
             }
 
@@ -182,7 +182,7 @@ class CompanyController extends Controller
                 return response()->json(['message' => 'Пользователь с таким email уже существует.'], 422);
             }
 
-            return response()->json(['message' => 'Ошибка при создании пользователя: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Ошибка при создании пользователя: '.$e->getMessage()], 500);
         } catch (\Exception $e) {
             \Log::error('Failed to add company member', [
                 'company_id' => $company->id,
@@ -190,7 +190,7 @@ class CompanyController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Ошибка: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Ошибка: '.$e->getMessage()], 500);
         }
     }
 
@@ -199,7 +199,7 @@ class CompanyController extends Controller
      */
     public function transferOwnership(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($company->id)) {
+        if (! $request->user()->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может передать владение.'], 403);
         }
 
@@ -210,7 +210,7 @@ class CompanyController extends Controller
         $newOwner = \App\Models\User::findOrFail($request->user_id);
 
         // Проверяем, что новый владелец уже в компании
-        if (!$newOwner->hasCompanyAccess($company->id)) {
+        if (! $newOwner->hasCompanyAccess($company->id)) {
             return response()->json(['message' => 'Пользователь должен быть сотрудником компании.'], 422);
         }
 
@@ -225,13 +225,13 @@ class CompanyController extends Controller
             ->update(['role' => 'owner']);
 
         return response()->json([
-            'message' => 'Владение компанией передано пользователю ' . $newOwner->name,
+            'message' => 'Владение компанией передано пользователю '.$newOwner->name,
         ]);
     }
 
     public function getMembers(Request $request, Company $company): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($company->id)) {
+        if (! $request->user()->hasCompanyAccess($company->id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -244,7 +244,7 @@ class CompanyController extends Controller
 
     public function removeMember(Request $request, Company $company, int $userId): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($company->id)) {
+        if (! $request->user()->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может удалять участников.'], 403);
         }
 
@@ -269,13 +269,59 @@ class CompanyController extends Controller
         $user = $request->user();
         $company = Company::find($user->company_id);
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не найдена.'], 404);
         }
 
         return response()->json([
             'success' => true,
             'settings' => $company->getAllSettings(),
+        ]);
+    }
+
+    /**
+     * Получить права доступа сотрудников компании
+     */
+    public function getAccessRights(Request $request, Company $company): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($company->id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $accessRights = $company->getSetting('access_rights', []);
+
+        return response()->json([
+            'success' => true,
+            'access_rights' => $accessRights,
+        ]);
+    }
+
+    /**
+     * Обновить права доступа сотрудника компании
+     */
+    public function updateAccessRights(Request $request, Company $company): JsonResponse
+    {
+        if (! $request->user()->isOwnerOf($company->id)) {
+            return response()->json(['message' => 'Только владелец может управлять правами доступа.'], 403);
+        }
+
+        $validated = $request->validate([
+            'employee_id' => ['required', 'integer'],
+            'section' => ['required', 'string', 'max:50'],
+            'granted' => ['required', 'boolean'],
+        ]);
+
+        $accessRights = $company->getSetting('access_rights', []);
+        $key = $validated['employee_id'].'_'.$validated['section'];
+        $accessRights[$key] = $validated['granted'];
+
+        $company->setSetting('access_rights', $accessRights);
+        $company->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Права доступа обновлены',
+            'access_rights' => $accessRights,
         ]);
     }
 
@@ -287,11 +333,11 @@ class CompanyController extends Controller
         $user = $request->user();
         $company = Company::find($user->company_id);
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не найдена.'], 404);
         }
 
-        if (!$user->isOwnerOf($company->id)) {
+        if (! $user->isOwnerOf($company->id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки.'], 403);
         }
 

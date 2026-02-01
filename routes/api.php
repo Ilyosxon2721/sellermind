@@ -204,6 +204,8 @@ Route::middleware('auth.any')->group(function () {
         ->name('api.companies.addMember');
     Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember'])->name('api.companies.removeMember');
     Route::post('companies/{company}/transfer-ownership', [CompanyController::class, 'transferOwnership'])->name('api.companies.transferOwnership');
+    Route::get('companies/{company}/access-rights', [CompanyController::class, 'getAccessRights'])->name('api.companies.accessRights');
+    Route::post('companies/{company}/access-rights', [CompanyController::class, 'updateAccessRights'])->name('api.companies.updateAccessRights');
 
     // Plans (Public - can view without auth, but included in auth group for consistency)
     Route::get('plans', [PlanController::class, 'index'])->name('api.plans.index');

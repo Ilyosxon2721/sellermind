@@ -128,7 +128,7 @@ function accessTab() {
 
         async init() {
             await this.loadCompanies();
-            this.loadAccessRights();
+            await this.loadAccessRights();
         },
 
         async loadCompanies() {
@@ -158,6 +158,7 @@ function accessTab() {
             try {
                 const response = await window.api.get(`/companies/${this.selectedCompanyId}/members`);
                 this.employees = response.data.members || response.data.data || [];
+                await this.loadAccessRights();
             } catch (error) {
                 console.error('Error loading employees:', error);
                 this.employees = [];
@@ -169,15 +170,17 @@ function accessTab() {
             }
         },
 
-        loadAccessRights() {
-            // Load from localStorage for now
-            const stored = localStorage.getItem('accessRights');
-            this.accessRights = stored ? JSON.parse(stored) : {};
-        },
-
-        saveAccessRights() {
-            // Save to localStorage for now
-            localStorage.setItem('accessRights', JSON.stringify(this.accessRights));
+        async loadAccessRights() {
+            if (!this.selectedCompanyId) return;
+            try {
+                const response = await window.api.get(`/companies/${this.selectedCompanyId}/access-rights`);
+                this.accessRights = response.data.access_rights || {};
+            } catch (error) {
+                console.error('Error loading access rights:', error);
+                // Fallback на localStorage при ошибке API
+                const stored = localStorage.getItem('accessRights');
+                this.accessRights = stored ? JSON.parse(stored) : {};
+            }
         },
 
         hasAccess(employeeId, sectionKey) {
@@ -185,20 +188,24 @@ function accessTab() {
             return this.accessRights[key] === true;
         },
 
-        toggleAccess(employeeId, sectionKey, checked) {
+        async toggleAccess(employeeId, sectionKey, checked) {
             const key = `${employeeId}_${sectionKey}`;
             this.accessRights[key] = checked;
-            this.saveAccessRights();
 
-            // TODO: Send to backend API
-            // await fetch(`/api/companies/${this.selectedCompanyId}/access`, {
-            //     method: 'POST',
-            //     body: JSON.stringify({
-            //         employee_id: employeeId,
-            //         section: sectionKey,
-            //         granted: checked
-            //     })
-            // });
+            try {
+                await window.api.post(`/companies/${this.selectedCompanyId}/access-rights`, {
+                    employee_id: employeeId,
+                    section: sectionKey,
+                    granted: checked
+                });
+            } catch (error) {
+                console.error('Error saving access rights:', error);
+                // Откатить изменение при ошибке
+                this.accessRights[key] = !checked;
+                if (window.toast) {
+                    window.toast.error('Не удалось сохранить права доступа');
+                }
+            }
         },
 
         canManageAccess() {
