@@ -39,7 +39,7 @@ class SetLocale
 
         // 4. Default
         if (!$locale || !in_array($locale, $supportedLocales)) {
-            $locale = config('app.locale', 'uz');
+            $locale = config('app.locale', 'ru');
             // \Log::debug('Locale chosen from Default: ' . $locale);
         }
 
