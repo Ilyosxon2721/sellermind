@@ -131,7 +131,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $sale = $this->saleService->createSale($request->all());
+            $sale = $this->saleService->createSale($validator->validated());
 
             return response()->json([
                 'message' => 'Sale created successfully',
@@ -391,7 +391,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $item = $this->saleService->addItemToSale($sale, $request->all());
+            $item = $this->saleService->addItemToSale($sale, $validator->validated());
             $sale->recalculateTotals();
 
             return response()->json([
@@ -442,7 +442,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $item = $this->saleService->updateSaleItem($item, $request->all());
+            $item = $this->saleService->updateSaleItem($item, $validator->validated());
 
             return response()->json([
                 'message' => 'Item updated successfully',
