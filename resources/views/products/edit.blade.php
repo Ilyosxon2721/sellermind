@@ -811,7 +811,7 @@
                                        placeholder="Новый размер">
                                 <button type="button"
                                         @click="addCustomSize"
-                                        class="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
+                                        class="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition">
                                     + Добавить
                                 </button>
                             </div>
@@ -872,7 +872,7 @@
                                        class="w-10 h-8 border border-gray-300 rounded cursor-pointer">
                                 <button type="button"
                                         @click="addCustomColor"
-                                        class="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition">
+                                        class="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition">
                                     + Добавить
                                 </button>
                             </div>

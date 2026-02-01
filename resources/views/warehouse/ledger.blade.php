@@ -57,7 +57,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3 mt-4">
-                    <button class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium" @click="load()">Применить</button>
+                    <button class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="load()">Применить</button>
                     <span class="text-sm text-gray-500" x-text="status"></span>
                 </div>
                 <template x-if="error">

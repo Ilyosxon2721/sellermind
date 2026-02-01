@@ -855,7 +855,7 @@
 
                 <!-- Footer -->
                 <div class="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button @click="printOrderSticker(selectedOrder)" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">Печать стикера</button>
+                    <button @click="printOrderSticker(selectedOrder)" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Печать стикера</button>
                     <button @click="showOrderModal = false" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Закрыть</button>
                 </div>
             </div>
@@ -953,7 +953,7 @@
                 </div>
                 <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
                     <button @click="showDeliverSupplyModal = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Отмена</button>
-                    <button @click="deliverSupply()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">Передать в доставку</button>
+                    <button @click="deliverSupply()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">Передать в доставку</button>
                 </div>
             </div>
         </div>

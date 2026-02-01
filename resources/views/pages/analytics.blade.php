@@ -27,7 +27,7 @@
                         <option value="30days" selected>30 дней</option>
                         <option value="90days">90 дней</option>
                     </select>
-                    <button @click="loadData()" :disabled="loading" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                    <button @click="loadData()" :disabled="loading" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                         <span x-show="!loading">🔄 Обновить</span>
                         <span x-show="loading">Загрузка...</span>
                     </button>

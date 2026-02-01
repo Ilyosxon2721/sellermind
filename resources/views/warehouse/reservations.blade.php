@@ -69,7 +69,7 @@
                         </select>
                     </div>
                     <div class="flex items-end">
-                        <button class="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors font-medium" @click="load()">Применить</button>
+                        <button class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="load()">Применить</button>
                     </div>
                 </div>
                 <template x-if="error">
@@ -200,7 +200,7 @@
                                 </td>
                                 <td class="px-4 py-4 text-right space-x-2">
                                     <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="release(res.id)" :disabled="res.status !== 'ACTIVE'">Отпустить</button>
-                                    <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'">Списать</button>
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'">Списать</button>
                                 </td>
                             </tr>
                         </template>

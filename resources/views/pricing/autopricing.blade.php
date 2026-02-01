@@ -56,7 +56,7 @@
                         <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="skuInput" placeholder="101, 102">
                     </div>
                     <div class="flex items-end">
-                        <button class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium" @click="applyBatch()">
+                        <button class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="applyBatch()">
                             Применить
                         </button>
                     </div>
@@ -150,7 +150,7 @@
                                     </template>
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-2">
-                                    <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs transition-colors" @click="approve(pr.id)" :disabled="pr.status !== 'NEW'">
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors" @click="approve(pr.id)" :disabled="pr.status !== 'NEW'">
                                         Approve
                                     </button>
                                     <button class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs transition-colors" @click="reject(pr.id)" :disabled="pr.status !== 'NEW'">

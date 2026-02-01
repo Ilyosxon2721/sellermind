@@ -2410,7 +2410,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                                     <div class="inline-flex space-x-2">
                                         <template x-if="activeTab === 'new'">
                                             <span class="inline-flex space-x-2">
-                                                <button @click.stop="handleTakeOrder(order)" class="px-3 py-1 bg-orange-50 text-orange-700 rounded-lg text-xs font-semibold hover:bg-orange-100">Взять в работу</button>
+                                                <button @click.stop="handleTakeOrder(order)" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-100">Взять в работу</button>
                                                 <button @click.stop="openCancelModal(order)" class="px-2 py-1 bg-red-50 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-100" title="Отменить заказ">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2420,7 +2420,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                                         </template>
                                         <template x-if="activeTab === 'in_assembly'">
                                             <span class="inline-flex space-x-2">
-                                                <button @click.stop="printOrderSticker(order)" class="px-3 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-100">Печатать этикетки</button>
+                                                <button @click.stop="printOrderSticker(order)" class="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-100">Печатать этикетки</button>
                                                 <button @click.stop="openCancelModal(order)" class="px-2 py-1 bg-red-50 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-100" title="Отменить заказ">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -3104,7 +3104,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                                 <p class="text-sm text-purple-700" x-text="isWb() ? 'Заказы, отгруженные со склада Wildberries' : 'Заказы, отгруженные со склада Uzum (Fulfillment)'"></p>
                             </div>
                         </div>
-                        <button @click="loadFboOrders()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <button @click="loadFboOrders()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>

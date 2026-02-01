@@ -21,7 +21,7 @@
 
         <div class="pt-4">
             <button @click="updateProfile()"
-                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                 {{ __('app.settings.profile.save') }}
             </button>
         </div>
@@ -95,7 +95,7 @@
 
         <div class="pt-4">
             <button @click="changePassword()"
-                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
                 {{ __('app.settings.security.change_password') }}
             </button>
         </div>
@@ -171,7 +171,7 @@
                 <div class="pt-4 flex items-center space-x-4">
                     <button @click="saveCurrencyRates()"
                             :disabled="saving"
-                            class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
                         <span x-show="!saving">{{ __('app.actions.save') }}</span>
                         <span x-show="saving">{{ __('app.messages.saving') }}</span>
                     </button>
