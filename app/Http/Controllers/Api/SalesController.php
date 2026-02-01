@@ -36,6 +36,17 @@ class SalesController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'marketplace' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'date_mode' => ['nullable', 'string', 'in:order_date,payment_date,delivery_date'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
         $companyId = $this->getCompanyId();
 
         // Setup currency service for company
@@ -46,13 +57,13 @@ class SalesController extends Controller
             }
         }
 
-        $dateFrom = $request->get('date_from', now()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
-        $marketplace = $request->get('marketplace');
-        $status = $request->get('status');
-        $search = $request->get('search');
-        $dateMode = $request->get('date_mode', 'order_date'); // order_date | completion_date
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $dateFrom = $validated['date_from'] ?? now()->format('Y-m-d');
+        $dateTo = $validated['date_to'] ?? now()->format('Y-m-d');
+        $marketplace = $validated['marketplace'] ?? null;
+        $status = $validated['status'] ?? null;
+        $search = $validated['search'] ?? null;
+        $dateMode = $validated['date_mode'] ?? 'order_date';
+        $perPage = $validated['per_page'] ?? 20;
 
         // Build unified orders collection
         $orders = collect();
@@ -94,7 +105,7 @@ class SalesController extends Controller
         $stats = $this->calculateStats($orders);
 
         // Paginate
-        $page = (int) $request->get('page', 1);
+        $page = $validated['page'] ?? 1;
         $total = $orders->count();
         $paginatedOrders = $orders->forPage($page, $perPage)->values();
 
@@ -1552,15 +1563,21 @@ class SalesController extends Controller
      */
     public function triggerSync(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'full_sync' => ['nullable', 'boolean'],
+            'days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'account_id' => ['nullable', 'integer'],
+        ]);
+
         $companyId = $this->getCompanyId();
 
         if (! $companyId) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $fullSync = $request->boolean('full_sync', false);
-        $days = (int) $request->get('days', 90);
-        $accountId = $request->get('account_id');
+        $fullSync = $validated['full_sync'] ?? false;
+        $days = $validated['days'] ?? 90;
+        $accountId = $validated['account_id'] ?? null;
 
         // Получаем аккаунты Uzum для компании
         $query = MarketplaceAccount::where('company_id', $companyId)

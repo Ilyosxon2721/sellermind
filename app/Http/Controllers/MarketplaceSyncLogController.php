@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 // file: app/Http/Controllers/MarketplaceSyncLogController.php
 
 namespace App\Http\Controllers;
@@ -11,16 +14,23 @@ use Illuminate\View\View;
 class MarketplaceSyncLogController extends Controller
 {
     /**
-     * Display sync logs page (web view)
+     * Отображение страницы логов синхронизации
      */
     public function index(Request $request): View
     {
+        $validated = $request->validate([
+            'marketplace' => ['nullable', 'string', 'max:50'],
+            'account_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', 'in:success,error,partial'],
+            'type' => ['nullable', 'string', 'max:50'],
+        ]);
+
         $user = $request->user();
-        // Try direct company_id first, then fallback to companies relationship
+        // Сначала пробуем прямой company_id, затем fallback на связь companies
         $companyId = $user?->company_id ?? $user?->companies()->first()?->id;
 
-        // If no company, return empty results
-        if (!$companyId) {
+        // Если нет компании — возвращаем пустые результаты
+        if (! $companyId) {
             return view('pages.marketplace.sync-logs', [
                 'logs' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
                 'marketplaces' => [],
@@ -42,31 +52,31 @@ class MarketplaceSyncLogController extends Controller
             })
             ->orderByDesc('created_at');
 
-        // Filter by marketplace
-        if ($request->filled('marketplace')) {
-            $query->whereHas('account', function ($q) use ($request) {
-                $q->where('marketplace', $request->get('marketplace'));
+        // Фильтр по маркетплейсу
+        if (! empty($validated['marketplace'])) {
+            $query->whereHas('account', function ($q) use ($validated) {
+                $q->where('marketplace', $validated['marketplace']);
             });
         }
 
-        // Filter by account
-        if ($request->filled('account_id')) {
-            $query->where('marketplace_account_id', $request->get('account_id'));
+        // Фильтр по аккаунту
+        if (! empty($validated['account_id'])) {
+            $query->where('marketplace_account_id', $validated['account_id']);
         }
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
+        // Фильтр по статусу
+        if (! empty($validated['status'])) {
+            $query->where('status', $validated['status']);
         }
 
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', $request->get('type'));
+        // Фильтр по типу
+        if (! empty($validated['type'])) {
+            $query->where('type', $validated['type']);
         }
 
         $logs = $query->paginate(50);
 
-        // Get unique marketplaces for filter (only for current company)
+        // Уникальные маркетплейсы для фильтра (только для текущей компании)
         $marketplaces = MarketplaceAccount::query()
             ->where('company_id', $companyId)
             ->select('marketplace')
@@ -74,7 +84,7 @@ class MarketplaceSyncLogController extends Controller
             ->pluck('marketplace')
             ->all();
 
-        // Get accounts for filter (only for current company)
+        // Аккаунты для фильтра (только для текущей компании)
         $accounts = MarketplaceAccount::query()
             ->where('company_id', $companyId)
             ->select('id', 'name', 'marketplace')
@@ -86,10 +96,10 @@ class MarketplaceSyncLogController extends Controller
             'marketplaces' => $marketplaces,
             'accounts' => $accounts,
             'filters' => [
-                'marketplace' => $request->get('marketplace'),
-                'account_id' => $request->get('account_id'),
-                'status' => $request->get('status'),
-                'type' => $request->get('type'),
+                'marketplace' => $validated['marketplace'] ?? null,
+                'account_id' => $validated['account_id'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'type' => $validated['type'] ?? null,
             ],
             'noCompany' => false,
         ]);

@@ -12,19 +12,24 @@ class DialogController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id') ?: ($request->user()->company_id ?? null);
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $companyId = $validated['company_id'] ?? ($request->user()->company_id ?? null);
 
         // Если компания не передана и у пользователя нет привязки — вернуть пустой ответ без ошибки валидации
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['dialogs' => [], 'meta' => []], 200);
         }
 
-        $category = $request->input('category');
-        $perPage = (int) $request->input('per_page', 20);
-        $perPage = max(1, min(100, $perPage));
+        $category = $validated['category'] ?? null;
+        $perPage = $validated['per_page'] ?? 20;
 
         // Мягкая проверка доступа: если метод есть и доступ запрещён, вернём пустой список (без 403, чтобы не ломать UI)
-        if (method_exists($request->user(), 'hasCompanyAccess') && !$request->user()->hasCompanyAccess($companyId)) {
+        if (method_exists($request->user(), 'hasCompanyAccess') && ! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['dialogs' => [], 'meta' => []], 200);
         }
 
@@ -35,7 +40,7 @@ class DialogController extends Controller
             $query->where('category', $category);
         }
 
-        $dialogs = $query->with(['messages' => fn($q) => $q->latest()->limit(1)])
+        $dialogs = $query->with(['messages' => fn ($q) => $q->latest()->limit(1)])
             ->orderByDesc('updated_at')
             ->paginate($perPage);
 
@@ -52,21 +57,27 @@ class DialogController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id') ?: ($request->user()->company_id ?? null);
-        if (!$companyId) {
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $companyId = $validated['company_id'] ?? ($request->user()->company_id ?? null);
+        if (! $companyId) {
             return response()->json(['message' => 'Компания не выбрана.'], 422);
         }
 
         // Мягкая проверка доступа: если метод есть и доступ запрещён — не создаём, но и не роняем клиент
-        if (method_exists($request->user(), 'hasCompanyAccess') && !$request->user()->hasCompanyAccess($companyId)) {
+        if (method_exists($request->user(), 'hasCompanyAccess') && ! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $dialog = Dialog::create([
             'company_id' => $companyId,
             'user_id' => $request->user()->id,
-            'title' => $request->input('title'),
-            'category' => $request->input('category', 'general'),
+            'title' => $validated['title'] ?? null,
+            'category' => $validated['category'] ?? 'general',
         ]);
 
         return response()->json([
@@ -76,7 +87,7 @@ class DialogController extends Controller
 
     public function show(Request $request, Dialog $dialog): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($dialog->company_id)) {
+        if (! $request->user()->hasCompanyAccess($dialog->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -91,7 +102,7 @@ class DialogController extends Controller
 
     public function update(Request $request, Dialog $dialog): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($dialog->company_id)) {
+        if (! $request->user()->hasCompanyAccess($dialog->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -113,7 +124,7 @@ class DialogController extends Controller
 
     public function destroy(Request $request, Dialog $dialog): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($dialog->company_id)) {
+        if (! $request->user()->hasCompanyAccess($dialog->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

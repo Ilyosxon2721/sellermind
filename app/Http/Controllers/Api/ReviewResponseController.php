@@ -20,30 +20,37 @@ class ReviewResponseController extends Controller
     ) {}
 
     /**
-     * Get all reviews.
+     * Получить все отзывы.
      */
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'status' => ['nullable', 'string'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'sentiment' => ['nullable', 'string', 'in:positive,negative,neutral'],
+            'has_response' => ['nullable', 'boolean'],
+        ]);
+
         $companyId = $this->getCompanyId();
 
         $query = Review::where('company_id', $companyId)
             ->with(['product:id,name', 'marketplaceAccount:id,name,marketplace']);
 
-        // Filters
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        // Фильтры
+        if (isset($validated['status'])) {
+            $query->where('status', $validated['status']);
         }
 
-        if ($request->has('rating')) {
-            $query->where('rating', $request->rating);
+        if (isset($validated['rating'])) {
+            $query->where('rating', $validated['rating']);
         }
 
-        if ($request->has('sentiment')) {
-            $query->where('sentiment', $request->sentiment);
+        if (isset($validated['sentiment'])) {
+            $query->where('sentiment', $validated['sentiment']);
         }
 
-        if ($request->has('has_response')) {
-            if ($request->boolean('has_response')) {
+        if (array_key_exists('has_response', $validated) && $validated['has_response'] !== null) {
+            if ($validated['has_response']) {
                 $query->whereNotNull('response_text');
             } else {
                 $query->whereNull('response_text');

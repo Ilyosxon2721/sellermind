@@ -9,18 +9,17 @@ use App\Models\Company;
 use App\Models\Inventory;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
-use App\Models\YandexMarketOrder;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Subscription;
 use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
+use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\Warehouse;
 use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Models\WildberriesSupply;
-use App\Models\Warehouse\ChannelOrder;
-use App\Models\Warehouse\StockLedger;
-use App\Models\Warehouse\Warehouse;
+use App\Models\YandexMarketOrder;
 use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,19 +38,24 @@ class DashboardController extends Controller
     /**
      * Общий dashboard с информацией по всем модулям
      *
-     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
+     * @param  string  $date_mode  - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function index(Request $request): JsonResponse
     {
         try {
-            $companyId = $request->input('company_id');
-            $dateMode = $request->input('date_mode', 'order_date'); // order_date | completion_date
+            $validated = $request->validate([
+                'company_id' => ['nullable', 'integer'],
+                'date_mode' => ['nullable', 'string', 'in:order_date,completion_date'],
+            ]);
 
-            if (!$companyId) {
+            $companyId = $validated['company_id'] ?? null;
+            $dateMode = $validated['date_mode'] ?? 'order_date';
+
+            if (! $companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
             }
 
-            if (!$request->user()->hasCompanyAccess($companyId)) {
+            if (! $request->user()->hasCompanyAccess($companyId)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
@@ -112,6 +116,7 @@ class DashboardController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'error' => $e->getMessage(),
             ], 500);
@@ -135,7 +140,7 @@ class DashboardController extends Controller
      * Uzum использует UzumFinanceOrder (Finance API) для всех типов заказов (FBO/FBS/DBS/EDBS)
      * WB/Ozon/YM суммы конвертируются из RUB в валюту отображения
      *
-     * @param string $dateMode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
+     * @param  string  $dateMode  - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     private function getSalesData(int $companyId, Carbon $today, Carbon $weekAgo, Carbon $monthAgo, string $dateMode = 'order_date'): array
     {
@@ -149,28 +154,28 @@ class DashboardController extends Controller
 
         // ===== UZUM: COMPLETED и TO_WITHDRAW считаем как продажи (доход) =====
         // TO_WITHDRAW = деньги выведены (завершённая продажа)
-        $uzumCompleted = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
-        $uzumTransit = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
-        $uzumAwaitingPickup = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
-        $uzumCancelled = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+        $uzumCompleted = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->sold();
+        $uzumTransit = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->inTransit();
+        $uzumAwaitingPickup = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $uzumCancelled = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== WB: is_realization=true считаем как продажи (доход) =====
-        $wbCompleted = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
-        $wbTransit = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
-        $wbAwaitingPickup = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
-        $wbCancelled = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+        $wbCompleted = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->sold();
+        $wbTransit = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->inTransit();
+        $wbAwaitingPickup = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $wbCancelled = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== OZON: stock_status='sold' считаем как продажи (доход) =====
-        $ozonCompleted = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
-        $ozonTransit = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
-        $ozonAwaitingPickup = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
-        $ozonCancelled = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+        $ozonCompleted = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->sold();
+        $ozonTransit = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->inTransit();
+        $ozonAwaitingPickup = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $ozonCancelled = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ===== YM: stock_status='sold' считаем как продажи (доход) =====
-        $ymCompleted = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->sold();
-        $ymTransit = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->inTransit();
-        $ymAwaitingPickup = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->awaitingPickup();
-        $ymCancelled = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->cancelled();
+        $ymCompleted = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->sold();
+        $ymTransit = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->inTransit();
+        $ymAwaitingPickup = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->awaitingPickup();
+        $ymCancelled = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->cancelled();
 
         // ========== ПРОДАЖИ (ДОХОД) - только завершённые ==========
 
@@ -333,7 +338,7 @@ class DashboardController extends Controller
         $monthConfirmedRevenue = $monthSalesAmount;
 
         // ========== ГРАФИК ПО ДНЯМ - только ПРОДАЖИ (завершённые) ==========
-        $uzumDailySales = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $uzumDailySales = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
             ->whereIn('status', ['COMPLETED', 'TO_WITHDRAW'])
             ->select(DB::raw('DATE(order_date) as date'), DB::raw('SUM(sell_price * amount) as amount_tiyin'), DB::raw('SUM(amount) as count'))
@@ -341,7 +346,7 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
-        $wbDailySales = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbDailySales = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
             ->where('is_realization', true)
             ->where('is_cancel', false)
@@ -351,7 +356,7 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
-        $ozonDailySales = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ozonDailySales = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('created_at_ozon', '>=', $weekAgo)
             ->where('stock_status', 'sold')
             ->select(DB::raw('DATE(created_at_ozon) as date'), DB::raw('SUM(total_price) as amount'), DB::raw('COUNT(*) as count'))
@@ -359,7 +364,7 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
-        $ymDailySales = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ymDailySales = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('created_at_ym', '>=', $weekAgo)
             ->where('stock_status', 'sold')
             ->select(DB::raw('DATE(created_at_ym) as date'), DB::raw('SUM(total_price) as amount'), DB::raw('COUNT(*) as count'))
@@ -384,13 +389,13 @@ class DashboardController extends Controller
         }
 
         // ========== ПОСЛЕДНИЕ ЗАКАЗЫ ==========
-        $uzumRecent = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $uzumRecent = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->with('account')
             ->orderByDesc('order_date')
             ->limit(10)
             ->get()
-            ->map(fn($o) => [
-                'id' => 'uzum_' . $o->id,
+            ->map(fn ($o) => [
+                'id' => 'uzum_'.$o->id,
                 'order_number' => (string) $o->order_id,
                 'amount' => $o->sell_price * $o->amount,
                 'original_currency' => 'UZS',
@@ -404,33 +409,33 @@ class DashboardController extends Controller
                 'product_title' => $o->sku_title,
             ]);
 
-        $wbRecent = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbRecent = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->with('account')
             ->orderByDesc('order_date')
             ->limit(10)
             ->get()
-            ->map(fn($o) => [
-                'id' => 'wb_' . $o->id,
+            ->map(fn ($o) => [
+                'id' => 'wb_'.$o->id,
                 'order_number' => $o->srid ?? $o->order_id,
                 'amount' => $this->currencyService->convertFromRub((float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0)),
                 'amount_rub' => (float) ($o->for_pay ?? $o->finished_price ?? $o->total_price ?? 0),
                 'original_currency' => 'RUB',
                 'status' => $this->normalizeWbStatus($o),
                 'status_label' => $this->getStatusLabel($this->normalizeWbStatus($o)),
-                'is_revenue' => $o->is_realization && !$o->is_cancel && !$o->is_return, // Доход только если реализовано
+                'is_revenue' => $o->is_realization && ! $o->is_cancel && ! $o->is_return, // Доход только если реализовано
                 'date' => $o->order_date?->format('d.m.Y H:i'),
                 'ordered_at' => $o->order_date,
                 'marketplace' => 'wb',
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Wildberries',
             ]);
 
-        $ozonRecent = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ozonRecent = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->with('account')
             ->orderByDesc('created_at_ozon')
             ->limit(10)
             ->get()
-            ->map(fn($o) => [
-                'id' => 'ozon_' . $o->id,
+            ->map(fn ($o) => [
+                'id' => 'ozon_'.$o->id,
                 'order_number' => $o->posting_number ?? $o->order_id,
                 'amount' => $this->currencyService->convertFromRub((float) ($o->total_price ?? 0)),
                 'amount_rub' => (float) ($o->total_price ?? 0),
@@ -444,13 +449,13 @@ class DashboardController extends Controller
                 'account_name' => $o->account?->name ?? $o->account?->getDisplayName() ?? 'Ozon',
             ]);
 
-        $ymRecent = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ymRecent = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->with('account')
             ->orderByDesc('created_at_ym')
             ->limit(10)
             ->get()
-            ->map(fn($o) => [
-                'id' => 'ym_' . $o->id,
+            ->map(fn ($o) => [
+                'id' => 'ym_'.$o->id,
                 'order_number' => $o->order_id,
                 'amount' => $this->currencyService->convertFromRub((float) ($o->total_price ?? 0)),
                 'amount_rub' => (float) ($o->total_price ?? 0),
@@ -468,10 +473,10 @@ class DashboardController extends Controller
             ->sortByDesc('ordered_at')
             ->take(5)
             ->values()
-            ->map(fn($o) => collect($o)->except('ordered_at')->toArray());
+            ->map(fn ($o) => collect($o)->except('ordered_at')->toArray());
 
         // ========== ПО СТАТУСАМ ==========
-        $uzumByStatusRaw = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $uzumByStatusRaw = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
             ->select('status', DB::raw('SUM(amount) as count'), DB::raw('SUM(sell_price * amount) as amount_tiyin'))
             ->groupBy('status')
@@ -500,7 +505,7 @@ class DashboardController extends Controller
         }
 
         // WB orders by status
-        $wbByStatusRaw = WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $wbByStatusRaw = WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
             ->get();
 
@@ -522,7 +527,7 @@ class DashboardController extends Controller
         }
 
         // Ozon orders by status
-        $ozonByStatusRaw = OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ozonByStatusRaw = OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('created_at_ozon', '>=', $weekAgo)
             ->get();
 
@@ -544,7 +549,7 @@ class DashboardController extends Controller
         }
 
         // YM orders by status
-        $ymByStatusRaw = YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+        $ymByStatusRaw = YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('created_at_ym', '>=', $weekAgo)
             ->get();
 
@@ -654,7 +659,7 @@ class DashboardController extends Controller
      */
     private function normalizeUzumFinanceStatus(?string $status): string
     {
-        if (!$status) {
+        if (! $status) {
             return 'processing';
         }
 
@@ -672,8 +677,8 @@ class DashboardController extends Controller
     private function getMarketplaceData(int $companyId): array
     {
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
-        
-        $byMarketplace = $accounts->groupBy('marketplace')->map(fn($group) => [
+
+        $byMarketplace = $accounts->groupBy('marketplace')->map(fn ($group) => [
             'count' => $group->count(),
             'active' => $group->where('is_active', true)->count(),
         ]);
@@ -682,7 +687,7 @@ class DashboardController extends Controller
             'accounts_count' => $accounts->count(),
             'active_count' => $accounts->where('is_active', true)->count(),
             'by_marketplace' => $byMarketplace,
-            'accounts' => $accounts->map(fn($a) => [
+            'accounts' => $accounts->map(fn ($a) => [
                 'id' => $a->id,
                 'name' => $a->name ?? $a->getDisplayName(),
                 'marketplace' => $a->marketplace,
@@ -717,7 +722,7 @@ class DashboardController extends Controller
             ->orderByDesc('created_at')
             ->limit(5)
             ->get()
-            ->map(fn($d) => [
+            ->map(fn ($d) => [
                 'id' => $d->id,
                 'number' => $d->number,
                 'type' => $d->type,
@@ -750,7 +755,7 @@ class DashboardController extends Controller
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get()
-            ->map(fn($p) => [
+            ->map(fn ($p) => [
                 'id' => $p->id,
                 'name' => $p->name,
                 'sku' => $p->sku,
@@ -768,19 +773,24 @@ class DashboardController extends Controller
     /**
      * Полная информация для комплексного дашборда
      *
-     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
+     * @param  string  $date_mode  - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function full(Request $request): JsonResponse
     {
         try {
-            $companyId = $request->input('company_id');
-            $dateMode = $request->input('date_mode', 'order_date'); // order_date | completion_date
+            $validated = $request->validate([
+                'company_id' => ['nullable', 'integer'],
+                'date_mode' => ['nullable', 'string', 'in:order_date,completion_date'],
+            ]);
 
-            if (!$companyId) {
+            $companyId = $validated['company_id'] ?? null;
+            $dateMode = $validated['date_mode'] ?? 'order_date';
+
+            if (! $companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
             }
 
-            if (!$request->user()->hasCompanyAccess($companyId)) {
+            if (! $request->user()->hasCompanyAccess($companyId)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
@@ -852,6 +862,7 @@ class DashboardController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'error' => $e->getMessage(),
             ], 500);
@@ -863,13 +874,17 @@ class DashboardController extends Controller
      */
     public function alerts(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id');
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? null;
+
+        if (! $companyId) {
             return response()->json(['error' => 'company_id is required'], 400);
         }
 
-        if (!$request->user()->hasCompanyAccess($companyId)) {
+        if (! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -884,13 +899,17 @@ class DashboardController extends Controller
      */
     public function aiStatus(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id');
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? null;
+
+        if (! $companyId) {
             return response()->json(['error' => 'company_id is required'], 400);
         }
 
-        if (!$request->user()->hasCompanyAccess($companyId)) {
+        if (! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -905,13 +924,17 @@ class DashboardController extends Controller
      */
     public function subscription(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id');
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? null;
+
+        if (! $companyId) {
             return response()->json(['error' => 'company_id is required'], 400);
         }
 
-        if (!$request->user()->hasCompanyAccess($companyId)) {
+        if (! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -926,13 +949,17 @@ class DashboardController extends Controller
      */
     public function team(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id');
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? null;
+
+        if (! $companyId) {
             return response()->json(['error' => 'company_id is required'], 400);
         }
 
-        if (!$request->user()->hasCompanyAccess($companyId)) {
+        if (! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -985,7 +1012,7 @@ class DashboardController extends Controller
                 'type' => 'review',
                 'severity' => $review->rating <= 2 ? 'error' : 'warning',
                 'title' => "Отзыв {$review->rating}★ без ответа",
-                'message' => mb_substr($review->review_text ?? 'Без текста', 0, 100) . '...',
+                'message' => mb_substr($review->review_text ?? 'Без текста', 0, 100).'...',
                 'review_id' => $review->id,
                 'rating' => $review->rating,
                 'action_url' => '/reviews',
@@ -1056,17 +1083,17 @@ class DashboardController extends Controller
 
         // Сортировка по severity
         $severityOrder = ['error' => 0, 'warning' => 1, 'info' => 2];
-        usort($alerts, fn($a, $b) => $severityOrder[$a['severity']] <=> $severityOrder[$b['severity']]);
+        usort($alerts, fn ($a, $b) => $severityOrder[$a['severity']] <=> $severityOrder[$b['severity']]);
 
         return [
             'items' => $alerts,
             'total_count' => count($alerts),
             'by_type' => [
-                'low_stock' => count(array_filter($alerts, fn($a) => $a['type'] === 'low_stock')),
-                'review' => count(array_filter($alerts, fn($a) => $a['type'] === 'review')),
-                'supply' => count(array_filter($alerts, fn($a) => $a['type'] === 'supply')),
-                'orders' => count(array_filter($alerts, fn($a) => $a['type'] === 'orders')),
-                'subscription' => count(array_filter($alerts, fn($a) => $a['type'] === 'subscription')),
+                'low_stock' => count(array_filter($alerts, fn ($a) => $a['type'] === 'low_stock')),
+                'review' => count(array_filter($alerts, fn ($a) => $a['type'] === 'review')),
+                'supply' => count(array_filter($alerts, fn ($a) => $a['type'] === 'supply')),
+                'orders' => count(array_filter($alerts, fn ($a) => $a['type'] === 'orders')),
+                'subscription' => count(array_filter($alerts, fn ($a) => $a['type'] === 'subscription')),
             ],
         ];
     }
@@ -1083,22 +1110,22 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $runningTasks = $tasks->filter(fn($t) => $t->latestRun?->isRunning())->count();
-        $completedToday = AgentTaskRun::whereHas('task', fn($q) => $q->where('company_id', $companyId))
+        $runningTasks = $tasks->filter(fn ($t) => $t->latestRun?->isRunning())->count();
+        $completedToday = AgentTaskRun::whereHas('task', fn ($q) => $q->where('company_id', $companyId))
             ->where('status', 'success')
             ->whereDate('finished_at', Carbon::today())
             ->count();
-        $failedToday = AgentTaskRun::whereHas('task', fn($q) => $q->where('company_id', $companyId))
+        $failedToday = AgentTaskRun::whereHas('task', fn ($q) => $q->where('company_id', $companyId))
             ->where('status', 'failed')
             ->whereDate('finished_at', Carbon::today())
             ->count();
 
-        $recentRuns = AgentTaskRun::whereHas('task', fn($q) => $q->where('company_id', $companyId))
+        $recentRuns = AgentTaskRun::whereHas('task', fn ($q) => $q->where('company_id', $companyId))
             ->with('task.agent')
             ->orderByDesc('created_at')
             ->limit(5)
             ->get()
-            ->map(fn($run) => [
+            ->map(fn ($run) => [
                 'id' => $run->id,
                 'task_title' => $run->task?->title,
                 'agent_name' => $run->task?->agent?->name,
@@ -1142,7 +1169,7 @@ class DashboardController extends Controller
             ->with('plan')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return [
                 'has_subscription' => false,
                 'status' => 'none',
@@ -1214,14 +1241,14 @@ class DashboardController extends Controller
     {
         $company = Company::with('users')->find($companyId);
 
-        if (!$company) {
+        if (! $company) {
             return [
                 'members_count' => 0,
                 'members' => [],
             ];
         }
 
-        $members = $company->users->map(fn($user) => [
+        $members = $company->users->map(fn ($user) => [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -1268,7 +1295,7 @@ class DashboardController extends Controller
             ->orderByDesc('created_at_wb')
             ->limit(5)
             ->get()
-            ->map(fn($s) => [
+            ->map(fn ($s) => [
                 'id' => $s->id,
                 'supply_id' => $s->supply_id,
                 'name' => $s->name,
@@ -1322,7 +1349,7 @@ class DashboardController extends Controller
             ->orderByDesc('review_date')
             ->limit(5)
             ->get()
-            ->map(fn($r) => [
+            ->map(fn ($r) => [
                 'id' => $r->id,
                 'rating' => $r->rating,
                 'text' => mb_substr($r->review_text ?? '', 0, 150),

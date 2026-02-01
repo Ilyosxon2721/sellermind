@@ -21,8 +21,12 @@ class SalesAnalyticsController extends Controller
      */
     public function overview(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
+        $period = $validated['period'] ?? '30days';
 
         $overview = $this->analyticsService->getOverview($companyId, $period);
 
@@ -34,8 +38,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByDay(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByDay($companyId, $period);
 
@@ -47,9 +55,14 @@ class SalesAnalyticsController extends Controller
      */
     public function topProducts(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
-        $limit = (int) $request->input('limit', 10);
+        $period = $validated['period'] ?? '30days';
+        $limit = $validated['limit'] ?? 10;
 
         $products = $this->analyticsService->getTopProducts($companyId, $period, $limit);
 
@@ -61,9 +74,14 @@ class SalesAnalyticsController extends Controller
      */
     public function flopProducts(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
-        $limit = (int) $request->input('limit', 10);
+        $period = $validated['period'] ?? '30days';
+        $limit = $validated['limit'] ?? 10;
 
         $products = $this->analyticsService->getFlopProducts($companyId, $period, $limit);
 
@@ -75,8 +93,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByCategory(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByCategory($companyId, $period);
 
@@ -88,8 +110,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByMarketplace(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByMarketplace($companyId, $period);
 
@@ -101,7 +127,11 @@ class SalesAnalyticsController extends Controller
      */
     public function productPerformance(Request $request, int $productId): JsonResponse
     {
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $period = $validated['period'] ?? '30days';
 
         $performance = $this->analyticsService->getProductPerformance($productId, $period);
 
@@ -113,8 +143,12 @@ class SalesAnalyticsController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
         $companyId = $this->getCompanyId();
-        $period = $request->input('period', '30days');
+        $period = $validated['period'] ?? '30days';
 
         $data = [
             'overview' => $this->analyticsService->getOverview($companyId, $period),
