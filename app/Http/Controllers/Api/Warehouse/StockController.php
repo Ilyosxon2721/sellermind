@@ -3,34 +3,23 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\OzonOrder;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
-use App\Support\ApiResponder;
 use App\Services\Warehouse\StockBalanceService;
+use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class StockController extends Controller
 {
     use ApiResponder;
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(): ?int
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return null;
-        }
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
+    use HasCompanyScope;
 
     public function balance(Request $request)
     {
@@ -44,7 +33,7 @@ class StockController extends Controller
         ]);
 
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -54,11 +43,12 @@ class StockController extends Controller
         // Single SKU
         if ($request->sku_id) {
             $data = $service->balance($companyId, $warehouseId, (int) $request->sku_id);
+
             return $this->successResponse($data);
         }
 
         // Explicit list of SKUs
-        if (!empty($request->sku_ids ?? [])) {
+        if (! empty($request->sku_ids ?? [])) {
             $skuIds = array_map('intval', $request->sku_ids);
             $balances = $service->bulkBalance($companyId, $warehouseId, $skuIds);
 
@@ -85,10 +75,10 @@ class StockController extends Controller
 
         if ($search = $request->get('query')) {
             $query->where(function ($q) use ($search) {
-                $q->where('sku_code', 'like', '%' . $search . '%')
-                    ->orWhere('barcode_ean13', 'like', '%' . $search . '%')
+                $q->where('sku_code', 'like', '%'.$search.'%')
+                    ->orWhere('barcode_ean13', 'like', '%'.$search.'%')
                     ->orWhereHas('product', function ($pq) use ($search) {
-                        $pq->where('name', 'like', '%' . $search . '%');
+                        $pq->where('name', 'like', '%'.$search.'%');
                     });
             });
         }
@@ -139,9 +129,9 @@ class StockController extends Controller
 
             // Get variant options (e.g., "Размер: XL, Цвет: Красный")
             $optionsSummary = $sku->productVariant?->option_values_summary;
-            if (!$optionsSummary && $sku->productVariant?->optionValues) {
+            if (! $optionsSummary && $sku->productVariant?->optionValues) {
                 $optionsSummary = $sku->productVariant->optionValues
-                    ->map(fn($ov) => $ov->value)
+                    ->map(fn ($ov) => $ov->value)
                     ->join(', ');
             }
 
@@ -185,7 +175,7 @@ class StockController extends Controller
         ]);
 
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -209,8 +199,8 @@ class StockController extends Controller
         if ($request->query('query')) {
             $search = $request->query('query');
             $query->where(function ($q) use ($search) {
-                $q->whereHas('document', fn($dq) => $dq->where('doc_no', 'like', '%' . $search . '%'))
-                    ->orWhereHas('sku', fn($sq) => $sq->where('sku_code', 'like', '%' . $search . '%'))
+                $q->whereHas('document', fn ($dq) => $dq->where('doc_no', 'like', '%'.$search.'%'))
+                    ->orWhereHas('sku', fn ($sq) => $sq->where('sku_code', 'like', '%'.$search.'%'))
                     ->orWhere('sku_id', $search);
             });
         }
@@ -249,7 +239,9 @@ class StockController extends Controller
         $saleIds = [];
 
         foreach ($items as $item) {
-            if (!$item->source_type || !$item->source_id) continue;
+            if (! $item->source_type || ! $item->source_id) {
+                continue;
+            }
 
             switch ($item->source_type) {
                 case 'WB_ORDER':
@@ -282,38 +274,38 @@ class StockController extends Controller
         }
 
         // Batch fetch orders with account info
-        $wbOrders = !empty($wbIds) || !empty($unifiedIds)
+        $wbOrders = ! empty($wbIds) || ! empty($unifiedIds)
             ? WbOrder::with('account:id,name,marketplace')
                 ->whereIn('id', array_unique(array_merge($wbIds, $unifiedIds)))
                 ->get()->keyBy('id')
             : collect();
 
-        $uzumOrders = !empty($uzumIds) || !empty($unifiedIds)
+        $uzumOrders = ! empty($uzumIds) || ! empty($unifiedIds)
             ? UzumOrder::with('account:id,name,marketplace')
                 ->whereIn('id', array_unique(array_merge($uzumIds, $unifiedIds)))
                 ->get()->keyBy('id')
             : collect();
 
-        $ozonOrders = !empty($ozonIds) || !empty($unifiedIds)
+        $ozonOrders = ! empty($ozonIds) || ! empty($unifiedIds)
             ? OzonOrder::with('account:id,name,marketplace')
                 ->whereIn('id', array_unique(array_merge($ozonIds, $unifiedIds)))
                 ->get()->keyBy('id')
             : collect();
 
-        $ymOrders = !empty($ymIds) || !empty($unifiedIds)
+        $ymOrders = ! empty($ymIds) || ! empty($unifiedIds)
             ? YandexMarketOrder::with('account:id,name,marketplace')
                 ->whereIn('id', array_unique(array_merge($ymIds, $unifiedIds)))
                 ->get()->keyBy('id')
             : collect();
 
         // Fetch sale items with sale info
-        $saleItems = !empty($saleItemIds)
+        $saleItems = ! empty($saleItemIds)
             ? SaleItem::with('sale:id,sale_number,source,type,counterparty_id')
                 ->whereIn('id', array_unique($saleItemIds))
                 ->get()->keyBy('id')
             : collect();
 
-        $sales = !empty($saleIds)
+        $sales = ! empty($saleIds)
             ? Sale::whereIn('id', array_unique($saleIds))
                 ->get(['id', 'sale_number', 'source', 'type', 'counterparty_id'])
                 ->keyBy('id')
@@ -350,8 +342,9 @@ class StockController extends Controller
             $data['shop_name'] = null;
             $data['order_type'] = null;
 
-            if (!$item->source_type || !$item->source_id) {
+            if (! $item->source_type || ! $item->source_id) {
                 $result[] = $data;
+
                 continue;
             }
 
@@ -409,6 +402,7 @@ class StockController extends Controller
                         }
                     }
                     $result[] = $data;
+
                     continue 2;
 
                 case Sale::class:
@@ -422,11 +416,13 @@ class StockController extends Controller
                         }
                     }
                     $result[] = $data;
+
                     continue 2;
 
                 default:
                     // Non-order source types (initial_stock, stock_adjustment, etc.)
                     $result[] = $data;
+
                     continue 2;
             }
 
@@ -460,7 +456,7 @@ class StockController extends Controller
         ]);
 
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -490,6 +486,7 @@ class StockController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return $this->errorResponse('Failed to update cost', 'error', null, 500);
         }
     }
