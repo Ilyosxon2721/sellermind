@@ -187,7 +187,8 @@ class StockController extends Controller
             ->with(['document:id,doc_no,type', 'warehouse:id,name', 'sku:id,sku_code'])
             ->where('company_id', $companyId)
             ->where('warehouse_id', $request->warehouse_id)
-            ->orderBy('occurred_at', 'desc');
+            ->orderBy('occurred_at', 'desc')
+            ->orderBy('id', 'desc');
 
         if ($request->sku_id) {
             $query->where('sku_id', $request->sku_id);
@@ -197,7 +198,7 @@ class StockController extends Controller
             $query->where('occurred_at', '>=', $request->from);
         }
         if ($request->to) {
-            $query->where('occurred_at', '<=', $request->to);
+            $query->where('occurred_at', '<=', $request->to . ' 23:59:59');
         }
 
         if ($request->query('query')) {
@@ -213,8 +214,11 @@ class StockController extends Controller
         $page = max((int) ($request->page ?? 1), 1);
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
+        $items = collect($paginator->items());
+        $enriched = $this->enrichLedgerWithOrderData($items);
+
         return $this->successResponse([
-            'data' => $paginator->items(),
+            'data' => $enriched,
             'pagination' => [
                 'total' => $paginator->total(),
                 'per_page' => $paginator->perPage(),
@@ -222,6 +226,77 @@ class StockController extends Controller
                 'last_page' => $paginator->lastPage(),
             ],
         ]);
+    }
+
+    /**
+     * Обогащение записей ledger данными маркетплейс-заказов
+     */
+    protected function enrichLedgerWithOrderData($items): array
+    {
+        $sourceTypeLabels = [
+            'marketplace_order_reserve' => 'Резерв',
+            'marketplace_order_cancel' => 'Отмена резерва',
+            'marketplace_order_sale' => 'Продажа',
+            'stock_adjustment' => 'Корректировка',
+            'initial_stock' => 'Начальный остаток',
+            'OZON_ORDER' => 'Заказ Ozon',
+            'WB_ORDER' => 'Заказ WB',
+            'UZUM_ORDER' => 'Заказ Uzum',
+            'YM_ORDER' => 'Заказ YM',
+        ];
+
+        $marketplaceSourceTypes = [
+            'marketplace_order_reserve', 'marketplace_order_cancel', 'marketplace_order_sale',
+            'OZON_ORDER', 'WB_ORDER', 'UZUM_ORDER', 'YM_ORDER',
+        ];
+
+        // Собираем order IDs для batch-загрузки
+        $orderIds = $items
+            ->filter(fn($item) => in_array($item->source_type, $marketplaceSourceTypes) && $item->source_id)
+            ->pluck('source_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $orderMap = [];
+        if (!empty($orderIds)) {
+            foreach ([
+                ['model' => \App\Models\WbOrder::class, 'code' => 'wb', 'label' => 'Wildberries', 'numberField' => 'external_order_id'],
+                ['model' => \App\Models\UzumOrder::class, 'code' => 'uzum', 'label' => 'Uzum Market', 'numberField' => 'external_order_id'],
+                ['model' => \App\Models\OzonOrder::class, 'code' => 'ozon', 'label' => 'Ozon', 'numberField' => 'posting_number'],
+                ['model' => \App\Models\YandexMarketOrder::class, 'code' => 'ym', 'label' => 'Yandex Market', 'numberField' => 'order_id'],
+            ] as $mp) {
+                $orders = $mp['model']::whereIn('id', $orderIds)
+                    ->with('marketplaceAccount:id,name,marketplace')
+                    ->get();
+                foreach ($orders as $o) {
+                    if (!isset($orderMap[$o->id])) {
+                        $orderMap[$o->id] = [
+                            'order_number' => $o->{$mp['numberField']} ?? $o->id,
+                            'marketplace' => $mp['label'],
+                            'marketplace_code' => $mp['code'],
+                            'shop_name' => $o->marketplaceAccount?->name ?? '—',
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $items->map(function ($item) use ($sourceTypeLabels, $orderMap, $marketplaceSourceTypes) {
+            $data = $item->toArray();
+            $data['source_type_label'] = $sourceTypeLabels[$item->source_type] ?? $item->source_type;
+
+            $isMarketplace = in_array($item->source_type, $marketplaceSourceTypes);
+            $orderInfo = $isMarketplace ? ($orderMap[$item->source_id] ?? null) : null;
+
+            $data['order_number'] = $orderInfo['order_number'] ?? null;
+            $data['marketplace_name'] = $orderInfo['marketplace'] ?? null;
+            $data['marketplace_code'] = $orderInfo['marketplace_code'] ?? null;
+            $data['shop_name'] = $orderInfo['shop_name'] ?? null;
+            $data['order_type'] = $isMarketplace ? 'Маркетплейс' : ($item->document ? 'Склад' : null);
+
+            return $data;
+        })->values()->all();
     }
 
     /**

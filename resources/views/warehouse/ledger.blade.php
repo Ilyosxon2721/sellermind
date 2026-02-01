@@ -74,6 +74,10 @@
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Документ</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">№ Заказа</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Маркетплейс</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Магазин</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип заказа</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Склад</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Δ Кол-во</th>
@@ -81,7 +85,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -89,7 +93,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="6" class="px-6 py-12 text-center">
+                            <tr><td colspan="10" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                                 </div>
@@ -98,12 +102,49 @@
                         </template>
                         <template x-for="row in items" :key="row.id">
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(row.occurred_at)"></td>
+                                <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap" x-text="formatDate(row.occurred_at)"></td>
                                 <td class="px-6 py-4 text-sm">
-                                    <a :href="`/warehouse/documents/${row.document_id}`" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline" x-text="row.document?.doc_no || row.document_id"></a>
+                                    <template x-if="row.document_id">
+                                        <a :href="`/warehouse/documents/${row.document_id}`" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline" x-text="row.document?.doc_no || row.document_id"></a>
+                                    </template>
+                                    <template x-if="!row.document_id">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg" x-text="row.document?.type"></span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-lg whitespace-nowrap"
+                                          :class="{
+                                              'bg-red-100 text-red-700': row.source_type === 'marketplace_order_reserve',
+                                              'bg-green-100 text-green-700': row.source_type === 'marketplace_order_cancel',
+                                              'bg-blue-100 text-blue-700': row.source_type === 'marketplace_order_sale',
+                                              'bg-gray-100 text-gray-700': !['marketplace_order_reserve','marketplace_order_cancel','marketplace_order_sale'].includes(row.source_type)
+                                          }"
+                                          x-text="row.source_type_label || row.document?.type || row.source_type"></span>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="row.order_number || '—'"></td>
+                                <td class="px-6 py-4 text-sm">
+                                    <template x-if="row.marketplace_name">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full"
+                                              :class="{
+                                                  'bg-purple-100 text-purple-700': row.marketplace_code === 'wb',
+                                                  'bg-orange-100 text-orange-700': row.marketplace_code === 'uzum',
+                                                  'bg-blue-100 text-blue-700': row.marketplace_code === 'ozon',
+                                                  'bg-yellow-100 text-yellow-700': row.marketplace_code === 'ym'
+                                              }"
+                                              x-text="row.marketplace_name"></span>
+                                    </template>
+                                    <template x-if="!row.marketplace_name">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="row.shop_name || '—'"></td>
+                                <td class="px-6 py-4 text-sm">
+                                    <template x-if="row.order_type">
+                                        <span class="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg" x-text="row.order_type"></span>
+                                    </template>
+                                    <template x-if="!row.order_type">
+                                        <span class="text-gray-400">—</span>
+                                    </template>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.warehouse?.name || row.warehouse_id"></td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="row.sku?.sku_code || row.sku_id"></td>
@@ -115,11 +156,14 @@
                 </div>
 
                 <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
-                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.prev" @click="paginate(cursor.prev)">
+                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.prev" @click="paginate('prev')">
                         ← Назад
                     </button>
-                    <div class="text-sm text-gray-600">Страница: <span class="font-semibold" x-text="cursor.page"></span></div>
-                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.next" @click="paginate(cursor.next)">
+                    <div class="text-sm text-gray-600">
+                        Страница <span class="font-semibold" x-text="cursor.page"></span> из <span class="font-semibold" x-text="cursor.lastPage"></span>
+                        <span class="text-gray-400 ml-2" x-text="'(' + cursor.total + ' записей)'"></span>
+                    </div>
+                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.next" @click="paginate('next')">
                         Вперёд →
                     </button>
                 </div>
@@ -138,7 +182,7 @@
                 to: '',
             },
             items: [],
-            cursor: {next: null, prev: null, page: 1},
+            cursor: {next: false, prev: false, page: 1, lastPage: 1, total: 0},
             status: '',
             error: '',
             loading: false,
@@ -165,9 +209,13 @@
                 this.load();
             },
 
-            async paginate(url) {
-                if (!url) return;
-                await this.load(url);
+            async paginate(direction) {
+                const newPage = direction === 'next' ? this.cursor.page + 1 : this.cursor.page - 1;
+                if (newPage < 1 || newPage > this.cursor.lastPage) return;
+                const params = new URLSearchParams();
+                Object.entries(this.filters).forEach(([k, v]) => { if (v) params.append(k, v); });
+                params.set('page', newPage);
+                await this.load(`/api/marketplace/stock/ledger?${params.toString()}`);
             },
 
             async load(url = null) {
@@ -185,10 +233,12 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.data || json.data || [];
-                    const meta = json.meta || json.data?.meta || {};
-                    this.cursor.next = meta.next_cursor_url || meta.next_cursor || null;
-                    this.cursor.prev = meta.prev_cursor_url || meta.prev_cursor || null;
-                    this.cursor.page = meta.current_page || 1;
+                    const pag = json.data?.pagination || json.meta || {};
+                    this.cursor.page = pag.current_page || 1;
+                    this.cursor.lastPage = pag.last_page || 1;
+                    this.cursor.total = pag.total || 0;
+                    this.cursor.next = this.cursor.page < this.cursor.lastPage;
+                    this.cursor.prev = this.cursor.page > 1;
                 } catch (e) {
                     console.error(e);
                     this.error = e.message || 'Ошибка';
@@ -257,13 +307,36 @@
             <template x-for="item in items" :key="item.id">
                 <div class="native-card">
                     <div class="flex items-start justify-between mb-2">
-                        <p class="native-body font-semibold text-indigo-600" x-text="item.sku_code"></p>
-                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty > 0 ? '+' : '') + parseInt(item.qty)"></span>
+                        <p class="native-body font-semibold text-indigo-600" x-text="item.sku?.sku_code || item.sku_id"></p>
+                        <span class="text-xs px-2 py-0.5 rounded-full" :class="item.qty_delta >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="(item.qty_delta >= 0 ? '+' : '') + parseInt(item.qty_delta)"></span>
                     </div>
-                    <p class="native-caption" x-text="item.product_name || '—'"></p>
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="text-xs px-2 py-0.5 rounded-lg"
+                              :class="{
+                                  'bg-red-100 text-red-700': item.source_type === 'marketplace_order_reserve',
+                                  'bg-green-100 text-green-700': item.source_type === 'marketplace_order_cancel',
+                                  'bg-gray-100 text-gray-700': !['marketplace_order_reserve','marketplace_order_cancel'].includes(item.source_type)
+                              }"
+                              x-text="item.source_type_label"></span>
+                        <template x-if="item.marketplace_name">
+                            <span class="text-xs px-2 py-0.5 rounded-full"
+                                  :class="{
+                                      'bg-purple-100 text-purple-700': item.marketplace_code === 'wb',
+                                      'bg-orange-100 text-orange-700': item.marketplace_code === 'uzum',
+                                      'bg-blue-100 text-blue-700': item.marketplace_code === 'ozon',
+                                      'bg-yellow-100 text-yellow-700': item.marketplace_code === 'ym'
+                                  }"
+                                  x-text="item.marketplace_name"></span>
+                        </template>
+                    </div>
+                    <template x-if="item.order_number">
+                        <p class="native-caption">Заказ: <span class="font-semibold" x-text="item.order_number"></span> <span x-text="item.shop_name ? '(' + item.shop_name + ')' : ''"></span></p>
+                    </template>
                     <div class="flex items-center justify-between mt-2">
-                        <span class="native-caption" x-text="item.posted_at ? new Date(item.posted_at).toLocaleDateString('ru-RU') : ''"></span>
-                        <span class="native-caption" x-text="'Док #' + (item.document_id || '—')"></span>
+                        <span class="native-caption" x-text="formatDate(item.occurred_at)"></span>
+                        <template x-if="item.document_id">
+                            <span class="native-caption" x-text="'Док #' + (item.document?.doc_no || item.document_id)"></span>
+                        </template>
                     </div>
                 </div>
             </template>
