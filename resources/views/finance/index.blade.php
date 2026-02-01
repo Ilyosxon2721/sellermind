@@ -48,22 +48,22 @@
                     Долги
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'salary' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'salary' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'salary'; loadEmployees(); loadSalaryCalculations()">
                     Зарплата
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'taxes' ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'taxes' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'taxes'; loadTaxes()">
                     Налоги
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'accounts' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'accounts' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'accounts'; loadCashAccounts()">
                     Счета
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'reports' ? 'bg-cyan-100 text-cyan-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'reports' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'reports'">
                     Отчёты
                 </button>
@@ -2556,7 +2556,7 @@
                     Долги
                 </button>
                 <button class="flex-shrink-0 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
-                        :class="activeTab === 'salary' ? 'bg-purple-100 text-purple-700' : 'text-gray-600'"
+                        :class="activeTab === 'salary' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'"
                         @click="activeTab = 'salary'">
                     Зарплата
                 </button>
