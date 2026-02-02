@@ -685,21 +685,21 @@
                 <div class="native-sheet-handle"></div>
                 <h3 class="native-headline mb-4">{{ __('dashboard.select_period') }}</h3>
                 <div class="space-y-2">
-                    <x-ui.button @click="period = 'today'; loadData(); showPeriodSheet = false"
-                            class="w-full"
-                            :variant="period === 'today' ? 'primary' : 'secondary'">
+                    <button @click="period = 'today'; loadData(); showPeriodSheet = false"
+                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            :class="period === 'today' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
                         {{ __('dashboard.today') }}
-                    </x-ui.button>
-                    <x-ui.button @click="period = 'week'; loadData(); showPeriodSheet = false"
-                            class="w-full"
-                            :variant="period === 'week' ? 'primary' : 'secondary'">
+                    </button>
+                    <button @click="period = 'week'; loadData(); showPeriodSheet = false"
+                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            :class="period === 'week' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
                         {{ __('dashboard.7_days') }}
-                    </x-ui.button>
-                    <x-ui.button @click="period = 'month'; loadData(); showPeriodSheet = false"
-                            class="w-full"
-                            :variant="period === 'month' ? 'primary' : 'secondary'">
+                    </button>
+                    <button @click="period = 'month'; loadData(); showPeriodSheet = false"
+                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            :class="period === 'month' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
                         {{ __('dashboard.30_days') }}
-                    </x-ui.button>
+                    </button>
                     <x-ui.button @click="showPeriodSheet = false"
                             variant="secondary" class="w-full mt-4">
                         {{ __('dashboard.cancel') }}
