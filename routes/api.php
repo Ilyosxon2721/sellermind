@@ -50,7 +50,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('health', [HealthCheckController::class, 'index']);
 Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
 
-Route::middleware('web')->prefix('auth')->group(function () {
+Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
 });
