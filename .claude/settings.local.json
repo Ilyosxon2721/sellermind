@@ -12,7 +12,23 @@
       "Bash([ -f \"d:/server/OSPanel/home/sellermind/vendor/bin/pint.bat\" ])",
       "Bash(then echo \"PINT FOUND\")",
       "Bash(vendor/bin/pint:*)",
-      "Bash(else echo \"PINT NOT FOUND\")"
+      "Bash(else echo \"PINT NOT FOUND\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(php artisan test:*)",
+      "Bash(vendor\\\\bin\\\\pint:*)",
+      "Bash(php -l:*)",
+      "Bash(php vendor/bin/pint:*)",
+      "Bash(findstr:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(php artisan:*)",
+      "Bash(ls:*)",
+      "Bash(php vendor\\\\bin\\\\pint:*)",
+      "Bash(Get-ChildItem -Path \"d:\\\\server\\\\OSPanel\\\\home\\\\sellermind\" -Recurse -Filter \"*SalesManagement*\" -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(php -m:*)",
+      "Bash(find:*)"
     ]
   }
 }
