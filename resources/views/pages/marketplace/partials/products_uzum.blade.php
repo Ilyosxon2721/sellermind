@@ -210,7 +210,7 @@
                                                         <div class="mt-1 flex space-x-1">
                                                             <button @click="syncSkuStock(sku.skuId)"
                                                                     :disabled="syncingStock === sku.skuId"
-                                                                    class="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 flex items-center">
+                                                                    class="px-2 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center">
                                                                 <svg x-show="syncingStock === sku.skuId" class="w-3 h-3 mr-0.5 animate-spin" fill="none" viewBox="0 0 24 24">
                                                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
