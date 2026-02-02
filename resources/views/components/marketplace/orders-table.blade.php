@@ -61,7 +61,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
 
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="w-full px-4 sm:px-6 lg:px-8">
                 <div class="py-6">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-4">
@@ -160,7 +160,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
 
         <main class="flex-1 overflow-y-auto">
             <!-- Messages -->
-            <div x-show="message" x-transition class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <div x-show="message" x-transition class="w-full px-4 sm:px-6 lg:px-8 pt-6">
                 <div class="rounded-lg p-4 flex items-center gap-3"
                      :class="messageType === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
                     <svg x-show="messageType === 'success'" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +174,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
             </div>
 
             <!-- Stats Cards -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Total Orders -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -239,7 +239,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
             </div>
 
             <!-- Loading State -->
-            <div x-show="loading" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div x-show="loading" class="w-full px-4 sm:px-6 lg:px-8">
                 <div class="space-y-4">
                     <template x-for="i in 5" :key="i">
                         <div class="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
@@ -257,7 +257,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
             </div>
 
             <!-- Empty State -->
-            <div x-show="!loading && filteredOrders.length === 0" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div x-show="!loading && filteredOrders.length === 0" class="w-full px-4 sm:px-6 lg:px-8">
                 <div class="text-center py-12">
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
@@ -278,7 +278,7 @@ $marketplaceName = $marketplaceLabels[$marketplace] ?? ucfirst($marketplace);
             </div>
 
             <!-- Orders Table -->
-            <div x-show="!loading && filteredOrders.length > 0" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+            <div x-show="!loading && filteredOrders.length > 0" class="w-full px-4 sm:px-6 lg:px-8 pb-6">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
