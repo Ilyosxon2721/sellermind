@@ -290,9 +290,10 @@
                                                             <p class="text-xs text-gray-500" x-text="account.marketplace === 'wb' ? 'Wildberries' : 'Uzum'"></p>
                                                         </div>
                                                     </div>
-                                                    <x-ui.badge :variant="account.is_active ? 'success' : 'gray'" size="sm">
-                                                        <span class="w-2 h-2 rounded-full" :class="account.is_active ? 'bg-green-500' : 'bg-gray-300'"></span>
-                                                    </x-ui.badge>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                          :class="account.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                                                        <span class="w-2 h-2 rounded-full mr-1" :class="account.is_active ? 'bg-green-500' : 'bg-gray-300'"></span>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </template>

@@ -28,7 +28,8 @@
       "Bash(Get-ChildItem -Path \"d:\\\\server\\\\OSPanel\\\\home\\\\sellermind\" -Recurse -Filter \"*SalesManagement*\" -File)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(php -m:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(composer dump-autoload:*)"
     ]
   }
 }
