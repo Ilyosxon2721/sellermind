@@ -244,12 +244,12 @@
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center space-x-2">
-                                                            <x-ui.badge :variant="order.marketplace === 'wb' ? 'wildberries' : 'uzum'" x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></x-ui.badge>
+                                                            <span x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"></span>
                                                             <span class="text-sm text-gray-600" x-text="order.account_name"></span>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
-                                                        <x-ui.badge :class="getStatusClass(order.status)" x-text="order.status_label || order.status"></x-ui.badge>
+                                                        <span x-text="order.status_label || order.status" :class="getStatusClass(order.status)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"></span>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm font-semibold text-gray-900" x-text="formatMoney(order.amount)"></div>
@@ -641,7 +641,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex-1">
                                         <div class="flex items-center space-x-2 mb-1">
-                                            <x-ui.badge :variant="order.marketplace === 'wb' ? 'wildberries' : 'uzum'" size="sm" x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></x-ui.badge>
+                                            <span x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"></span>
                                             <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.order_number"></p>
                                         </div>
                                         <p class="text-xs text-gray-500" x-text="order.account_name"></p>
@@ -650,9 +650,7 @@
                                     <div class="text-right flex items-center space-x-2">
                                         <div>
                                             <p class="text-sm font-bold text-gray-900" x-text="formatMoney(order.amount)"></p>
-                                            <x-ui.badge size="sm"
-                                                  :class="getStatusClass(order.status)"
-                                                  x-text="order.status_label || order.status"></x-ui.badge>
+                                            <span x-text="order.status_label || order.status" :class="getStatusClass(order.status)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"></span>
                                         </div>
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
