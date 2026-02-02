@@ -2,7 +2,20 @@
 
 @section('content')
 {{-- BROWSER MODE --}}
-<div x-data="passesManager({{ $accountId }})" x-init="init()" class="browser-only container mx-auto px-4 py-6">
+<div x-data="passesManager({{ $accountId }})" x-init="init()" class="browser-only flex h-screen bg-gray-50"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
+        <div class="flex-1 overflow-auto">
+            <div class="container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -140,6 +153,7 @@
                     <span x-text="creating ? 'Создание...' : 'Создать'"></span>
                 </button>
                 <button @click="showCreateModal = false" :disabled="creating" class="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg disabled:opacity-50">Отмена</button>
+            </div>
             </div>
         </div>
     </div>

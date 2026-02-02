@@ -54,8 +54,10 @@
         border-radius: 12px;
     }
     .mp-section-ym {
-        background: linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%);
         border-left: 4px solid var(--ym-primary);
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
     }
 
     /* Brand Accent Cards - Neutral for WB, Uzum, Ozon */
@@ -148,13 +150,13 @@
     .mp-logo-ozon { box-shadow: 0 4px 15px rgba(75, 85, 99, 0.3); }
     .mp-logo-ym { box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4); }
 
-    /* Add Account Button Brand Styles - Neutral for WB, Uzum, Ozon */
-    .mp-add-wb { border-color: #E5E7EB; }
-    .mp-add-wb:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
-    .mp-add-uzum { border-color: #E5E7EB; }
-    .mp-add-uzum:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
-    .mp-add-ozon { border-color: #E5E7EB; }
-    .mp-add-ozon:hover { border-color: #9CA3AF; background: rgba(75, 85, 99, 0.05); }
+    /* Add Account Button Brand Styles - Blue for WB, Uzum, Ozon */
+    .mp-add-wb { border-color: #3B82F6; }
+    .mp-add-wb:hover { border-color: #2563EB; background: rgba(59, 130, 246, 0.05); }
+    .mp-add-uzum { border-color: #3B82F6; }
+    .mp-add-uzum:hover { border-color: #2563EB; background: rgba(59, 130, 246, 0.05); }
+    .mp-add-ozon { border-color: #3B82F6; }
+    .mp-add-ozon:hover { border-color: #2563EB; background: rgba(59, 130, 246, 0.05); }
     .mp-add-ym { border-color: rgba(255, 204, 0, 0.4); }
     .mp-add-ym:hover { border-color: var(--ym-primary); background: rgba(255, 204, 0, 0.1); }
 </style>
@@ -517,9 +519,9 @@
                                             :aria-label="'Добавить аккаунт: ' + marketplace.label">
                                         <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3"
                                              :class="{
-                                                 'bg-[#CB11AB]/10 text-[#CB11AB]': marketplace.code === 'wb',
-                                                 'bg-[#7B2D8E]/10 text-[#7B2D8E]': marketplace.code === 'uzum',
-                                                 'bg-[#005BFF]/10 text-[#005BFF]': marketplace.code === 'ozon',
+                                                 'bg-blue-100 text-blue-600': marketplace.code === 'wb',
+                                                 'bg-blue-100 text-blue-600': marketplace.code === 'uzum',
+                                                 'bg-blue-100 text-blue-600': marketplace.code === 'ozon',
                                                  'bg-[#FFCC00]/20 text-[#8B6914]': marketplace.code === 'ym'
                                              }">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -528,9 +530,9 @@
                                         </div>
                                         <span class="text-sm font-medium"
                                               :class="{
-                                                  'text-[#CB11AB]': marketplace.code === 'wb',
-                                                  'text-[#7B2D8E]': marketplace.code === 'uzum',
-                                                  'text-[#005BFF]': marketplace.code === 'ozon',
+                                                  'text-blue-600': marketplace.code === 'wb',
+                                                  'text-blue-600': marketplace.code === 'uzum',
+                                                  'text-blue-600': marketplace.code === 'ozon',
                                                   'text-[#8B6914]': marketplace.code === 'ym'
                                               }">{{ __('marketplace.add_account') }}</span>
                                     </button>

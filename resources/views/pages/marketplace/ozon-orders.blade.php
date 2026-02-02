@@ -4,11 +4,12 @@
 @php
 $statuses = [
     ['value' => 'all', 'label' => 'Все', 'count' => 0],
+    ['value' => 'processing', 'label' => 'В обработке', 'count' => 0],
     ['value' => 'awaiting_packaging', 'label' => 'Ожидает упаковки', 'count' => 0],
-    ['value' => 'awaiting_deliver', 'label' => 'Ждет отгрузки', 'count' => 0],
+    ['value' => 'awaiting_deliver', 'label' => 'Ожидает доставки', 'count' => 0],
     ['value' => 'delivering', 'label' => 'Доставляется', 'count' => 0],
     ['value' => 'delivered', 'label' => 'Доставлен', 'count' => 0],
-    ['value' => 'cancelled', 'label' => 'Отменен', 'count' => 0],
+    ['value' => 'cancelled', 'label' => 'Отменён', 'count' => 0],
 ];
 
 $config = [

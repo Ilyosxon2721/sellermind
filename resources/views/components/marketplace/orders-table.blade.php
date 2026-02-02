@@ -612,7 +612,18 @@ function ordersTableComponent(params) {
                 'awaiting_packaging': 'Ожидает упаковки',
                 'awaiting_deliver': 'Ждёт отгрузки',
                 'delivering': 'Доставляется',
-                'delivered': 'Доставлен'
+                'delivered': 'Доставлен',
+                // Ozon statuses
+                'processing': 'В обработке',
+                'acceptance_in_progress': 'Приёмка в процессе',
+                'awaiting_approve': 'Ожидает подтверждения',
+                'awaiting_registration': 'Ожидает регистрации',
+                'awaiting_packaging': 'Ожидает упаковки',
+                'awaiting_deliver': 'Ожидает доставки',
+                'arbitration': 'Арбитраж',
+                'client_arbitration': 'Арбитраж клиента',
+                'delivered': 'Доставлен',
+                'cancelled': 'Отменён'
             };
             return labels[status] || status;
         },
