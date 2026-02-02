@@ -73,6 +73,16 @@ return [
             'after_commit' => false,
         ],
 
+        // RISMENT integration queues (shared Redis, no prefix)
+        'risment-integration' => [
+            'driver' => 'redis',
+            'connection' => 'integration',
+            'queue' => 'risment:orders',
+            'retry_after' => 300,
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

@@ -61,6 +61,12 @@ Route::prefix('webhooks/marketplaces')->group(function () {
     Route::post('{marketplace}/{accountId}', [MarketplaceWebhookController::class, 'handleForAccount']);
 });
 
+// RISMENT Integration Link (uses session + sanctum auth)
+Route::middleware('auth.any')->prefix('integration')->group(function () {
+    Route::post('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'store']);
+    Route::delete('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'destroy']);
+});
+
 // Sales API (uses web session auth)
 Route::middleware(['web', 'auth.any'])->group(function () {
     // Global Option Values (custom sizes/colors)

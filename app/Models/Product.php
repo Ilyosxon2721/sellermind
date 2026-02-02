@@ -60,6 +60,7 @@ class Product extends Model
         'package_height_mm',
         'is_active',
         'is_archived',
+        'risment_product_id',
         'created_by',
         'updated_by',
     ];

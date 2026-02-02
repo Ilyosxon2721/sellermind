@@ -110,6 +110,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    // RISMENT Integration Link page
+    Route::get('/integration/risment', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'index'])
+        ->name('integration.risment');
+
     Route::get('/promotions', function () {
         return view('pages.promotions');
     })->name('promotions');
