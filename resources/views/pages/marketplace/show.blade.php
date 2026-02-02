@@ -335,30 +335,30 @@
     <div class="flex-1 flex flex-col overflow-hidden"
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
         <!-- Brand Header -->
-        <header class="brand-header shadow-lg">
+        <header class="bg-white border-b border-gray-200 shadow-sm">
             <div class="px-6 py-5">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="/marketplace" class="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition">
+                        <a href="/marketplace" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </a>
                         <div class="flex items-center space-x-4">
                             <!-- Logo Badge -->
-                            <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                                <span class="text-xl font-bold brand-text" x-text="getLogoText()"></span>
+                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <span class="text-xl font-bold text-white" x-text="getLogoText()"></span>
                             </div>
                             <div>
-                                <h1 class="text-2xl font-bold text-white drop-shadow-sm" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
-                                <p class="text-white text-sm opacity-90" x-text="account?.name || 'Управление интеграцией'"></p>
+                                <h1 class="text-2xl font-bold text-gray-900" x-text="account?.marketplace_label || 'Загрузка...'"></h1>
+                                <p class="text-gray-500 text-sm" x-text="account?.name || 'Управление интеграцией'"></p>
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
                         <!-- Settings Button -->
                         <a :href="getSettingsUrl()"
-                           class="px-4 py-2.5 bg-white/10 backdrop-blur border border-white/20 text-white rounded-xl font-semibold hover:bg-white/20 transition flex items-center space-x-2">
+                           class="px-4 py-2.5 bg-gray-100 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -366,7 +366,7 @@
                             <span>Настройки</span>
                         </a>
                         <button @click="syncAll()" :disabled="syncing.all"
-                                class="px-5 py-2.5 bg-white text-gray-900 rounded-xl font-bold hover:bg-gray-100 transition disabled:opacity-50 flex items-center space-x-2 shadow-lg">
+                                class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition disabled:opacity-50 flex items-center space-x-2 shadow-lg">
                             <svg x-show="syncing.all" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -380,8 +380,8 @@
                 </div>
             </div>
 
-            <!-- Tabs - White Background -->
-            <div class="bg-white px-6 border-b border-gray-200">
+            <!-- Tabs -->
+            <div class="px-6 border-t border-gray-100">
                 <div class="flex space-x-1">
                     <button @click="activeTab = 'overview'"
                             :class="activeTab === 'overview' ? 'border-b-2 brand-border brand-text font-semibold' : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700'"
