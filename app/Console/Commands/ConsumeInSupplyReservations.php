@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\UzumOrder;
+use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
@@ -14,7 +15,7 @@ class ConsumeInSupplyReservations extends Command
     protected $signature = 'reservations:consume-sold
                             {--dry-run : Показать что будет изменено без реального изменения}';
 
-    protected $description = 'Списать резервы для заказов со статусом in_supply/issued и других sold статусов';
+    protected $description = 'Обработать резервы: списать для sold заказов, отменить и вернуть остаток для cancelled заказов';
 
     protected OrderStockService $orderStockService;
 
@@ -28,21 +29,26 @@ class ConsumeInSupplyReservations extends Command
     {
         $dryRun = $this->option('dry-run');
 
-        $this->info('Поиск активных резервов для заказов со статусом sold...');
+        $this->info('Поиск активных резервов для маркетплейс заказов...');
+
+        if ($dryRun) {
+            $this->warn('DRY RUN - изменения не будут применены');
+        }
 
         // Найти все активные резервы от маркетплейс заказов
         $reservations = StockReservation::where('status', StockReservation::STATUS_ACTIVE)
             ->where('source_type', 'marketplace_order')
             ->whereNotNull('source_id')
+            ->with('sku.productVariant')
             ->get();
 
         $this->line("Найдено активных резервов: {$reservations->count()}");
 
         $consumed = 0;
+        $cancelled = 0;
         $skipped = 0;
 
         foreach ($reservations as $reservation) {
-            // Найти заказ по source_id
             $order = $this->findOrder($reservation);
 
             if (!$order) {
@@ -54,14 +60,13 @@ class ConsumeInSupplyReservations extends Command
             $status = $order->status_normalized ?? $order->status ?? null;
             $marketplace = $this->extractMarketplace($reservation->reason);
 
-            // Проверить является ли статус sold
+            // 1. Sold статус → consume (списать резерв)
             if ($this->orderStockService->isSoldStatus($marketplace, $status)) {
-                $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' - СПИСАНИЕ");
+                $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' → СПИСАНИЕ");
 
                 if (!$dryRun) {
                     $reservation->update(['status' => StockReservation::STATUS_CONSUMED]);
 
-                    // Обновить stock_status заказа если не sold
                     if ($order->stock_status !== 'sold') {
                         $order->update([
                             'stock_status' => 'sold',
@@ -71,22 +76,87 @@ class ConsumeInSupplyReservations extends Command
                 }
 
                 $consumed++;
-            } else {
-                $this->line("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' - пропуск");
-                $skipped++;
+                continue;
             }
+
+            // 2. Cancelled статус → cancel резерв + вернуть остаток на склад
+            if ($this->orderStockService->isCancelledStatus($marketplace, $status)) {
+                $variant = $reservation->sku?->productVariant;
+                $qty = (int) $reservation->qty;
+
+                $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' → ОТМЕНА + ВОЗВРАТ {$qty} шт");
+
+                if (!$dryRun) {
+                    DB::beginTransaction();
+                    try {
+                        // Отменяем резерв
+                        $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
+
+                        // Возвращаем остаток (quietly to avoid Observer creating duplicate ledger entry)
+                        if ($variant) {
+                            $variant->incrementStockQuietly($qty);
+
+                            // Запись в журнал склада
+                            StockLedger::create([
+                                'company_id' => $reservation->company_id,
+                                'occurred_at' => now(),
+                                'warehouse_id' => $reservation->warehouse_id,
+                                'sku_id' => $reservation->sku_id,
+                                'qty_delta' => $qty,
+                                'cost_delta' => 0,
+                                'currency_code' => 'UZS',
+                                'source_type' => 'marketplace_order_cancel',
+                                'source_id' => $order->id,
+                            ]);
+
+                            $this->line("    Возвращено {$qty} шт для {$variant->sku} (остаток: {$variant->fresh()->stock_default})");
+                        }
+
+                        // Обновляем статус заказа
+                        if (!in_array($order->stock_status, ['released'])) {
+                            $order->update([
+                                'stock_status' => 'released',
+                                'stock_released_at' => now(),
+                            ]);
+                        }
+
+                        DB::commit();
+                    } catch (\Throwable $e) {
+                        DB::rollBack();
+                        $this->error("    Ошибка: {$e->getMessage()}");
+                        Log::error('ConsumeInSupplyReservations: Failed to cancel reservation', [
+                            'reservation_id' => $reservation->id,
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        $skipped++;
+                        continue;
+                    }
+                }
+
+                $cancelled++;
+                continue;
+            }
+
+            $this->line("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' - пропуск");
+            $skipped++;
         }
 
         $this->newLine();
-        if ($dryRun) {
-            $this->info("[DRY-RUN] Будет списано резервов: {$consumed}");
-        } else {
-            $this->info("Списано резервов: {$consumed}");
-        }
-        $this->line("Пропущено: {$skipped}");
+        $prefix = $dryRun ? '[DRY-RUN] ' : '';
+        $this->info("{$prefix}Результат:");
+        $this->table(
+            ['Действие', 'Количество'],
+            [
+                ['Списано (sold)', $consumed],
+                ['Отменено + возврат (cancelled)', $cancelled],
+                ['Пропущено', $skipped],
+            ]
+        );
 
         Log::info('ConsumeInSupplyReservations completed', [
             'consumed' => $consumed,
+            'cancelled' => $cancelled,
             'skipped' => $skipped,
             'dry_run' => $dryRun,
         ]);

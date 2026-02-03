@@ -154,6 +154,9 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                         $order = $orders->firstWhere('external_order_id', (string) $orderId);
                         if (!$order) continue;
 
+                        // Сохраняем старый статус ПЕРЕД обновлением
+                        $oldStatus = $order->status;
+
                         // Подготовка данных для обновления
                         $updateData = [];
 
@@ -187,6 +190,36 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                         if (!empty($updateData)) {
                             $order->update($updateData);
                             $totalUpdated++;
+
+                            // Обрабатываем изменение остатков при смене статуса
+                            if ($oldStatus !== $normalizedStatus) {
+                                try {
+                                    $stockService = $orderService->getOrderStockService();
+                                    $items = $stockService->getOrderItems($order, 'wb');
+                                    $stockResult = $stockService->processOrderStatusChange(
+                                        $account,
+                                        $order,
+                                        $oldStatus,
+                                        $normalizedStatus,
+                                        $items
+                                    );
+
+                                    Log::info('UpdateWildberriesOrdersStatusJob: Stock processed for status change', [
+                                        'order_id' => $order->id,
+                                        'external_order_id' => $orderId,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => $normalizedStatus,
+                                        'stock_result' => $stockResult,
+                                    ]);
+                                } catch (\Throwable $e) {
+                                    Log::warning('UpdateWildberriesOrdersStatusJob: Failed to process stock', [
+                                        'order_id' => $order->id,
+                                        'old_status' => $oldStatus,
+                                        'new_status' => $normalizedStatus,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                }
+                            }
                         }
                     }
 

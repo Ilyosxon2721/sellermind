@@ -20,6 +20,7 @@ return [
     'finance' => 'Moliya',
     'accounts_payable' => 'Hisoblar (AP)',
     'pricing' => 'Narxlar',
+    'debts' => 'Pullar',
     'company_profile' => 'Kompaniya profili',
     
     // Warehouse submenu

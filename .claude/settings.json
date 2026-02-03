@@ -1,0 +1,150 @@
+{
+  "$schema": "https://code.claude.com/schemas/settings.json",
+  
+  "model": "claude-sonnet-4-5-20250514",
+  
+  "permissions": {
+    "allow": [
+      "php artisan test *",
+      "php artisan make:*",
+      "php artisan migrate",
+      "php artisan db:seed *",
+      "php artisan queue:*",
+      "php artisan schedule:*",
+      "php artisan config:cache",
+      "php artisan route:cache",
+      "php artisan view:cache",
+      "php artisan optimize:clear",
+      "composer require *",
+      "composer install",
+      "composer update *",
+      "npm install *",
+      "npm run *",
+      "./vendor/bin/pint *",
+      "./vendor/bin/phpstan *",
+      "git add *",
+      "git commit *",
+      "git checkout *",
+      "git branch *",
+      "git status",
+      "git log *",
+      "git diff *",
+      "git stash *",
+      "cat *",
+      "ls *",
+      "find *",
+      "grep *",
+      "head *",
+      "tail *"
+    ],
+    "deny": [
+      "rm -rf *",
+      "rm -r *",
+      "sudo rm *",
+      "php artisan migrate:fresh *",
+      "php artisan migrate:reset *",
+      "php artisan db:wipe *",
+      "DROP DATABASE *",
+      "DROP TABLE *",
+      "TRUNCATE *",
+      "git push *",
+      "git push origin *",
+      "git push --force *",
+      "chmod 777 *",
+      "curl * | bash",
+      "wget * | bash"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_COMMAND\" | grep -qiE 'migrate:fresh|db:wipe|DROP|TRUNCATE|rm -rf|git push'; then echo '🚫 BLOCKED: Dangerous command detected' && exit 2; fi"
+          }
+        ]
+      }
+    ],
+    
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$CLAUDE_FILE\" == *.php ]]; then ./vendor/bin/pint \"$CLAUDE_FILE\" --quiet 2>/dev/null || true; fi"
+          },
+          {
+            "type": "command",
+            "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') | EDIT | $CLAUDE_FILE\" >> .claude/autopilot.log"
+          }
+        ]
+      }
+    ],
+    
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '\\n🧪 Running tests...' && php artisan test --parallel --stop-on-failure 2>&1 | tee -a .claude/test.log; TEST_EXIT=$?; if [ $TEST_EXIT -eq 0 ]; then echo '✅ Tests passed'; else echo '❌ Tests failed'; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') | STOP | Session ended\" >> .claude/autopilot.log"
+          }
+        ]
+      }
+    ],
+    
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"\\n========================================\" >> .claude/autopilot.log && echo \"$(date '+%Y-%m-%d %H:%M:%S') | START | New session\" >> .claude/autopilot.log"
+          }
+        ]
+      }
+    ]
+  },
+
+  "context": {
+    "include": [
+      "CLAUDE.md",
+      "TASKS.md",
+      "BLOCKERS.md",
+      "README.md",
+      "composer.json",
+      "package.json",
+      ".env.example"
+    ],
+    "exclude": [
+      "vendor/**",
+      "node_modules/**",
+      "storage/logs/**",
+      "storage/framework/**",
+      ".git/**",
+      "*.lock",
+      "public/build/**",
+      "bootstrap/cache/**"
+    ]
+  },
+
+  "subagents": {
+    "autoDelegate": true,
+    "preferredModel": "claude-sonnet-4-5-20250514",
+    "backgroundEnabled": true
+  },
+
+  "autopilot": {
+    "enabled": true,
+    "maxTasksPerSession": 5,
+    "stopOnTestFailure": 3,
+    "autoCommit": true,
+    "logFile": ".claude/autopilot.log"
+  }
+}

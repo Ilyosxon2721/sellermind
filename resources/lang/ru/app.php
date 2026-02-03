@@ -1,6 +1,30 @@
 <?php
 
 return [
+    // Common standalone strings (flat keys for __('app.key') usage)
+    'cancel' => 'Отмена',
+    'save' => 'Сохранить',
+    'delete' => 'Удалить',
+    'edit' => 'Редактировать',
+    'details' => 'Детали',
+    'comment' => 'Комментарий',
+    'optional' => 'опционально',
+    'required' => 'обязательно',
+    'total' => 'Итого',
+    'pcs' => 'шт',
+    'not_found' => 'Не найдено',
+    'will_be_assigned' => 'Будет присвоен после сохранения',
+    'comment_required' => 'Комментарий обязателен',
+    'add_at_least_one_item' => 'Добавьте хотя бы один товар',
+    'no_active_company' => 'Нет активной компании. Пожалуйста, создайте компанию в профиле.',
+    'error_creating' => 'Ошибка создания документа',
+    'error_adding_lines' => 'Ошибка добавления строк',
+    'error_posting' => 'Ошибка проведения',
+    'error_saving' => 'Ошибка сохранения',
+    'error' => 'Ошибка',
+    'loading' => 'Загрузка...',
+    'saving' => 'Сохранение...',
+
     // Settings page
     'settings' => [
         'title' => 'Настройки',

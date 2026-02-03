@@ -175,6 +175,31 @@ class ProductVariant extends Model
     }
 
     /**
+     * Уменьшить остаток БЕЗ срабатывания Observer
+     * Используется в OrderStockService и ConsumeInSupplyReservations,
+     * которые сами создают записи в stock_ledger и вызывают синхронизацию.
+     * Обычный decrementStock() вызывает Observer, который создаёт дублирующую запись в ledger.
+     */
+    public function decrementStockQuietly(int $quantity): bool
+    {
+        $newStock = max(0, $this->stock_default - $quantity);
+        $this->stock_default = $newStock;
+        return $this->updateQuietly(['stock_default' => $newStock]);
+    }
+
+    /**
+     * Увеличить остаток БЕЗ срабатывания Observer
+     * Используется в OrderStockService и ConsumeInSupplyReservations,
+     * которые сами создают записи в stock_ledger и вызывают синхронизацию.
+     */
+    public function incrementStockQuietly(int $quantity): bool
+    {
+        $newStock = $this->stock_default + $quantity;
+        $this->stock_default = $newStock;
+        return $this->updateQuietly(['stock_default' => $newStock]);
+    }
+
+    /**
      * Получить связь с warehouse SKU
      */
     public function warehouseSku(): BelongsTo

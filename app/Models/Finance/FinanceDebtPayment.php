@@ -30,6 +30,7 @@ class FinanceDebtPayment extends Model
         'transaction_id',
         'status',
         'notes',
+        'cash_account_id',
         'created_by',
     ];
 
@@ -51,6 +52,11 @@ class FinanceDebtPayment extends Model
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(FinanceTransaction::class, 'transaction_id');
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
     }
 
     public function createdBy(): BelongsTo

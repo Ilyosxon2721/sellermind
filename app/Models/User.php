@@ -50,6 +50,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for company() - used by CurrencySettingsController
+     */
+    public function getCurrentCompanyAttribute(): ?Company
+    {
+        return $this->company;
+    }
+
+    /**
      * Все компании, к которым пользователь имеет доступ
      */
     public function companies(): BelongsToMany

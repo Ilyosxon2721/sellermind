@@ -80,28 +80,24 @@ class VariantLinkController extends Controller
             }
         }
 
-        // Build unique key for the link (include SKU ID for multi-SKU products like Uzum)
+        // Build unique key matching DB constraint: variant_mp_sku_unique (marketplace_product_id, external_sku_id)
+        // This ensures updateOrCreate finds existing records (even inactive ones) to prevent duplicate key errors
         $linkKey = [
-            'product_variant_id' => $variant->id,
             'marketplace_product_id' => $mpProduct->id,
-            'marketplace_code' => $account->marketplace,
+            'external_sku_id' => $validated['external_sku_id'] ?? null,
         ];
-        
-        // If external_sku_id is provided, include it in the key for unique SKU-level links
-        if (!empty($validated['external_sku_id'])) {
-            $linkKey['external_sku_id'] = $validated['external_sku_id'];
-        }
 
         // Создать или обновить связь
         $link = VariantMarketplaceLink::updateOrCreate(
             $linkKey,
             [
+                'product_variant_id' => $variant->id,
                 'company_id' => $account->company_id,
                 'marketplace_account_id' => $account->id,
+                'marketplace_code' => $account->marketplace,
                 'external_offer_id' => $externalOfferId,
-                'external_sku_id' => $validated['external_sku_id'] ?? null,
                 'external_sku' => $externalSku,
-                'marketplace_barcode' => $marketplaceBarcode, // Баркод маркетплейса (автозаполнение из API или ручной ввод)
+                'marketplace_barcode' => $marketplaceBarcode,
                 'is_active' => true,
                 'sync_stock_enabled' => $validated['sync_stock_enabled'] ?? true,
                 'sync_price_enabled' => $validated['sync_price_enabled'] ?? false,

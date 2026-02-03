@@ -91,6 +91,13 @@ class UzumSyncOrders extends Command
                     throw new \Exception('Missing external_order_id in order data');
                 }
 
+                // Сохраняем старый статус ДО updateOrCreate
+                // (после updateOrCreate getOriginal() возвращает уже новый статус)
+                $existingOrder = UzumOrder::where('marketplace_account_id', $account->id)
+                    ->where('external_order_id', $externalOrderId)
+                    ->first();
+                $oldStatus = $existingOrder?->status;
+
                 // Найти или создать заказ
                 $order = UzumOrder::updateOrCreate(
                     [
@@ -122,7 +129,6 @@ class UzumSyncOrders extends Command
                 );
 
                 $wasRecentlyCreated = $order->wasRecentlyCreated;
-                $oldStatus = $wasRecentlyCreated ? null : $order->getOriginal('status');
                 $newStatus = $order->status;
 
                 // Синхронизировать товары в заказе
@@ -173,6 +179,9 @@ class UzumSyncOrders extends Command
                     }
                 }
 
+                // Страховка: если заказ отменён или продан, но резерв всё ещё активен
+                $this->ensureStuckReservationsProcessed($account, $order);
+
                 if ($wasRecentlyCreated) {
                     $created++;
                 } else {
@@ -210,5 +219,53 @@ class UzumSyncOrders extends Command
             'errors' => $errors,
             'duration' => $duration,
         ]);
+    }
+
+    /**
+     * Страховка: если заказ в финальном статусе (отменён/продан),
+     * но stock_status всё ещё 'reserved' — принудительно обработать.
+     */
+    protected function ensureStuckReservationsProcessed(MarketplaceAccount $account, UzumOrder $order): void
+    {
+        $stockStatus = $order->stock_status ?? 'none';
+
+        if ($stockStatus !== 'reserved') {
+            return;
+        }
+
+        $status = $order->status;
+        $cancelledStatuses = OrderStockService::CANCELLED_STATUSES['uzum'] ?? [];
+        $soldStatuses = OrderStockService::SOLD_STATUSES['uzum'] ?? [];
+
+        $isCancelled = in_array($status, $cancelledStatuses, true);
+        $isSold = in_array($status, $soldStatuses, true);
+
+        if (!$isCancelled && !$isSold) {
+            return;
+        }
+
+        Log::info('UzumSyncOrders: Found stuck reservation, processing', [
+            'order_id' => $order->id,
+            'external_order_id' => $order->external_order_id,
+            'order_status' => $status,
+            'stock_status' => $stockStatus,
+            'action' => $isCancelled ? 'release' : 'sold',
+        ]);
+
+        try {
+            $items = $this->orderStockService->getOrderItems($order, 'uzum');
+            $this->orderStockService->processOrderStatusChange(
+                $account,
+                $order,
+                null,
+                $status,
+                $items
+            );
+        } catch (\Throwable $e) {
+            Log::error('UzumSyncOrders: Failed to process stuck reservation', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

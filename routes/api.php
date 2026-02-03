@@ -174,6 +174,10 @@ Route::middleware('auth.any')->group(function () {
     Route::put('me/locale', [AuthController::class, 'updateLocale']);
     Route::put('me/password', [AuthController::class, 'changePassword']);
 
+    // Company settings (for current user's company)
+    Route::get('company/settings', [CompanyController::class, 'getSettings']);
+    Route::put('company/settings', [CompanyController::class, 'updateSettings']);
+
     // Telegram Notifications
     Route::prefix('telegram')->group(function () {
         Route::get('status', [TelegramController::class, 'status']);
@@ -711,11 +715,16 @@ Route::middleware('auth.any')->group(function () {
         Route::delete('transactions/{id}', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'destroy']);
         Route::post('transactions/{id}/confirm', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'confirm']);
         Route::post('transactions/{id}/cancel', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'cancel']);
+        Route::post('transactions/{id}/restore', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'restore']);
 
         // Debts
         Route::get('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'index']);
         Route::post('debts', [\App\Http\Controllers\Api\Finance\DebtController::class, 'store']);
         Route::get('debts/summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'summary']);
+        Route::get('debts/counterparty-summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'counterpartySummary']);
+        Route::get('debts/employee-summary', [\App\Http\Controllers\Api\Finance\DebtController::class, 'employeeSummary']);
+        Route::get('debts/counterparty/{id}/ledger', [\App\Http\Controllers\Api\Finance\DebtController::class, 'counterpartyLedger']);
+        Route::get('debts/employee/{id}/ledger', [\App\Http\Controllers\Api\Finance\DebtController::class, 'employeeLedger']);
         Route::get('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'show']);
         Route::put('debts/{id}', [\App\Http\Controllers\Api\Finance\DebtController::class, 'update']);
         Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);
@@ -757,14 +766,22 @@ Route::middleware('auth.any')->group(function () {
 
         // Cash Accounts (касса, банк)
         Route::get('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'index']);
+        Route::get('cash-accounts/summary', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'summary']);
+        Route::get('cash-accounts/marketplace', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'marketplaceAccounts']);
         Route::post('cash-accounts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'store']);
+        Route::post('cash-accounts/marketplace', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'createForMarketplace']);
+        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
         Route::get('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'show']);
         Route::put('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'update']);
         Route::delete('cash-accounts/{id}', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'destroy']);
         Route::get('cash-accounts/{id}/transactions', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transactions']);
         Route::post('cash-accounts/{id}/income', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'income']);
         Route::post('cash-accounts/{id}/expense', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'expense']);
-        Route::post('cash-accounts/transfer', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'transfer']);
+
+        // Marketplace Payouts (выплаты маркетплейсов)
+        Route::get('payouts', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'payouts']);
+        Route::get('payouts/stats', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'payoutStats']);
+        Route::post('payouts/sync', [\App\Http\Controllers\Api\Finance\CashAccountController::class, 'syncPayouts']);
 
         // Offline Sales (Офлайн/Оптовые продажи)
         Route::get('offline-sales', [\App\Http\Controllers\Api\Sales\OfflineSaleController::class, 'index']);

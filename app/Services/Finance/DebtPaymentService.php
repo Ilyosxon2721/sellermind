@@ -2,6 +2,8 @@
 
 namespace App\Services\Finance;
 
+use App\Models\Finance\CashAccount;
+use App\Models\Finance\CashTransaction;
 use App\Models\Finance\FinanceCategory;
 use App\Models\Finance\FinanceDebt;
 use App\Models\Finance\FinanceDebtPayment;
@@ -26,6 +28,7 @@ class DebtPaymentService
                 'payment_method' => $data['payment_method'] ?? 'cash',
                 'reference' => $data['reference'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'cash_account_id' => $data['cash_account_id'] ?? null,
                 'status' => FinanceDebtPayment::STATUS_POSTED,
                 'created_by' => $userId,
             ]);
@@ -60,11 +63,65 @@ class DebtPaymentService
 
             $payment->update(['transaction_id' => $transaction->id]);
 
+            // Создаём кассовую транзакцию если указан счёт
+            $cashAccountId = $data['cash_account_id'] ?? null;
+            if ($cashAccountId) {
+                $this->createCashTransaction($debt, $payment, $cashAccountId, $transaction, $userId);
+            }
+
             // Обновляем долг
             $debt->applyPayment($data['amount']);
 
             return $payment;
         });
+    }
+
+    /**
+     * Создать кассовую транзакцию при погашении долга
+     */
+    protected function createCashTransaction(
+        FinanceDebt $debt,
+        FinanceDebtPayment $payment,
+        int $cashAccountId,
+        FinanceTransaction $transaction,
+        int $userId
+    ): CashTransaction {
+        $account = CashAccount::findOrFail($cashAccountId);
+
+        // receivable = нам платят → приход на кассу
+        // payable = мы платим → расход с кассы
+        $isIncome = $debt->type === FinanceDebt::TYPE_RECEIVABLE;
+        $type = $isIncome ? CashTransaction::TYPE_INCOME : CashTransaction::TYPE_EXPENSE;
+
+        $balanceBefore = $account->balance;
+        $balanceAfter = $isIncome
+            ? $balanceBefore + $payment->amount
+            : $balanceBefore - $payment->amount;
+
+        $cashTx = CashTransaction::create([
+            'company_id' => $debt->company_id,
+            'cash_account_id' => $account->id,
+            'type' => $type,
+            'operation' => CashTransaction::OP_DEBT_PAYMENT,
+            'amount' => $payment->amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'currency_code' => $debt->currency_code ?? $account->currency_code,
+            'counterparty_id' => $debt->counterparty_entity_id,
+            'finance_transaction_id' => $transaction->id,
+            'source_type' => FinanceDebtPayment::class,
+            'source_id' => $payment->id,
+            'description' => 'Погашение долга: ' . $debt->description,
+            'reference' => $payment->reference,
+            'transaction_date' => $payment->payment_date,
+            'status' => CashTransaction::STATUS_CONFIRMED,
+            'created_by' => $userId,
+        ]);
+
+        // Обновляем баланс счёта
+        $account->update(['balance' => $balanceAfter]);
+
+        return $cashTx;
     }
 
     public function cancelPayment(FinanceDebtPayment $payment): bool

@@ -485,27 +485,16 @@ class OrdersSyncService
     }
 
     /**
-     * Убедиться, что резерв освобождён для отменённого заказа
+     * Убедиться, что резерв обработан для заказов в финальном статусе.
      *
-     * Обрабатывает случаи, когда заказ был отменён, но резерв не был освобождён
-     * (например, из-за ошибки или пропуска при предыдущих синхронизациях)
-     *
-     * ВАЖНО: Освобождаем только если заказ был в статусе "новый" или "в сборке"
-     * (т.е. до отправки клиенту)
+     * Обрабатывает случаи, когда заказ отменён или продан, но stock_status
+     * всё ещё 'reserved' (из-за ошибки или пропуска при предыдущих синхронизациях).
      */
     protected function ensureCancelledOrderStockReleased(
         MarketplaceAccount $account,
         $order,
         string $marketplace
     ): void {
-        // Проверяем, является ли статус статусом отмены
-        $cancelledStatuses = OrderStockService::CANCELLED_STATUSES[$marketplace] ?? [];
-        $isCancelled = in_array($order->status, $cancelledStatuses, true);
-
-        if (!$isCancelled) {
-            return;
-        }
-
         // Проверяем, есть ли активный резерв
         $currentStockStatus = $order->stock_status ?? 'none';
 
@@ -513,12 +502,24 @@ class OrdersSyncService
             return; // Уже освобождён, продан, или не было резерва
         }
 
-        Log::info('OrdersSyncService: Found cancelled order with active reservation, releasing', [
+        // Проверяем, является ли статус финальным (отмена или продажа)
+        $cancelledStatuses = OrderStockService::CANCELLED_STATUSES[$marketplace] ?? [];
+        $soldStatuses = OrderStockService::SOLD_STATUSES[$marketplace] ?? [];
+
+        $isCancelled = in_array($order->status, $cancelledStatuses, true);
+        $isSold = in_array($order->status, $soldStatuses, true);
+
+        if (!$isCancelled && !$isSold) {
+            return;
+        }
+
+        Log::info('OrdersSyncService: Found order with stuck reservation, processing', [
             'marketplace' => $marketplace,
             'order_id' => $order->id,
             'external_order_id' => $order->external_order_id,
             'order_status' => $order->status,
             'stock_status' => $currentStockStatus,
+            'action' => $isCancelled ? 'release' : 'sold',
         ]);
 
         try {
@@ -527,17 +528,17 @@ class OrdersSyncService
             $result = $this->orderStockService->processOrderStatusChange(
                 $account,
                 $order,
-                null, // Передаём null как oldStatus, чтобы логика отмены сработала
+                null, // Передаём null как oldStatus, чтобы логика сработала
                 $order->status,
                 $items
             );
 
-            Log::info('OrdersSyncService: Cancelled order stock released', [
+            Log::info('OrdersSyncService: Stuck reservation processed', [
                 'order_id' => $order->id,
                 'result' => $result,
             ]);
         } catch (\Throwable $e) {
-            Log::error('OrdersSyncService: Failed to release cancelled order stock', [
+            Log::error('OrdersSyncService: Failed to process stuck reservation', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);

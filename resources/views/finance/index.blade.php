@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endpush
+
 @section('content')
 <div class="flex h-screen bg-gradient-to-br from-slate-50 to-emerald-50 browser-only" x-data="financePage()"
      :class="{
@@ -52,6 +56,11 @@
                         :class="activeTab === 'taxes' ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'taxes'; loadTaxes()">
                     Налоги
+                </button>
+                <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                        :class="activeTab === 'accounts' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'"
+                        @click="activeTab = 'accounts'; loadCashAccounts()">
+                    Счета
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                         :class="activeTab === 'reports' ? 'bg-cyan-100 text-cyan-700' : 'text-gray-600 hover:bg-gray-100'"
@@ -116,7 +125,7 @@
                         </div>
                     </div>
                     <div class="text-4xl font-bold mb-6" :class="(overview.balance?.net_balance || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
-                         x-text="formatMoney(overview.balance?.net_balance || 0) + ' сум'"></div>
+                         x-text="formatWithCurrency(overview.balance?.net_balance || 0)"></div>
                     <div class="grid grid-cols-2 gap-6">
                         <div>
                             <div class="text-sm text-slate-400 mb-2">Активы</div>
@@ -161,32 +170,39 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Транзакции за период (Приход / Расход) -->
+                    <!-- Транзакции за период (Приход / Расход / Себестоимость) -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
-                        <div class="text-sm text-slate-400 mb-2">Транзакции за период</div>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="text-sm text-slate-400 mb-2">Финансы за период</div>
+                        <div class="grid grid-cols-3 gap-3 text-sm">
                             <div class="bg-emerald-500/10 rounded-xl p-3">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     <span class="text-slate-400">Приход</span>
                                 </div>
-                                <div class="text-xl font-bold text-emerald-400" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
+                                <div class="text-lg font-bold text-emerald-400" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                             </div>
                             <div class="bg-red-500/10 rounded-xl p-3">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                     <span class="text-slate-400">Расход</span>
                                 </div>
-                                <div class="text-xl font-bold text-red-400" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                                <div class="text-lg font-bold text-red-400" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                            </div>
+                            <div class="bg-slate-500/10 rounded-xl p-3">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                    <span class="text-slate-400">Себестоимость</span>
+                                </div>
+                                <div class="text-lg font-bold text-slate-300" x-text="formatMoney(overview.summary?.total_cogs || 0)"></div>
                             </div>
                         </div>
                     </div>
-                    <!-- Прибыль за период -->
+                    <!-- Чистая прибыль за период -->
                     <div class="mt-4 pt-4 border-t border-slate-700">
                         <div class="text-sm text-slate-400 mb-2">Чистая прибыль за период</div>
                         <div class="text-2xl font-bold" :class="(overview.summary?.net_profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'"
                              x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
-                        <div class="text-xs text-slate-500 mt-1">Приход - Расход = Прибыль</div>
+                        <div class="text-xs text-slate-500 mt-1">Приход − Расход − Себестоимость = Чистая прибыль</div>
                     </div>
                     <!-- Ожидаемые поступления (транзит) — отдельно -->
                     <div x-show="overview.balance?.pending_income?.transit_orders > 0" class="mt-4 pt-4 border-t border-slate-700">
@@ -282,23 +298,27 @@
                     </div>
                 </div>
 
-                <!-- Summary Cards (Доходы/Расходы за период) -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Доходы за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
+                <!-- Summary Cards (Доходы/Расходы/Себестоимость/Прибыль за период) -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Доходы</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_income || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Расходы за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
+                    <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Расходы</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_expense || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Прибыль за период</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
+                    <div class="bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Себестоимость</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.total_cogs || 0)"></div>
                     </div>
-                    <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white">
-                        <div class="text-sm opacity-80">Неоплаченные налоги</div>
-                        <div class="text-2xl font-bold mt-1" x-text="formatMoney(overview.taxes?.unpaid_total || 0)"></div>
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Чистая прибыль</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
+                    </div>
+                    <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white">
+                        <div class="text-sm opacity-80">Налоги</div>
+                        <div class="text-xl font-bold mt-1" x-text="formatMoney(overview.taxes?.unpaid_total || 0)"></div>
                     </div>
                 </div>
 
@@ -332,7 +352,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.orders?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.orders?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.orders?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Продано (Delivered) -->
@@ -344,7 +364,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.sold?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.sold?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.sold?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Возвраты -->
@@ -356,7 +376,7 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.returns?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.returns?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.returns?.amount || 0)"></div>
                                 </div>
 
                                 <!-- Отменены -->
@@ -368,15 +388,89 @@
                                         </div>
                                     </div>
                                     <div class="text-3xl font-bold" x-text="(marketplaceIncome.totals?.cancelled?.count || 0) + ' шт'"></div>
-                                    <div class="text-sm opacity-80 mt-1" x-text="formatMoney(marketplaceIncome.totals?.cancelled?.amount || 0) + ' сум'"></div>
+                                    <div class="text-sm opacity-80 mt-1" x-text="formatWithCurrency(marketplaceIncome.totals?.cancelled?.amount || 0)"></div>
                                 </div>
                             </div>
 
                             <!-- Средний чек -->
                             <div class="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
                                 <span class="text-gray-600 font-medium">Средний чек (по продажам)</span>
-                                <span class="text-xl font-bold text-gray-900" x-text="formatMoney(marketplaceIncome.totals?.avg_order_value || 0) + ' сум'"></span>
+                                <span class="text-xl font-bold text-gray-900" x-text="formatWithCurrency(marketplaceIncome.totals?.avg_order_value || 0)"></span>
                             </div>
+
+                            <!-- Себестоимость проданных товаров (COGS) -->
+                            <template x-if="marketplaceIncome.cogs">
+                                <div class="bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl p-5 mt-4">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-semibold text-slate-800">Себестоимость проданных товаров</h4>
+                                                <p class="text-xs text-slate-500">COGS (Cost of Goods Sold) — закупочная стоимость товаров</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Себестоимость</div>
+                                            <div class="text-xl font-bold text-slate-800" x-text="formatMoney(marketplaceIncome.cogs?.total || 0)"></div>
+                                            <div class="text-xs text-slate-500 mt-1" x-text="(marketplaceIncome.cogs?.total_items || 0) + ' товаров'"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Выручка</div>
+                                            <div class="text-xl font-bold text-emerald-600" x-text="formatMoney(marketplaceIncome.cogs?.total_revenue || 0)"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Валовая прибыль</div>
+                                            <div class="text-xl font-bold" :class="(marketplaceIncome.cogs?.gross_margin || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="formatMoney(marketplaceIncome.cogs?.gross_margin || 0)"></div>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-4">
+                                            <div class="text-sm text-slate-600">Маржа</div>
+                                            <div class="text-xl font-bold" :class="(marketplaceIncome.cogs?.margin_percent || 0) >= 20 ? 'text-emerald-600' : (marketplaceIncome.cogs?.margin_percent || 0) >= 10 ? 'text-amber-600' : 'text-red-600'" x-text="(marketplaceIncome.cogs?.margin_percent || 0) + '%'"></div>
+                                        </div>
+                                    </div>
+                                    <!-- COGS by marketplace -->
+                                    <template x-if="Object.keys(marketplaceIncome.cogs?.by_marketplace || {}).length > 0">
+                                        <div class="mt-4 pt-4 border-t border-slate-300">
+                                            <div class="text-sm text-slate-600 mb-2">По каналам продаж:</div>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                                                <template x-for="(mp, key) in marketplaceIncome.cogs?.by_marketplace || {}" :key="key">
+                                                    <div class="bg-white/70 rounded-lg p-3 text-sm">
+                                                        <div class="flex items-center justify-between mb-1">
+                                                            <span class="font-medium text-slate-700 capitalize" x-text="key === 'wb' ? 'Wildberries' : key === 'offline' ? 'Ручные продажи' : key.charAt(0).toUpperCase() + key.slice(1)"></span>
+                                                            <span class="text-xs px-2 py-0.5 rounded-full" :class="(mp.margin_percent || 0) >= 20 ? 'bg-emerald-100 text-emerald-700' : (mp.margin_percent || 0) >= 10 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'" x-text="(mp.margin_percent || 0) + '%'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-500">
+                                                            <span>Себест:</span>
+                                                            <span x-text="formatMoney(mp.cogs || 0)"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-500">
+                                                            <span>Прибыль:</span>
+                                                            <span :class="(mp.margin || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'" x-text="formatMoney(mp.margin || 0)"></span>
+                                                        </div>
+                                                        <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                                            <span>Связано:</span>
+                                                            <span x-text="(mp.items_with_cogs || 0) + ' / ' + (mp.items_count || 0) + ' шт'"></span>
+                                                        </div>
+                                                        <template x-if="mp.from_internal > 0 || mp.from_marketplace > 0">
+                                                            <div class="text-xs text-slate-400 mt-1">
+                                                                <span x-show="mp.from_internal > 0" class="text-emerald-600" x-text="'Из товаров: ' + mp.from_internal"></span>
+                                                                <span x-show="mp.from_internal > 0 && mp.from_marketplace > 0"> / </span>
+                                                                <span x-show="mp.from_marketplace > 0" class="text-blue-600" x-text="'Из МП: ' + mp.from_marketplace"></span>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="mp.note">
+                                                            <div class="text-xs text-amber-600 mt-1" x-text="mp.note"></div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
 
                             <!-- Breakdown by Marketplace -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -866,22 +960,22 @@
                     </template>
                 </div>
 
-                <!-- Debts Summary -->
+                <!-- Debts Summary (показываем в оригинальных валютах) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Дебиторская задолженность</h3>
                         <p class="text-xs text-gray-500 mb-2">Нам должны</p>
-                        <div class="text-3xl font-bold text-green-600" x-text="formatMoney(overview.debts?.receivable || 0)"></div>
-                        <template x-if="overview.debts?.overdue_receivable > 0">
-                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_receivable)"></span></div>
+                        <div class="text-3xl font-bold text-green-600" x-text="formatDebtsByCurrency(overview.debts?.receivable_by_currency)"></div>
+                        <template x-if="Object.keys(overview.debts?.overdue_receivable_by_currency || {}).length > 0">
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatDebtsByCurrency(overview.debts.overdue_receivable_by_currency)"></span></div>
                         </template>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Кредиторская задолженность</h3>
                         <p class="text-xs text-gray-500 mb-2">Мы должны</p>
-                        <div class="text-3xl font-bold text-red-600" x-text="formatMoney(overview.debts?.payable || 0)"></div>
-                        <template x-if="overview.debts?.overdue_payable > 0">
-                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatMoney(overview.debts.overdue_payable)"></span></div>
+                        <div class="text-3xl font-bold text-red-600" x-text="formatDebtsByCurrency(overview.debts?.payable_by_currency)"></div>
+                        <template x-if="Object.keys(overview.debts?.overdue_payable_by_currency || {}).length > 0">
+                            <div class="text-sm text-red-500 mt-2">⚠️ Просрочено: <span x-text="formatDebtsByCurrency(overview.debts.overdue_payable_by_currency)"></span></div>
                         </template>
                     </div>
                 </div>
@@ -978,22 +1072,30 @@
                         <template x-if="loading"><tr><td colspan="7" class="px-6 py-12 text-center"><svg class="animate-spin w-5 h-5 text-emerald-600 mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/></svg></td></tr></template>
                         <template x-if="!loading && transactions.length === 0"><tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">Транзакции не найдены</td></tr></template>
                         <template x-for="tx in transactions" :key="tx.id">
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(tx.transaction_date)"></td>
+                            <tr class="hover:bg-gray-50 transition-colors" :class="tx.status === 'deleted' ? 'opacity-50 bg-gray-50' : ''">
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="formatDate(tx.transaction_date)"></td>
                                 <td class="px-6 py-4">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                          :class="tx.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                          :class="tx.status === 'deleted' ? 'bg-gray-100 text-gray-400' : (tx.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')"
                                           x-text="tx.type === 'income' ? 'Доход' : 'Расход'"></span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tx.category?.name || '—'"></td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tx.description || '—'"></td>
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="tx.category?.name || '—'"></td>
+                                <td class="px-6 py-4 text-sm" :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="tx.description || '—'"></td>
                                 <td class="px-6 py-4 text-sm text-right font-semibold"
-                                    :class="tx.type === 'income' ? 'text-green-600' : 'text-red-600'"
+                                    :class="tx.status === 'deleted' ? 'text-gray-400 line-through' : (tx.type === 'income' ? 'text-green-600' : 'text-red-600')"
                                     x-text="formatMoney(tx.amount)"></td>
                                 <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-medium" :class="statusClass(tx.status)" x-text="statusLabel(tx.status)"></span></td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right space-x-2">
                                     <template x-if="tx.status === 'draft'">
                                         <button class="text-emerald-600 hover:text-emerald-700 text-sm font-medium" @click="confirmTransaction(tx.id)">Подтвердить</button>
+                                    </template>
+                                    <template x-if="tx.status !== 'deleted'">
+                                        <button class="text-red-500 hover:text-red-600 text-sm" @click="deleteTransaction(tx.id)" title="Удалить">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </template>
+                                    <template x-if="tx.status === 'deleted'">
+                                        <button class="text-blue-500 hover:text-blue-600 text-sm font-medium" @click="restoreTransaction(tx.id)">Восстановить</button>
                                     </template>
                                 </td>
                             </tr>
@@ -1251,7 +1353,7 @@
                                 <td class="px-6 py-4 text-sm text-right" x-text="tax.tax_rate + '%'"></td>
                                 <td class="px-6 py-4 text-sm text-right font-semibold" x-text="formatMoney(tax.calculated_amount)"></td>
                                 <td class="px-6 py-4 text-sm text-right text-green-600" x-text="formatMoney(tax.paid_amount)"></td>
-                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tax.due_date || '—'"></td>
+                                <td class="px-6 py-4 text-sm text-gray-700" x-text="tax.due_date_formatted || '—'"></td>
                                 <td class="px-6 py-4 text-right">
                                     <template x-if="tax.status !== 'paid'">
                                         <button class="text-amber-600 hover:text-amber-700 text-sm font-medium" @click="payTax(tax.id)">Оплатить</button>
@@ -1264,8 +1366,180 @@
                 </div>
             </section>
 
+            <!-- Cash Accounts Tab -->
+            <section x-show="activeTab === 'accounts'" class="space-y-6">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Всего счетов</div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="cashAccounts.length"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (UZS)</div>
+                        <div class="text-2xl font-bold text-emerald-600" x-text="formatMoney(cashAccountsTotalByCurrency('UZS'))"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (RUB)</div>
+                        <div class="text-2xl font-bold text-blue-600" x-text="formatMoney(cashAccountsTotalByCurrency('RUB'))"></div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                        <div class="text-sm text-gray-500 mb-1">Баланс (USD)</div>
+                        <div class="text-2xl font-bold text-green-600" x-text="formatMoney(cashAccountsTotalByCurrency('USD'))"></div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="showCashAccountModal = true; resetCashAccountForm()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Добавить счёт</span>
+                        </button>
+                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="showTransferModal = true">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            <span>Перевод</span>
+                        </button>
+                        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2"
+                                @click="syncMarketplacePayouts()" :disabled="syncingPayouts">
+                            <svg class="w-5 h-5" :class="syncingPayouts ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span x-text="syncingPayouts ? 'Синхронизация...' : 'Синхр. выплат'"></span>
+                        </button>
+                    </div>
+                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="loadCashAccounts()">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                </div>
+
+                <!-- Accounts List -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="account in cashAccounts" :key="account.id">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                             @click="selectCashAccount(account)">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                                         :class="{
+                                             'bg-green-100 text-green-600': account.type === 'cash',
+                                             'bg-blue-100 text-blue-600': account.type === 'bank',
+                                             'bg-purple-100 text-purple-600': account.type === 'card',
+                                             'bg-amber-100 text-amber-600': account.type === 'ewallet',
+                                             'bg-indigo-100 text-indigo-600': account.type === 'marketplace',
+                                             'bg-gray-100 text-gray-600': account.type === 'other'
+                                         }">
+                                        <template x-if="account.type === 'cash'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'bank'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'card'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'ewallet'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'marketplace'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                                        </template>
+                                        <template x-if="account.type === 'other'">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                                        </template>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900" x-text="account.name"></div>
+                                        <div class="text-xs text-gray-500" x-text="getAccountTypeName(account.type)"></div>
+                                    </div>
+                                </div>
+                                <template x-if="account.is_default">
+                                    <span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">По умолч.</span>
+                                </template>
+                            </div>
+                            <div class="text-2xl font-bold mb-2"
+                                 :class="account.balance >= 0 ? 'text-emerald-600' : 'text-red-600'"
+                                 x-text="formatMoney(account.balance) + ' ' + currencySymbol(account.currency_code)"></div>
+                            <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span x-text="account.currency_code"></span>
+                                <template x-if="account.marketplace">
+                                    <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded" x-text="account.marketplace.toUpperCase()"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="cashAccounts.length === 0" class="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Нет денежных счетов</h3>
+                    <p class="text-gray-500 mb-4">Добавьте кассу, банковский счёт или карту для учёта денежных средств</p>
+                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" @click="showCashAccountModal = true; resetCashAccountForm()">
+                        Добавить счёт
+                    </button>
+                </div>
+
+                <!-- Selected Account Transactions -->
+                <div x-show="selectedCashAccount" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <button class="p-2 hover:bg-gray-100 rounded-lg" @click="selectedCashAccount = null">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <h3 class="text-lg font-semibold text-gray-900">Движения: <span x-text="selectedCashAccount?.name"></span></h3>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl text-sm"
+                                    @click="showIncomeModal = true">
+                                + Приход
+                            </button>
+                            <button class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-sm"
+                                    @click="showAccountExpenseModal = true">
+                                - Расход
+                            </button>
+                        </div>
+                    </div>
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-sm text-gray-500 border-b">
+                                <th class="pb-3">Дата</th>
+                                <th class="pb-3">Операция</th>
+                                <th class="pb-3">Описание</th>
+                                <th class="pb-3 text-right">Сумма</th>
+                                <th class="pb-3 text-right">Баланс</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="tx in accountTransactions" :key="tx.id">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="py-3 text-sm text-gray-600" x-text="formatDate(tx.transaction_date)"></td>
+                                    <td class="py-3">
+                                        <span class="px-2 py-1 rounded-full text-xs"
+                                              :class="{
+                                                  'bg-emerald-100 text-emerald-700': tx.type === 'income',
+                                                  'bg-red-100 text-red-700': tx.type === 'expense',
+                                                  'bg-blue-100 text-blue-700': tx.type === 'transfer_in',
+                                                  'bg-purple-100 text-purple-700': tx.type === 'transfer_out'
+                                              }"
+                                              x-text="getTransactionTypeName(tx.type)"></span>
+                                    </td>
+                                    <td class="py-3 text-sm text-gray-700" x-text="tx.description || '-'"></td>
+                                    <td class="py-3 text-right font-medium"
+                                        :class="['income', 'transfer_in'].includes(tx.type) ? 'text-emerald-600' : 'text-red-600'"
+                                        x-text="(['income', 'transfer_in'].includes(tx.type) ? '+' : '-') + formatMoney(tx.amount)"></td>
+                                    <td class="py-3 text-right text-sm text-gray-600" x-text="formatMoney(tx.balance_after)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="accountTransactions.length === 0" class="text-center py-8 text-gray-500">
+                        Нет движений по счёту
+                    </div>
+                </div>
+            </section>
+
             <!-- Reports Tab -->
-            <section x-show="activeTab === 'reports'" class="space-y-6">
+            <section x-show="activeTab === 'reports'" class="space-y-6" x-init="$watch('activeTab', val => { if (val === 'reports') { if (!reportData) loadReportWithCharts(); else setTimeout(() => initReportCharts(), 100) } })">
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчёты</h2>
                     <div class="flex flex-wrap items-center gap-4">
@@ -1278,7 +1552,7 @@
                             <option value="by_category">По категориям</option>
                             <option value="debts_aging">Анализ долгов</option>
                         </select>
-                        <button class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl" @click="loadReport()">Сформировать</button>
+                        <button class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl" @click="loadReportWithCharts()">Сформировать</button>
                     </div>
                 </div>
 
@@ -1287,38 +1561,84 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-4" x-text="reportTypeLabel(reportType)"></h3>
 
                     <!-- P&L Report -->
-                    <div x-show="reportType === 'pnl'" class="space-y-4">
+                    <div x-show="reportType === 'pnl'" class="space-y-6">
                         <div class="grid grid-cols-3 gap-4">
                             <div class="p-4 bg-green-50 rounded-xl">
                                 <div class="text-sm text-green-600">Доходы</div>
-                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.income?.total || 0)"></div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatWithCurrency(reportData?.data?.income?.total || 0)"></div>
                             </div>
                             <div class="p-4 bg-red-50 rounded-xl">
                                 <div class="text-sm text-red-600">Расходы</div>
-                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.expenses?.total || 0)"></div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatWithCurrency(reportData?.data?.expenses?.total || 0)"></div>
                             </div>
                             <div class="p-4 bg-blue-50 rounded-xl">
                                 <div class="text-sm text-blue-600">Прибыль</div>
-                                <div class="text-xl font-bold" :class="(reportData?.data?.gross_profit || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(reportData?.data?.gross_profit || 0)"></div>
+                                <div class="text-xl font-bold" :class="(reportData?.data?.gross_profit || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatWithCurrency(reportData?.data?.gross_profit || 0)"></div>
                             </div>
                         </div>
                         <div class="text-sm text-gray-500 text-center" x-text="'Маржа: ' + (reportData?.data?.profit_margin || 0) + '%'"></div>
+
+                        <!-- P&L Bar Chart -->
+                        <div class="mt-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Сравнение доходов и расходов</h4>
+                            <div class="h-64">
+                                <canvas id="pnlBarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- P&L Pie Chart -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Структура доходов</h4>
+                                <div class="h-48">
+                                    <canvas id="incomePieChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Структура расходов</h4>
+                                <div class="h-48">
+                                    <canvas id="expensePieChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Cash Flow Report -->
-                    <div x-show="reportType === 'cash_flow'" class="space-y-2">
+                    <div x-show="reportType === 'cash_flow'" class="space-y-6">
+                        <!-- Cash Flow Line Chart -->
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Динамика движения денег</h4>
+                            <div class="h-72">
+                                <canvas id="cashFlowLineChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Cash Flow Table -->
                         <template x-if="Array.isArray(reportData?.data) && reportData.data.length > 0">
                             <div>
-                                <template x-for="(item, idx) in reportData.data" :key="idx">
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-2">
-                                        <span class="font-medium" x-text="item.period || item.date"></span>
-                                        <div class="flex items-center space-x-4">
-                                            <span class="text-green-600" x-text="'+' + formatMoney(item.income || 0)"></span>
-                                            <span class="text-red-600" x-text="'-' + formatMoney(item.expense || 0)"></span>
-                                            <span class="font-bold" :class="(item.net || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net || 0)"></span>
-                                        </div>
-                                    </div>
-                                </template>
+                                <h4 class="text-sm font-medium text-gray-700 mb-3">Детализация по периодам</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead>
+                                            <tr class="border-b border-gray-200">
+                                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-600">Период</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-green-600">Приход</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-red-600">Расход</th>
+                                                <th class="text-right py-3 px-4 text-sm font-medium text-gray-600">Итого</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="(item, idx) in reportData.data" :key="idx">
+                                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td class="py-3 px-4 font-medium" x-text="item.period || item.date"></td>
+                                                    <td class="py-3 px-4 text-right text-green-600" x-text="'+' + formatMoney(item.income || 0)"></td>
+                                                    <td class="py-3 px-4 text-right text-red-600" x-text="'-' + formatMoney(item.expense || 0)"></td>
+                                                    <td class="py-3 px-4 text-right font-bold" :class="(item.net || 0) >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatMoney(item.net || 0)"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </template>
                         <template x-if="!Array.isArray(reportData?.data) || reportData.data.length === 0">
@@ -1328,18 +1648,39 @@
 
                     <!-- By Category Report -->
                     <div x-show="reportType === 'by_category'" class="space-y-6">
+                        <!-- Doughnut Charts -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <h4 class="font-medium text-green-700 mb-3 text-center">Доходы по категориям</h4>
+                                <div class="h-56">
+                                    <canvas id="categoryIncomeDoughnut"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-red-700 mb-3 text-center">Расходы по категориям</h4>
+                                <div class="h-56">
+                                    <canvas id="categoryExpenseDoughnut"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Category Lists -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Income -->
                             <div>
-                                <h4 class="font-medium text-green-700 mb-3">Доходы по категориям</h4>
+                                <h4 class="font-medium text-green-700 mb-3">Детализация доходов</h4>
                                 <template x-if="reportData?.data?.income?.length > 0">
                                     <div class="space-y-2">
                                         <template x-for="(cat, idx) in reportData.data.income" :key="'inc-' + idx">
                                             <div class="p-3 bg-green-50 rounded-xl">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-green-800" x-text="cat.category"></span>
-                                                    <span class="font-bold text-green-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                    <span class="font-bold text-green-700" x-text="formatWithCurrency(cat.total || 0)"></span>
                                                 </div>
+                                                <div class="mt-1 bg-green-200 rounded-full h-2">
+                                                    <div class="bg-green-600 h-2 rounded-full" :style="'width: ' + (cat.percentage || 0) + '%'"></div>
+                                                </div>
+                                                <div class="text-xs text-green-600 mt-1" x-text="(cat.percentage || 0).toFixed(1) + '%'"></div>
                                             </div>
                                         </template>
                                     </div>
@@ -1350,15 +1691,19 @@
                             </div>
                             <!-- Expense -->
                             <div>
-                                <h4 class="font-medium text-red-700 mb-3">Расходы по категориям</h4>
+                                <h4 class="font-medium text-red-700 mb-3">Детализация расходов</h4>
                                 <template x-if="reportData?.data?.expense?.length > 0">
                                     <div class="space-y-2">
                                         <template x-for="(cat, idx) in reportData.data.expense" :key="'exp-' + idx">
                                             <div class="p-3 bg-red-50 rounded-xl">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-red-800" x-text="cat.category"></span>
-                                                    <span class="font-bold text-red-700" x-text="formatMoney(cat.total || 0)"></span>
+                                                    <span class="font-bold text-red-700" x-text="formatWithCurrency(cat.total || 0)"></span>
                                                 </div>
+                                                <div class="mt-1 bg-red-200 rounded-full h-2">
+                                                    <div class="bg-red-600 h-2 rounded-full" :style="'width: ' + (cat.percentage || 0) + '%'"></div>
+                                                </div>
+                                                <div class="text-xs text-red-600 mt-1" x-text="(cat.percentage || 0).toFixed(1) + '%'"></div>
                                             </div>
                                         </template>
                                     </div>
@@ -1371,37 +1716,61 @@
                     </div>
 
                     <!-- Debts Aging Report -->
-                    <div x-show="reportType === 'debts_aging'" class="space-y-4">
+                    <div x-show="reportType === 'debts_aging'" class="space-y-6">
+                        <!-- Debts Aging Bar Chart -->
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">Просрочка по периодам</h4>
+                            <div class="h-56">
+                                <canvas id="debtsAgingBarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Aging Summary Cards -->
                         <div class="grid grid-cols-5 gap-4">
                             <div class="p-3 bg-green-100 rounded-xl text-center">
                                 <div class="text-xs text-green-600">Текущие</div>
                                 <div class="font-bold text-green-700" x-text="formatMoney(reportData?.data?.summary?.current?.amount || 0)"></div>
+                                <div class="text-xs text-green-500 mt-1" x-text="(reportData?.data?.summary?.current?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-yellow-100 rounded-xl text-center">
                                 <div class="text-xs text-yellow-600">1-30 дней</div>
                                 <div class="font-bold text-yellow-700" x-text="formatMoney(reportData?.data?.summary?.['1_30']?.amount || 0)"></div>
+                                <div class="text-xs text-yellow-500 mt-1" x-text="(reportData?.data?.summary?.['1_30']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-orange-100 rounded-xl text-center">
                                 <div class="text-xs text-orange-600">31-60 дней</div>
                                 <div class="font-bold text-orange-700" x-text="formatMoney(reportData?.data?.summary?.['31_60']?.amount || 0)"></div>
+                                <div class="text-xs text-orange-500 mt-1" x-text="(reportData?.data?.summary?.['31_60']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-red-100 rounded-xl text-center">
                                 <div class="text-xs text-red-600">61-90 дней</div>
                                 <div class="font-bold text-red-700" x-text="formatMoney(reportData?.data?.summary?.['61_90']?.amount || 0)"></div>
+                                <div class="text-xs text-red-500 mt-1" x-text="(reportData?.data?.summary?.['61_90']?.count || 0) + ' шт'"></div>
                             </div>
                             <div class="p-3 bg-red-200 rounded-xl text-center">
                                 <div class="text-xs text-red-700">90+ дней</div>
                                 <div class="font-bold text-red-800" x-text="formatMoney(reportData?.data?.summary?.over_90?.amount || 0)"></div>
+                                <div class="text-xs text-red-600 mt-1" x-text="(reportData?.data?.summary?.over_90?.count || 0) + ' шт'"></div>
                             </div>
                         </div>
+
+                        <!-- Totals -->
                         <div class="grid grid-cols-2 gap-4 mt-4">
                             <div class="p-4 bg-green-50 rounded-xl">
                                 <div class="text-sm text-green-600">Всего дебиторки</div>
-                                <div class="text-xl font-bold text-green-700" x-text="formatMoney(reportData?.data?.total_receivable || 0)"></div>
+                                <div class="text-xl font-bold text-green-700" x-text="formatWithCurrency(reportData?.data?.total_receivable || 0)"></div>
                             </div>
                             <div class="p-4 bg-red-50 rounded-xl">
                                 <div class="text-sm text-red-600">Всего кредиторки</div>
-                                <div class="text-xl font-bold text-red-700" x-text="formatMoney(reportData?.data?.total_payable || 0)"></div>
+                                <div class="text-xl font-bold text-red-700" x-text="formatWithCurrency(reportData?.data?.total_payable || 0)"></div>
+                            </div>
+                        </div>
+
+                        <!-- Debts Comparison Pie -->
+                        <div class="mt-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3 text-center">Соотношение дебиторки и кредиторки</h4>
+                            <div class="h-48 max-w-xs mx-auto">
+                                <canvas id="debtsComparisonPie"></canvas>
                             </div>
                         </div>
                     </div>
@@ -1956,6 +2325,207 @@
         </div>
     </div>
 
+    <!-- Cash Account Modal -->
+    <div x-show="showCashAccountModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showCashAccountModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Новый денежный счёт</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showCashAccountModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.name" placeholder="Основная касса">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.type">
+                            <option value="cash">Касса</option>
+                            <option value="bank">Банковский счёт</option>
+                            <option value="card">Карта</option>
+                            <option value="ewallet">Электронный кошелёк</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Валюта</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.currency_code">
+                            <option value="UZS">UZS (сум)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="RUB">RUB (₽)</option>
+                            <option value="EUR">EUR (€)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Начальный остаток</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.initial_balance" placeholder="0">
+                </div>
+                <div x-show="cashAccountForm.type === 'bank'" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название банка</label>
+                        <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.bank_name" placeholder="Kapital Bank">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Номер счёта</label>
+                            <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.account_number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">БИК</label>
+                            <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.bik">
+                        </div>
+                    </div>
+                </div>
+                <div x-show="cashAccountForm.type === 'card'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Последние 4 цифры карты</label>
+                    <input type="text" maxlength="4" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="cashAccountForm.card_number" placeholder="1234">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCashAccountModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50" :disabled="savingCashAccount || !cashAccountForm.name" @click="saveCashAccount()">
+                    <span x-show="!savingCashAccount">Создать</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Modal -->
+    <div x-show="showTransferModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showTransferModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Перевод между счетами</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showTransferModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Со счёта</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.from_account_id">
+                        <option value="">Выберите счёт</option>
+                        <template x-for="acc in cashAccounts" :key="acc.id">
+                            <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + currencySymbol(acc.currency_code) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">На счёт</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.to_account_id">
+                        <option value="">Выберите счёт</option>
+                        <template x-for="acc in cashAccounts.filter(a => a.id != transferForm.from_account_id)" :key="acc.id">
+                            <option :value="acc.id" x-text="acc.name + ' (' + formatMoney(acc.balance) + ' ' + currencySymbol(acc.currency_code) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.description" placeholder="Пополнение кассы">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="transferForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransferModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !transferForm.from_account_id || !transferForm.to_account_id || !transferForm.amount"
+                        @click="saveTransfer()">
+                    <span x-show="!savingCashAccount">Перевести</span>
+                    <span x-show="savingCashAccount">Перевод...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Modal -->
+    <div x-show="showIncomeModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showIncomeModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Приход на счёт: <span x-text="selectedCashAccount?.name"></span></h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showIncomeModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.description" placeholder="Выручка за день">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Номер документа</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.reference" placeholder="ПКО-001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="incomeForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showIncomeModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !incomeForm.amount"
+                        @click="saveAccountIncome()">
+                    <span x-show="!savingCashAccount">Добавить</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Expense Modal -->
+    <div x-show="showAccountExpenseModal" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showAccountExpenseModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Расход со счёта: <span x-text="selectedCashAccount?.name"></span></h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showAccountExpenseModal = false">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Сумма</label>
+                    <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.amount" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.description" placeholder="Оплата поставщику">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Номер документа</label>
+                    <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.reference" placeholder="РКО-001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="accountExpenseForm.transaction_date">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showAccountExpenseModal = false">Отмена</button>
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl disabled:opacity-50"
+                        :disabled="savingCashAccount || !accountExpenseForm.amount"
+                        @click="saveAccountExpense()">
+                    <span x-show="!savingCashAccount">Добавить</span>
+                    <span x-show="savingCashAccount">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
         <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'"><span x-text="toast.message"></span></div>
@@ -2013,17 +2583,17 @@
                          x-text="formatMoney(overview.summary?.net_profit || 0)"></div>
                 </div>
 
-                <!-- Debts -->
+                <!-- Debts (в оригинальных валютах) -->
                 <div class="native-card p-4">
                     <div class="native-caption mb-3">Долги</div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <div class="text-xs text-green-600">Нам должны</div>
-                            <div class="font-bold text-green-700" x-text="formatMoney(overview.debts?.receivable || 0)"></div>
+                            <div class="font-bold text-green-700" x-text="formatDebtsByCurrency(overview.debts?.receivable_by_currency)"></div>
                         </div>
                         <div>
                             <div class="text-xs text-red-600">Мы должны</div>
-                            <div class="font-bold text-red-700" x-text="formatMoney(overview.debts?.payable || 0)"></div>
+                            <div class="font-bold text-red-700" x-text="formatDebtsByCurrency(overview.debts?.payable_by_currency)"></div>
                         </div>
                     </div>
                 </div>
@@ -2133,6 +2703,22 @@ function financePagePwa() {
 
         formatMoney(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
 
+        currencySymbol(code) {
+            const symbols = { 'UZS': 'сум', 'USD': '$', 'RUB': '₽', 'EUR': '€', 'KZT': '₸' };
+            return symbols[code] || code || 'сум';
+        },
+
+        formatDebtsByCurrency(debtsByCurrency) {
+            if (!debtsByCurrency || Object.keys(debtsByCurrency).length === 0) return '0';
+            const parts = [];
+            for (const [currency, amount] of Object.entries(debtsByCurrency)) {
+                if (amount > 0) {
+                    parts.push(this.formatMoney(amount) + ' ' + this.currencySymbol(currency));
+                }
+            }
+            return parts.length > 0 ? parts.join(', ') : '0';
+        },
+
         formatDate(dateStr) {
             if (!dateStr) return '';
             const d = new Date(dateStr);
@@ -2224,6 +2810,21 @@ function financePage() {
         showCalculateTaxForm: false,
         showCurrencyModal: false,
 
+        // Cash Accounts
+        cashAccounts: [],
+        selectedCashAccount: null,
+        accountTransactions: [],
+        showCashAccountModal: false,
+        showTransferModal: false,
+        showIncomeModal: false,
+        showAccountExpenseModal: false,
+        savingCashAccount: false,
+        syncingPayouts: false,
+        cashAccountForm: { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' },
+        transferForm: { from_account_id: '', to_account_id: '', amount: '', description: '', transaction_date: '' },
+        incomeForm: { amount: '', description: '', reference: '', transaction_date: '' },
+        accountExpenseForm: { amount: '', description: '', reference: '', transaction_date: '' },
+
         // Employee action modals
         showPaySalaryModal: false,
         showPenaltyModal: false,
@@ -2263,6 +2864,31 @@ function financePage() {
 
         formatNumber(v) { return Number(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); },
 
+        // Получить символ валюты
+        currencySymbol(code) {
+            const symbols = { 'UZS': 'сум', 'USD': '$', 'RUB': '₽', 'EUR': '€', 'KZT': '₸' };
+            return symbols[code] || code || 'сум';
+        },
+
+        // Форматировать сумму с валютой отображения
+        formatWithCurrency(v, currencyCode = null) {
+            const amount = this.formatMoney(v);
+            const currency = currencyCode || this.overview.currency?.display || 'UZS';
+            return amount + ' ' + this.currencySymbol(currency);
+        },
+
+        // Форматировать долги по валютам
+        formatDebtsByCurrency(debtsByCurrency) {
+            if (!debtsByCurrency || Object.keys(debtsByCurrency).length === 0) return '0';
+            const parts = [];
+            for (const [currency, amount] of Object.entries(debtsByCurrency)) {
+                if (amount > 0) {
+                    parts.push(this.formatMoney(amount) + ' ' + this.currencySymbol(currency));
+                }
+            }
+            return parts.length > 0 ? parts.join(', ') : '0';
+        },
+
         formatDate(dateStr) {
             if (!dateStr) return '';
             const d = new Date(dateStr);
@@ -2274,11 +2900,12 @@ function financePage() {
                 'bg-green-100 text-green-700': st === 'confirmed',
                 'bg-amber-100 text-amber-700': st === 'draft',
                 'bg-red-100 text-red-700': st === 'cancelled',
+                'bg-gray-200 text-gray-500': st === 'deleted',
             };
         },
 
         statusLabel(st) {
-            return { draft: 'Черновик', confirmed: 'Подтверждён', cancelled: 'Отменён' }[st] || st;
+            return { draft: 'Черновик', confirmed: 'Подтверждён', cancelled: 'Отменён', deleted: 'Удалён' }[st] || st;
         },
 
         debtStatusClass(st) {
@@ -2415,6 +3042,209 @@ function financePage() {
             this.loadingIncome = false;
         },
 
+        // ========== Cash Accounts ==========
+        async loadCashAccounts() {
+            try {
+                const resp = await fetch('/api/finance/cash-accounts', { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.cashAccounts = json.data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load cash accounts:', e);
+            }
+        },
+
+        async syncMarketplacePayouts() {
+            if (this.syncingPayouts) return;
+            this.syncingPayouts = true;
+            try {
+                const resp = await fetch('/api/finance/payouts/sync', {
+                    method: 'POST',
+                    headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    const r = json.data?.result || {};
+                    const total = r.total || r;
+                    const created = total.payouts_created || 0;
+                    const updated = total.payouts_updated || 0;
+                    const skipped = total.payouts_skipped || 0;
+                    const amount = total.total_amount || 0;
+                    if (created > 0 || updated > 0) {
+                        alert(`Синхронизация завершена!\n\nСоздано выплат: ${created}\nОбновлено: ${updated}\nПропущено: ${skipped}\nСумма: ${this.formatMoney(amount)} UZS`);
+                    } else {
+                        alert(`Синхронизация завершена.\nНовых выплат не найдено (пропущено: ${skipped})`);
+                    }
+                    await this.loadCashAccounts();
+                } else {
+                    alert('Ошибка синхронизации: ' + (json.message || 'unknown'));
+                }
+            } catch (e) {
+                console.error('Sync payouts failed:', e);
+                alert('Ошибка синхронизации выплат');
+            }
+            this.syncingPayouts = false;
+        },
+
+        cashAccountsTotalByCurrency(currency) {
+            return this.cashAccounts
+                .filter(a => a.currency_code === currency)
+                .reduce((sum, a) => sum + Number(a.balance || 0), 0);
+        },
+
+        getAccountTypeName(type) {
+            const types = {
+                'cash': 'Касса',
+                'bank': 'Банковский счёт',
+                'card': 'Карта',
+                'ewallet': 'Электронный кошелёк',
+                'marketplace': 'Маркетплейс',
+                'other': 'Прочее'
+            };
+            return types[type] || type;
+        },
+
+        getTransactionTypeName(type) {
+            const types = {
+                'income': 'Приход',
+                'expense': 'Расход',
+                'transfer_in': 'Перевод (вход)',
+                'transfer_out': 'Перевод (выход)'
+            };
+            return types[type] || type;
+        },
+
+        resetCashAccountForm() {
+            this.cashAccountForm = { name: '', type: 'cash', currency_code: 'UZS', initial_balance: 0, bank_name: '', account_number: '', bik: '', card_number: '' };
+        },
+
+        async selectCashAccount(account) {
+            this.selectedCashAccount = account;
+            await this.loadAccountTransactions(account.id);
+        },
+
+        async loadAccountTransactions(accountId) {
+            try {
+                const resp = await fetch(`/api/finance/cash-accounts/${accountId}/transactions`, { headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.accountTransactions = json.data?.data || json.data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load account transactions:', e);
+            }
+        },
+
+        async saveCashAccount() {
+            this.savingCashAccount = true;
+            try {
+                const resp = await fetch('/api/finance/cash-accounts', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.cashAccountForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Счёт успешно создан', 'success');
+                    this.showCashAccountModal = false;
+                    await this.loadCashAccounts();
+                } else {
+                    this.showToast(json.message || 'Ошибка создания счёта', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save cash account:', e);
+                this.showToast('Ошибка создания счёта', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveTransfer() {
+            this.savingCashAccount = true;
+            try {
+                this.transferForm.transaction_date = this.transferForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch('/api/finance/cash-accounts/transfer', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.transferForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Перевод выполнен успешно', 'success');
+                    this.showTransferModal = false;
+                    this.transferForm = { from_account_id: '', to_account_id: '', amount: '', description: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                } else {
+                    this.showToast(json.message || 'Ошибка перевода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save transfer:', e);
+                this.showToast('Ошибка перевода', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveAccountIncome() {
+            if (!this.selectedCashAccount) return;
+            this.savingCashAccount = true;
+            try {
+                this.incomeForm.transaction_date = this.incomeForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch(`/api/finance/cash-accounts/${this.selectedCashAccount.id}/income`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.incomeForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Приход добавлен', 'success');
+                    this.showIncomeModal = false;
+                    this.incomeForm = { amount: '', description: '', reference: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                    await this.loadAccountTransactions(this.selectedCashAccount.id);
+                    // Update selected account balance
+                    const updated = this.cashAccounts.find(a => a.id === this.selectedCashAccount.id);
+                    if (updated) this.selectedCashAccount = updated;
+                } else {
+                    this.showToast(json.message || 'Ошибка добавления прихода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save income:', e);
+                this.showToast('Ошибка добавления прихода', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
+        async saveAccountExpense() {
+            if (!this.selectedCashAccount) return;
+            this.savingCashAccount = true;
+            try {
+                this.accountExpenseForm.transaction_date = this.accountExpenseForm.transaction_date || new Date().toISOString().slice(0,10);
+                const resp = await fetch(`/api/finance/cash-accounts/${this.selectedCashAccount.id}/expense`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.accountExpenseForm)
+                });
+                const json = await resp.json();
+                if (resp.ok && !json.errors) {
+                    this.showToast('Расход добавлен', 'success');
+                    this.showAccountExpenseModal = false;
+                    this.accountExpenseForm = { amount: '', description: '', reference: '', transaction_date: '' };
+                    await this.loadCashAccounts();
+                    await this.loadAccountTransactions(this.selectedCashAccount.id);
+                    // Update selected account balance
+                    const updated = this.cashAccounts.find(a => a.id === this.selectedCashAccount.id);
+                    if (updated) this.selectedCashAccount = updated;
+                } else {
+                    this.showToast(json.message || 'Ошибка добавления расхода', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save expense:', e);
+                this.showToast('Ошибка добавления расхода', 'error');
+            }
+            this.savingCashAccount = false;
+        },
+
         async loadCategories() {
             // Load all categories flat for storage
             const respAll = await fetch('/api/finance/categories/all', { headers: this.getAuthHeaders() });
@@ -2474,6 +3304,374 @@ function financePage() {
             if (resp.ok && !json.errors) this.reportData = json.data || {};
         },
 
+        // Загрузить отчёт и построить графики
+        async loadReportWithCharts() {
+            await this.loadReport();
+            // Небольшая задержка чтобы DOM обновился
+            setTimeout(() => this.renderCharts(), 100);
+        },
+
+        // Инициализация графиков при переходе на вкладку
+        initReportCharts() {
+            if (this.reportData && this.reportData.data) {
+                this.renderCharts();
+            }
+        },
+
+        // Хранилище для chart instances
+        charts: {},
+
+        // Уничтожить существующий график
+        destroyChart(chartId) {
+            if (this.charts[chartId]) {
+                this.charts[chartId].destroy();
+                delete this.charts[chartId];
+            }
+        },
+
+        // Основной метод рендеринга графиков
+        renderCharts() {
+            if (!this.reportData?.data) return;
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js not loaded');
+                return;
+            }
+
+            switch (this.reportType) {
+                case 'pnl':
+                    this.renderPnlCharts();
+                    break;
+                case 'cash_flow':
+                    this.renderCashFlowChart();
+                    break;
+                case 'by_category':
+                    this.renderCategoryCharts();
+                    break;
+                case 'debts_aging':
+                    this.renderDebtsCharts();
+                    break;
+            }
+        },
+
+        // Графики P&L
+        renderPnlCharts() {
+            const data = this.reportData.data;
+
+            // Bar chart: Доходы vs Расходы
+            this.destroyChart('pnlBarChart');
+            const barCtx = document.getElementById('pnlBarChart');
+            if (barCtx) {
+                this.charts['pnlBarChart'] = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Доходы', 'Расходы', 'Прибыль'],
+                        datasets: [{
+                            data: [
+                                data.income?.total || 0,
+                                data.expenses?.total || 0,
+                                data.gross_profit || 0
+                            ],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                                (data.gross_profit || 0) >= 0 ? 'rgba(59, 130, 246, 0.7)' : 'rgba(239, 68, 68, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(239, 68, 68)',
+                                (data.gross_profit || 0) >= 0 ? 'rgb(59, 130, 246)' : 'rgb(239, 68, 68)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => this.formatMoney(ctx.raw) + ' ' + this.currencySymbol(this.overview.currency?.display)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Pie chart: Структура доходов
+            this.destroyChart('incomePieChart');
+            const incomeCtx = document.getElementById('incomePieChart');
+            if (incomeCtx && data.income?.by_category?.length > 0) {
+                const incomeData = data.income.by_category.slice(0, 6);
+                this.charts['incomePieChart'] = new Chart(incomeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: incomeData.map(c => c.category || c.name),
+                        datasets: [{
+                            data: incomeData.map(c => c.total || c.amount || 0),
+                            backgroundColor: [
+                                '#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#ecfdf5'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            // Pie chart: Структура расходов
+            this.destroyChart('expensePieChart');
+            const expenseCtx = document.getElementById('expensePieChart');
+            if (expenseCtx && data.expenses?.by_category?.length > 0) {
+                const expenseData = data.expenses.by_category.slice(0, 6);
+                this.charts['expensePieChart'] = new Chart(expenseCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: expenseData.map(c => c.category || c.name),
+                        datasets: [{
+                            data: expenseData.map(c => c.total || c.amount || 0),
+                            backgroundColor: [
+                                '#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2', '#fef2f2'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+        },
+
+        // График Cash Flow
+        renderCashFlowChart() {
+            const data = this.reportData.data;
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            this.destroyChart('cashFlowLineChart');
+            const ctx = document.getElementById('cashFlowLineChart');
+            if (!ctx) return;
+
+            this.charts['cashFlowLineChart'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => item.period || item.date),
+                    datasets: [
+                        {
+                            label: 'Приход',
+                            data: data.map(item => item.income || 0),
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Расход',
+                            data: data.map(item => item.expense || 0),
+                            borderColor: 'rgb(239, 68, 68)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Итого',
+                            data: data.map(item => item.net || 0),
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + this.formatMoney(ctx.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        },
+
+        // Графики по категориям
+        renderCategoryCharts() {
+            const data = this.reportData.data;
+
+            // Doughnut: Доходы
+            this.destroyChart('categoryIncomeDoughnut');
+            const incomeCtx = document.getElementById('categoryIncomeDoughnut');
+            if (incomeCtx && data.income?.length > 0) {
+                const incomeData = data.income.slice(0, 8);
+                this.charts['categoryIncomeDoughnut'] = new Chart(incomeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: incomeData.map(c => c.category),
+                        datasets: [{
+                            data: incomeData.map(c => c.total || 0),
+                            backgroundColor: [
+                                '#10b981', '#34d399', '#6ee7b7', '#a7f3d0',
+                                '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Doughnut: Расходы
+            this.destroyChart('categoryExpenseDoughnut');
+            const expenseCtx = document.getElementById('categoryExpenseDoughnut');
+            if (expenseCtx && data.expense?.length > 0) {
+                const expenseData = data.expense.slice(0, 8);
+                this.charts['categoryExpenseDoughnut'] = new Chart(expenseCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: expenseData.map(c => c.category),
+                        datasets: [{
+                            data: expenseData.map(c => c.total || 0),
+                            backgroundColor: [
+                                '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+                                '#f97316', '#fb923c', '#fdba74', '#fed7aa'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
+        // Графики анализа долгов
+        renderDebtsCharts() {
+            const data = this.reportData.data;
+            const summary = data.summary || {};
+
+            // Bar: Просрочка по периодам
+            this.destroyChart('debtsAgingBarChart');
+            const barCtx = document.getElementById('debtsAgingBarChart');
+            if (barCtx) {
+                this.charts['debtsAgingBarChart'] = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Текущие', '1-30 дней', '31-60 дней', '61-90 дней', '90+ дней'],
+                        datasets: [{
+                            label: 'Сумма долгов',
+                            data: [
+                                summary.current?.amount || 0,
+                                summary['1_30']?.amount || 0,
+                                summary['31_60']?.amount || 0,
+                                summary['61_90']?.amount || 0,
+                                summary.over_90?.amount || 0
+                            ],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.7)',
+                                'rgba(234, 179, 8, 0.7)',
+                                'rgba(249, 115, 22, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                                'rgba(185, 28, 28, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(234, 179, 8)',
+                                'rgb(249, 115, 22)',
+                                'rgb(239, 68, 68)',
+                                'rgb(185, 28, 28)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => this.formatMoney(ctx.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Pie: Дебиторка vs Кредиторка
+            this.destroyChart('debtsComparisonPie');
+            const pieCtx = document.getElementById('debtsComparisonPie');
+            if (pieCtx && (data.total_receivable > 0 || data.total_payable > 0)) {
+                this.charts['debtsComparisonPie'] = new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Дебиторка (нам должны)', 'Кредиторка (мы должны)'],
+                        datasets: [{
+                            data: [data.total_receivable || 0, data.total_payable || 0],
+                            backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                            borderColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ctx.label + ': ' + this.formatMoney(ctx.raw)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        },
+
         async saveCurrencyRates() {
             try {
                 const resp = await fetch('/api/finance/settings', {
@@ -2508,6 +3706,29 @@ function financePage() {
                 const json = await resp.json();
                 if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
                 this.showToast('Транзакция подтверждена');
+                this.loadTransactions();
+            } catch (e) { this.showToast(e.message, 'error'); }
+        },
+
+        async deleteTransaction(id) {
+            if (!confirm('Удалить транзакцию? Она останется в списке, но не будет учитываться в расчётах.')) return;
+            try {
+                const resp = await fetch(`/api/finance/transactions/${id}`, { method: 'DELETE', headers: this.getAuthHeaders() });
+                if (resp.status === 404) throw new Error('Транзакция не найдена');
+                if (resp.status === 403) throw new Error('Нет доступа');
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Ошибка удаления');
+                this.showToast('Транзакция удалена');
+                this.loadTransactions();
+            } catch (e) { this.showToast(e.message || 'Ошибка удаления транзакции', 'error'); }
+        },
+
+        async restoreTransaction(id) {
+            try {
+                const resp = await fetch(`/api/finance/transactions/${id}/restore`, { method: 'POST', headers: this.getAuthHeaders() });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка');
+                this.showToast('Транзакция восстановлена');
                 this.loadTransactions();
             } catch (e) { this.showToast(e.message, 'error'); }
         },
