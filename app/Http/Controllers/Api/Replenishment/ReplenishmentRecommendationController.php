@@ -32,7 +32,18 @@ class ReplenishmentRecommendationController extends Controller
         ]);
 
         $warehouseId = (int) $request->warehouse_id;
-        $results = $this->service->calculateAll($companyId, $warehouseId);
+
+        try {
+            $results = $this->service->calculateAll($companyId, $warehouseId);
+        } catch (\Throwable $e) {
+            report($e);
+            return $this->errorResponse(
+                'Ошибка расчёта рекомендаций: ' . $e->getMessage(),
+                'calculation_error',
+                null,
+                500
+            );
+        }
 
         // Enrich with SKU info
         $skuMap = Sku::query()
@@ -82,7 +93,18 @@ class ReplenishmentRecommendationController extends Controller
             'sku_ids' => ['nullable', 'array'],
         ]);
 
-        $results = $this->service->calculateAll($companyId, $data['warehouse_id']);
+        try {
+            $results = $this->service->calculateAll($companyId, $data['warehouse_id']);
+        } catch (\Throwable $e) {
+            report($e);
+            return $this->errorResponse(
+                'Ошибка расчёта: ' . $e->getMessage(),
+                'calculation_error',
+                null,
+                500
+            );
+        }
+
         if (!empty($data['sku_ids'])) {
             $ids = $data['sku_ids'];
             $results = $results->whereIn('sku_id', $ids);

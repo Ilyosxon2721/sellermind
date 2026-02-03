@@ -31,7 +31,7 @@
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-[#1a1a1a]">Заказы и отгрузки</h1>
-                                <p class="text-sm text-gray-500">Яндекс Маркет</p>
+                                <p class="text-sm text-gray-500">{{ $accountName ?? 'Яндекс Маркет' }}</p>
                             </div>
                         </div>
                     </div>

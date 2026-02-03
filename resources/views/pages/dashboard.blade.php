@@ -231,7 +231,7 @@
                                     <a href="/sales" class="text-sm text-blue-600 hover:text-blue-700 font-medium">{{ __('dashboard.all_orders') }} →</a>
                                 </div>
 
-                                <div x-show="recentOrders.length > 0">
+                                <div x-show="recentOrders.length > 0" x-cloak>
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gray-50">
                                             <tr>
@@ -251,8 +251,14 @@
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center space-x-2">
                                                             <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded"
-                                                                  :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                                                  x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                                                  :class="{
+                                                                      'bg-purple-100 text-purple-700': order.marketplace === 'wb',
+                                                                      'bg-blue-100 text-blue-700': order.marketplace === 'uzum',
+                                                                      'bg-sky-100 text-sky-700': order.marketplace === 'ozon',
+                                                                      'bg-yellow-100 text-yellow-700': order.marketplace === 'ym',
+                                                                      'bg-gray-100 text-gray-700': !['wb','uzum','ozon','ym'].includes(order.marketplace)
+                                                                  }"
+                                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'Ozon','ym':'YM'})[order.marketplace] || order.marketplace"></span>
                                                             <span class="text-sm text-gray-600" x-text="order.account_name"></span>
                                                         </div>
                                                     </td>
@@ -273,7 +279,7 @@
                                     </table>
                                 </div>
 
-                                <div x-show="recentOrders.length === 0" class="px-6 py-12 text-center">
+                                <div x-show="!loading && recentOrders.length === 0" x-cloak class="px-6 py-12 text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                     </svg>
@@ -295,14 +301,24 @@
                                                 <div class="flex items-center justify-between mb-3">
                                                     <div class="flex items-center space-x-3">
                                                         <div class="w-10 h-10 rounded-lg flex items-center justify-center"
-                                                             :class="account.marketplace === 'wb' ? 'bg-purple-100' : 'bg-blue-100'">
+                                                             :class="{
+                                                                 'bg-purple-100': account.marketplace === 'wb',
+                                                                 'bg-blue-100': account.marketplace === 'uzum',
+                                                                 'bg-sky-100': account.marketplace === 'ozon',
+                                                                 'bg-yellow-100': account.marketplace === 'ym'
+                                                             }">
                                                             <span class="text-lg font-bold"
-                                                                  :class="account.marketplace === 'wb' ? 'text-purple-600' : 'text-blue-600'"
-                                                                  x-text="account.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                                                  :class="{
+                                                                      'text-purple-600': account.marketplace === 'wb',
+                                                                      'text-blue-600': account.marketplace === 'uzum',
+                                                                      'text-sky-600': account.marketplace === 'ozon',
+                                                                      'text-yellow-600': account.marketplace === 'ym'
+                                                                  }"
+                                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'OZ','ym':'YM'})[account.marketplace] || account.marketplace"></span>
                                                         </div>
                                                         <div>
                                                             <p class="font-medium text-gray-900" x-text="account.name"></p>
-                                                            <p class="text-xs text-gray-500" x-text="account.marketplace === 'wb' ? 'Wildberries' : 'Uzum'"></p>
+                                                            <p class="text-xs text-gray-500" x-text="({'wb':'Wildberries','uzum':'Uzum','ozon':'Ozon','ym':'Yandex Market'})[account.marketplace] || account.marketplace"></p>
                                                         </div>
                                                     </div>
                                                     <span class="w-2 h-2 rounded-full" :class="account.is_active ? 'bg-green-500' : 'bg-gray-300'"></span>
@@ -310,7 +326,7 @@
                                             </div>
                                         </template>
                                     </div>
-                                    <div x-show="!marketplace.accounts || marketplace.accounts.length === 0" class="text-center py-8">
+                                    <div x-show="!loading && (!marketplace.accounts || marketplace.accounts.length === 0)" x-cloak class="text-center py-8">
                                         <p class="text-gray-500">{{ __('dashboard.no_marketplaces') }}</p>
                                         <a href="/marketplaces" class="text-blue-600 hover:text-blue-700 text-sm font-medium">{{ __('dashboard.connect') }} →</a>
                                     </div>
@@ -662,8 +678,13 @@
                                     <div class="flex-1">
                                         <div class="flex items-center space-x-2 mb-1">
                                             <span class="inline-block px-2 py-0.5 text-xs font-medium rounded"
-                                                  :class="order.marketplace === 'wb' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                                  x-text="order.marketplace === 'wb' ? 'WB' : 'UZ'"></span>
+                                                  :class="{
+                                                      'bg-purple-100 text-purple-700': order.marketplace === 'wb',
+                                                      'bg-blue-100 text-blue-700': order.marketplace === 'uzum',
+                                                      'bg-sky-100 text-sky-700': order.marketplace === 'ozon',
+                                                      'bg-yellow-100 text-yellow-700': order.marketplace === 'ym'
+                                                  }"
+                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'Ozon','ym':'YM'})[order.marketplace] || order.marketplace"></span>
                                             <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.order_number"></p>
                                         </div>
                                         <p class="text-xs text-gray-500" x-text="order.account_name"></p>
@@ -685,7 +706,7 @@
                         </template>
                     </div>
 
-                    <div x-show="recentOrders.length === 0" class="native-card text-center py-12">
+                    <div x-show="!loading && recentOrders.length === 0" x-cloak class="native-card text-center py-12">
                         <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>

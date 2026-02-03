@@ -476,7 +476,12 @@ Route::get('/marketplace/{accountId}/ym-settings', function ($accountId) {
 
 // Yandex Market Orders
 Route::get('/marketplace/{accountId}/ym-orders', function ($accountId) {
-    return view('pages.marketplace.ym-orders', ['accountId' => $accountId]);
+    $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+
+    return view('pages.marketplace.ym-orders', [
+        'accountId' => $accountId,
+        'accountName' => $account->name,
+    ]);
 })->name('marketplace.ym-orders');
 
 // Yandex Market Orders JSON
@@ -535,7 +540,12 @@ Route::get('/marketplace/{accountId}/ozon-products', function ($accountId) {
 
 // Ozon Orders
 Route::get('/marketplace/{accountId}/ozon-orders', function ($accountId) {
-    return view('pages.marketplace.ozon-orders', ['accountId' => $accountId]);
+    $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+
+    return view('pages.marketplace.ozon-orders', [
+        'accountId' => $accountId,
+        'accountName' => $account->name,
+    ]);
 })->name('marketplace.ozon-orders');
 
 // Ozon Orders JSON API
