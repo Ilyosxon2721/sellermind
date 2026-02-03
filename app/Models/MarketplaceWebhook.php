@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceWebhook.php
 
 namespace App\Models;
@@ -9,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplaceWebhook extends Model
 {
     public const STATUS_NEW = 'new';
+
     public const STATUS_PROCESSED = 'processed';
+
     public const STATUS_ERROR = 'error';
 
     protected $fillable = [

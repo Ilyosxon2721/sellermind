@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceWarehouseUpdateController.php
 
 namespace App\Http\Controllers\Api;
@@ -17,7 +18,7 @@ class MarketplaceWarehouseUpdateController extends Controller
             'local_warehouse_id' => ['nullable', 'integer'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($warehouse->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($warehouse->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 

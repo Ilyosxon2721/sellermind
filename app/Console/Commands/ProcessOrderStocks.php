@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
@@ -37,7 +36,7 @@ class ProcessOrderStocks extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->orderStockService = new OrderStockService();
+        $this->orderStockService = new OrderStockService;
     }
 
     /**
@@ -63,7 +62,7 @@ class ProcessOrderStocks extends Command
         $skipped = 0;
 
         // Process Uzum orders
-        if (!$marketplace || $marketplace === 'uzum') {
+        if (! $marketplace || $marketplace === 'uzum') {
             $result = $this->processUzumOrders($accountId, $status, $force, $dryRun);
             $processed += $result['processed'];
             $reserved += $result['reserved'];
@@ -72,7 +71,7 @@ class ProcessOrderStocks extends Command
         }
 
         // Process WB orders
-        if (!$marketplace || $marketplace === 'wb') {
+        if (! $marketplace || $marketplace === 'wb') {
             $result = $this->processWbOrders($accountId, $status, $force, $dryRun);
             $processed += $result['processed'];
             $reserved += $result['reserved'];
@@ -81,7 +80,7 @@ class ProcessOrderStocks extends Command
         }
 
         // Process Ozon orders
-        if (!$marketplace || $marketplace === 'ozon') {
+        if (! $marketplace || $marketplace === 'ozon') {
             $result = $this->processOzonOrders($accountId, $status, $force, $dryRun);
             $processed += $result['processed'];
             $reserved += $result['reserved'];
@@ -90,7 +89,7 @@ class ProcessOrderStocks extends Command
         }
 
         // Process Yandex Market orders
-        if (!$marketplace || $marketplace === 'ym') {
+        if (! $marketplace || $marketplace === 'ym') {
             $result = $this->processYmOrders($accountId, $status, $force, $dryRun);
             $processed += $result['processed'];
             $reserved += $result['reserved'];
@@ -133,18 +132,18 @@ class ProcessOrderStocks extends Command
             ));
         }
 
-        if (!$force) {
+        if (! $force) {
             // Process unprocessed orders (stock_status=none)
             // AND orders stuck with 'reserved' in sold/cancelled statuses
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhere(function ($q2) {
-                      $q2->where('stock_status', 'reserved')
-                         ->whereIn('status', array_merge(
-                             OrderStockService::SOLD_STATUSES['uzum'] ?? [],
-                             OrderStockService::CANCELLED_STATUSES['uzum'] ?? []
-                         ));
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->where('stock_status', 'reserved')
+                            ->whereIn('status', array_merge(
+                                OrderStockService::SOLD_STATUSES['uzum'] ?? [],
+                                OrderStockService::CANCELLED_STATUSES['uzum'] ?? []
+                            ));
+                    });
             });
         }
 
@@ -163,6 +162,7 @@ class ProcessOrderStocks extends Command
             if ($dryRun) {
                 $this->line("\n  [DRY] Would process order #{$order->external_order_id} ({$order->status})");
                 $bar->advance();
+
                 continue;
             }
 
@@ -173,6 +173,7 @@ class ProcessOrderStocks extends Command
                     $this->line("\n  Skipped order #{$order->external_order_id}: No items found");
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 
@@ -228,16 +229,16 @@ class ProcessOrderStocks extends Command
             ));
         }
 
-        if (!$force) {
+        if (! $force) {
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhere(function ($q2) {
-                      $q2->where('stock_status', 'reserved')
-                         ->whereIn('status', array_merge(
-                             OrderStockService::SOLD_STATUSES['wb'] ?? [],
-                             OrderStockService::CANCELLED_STATUSES['wb'] ?? []
-                         ));
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->where('stock_status', 'reserved')
+                            ->whereIn('status', array_merge(
+                                OrderStockService::SOLD_STATUSES['wb'] ?? [],
+                                OrderStockService::CANCELLED_STATUSES['wb'] ?? []
+                            ));
+                    });
             });
         }
 
@@ -256,6 +257,7 @@ class ProcessOrderStocks extends Command
             if ($dryRun) {
                 $this->line("\n  [DRY] Would process order #{$order->external_order_id} ({$order->status})");
                 $bar->advance();
+
                 continue;
             }
 
@@ -266,6 +268,7 @@ class ProcessOrderStocks extends Command
                     $this->line("\n  Skipped order #{$order->external_order_id}: No items found");
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 
@@ -321,16 +324,16 @@ class ProcessOrderStocks extends Command
             ));
         }
 
-        if (!$force) {
+        if (! $force) {
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhere(function ($q2) {
-                      $q2->where('stock_status', 'reserved')
-                         ->whereIn('status', array_merge(
-                             OrderStockService::SOLD_STATUSES['ozon'] ?? [],
-                             OrderStockService::CANCELLED_STATUSES['ozon'] ?? []
-                         ));
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->where('stock_status', 'reserved')
+                            ->whereIn('status', array_merge(
+                                OrderStockService::SOLD_STATUSES['ozon'] ?? [],
+                                OrderStockService::CANCELLED_STATUSES['ozon'] ?? []
+                            ));
+                    });
             });
         }
 
@@ -349,6 +352,7 @@ class ProcessOrderStocks extends Command
             if ($dryRun) {
                 $this->line("\n  [DRY] Would process order #{$order->posting_number} ({$order->status})");
                 $bar->advance();
+
                 continue;
             }
 
@@ -359,6 +363,7 @@ class ProcessOrderStocks extends Command
                     $this->line("\n  Skipped order #{$order->posting_number}: No items found");
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 
@@ -414,16 +419,16 @@ class ProcessOrderStocks extends Command
             ));
         }
 
-        if (!$force) {
+        if (! $force) {
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhere(function ($q2) {
-                      $q2->where('stock_status', 'reserved')
-                         ->whereIn('status', array_merge(
-                             OrderStockService::SOLD_STATUSES['ym'] ?? [],
-                             OrderStockService::CANCELLED_STATUSES['ym'] ?? []
-                         ));
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->where('stock_status', 'reserved')
+                            ->whereIn('status', array_merge(
+                                OrderStockService::SOLD_STATUSES['ym'] ?? [],
+                                OrderStockService::CANCELLED_STATUSES['ym'] ?? []
+                            ));
+                    });
             });
         }
 
@@ -442,6 +447,7 @@ class ProcessOrderStocks extends Command
             if ($dryRun) {
                 $this->line("\n  [DRY] Would process order #{$order->order_id} ({$order->status})");
                 $bar->advance();
+
                 continue;
             }
 
@@ -452,6 +458,7 @@ class ProcessOrderStocks extends Command
                     $this->line("\n  Skipped order #{$order->order_id}: No items found");
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 

@@ -13,11 +13,15 @@ class FinanceDebtPayment extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_POSTED = 'posted';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const METHOD_CASH = 'cash';
+
     public const METHOD_BANK = 'bank';
+
     public const METHOD_CARD = 'card';
 
     protected $fillable = [

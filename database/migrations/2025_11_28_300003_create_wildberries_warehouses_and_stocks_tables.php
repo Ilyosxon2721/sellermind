@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_300003_create_wildberries_warehouses_and_stocks_tables.php
 
 use Illuminate\Database\Migrations\Migration;

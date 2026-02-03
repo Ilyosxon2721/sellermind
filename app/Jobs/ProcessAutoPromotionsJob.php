@@ -16,6 +16,7 @@ class ProcessAutoPromotionsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $companyId;
+
     public array $criteria;
 
     /**
@@ -47,8 +48,9 @@ class ProcessAutoPromotionsJob implements ShouldQueue
 
             $company = Company::find($this->companyId);
 
-            if (!$company || !$company->is_active) {
+            if (! $company || ! $company->is_active) {
                 Log::warning("Company {$this->companyId} not found or inactive");
+
                 return;
             }
 
@@ -59,6 +61,7 @@ class ProcessAutoPromotionsJob implements ShouldQueue
 
             if ($slowProducts->isEmpty()) {
                 Log::info("No slow-moving products found for company {$this->companyId}");
+
                 return;
             }
 
@@ -77,13 +80,13 @@ class ProcessAutoPromotionsJob implements ShouldQueue
                         Log::info("Created promotion {$promotion->id} for variant {$productData['variant_id']}");
                     }
                 } catch (\Exception $e) {
-                    Log::error("Failed to create promotion for variant {$productData['variant_id']}: " . $e->getMessage());
+                    Log::error("Failed to create promotion for variant {$productData['variant_id']}: ".$e->getMessage());
                 }
             }
 
             Log::info("Successfully created {$createdCount} automatic promotions for company {$this->companyId}");
         } catch (\Exception $e) {
-            Log::error("Failed to process auto promotions for company {$this->companyId}: " . $e->getMessage());
+            Log::error("Failed to process auto promotions for company {$this->companyId}: ".$e->getMessage());
             throw $e;
         }
     }
@@ -93,6 +96,6 @@ class ProcessAutoPromotionsJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("ProcessAutoPromotionsJob failed for company {$this->companyId}: " . $exception->getMessage());
+        Log::error("ProcessAutoPromotionsJob failed for company {$this->companyId}: ".$exception->getMessage());
     }
 }

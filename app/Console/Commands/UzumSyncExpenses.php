@@ -29,7 +29,7 @@ class UzumSyncExpenses extends Command
             $dateFrom = now()->subDays($days)->startOfDay();
             $this->info("Syncing expenses from last {$days} days (since {$dateFrom->format('Y-m-d')})");
         } else {
-            $this->info("Full sync mode - fetching all expenses");
+            $this->info('Full sync mode - fetching all expenses');
         }
 
         $query = MarketplaceAccount::where('marketplace', 'uzum')
@@ -43,6 +43,7 @@ class UzumSyncExpenses extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('No active Uzum accounts found.');
+
             return Command::SUCCESS;
         }
 
@@ -109,14 +110,14 @@ class UzumSyncExpenses extends Command
         $shops = $client->fetchShops($account);
         $shopIds = array_column($shops, 'id');
 
-        $this->line("  Found " . count($shopIds) . " shops");
+        $this->line('  Found '.count($shopIds).' shops');
 
         // Fetch all expenses (API date filters are unreliable, filter locally)
-        $this->line("  Fetching all expenses...");
+        $this->line('  Fetching all expenses...');
 
         $allExpenses = $client->fetchAllFinanceExpenses($account, $shopIds, null, null);
 
-        $this->line("  Found " . count($allExpenses) . " total expense records");
+        $this->line('  Found '.count($allExpenses).' total expense records');
 
         // Convert dates to milliseconds for filtering
         $dateFromMs = $dateFrom ? $dateFrom->getTimestampMs() : null;
@@ -145,8 +146,9 @@ class UzumSyncExpenses extends Command
                 }
 
                 $uzumId = $expense['id'] ?? null;
-                if (!$uzumId) {
+                if (! $uzumId) {
                     $errors++;
+
                     continue;
                 }
 
@@ -224,7 +226,7 @@ class UzumSyncExpenses extends Command
      */
     protected function parseTimestamp($timestamp): ?Carbon
     {
-        if (!$timestamp) {
+        if (! $timestamp) {
             return null;
         }
 

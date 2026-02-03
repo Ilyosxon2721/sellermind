@@ -22,10 +22,10 @@ class DocumentReversalService
                 throw new RuntimeException('Document already reversed');
             }
 
-            $reverse = new InventoryDocument();
+            $reverse = new InventoryDocument;
             $reverse->fill([
                 'company_id' => $original->company_id,
-                'doc_no' => $original->doc_no . '-R',
+                'doc_no' => $original->doc_no.'-R',
                 'type' => InventoryDocument::TYPE_REVERSAL,
                 'status' => InventoryDocument::STATUS_DRAFT,
                 'warehouse_id' => $original->warehouse_id,
@@ -34,13 +34,13 @@ class DocumentReversalService
                 'source_type' => $original->source_type,
                 'source_id' => $original->source_id,
                 'reversed_document_id' => $original->id,
-                'comment' => 'Reversal of doc #' . $original->id,
+                'comment' => 'Reversal of doc #'.$original->id,
                 'created_by' => $userId,
             ]);
             $reverse->save();
 
             foreach ($original->lines as $line) {
-                $reverseLine = new InventoryDocumentLine();
+                $reverseLine = new InventoryDocumentLine;
                 $reverseLine->fill([
                     'document_id' => $reverse->id,
                     'sku_id' => $line->sku_id,

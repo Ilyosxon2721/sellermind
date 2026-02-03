@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/WildberriesFullStockSync.php
 
 namespace App\Console\Commands;
@@ -33,6 +34,7 @@ class WildberriesFullStockSync extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных WB аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -42,13 +44,13 @@ class WildberriesFullStockSync extends Command
             $client = new WildberriesHttpClient($account);
             $service = new WildberriesStockService($client);
 
-            if (!$pushOnly) {
+            if (! $pushOnly) {
                 $this->line('→ Pull остатков из WB Statistics...');
                 $pullResult = $service->syncStocks($account, $from);
-                $this->line("   Обработано: {$pullResult['synced']}, ошибок: " . count($pullResult['errors']));
+                $this->line("   Обработано: {$pullResult['synced']}, ошибок: ".count($pullResult['errors']));
             }
 
-            if (!$pullOnly) {
+            if (! $pullOnly) {
                 $this->line('→ Push локальных остатков в WB (FBS)...');
                 $pushResult = $service->pushLinkedProducts($account, null);
                 $this->line("   Складов: {$pushResult['warehouses']}, отправлено позиций: {$pushResult['pushed']}, ошибок: {$pushResult['errors']}");

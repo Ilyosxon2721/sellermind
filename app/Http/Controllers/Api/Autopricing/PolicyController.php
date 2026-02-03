@@ -15,26 +15,35 @@ class PolicyController extends Controller
     public function index()
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
         return $this->successResponse(AutopricingPolicy::byCompany($companyId)->orderBy('priority')->get());
     }
 
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $this->validateData($request);
         $data['company_id'] = $companyId;
         $policy = AutopricingPolicy::create($data);
+
         return $this->successResponse($policy);
     }
 
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $policy = AutopricingPolicy::byCompany($companyId)->findOrFail($id);
         $policy->update($this->validateData($request));
+
         return $this->successResponse($policy);
     }
 

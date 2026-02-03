@@ -31,16 +31,17 @@ class StopMarketplaceMonitoring extends Command
         $this->newLine();
 
         // Подсчитываем джобы перед удалением
-        $monitoringJobs = DB::table('jobs')->get()->filter(function($job) {
+        $monitoringJobs = DB::table('jobs')->get()->filter(function ($job) {
             $payload = json_decode($job->payload, true);
             $displayName = $payload['displayName'] ?? '';
+
             return str_contains($displayName, 'Monitor');
         });
 
         $totalJobs = DB::table('jobs')->count();
         $monitoringCount = $monitoringJobs->count();
 
-        $this->info("📊 Статистика очереди:");
+        $this->info('📊 Статистика очереди:');
         $this->line("   Всего джоб в очереди: {$totalJobs}");
         $this->line("   Джоб мониторинга: {$monitoringCount}");
 
@@ -56,6 +57,7 @@ class StopMarketplaceMonitoring extends Command
                 $this->info("✅ Удалено джоб мониторинга: {$monitoringCount}");
             } else {
                 $this->info('❌ Отменено пользователем');
+
                 return self::SUCCESS;
             }
         }
@@ -70,7 +72,7 @@ class StopMarketplaceMonitoring extends Command
 
                 if ($this->confirm('❓ Также очистить упавшие джобы?', true)) {
                     $this->call('queue:flush');
-                    $this->info("✅ Упавшие джобы очищены");
+                    $this->info('✅ Упавшие джобы очищены');
                 }
             } else {
                 $this->info('✅ Упавших джоб нет');
@@ -78,7 +80,7 @@ class StopMarketplaceMonitoring extends Command
         }
 
         $this->newLine();
-        $this->comment("💡 Для повторного запуска используйте: php artisan marketplace:start-monitoring");
+        $this->comment('💡 Для повторного запуска используйте: php artisan marketplace:start-monitoring');
 
         return self::SUCCESS;
     }

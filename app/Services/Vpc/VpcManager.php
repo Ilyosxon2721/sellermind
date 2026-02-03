@@ -1,13 +1,13 @@
 <?php
+
 // file: app/Services/Vpc/VpcManager.php
 
 namespace App\Services\Vpc;
 
 use App\Models\User;
 use App\Models\VpcSession;
-use App\Models\AgentTask;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class VpcManager
 {
@@ -117,7 +117,7 @@ class VpcManager
     /**
      * Пометить сессию как ошибочную.
      */
-    public function markSessionError(VpcSession $session, string $error = null): void
+    public function markSessionError(VpcSession $session, ?string $error = null): void
     {
         $session->update([
             'status' => VpcSession::STATUS_ERROR,
@@ -130,7 +130,7 @@ class VpcManager
      */
     public function setControlMode(VpcSession $session, string $mode): void
     {
-        if (!in_array($mode, [VpcSession::CONTROL_AGENT, VpcSession::CONTROL_USER, VpcSession::CONTROL_PAUSED])) {
+        if (! in_array($mode, [VpcSession::CONTROL_AGENT, VpcSession::CONTROL_USER, VpcSession::CONTROL_PAUSED])) {
             throw new \InvalidArgumentException("Invalid control mode: {$mode}");
         }
 

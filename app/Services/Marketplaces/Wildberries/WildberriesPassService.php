@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesPassService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -27,9 +28,6 @@ class WildberriesPassService
 
     /**
      * Get list of WB offices that require passes
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getOfficesRequiringPasses(MarketplaceAccount $account): array
     {
@@ -54,9 +52,6 @@ class WildberriesPassService
 
     /**
      * Get list of passes
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getPasses(MarketplaceAccount $account): array
     {
@@ -82,16 +77,15 @@ class WildberriesPassService
     /**
      * Create a new pass
      *
-     * @param MarketplaceAccount $account
-     * @param array $passData Pass data
-     * Required fields:
-     * - firstName: string
-     * - lastName: string
-     * - carModel: string (optional)
-     * - carNumber: string (optional)
-     * - officeId: string (warehouse ID)
-     * - dateFrom: string (YYYY-MM-DD)
-     * - dateTo: string (YYYY-MM-DD)
+     * @param  array  $passData  Pass data
+     *                           Required fields:
+     *                           - firstName: string
+     *                           - lastName: string
+     *                           - carModel: string (optional)
+     *                           - carNumber: string (optional)
+     *                           - officeId: string (warehouse ID)
+     *                           - dateFrom: string (YYYY-MM-DD)
+     *                           - dateTo: string (YYYY-MM-DD)
      * @return array Created pass data with ID
      */
     public function createPass(MarketplaceAccount $account, array $passData): array
@@ -122,9 +116,8 @@ class WildberriesPassService
     /**
      * Update existing pass
      *
-     * @param MarketplaceAccount $account
-     * @param string $passId Pass ID
-     * @param array $passData Updated pass data
+     * @param  string  $passId  Pass ID
+     * @param  array  $passData  Updated pass data
      * @return array Updated pass data
      */
     public function updatePass(MarketplaceAccount $account, string $passId, array $passData): array
@@ -152,9 +145,7 @@ class WildberriesPassService
     /**
      * Delete pass
      *
-     * @param MarketplaceAccount $account
-     * @param string $passId Pass ID
-     * @return bool
+     * @param  string  $passId  Pass ID
      */
     public function deletePass(MarketplaceAccount $account, string $passId): bool
     {
@@ -181,9 +172,7 @@ class WildberriesPassService
     /**
      * Get passes expiring soon
      *
-     * @param MarketplaceAccount $account
-     * @param int $daysAhead Check passes expiring within N days
-     * @return array
+     * @param  int  $daysAhead  Check passes expiring within N days
      */
     public function getExpiringSoon(MarketplaceAccount $account, int $daysAhead = 7): array
     {
@@ -193,7 +182,7 @@ class WildberriesPassService
 
         foreach ($passes as $pass) {
             $dateTo = $pass['dateTo'] ?? null;
-            if (!$dateTo) {
+            if (! $dateTo) {
                 continue;
             }
 
@@ -215,9 +204,6 @@ class WildberriesPassService
 
     /**
      * Get expired passes
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getExpired(MarketplaceAccount $account): array
     {
@@ -226,7 +212,7 @@ class WildberriesPassService
 
         foreach ($passes as $pass) {
             $dateTo = $pass['dateTo'] ?? null;
-            if (!$dateTo) {
+            if (! $dateTo) {
                 continue;
             }
 
@@ -249,7 +235,6 @@ class WildberriesPassService
     /**
      * Cleanup expired passes (auto-delete)
      *
-     * @param MarketplaceAccount $account
      * @return int Number of deleted passes
      */
     public function cleanupExpiredPasses(MarketplaceAccount $account): int
@@ -259,7 +244,7 @@ class WildberriesPassService
 
         foreach ($expired as $pass) {
             $passId = $pass['id'] ?? null;
-            if (!$passId) {
+            if (! $passId) {
                 continue;
             }
 
@@ -286,7 +271,6 @@ class WildberriesPassService
     /**
      * Validate pass data
      *
-     * @param array $passData
      * @throws \InvalidArgumentException
      */
     protected function validatePassData(array $passData): void

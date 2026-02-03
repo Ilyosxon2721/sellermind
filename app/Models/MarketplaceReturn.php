@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceReturn.php
 
 namespace App\Models;
@@ -47,7 +48,8 @@ class MarketplaceReturn extends Model
     public function getFormattedAmount(): string
     {
         $currency = $this->currency ?? 'UZS';
-        return number_format($this->amount ?? 0, 0, '.', ' ') . ' ' . $currency;
+
+        return number_format($this->amount ?? 0, 0, '.', ' ').' '.$currency;
     }
 
     /**

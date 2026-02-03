@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
             if (str_contains($request->path(), 'marketplace/')) {
                 return Limit::perMinute(300)->by($request->user()?->id ?: $request->ip());
             }
+
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 

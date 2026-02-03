@@ -20,13 +20,13 @@ trait HasCompanyScope
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             abort(403, 'Пользователь не авторизован');
         }
 
         $companyId = $user->company_id ?? $user->companies()->first()?->id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             abort(403, 'Компания пользователя не определена');
         }
 

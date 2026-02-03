@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 class UzumTestProducts extends Command
 {
     protected $signature = 'uzum:test-products {--account= : Account ID} {--all-shops : Test all shops}';
+
     protected $description = 'Test Uzum products API endpoint directly';
 
     public function handle(): int
@@ -24,8 +25,9 @@ class UzumTestProducts extends Command
 
         $account = $query->first();
 
-        if (!$account) {
+        if (! $account) {
             $this->error('No active Uzum account found');
+
             return self::FAILURE;
         }
 
@@ -33,26 +35,26 @@ class UzumTestProducts extends Command
 
         // 1. Check raw DB value
         $rawApiKey = $account->getAttributes()['uzum_api_key'] ?? null;
-        $this->line("\n1. Raw DB uzum_api_key: " . ($rawApiKey ? substr($rawApiKey, 0, 30) . '...' : 'NULL'));
-        $this->line("   Looks encrypted: " . ($rawApiKey && str_starts_with($rawApiKey, 'eyJ') ? 'YES' : 'NO'));
+        $this->line("\n1. Raw DB uzum_api_key: ".($rawApiKey ? substr($rawApiKey, 0, 30).'...' : 'NULL'));
+        $this->line('   Looks encrypted: '.($rawApiKey && str_starts_with($rawApiKey, 'eyJ') ? 'YES' : 'NO'));
 
         // 2. Try to decrypt
         $decryptedToken = null;
         if ($rawApiKey) {
             try {
                 $decryptedToken = Crypt::decryptString($rawApiKey);
-                $this->info("2. Decryption SUCCESS: " . substr($decryptedToken, 0, 20) . '...');
+                $this->info('2. Decryption SUCCESS: '.substr($decryptedToken, 0, 20).'...');
             } catch (\Exception $e) {
-                $this->warn("2. Decryption FAILED: " . $e->getMessage());
+                $this->warn('2. Decryption FAILED: '.$e->getMessage());
                 $decryptedToken = $rawApiKey; // Use as-is
-                $this->line("   Using raw value as token");
+                $this->line('   Using raw value as token');
             }
         }
 
         // 3. Get via accessor
         $accessorToken = $account->uzum_api_key;
-        $this->line("\n3. Token via accessor: " . ($accessorToken ? substr($accessorToken, 0, 30) . '...' : 'NULL'));
-        $this->line("   Accessor token looks encrypted: " . ($accessorToken && str_starts_with($accessorToken, 'eyJ') ? 'YES (BAD!)' : 'NO'));
+        $this->line("\n3. Token via accessor: ".($accessorToken ? substr($accessorToken, 0, 30).'...' : 'NULL'));
+        $this->line('   Accessor token looks encrypted: '.($accessorToken && str_starts_with($accessorToken, 'eyJ') ? 'YES (BAD!)' : 'NO'));
 
         // 4. Get shop_id
         $shopIdField = $account->shop_id;
@@ -60,8 +62,8 @@ class UzumTestProducts extends Command
         $shopIdsFromJson = $credentialsJson['shop_ids'] ?? [];
 
         $this->line("\n4. Shop configuration:");
-        $this->line("   shop_id field: " . ($shopIdField ?: 'NULL'));
-        $this->line("   credentials_json shop_ids: " . json_encode($shopIdsFromJson));
+        $this->line('   shop_id field: '.($shopIdField ?: 'NULL'));
+        $this->line('   credentials_json shop_ids: '.json_encode($shopIdsFromJson));
 
         // Parse all shop IDs
         $allShopIds = [];
@@ -75,22 +77,23 @@ class UzumTestProducts extends Command
         }
         $allShopIds = array_unique($allShopIds);
 
-        $this->line("   Parsed shop IDs: " . implode(', ', $allShopIds));
+        $this->line('   Parsed shop IDs: '.implode(', ', $allShopIds));
 
         if (empty($allShopIds)) {
-            $this->error("No shop_id configured!");
+            $this->error('No shop_id configured!');
+
             return self::FAILURE;
         }
 
         if ($testAllShops) {
             // Test ALL shops one by one
-            $this->line("\n=== Testing ALL " . count($allShopIds) . " shops ===");
+            $this->line("\n=== Testing ALL ".count($allShopIds).' shops ===');
 
             foreach ($allShopIds as $shopId) {
                 $this->line("\n--- Testing shop {$shopId} ---");
                 $result = $this->testEndpoint($accessorToken, "/v1/product/shop/{$shopId}?page=0&size=1");
 
-                if (!$result) {
+                if (! $result) {
                     $this->error("   Shop {$shopId} FAILED - this might be the problem!");
                 }
 
@@ -111,7 +114,7 @@ class UzumTestProducts extends Command
 
             // 7. Test shops endpoint
             $this->line("\n7. Testing SHOPS endpoint (/v1/shops)...");
-            $this->testEndpoint($accessorToken, "/v1/shops");
+            $this->testEndpoint($accessorToken, '/v1/shops');
 
             $this->line("\n\nTip: Run with --all-shops to test each shop individually");
         }
@@ -122,7 +125,7 @@ class UzumTestProducts extends Command
     protected function testEndpoint(string $token, string $path): bool
     {
         $baseUrl = 'https://api-seller.uzum.uz/api/seller-openapi';
-        $url = $baseUrl . $path;
+        $url = $baseUrl.$path;
 
         try {
             $response = Http::timeout(15)
@@ -136,17 +139,20 @@ class UzumTestProducts extends Command
             $this->line("   Status: {$status}");
 
             if ($response->successful()) {
-                $this->info("   SUCCESS!");
+                $this->info('   SUCCESS!');
                 $body = $response->json();
-                $this->line("   Response keys: " . implode(', ', array_keys($body)));
+                $this->line('   Response keys: '.implode(', ', array_keys($body)));
+
                 return true;
             } else {
-                $this->error("   FAILED!");
-                $this->line("   Response: " . substr($response->body(), 0, 300));
+                $this->error('   FAILED!');
+                $this->line('   Response: '.substr($response->body(), 0, 300));
+
                 return false;
             }
         } catch (\Exception $e) {
-            $this->error("   EXCEPTION: " . $e->getMessage());
+            $this->error('   EXCEPTION: '.$e->getMessage());
+
             return false;
         }
     }

@@ -45,8 +45,9 @@ class FixStockLedgerCosts extends Command
             ? FinanceSettings::getForCompany($companyId)
             : FinanceSettings::first();
 
-        if (!$financeSettings) {
+        if (! $financeSettings) {
             $this->error('No finance settings found. Please set up finance settings first.');
+
             return 1;
         }
 
@@ -58,11 +59,11 @@ class FixStockLedgerCosts extends Command
         $query = StockLedger::where('source_type', 'INITIAL_SYNC');
 
         // If --all is not set, only look for entries with small cost_delta (likely wrong)
-        if (!$fixAll) {
+        if (! $fixAll) {
             $query->where(function ($q) {
                 $q->where('cost_delta', '<', 1000)
-                  ->orWhereNull('cost_delta')
-                  ->orWhere('cost_delta', 0);
+                    ->orWhereNull('cost_delta')
+                    ->orWhere('cost_delta', 0);
             });
         }
 
@@ -75,6 +76,7 @@ class FixStockLedgerCosts extends Command
         if ($entries->isEmpty()) {
             $this->info('No entries found that need fixing.');
             $this->info('Tip: Use --all to recalculate ALL INITIAL_SYNC entries.');
+
             return 0;
         }
 
@@ -88,9 +90,10 @@ class FixStockLedgerCosts extends Command
             // Get the related ProductVariant to get purchase_price
             $variant = ProductVariant::find($entry->source_id);
 
-            if (!$variant) {
+            if (! $variant) {
                 $this->warn("Variant not found for source_id: {$entry->source_id}, skipping...");
                 $skippedCount++;
+
                 continue;
             }
 
@@ -123,10 +126,11 @@ class FixStockLedgerCosts extends Command
             if ($skippedCount > 0) {
                 $this->warn("Skipped {$skippedCount} entries due to missing variants.");
             }
+
             return 0;
         }
 
-        $this->info("Found " . count($previewData) . " entries to update");
+        $this->info('Found '.count($previewData).' entries to update');
 
         // Display preview table
         $tableRows = [];
@@ -135,7 +139,7 @@ class FixStockLedgerCosts extends Command
                 $row['entry_id'],
                 $row['sku_id'],
                 $row['qty'],
-                '$' . number_format($row['purchase_price'], 2),
+                '$'.number_format($row['purchase_price'], 2),
                 number_format($row['old_cost'], 2),
                 number_format($row['new_cost'], 0),
                 $row['variant_sku'],
@@ -156,8 +160,8 @@ class FixStockLedgerCosts extends Command
         }
 
         $this->newLine();
-        $this->info("Total old cost: " . number_format($totalOldCost, 2));
-        $this->info("Total new cost: " . number_format($totalNewCost, 0) . " UZS");
+        $this->info('Total old cost: '.number_format($totalOldCost, 2));
+        $this->info('Total new cost: '.number_format($totalNewCost, 0).' UZS');
 
         if ($skippedCount > 0) {
             $this->warn("Skipped {$skippedCount} entries due to missing variants.");
@@ -165,12 +169,14 @@ class FixStockLedgerCosts extends Command
 
         if ($dryRun) {
             $this->warn('Dry run complete. Remove --dry-run to apply changes.');
+
             return 0;
         }
 
         // Confirm before applying
-        if (!$force && !$this->confirm('Do you want to apply these changes?')) {
+        if (! $force && ! $this->confirm('Do you want to apply these changes?')) {
             $this->info('Operation cancelled');
+
             return 0;
         }
 
@@ -188,11 +194,13 @@ class FixStockLedgerCosts extends Command
 
             DB::commit();
             $this->info("Successfully updated {$updated} entries");
+
             return 0;
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
+
             return 1;
         }
     }

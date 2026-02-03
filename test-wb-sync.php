@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\MarketplaceAccount;
@@ -16,7 +16,7 @@ echo "=== Тест синхронизации WB заказов ===\n\n";
 
 $account = MarketplaceAccount::find($accountId);
 
-if (!$account || $account->marketplace !== 'wb') {
+if (! $account || $account->marketplace !== 'wb') {
     echo "❌ WB аккаунт с ID {$accountId} не найден\n";
     exit(1);
 }

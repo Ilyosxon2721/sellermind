@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
-use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\UzumClient;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +38,7 @@ class UzumSyncOrders extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных Uzum Market аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -87,7 +88,7 @@ class UzumSyncOrders extends Command
             try {
                 $externalOrderId = $orderData['external_order_id'] ?? $orderData['order_id'] ?? null;
 
-                if (!$externalOrderId) {
+                if (! $externalOrderId) {
                     throw new \Exception('Missing external_order_id in order data');
                 }
 
@@ -132,7 +133,7 @@ class UzumSyncOrders extends Command
                 $newStatus = $order->status;
 
                 // Синхронизировать товары в заказе
-                if (!empty($orderData['items'])) {
+                if (! empty($orderData['items'])) {
                     // Удалить старые товары
                     $order->items()->delete();
 
@@ -240,7 +241,7 @@ class UzumSyncOrders extends Command
         $isCancelled = in_array($status, $cancelledStatuses, true);
         $isSold = in_array($status, $soldStatuses, true);
 
-        if (!$isCancelled && !$isSold) {
+        if (! $isCancelled && ! $isSold) {
             return;
         }
 

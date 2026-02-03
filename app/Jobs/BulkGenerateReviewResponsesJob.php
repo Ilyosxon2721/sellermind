@@ -16,7 +16,9 @@ class BulkGenerateReviewResponsesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public array $reviewIds;
+
     public array $options;
+
     public bool $saveImmediately;
 
     /**
@@ -45,7 +47,7 @@ class BulkGenerateReviewResponsesJob implements ShouldQueue
     public function handle(ReviewResponseService $reviewResponseService): void
     {
         try {
-            Log::info("Starting bulk review response generation for " . count($this->reviewIds) . " reviews");
+            Log::info('Starting bulk review response generation for '.count($this->reviewIds).' reviews');
 
             $successCount = 0;
             $failedCount = 0;
@@ -54,15 +56,17 @@ class BulkGenerateReviewResponsesJob implements ShouldQueue
                 try {
                     $review = Review::find($reviewId);
 
-                    if (!$review) {
+                    if (! $review) {
                         Log::warning("Review {$reviewId} not found");
                         $failedCount++;
+
                         continue;
                     }
 
                     // Skip if already has response
                     if ($review->hasResponse()) {
                         Log::info("Review {$reviewId} already has response, skipping");
+
                         continue;
                     }
 
@@ -90,14 +94,14 @@ class BulkGenerateReviewResponsesJob implements ShouldQueue
                         sleep(1);
                     }
                 } catch (\Exception $e) {
-                    Log::error("Failed to generate response for review {$reviewId}: " . $e->getMessage());
+                    Log::error("Failed to generate response for review {$reviewId}: ".$e->getMessage());
                     $failedCount++;
                 }
             }
 
             Log::info("Bulk review response generation completed: {$successCount} succeeded, {$failedCount} failed");
         } catch (\Exception $e) {
-            Log::error("Bulk review response generation job failed: " . $e->getMessage());
+            Log::error('Bulk review response generation job failed: '.$e->getMessage());
             throw $e;
         }
     }
@@ -107,6 +111,6 @@ class BulkGenerateReviewResponsesJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("BulkGenerateReviewResponsesJob failed: " . $exception->getMessage());
+        Log::error('BulkGenerateReviewResponsesJob failed: '.$exception->getMessage());
     }
 }

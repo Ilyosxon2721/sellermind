@@ -38,16 +38,18 @@ class SyncWildberriesWarehouses extends Command
             $accounts = MarketplaceAccount::where('id', $accountId)
                 ->where('marketplace', 'wb')
                 ->get();
-                
+
             if ($accounts->isEmpty()) {
                 $this->error("❌ No WB account found with ID: {$accountId}");
+
                 return 1;
             }
         } else {
             $accounts = MarketplaceAccount::where('marketplace', 'wb')->get();
-            
+
             if ($accounts->isEmpty()) {
                 $this->error('❌ No Wildberries accounts found in database');
+
                 return 1;
             }
         }
@@ -58,30 +60,30 @@ class SyncWildberriesWarehouses extends Command
 
         foreach ($accounts as $account) {
             $this->info("📦 Processing account ID: {$account->id}");
-            
+
             try {
                 $result = $stockService->syncWarehouses($account);
-                
+
                 $totalCreated += $result['created'];
                 $totalUpdated += $result['updated'];
                 $totalErrors += count($result['errors']);
-                
+
                 if ($result['created'] > 0 || $result['updated'] > 0) {
                     $this->line("   ✅ Created: {$result['created']}, Updated: {$result['updated']}");
                 }
-                
-                if (!empty($result['errors'])) {
-                    $this->warn("   ⚠️  Errors: " . count($result['errors']));
+
+                if (! empty($result['errors'])) {
+                    $this->warn('   ⚠️  Errors: '.count($result['errors']));
                     foreach ($result['errors'] as $error) {
                         $this->line("      - {$error}");
                     }
                 }
-                
+
             } catch (\Exception $e) {
-                $this->error("   ❌ Failed: " . $e->getMessage());
+                $this->error('   ❌ Failed: '.$e->getMessage());
                 $totalErrors++;
             }
-            
+
             $this->newLine();
         }
 

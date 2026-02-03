@@ -6,7 +6,6 @@ use App\Models\Autopricing\AutopricingPolicy;
 use App\Models\Autopricing\AutopricingProposal;
 use App\Models\Pricing\PriceCalculation;
 use App\Services\Warehouse\StockBalanceService;
-use App\Support\ApiResponder;
 use Illuminate\Support\Facades\DB;
 
 class AutopricingEngineService
@@ -14,8 +13,7 @@ class AutopricingEngineService
     public function __construct(
         protected AutopricingRuleResolver $resolver,
         protected StockBalanceService $balanceService
-    ) {
-    }
+    ) {}
 
     public function calculateProposal(int $companyId, int $policyId, string $channelCode, int $skuId, ?int $categoryId = null): ?array
     {
@@ -25,7 +23,7 @@ class AutopricingEngineService
             ->where('scenario_id', $policy->scenario_id)
             ->where('sku_id', $skuId)
             ->first();
-        if (!$calc) {
+        if (! $calc) {
             return null;
         }
 
@@ -113,8 +111,10 @@ class AutopricingEngineService
         if ($available !== null && isset($params['available_lt']) && $available < $params['available_lt']) {
             $inc = $params['increase_percent'] ?? 0.05;
             $base = $current ?? $recommended;
+
             return $base * (1 + $inc);
         }
+
         return null;
     }
 
@@ -128,8 +128,10 @@ class AutopricingEngineService
             if (($params['floor'] ?? null) === 'MIN_PRICE') {
                 $p = max($p, $min);
             }
+
             return $p;
         }
+
         return null;
     }
 
@@ -137,7 +139,9 @@ class AutopricingEngineService
     {
         // Simple balance across all warehouses (can be refined)
         $wh = DB::table('warehouses')->where('company_id', $companyId)->pluck('id');
-        if ($wh->isEmpty()) return null;
+        if ($wh->isEmpty()) {
+            return null;
+        }
         $onHand = DB::table('stock_ledger')
             ->where('company_id', $companyId)
             ->whereIn('warehouse_id', $wh)
@@ -149,13 +153,16 @@ class AutopricingEngineService
             ->where('sku_id', $skuId)
             ->where('status', 'ACTIVE')
             ->sum('qty');
+
         return (float) $onHand - (float) $reserved;
     }
 
     protected function currentPrice(int $companyId, string $channelCode, int $skuId): ?float
     {
         $channelId = DB::table('channels')->where('code', $channelCode)->where('company_id', $companyId)->value('id');
-        if (!$channelId) return null;
+        if (! $channelId) {
+            return null;
+        }
         $meta = DB::table('channel_sku_maps')
             ->where('channel_id', $channelId)
             ->where('sku_id', $skuId)
@@ -166,6 +173,7 @@ class AutopricingEngineService
                 return (float) $json['current_price'];
             }
         }
+
         return null;
     }
 

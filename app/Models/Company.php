@@ -34,6 +34,7 @@ class Company extends Model
     public function getSetting(string $key, mixed $default = null): mixed
     {
         $settings = $this->settings ?? [];
+
         return $settings[$key] ?? self::$defaultSettings[$key] ?? $default;
     }
 
@@ -61,7 +62,7 @@ class Company extends Model
 
         static::creating(function ($company) {
             if (empty($company->slug)) {
-                $company->slug = Str::slug($company->name) . '-' . Str::random(6);
+                $company->slug = Str::slug($company->name).'-'.Str::random(6);
             }
         });
     }
@@ -140,11 +141,11 @@ class Company extends Model
     public function checkLimit(string $type, int $count = 1): bool
     {
         $subscription = $this->activeSubscription;
-        if (!$subscription) {
+        if (! $subscription) {
             return false;
         }
 
-        return match($type) {
+        return match ($type) {
             'products' => $subscription->canAddProducts($count),
             'orders' => $subscription->canProcessOrders($count),
             'ai' => $subscription->canUseAI($count),

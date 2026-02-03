@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Finance\MarketplaceExpensesSyncService;
 use App\Models\Company;
+use App\Services\Finance\MarketplaceExpensesSyncService;
 use Illuminate\Console\Command;
 
 class SyncMarketplaceExpensesToFinance extends Command
@@ -44,6 +44,7 @@ class SyncMarketplaceExpensesToFinance extends Command
 
         if ($companies->isEmpty()) {
             $this->warn('No companies found');
+
             return Command::SUCCESS;
         }
 
@@ -85,7 +86,7 @@ class SyncMarketplaceExpensesToFinance extends Command
                             $mpResult = $results[$mp];
                             $this->line("  [{$mp}] Created: {$mpResult['created']}, Updated: {$mpResult['updated']}, Skipped: {$mpResult['skipped']}, Errors: {$mpResult['errors']}");
                             if ($mpResult['total_amount'] > 0) {
-                                $this->line("        Amount: " . number_format($mpResult['total_amount'], 0, ',', ' ') . " UZS");
+                                $this->line('        Amount: '.number_format($mpResult['total_amount'], 0, ',', ' ').' UZS');
                             }
                             $byMarketplace[$mp] = ($byMarketplace[$mp] ?? 0) + $mpResult['total_amount'];
                         }
@@ -105,14 +106,14 @@ class SyncMarketplaceExpensesToFinance extends Command
         }
 
         $this->line('');
-        $this->info("=== TOTAL ===");
+        $this->info('=== TOTAL ===');
         $this->info("Created: {$totalCreated}, Updated: {$totalUpdated}, Skipped: {$totalSkipped}, Errors: {$totalErrors}");
-        $this->info("Total amount: " . number_format($totalAmount, 0, ',', ' ') . " UZS");
+        $this->info('Total amount: '.number_format($totalAmount, 0, ',', ' ').' UZS');
 
-        if (!empty($byMarketplace)) {
+        if (! empty($byMarketplace)) {
             $this->line('By marketplace:');
             foreach ($byMarketplace as $mp => $amount) {
-                $this->line("  {$mp}: " . number_format($amount, 0, ',', ' ') . " UZS");
+                $this->line("  {$mp}: ".number_format($amount, 0, ',', ' ').' UZS');
             }
         }
 
@@ -122,12 +123,12 @@ class SyncMarketplaceExpensesToFinance extends Command
     protected function outputSingleResult(array $result): void
     {
         $this->info("  Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}, Errors: {$result['errors']}");
-        $this->info("  Total amount: " . number_format($result['total_amount'], 0, ',', ' ') . " UZS");
+        $this->info('  Total amount: '.number_format($result['total_amount'], 0, ',', ' ').' UZS');
 
-        if (!empty($result['by_category'])) {
+        if (! empty($result['by_category'])) {
             $this->line('  By category:');
             foreach ($result['by_category'] as $cat => $amount) {
-                $this->line("    {$cat}: " . number_format($amount, 0, ',', ' ') . " UZS");
+                $this->line("    {$cat}: ".number_format($amount, 0, ',', ' ').' UZS');
             }
         }
     }

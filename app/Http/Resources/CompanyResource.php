@@ -13,7 +13,7 @@ class CompanyResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'role' => $this->whenPivotLoaded('user_company_roles', fn() => $this->pivot->role),
+            'role' => $this->whenPivotLoaded('user_company_roles', fn () => $this->pivot->role),
             'products_count' => $this->whenCounted('products'),
             'created_at' => $this->created_at,
         ];

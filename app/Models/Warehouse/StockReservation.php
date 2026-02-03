@@ -12,8 +12,11 @@ class StockReservation extends Model
     use HasFactory;
 
     public const STATUS_ACTIVE = 'ACTIVE';
+
     public const STATUS_RELEASED = 'RELEASED';
+
     public const STATUS_CONSUMED = 'CONSUMED';
+
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [

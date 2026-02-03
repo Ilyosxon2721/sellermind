@@ -52,12 +52,12 @@ class YandexMarketClient implements MarketplaceClientInterface
                 'message' => 'Yandex Market API доступен',
                 'response_time_ms' => $duration,
                 'campaigns_count' => count($campaigns),
-                'campaigns' => array_map(fn($c) => [
+                'campaigns' => array_map(fn ($c) => [
                     'id' => $c['id'] ?? null,
                     'name' => $c['domain'] ?? $c['clientId'] ?? 'Campaign',
                 ], array_slice($campaigns, 0, 5)),
                 'businesses_count' => count($businesses),
-                'businesses' => array_map(fn($b) => [
+                'businesses' => array_map(fn ($b) => [
                     'id' => $b['id'] ?? null,
                     'name' => $b['name'] ?? 'Business',
                 ], array_slice($businesses, 0, 5)),
@@ -67,7 +67,7 @@ class YandexMarketClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка подключения: ' . $e->getMessage(),
+                'message' => 'Ошибка подключения: '.$e->getMessage(),
                 'response_time_ms' => round((microtime(true) - $start) * 1000),
             ];
         }
@@ -88,12 +88,14 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         try {
             $response = $this->http->get($account, '/businesses');
+
             return $response['businesses'] ?? [];
         } catch (\Exception $e) {
             Log::warning('YandexMarket: Failed to fetch businesses', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -105,10 +107,10 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         $businessId = $this->http->getBusinessId($account);
 
-        if (!$businessId) {
+        if (! $businessId) {
             // Попробуем получить business_id автоматически
             $businesses = $this->getBusinesses($account);
-            if (!empty($businesses)) {
+            if (! empty($businesses)) {
                 $businessId = $businesses[0]['id'] ?? null;
                 Log::info('YandexMarket: Auto-detected business_id', [
                     'account_id' => $account->id,
@@ -117,7 +119,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ]);
             }
 
-            if (!$businessId) {
+            if (! $businessId) {
                 throw new \RuntimeException('Business ID не настроен для аккаунта и не удалось определить автоматически');
             }
         }
@@ -129,7 +131,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             $body = [
                 'limit' => min($pageSize, 200),
             ];
-            
+
             if ($pageToken) {
                 $body['page_token'] = $pageToken;
             }
@@ -141,7 +143,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             );
 
             $offers = $response['result']['offerMappings'] ?? [];
-            
+
             foreach ($offers as $offer) {
                 $all[] = $offer;
             }
@@ -186,23 +188,23 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ->whereNotNull('external_offer_id')
                 ->pluck('external_offer_id')
                 ->toArray();
-            
+
             if (empty($offerIds)) {
                 return;
             }
-            
+
             // Fetch stocks in batches of 500 (YM API limit)
             $batches = array_chunk($offerIds, 500);
-            
+
             foreach ($batches as $batchOfferIds) {
                 $warehouses = $this->getStocks($account, $batchOfferIds);
-                
+
                 foreach ($warehouses as $warehouse) {
                     $offers = $warehouse['offers'] ?? [];
                     foreach ($offers as $offer) {
                         $offerId = $offer['offerId'] ?? null;
                         $stocks = $offer['stocks'] ?? [];
-                        
+
                         // Get AVAILABLE stock type, or sum all
                         $totalStock = 0;
                         foreach ($stocks as $stock) {
@@ -220,7 +222,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                                 }
                             }
                         }
-                        
+
                         if ($offerId) {
                             MarketplaceProduct::where('marketplace_account_id', $account->id)
                                 ->where('external_offer_id', (string) $offerId)
@@ -230,7 +232,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 }
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning('Failed to sync stocks from YM: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Failed to sync stocks from YM: '.$e->getMessage());
         }
     }
 
@@ -241,9 +243,9 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         $offer = $offerMapping['offer'] ?? [];
         $mapping = $offerMapping['mapping'] ?? [];
-        
+
         $offerId = $offer['offerId'] ?? null;
-        if (!$offerId) {
+        if (! $offerId) {
             return;
         }
 
@@ -292,7 +294,7 @@ class YandexMarketClient implements MarketplaceClientInterface
         if ($mapping && isset($mapping['marketSku'])) {
             return 'active';
         }
-        
+
         return 'draft';
     }
 
@@ -302,8 +304,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function fetchOrders(MarketplaceAccount $account, DateTimeInterface $from, DateTimeInterface $to, bool $includeTest = true): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен для аккаунта');
         }
 
@@ -417,13 +419,13 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         $items = [];
         $calculatedTotal = 0;
-        
+
         foreach ($orderData['items'] ?? [] as $item) {
             $price = (float) ($item['buyerPrice'] ?? $item['price'] ?? 0);
             $count = (int) ($item['count'] ?? 1);
             $itemTotal = $price * $count;
             $calculatedTotal += $itemTotal;
-            
+
             $items[] = [
                 'external_offer_id' => (string) ($item['offerId'] ?? ''),
                 'name' => $item['offerName'] ?? null,
@@ -436,9 +438,9 @@ class YandexMarketClient implements MarketplaceClientInterface
 
         $buyer = $orderData['buyer'] ?? [];
         $delivery = $orderData['delivery'] ?? [];
-        
+
         // Build customer name from available fields
-        $customerName = trim(($buyer['firstName'] ?? '') . ' ' . ($buyer['lastName'] ?? ''));
+        $customerName = trim(($buyer['firstName'] ?? '').' '.($buyer['lastName'] ?? ''));
         if (empty($customerName) && isset($delivery['address']['recipient'])) {
             $customerName = $delivery['address']['recipient'];
         }
@@ -520,7 +522,7 @@ class YandexMarketClient implements MarketplaceClientInterface
     protected function storeOrder(MarketplaceAccount $account, array $orderData): void
     {
         $orderId = $orderData['external_order_id'] ?? null;
-        if (!$orderId) {
+        if (! $orderId) {
             return;
         }
 
@@ -529,7 +531,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             ->where('order_id', $orderId)
             ->first();
 
-        $isNewOrder = !$existingOrder;
+        $isNewOrder = ! $existingOrder;
         $status = $orderData['status'] ?? null;
 
         // Save order
@@ -560,7 +562,7 @@ class YandexMarketClient implements MarketplaceClientInterface
         }
 
         // If order was cancelled, restore stock
-        if (!$isNewOrder && $existingOrder->status !== 'CANCELLED' && $status === 'CANCELLED') {
+        if (! $isNewOrder && $existingOrder->status !== 'CANCELLED' && $status === 'CANCELLED') {
             $this->processOrderStock($account, $orderData['items'] ?? [], 'increment');
         }
     }
@@ -574,7 +576,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             $offerId = $item['offerId'] ?? $item['shopSku'] ?? null;
             $count = $item['count'] ?? 1;
 
-            if (!$offerId) {
+            if (! $offerId) {
                 continue;
             }
 
@@ -629,7 +631,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             // Find warehouse SKU linked to this variant
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
-            if (!$warehouseSku) {
+            if (! $warehouseSku) {
                 return;
             }
 
@@ -638,11 +640,11 @@ class YandexMarketClient implements MarketplaceClientInterface
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 return;
             }
 
@@ -687,11 +689,12 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         $businessId = $this->http->getBusinessId($account);
 
-        if (!$businessId) {
+        if (! $businessId) {
             Log::error('YM syncProducts: Business ID не настроен', ['account_id' => $account->id]);
             foreach ($products as $mp) {
                 $mp->markAsFailed('Business ID не настроен для аккаунта Yandex Market');
             }
+
             return;
         }
 
@@ -701,8 +704,9 @@ class YandexMarketClient implements MarketplaceClientInterface
 
         foreach ($products as $marketplaceProduct) {
             $product = $marketplaceProduct->product;
-            if (!$product) {
+            if (! $product) {
                 $marketplaceProduct->markAsFailed('Product not found');
+
                 continue;
             }
 
@@ -711,7 +715,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 $offerMappings[] = $offerData;
                 $productMap[$offerData['offer']['offerId']] = $marketplaceProduct;
             } catch (\Exception $e) {
-                $marketplaceProduct->markAsFailed('Mapping error: ' . $e->getMessage());
+                $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
             }
         }
 
@@ -749,7 +753,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                             ]);
                         } else {
                             $errorMsg = collect($errors)->pluck('message')->implode('; ');
-                            $mp->markAsFailed('YM API: ' . ($errorMsg ?: 'Unknown error'));
+                            $mp->markAsFailed('YM API: '.($errorMsg ?: 'Unknown error'));
                         }
                     }
                 }
@@ -775,7 +779,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 foreach ($batch as $item) {
                     $offerId = $item['offer']['offerId'] ?? null;
                     if ($offerId && isset($productMap[$offerId])) {
-                        $productMap[$offerId]->markAsFailed('API error: ' . $e->getMessage());
+                        $productMap[$offerId]->markAsFailed('API error: '.$e->getMessage());
                     }
                 }
             }
@@ -788,17 +792,17 @@ class YandexMarketClient implements MarketplaceClientInterface
     protected function mapProductToYmFormat($marketplaceProduct, $product): array
     {
         // offerId - обязательное поле (артикул продавца)
-        $offerId = $product->article ?? $product->sku ?? 'SKU-' . $product->id;
+        $offerId = $product->article ?? $product->sku ?? 'SKU-'.$product->id;
 
         // Получаем категорию YM
         $categoryId = $marketplaceProduct->external_category_id ?? null;
 
         // Собираем изображения
         $pictures = [];
-        if (!empty($product->main_image)) {
+        if (! empty($product->main_image)) {
             $pictures[] = $product->main_image;
         }
-        if (!empty($product->images) && is_array($product->images)) {
+        if (! empty($product->images) && is_array($product->images)) {
             foreach ($product->images as $img) {
                 $url = is_string($img) ? $img : ($img['url'] ?? null);
                 if ($url) {
@@ -822,12 +826,12 @@ class YandexMarketClient implements MarketplaceClientInterface
         }
 
         // Добавляем изображения (максимум 10)
-        if (!empty($pictures)) {
+        if (! empty($pictures)) {
             $offer['pictures'] = array_slice($pictures, 0, 10);
         }
 
         // Добавляем штрихкод
-        if (!empty($product->barcode)) {
+        if (! empty($product->barcode)) {
             $offer['barcodes'] = [$product->barcode];
         }
 
@@ -845,7 +849,7 @@ class YandexMarketClient implements MarketplaceClientInterface
         }
 
         // Страна производства
-        if (!empty($product->country_of_origin)) {
+        if (! empty($product->country_of_origin)) {
             $offer['manufacturerCountries'] = [$product->country_of_origin];
         }
 
@@ -860,20 +864,20 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function syncPrices(MarketplaceAccount $account, array $products): void
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
         $offers = [];
 
         foreach ($products as $marketplaceProduct) {
-            if (!$marketplaceProduct->external_offer_id) {
+            if (! $marketplaceProduct->external_offer_id) {
                 continue;
             }
 
             $product = $marketplaceProduct->product;
-            if (!$product || !$product->price) {
+            if (! $product || ! $product->price) {
                 continue;
             }
 
@@ -906,15 +910,15 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function syncStocks(MarketplaceAccount $account, array $products): void
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
         $skus = [];
 
         foreach ($products as $marketplaceProduct) {
-            if (!$marketplaceProduct->external_offer_id) {
+            if (! $marketplaceProduct->external_offer_id) {
                 continue;
             }
 
@@ -953,8 +957,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getProductInfo(MarketplaceAccount $account, string $offerId): ?array
     {
         $businessId = $this->http->getBusinessId($account);
-        
-        if (!$businessId) {
+
+        if (! $businessId) {
             return null;
         }
 
@@ -968,6 +972,7 @@ class YandexMarketClient implements MarketplaceClientInterface
             );
 
             $mappings = $response['result']['offerMappings'] ?? [];
+
             return $mappings[0] ?? null;
 
         } catch (\Exception $e) {
@@ -975,6 +980,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 'offer_id' => $offerId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -985,8 +991,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function updateOrderStatus(MarketplaceAccount $account, string $orderId, string $status, ?string $substatus = null): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1013,6 +1019,7 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getCampaigns(MarketplaceAccount $account): array
     {
         $response = $this->http->get($account, '/campaigns');
+
         return $response['campaigns'] ?? [];
     }
 
@@ -1023,6 +1030,7 @@ class YandexMarketClient implements MarketplaceClientInterface
     {
         try {
             $response = $this->http->get($account, "/campaigns/{$campaignId}");
+
             return $response['campaign'] ?? null;
         } catch (\Exception $e) {
             return null;
@@ -1038,8 +1046,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function setOrderReadyToShip(MarketplaceAccount $account, string $orderId): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1050,7 +1058,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 'order' => [
                     'status' => 'PROCESSING',
                     'substatus' => 'READY_TO_SHIP',
-                ]
+                ],
             ]
         );
 
@@ -1069,15 +1077,15 @@ class YandexMarketClient implements MarketplaceClientInterface
     /**
      * Получить ярлыки для заказа (PDF)
      * GET /campaigns/{campaignId}/orders/{orderId}/delivery/labels
-     * 
-     * @param string $format - A6, A7 (default), A4
+     *
+     * @param  string  $format  - A6, A7 (default), A4
      * @return string - PDF content (binary)
      */
     public function getOrderLabels(MarketplaceAccount $account, string $orderId, string $format = 'A7'): string
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1096,8 +1104,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getOrderLabelsData(MarketplaceAccount $account, string $orderId): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1110,21 +1118,21 @@ class YandexMarketClient implements MarketplaceClientInterface
     /**
      * Подготовка заказа - указать грузоместа (коробки)
      * PUT /campaigns/{campaignId}/orders/{orderId}/boxes
-     * 
-     * @param array $boxes - массив грузомест, каждое содержит:
-     *   - fulfilmentId: string (формат: orderId-boxNumber, например "52195310272-1")
-     *   - weight: int (вес в граммах)
-     *   - width, height, depth: int (размеры в сантиметрах)
-     *   - items: array (товары в этом грузоместе)
-     *       - id: int (ID товара из заказа)
-     *       - count: int (количество)
-     *       - cis: array (коды маркировки, опционально)
+     *
+     * @param  array  $boxes  - массив грузомест, каждое содержит:
+     *                        - fulfilmentId: string (формат: orderId-boxNumber, например "52195310272-1")
+     *                        - weight: int (вес в граммах)
+     *                        - width, height, depth: int (размеры в сантиметрах)
+     *                        - items: array (товары в этом грузоместе)
+     *                        - id: int (ID товара из заказа)
+     *                        - count: int (количество)
+     *                        - cis: array (коды маркировки, опционально)
      */
     public function setOrderBoxes(MarketplaceAccount $account, string $orderId, array $boxes): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1138,16 +1146,18 @@ class YandexMarketClient implements MarketplaceClientInterface
     /**
      * Добавить код маркировки (КИЗ/CIS) для товара
      * Используется в PUT boxes для товаров с обязательной маркировкой
-     * 
-     * @param array $items - товары из заказа
-     * @param array $markingCodes - коды маркировки [itemId => [codes]]
+     *
+     * @param  array  $items  - товары из заказа
+     * @param  array  $markingCodes  - коды маркировки [itemId => [codes]]
      */
     public function prepareBoxesWithMarking(array $orderItems, array $markingCodes): array
     {
         $boxItems = [];
         foreach ($orderItems as $item) {
             $itemId = $item['id'] ?? null;
-            if (!$itemId) continue;
+            if (! $itemId) {
+                continue;
+            }
 
             $boxItem = [
                 'id' => $itemId,
@@ -1172,8 +1182,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getOrder(MarketplaceAccount $account, string $orderId): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1192,8 +1202,8 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function cancelOrder(MarketplaceAccount $account, string $orderId, string $reason = 'SHOP_FAILED'): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
@@ -1209,7 +1219,7 @@ class YandexMarketClient implements MarketplaceClientInterface
                 'order' => [
                     'status' => 'CANCELLED',
                     'substatus' => $reason,
-                ]
+                ],
             ]
         );
 
@@ -1240,17 +1250,17 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function updateStock(MarketplaceAccount $account, string $offerId, int $stock, ?int $warehouseId = null): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
         // Получить ID склада если не указан
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $warehouseId = $this->getDefaultWarehouseId($account);
         }
 
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             throw new \RuntimeException('Не найден склад для обновления остатков');
         }
 
@@ -1264,10 +1274,10 @@ class YandexMarketClient implements MarketplaceClientInterface
                             'count' => max(0, $stock),
                             'type' => 'FIT',
                             'updatedAt' => now()->toIso8601String(),
-                        ]
-                    ]
-                ]
-            ]
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         $response = $this->http->put(
@@ -1289,16 +1299,16 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function updateStockBatch(MarketplaceAccount $account, array $stocks, ?int $warehouseId = null): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $warehouseId = $this->getDefaultWarehouseId($account);
         }
 
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             throw new \RuntimeException('Не найден склад для обновления остатков');
         }
 
@@ -1312,8 +1322,8 @@ class YandexMarketClient implements MarketplaceClientInterface
                         'count' => max(0, (int) $stock),
                         'type' => 'FIT',
                         'updatedAt' => now()->toIso8601String(),
-                    ]
-                ]
+                    ],
+                ],
             ];
         }
 
@@ -1339,10 +1349,10 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getDefaultWarehouseId(MarketplaceAccount $account): ?int
     {
         $warehouses = $this->getWarehouses($account);
-        
+
         // Вернуть первый активный склад
         foreach ($warehouses as $warehouse) {
-            if (!empty($warehouse['id'])) {
+            if (! empty($warehouse['id'])) {
                 return (int) $warehouse['id'];
             }
         }
@@ -1357,23 +1367,26 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getWarehouses(MarketplaceAccount $account): array
     {
         $businessId = $this->http->getBusinessId($account);
-        
-        if (!$businessId) {
+
+        if (! $businessId) {
             // Try to get from campaign
             $campaignId = $this->http->getCampaignId($account);
             if ($campaignId) {
                 try {
                     $response = $this->http->get($account, "/campaigns/{$campaignId}/warehouses");
+
                     return $response['warehouses'] ?? [];
                 } catch (\Exception $e) {
                     return [];
                 }
             }
+
             return [];
         }
 
         try {
             $response = $this->http->get($account, "/businesses/{$businessId}/warehouses");
+
             return $response['result']['warehouses'] ?? [];
         } catch (\Exception $e) {
             return [];
@@ -1387,13 +1400,13 @@ class YandexMarketClient implements MarketplaceClientInterface
     public function getStocks(MarketplaceAccount $account, array $offerIds = []): array
     {
         $campaignId = $this->http->getCampaignId($account);
-        
-        if (!$campaignId) {
+
+        if (! $campaignId) {
             throw new \RuntimeException('Campaign ID не настроен');
         }
 
         $body = [];
-        if (!empty($offerIds)) {
+        if (! empty($offerIds)) {
             $body['offerIds'] = $offerIds;
         }
 

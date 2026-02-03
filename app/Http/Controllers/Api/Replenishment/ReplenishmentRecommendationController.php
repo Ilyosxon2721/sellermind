@@ -13,14 +13,12 @@ class ReplenishmentRecommendationController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected ReplenishmentService $service)
-    {
-    }
+    public function __construct(protected ReplenishmentService $service) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -46,6 +44,7 @@ class ReplenishmentRecommendationController extends Controller
             if ($request->risk && ($row['risk_level'] !== $request->risk)) {
                 return false;
             }
+
             return true;
         })->map(function ($row) use ($skuMap) {
             $sku = $skuMap[$row['sku_id']] ?? null;
@@ -54,6 +53,7 @@ class ReplenishmentRecommendationController extends Controller
             $row['product_name'] = $sku?->product?->name;
             $row['preferred_supplier_id'] = $row['setting']->supplier_id ?? null;
             unset($row['setting']);
+
             return $row;
         });
 
@@ -65,6 +65,7 @@ class ReplenishmentRecommendationController extends Controller
         }
 
         $limit = $request->integer('limit', 200);
+
         return $this->successResponse([
             'items' => $filtered->take($limit)->values(),
         ]);
@@ -73,7 +74,7 @@ class ReplenishmentRecommendationController extends Controller
     public function calculate(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -83,12 +84,12 @@ class ReplenishmentRecommendationController extends Controller
         ]);
 
         $results = $this->service->calculateAll($companyId, $data['warehouse_id']);
-        if (!empty($data['sku_ids'])) {
+        if (! empty($data['sku_ids'])) {
             $ids = $data['sku_ids'];
             $results = $results->whereIn('sku_id', $ids);
         }
 
-        $snapshots = $results->map(fn($row) => $this->service->persistSnapshot($row));
+        $snapshots = $results->map(fn ($row) => $this->service->persistSnapshot($row));
 
         return $this->successResponse([
             'calculated' => $results->count(),

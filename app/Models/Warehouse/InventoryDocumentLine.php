@@ -36,7 +36,7 @@ class InventoryDocumentLine extends Model
 
     public function scopeByCompany($query, int $companyId)
     {
-        return $query->whereHas('document', fn($q) => $q->where('company_id', $companyId));
+        return $query->whereHas('document', fn ($q) => $q->where('company_id', $companyId));
     }
 
     public function document(): BelongsTo

@@ -58,14 +58,14 @@ class UzumOrderObserver
             ]);
         }
     }
-    
+
     /**
      * Reduce internal stock for order items with linked variants
      */
     protected function reduceInternalStock(UzumOrder $order): void
     {
         // Load order items if not already loaded
-        if (!$order->relationLoaded('items')) {
+        if (! $order->relationLoaded('items')) {
             $order->load('items');
         }
 
@@ -75,24 +75,26 @@ class UzumOrderObserver
             $barcode = $rawPayload['barcode'] ?? null;
             $externalOfferId = $item->external_offer_id;
 
-            if (!$barcode && !$externalOfferId) {
+            if (! $barcode && ! $externalOfferId) {
                 Log::debug('Uzum order item has no barcode or external_offer_id', [
                     'order_id' => $order->external_order_id,
                     'item_name' => $item->name,
                 ]);
+
                 continue;
             }
 
             // Try to find linked variant using multiple strategies
             $link = $this->findVariantLink($order->marketplace_account_id, $externalOfferId, $barcode);
 
-            if (!$link || !$link->variant) {
+            if (! $link || ! $link->variant) {
                 Log::info('No linked variant found for Uzum order item', [
                     'order_id' => $order->external_order_id,
                     'external_offer_id' => $externalOfferId,
                     'barcode' => $barcode,
                     'item_name' => $item->name,
                 ]);
+
                 continue;
             }
 
@@ -134,11 +136,12 @@ class UzumOrderObserver
             // Find warehouse SKU linked to this variant
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
-            if (!$warehouseSku) {
+            if (! $warehouseSku) {
                 Log::debug('No warehouse SKU found for variant', [
                     'variant_id' => $variant->id,
                     'sku' => $variant->sku,
                 ]);
+
                 return;
             }
 
@@ -147,15 +150,16 @@ class UzumOrderObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for variant company', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 
@@ -211,6 +215,7 @@ class UzumOrderObserver
                     'barcode' => $barcode,
                     'link_id' => $link->id,
                 ]);
+
                 return $link;
             }
         }
@@ -229,6 +234,7 @@ class UzumOrderObserver
                     'external_offer_id' => $externalOfferId,
                     'link_id' => $link->id,
                 ]);
+
                 return $link;
             }
         }
@@ -249,6 +255,7 @@ class UzumOrderObserver
                     'barcode' => $barcode,
                     'link_id' => $link->id,
                 ]);
+
                 return $link;
             }
         }
@@ -267,6 +274,7 @@ class UzumOrderObserver
                     'external_offer_id' => $externalOfferId,
                     'link_id' => $link->id,
                 ]);
+
                 return $link;
             }
         }

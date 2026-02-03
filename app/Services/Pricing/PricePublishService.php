@@ -4,11 +4,10 @@ namespace App\Services\Pricing;
 
 use App\Models\Pricing\PriceCalculation;
 use App\Models\Pricing\PricePublishJob;
-use Illuminate\Support\Facades\DB;
 
 class PricePublishService
 {
-    public function buildJob(int $companyId, int $scenarioId, string $channelCode, array $skuIds, int $userId = null): PricePublishJob
+    public function buildJob(int $companyId, int $scenarioId, string $channelCode, array $skuIds, ?int $userId = null): PricePublishJob
     {
         $items = PriceCalculation::byCompany($companyId)
             ->where('scenario_id', $scenarioId)
@@ -18,10 +17,11 @@ class PricePublishService
             ->map(function ($calc) {
                 $external = \DB::table('channel_sku_maps')
                     ->where('sku_id', $calc->sku_id)
-                    ->where('channel_id', function ($q) use ($channelCode, $calc) {
+                    ->where('channel_id', function ($q) use ($channelCode) {
                         $q->select('id')->from('channels')->where('code', $channelCode)->limit(1);
                     })
                     ->value('external_offer_id');
+
                 return [
                     'sku_id' => $calc->sku_id,
                     'recommended_price' => $calc->recommended_price,
@@ -43,6 +43,7 @@ class PricePublishService
     {
         $job = PricePublishJob::byCompany($companyId)->findOrFail($jobId);
         $job->update(['status' => 'QUEUED']);
+
         return $job;
     }
 
@@ -60,6 +61,7 @@ class PricePublishService
             'finished_at' => now(),
             'result_json' => $result,
         ]);
+
         return $job;
     }
 }

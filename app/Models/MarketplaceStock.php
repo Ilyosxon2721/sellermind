@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceStock.php
 
 namespace App\Models;
@@ -47,6 +48,7 @@ class MarketplaceStock extends Model
         }
 
         $this->increment('reserved_stock', $quantity);
+
         return true;
     }
 

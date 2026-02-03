@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('wb_orders')) {
             Schema::table('wb_orders', function (Blueprint $table) {
-                if (!Schema::hasColumn('wb_orders', 'tare_id')) {
+                if (! Schema::hasColumn('wb_orders', 'tare_id')) {
                     $table->unsignedBigInteger('tare_id')->nullable()->after('supply_id');
                     $table->foreign('tare_id')->references('id')->on('tares')->onDelete('set null');
                 }

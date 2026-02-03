@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\GenerationTasks\Schemas;
 
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class GenerationTaskForm
@@ -37,7 +37,7 @@ class GenerationTaskForm
                                 'pending' => 'В очереди',
                                 'in_progress' => 'Выполняется',
                                 'done' => 'Готово',
-                                'failed' => 'Ошибка'
+                                'failed' => 'Ошибка',
                             ])
                             ->default('pending')
                             ->required(),

@@ -11,27 +11,44 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CashTransaction extends Model
 {
     public const TYPE_INCOME = 'income';
+
     public const TYPE_EXPENSE = 'expense';
+
     public const TYPE_TRANSFER_IN = 'transfer_in';
+
     public const TYPE_TRANSFER_OUT = 'transfer_out';
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     // Operations
     public const OP_MARKETPLACE_PAYOUT = 'marketplace_payout';
+
     public const OP_SALE = 'sale';
+
     public const OP_PURCHASE = 'purchase';
+
     public const OP_EXPENSE = 'expense';
+
     public const OP_SALARY = 'salary';
+
     public const OP_TAX = 'tax';
+
     public const OP_LOAN_IN = 'loan_in';
+
     public const OP_LOAN_OUT = 'loan_out';
+
     public const OP_TRANSFER = 'transfer';
+
     public const OP_ADJUSTMENT = 'adjustment';
+
     public const OP_INITIAL = 'initial';
+
     public const OP_DEBT_PAYMENT = 'debt_payment';
+
     public const OP_OTHER = 'other';
 
     protected $fillable = [

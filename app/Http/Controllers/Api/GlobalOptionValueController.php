@@ -25,7 +25,7 @@ class GlobalOptionValueController extends Controller
         $user = $request->user();
         $companyId = $user?->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['error' => 'Company not found'], 403);
         }
 
@@ -37,7 +37,7 @@ class GlobalOptionValueController extends Controller
             ->where('code', $type)
             ->first();
 
-        if (!$globalOption) {
+        if (! $globalOption) {
             return response()->json(['error' => 'Global option not found'], 404);
         }
 
@@ -98,7 +98,7 @@ class GlobalOptionValueController extends Controller
             ->where('code', 'size')
             ->first();
 
-        if (!$globalOption) {
+        if (! $globalOption) {
             return response()->json(['data' => []]);
         }
 
@@ -134,7 +134,7 @@ class GlobalOptionValueController extends Controller
             ->where('code', 'color')
             ->first();
 
-        if (!$globalOption) {
+        if (! $globalOption) {
             return response()->json(['data' => []]);
         }
 

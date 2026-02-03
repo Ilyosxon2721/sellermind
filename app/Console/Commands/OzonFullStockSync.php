@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\VariantMarketplaceLink;
-use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\OzonClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +26,7 @@ class OzonFullStockSync extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных OZON аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -57,8 +58,9 @@ class OzonFullStockSync extends Command
         $credentials = $account->credentials_json ?? [];
         $warehouseId = $credentials['warehouse_id'] ?? null;
 
-        if (!$warehouseId) {
-            $this->warn("  Не указан warehouse_id в настройках аккаунта");
+        if (! $warehouseId) {
+            $this->warn('  Не указан warehouse_id в настройках аккаунта');
+
             return;
         }
 
@@ -70,11 +72,12 @@ class OzonFullStockSync extends Command
             ->get();
 
         if ($links->isEmpty()) {
-            $this->info("  Нет товаров для синхронизации");
+            $this->info('  Нет товаров для синхронизации');
+
             return;
         }
 
-        $this->line("  Найдено товаров для синхронизации: " . $links->count());
+        $this->line('  Найдено товаров для синхронизации: '.$links->count());
 
         // Prepare stock data for batch API
         $stocksData = [];
@@ -85,8 +88,9 @@ class OzonFullStockSync extends Command
                 $offerId = $link->external_offer_id ?? $link->marketplaceProduct->external_offer_id ?? null;
                 $productId = $link->marketplaceProduct->external_product_id ?? null;
 
-                if (!$offerId || !$productId) {
+                if (! $offerId || ! $productId) {
                     $this->warn("  Пропущен товар link_id={$link->id}: нет offer_id или product_id");
+
                     continue;
                 }
 
@@ -114,11 +118,12 @@ class OzonFullStockSync extends Command
         }
 
         if (empty($stocksData)) {
-            $this->warn("  Нет данных для отправки");
+            $this->warn('  Нет данных для отправки');
+
             return;
         }
 
-        $this->line("  Подготовлено для отправки: " . count($stocksData));
+        $this->line('  Подготовлено для отправки: '.count($stocksData));
 
         // Send in batches of 100 (OZON API limit)
         $batches = array_chunk($stocksData, 100);
@@ -127,7 +132,7 @@ class OzonFullStockSync extends Command
 
         foreach ($batches as $batchIndex => $batch) {
             try {
-                $this->line("  Отправка batch " . ($batchIndex + 1) . "/" . count($batches) . " (" . count($batch) . " товаров)...");
+                $this->line('  Отправка batch '.($batchIndex + 1).'/'.count($batches).' ('.count($batch).' товаров)...');
 
                 $client->syncStocks($account, $batch);
 
@@ -140,7 +145,7 @@ class OzonFullStockSync extends Command
                 }
 
                 $totalSynced += count($batch);
-                $this->info("    ✓ Синхронизировано: " . count($batch));
+                $this->info('    ✓ Синхронизировано: '.count($batch));
             } catch (\Exception $e) {
                 $totalErrors += count($batch);
                 $this->error("    ✗ Ошибка batch: {$e->getMessage()}");

@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_12_01_300009_add_supply_fields_to_wildberries_orders.php
 
 use Illuminate\Database\Migrations\Migration;

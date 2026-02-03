@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceSyncLog.php
 
 namespace App\Models;
@@ -9,14 +10,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplaceSyncLog extends Model
 {
     public const TYPE_PRODUCTS = 'products';
+
     public const TYPE_PRICES = 'prices';
+
     public const TYPE_STOCKS = 'stocks';
+
     public const TYPE_ORDERS = 'orders';
+
     public const TYPE_REPORTS = 'reports';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_RUNNING = 'running';
+
     public const STATUS_SUCCESS = 'success';
+
     public const STATUS_ERROR = 'error';
 
     protected $fillable = [
@@ -133,7 +141,7 @@ class MarketplaceSyncLog extends Model
      */
     public function getDuration(): ?int
     {
-        if (!$this->started_at || !$this->finished_at) {
+        if (! $this->started_at || ! $this->finished_at) {
             return null;
         }
 

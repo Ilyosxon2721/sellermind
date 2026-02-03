@@ -45,6 +45,7 @@ class SyncMarketplaceOrders extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('⚠️  No active marketplace accounts found.');
+
             return self::FAILURE;
         }
 

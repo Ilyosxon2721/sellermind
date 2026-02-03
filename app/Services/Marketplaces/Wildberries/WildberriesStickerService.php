@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesStickerService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -26,12 +27,11 @@ class WildberriesStickerService
     /**
      * Get stickers for orders
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Array of order IDs (max 100)
-     * @param string $type Sticker type: 'code128' (default), 'svg', 'png'
-     * @param int $width Width in mm (default: 58)
-     * @param int $height Height in mm (default: 40)
-     * @param bool $save Save to storage (default: true)
+     * @param  array  $orderIds  Array of order IDs (max 100)
+     * @param  string  $type  Sticker type: 'code128' (default), 'svg', 'png'
+     * @param  int  $width  Width in mm (default: 58)
+     * @param  int  $height  Height in mm (default: 40)
+     * @param  bool  $save  Save to storage (default: true)
      * @return array ['file_path' => string|null, 'content' => string|null, 'format' => string]
      */
     public function getStickers(
@@ -97,10 +97,8 @@ class WildberriesStickerService
     /**
      * Get cross-border stickers for orders
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Array of order IDs (max 100)
-     * @param bool $save Save to storage (default: true)
-     * @return array
+     * @param  array  $orderIds  Array of order IDs (max 100)
+     * @param  bool  $save  Save to storage (default: true)
      */
     public function getCrossBorderStickers(
         MarketplaceAccount $account,
@@ -157,10 +155,9 @@ class WildberriesStickerService
     /**
      * Get stickers in batches (for more than 100 orders)
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Array of order IDs (any count)
-     * @param string $type Sticker type
-     * @param bool $save Save to storage
+     * @param  array  $orderIds  Array of order IDs (any count)
+     * @param  string  $type  Sticker type
+     * @param  bool  $save  Save to storage
      * @return array Array of sticker results
      */
     public function getStickersInBatches(
@@ -200,11 +197,9 @@ class WildberriesStickerService
     /**
      * Save sticker to storage
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds
-     * @param string $content Binary content
-     * @param string $format File format (pdf/png/svg)
-     * @param string $prefix Filename prefix
+     * @param  string  $content  Binary content
+     * @param  string  $format  File format (pdf/png/svg)
+     * @param  string  $prefix  Filename prefix
      * @return string File path
      */
     protected function saveSticker(
@@ -237,10 +232,6 @@ class WildberriesStickerService
 
     /**
      * Detect file format from content
-     *
-     * @param string $content
-     * @param string $requestedType
-     * @return string
      */
     protected function detectFormat(string $content, string $requestedType): string
     {
@@ -268,12 +259,11 @@ class WildberriesStickerService
     /**
      * Get sticker file URL for download
      *
-     * @param string $filePath Storage path
-     * @return string|null
+     * @param  string  $filePath  Storage path
      */
     public function getStickerUrl(string $filePath): ?string
     {
-        if (!Storage::disk('local')->exists($filePath)) {
+        if (! Storage::disk('local')->exists($filePath)) {
             return null;
         }
 
@@ -284,7 +274,7 @@ class WildberriesStickerService
     /**
      * Delete old stickers (cleanup)
      *
-     * @param int $daysOld Delete stickers older than N days
+     * @param  int  $daysOld  Delete stickers older than N days
      * @return int Number of deleted files
      */
     public function cleanupOldStickers(int $daysOld = 30): int
@@ -292,7 +282,7 @@ class WildberriesStickerService
         $deleted = 0;
         $path = 'marketplace/stickers';
 
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             return 0;
         }
 

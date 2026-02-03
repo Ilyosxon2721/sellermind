@@ -17,17 +17,25 @@ class FinanceDebt extends Model
     use HasFactory;
 
     public const TYPE_RECEIVABLE = 'receivable'; // дебиторка (нам должны)
+
     public const TYPE_PAYABLE = 'payable';       // кредиторка (мы должны)
 
     public const PURPOSE_DEBT = 'debt';
+
     public const PURPOSE_PREPAYMENT = 'prepayment';
+
     public const PURPOSE_ADVANCE = 'advance';
+
     public const PURPOSE_LOAN = 'loan';
+
     public const PURPOSE_OTHER = 'other';
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_PARTIALLY_PAID = 'partially_paid';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_WRITTEN_OFF = 'written_off';
 
     protected $fillable = [
@@ -134,7 +142,7 @@ class FinanceDebt extends Model
 
     public function isOverdue(): bool
     {
-        return $this->due_date && $this->due_date->isPast() && !$this->isPaid();
+        return $this->due_date && $this->due_date->isPast() && ! $this->isPaid();
     }
 
     public function applyPayment(float $amount): void
@@ -177,6 +185,7 @@ class FinanceDebt extends Model
         if ($this->employee) {
             return $this->employee->full_name;
         }
+
         return null;
     }
 

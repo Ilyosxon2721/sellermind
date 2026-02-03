@@ -13,8 +13,11 @@ class MarketplaceOrdersUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $companyId;
+
     public int $marketplaceAccountId;
+
     public int $newOrdersCount;
+
     public array $stats;
 
     /**

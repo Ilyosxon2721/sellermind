@@ -19,7 +19,7 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $companyId = $user->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'message' => 'Компания не найдена',
                 'has_subscription' => false,
@@ -28,7 +28,7 @@ class SubscriptionController extends Controller
 
         $company = Company::with(['activeSubscription.plan'])->find($companyId);
 
-        if (!$company) {
+        if (! $company) {
             return response()->json([
                 'message' => 'Компания не найдена',
                 'has_subscription' => false,
@@ -37,7 +37,7 @@ class SubscriptionController extends Controller
 
         $subscription = $company->activeSubscription;
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'has_subscription' => false,
                 'message' => 'Нет активной подписки',
@@ -127,7 +127,7 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $companyId = $user->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'message' => 'Компания не найдена',
             ], 404);
@@ -135,14 +135,14 @@ class SubscriptionController extends Controller
 
         $company = Company::find($companyId);
 
-        if (!$company) {
+        if (! $company) {
             return response()->json([
                 'message' => 'Компания не найдена',
             ], 404);
         }
 
         // Check if user is owner
-        if (!$user->isOwnerOf($companyId)) {
+        if (! $user->isOwnerOf($companyId)) {
             return response()->json([
                 'message' => 'Только владелец компании может изменять подписку',
             ], 403);
@@ -150,7 +150,7 @@ class SubscriptionController extends Controller
 
         $plan = Plan::active()->find($request->plan_id);
 
-        if (!$plan) {
+        if (! $plan) {
             return response()->json([
                 'message' => 'Тариф не найден',
             ], 404);
@@ -166,7 +166,7 @@ class SubscriptionController extends Controller
         }
 
         // Calculate end date based on billing period
-        $endsAt = match($request->billing_period) {
+        $endsAt = match ($request->billing_period) {
             'monthly' => now()->addMonth(),
             'quarterly' => now()->addMonths(3),
             'yearly' => now()->addYear(),
@@ -210,14 +210,14 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $companyId = $user->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'message' => 'Компания не найдена',
             ], 404);
         }
 
         // Check if user is owner
-        if (!$user->isOwnerOf($companyId)) {
+        if (! $user->isOwnerOf($companyId)) {
             return response()->json([
                 'message' => 'Только владелец компании может отменять подписку',
             ], 403);
@@ -226,7 +226,7 @@ class SubscriptionController extends Controller
         $company = Company::find($companyId);
         $subscription = $company->activeSubscription;
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'message' => 'Нет активной подписки',
             ], 404);
@@ -254,14 +254,14 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $companyId = $user->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'message' => 'Компания не найдена',
             ], 404);
         }
 
         // Check if user is owner
-        if (!$user->isOwnerOf($companyId)) {
+        if (! $user->isOwnerOf($companyId)) {
             return response()->json([
                 'message' => 'Только владелец компании может продлевать подписку',
             ], 403);
@@ -270,7 +270,7 @@ class SubscriptionController extends Controller
         $company = Company::find($companyId);
         $subscription = $company->activeSubscription;
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'message' => 'Нет активной подписки для продления',
             ], 404);
@@ -280,7 +280,7 @@ class SubscriptionController extends Controller
 
         // Calculate new end date
         $currentEnd = $subscription->ends_at ?? now();
-        $newEndsAt = match($request->billing_period) {
+        $newEndsAt = match ($request->billing_period) {
             'monthly' => $currentEnd->addMonth(),
             'quarterly' => $currentEnd->addMonths(3),
             'yearly' => $currentEnd->addYear(),
@@ -310,7 +310,7 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $companyId = $user->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json([
                 'message' => 'Компания не найдена',
             ], 404);

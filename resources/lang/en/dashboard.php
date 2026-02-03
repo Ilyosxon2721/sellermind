@@ -8,13 +8,13 @@ return [
     '30_days' => '30 days',
     'refresh' => 'Refresh',
     'details' => 'Details',
-    
+
     // Alerts
     'alerts_attention' => 'alerts require attention',
     'low_stock' => 'low stock',
     'reviews' => 'reviews',
     'alerts' => 'Alerts',
-    
+
     // Stats
     'revenue' => 'Revenue',
     'orders' => 'orders',
@@ -23,7 +23,7 @@ return [
     'open' => 'Open',
     'warehouse' => 'Warehouse',
     'positions' => 'items',
-    
+
     // Small stat cards
     'marketplaces' => 'Marketplaces',
     'mp' => 'MP',
@@ -31,7 +31,7 @@ return [
     'supplies_in_transit' => 'Supplies in transit',
     'supplies' => 'Supplies',
     'ai_tasks' => 'AI tasks',
-    
+
     // Orders table
     'recent_orders' => 'Recent orders',
     'all_orders' => 'All orders',
@@ -42,12 +42,12 @@ return [
     'date' => 'Date',
     'no_orders_yet' => 'No orders yet',
     'orders_will_appear' => 'They will appear here automatically',
-    
+
     // Marketplaces section
     'marketplaces_section' => 'Marketplaces',
     'no_marketplaces' => 'No connected marketplaces',
     'connect' => 'Connect',
-    
+
     // Subscription
     'subscription' => 'Subscription',
     'active' => 'Active',
@@ -57,7 +57,7 @@ return [
     'manage_subscription' => 'Manage subscription',
     'no_subscription' => 'No active subscription',
     'choose_plan' => 'Choose plan',
-    
+
     // AI Agents
     'ai_agents' => 'AI Agents',
     'all' => 'All',
@@ -65,18 +65,18 @@ return [
     'today_tasks' => 'Today',
     'errors' => 'Errors',
     'no_recent_tasks' => 'No recent tasks',
-    
+
     // Reviews section
     'reviews_section' => 'Reviews',
     'per_month' => 'this month',
     'no_response' => 'no response',
-    
+
     // Team
     'team' => 'Team',
     'manage' => 'Manage',
     'members' => 'Members',
     'invite' => 'Invite',
-    
+
     // Period sheet
     'select_period' => 'Select period',
     'cancel' => 'Cancel',

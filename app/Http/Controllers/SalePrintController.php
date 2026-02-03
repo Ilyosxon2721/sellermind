@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
-use Illuminate\Http\Request;
 
 class SalePrintController extends Controller
 {
@@ -12,7 +11,7 @@ class SalePrintController extends Controller
      */
     private function checkAccess(Sale $sale): void
     {
-        if (!auth()->user()->hasCompanyAccess($sale->company_id)) {
+        if (! auth()->user()->hasCompanyAccess($sale->company_id)) {
             abort(403, 'Доступ запрещён');
         }
     }

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // Warehouses
-        if (!Schema::hasTable('warehouses')) {
+        if (! Schema::hasTable('warehouses')) {
             Schema::create('warehouses', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -23,7 +23,7 @@ return new class extends Migration
         }
 
         // Warehouse locations (optional, but создаём таблицу)
-        if (!Schema::hasTable('warehouse_locations')) {
+        if (! Schema::hasTable('warehouse_locations')) {
             Schema::create('warehouse_locations', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('warehouse_id')->constrained('warehouses')->cascadeOnDelete();
@@ -36,7 +36,7 @@ return new class extends Migration
         }
 
         // Units
-        if (!Schema::hasTable('units')) {
+        if (! Schema::hasTable('units')) {
             Schema::create('units', function (Blueprint $table) {
                 $table->id();
                 $table->string('code')->unique();
@@ -48,7 +48,7 @@ return new class extends Migration
         // Products table is created by dedicated migration 2025_11_27_214215_create_products_table.php
 
         // SKUs
-        if (!Schema::hasTable('skus')) {
+        if (! Schema::hasTable('skus')) {
             Schema::create('skus', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
@@ -69,7 +69,7 @@ return new class extends Migration
         }
 
         // Inventory documents
-        if (!Schema::hasTable('inventory_documents')) {
+        if (! Schema::hasTable('inventory_documents')) {
             Schema::create('inventory_documents', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -95,7 +95,7 @@ return new class extends Migration
         }
 
         // Inventory document lines
-        if (!Schema::hasTable('inventory_document_lines')) {
+        if (! Schema::hasTable('inventory_document_lines')) {
             Schema::create('inventory_document_lines', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('document_id')->constrained('inventory_documents')->cascadeOnDelete();
@@ -114,7 +114,7 @@ return new class extends Migration
         }
 
         // Stock ledger
-        if (!Schema::hasTable('stock_ledger')) {
+        if (! Schema::hasTable('stock_ledger')) {
             Schema::create('stock_ledger', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -137,7 +137,7 @@ return new class extends Migration
         }
 
         // Stock reservations
-        if (!Schema::hasTable('stock_reservations')) {
+        if (! Schema::hasTable('stock_reservations')) {
             Schema::create('stock_reservations', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -157,7 +157,7 @@ return new class extends Migration
         }
 
         // Channel SKU maps
-        if (Schema::hasTable('channels') && !Schema::hasTable('channel_sku_maps')) {
+        if (Schema::hasTable('channels') && ! Schema::hasTable('channel_sku_maps')) {
             Schema::create('channel_sku_maps', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('channel_id')->constrained('channels')->cascadeOnDelete();
@@ -173,7 +173,7 @@ return new class extends Migration
         }
 
         // Channel orders
-        if (Schema::hasTable('channels') && !Schema::hasTable('channel_orders')) {
+        if (Schema::hasTable('channels') && ! Schema::hasTable('channel_orders')) {
             Schema::create('channel_orders', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('channel_id')->constrained('channels')->cascadeOnDelete();
@@ -186,7 +186,7 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('channels') && !Schema::hasTable('channel_order_items')) {
+        if (Schema::hasTable('channels') && ! Schema::hasTable('channel_order_items')) {
             Schema::create('channel_order_items', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('channel_order_id')->constrained('channel_orders')->cascadeOnDelete();
@@ -202,7 +202,7 @@ return new class extends Migration
         }
 
         // Processed events
-        if (Schema::hasTable('channels') && !Schema::hasTable('processed_events')) {
+        if (Schema::hasTable('channels') && ! Schema::hasTable('processed_events')) {
             Schema::create('processed_events', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('channel_id')->constrained('channels')->cascadeOnDelete();
@@ -218,13 +218,13 @@ return new class extends Migration
         // Company settings (добавляем недостающие поля)
         if (Schema::hasTable('company_settings')) {
             Schema::table('company_settings', function (Blueprint $table) {
-                if (!Schema::hasColumn('company_settings', 'allow_negative_stock')) {
+                if (! Schema::hasColumn('company_settings', 'allow_negative_stock')) {
                     $table->boolean('allow_negative_stock')->default(false);
                 }
-                if (!Schema::hasColumn('company_settings', 'costing_method')) {
+                if (! Schema::hasColumn('company_settings', 'costing_method')) {
                     $table->string('costing_method')->default('AVG');
                 }
-                if (!Schema::hasColumn('company_settings', 'locations_enabled')) {
+                if (! Schema::hasColumn('company_settings', 'locations_enabled')) {
                     $table->boolean('locations_enabled')->default(false);
                 }
             });

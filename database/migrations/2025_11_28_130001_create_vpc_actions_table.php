@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_130001_create_vpc_actions_table.php
 
 use Illuminate\Database\Migrations\Migration;

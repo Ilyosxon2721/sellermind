@@ -17,7 +17,7 @@ return [
     'back' => 'Back',
     'next' => 'Next',
     'previous' => 'Previous',
-    
+
     // Table
     'actions' => 'Actions',
     'status' => 'Status',
@@ -27,14 +27,14 @@ return [
     'showing' => 'Showing',
     'of' => 'of',
     'entries' => 'entries',
-    
+
     // Status
     'active' => 'Active',
     'inactive' => 'Inactive',
     'pending' => 'Pending',
     'completed' => 'Completed',
     'cancelled' => 'Cancelled',
-    
+
     // Messages
     'success' => 'Success!',
     'error' => 'Error!',

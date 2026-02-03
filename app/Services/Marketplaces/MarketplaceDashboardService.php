@@ -1,17 +1,18 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceDashboardService.php
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceReturn;
 use App\Models\MarketplaceProduct;
+use App\Models\MarketplaceReturn;
 use App\Models\MarketplaceSyncLog;
 use App\Models\UzumOrder;
 use App\Models\WildberriesOrder;
-use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Collection;
 
 class MarketplaceDashboardService
 {
@@ -19,12 +20,12 @@ class MarketplaceDashboardService
      * Статусы отменённых заказов (исключаются из расчёта выручки)
      */
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     /**
      * Построение всех данных для дашборда.
      *
-     * @param Collection<int, MarketplaceAccount> $accounts
-     * @param array{period:string,date_from:?string,date_to:?string,marketplace:string} $filters
-     * @return array
+     * @param  Collection<int, MarketplaceAccount>  $accounts
+     * @param  array{period:string,date_from:?string,date_to:?string,marketplace:string}  $filters
      */
     public function buildDashboardData(Collection $accounts, array $filters): array
     {
@@ -143,7 +144,7 @@ class MarketplaceDashboardService
 
         $cancelledWb = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$from, $to])
-            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
             ->get();
 
         $cancelledOrders = $cancelledUzum->concat($cancelledWb);
@@ -261,7 +262,7 @@ class MarketplaceDashboardService
             if ($excludeCancelled) {
                 $query->where('is_cancel', false)->where('is_return', false);
             } elseif ($onlyCancelled) {
-                $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+                $query->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
             }
 
             return $query->get();
@@ -318,7 +319,7 @@ class MarketplaceDashboardService
 
         // Группировка по external_offer_id + marketplace_account_id
         $grouped = $allItems->groupBy(function ($item) {
-            return $item['external_offer_id'] . ':' . $item['marketplace_account_id'];
+            return $item['external_offer_id'].':'.$item['marketplace_account_id'];
         });
 
         $problemList = [];
@@ -355,6 +356,7 @@ class MarketplaceDashboardService
             if ($cmp === 0) {
                 $cmp = $a['total_revenue'] <=> $b['total_revenue'];
             }
+
             return $cmp;
         });
 
@@ -396,7 +398,7 @@ class MarketplaceDashboardService
      * - overall: общая выручка и заказы по всем аккаунтам;
      * - by_marketplace: разбивка по каждому маркетплейсу.
      *
-     * @param Collection<int, MarketplaceAccount> $accounts
+     * @param  Collection<int, MarketplaceAccount>  $accounts
      */
     public function getDailySeries(Collection $accounts, Carbon $from, Carbon $to): array
     {
@@ -468,12 +470,12 @@ class MarketplaceDashboardService
 
             // Process non-cancelled orders
             foreach ($orders as $order) {
-                if (!$order->ordered_at) {
+                if (! $order->ordered_at) {
                     continue;
                 }
 
                 $dateKey = $order->ordered_at->copy()->startOfDay()->format('Y-m-d');
-                if (!isset($labelIndex[$dateKey])) {
+                if (! isset($labelIndex[$dateKey])) {
                     continue;
                 }
 
@@ -491,12 +493,12 @@ class MarketplaceDashboardService
 
             // Process cancelled orders separately
             foreach ($cancelledOrders as $order) {
-                if (!$order->ordered_at) {
+                if (! $order->ordered_at) {
                     continue;
                 }
 
                 $dateKey = $order->ordered_at->copy()->startOfDay()->format('Y-m-d');
-                if (!isset($labelIndex[$dateKey])) {
+                if (! isset($labelIndex[$dateKey])) {
                     continue;
                 }
 

@@ -87,22 +87,24 @@ class OzonOrderObserver
             $barcode = $product['barcode'] ?? null;
             $quantity = $product['quantity'] ?? 1;
 
-            if (!$sku && !$barcode) {
+            if (! $sku && ! $barcode) {
                 Log::debug('Ozon order product has no SKU or barcode', [
                     'order_id' => $order->posting_number,
                     'product' => $product,
                 ]);
+
                 continue;
             }
 
             // Find linked variant
             $link = $this->findVariantLink($order->marketplace_account_id, $sku, $barcode);
 
-            if (!$link || !$link->variant) {
+            if (! $link || ! $link->variant) {
                 Log::info('No linked variant found for Ozon order product', [
                     'order_id' => $order->posting_number,
                     'sku' => $sku,
                 ]);
+
                 continue;
             }
 
@@ -146,13 +148,13 @@ class OzonOrderObserver
             $barcode = $product['barcode'] ?? null;
             $quantity = $product['quantity'] ?? 1;
 
-            if (!$sku && !$barcode) {
+            if (! $sku && ! $barcode) {
                 continue;
             }
 
             $link = $this->findVariantLink($order->marketplace_account_id, $sku, $barcode);
 
-            if (!$link || !$link->variant) {
+            if (! $link || ! $link->variant) {
                 continue;
             }
 
@@ -190,11 +192,12 @@ class OzonOrderObserver
             // Find warehouse SKU linked to this variant
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
-            if (!$warehouseSku) {
+            if (! $warehouseSku) {
                 Log::debug('No warehouse SKU found for variant', [
                     'variant_id' => $variant->id,
                     'sku' => $variant->sku,
                 ]);
+
                 return;
             }
 
@@ -203,15 +206,16 @@ class OzonOrderObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for variant company', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 
@@ -254,7 +258,7 @@ class OzonOrderObserver
      */
     protected function findVariantLink(int $accountId, ?string $sku, ?string $barcode = null): ?VariantMarketplaceLink
     {
-        if (!$sku && !$barcode) {
+        if (! $sku && ! $barcode) {
             return null;
         }
 
@@ -268,6 +272,7 @@ class OzonOrderObserver
             $link = (clone $query)->where('marketplace_barcode', $barcode)->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by marketplace_barcode', ['barcode' => $barcode, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -277,6 +282,7 @@ class OzonOrderObserver
             $link = (clone $query)->where('marketplace_barcode', $sku)->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by marketplace_barcode (from sku)', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -286,6 +292,7 @@ class OzonOrderObserver
             $link = (clone $query)->where('external_sku', $sku)->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by external_sku', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -295,6 +302,7 @@ class OzonOrderObserver
             $link = (clone $query)->where('external_offer_id', $sku)->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by external_offer_id', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -304,6 +312,7 @@ class OzonOrderObserver
             $link = (clone $query)->where('external_sku_id', $sku)->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -318,6 +327,7 @@ class OzonOrderObserver
                 ->first();
             if ($link) {
                 Log::debug('OzonOrderObserver: Found link by variant internal barcode', ['barcode' => $searchBarcode, 'link_id' => $link->id]);
+
                 return $link;
             }
         }

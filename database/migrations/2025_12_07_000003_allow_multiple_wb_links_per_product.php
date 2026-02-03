@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_12_07_000003_allow_multiple_wb_links_per_product.php
 
 use Illuminate\Database\Migrations\Migration;

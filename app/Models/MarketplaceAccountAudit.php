@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceAccountAudit.php
 
 namespace App\Models;
@@ -33,12 +34,19 @@ class MarketplaceAccountAudit extends Model
 
     // Event types
     public const EVENT_CREATED = 'created';
+
     public const EVENT_UPDATED = 'updated';
+
     public const EVENT_DELETED = 'deleted';
+
     public const EVENT_CREDENTIALS_CHANGED = 'credentials_changed';
+
     public const EVENT_SYNCED = 'synced';
+
     public const EVENT_ERROR = 'error';
+
     public const EVENT_ACTIVATED = 'activated';
+
     public const EVENT_DEACTIVATED = 'deactivated';
 
     /**
@@ -118,7 +126,7 @@ class MarketplaceAccountAudit extends Model
             self::EVENT_CREDENTIALS_CHANGED,
             null,
             ['changed_fields' => $changedFields],
-            'Изменены поля: ' . implode(', ', $changedFields)
+            'Изменены поля: '.implode(', ', $changedFields)
         );
     }
 

@@ -35,6 +35,7 @@ trait HandlesMarketplaceRateLimiting
                 'message' => $exception->getMessage(),
                 'attempt' => $this->attempts(),
             ]);
+
             return true;
         }
 
@@ -45,6 +46,7 @@ trait HandlesMarketplaceRateLimiting
                 'message' => $exception->getMessage(),
                 'attempt' => $this->attempts(),
             ]);
+
             return true;
         }
 
@@ -147,6 +149,7 @@ trait HandlesMarketplaceRateLimiting
                 // Попробуем распарсить как дату
                 try {
                     $retryDate = new \DateTime($retryAfter);
+
                     return max(0, $retryDate->getTimestamp() - time());
                 } catch (\Exception $e) {
                     // Игнорируем ошибки парсинга

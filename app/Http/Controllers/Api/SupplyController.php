@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Supply;
 use App\Models\MarketplaceAccount;
+use App\Models\Supply;
 use App\Models\WbOrder;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
@@ -21,6 +21,7 @@ class SupplyController extends Controller
     protected function getWbOrderService(MarketplaceAccount $account): WildberriesOrderService
     {
         $httpClient = new WildberriesHttpClient($account);
+
         return new WildberriesOrderService($httpClient);
     }
 
@@ -35,12 +36,12 @@ class SupplyController extends Controller
             'status' => ['nullable', 'string'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $query = Supply::query()
-            ->whereHas('account', fn($q) => $q->where('company_id', $request->company_id))
+            ->whereHas('account', fn ($q) => $q->where('company_id', $request->company_id))
             ->with('account')
             ->forAccount($request->marketplace_account_id);
 
@@ -65,12 +66,12 @@ class SupplyController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $supplies = Supply::query()
-            ->whereHas('account', fn($q) => $q->where('company_id', $request->company_id))
+            ->whereHas('account', fn ($q) => $q->where('company_id', $request->company_id))
             ->forAccount($request->marketplace_account_id)
             ->open()
             ->with('account')
@@ -78,16 +79,16 @@ class SupplyController extends Controller
             ->get();
 
         // Добавляем маркеры синхронизации с WB
-        $supplies->each(function($supply) {
-            $supply->is_synced_with_wb = !empty($supply->external_supply_id);
+        $supplies->each(function ($supply) {
+            $supply->is_synced_with_wb = ! empty($supply->external_supply_id);
             $supply->needs_sync = empty($supply->external_supply_id) && $supply->account->marketplace === 'wb';
         });
 
         return response()->json([
             'supplies' => $supplies,
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-          ->header('Pragma', 'no-cache')
-          ->header('Expires', '0');
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
@@ -103,7 +104,7 @@ class SupplyController extends Controller
             'external_supply_id' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -112,7 +113,7 @@ class SupplyController extends Controller
             ->where('company_id', $validated['company_id'])
             ->first();
 
-        if (!$account) {
+        if (! $account) {
             return response()->json(['message' => 'Аккаунт не найден.'], 404);
         }
 
@@ -163,7 +164,7 @@ class SupplyController extends Controller
             return response()->json([
                 'supply' => $supply->fresh()->load('account'),
                 'message' => 'Поставка создана успешно.',
-                'synced_with_wb' => !empty($supply->external_supply_id),
+                'synced_with_wb' => ! empty($supply->external_supply_id),
             ], 201);
 
         } catch (\Exception $e) {
@@ -175,7 +176,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка создания поставки: ' . $e->getMessage(),
+                'message' => 'Ошибка создания поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -185,7 +186,7 @@ class SupplyController extends Controller
      */
     public function show(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -201,11 +202,11 @@ class SupplyController extends Controller
      */
     public function update(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$supply->canEdit()) {
+        if (! $supply->canEdit()) {
             return response()->json(['message' => 'Поставка не может быть отредактирована.'], 422);
         }
 
@@ -228,11 +229,11 @@ class SupplyController extends Controller
      */
     public function addOrder(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$supply->canAddOrders()) {
+        if (! $supply->canAddOrders()) {
             return response()->json(['message' => 'Поставка закрыта для добавления заказов.'], 422);
         }
 
@@ -259,7 +260,7 @@ class SupplyController extends Controller
         // Проверяем статус заказа для WB (используем wb_status_group)
         if ($supply->account->marketplace === 'wb') {
             // Для WB можем добавлять заказы в статусе "new" или "assembling"
-            if (!in_array($order->wb_status_group, ['new', 'assembling'])) {
+            if (! in_array($order->wb_status_group, ['new', 'assembling'])) {
                 return response()->json([
                     'message' => 'Заказ не может быть добавлен в поставку (неподходящий статус).',
                     'current_status_group' => $order->wb_status_group,
@@ -272,7 +273,7 @@ class SupplyController extends Controller
             }
         } else {
             // Для других маркетплейсов используем общий статус
-            if (!in_array($order->status, ['new', 'confirmed', 'packed'])) {
+            if (! in_array($order->status, ['new', 'confirmed', 'packed'])) {
                 return response()->json([
                     'message' => 'Заказ не может быть добавлен в поставку (неподходящий статус).',
                     'current_status' => $order->status,
@@ -318,7 +319,7 @@ class SupplyController extends Controller
             }
 
             // Обновляем supply_id у заказа
-            $supplyId = $supply->external_supply_id ?? 'SUPPLY-' . $supply->id;
+            $supplyId = $supply->external_supply_id ?? 'SUPPLY-'.$supply->id;
             $order->update([
                 'supply_id' => $supplyId,
             ]);
@@ -344,7 +345,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка добавления заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка добавления заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -354,11 +355,11 @@ class SupplyController extends Controller
      */
     public function removeOrder(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$supply->canEdit()) {
+        if (! $supply->canEdit()) {
             return response()->json(['message' => 'Поставка не может быть отредактирована.'], 422);
         }
 
@@ -369,7 +370,7 @@ class SupplyController extends Controller
         $order = WbOrder::findOrFail($validated['order_id']);
 
         // Проверяем, что заказ в этой поставке
-        $supplyId = $supply->external_supply_id ?? 'SUPPLY-' . $supply->id;
+        $supplyId = $supply->external_supply_id ?? 'SUPPLY-'.$supply->id;
         if ($order->supply_id !== $supplyId) {
             return response()->json(['message' => 'Заказ не найден в этой поставке.'], 422);
         }
@@ -388,7 +389,7 @@ class SupplyController extends Controller
                     $orderService->removeOrderFromSupply(
                         $supply->account,
                         $supply->external_supply_id,
-                        (int)$order->external_order_id
+                        (int) $order->external_order_id
                     );
 
                     Log::info('Order removed from WB supply via API', [
@@ -407,7 +408,7 @@ class SupplyController extends Controller
                     ]);
 
                     return response()->json([
-                        'message' => 'Ошибка удаления заказа из поставки WB: ' . $e->getMessage(),
+                        'message' => 'Ошибка удаления заказа из поставки WB: '.$e->getMessage(),
                     ], 500);
                 }
             }
@@ -438,7 +439,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка удаления заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка удаления заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -448,11 +449,11 @@ class SupplyController extends Controller
      */
     public function close(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$supply->canAddOrders()) {
+        if (! $supply->canAddOrders()) {
             return response()->json(['message' => 'Поставка уже закрыта.'], 422);
         }
 
@@ -497,7 +498,7 @@ class SupplyController extends Controller
             return response()->json([
                 'supply' => $supply->fresh()->load('account'),
                 'message' => 'Поставка закрыта.',
-                'barcode_downloaded' => !empty($supply->barcode_path),
+                'barcode_downloaded' => ! empty($supply->barcode_path),
             ]);
 
         } catch (\Exception $e) {
@@ -509,7 +510,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка закрытия поставки: ' . $e->getMessage(),
+                'message' => 'Ошибка закрытия поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -519,7 +520,7 @@ class SupplyController extends Controller
      */
     public function destroy(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -564,7 +565,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка удаления поставки: ' . $e->getMessage(),
+                'message' => 'Ошибка удаления поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -574,12 +575,12 @@ class SupplyController extends Controller
      */
     public function syncWithWb(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         // Проверяем, что аккаунт - Wildberries
-        if (!$supply->account->isWildberries()) {
+        if (! $supply->account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 422);
         }
 
@@ -603,10 +604,10 @@ class SupplyController extends Controller
 
             // Если в поставке уже есть заказы, добавляем их в WB поставку
             if ($supply->orders_count > 0 && $supply->external_supply_id) {
-                $orders = WbOrder::where('supply_id', 'SUPPLY-' . $supply->id)->get();
+                $orders = WbOrder::where('supply_id', 'SUPPLY-'.$supply->id)->get();
                 $orderIds = $orders->pluck('external_order_id')->filter()->toArray();
 
-                if (!empty($orderIds)) {
+                if (! empty($orderIds)) {
                     $orderService->addOrdersToSupply(
                         $supply->account,
                         $supply->external_supply_id,
@@ -615,7 +616,7 @@ class SupplyController extends Controller
                 }
 
                 // Обновляем supply_id у заказов на external_supply_id
-                WbOrder::where('supply_id', 'SUPPLY-' . $supply->id)
+                WbOrder::where('supply_id', 'SUPPLY-'.$supply->id)
                     ->update(['supply_id' => $supply->external_supply_id]);
             }
 
@@ -632,7 +633,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка синхронизации с WB: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации с WB: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -642,17 +643,17 @@ class SupplyController extends Controller
      */
     public function barcode(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         // Проверяем, что аккаунт - Wildberries
-        if (!$supply->account->isWildberries()) {
+        if (! $supply->account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 422);
         }
 
         // Проверяем, что поставка синхронизирована с WB
-        if (!$supply->external_supply_id || !str_starts_with($supply->external_supply_id, 'WB-')) {
+        if (! $supply->external_supply_id || ! str_starts_with($supply->external_supply_id, 'WB-')) {
             return response()->json(['message' => 'Поставка не синхронизирована с WB. Сначала синхронизируйте поставку.'], 422);
         }
 
@@ -680,7 +681,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка получения баркода: ' . $e->getMessage(),
+                'message' => 'Ошибка получения баркода: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -691,7 +692,7 @@ class SupplyController extends Controller
      */
     public function deliver(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -703,7 +704,7 @@ class SupplyController extends Controller
         }
 
         // Проверка что есть external_supply_id
-        if (!$supply->external_supply_id) {
+        if (! $supply->external_supply_id) {
             return response()->json([
                 'message' => 'Поставка не синхронизирована с WB.',
             ], 422);
@@ -743,7 +744,7 @@ class SupplyController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка передачи поставки в доставку: ' . $e->getMessage(),
+                'message' => 'Ошибка передачи поставки в доставку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -754,7 +755,7 @@ class SupplyController extends Controller
      */
     public function tares(Request $request, Supply $supply): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($supply->account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

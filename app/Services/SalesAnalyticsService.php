@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
 use App\Models\WildberriesOrder;
-use App\Models\MarketplaceAccount;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +14,7 @@ class SalesAnalyticsService
      * Статусы отменённых заказов (исключаются из расчёта выручки)
      */
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     /**
      * Get sales overview for a period.
      */
@@ -78,8 +79,8 @@ class SalesAnalyticsService
 
         return [
             'labels' => $sales->pluck('date')->toArray(),
-            'quantities' => $sales->pluck('quantity')->map(fn($q) => (int)$q)->toArray(),
-            'revenues' => $sales->pluck('revenue')->map(fn($r) => round((float)$r, 2))->toArray(),
+            'quantities' => $sales->pluck('quantity')->map(fn ($q) => (int) $q)->toArray(),
+            'revenues' => $sales->pluck('revenue')->map(fn ($r) => round((float) $r, 2))->toArray(),
         ];
     }
 
@@ -114,11 +115,11 @@ class SalesAnalyticsService
                     'product_id' => $item->product_id,
                     'product_name' => $item->product_name,
                     'sku' => $item->sku,
-                    'total_quantity' => (int)$item->total_quantity,
-                    'total_revenue' => round((float)$item->total_revenue, 2),
-                    'order_count' => (int)$item->order_count,
-                    'avg_price' => (int)$item->total_quantity > 0
-                        ? round((float)$item->total_revenue / (int)$item->total_quantity, 2)
+                    'total_quantity' => (int) $item->total_quantity,
+                    'total_revenue' => round((float) $item->total_revenue, 2),
+                    'order_count' => (int) $item->order_count,
+                    'avg_price' => (int) $item->total_quantity > 0
+                        ? round((float) $item->total_revenue / (int) $item->total_quantity, 2)
                         : 0,
                 ];
             });
@@ -156,11 +157,11 @@ class SalesAnalyticsService
                     'product_id' => $item->product_id,
                     'product_name' => $item->product_name,
                     'sku' => $item->sku,
-                    'total_quantity' => (int)$item->total_quantity,
-                    'total_revenue' => round((float)$item->total_revenue, 2),
-                    'order_count' => (int)$item->order_count,
-                    'avg_price' => (int)$item->total_quantity > 0
-                        ? round((float)$item->total_revenue / (int)$item->total_quantity, 2)
+                    'total_quantity' => (int) $item->total_quantity,
+                    'total_revenue' => round((float) $item->total_revenue, 2),
+                    'order_count' => (int) $item->order_count,
+                    'avg_price' => (int) $item->total_quantity > 0
+                        ? round((float) $item->total_revenue / (int) $item->total_quantity, 2)
                         : 0,
                     'status' => 'low_sales',
                 ];
@@ -195,8 +196,8 @@ class SalesAnalyticsService
             ->map(function ($item) {
                 return [
                     'category_name' => $item->category_name,
-                    'total_quantity' => (int)$item->total_quantity,
-                    'total_revenue' => round((float)$item->total_revenue, 2),
+                    'total_quantity' => (int) $item->total_quantity,
+                    'total_revenue' => round((float) $item->total_revenue, 2),
                 ];
             });
     }
@@ -227,9 +228,9 @@ class SalesAnalyticsService
                 return [
                     'marketplace' => $item->marketplace,
                     'account_name' => $item->account_name,
-                    'total_quantity' => (int)$item->total_quantity,
-                    'total_revenue' => round((float)$item->total_revenue, 2),
-                    'order_count' => (int)$item->order_count,
+                    'total_quantity' => (int) $item->total_quantity,
+                    'total_revenue' => round((float) $item->total_revenue, 2),
+                    'order_count' => (int) $item->order_count,
                 ];
             });
     }
@@ -254,7 +255,7 @@ class SalesAnalyticsService
             )
             ->first();
 
-        if (!$stats) {
+        if (! $stats) {
             return [
                 'total_quantity' => 0,
                 'total_revenue' => 0,
@@ -279,14 +280,14 @@ class SalesAnalyticsService
             ->get();
 
         return [
-            'total_quantity' => (int)$stats->total_quantity,
-            'total_revenue' => round((float)$stats->total_revenue, 2),
-            'order_count' => (int)$stats->order_count,
-            'avg_price' => round((float)$stats->avg_price, 2),
+            'total_quantity' => (int) $stats->total_quantity,
+            'total_revenue' => round((float) $stats->total_revenue, 2),
+            'order_count' => (int) $stats->order_count,
+            'avg_price' => round((float) $stats->avg_price, 2),
             'sales_by_day' => $salesByDay->map(function ($item) {
                 return [
                     'date' => $item->date,
-                    'quantity' => (int)$item->quantity,
+                    'quantity' => (int) $item->quantity,
                 ];
             })->toArray(),
         ];
@@ -298,7 +299,7 @@ class SalesAnalyticsService
     protected function getDateRange(string $period): array
     {
         $to = now();
-        $from = match($period) {
+        $from = match ($period) {
             'today' => now()->startOfDay(),
             '7days' => now()->subDays(7),
             '30days' => now()->subDays(30),
@@ -342,7 +343,7 @@ class SalesAnalyticsService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->with('items')
             ->get()
-            ->flatMap(fn($o) => $o->items)
+            ->flatMap(fn ($o) => $o->items)
             ->sum('quantity');
 
         // WB items (WildberriesOrder - each row is one item)
@@ -424,7 +425,7 @@ class SalesAnalyticsService
 
         $wbCancelled = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
 
         return [
             'count' => $uzumCancelled->count() + $wbCancelled->count(),

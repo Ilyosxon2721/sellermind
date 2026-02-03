@@ -66,7 +66,7 @@ class Counterparty extends Model
             ->where('status', 'active')
             ->where(function ($q) {
                 $q->whereNull('valid_until')
-                  ->orWhere('valid_until', '>=', now());
+                    ->orWhere('valid_until', '>=', now());
             })
             ->orderByDesc('date')
             ->first();
@@ -75,13 +75,14 @@ class Counterparty extends Model
     public function getCommissionPercent(): float
     {
         $contract = $this->activeContract();
+
         return $contract ? (float) $contract->commission_percent : 0;
     }
 
     public function calculateCommission(float $amount, string $type = 'sales'): float
     {
         $contract = $this->activeContract();
-        if (!$contract || $contract->commission_percent <= 0) {
+        if (! $contract || $contract->commission_percent <= 0) {
             return 0;
         }
 
@@ -124,14 +125,16 @@ class Counterparty extends Model
 
     public function scopeSearch($query, ?string $search)
     {
-        if (!$search) return $query;
-        
+        if (! $search) {
+            return $query;
+        }
+
         return $query->where(function ($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
-              ->orWhere('short_name', 'like', "%{$search}%")
-              ->orWhere('inn', 'like', "%{$search}%")
-              ->orWhere('phone', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('short_name', 'like', "%{$search}%")
+                ->orWhere('inn', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
         });
     }
 }

@@ -47,6 +47,7 @@ class StartMarketplaceMonitoring extends Command
 
         if ($accounts->isEmpty()) {
             $this->error('❌ Не найдено активных аккаунтов для мониторинга');
+
             return self::FAILURE;
         }
 
@@ -88,7 +89,7 @@ class StartMarketplaceMonitoring extends Command
         }
 
         $this->newLine();
-        $this->info("📊 Итого:");
+        $this->info('📊 Итого:');
         $this->info("   Успешно запущено: {$successCount}");
 
         if ($failCount > 0) {
@@ -96,15 +97,15 @@ class StartMarketplaceMonitoring extends Command
         }
 
         $this->newLine();
-        $this->info("📋 Запущенные джобы:");
-        $this->line("   🔄 MonitorOrdersJob - проверка заказов каждую минуту");
-        $this->line("   📦 MonitorProductsJob - синхронизация товаров каждый час");
-        $this->line("   💰 MonitorPricesJob - обновление цен каждые 2 часа");
+        $this->info('📋 Запущенные джобы:');
+        $this->line('   🔄 MonitorOrdersJob - проверка заказов каждую минуту');
+        $this->line('   📦 MonitorProductsJob - синхронизация товаров каждый час');
+        $this->line('   💰 MonitorPricesJob - обновление цен каждые 2 часа');
 
         $this->newLine();
-        $this->comment("💡 Мониторинг работает в фоновом режиме через систему очередей");
-        $this->comment("   Для просмотра логов: tail -f storage/logs/laravel.log | grep -i monitoring");
-        $this->comment("   Для проверки очереди: php artisan queue:monitor database");
+        $this->comment('💡 Мониторинг работает в фоновом режиме через систему очередей');
+        $this->comment('   Для просмотра логов: tail -f storage/logs/laravel.log | grep -i monitoring');
+        $this->comment('   Для проверки очереди: php artisan queue:monitor database');
 
         return self::SUCCESS;
     }

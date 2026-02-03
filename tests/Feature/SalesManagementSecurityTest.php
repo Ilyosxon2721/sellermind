@@ -17,10 +17,15 @@ class SalesManagementSecurityTest extends TestCase
     use RefreshDatabase;
 
     protected User $userCompanyA;
+
     protected User $userCompanyB;
+
     protected Company $companyA;
+
     protected Company $companyB;
+
     protected Sale $saleCompanyA;
+
     protected Sale $saleCompanyB;
 
     protected function setUp(): void

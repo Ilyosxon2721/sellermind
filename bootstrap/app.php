@@ -27,12 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add security headers globally
         $middleware->append(\App\Http\Middleware\AddSecurityHeaders::class);
-        
+
         // Add locale middleware to appropriate groups
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
-        
+
         $middleware->api(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
@@ -65,7 +65,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'message' => 'Ошибка валидации данных',
                     'errors' => $e->errors(),
-                    'error' => implode(', ', array_map(fn($errors) => implode(', ', $errors), $e->errors()))
+                    'error' => implode(', ', array_map(fn ($errors) => implode(', ', $errors), $e->errors())),
                 ], 422);
             }
         });

@@ -94,13 +94,14 @@ class OptimizeQueueWorkers extends Command
         if ($this->option('auto') && $currentWorkers !== $recommendation['optimal']) {
             $this->info('🔧 Автоматическая оптимизация...');
             $this->restartWorkers($recommendation['optimal']);
+
             return self::SUCCESS;
         }
 
         // 8. Dry run или предложение действий
         if ($this->option('dry-run')) {
             $this->comment('💡 Это был dry-run, воркеры не были изменены');
-            $this->comment("   Для применения: php artisan queue:optimize-workers --auto");
+            $this->comment('   Для применения: php artisan queue:optimize-workers --auto');
         } elseif ($currentWorkers !== $recommendation['optimal']) {
             if ($this->confirm("Запустить {$recommendation['optimal']} воркеров?", true)) {
                 $this->restartWorkers($recommendation['optimal']);
@@ -116,7 +117,8 @@ class OptimizeQueueWorkers extends Command
     protected function getCurrentWorkers(): int
     {
         exec('ps aux | grep "queue:work" | grep -v grep | wc -l', $output);
-        return (int)trim($output[0]);
+
+        return (int) trim($output[0]);
     }
 
     /**
@@ -144,13 +146,13 @@ class OptimizeQueueWorkers extends Command
         }
 
         // Учёт времени суток
-        $hour = (int)now()->format('H');
+        $hour = (int) now()->format('H');
         $isPeak = ($hour >= 9 && $hour <= 18);
         $timeFactor = $isPeak ? 1.0 : 0.8;
 
-        $min = max(2, (int)ceil($base * 0.8 * $timeFactor));
-        $max = (int)ceil($base * $queueFactor * $failFactor);
-        $optimal = (int)ceil(($min + $max) / 2);
+        $min = max(2, (int) ceil($base * 0.8 * $timeFactor));
+        $max = (int) ceil($base * $queueFactor * $failFactor);
+        $optimal = (int) ceil(($min + $max) / 2);
 
         return [
             'min' => $min,
@@ -167,7 +169,7 @@ class OptimizeQueueWorkers extends Command
         if ($current === 0) {
             return [
                 'level' => 'critical',
-                'message' => 'Воркеры не запущены! Запустите: ./start-queue-workers.sh ' . $recommendation['optimal'],
+                'message' => 'Воркеры не запущены! Запустите: ./start-queue-workers.sh '.$recommendation['optimal'],
             ];
         }
 
@@ -205,9 +207,10 @@ class OptimizeQueueWorkers extends Command
     {
         $scriptPath = base_path('start-queue-workers.sh');
 
-        if (!file_exists($scriptPath)) {
+        if (! file_exists($scriptPath)) {
             $this->error("Скрипт {$scriptPath} не найден!");
-            $this->comment("Запустите воркеры вручную: php artisan queue:work --timeout=600");
+            $this->comment('Запустите воркеры вручную: php artisan queue:work --timeout=600');
+
             return;
         }
 
@@ -216,7 +219,7 @@ class OptimizeQueueWorkers extends Command
         exec("bash {$scriptPath} {$count} 2>&1", $output, $returnCode);
 
         if ($returnCode === 0) {
-            $this->info("✅ Воркеры успешно перезапущены!");
+            $this->info('✅ Воркеры успешно перезапущены!');
             $this->newLine();
 
             // Показываем вывод скрипта
@@ -224,7 +227,7 @@ class OptimizeQueueWorkers extends Command
                 $this->line($line);
             }
         } else {
-            $this->error("❌ Ошибка при запуске воркеров");
+            $this->error('❌ Ошибка при запуске воркеров');
             foreach ($output as $line) {
                 $this->error($line);
             }

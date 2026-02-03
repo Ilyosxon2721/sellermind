@@ -48,7 +48,7 @@ class PurchaseDraftService
 
     protected function poNumber(): string
     {
-        return 'PO-' . now()->format('Ymd-His') . '-' . Str::random(4);
+        return 'PO-'.now()->format('Ymd-His').'-'.Str::random(4);
     }
 
     protected function latestCost(int $companyId, int $skuId): float

@@ -8,7 +8,6 @@ use App\Models\StockSyncLog;
 use App\Models\VariantMarketplaceLink;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\UzumClient;
-use App\Services\Marketplaces\Wildberries\WildberriesStockService;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
 use Illuminate\Support\Facades\Log;
 
@@ -50,9 +49,9 @@ class StockSyncService
                     'link_id' => $link->id,
                     'error' => $e->getMessage(),
                 ]);
-                
+
                 $link->markFailed($e->getMessage());
-                
+
                 $results[] = [
                     'link_id' => $link->id,
                     'marketplace' => $link->account->marketplace,
@@ -100,7 +99,7 @@ class StockSyncService
         // Для YM API нужен shopSku (артикул), проверяем сначала external_sku
         $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
-        if (!$offerId) {
+        if (! $offerId) {
             throw new \RuntimeException('Не указан offerId/external_sku для товара YM');
         }
 
@@ -116,40 +115,40 @@ class StockSyncService
         // external_offer_id содержит product_id, который НЕ подходит для API остатков
         $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
-        if (!$offerId) {
+        if (! $offerId) {
             throw new \RuntimeException('Не указан offer_id/external_sku для товара Ozon');
         }
 
         $credentials = $account->credentials_json ?? [];
         $syncMode = $credentials['stock_sync_mode'] ?? 'basic';
-        
+
         if ($syncMode === 'aggregated') {
             // Aggregated mode: update with aggregated stock to single warehouse
             $warehouseId = $credentials['warehouse_id'] ?? null;
-            
-            if (!$warehouseId) {
+
+            if (! $warehouseId) {
                 throw new \RuntimeException('Для суммированной синхронизации не указан целевой склад Ozon');
             }
-            
+
             Log::info('Ozon stock sync - aggregated mode', [
                 'offer_id' => $offerId,
                 'stock' => $stock,
                 'warehouse_id' => $warehouseId,
                 'link_id' => $link->id,
             ]);
-            
+
             return $this->ozonClient->updateStock($account, $offerId, $stock, $warehouseId);
         } else {
             // Basic mode: update specific warehouse or default
             $warehouseId = $credentials['warehouse_id'] ?? null;
-            
+
             Log::info('Ozon stock sync - basic mode', [
                 'offer_id' => $offerId,
                 'stock' => $stock,
                 'warehouse_id' => $warehouseId,
                 'link_id' => $link->id,
             ]);
-            
+
             return $this->ozonClient->updateStock($account, $offerId, $stock, $warehouseId);
         }
     }
@@ -162,48 +161,48 @@ class StockSyncService
         // For Wildberries, use the barcode stored in the link (specific WB characteristic)
         // This is CRITICAL because one nmID can have multiple characteristics (sizes/colors) with different barcodes
         $barcode = $link->external_sku;
-        
-        if (!$barcode) {
+
+        if (! $barcode) {
             throw new \RuntimeException('У связи не указан barcode (external_sku). Перепривяжите товар для сохранения корректного баркода.');
         }
-        
+
         // Validate that it looks like a barcode (numeric)
-        if (!is_numeric($barcode) && !preg_match('/^\d+$/', $barcode)) {
+        if (! is_numeric($barcode) && ! preg_match('/^\d+$/', $barcode)) {
             // Fallback for old links that might have supplier_article instead
             Log::warning('Link has non-numeric external_sku, attempting fallback', [
                 'link_id' => $link->id,
                 'external_sku' => $barcode,
                 'marketplace_product_id' => $link->marketplace_product_id,
             ]);
-            
+
             // Try to find the correct barcode from WildberriesProduct
             $wbProduct = \App\Models\WildberriesProduct::find($link->marketplace_product_id);
             if ($wbProduct && $wbProduct->barcode) {
                 $barcode = $wbProduct->barcode;
                 Log::info('Using barcode from WildberriesProduct as fallback', ['barcode' => $barcode]);
             } else {
-                throw new \RuntimeException("Невозможно определить barcode для синхронизации. Перепривяжите товар.");
+                throw new \RuntimeException('Невозможно определить barcode для синхронизации. Перепривяжите товар.');
             }
         }
 
-        $wbStockService = new \App\Services\Marketplaces\Wildberries\WildberriesStockService();
+        $wbStockService = new \App\Services\Marketplaces\Wildberries\WildberriesStockService;
         $syncMode = $account->credentials_json['sync_mode'] ?? 'basic';
-        
+
         if ($syncMode === 'aggregated') {
             // Aggregated mode: update single target warehouse with aggregated stock
             $warehouseId = $account->credentials_json['warehouse_id'] ?? null;
-            
-            if (!$warehouseId) {
+
+            if (! $warehouseId) {
                 throw new \RuntimeException('Для суммированной синхронизации не указан целевой склад WB');
             }
-            
+
             Log::info('Wildberries stock sync - aggregated mode', [
                 'barcode' => $barcode,
                 'stock' => $stock,
                 'warehouse_id' => $warehouseId,
                 'link_id' => $link->id,
             ]);
-            
+
             return $wbStockService->updateStock($account, $barcode, $stock, $warehouseId);
         } else {
             // Basic mode: update each mapped WB warehouse with stock from corresponding internal warehouse
@@ -212,11 +211,11 @@ class StockSyncService
                 ->whereNotNull('marketplace_warehouse_id')
                 ->whereNotNull('local_warehouse_id')
                 ->get();
-            
+
             if ($mappings->isEmpty()) {
                 throw new \RuntimeException('Нет активных маппингов складов для базовой синхронизации. Настройте связи складов в настройках WB.');
             }
-            
+
             $results = [];
             foreach ($mappings as $mapping) {
                 try {
@@ -230,9 +229,9 @@ class StockSyncService
                     ]);
                 }
             }
-            
+
             // Return first successful result or last result
-            return !empty($results) ? $results[0] : ['success' => false, 'message' => 'No warehouses updated'];
+            return ! empty($results) ? $results[0] : ['success' => false, 'message' => 'No warehouses updated'];
         }
     }
 
@@ -243,7 +242,7 @@ class StockSyncService
     {
         $mpProduct = $link->marketplaceProduct;
 
-        if (!$mpProduct) {
+        if (! $mpProduct) {
             throw new \RuntimeException('Не найден связанный MarketplaceProduct для Uzum');
         }
 
@@ -251,16 +250,16 @@ class StockSyncService
         $productId = $mpProduct->external_product_id;
         $skuId = $link->external_sku_id;
 
-        if (!$productId) {
+        if (! $productId) {
             throw new \RuntimeException('Не указан external_product_id для товара Uzum');
         }
 
         // Если external_sku_id не указан, пробуем найти его из skuList
-        if (!$skuId) {
+        if (! $skuId) {
             $skuId = $this->findUzumSkuId($link, $mpProduct);
         }
 
-        if (!$skuId) {
+        if (! $skuId) {
             throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Невозможно синхронизировать остаток на уровне SKU.');
         }
 
@@ -289,8 +288,10 @@ class StockSyncService
                     'link_id' => $link->id,
                     'external_offer_id' => $mpProduct->external_offer_id,
                 ]);
+
                 return (string) $mpProduct->external_offer_id;
             }
+
             return null;
         }
 
@@ -333,6 +334,7 @@ class StockSyncService
                         ]);
 
                         $link->update(['external_sku_id' => $foundSkuId]);
+
                         return $foundSkuId;
                     }
                 }
@@ -447,11 +449,12 @@ class StockSyncService
             ->with('variant')
             ->first();
 
-        if (!$link || !$link->variant) {
+        if (! $link || ! $link->variant) {
             Log::warning('VariantMarketplaceLink not found for order', [
                 'external_offer_id' => $externalOfferId,
                 'account_id' => $account->id,
             ]);
+
             return;
         }
 

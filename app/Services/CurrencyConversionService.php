@@ -76,6 +76,7 @@ class CurrencyConversionService
     public function forCompany(Company $company): self
     {
         $this->company = $company;
+
         return $this;
     }
 
@@ -85,7 +86,7 @@ class CurrencyConversionService
      */
     public function getDisplayCurrency(): string
     {
-        if (!$this->company) {
+        if (! $this->company) {
             return 'UZS'; // Default to UZS for sellermind.uz
         }
 
@@ -152,6 +153,7 @@ class CurrencyConversionService
         $fetchedRate = $this->fetchRateFromApi($from, $to);
         if ($fetchedRate !== null) {
             Cache::put("exchange_rate:{$rateKey}", $fetchedRate, self::RATE_CACHE_TTL);
+
             return $fetchedRate;
         }
 
@@ -162,11 +164,13 @@ class CurrencyConversionService
             if ($fromToRub !== 1.0 || $rubToTarget !== 1.0) {
                 $crossRate = $fromToRub * $rubToTarget;
                 Cache::put("exchange_rate:{$rateKey}", $crossRate, self::RATE_CACHE_TTL);
+
                 return $crossRate;
             }
         }
 
-        Log::warning("Exchange rate not found", ['from' => $from, 'to' => $to]);
+        Log::warning('Exchange rate not found', ['from' => $from, 'to' => $to]);
+
         return 1.0;
     }
 
@@ -180,6 +184,7 @@ class CurrencyConversionService
         }
 
         $rate = $this->getRate($from, $to);
+
         return $amount * $rate;
     }
 
@@ -194,8 +199,8 @@ class CurrencyConversionService
     /**
      * Convert amount from any currency to display currency
      *
-     * @param float $amount The amount to convert
-     * @param string|int|null $fromCurrency Currency code (e.g., 'RUB', 'BYN') or ISO numeric code (e.g., 643, 933)
+     * @param  float  $amount  The amount to convert
+     * @param  string|int|null  $fromCurrency  Currency code (e.g., 'RUB', 'BYN') or ISO numeric code (e.g., 643, 933)
      * @return float Converted amount in display currency
      */
     public function convertToDisplay(float $amount, $fromCurrency = null): float
@@ -214,7 +219,7 @@ class CurrencyConversionService
     /**
      * Normalize currency code - convert ISO numeric to 3-letter code if needed
      *
-     * @param string|int|null $code Currency code or ISO numeric code
+     * @param  string|int|null  $code  Currency code or ISO numeric code
      * @return string 3-letter currency code
      */
     public function normalizeCurrencyCode($code): string
@@ -260,6 +265,7 @@ class CurrencyConversionService
 
         if ($withSymbol) {
             $symbol = $this->getCurrencySymbol($currency);
+
             return "{$formatted} {$symbol}";
         }
 
@@ -272,20 +278,22 @@ class CurrencyConversionService
     public function convertAndFormat(float $amountRub, bool $withSymbol = true): string
     {
         $converted = $this->convertFromRub($amountRub);
+
         return $this->format($converted, null, $withSymbol);
     }
 
     /**
      * Convert from any currency and format in display currency
      *
-     * @param float $amount Amount to convert
-     * @param string|int|null $fromCurrency Source currency code or ISO numeric code
-     * @param bool $withSymbol Include currency symbol
+     * @param  float  $amount  Amount to convert
+     * @param  string|int|null  $fromCurrency  Source currency code or ISO numeric code
+     * @param  bool  $withSymbol  Include currency symbol
      * @return string Formatted amount
      */
     public function convertToDisplayAndFormat(float $amount, $fromCurrency = null, bool $withSymbol = true): string
     {
         $converted = $this->convertToDisplay($amount, $fromCurrency);
+
         return $this->format($converted, null, $withSymbol);
     }
 
@@ -302,11 +310,12 @@ class CurrencyConversionService
 
             return null;
         } catch (\Exception $e) {
-            Log::warning("Failed to fetch exchange rate from API", [
+            Log::warning('Failed to fetch exchange rate from API', [
                 'from' => $from,
                 'to' => $to,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -319,7 +328,7 @@ class CurrencyConversionService
         try {
             $response = Http::timeout(5)->get('https://www.cbr-xml-daily.ru/daily_json.js');
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return null;
             }
 
@@ -329,6 +338,7 @@ class CurrencyConversionService
             // If converting from RUB to another currency
             if ($from === 'RUB' && isset($valutes[$to])) {
                 $valute = $valutes[$to];
+
                 // Rate shows how many RUB for Nominal units of foreign currency
                 // So to get how many $to for 1 RUB: divide by rate
                 return $valute['Nominal'] / $valute['Value'];
@@ -337,12 +347,14 @@ class CurrencyConversionService
             // If converting from another currency to RUB
             if ($to === 'RUB' && isset($valutes[$from])) {
                 $valute = $valutes[$from];
+
                 return $valute['Value'] / $valute['Nominal'];
             }
 
             return null;
         } catch (\Exception $e) {
-            Log::warning("CBR API request failed", ['error' => $e->getMessage()]);
+            Log::warning('CBR API request failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -352,7 +364,7 @@ class CurrencyConversionService
      */
     public function setCompanyRate(string $from, string $to, float $rate): void
     {
-        if (!$this->company) {
+        if (! $this->company) {
             throw new \RuntimeException('Company not set');
         }
 
@@ -371,7 +383,7 @@ class CurrencyConversionService
      */
     public function getCompanyRates(): array
     {
-        if (!$this->company) {
+        if (! $this->company) {
             return [];
         }
 
@@ -383,7 +395,7 @@ class CurrencyConversionService
      */
     public function setDisplayCurrency(string $currency): void
     {
-        if (!$this->company) {
+        if (! $this->company) {
             throw new \RuntimeException('Company not set');
         }
 

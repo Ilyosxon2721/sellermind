@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Services\Stock\OrderStockService;
@@ -23,7 +22,7 @@ class ProcessOrderStockRetroactive extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->orderStockService = new OrderStockService();
+        $this->orderStockService = new OrderStockService;
     }
 
     public function handle(): int
@@ -32,9 +31,9 @@ class ProcessOrderStockRetroactive extends Command
         $dryRun = $this->option('dry-run');
         $limit = (int) $this->option('limit');
 
-        $this->info("=== Ретроактивная обработка остатков ===");
+        $this->info('=== Ретроактивная обработка остатков ===');
         $this->info("Маркетплейс: {$marketplace}");
-        $this->info("Dry run: " . ($dryRun ? 'Да' : 'Нет'));
+        $this->info('Dry run: '.($dryRun ? 'Да' : 'Нет'));
         if ($limit > 0) {
             $this->info("Лимит: {$limit}");
         }
@@ -91,9 +90,10 @@ class ProcessOrderStockRetroactive extends Command
         foreach ($orders as $order) {
             try {
                 $account = $order->account;
-                if (!$account) {
+                if (! $account) {
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 
@@ -182,9 +182,10 @@ class ProcessOrderStockRetroactive extends Command
         foreach ($orders as $order) {
             try {
                 $account = $order->account;
-                if (!$account) {
+                if (! $account) {
                     $stats['skipped']++;
                     $bar->advance();
+
                     continue;
                 }
 

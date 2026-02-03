@@ -63,13 +63,14 @@ class ReviewTemplate extends Model
         }
 
         // Check keywords
-        if ($this->keywords && !empty($this->keywords)) {
+        if ($this->keywords && ! empty($this->keywords)) {
             $reviewText = strtolower($review->review_text);
             foreach ($this->keywords as $keyword) {
                 if (str_contains($reviewText, strtolower($keyword))) {
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -85,7 +86,7 @@ class ReviewTemplate extends Model
 
         // Replace variables like {customer_name}, {product_name}
         foreach ($variables as $key => $value) {
-            $text = str_replace('{' . $key . '}', $value, $text);
+            $text = str_replace('{'.$key.'}', $value, $text);
         }
 
         return $text;

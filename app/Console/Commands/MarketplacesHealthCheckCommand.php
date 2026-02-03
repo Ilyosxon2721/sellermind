@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/MarketplacesHealthCheckCommand.php
 
 namespace App\Console\Commands;
@@ -42,6 +43,7 @@ class MarketplacesHealthCheckCommand extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Активных аккаунтов не найдено.');
+
             return self::SUCCESS;
         }
 
@@ -72,7 +74,7 @@ class MarketplacesHealthCheckCommand extends Command
         );
 
         // Count results
-        $successCount = count(array_filter($results, fn($r) => $r['success']));
+        $successCount = count(array_filter($results, fn ($r) => $r['success']));
         $errorCount = count($results) - $successCount;
 
         $this->newLine();

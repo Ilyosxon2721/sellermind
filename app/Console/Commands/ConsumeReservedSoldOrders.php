@@ -4,9 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
+use App\Models\Warehouse\StockReservation;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
-use App\Models\Warehouse\StockReservation;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +24,7 @@ class ConsumeReservedSoldOrders extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->orderStockService = new OrderStockService();
+        $this->orderStockService = new OrderStockService;
     }
 
     public function handle(): int
@@ -42,28 +42,28 @@ class ConsumeReservedSoldOrders extends Command
         $failed = 0;
 
         // Process Uzum orders
-        if (!$marketplace || $marketplace === 'uzum') {
+        if (! $marketplace || $marketplace === 'uzum') {
             $result = $this->processMarketplace('uzum', UzumOrder::class, $dryRun);
             $consumed += $result['consumed'];
             $failed += $result['failed'];
         }
 
         // Process WB orders
-        if (!$marketplace || $marketplace === 'wb') {
+        if (! $marketplace || $marketplace === 'wb') {
             $result = $this->processMarketplace('wb', WbOrder::class, $dryRun);
             $consumed += $result['consumed'];
             $failed += $result['failed'];
         }
 
         // Process Ozon orders
-        if (!$marketplace || $marketplace === 'ozon') {
+        if (! $marketplace || $marketplace === 'ozon') {
             $result = $this->processMarketplace('ozon', OzonOrder::class, $dryRun);
             $consumed += $result['consumed'];
             $failed += $result['failed'];
         }
 
         // Process Yandex Market orders
-        if (!$marketplace || $marketplace === 'ym') {
+        if (! $marketplace || $marketplace === 'ym') {
             $result = $this->processMarketplace('ym', YandexMarketOrder::class, $dryRun);
             $consumed += $result['consumed'];
             $failed += $result['failed'];
@@ -88,6 +88,7 @@ class ConsumeReservedSoldOrders extends Command
 
         if (empty($soldStatuses)) {
             $this->line("No sold statuses defined for {$marketplace}");
+
             return ['consumed' => 0, 'failed' => 0];
         }
 
@@ -100,11 +101,11 @@ class ConsumeReservedSoldOrders extends Command
             ->where(function ($q) use ($soldStatuses, $hasStatusNormalized) {
                 foreach ($soldStatuses as $status) {
                     $q->orWhere('status', $status)
-                      ->orWhere('status', strtolower($status));
+                        ->orWhere('status', strtolower($status));
 
                     if ($hasStatusNormalized) {
                         $q->orWhere('status_normalized', $status)
-                          ->orWhere('status_normalized', strtolower($status));
+                            ->orWhere('status_normalized', strtolower($status));
                     }
                 }
             });
@@ -131,6 +132,7 @@ class ConsumeReservedSoldOrders extends Command
             if ($dryRun) {
                 $this->line("  [DRY] Would consume {$activeReservations} reservations for order #{$externalId}");
                 $stats['consumed']++;
+
                 continue;
             }
 

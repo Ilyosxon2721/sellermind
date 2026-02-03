@@ -18,9 +18,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
+class SyncWildberriesSupplies implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, HandlesMarketplaceRateLimiting;
+    use Dispatchable, HandlesMarketplaceRateLimiting, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Таймаут выполнения job (10 минут - поставки могут быть большими)
@@ -53,7 +53,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'sync-wb-supplies-' . $this->accountId;
+        return 'sync-wb-supplies-'.$this->accountId;
     }
 
     /**
@@ -71,17 +71,19 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
     {
         $account = $this->getAccount();
 
-        if (!$account) {
+        if (! $account) {
             Log::warning('SyncWildberriesSupplies: Account not found', [
                 'account_id' => $this->accountId,
             ]);
+
             return;
         }
 
-        if (!$account->is_active) {
+        if (! $account->is_active) {
             Log::info('SyncWildberriesSupplies: Skipped inactive account', [
                 'account_id' => $account->id,
             ]);
+
             return;
         }
 
@@ -120,8 +122,9 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
                     try {
                         $externalSupplyId = $wbSupply['id'] ?? null;
 
-                        if (!$externalSupplyId) {
+                        if (! $externalSupplyId) {
                             Log::warning('WB supply without ID, skipping', ['supply' => $wbSupply]);
+
                             continue;
                         }
 
@@ -149,7 +152,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
                             'metadata' => $wbSupply,
                         ];
 
-                        if (!$supply) {
+                        if (! $supply) {
                             // Создаём новую поставку
                             $supply = Supply::create($data);
                             $created++;
@@ -262,7 +265,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
                 $account->company_id,
                 $account->id,
                 'error',
-                'Ошибка синхронизации: ' . $e->getMessage(),
+                'Ошибка синхронизации: '.$e->getMessage(),
                 null
             ));
 
@@ -270,6 +273,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
             if ($this->shouldRetry($e)) {
                 $delay = $this->getRetryAfterSeconds($e) ?? $this->backoff()[$this->attempts() - 1] ?? 60;
                 $this->release($delay);
+
                 return;
             }
 
@@ -329,7 +333,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
                 try {
                     $externalTareId = $wbTare['id'] ?? null;
 
-                    if (!$externalTareId) {
+                    if (! $externalTareId) {
                         continue;
                     }
 
@@ -347,7 +351,7 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
                         'orders_count' => $ordersCount,
                     ];
 
-                    if (!$tare) {
+                    if (! $tare) {
                         \App\Models\Tare::create($data);
                         $created++;
                     } else {
@@ -389,8 +393,8 @@ class SyncWildberriesSupplies implements ShouldQueue, ShouldBeUnique
     {
         $rawStatus = strtolower($wbSupply['status'] ?? '');
         $closedAt = $wbSupply['closedAt'] ?? null;
-        $done = (bool)($wbSupply['done'] ?? false);
-        $cancelled = (bool)($wbSupply['isCancelled'] ?? false);
+        $done = (bool) ($wbSupply['done'] ?? false);
+        $cancelled = (bool) ($wbSupply['isCancelled'] ?? false);
         $deliveryStarted = $wbSupply['deliveryPlannedAt'] ?? $wbSupply['deliveryDate'] ?? null;
         $scanDt = $wbSupply['scanDt'] ?? null;
 

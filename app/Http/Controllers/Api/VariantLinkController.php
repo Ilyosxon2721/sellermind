@@ -63,19 +63,19 @@ class VariantLinkController extends Controller
 
         // Для Uzum: автоматически получаем marketplace_barcode из skuList, если не передан вручную
         $marketplaceBarcode = $validated['marketplace_barcode'] ?? null;
-        if (!$marketplaceBarcode && $account->marketplace === 'uzum') {
+        if (! $marketplaceBarcode && $account->marketplace === 'uzum') {
             $skuList = $mpProduct->raw_payload['skuList'] ?? [];
             $externalSkuId = $validated['external_sku_id'] ?? null;
 
             foreach ($skuList as $sku) {
                 // Ищем SKU по ID или берём первый с баркодом
-                if ($externalSkuId && (string)($sku['skuId'] ?? '') === $externalSkuId) {
+                if ($externalSkuId && (string) ($sku['skuId'] ?? '') === $externalSkuId) {
                     $marketplaceBarcode = $sku['barcode'] ?? null;
                     break;
                 }
             }
             // Если не нашли по ID, берём первый баркод
-            if (!$marketplaceBarcode && !empty($skuList[0]['barcode'])) {
+            if (! $marketplaceBarcode && ! empty($skuList[0]['barcode'])) {
                 $marketplaceBarcode = $skuList[0]['barcode'];
             }
         }
@@ -123,7 +123,7 @@ class VariantLinkController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Товар успешно привязан' . ($syncResult ? ' и остатки синхронизированы' : ''),
+            'message' => 'Товар успешно привязан'.($syncResult ? ' и остатки синхронизированы' : ''),
             'link' => $link->load(['variant']),
             'stock_synced' => $syncResult !== null,
             'current_stock' => (int) $warehouseStock,
@@ -136,18 +136,18 @@ class VariantLinkController extends Controller
     public function unlinkVariant(Request $request, MarketplaceAccount $account, int $marketplaceProductId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $externalSkuId = $request->input('external_sku_id');
 
         $query = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
             ->where('marketplace_product_id', $marketplaceProductId)
             ->where('is_active', true); // Only target active links
-        
+
         // If external_sku_id is provided, filter by it (for Uzum SKU-level unlinking)
         if ($externalSkuId) {
             $query->where('external_sku_id', $externalSkuId);
         }
-        
+
         // Get ALL matching links (not just first) to handle duplicate links
         $links = $query->get();
 
@@ -187,8 +187,9 @@ class VariantLinkController extends Controller
             ->where('is_active', true)
             ->with(['variant.product', 'variant.mainImage'])
             ->get()
-            ->map(function($link) {
+            ->map(function ($link) {
                 $warehouseStock = $link->variant ? $link->variant->getTotalWarehouseStock() : 0;
+
                 return [
                     'id' => $link->id,
                     'external_sku_id' => $link->external_sku_id,
@@ -227,7 +228,7 @@ class VariantLinkController extends Controller
             ->with('variant')
             ->first();
 
-        if (!$link) {
+        if (! $link) {
             return response()->json([
                 'success' => false,
                 'message' => 'Нет активной связи для синхронизации',
@@ -236,7 +237,7 @@ class VariantLinkController extends Controller
 
         try {
             $result = $this->stockSyncService->syncLinkStock($link);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Остаток синхронизирован',
@@ -260,7 +261,7 @@ class VariantLinkController extends Controller
 
         try {
             $result = $this->stockSyncService->syncAllStocksForAccount($account);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => "Синхронизировано: {$result['success']} из {$result['total']}",
@@ -316,11 +317,11 @@ class VariantLinkController extends Controller
             // Auto-create default variants for products without variants
             foreach ($products as $product) {
                 $existingVariant = ProductVariant::where('product_id', $product->id)->first();
-                if (!$existingVariant) {
+                if (! $existingVariant) {
                     ProductVariant::create([
                         'company_id' => $companyId,
                         'product_id' => $product->id,
-                        'sku' => $product->article ?: 'SKU-' . $product->id,
+                        'sku' => $product->article ?: 'SKU-'.$product->id,
                         'is_active' => true,
                         'is_deleted' => false,
                         'option_values_summary' => 'Основной',
@@ -343,8 +344,9 @@ class VariantLinkController extends Controller
 
         return response()->json([
             'success' => true,
-            'variants' => $variants->map(function($v) {
+            'variants' => $variants->map(function ($v) {
                 $warehouseStock = $v->getTotalWarehouseStock();
+
                 return [
                     'id' => $v->id,
                     'sku' => $v->sku,
@@ -373,7 +375,7 @@ class VariantLinkController extends Controller
     public function getVariantLinks(Request $request, int $variantId): JsonResponse
     {
         $user = $request->user();
-        
+
         $variant = ProductVariant::where('company_id', $user->company_id)
             ->findOrFail($variantId);
 
@@ -421,7 +423,7 @@ class VariantLinkController extends Controller
 
     protected function authorizeAccount(Request $request, MarketplaceAccount $account): void
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             abort(403, 'Доступ запрещён');
         }
     }

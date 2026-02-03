@@ -108,14 +108,14 @@ return [
             'title' => 'УВЕДОМЛЕНИЯ',
         ],
     ],
-    
+
     // Languages
     'languages' => [
         'ru' => 'Русский',
         'uz' => 'O\'zbekcha',
         'en' => 'English',
     ],
-    
+
     // Common actions
     'actions' => [
         'save' => 'Сохранить',
@@ -127,7 +127,7 @@ return [
         'delete' => 'Удалить',
         'confirm' => 'Подтвердить',
     ],
-    
+
     // Messages
     'messages' => [
         'profile_updated' => 'Профиль обновлен',
@@ -141,7 +141,7 @@ return [
         'loading' => 'Загрузка...',
         'saving' => 'Сохранение...',
     ],
-    
+
     // Navigation
     'nav' => [
         'dashboard' => 'Главная',
@@ -154,14 +154,14 @@ return [
         'finance' => 'Финансы',
         'sales' => 'Продажи',
     ],
-    
+
     // User
     'user' => [
         'profile' => 'Профиль',
         'settings' => 'Настройки',
         'logout' => 'Выйти',
     ],
-    
+
     // App info
     'app' => [
         'name' => 'SellerMind',

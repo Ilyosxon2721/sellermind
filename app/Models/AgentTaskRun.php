@@ -26,8 +26,11 @@ class AgentTaskRun extends Model
     ];
 
     const STATUS_PENDING = 'pending';
+
     const STATUS_RUNNING = 'running';
+
     const STATUS_SUCCESS = 'success';
+
     const STATUS_FAILED = 'failed';
 
     public function task(): BelongsTo

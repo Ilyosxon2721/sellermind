@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesOrderMetaController.php
 
 namespace App\Http\Controllers\Api;
@@ -24,11 +25,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function attachSGTIN(Request $request, MarketplaceAccount $account, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -52,7 +53,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось прикрепить SGTIN код: ' . $e->getMessage(),
+                'message' => 'Не удалось прикрепить SGTIN код: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -62,11 +63,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function attachUIN(Request $request, MarketplaceAccount $account, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -90,7 +91,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось прикрепить UIN код: ' . $e->getMessage(),
+                'message' => 'Не удалось прикрепить UIN код: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -100,11 +101,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function attachIMEI(Request $request, MarketplaceAccount $account, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -128,7 +129,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось прикрепить IMEI код: ' . $e->getMessage(),
+                'message' => 'Не удалось прикрепить IMEI код: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -138,11 +139,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function attachGTIN(Request $request, MarketplaceAccount $account, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -166,7 +167,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось прикрепить GTIN код: ' . $e->getMessage(),
+                'message' => 'Не удалось прикрепить GTIN код: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -176,11 +177,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function attachExpiration(Request $request, MarketplaceAccount $account, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -204,7 +205,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось прикрепить срок годности: ' . $e->getMessage(),
+                'message' => 'Не удалось прикрепить срок годности: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -214,11 +215,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function batchAttach(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -232,8 +233,8 @@ class WildberriesOrderMetaController extends Controller
         try {
             $results = $this->metaService->batchAttachMeta($account, $validated['metadata']);
 
-            $successful = array_filter($results, fn($r) => $r['success']);
-            $failed = array_filter($results, fn($r) => !$r['success']);
+            $successful = array_filter($results, fn ($r) => $r['success']);
+            $failed = array_filter($results, fn ($r) => ! $r['success']);
 
             return response()->json([
                 'success' => true,
@@ -251,7 +252,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось выполнить массовое прикрепление: ' . $e->getMessage(),
+                'message' => 'Не удалось выполнить массовое прикрепление: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -261,11 +262,11 @@ class WildberriesOrderMetaController extends Controller
      */
     public function getMeta(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -290,7 +291,7 @@ class WildberriesOrderMetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить метаданные заказов: ' . $e->getMessage(),
+                'message' => 'Не удалось получить метаданные заказов: '.$e->getMessage(),
             ], 500);
         }
     }

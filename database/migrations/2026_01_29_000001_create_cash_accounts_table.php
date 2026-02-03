@@ -12,16 +12,16 @@ return new class extends Migration
         if (Schema::hasTable('cash_accounts')) {
             Schema::table('cash_accounts', function (Blueprint $table) {
                 // Проверяем и добавляем недостающие колонки
-                if (!Schema::hasColumn('cash_accounts', 'marketplace_account_id')) {
+                if (! Schema::hasColumn('cash_accounts', 'marketplace_account_id')) {
                     $table->unsignedBigInteger('marketplace_account_id')->nullable()->after('card_number');
                 }
-                if (!Schema::hasColumn('cash_accounts', 'marketplace')) {
+                if (! Schema::hasColumn('cash_accounts', 'marketplace')) {
                     $table->string('marketplace')->nullable()->after('marketplace_account_id');
                 }
-                if (!Schema::hasColumn('cash_accounts', 'bik')) {
+                if (! Schema::hasColumn('cash_accounts', 'bik')) {
                     $table->string('bik')->nullable()->after('account_number');
                 }
-                if (!Schema::hasColumn('cash_accounts', 'sort_order')) {
+                if (! Schema::hasColumn('cash_accounts', 'sort_order')) {
                     $table->integer('sort_order')->default(0)->after('is_active');
                 }
             });
@@ -34,23 +34,23 @@ return new class extends Migration
         // 2. Добавить поля в cash_transactions если нужны
         if (Schema::hasTable('cash_transactions')) {
             Schema::table('cash_transactions', function (Blueprint $table) {
-                if (!Schema::hasColumn('cash_transactions', 'operation')) {
+                if (! Schema::hasColumn('cash_transactions', 'operation')) {
                     $table->string('operation', 32)->nullable()->after('type');
                 }
-                if (!Schema::hasColumn('cash_transactions', 'balance_before')) {
+                if (! Schema::hasColumn('cash_transactions', 'balance_before')) {
                     $table->decimal('balance_before', 18, 2)->default(0)->after('balance_after');
                 }
-                if (!Schema::hasColumn('cash_transactions', 'source_type')) {
+                if (! Schema::hasColumn('cash_transactions', 'source_type')) {
                     $table->string('source_type', 64)->nullable()->after('transfer_from_transaction_id');
                 }
-                if (!Schema::hasColumn('cash_transactions', 'source_id')) {
+                if (! Schema::hasColumn('cash_transactions', 'source_id')) {
                     $table->unsignedBigInteger('source_id')->nullable()->after('source_type');
                 }
             });
         }
 
         // 3. Marketplace Payouts - Выплаты маркетплейсов
-        if (!Schema::hasTable('marketplace_payouts')) {
+        if (! Schema::hasTable('marketplace_payouts')) {
             Schema::create('marketplace_payouts', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');

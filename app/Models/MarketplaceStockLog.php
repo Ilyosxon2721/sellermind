@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceStockLog.php
 
 namespace App\Models;

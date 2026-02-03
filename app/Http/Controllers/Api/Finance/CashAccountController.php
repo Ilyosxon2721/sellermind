@@ -23,12 +23,12 @@ class CashAccountController extends Controller
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $accounts = CashAccount::byCompany($companyId)
-            ->when($request->active_only, fn($q) => $q->active())
+            ->when($request->active_only, fn ($q) => $q->active())
             ->orderBy('is_default', 'desc')
             ->orderBy('name')
             ->get();
@@ -42,7 +42,7 @@ class CashAccountController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -66,7 +66,7 @@ class CashAccountController extends Controller
         $data['currency_code'] = $data['currency_code'] ?? 'UZS';
 
         // Если это первый счёт или установлен is_default
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             CashAccount::byCompany($companyId)->update(['is_default' => false]);
         } elseif (CashAccount::byCompany($companyId)->count() === 0) {
             $data['is_default'] = true;
@@ -83,7 +83,7 @@ class CashAccountController extends Controller
     public function show(int $id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -98,7 +98,7 @@ class CashAccountController extends Controller
     public function update(Request $request, int $id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -117,7 +117,7 @@ class CashAccountController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             CashAccount::byCompany($companyId)->where('id', '!=', $id)->update(['is_default' => false]);
         }
 
@@ -132,7 +132,7 @@ class CashAccountController extends Controller
     public function destroy(int $id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -153,7 +153,7 @@ class CashAccountController extends Controller
     public function transactions(Request $request, int $id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -161,8 +161,8 @@ class CashAccountController extends Controller
 
         $transactions = $account->transactions()
             ->with(['category', 'counterparty', 'employee'])
-            ->when($request->from, fn($q) => $q->where('transaction_date', '>=', $request->from))
-            ->when($request->to, fn($q) => $q->where('transaction_date', '<=', $request->to))
+            ->when($request->from, fn ($q) => $q->where('transaction_date', '>=', $request->from))
+            ->when($request->to, fn ($q) => $q->where('transaction_date', '<=', $request->to))
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
             ->paginate($request->per_page ?? 50);
@@ -192,7 +192,7 @@ class CashAccountController extends Controller
     public function transfer(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -262,6 +262,7 @@ class CashAccountController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
     }
@@ -272,7 +273,7 @@ class CashAccountController extends Controller
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -308,7 +309,7 @@ class CashAccountController extends Controller
     public function createForMarketplace(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -330,7 +331,7 @@ class CashAccountController extends Controller
     public function marketplaceAccounts(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -348,7 +349,7 @@ class CashAccountController extends Controller
     protected function createTransaction(Request $request, int $accountId, string $type)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -402,6 +403,7 @@ class CashAccountController extends Controller
             return $this->successResponse($transaction->load(['category', 'counterparty', 'employee']));
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
     }
@@ -412,7 +414,7 @@ class CashAccountController extends Controller
     public function syncPayouts(Request $request, MarketplacePayoutSyncService $service)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -444,7 +446,7 @@ class CashAccountController extends Controller
     public function payoutStats(MarketplacePayoutSyncService $service)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -463,16 +465,16 @@ class CashAccountController extends Controller
     public function payouts(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $payouts = MarketplacePayout::byCompany($companyId)
             ->with(['marketplaceAccount', 'cashTransaction'])
-            ->when($request->marketplace, fn($q) => $q->forMarketplace($request->marketplace))
-            ->when($request->account_id, fn($q) => $q->forAccount($request->account_id))
-            ->when($request->from, fn($q) => $q->where('payout_date', '>=', $request->from))
-            ->when($request->to, fn($q) => $q->where('payout_date', '<=', $request->to))
+            ->when($request->marketplace, fn ($q) => $q->forMarketplace($request->marketplace))
+            ->when($request->account_id, fn ($q) => $q->forAccount($request->account_id))
+            ->when($request->from, fn ($q) => $q->where('payout_date', '>=', $request->from))
+            ->when($request->to, fn ($q) => $q->where('payout_date', '<=', $request->to))
             ->orderByDesc('payout_date')
             ->paginate($request->per_page ?? 50);
 

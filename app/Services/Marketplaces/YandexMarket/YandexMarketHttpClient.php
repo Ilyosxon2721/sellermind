@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 class YandexMarketHttpClient
 {
     protected string $baseUrl;
+
     protected int $timeout;
+
     protected int $retryAttempts;
 
     public function __construct()
@@ -59,9 +61,9 @@ class YandexMarketHttpClient
      */
     public function getRaw(MarketplaceAccount $account, string $path, array $query = []): string
     {
-        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
-        if (!empty($query)) {
-            $url .= '?' . http_build_query($query);
+        $url = rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
+        if (! empty($query)) {
+            $url .= '?'.http_build_query($query);
         }
         $headers = $this->buildHeaders($account);
 
@@ -69,7 +71,7 @@ class YandexMarketHttpClient
             ->withHeaders($headers)
             ->get($url);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $this->handleError($account, $response->status(), $response->body(), $url, 'GET');
         }
 
@@ -86,7 +88,7 @@ class YandexMarketHttpClient
         array $query = [],
         array $body = []
     ): array {
-        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+        $url = rtrim($this->baseUrl, '/').'/'.ltrim($path, '/');
         $headers = $this->buildHeaders($account);
 
         Log::info('YandexMarket API request', [
@@ -101,7 +103,7 @@ class YandexMarketHttpClient
             ->retry($this->retryAttempts, 1000, function ($exception) {
                 // Retry only on connection errors or 5xx responses
                 return $exception instanceof \Illuminate\Http\Client\ConnectionException
-                    || ($exception instanceof \Illuminate\Http\Client\RequestException 
+                    || ($exception instanceof \Illuminate\Http\Client\RequestException
                         && $exception->response->status() >= 500);
             });
 
@@ -125,11 +127,12 @@ class YandexMarketHttpClient
                 'body_preview' => mb_substr($rawBody, 0, 500),
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->handleError($account, $status, $rawBody, $url, $method);
             }
 
             $json = $response->json();
+
             return is_array($json) ? $json : [];
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
@@ -150,7 +153,7 @@ class YandexMarketHttpClient
         $credentials = $account->getDecryptedCredentials();
         $apiKey = $credentials['api_key'] ?? $credentials['oauth_token'] ?? null;
 
-        if (!$apiKey) {
+        if (! $apiKey) {
             throw new \RuntimeException('API Key не настроен для аккаунта Yandex Market');
         }
 
@@ -182,7 +185,7 @@ class YandexMarketHttpClient
             401 => throw new \RuntimeException("Yandex Market: Неверный API Key. {$message}"),
             403 => throw new \RuntimeException("Yandex Market: Доступ запрещён. Проверьте права API Key. {$message}"),
             404 => throw new \RuntimeException("Yandex Market: Ресурс не найден. {$message}"),
-            429 => throw new \RuntimeException("Yandex Market: Превышен лимит запросов. Повторите позже."),
+            429 => throw new \RuntimeException('Yandex Market: Превышен лимит запросов. Повторите позже.'),
             default => throw new \RuntimeException("Yandex Market API error ({$status}): {$message}"),
         };
     }
@@ -192,20 +195,21 @@ class YandexMarketHttpClient
      */
     protected function extractError(?string $rawBody): ?string
     {
-        if (!$rawBody) {
+        if (! $rawBody) {
             return null;
         }
 
         $json = json_decode($rawBody, true);
-        if (!is_array($json)) {
+        if (! is_array($json)) {
             return mb_substr(trim($rawBody), 0, 200);
         }
 
         // Yandex Market error format
         if (isset($json['errors']) && is_array($json['errors'])) {
             $errors = array_map(function ($e) {
-                return ($e['code'] ?? '') . ': ' . ($e['message'] ?? '');
+                return ($e['code'] ?? '').': '.($e['message'] ?? '');
             }, $json['errors']);
+
             return implode('; ', $errors);
         }
 
@@ -218,7 +222,7 @@ class YandexMarketHttpClient
     protected function sanitizeForLog(array $data): array
     {
         $sensitive = ['api_key', 'token', 'authorization', 'secret', 'password'];
-        
+
         array_walk_recursive($data, function (&$value, $key) use ($sensitive) {
             foreach ($sensitive as $needle) {
                 if (stripos($key, $needle) !== false) {

@@ -85,7 +85,7 @@ class VpcBrowserTool implements AgentToolInterface
         $action = $arguments['action'] ?? null;
         $sessionId = $arguments['session_id'] ?? null;
 
-        if (!$action) {
+        if (! $action) {
             return [
                 'success' => false,
                 'error' => 'Action is required',
@@ -94,7 +94,7 @@ class VpcBrowserTool implements AgentToolInterface
 
         // Get or create VPC session
         $session = $this->getSession($sessionId);
-        if (!$session) {
+        if (! $session) {
             return [
                 'success' => false,
                 'error' => 'No active VPC session found. Please create a VPC session first.',
@@ -109,7 +109,7 @@ class VpcBrowserTool implements AgentToolInterface
             ];
         }
 
-        if (!in_array($session->status, [VpcSession::STATUS_READY, VpcSession::STATUS_RUNNING])) {
+        if (! in_array($session->status, [VpcSession::STATUS_READY, VpcSession::STATUS_RUNNING])) {
             return [
                 'success' => false,
                 'error' => "VPC session status is '{$session->status}'. Session must be ready or running.",
@@ -151,7 +151,7 @@ class VpcBrowserTool implements AgentToolInterface
     private function openUrl(VpcSession $session, array $arguments): array
     {
         $url = $arguments['url'] ?? null;
-        if (!$url) {
+        if (! $url) {
             return ['success' => false, 'error' => 'URL is required for open_url action'];
         }
 
@@ -175,6 +175,7 @@ class VpcBrowserTool implements AgentToolInterface
             $action = $this->vpcClient->sendCommand($session, 'agent', 'click', [
                 'selector' => $selector,
             ]);
+
             return [
                 'success' => true,
                 'message' => "Clicked on element: {$selector}",
@@ -186,7 +187,7 @@ class VpcBrowserTool implements AgentToolInterface
             return ['success' => false, 'error' => 'Either x,y coordinates or selector is required for click action'];
         }
 
-        $action = $this->vpcClient->click($session, 'agent', (int)$x, (int)$y);
+        $action = $this->vpcClient->click($session, 'agent', (int) $x, (int) $y);
 
         return [
             'success' => true,
@@ -198,7 +199,7 @@ class VpcBrowserTool implements AgentToolInterface
     private function typeText(VpcSession $session, array $arguments): array
     {
         $text = $arguments['text'] ?? null;
-        if (!$text) {
+        if (! $text) {
             return ['success' => false, 'error' => 'Text is required for type action'];
         }
 
@@ -206,7 +207,7 @@ class VpcBrowserTool implements AgentToolInterface
 
         return [
             'success' => true,
-            'message' => "Typed text: " . mb_substr($text, 0, 50) . (mb_strlen($text) > 50 ? '...' : ''),
+            'message' => 'Typed text: '.mb_substr($text, 0, 50).(mb_strlen($text) > 50 ? '...' : ''),
             'action_id' => $action->id,
         ];
     }
@@ -216,7 +217,7 @@ class VpcBrowserTool implements AgentToolInterface
         $direction = $arguments['direction'] ?? 'down';
         $amount = $arguments['amount'] ?? 300;
 
-        $action = $this->vpcClient->scroll($session, 'agent', $direction, (int)$amount);
+        $action = $this->vpcClient->scroll($session, 'agent', $direction, (int) $amount);
 
         return [
             'success' => true,
@@ -241,7 +242,7 @@ class VpcBrowserTool implements AgentToolInterface
     private function keyPress(VpcSession $session, array $arguments): array
     {
         $key = $arguments['key'] ?? null;
-        if (!$key) {
+        if (! $key) {
             return ['success' => false, 'error' => 'Key is required for key_press action'];
         }
 

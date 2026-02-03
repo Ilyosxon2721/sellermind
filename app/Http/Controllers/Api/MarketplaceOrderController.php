@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceOrderController.php
 
 namespace App\Http\Controllers\Api;
@@ -6,7 +7,6 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\CurrencyHelper;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceShop;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
@@ -28,7 +28,7 @@ class MarketplaceOrderController extends Controller
             'delivery_type' => ['nullable', 'string', 'in:fbs,fbo,dbs,edbs'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -40,6 +40,7 @@ class MarketplaceOrderController extends Controller
         // Загружаем заказы из соответствующих таблиц
         if ($account && $account->marketplace === 'wb') {
             $orders = $this->loadWbOrders($request, $account);
+
             return response()->json([
                 'orders' => $orders,
                 'meta' => ['total' => count($orders)],
@@ -48,6 +49,7 @@ class MarketplaceOrderController extends Controller
 
         if ($account && $account->marketplace === 'uzum') {
             $orders = $this->loadUzumOrders($request, $account);
+
             return response()->json([
                 'orders' => $orders,
                 'meta' => ['total' => count($orders)],
@@ -66,7 +68,7 @@ class MarketplaceOrderController extends Controller
         // Определяем маркетплейс по ID заказа
         $wbOrder = \App\Models\WbOrder::find($orderId);
         if ($wbOrder) {
-            if (!$request->user()->hasCompanyAccess($wbOrder->account->company_id)) {
+            if (! $request->user()->hasCompanyAccess($wbOrder->account->company_id)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
@@ -75,12 +77,12 @@ class MarketplaceOrderController extends Controller
             // Извлекаем бренд и характеристики
             $brand = $wbOrder->raw_payload['brand'] ?? null;
             $characteristics = $wbOrder->raw_payload['characteristics'] ?? null;
-            if (!$characteristics && isset($wbOrder->raw_payload['colorCode']) && !empty($wbOrder->raw_payload['colorCode'])) {
-                $characteristics = 'Цвет: ' . $wbOrder->raw_payload['colorCode'];
+            if (! $characteristics && isset($wbOrder->raw_payload['colorCode']) && ! empty($wbOrder->raw_payload['colorCode'])) {
+                $characteristics = 'Цвет: '.$wbOrder->raw_payload['colorCode'];
             }
 
-            $meta = array_filter([$brand, $wbOrder->article, $characteristics], function($value) {
-                return !empty($value) && trim($value) !== '';
+            $meta = array_filter([$brand, $wbOrder->article, $characteristics], function ($value) {
+                return ! empty($value) && trim($value) !== '';
             });
             $metaString = implode(' - ', $meta);
 
@@ -115,12 +117,12 @@ class MarketplaceOrderController extends Controller
                     'Характеристики' => $characteristics,
 
                     // ФИНАНСЫ
-                    'Сумма заказа' => number_format($wbOrder->total_amount, 2, '.', ' ') . ' ' . $wbOrder->currency,
+                    'Сумма заказа' => number_format($wbOrder->total_amount, 2, '.', ' ').' '.$wbOrder->currency,
                     'Цена' => $wbOrder->price ? CurrencyHelper::formatPrice(CurrencyHelper::fromKopecks($wbOrder->price), $wbOrder->currency_code) : null,
                     'Цена сканирования' => $wbOrder->scan_price ? CurrencyHelper::formatPrice(CurrencyHelper::fromKopecks($wbOrder->scan_price), $wbOrder->currency_code) : null,
                     'Конвертированная цена' => $wbOrder->converted_price ? CurrencyHelper::formatPrice(CurrencyHelper::fromKopecks($wbOrder->converted_price), $wbOrder->converted_currency_code) : null,
-                    'Валюта' => CurrencyHelper::getCurrencyName($wbOrder->currency_code) . ' (' . CurrencyHelper::getCurrencyCode($wbOrder->currency_code) . ')',
-                    'Конвертированная валюта' => $wbOrder->converted_currency_code ? (CurrencyHelper::getCurrencyName($wbOrder->converted_currency_code) . ' (' . CurrencyHelper::getCurrencyCode($wbOrder->converted_currency_code) . ')') : null,
+                    'Валюта' => CurrencyHelper::getCurrencyName($wbOrder->currency_code).' ('.CurrencyHelper::getCurrencyCode($wbOrder->currency_code).')',
+                    'Конвертированная валюта' => $wbOrder->converted_currency_code ? (CurrencyHelper::getCurrencyName($wbOrder->converted_currency_code).' ('.CurrencyHelper::getCurrencyCode($wbOrder->converted_currency_code).')') : null,
 
                     // ЛОГИСТИКА
                     'Поставка' => $wbOrder->supply_id,
@@ -154,13 +156,13 @@ class MarketplaceOrderController extends Controller
                     'Телефон клиента' => $wbOrder->customer_phone,
 
                     // Товары
-                    'Товары' => $wbOrder->items->map(function($item) {
+                    'Товары' => $wbOrder->items->map(function ($item) {
                         return [
                             'Название' => $item->name,
                             'Артикул/SKU' => $item->external_offer_id,
                             'Количество' => $item->quantity,
-                            'Цена' => number_format($item->price, 2, '.', ' ') . ' руб',
-                            'Общая стоимость' => number_format($item->total_price, 2, '.', ' ') . ' руб',
+                            'Цена' => number_format($item->price, 2, '.', ' ').' руб',
+                            'Общая стоимость' => number_format($item->total_price, 2, '.', ' ').' руб',
                         ];
                     }),
 
@@ -173,17 +175,18 @@ class MarketplaceOrderController extends Controller
                         'total_amount' => $wbOrder->total_amount,
                         'currency' => $wbOrder->currency,
                     ],
-                ]
+                ],
             ]);
         }
 
         $uzumOrder = \App\Models\UzumOrder::find($orderId);
         if ($uzumOrder) {
-            if (!$request->user()->hasCompanyAccess($uzumOrder->account->company_id)) {
+            if (! $request->user()->hasCompanyAccess($uzumOrder->account->company_id)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
             $uzumOrder->load(['account', 'items']);
+
             return response()->json(['order' => $uzumOrder]);
         }
 
@@ -192,7 +195,7 @@ class MarketplaceOrderController extends Controller
 
     public function uzumShops(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -223,7 +226,7 @@ class MarketplaceOrderController extends Controller
      */
     public function uzumFinanceOrders(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -250,7 +253,7 @@ class MarketplaceOrderController extends Controller
             }
 
             // If no dates provided, default to last 30 days
-            if (!$dateFromMs && !$dateToMs) {
+            if (! $dateFromMs && ! $dateToMs) {
                 $dateToMs = time() * 1000;
                 $dateFromMs = (time() - 30 * 86400) * 1000;
             }
@@ -289,7 +292,7 @@ class MarketplaceOrderController extends Controller
             $orderItems = $result['orderItems'] ?? [];
 
             // Filter by date locally if date filter was requested
-            if (!empty($orderItems) && ($dateFromMs || $dateToMs)) {
+            if (! empty($orderItems) && ($dateFromMs || $dateToMs)) {
                 $orderItems = array_filter($orderItems, function ($item) use ($dateFromMs, $dateToMs) {
                     // Use 'date' field from finance order (timestamp in ms)
                     $orderDate = $item['date'] ?? $item['dateCreated'] ?? 0;
@@ -299,6 +302,7 @@ class MarketplaceOrderController extends Controller
                     if ($dateToMs && $orderDate > $dateToMs) {
                         return false;
                     }
+
                     return true;
                 });
                 $orderItems = array_values($orderItems); // Re-index array
@@ -307,14 +311,14 @@ class MarketplaceOrderController extends Controller
             // Determine order type (FBS/DBS/EDBS/FBO) by checking uzum_orders table
             // Orders in uzum_orders have 'scheme' field in raw_payload (FBS, DBS, EDBS)
             // Orders NOT in uzum_orders are FBO (fulfilled by Uzum)
-            if (!empty($orderItems)) {
+            if (! empty($orderItems)) {
                 // Get unique order IDs from finance response (convert to strings for DB comparison)
                 $financeOrderIds = array_unique(array_filter(array_column($orderItems, 'orderId')));
                 $financeOrderIdsStr = array_map('strval', $financeOrderIds);
 
                 // Find orders in uzum_orders with their scheme (delivery type)
                 $orderSchemes = [];
-                if (!empty($financeOrderIdsStr)) {
+                if (! empty($financeOrderIdsStr)) {
                     $uzumOrders = \App\Models\UzumOrder::where('marketplace_account_id', $account->id)
                         ->whereIn('external_order_id', $financeOrderIdsStr)
                         ->get(['external_order_id', 'raw_payload']);
@@ -333,6 +337,7 @@ class MarketplaceOrderController extends Controller
                     $orderId = (int) ($item['orderId'] ?? 0);
                     // If order exists in uzum_orders, use its scheme; otherwise it's FBO
                     $item['delivery_type'] = $orderSchemes[$orderId] ?? 'FBO';
+
                     return $item;
                 }, $orderItems);
 
@@ -364,7 +369,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка загрузки FBO заказов: ' . $e->getMessage(),
+                'message' => 'Ошибка загрузки FBO заказов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -374,7 +379,7 @@ class MarketplaceOrderController extends Controller
      */
     public function wbFinanceOrders(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -412,14 +417,14 @@ class MarketplaceOrderController extends Controller
                 $operationType = $record['supplier_oper_name'] ?? '';
 
                 // Only include Sales and Returns
-                if (!in_array($operationType, ['Продажа', 'Возврат'])) {
+                if (! in_array($operationType, ['Продажа', 'Возврат'])) {
                     continue;
                 }
 
                 $orderId = $record['srid'] ?? $record['rid'] ?? null;
                 $nmId = $record['nm_id'] ?? null;
 
-                if (!$orderId) {
+                if (! $orderId) {
                     continue;
                 }
 
@@ -435,7 +440,7 @@ class MarketplaceOrderController extends Controller
                 }
 
                 // Check if this order exists in wb_orders (then it's FBS)
-                if (!isset($orderMap[$orderId])) {
+                if (! isset($orderMap[$orderId])) {
                     $orderMap[$orderId] = [
                         'orderId' => $orderId,
                         'srid' => $record['srid'] ?? null,
@@ -488,7 +493,7 @@ class MarketplaceOrderController extends Controller
 
             // Detect FBS orders by checking wb_orders table
             $orderIds = array_keys($orderMap);
-            if (!empty($orderIds)) {
+            if (! empty($orderIds)) {
                 $fbsOrders = \App\Models\WbOrder::where('marketplace_account_id', $account->id)
                     ->whereIn('external_order_id', $orderIds)
                     ->pluck('external_order_id')
@@ -538,7 +543,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка загрузки FBO заказов: ' . $e->getMessage(),
+                'message' => 'Ошибка загрузки FBO заказов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -553,7 +558,7 @@ class MarketplaceOrderController extends Controller
             'shop_id' => ['nullable', 'string'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -564,11 +569,13 @@ class MarketplaceOrderController extends Controller
 
         if ($account && $account->marketplace === 'wb') {
             $stats = $this->statsWb($request, $account);
+
             return response()->json($stats);
         }
 
         if ($account && $account->marketplace === 'uzum') {
             $stats = $this->statsUzum($request, $account);
+
             return response()->json($stats);
         }
 
@@ -578,8 +585,8 @@ class MarketplaceOrderController extends Controller
             'total_amount' => 0,
             'by_status' => [],
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-          ->header('Pragma', 'no-cache')
-          ->header('Expires', '0');
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
@@ -594,7 +601,7 @@ class MarketplaceOrderController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -631,7 +638,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка при получении новых заказов: ' . $e->getMessage(),
+                'message' => 'Ошибка при получении новых заказов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -654,7 +661,7 @@ class MarketplaceOrderController extends Controller
 
         $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -699,7 +706,7 @@ class MarketplaceOrderController extends Controller
                 $height
             );
 
-            $filename = "stickers_" . md5(implode('_', $orderIds)) . "_{$type}." . ($type === 'zplv' || $type === 'zplh' ? 'zpl' : $type);
+            $filename = 'stickers_'.md5(implode('_', $orderIds))."_{$type}.".($type === 'zplv' || $type === 'zplh' ? 'zpl' : $type);
             $path = "stickers/orders/{$account->id}/{$filename}";
 
             \Storage::disk('public')->put($path, $binaryContent);
@@ -733,7 +740,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка при генерации стикеров: ' . $e->getMessage(),
+                'message' => 'Ошибка при генерации стикеров: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -742,7 +749,7 @@ class MarketplaceOrderController extends Controller
     {
         try {
             $size = strtoupper($request->input('size', 'LARGE'));
-            if (!in_array($size, ['LARGE', 'BIG'])) {
+            if (! in_array($size, ['LARGE', 'BIG'])) {
                 return response()->json(['message' => 'Размер этикетки должен быть LARGE или BIG'], 422);
             }
 
@@ -751,8 +758,8 @@ class MarketplaceOrderController extends Controller
             $stickers = [];
 
             foreach ($request->order_ids as $orderId) {
-                $label = $client->getOrderLabel($account, (string)$orderId, $size);
-                if (!$label) {
+                $label = $client->getOrderLabel($account, (string) $orderId, $size);
+                if (! $label) {
                     continue;
                 }
                 $filename = "uzum_label_{$orderId}_{$size}.pdf";
@@ -784,7 +791,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка при генерации этикеток Uzum: ' . $e->getMessage(),
+                'message' => 'Ошибка при генерации этикеток Uzum: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -797,24 +804,24 @@ class MarketplaceOrderController extends Controller
         // Ищем заказ в uzum_orders
         $order = \App\Models\UzumOrder::find($orderId);
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['message' => 'Заказ не найден.'], 404);
         }
 
         $account = $order->account;
 
-        if (!$account) {
+        if (! $account) {
             return response()->json(['message' => 'Аккаунт маркетплейса не найден.'], 404);
         }
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         try {
             $client = app(\App\Services\Marketplaces\UzumClient::class);
             $data = $client->confirmOrder($account, $order->external_order_id);
-            if (!$data) {
+            if (! $data) {
                 return response()->json(['message' => 'Не удалось подтвердить заказ Uzum'], 422);
             }
 
@@ -831,7 +838,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             // Обновляем позиции
-            if (!empty($data['items'])) {
+            if (! empty($data['items'])) {
                 $order->items()->delete();
                 foreach ($data['items'] as $item) {
                     $order->items()->create([
@@ -854,8 +861,9 @@ class MarketplaceOrderController extends Controller
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
-                'message' => 'Ошибка при подтверждении заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка при подтверждении заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -870,23 +878,23 @@ class MarketplaceOrderController extends Controller
         $marketplace = 'uzum';
 
         // Если не найден, ищем в WB заказах
-        if (!$order) {
+        if (! $order) {
             $order = \App\Models\WbOrder::find($orderId);
             $marketplace = 'wb';
         }
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['message' => 'Заказ не найден.'], 404);
         }
 
         $account = $order->account;
 
-        if (!$account) {
+        if (! $account) {
             return response()->json(['message' => 'Аккаунт маркетплейса не найден.'], 404);
         }
 
         // Проверка доступа
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -894,12 +902,12 @@ class MarketplaceOrderController extends Controller
         $finalStatuses = ['completed', 'cancelled', 'delivered', 'DELIVERED', 'CANCELLED'];
         if (in_array($order->status, $finalStatuses)) {
             return response()->json([
-                'message' => 'Невозможно отменить заказ в статусе ' . $order->status,
+                'message' => 'Невозможно отменить заказ в статусе '.$order->status,
             ], 422);
         }
 
         // Проверка наличия external_order_id
-        if (!$order->external_order_id) {
+        if (! $order->external_order_id) {
             return response()->json([
                 'message' => 'У заказа отсутствует внешний ID',
             ], 422);
@@ -911,7 +919,7 @@ class MarketplaceOrderController extends Controller
                 $client = app(\App\Services\Marketplaces\UzumClient::class);
                 $data = $client->cancelOrder($account, $order->external_order_id);
 
-                if (!$data) {
+                if (! $data) {
                     return response()->json(['message' => 'Не удалось отменить заказ Uzum'], 422);
                 }
 
@@ -959,7 +967,7 @@ class MarketplaceOrderController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка при отмене заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка при отмене заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1002,6 +1010,7 @@ class MarketplaceOrderController extends Controller
     private function getWbOrderService(MarketplaceAccount $account): WildberriesOrderService
     {
         $client = new WildberriesHttpClient($account);
+
         return new WildberriesOrderService($client);
     }
 
@@ -1036,8 +1045,8 @@ class MarketplaceOrderController extends Controller
             $characteristics = $rawPayload['techSize'] ?? $rawPayload['colorCode'] ?? null;
 
             // Формируем метаинформацию
-            $meta = array_filter([$brand, $o->article, $characteristics], function($value) {
-                return !empty($value) && trim($value) !== '';
+            $meta = array_filter([$brand, $o->article, $characteristics], function ($value) {
+                return ! empty($value) && trim($value) !== '';
             });
             $metaString = implode(' - ', $meta);
 
@@ -1101,7 +1110,7 @@ class MarketplaceOrderController extends Controller
                 'raw_payload' => $o->raw_payload,
 
                 // Позиции заказа
-                'items' => $o->items->map(fn($item) => [
+                'items' => $o->items->map(fn ($item) => [
                     'id' => $item->id,
                     'external_offer_id' => $item->external_offer_id,
                     'name' => $item->name,
@@ -1130,7 +1139,7 @@ class MarketplaceOrderController extends Controller
             $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
         }
         if ($request->shop_id) {
-            $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn($v) => trim($v))->all();
+            $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn ($v) => trim($v))->all();
             $query->whereIn('shop_id', $shopIds);
         }
         // Filter by delivery type (scheme) if specified
@@ -1220,7 +1229,7 @@ class MarketplaceOrderController extends Controller
             $query->where('ordered_at', '<=', Carbon::parse($request->to)->endOfDay());
         }
         if ($request->shop_id) {
-            $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn($v) => trim($v))->all();
+            $shopIds = collect(explode(',', $request->shop_id))->filter()->map(fn ($v) => trim($v))->all();
             $query->whereIn('shop_id', $shopIds);
         }
 

@@ -17,29 +17,43 @@ class ProposalController extends Controller
     public function __construct(
         protected AutopricingEngineService $engine,
         protected AutopricingApplyService $applyService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $q = AutopricingProposal::byCompany($companyId);
-        if ($request->policy_id) $q->where('policy_id', $request->policy_id);
-        if ($request->channel_code) $q->where('channel_code', $request->channel_code);
-        if ($request->status) $q->where('status', $request->status);
-        if ($request->from) $q->where('calculated_at', '>=', $request->from);
-        if ($request->to) $q->where('calculated_at', '<=', $request->to);
+        if ($request->policy_id) {
+            $q->where('policy_id', $request->policy_id);
+        }
+        if ($request->channel_code) {
+            $q->where('channel_code', $request->channel_code);
+        }
+        if ($request->status) {
+            $q->where('status', $request->status);
+        }
+        if ($request->from) {
+            $q->where('calculated_at', '>=', $request->from);
+        }
+        if ($request->to) {
+            $q->where('calculated_at', '<=', $request->to);
+        }
         if ($search = $request->get('query')) {
             $q->where('sku_id', $search);
         }
+
         return $this->successResponse($q->orderByDesc('id')->limit(500)->get());
     }
 
     public function calculate(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $request->validate([
             'policy_id' => ['required', 'integer'],
             'channel_code' => ['required', 'string'],
@@ -61,23 +75,31 @@ class ProposalController extends Controller
     public function approve($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $prop = $this->applyService->approve($id, $companyId, Auth::id());
+
         return $this->successResponse($prop);
     }
 
     public function reject($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $prop = $this->applyService->reject($id, $companyId, $request->input('reason'));
+
         return $this->successResponse($prop);
     }
 
     public function apply(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $request->validate([
             'policy_id' => ['required', 'integer'],
             'channel_code' => ['required', 'string'],
@@ -92,6 +114,7 @@ class ProposalController extends Controller
             $data['limit'] ?? 100,
             Auth::id()
         );
+
         return $this->successResponse($res);
     }
 }

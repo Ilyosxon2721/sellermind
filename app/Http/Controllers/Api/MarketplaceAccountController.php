@@ -19,7 +19,7 @@ class MarketplaceAccountController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -27,7 +27,7 @@ class MarketplaceAccountController extends Controller
 
         // No caching - always return fresh data to prevent stale reads after create/delete
         return response()->json([
-            'accounts' => $accounts->map(fn($a) => [
+            'accounts' => $accounts->map(fn ($a) => [
                 'id' => $a->id,
                 'marketplace' => $a->marketplace,
                 'name' => $a->name,
@@ -38,8 +38,8 @@ class MarketplaceAccountController extends Controller
             ]),
             'available_marketplaces' => MarketplaceAccount::getMarketplaceLabels(),
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-          ->header('Pragma', 'no-cache')
-          ->header('Expires', '0');
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     public function store(Request $request): JsonResponse
@@ -56,13 +56,14 @@ class MarketplaceAccountController extends Controller
             return response()->json([
                 'message' => 'Ошибка валидации данных',
                 'errors' => $e->errors(),
-                'error' => implode(', ', array_map(fn($errors) => implode(', ', $errors), $e->errors()))
+                'error' => implode(', ', array_map(fn ($errors) => implode(', ', $errors), $e->errors())),
             ], 422);
         } catch (\Exception $e) {
             \Log::error('MarketplaceAccountController@store validation error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'message' => 'Ошибка при создании аккаунта',
                 'error' => $e->getMessage(),
@@ -77,7 +78,7 @@ class MarketplaceAccountController extends Controller
 
             return response()->json([
                 'message' => "Аккаунт {$marketplaceLabel} для этой компании уже существует",
-                'error' => "Вы можете обновить существующий аккаунт или удалить его перед созданием нового.",
+                'error' => 'Вы можете обновить существующий аккаунт или удалить его перед созданием нового.',
             ], 409); // 409 Conflict
         } catch (\Exception $e) {
             \Log::error('MarketplaceAccountController@store error', [
@@ -89,6 +90,7 @@ class MarketplaceAccountController extends Controller
                     'name' => $request->name,
                 ],
             ]);
+
             return response()->json([
                 'message' => 'Ошибка при создании аккаунта',
                 'error' => $e->getMessage(),
@@ -105,7 +107,7 @@ class MarketplaceAccountController extends Controller
 
         // Проверяем доступ - владелец или сотрудник с правами
         $user = $request->user();
-        if (!$user->hasCompanyAccess($companyId)) {
+        if (! $user->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'У вас нет доступа к этой компании.'], 403);
         }
 
@@ -115,7 +117,7 @@ class MarketplaceAccountController extends Controller
             return response()->json([
                 'message' => 'Ошибка в учётных данных',
                 'error' => $validationError,
-                'received_credentials' => array_keys($request->credentials ?? []) // Показываем какие поля получили
+                'received_credentials' => array_keys($request->credentials ?? []), // Показываем какие поля получили
             ], 422);
         }
 
@@ -153,7 +155,7 @@ class MarketplaceAccountController extends Controller
             // Тестируем новые credentials
             $testResult = $this->testConnection($existing);
 
-            if (!$testResult['success']) {
+            if (! $testResult['success']) {
                 // Если тест не прошёл, помечаем аккаунт как неактивный
                 $existing->update(['is_active' => false]);
 
@@ -174,7 +176,7 @@ class MarketplaceAccountController extends Controller
             $existing->markAsConnected();
 
             return response()->json([
-                'message' => 'Учётные данные обновлены и успешно проверены! ' . $testResult['message'],
+                'message' => 'Учётные данные обновлены и успешно проверены! '.$testResult['message'],
                 'account' => [
                     'id' => $existing->id,
                     'marketplace' => $existing->marketplace,
@@ -216,7 +218,7 @@ class MarketplaceAccountController extends Controller
         // Тестируем подключение к API
         $testResult = $this->testConnection($account);
 
-        if (!$testResult['success']) {
+        if (! $testResult['success']) {
             // Если тест не прошёл, помечаем аккаунт как неактивный
             $account->update(['is_active' => false]);
 
@@ -246,7 +248,7 @@ class MarketplaceAccountController extends Controller
 
                 $shops = $uzumClient->fetchShops($account);
 
-                if (!empty($shops)) {
+                if (! empty($shops)) {
                     // Store shops in database
                     foreach ($shops as $shop) {
                         if (isset($shop['id'])) {
@@ -265,7 +267,7 @@ class MarketplaceAccountController extends Controller
                     $account->update(['shop_id' => implode(',', $shopIds)]);
 
                     $shopNames = array_column($shops, 'name');
-                    $shopsInfo = ' Найдено магазинов: ' . count($shops) . ' (' . implode(', ', array_slice($shopNames, 0, 3)) . ')';
+                    $shopsInfo = ' Найдено магазинов: '.count($shops).' ('.implode(', ', array_slice($shopNames, 0, 3)).')';
                     if (count($shops) > 3) {
                         $shopsInfo .= '...';
                     }
@@ -277,14 +279,14 @@ class MarketplaceAccountController extends Controller
             } catch (\Exception $e) {
                 \Log::warning('Failed to auto-fetch Uzum shops', [
                     'account_id' => $account->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
                 $shopsInfo = ' Магазины будут загружены позже.';
             }
         }
 
         return response()->json([
-            'message' => 'Маркетплейс успешно подключён! ' . $testResult['message'] . $shopsInfo,
+            'message' => 'Маркетплейс успешно подключён! '.$testResult['message'].$shopsInfo,
             'account' => [
                 'id' => $account->id,
                 'marketplace' => $account->marketplace,
@@ -298,7 +300,7 @@ class MarketplaceAccountController extends Controller
 
     public function destroy(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($account->company_id)) {
+        if (! $request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может удалять маркетплейсы.'], 403);
         }
 
@@ -316,14 +318,14 @@ class MarketplaceAccountController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Не удалось удалить аккаунт: ' . $e->getMessage(),
+                'message' => 'Не удалось удалить аккаунт: '.$e->getMessage(),
             ], 500);
         }
     }
 
     public function test(Request $request, MarketplaceAccount $account, MarketplaceSyncService $syncService): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -331,12 +333,12 @@ class MarketplaceAccountController extends Controller
 
         // If test successful, activate the account
         if ($result['success'] ?? false) {
-            $wasInactive = !$account->is_active;
+            $wasInactive = ! $account->is_active;
             $account->markAsConnected();
 
             if ($wasInactive) {
                 $result['account_activated'] = true;
-                $result['message'] = ($result['message'] ?? 'Подключение успешно') . ' Аккаунт активирован.';
+                $result['message'] = ($result['message'] ?? 'Подключение успешно').' Аккаунт активирован.';
             }
         }
 
@@ -345,14 +347,14 @@ class MarketplaceAccountController extends Controller
 
     public function show(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         // Get credentials and mask sensitive values
         $credentials = $account->getAllCredentials();
         $maskedCredentials = $this->maskCredentials($credentials);
-        
+
         // Get credentials_json if exists
         $credentialsJson = $account->credentials_json ?? [];
 
@@ -366,7 +368,7 @@ class MarketplaceAccountController extends Controller
                 'display_name' => $account->getDisplayName(),
                 'shop_id' => $account->shop_id,
                 'is_active' => $account->is_active,
-                'has_api_key' => !empty($account->api_key),
+                'has_api_key' => ! empty($account->api_key),
                 'connected_at' => $account->connected_at,
                 'products_count' => $account->products()->count(),
                 'orders_count' => $this->getOrdersCount($account),
@@ -376,7 +378,7 @@ class MarketplaceAccountController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Mask sensitive credential values for display
      */
@@ -387,34 +389,34 @@ class MarketplaceAccountController extends Controller
             'api_key', 'api_token', 'oauth_token', 'oauth_refresh_token',
             'client_secret', 'uzum_api_key', 'uzum_access_token', 'uzum_refresh_token',
             'uzum_client_secret', 'wb_content_token', 'wb_marketplace_token',
-            'wb_prices_token', 'wb_statistics_token'
+            'wb_prices_token', 'wb_statistics_token',
         ];
-        
+
         foreach ($credentials as $key => $value) {
-            if (in_array($key, $sensitiveFields) && !empty($value)) {
+            if (in_array($key, $sensitiveFields) && ! empty($value)) {
                 // Show first 8 and last 4 chars of token
                 $len = strlen($value);
                 if ($len > 16) {
-                    $masked[$key] = substr($value, 0, 8) . '...' . substr($value, -4);
+                    $masked[$key] = substr($value, 0, 8).'...'.substr($value, -4);
                 } else {
                     $masked[$key] = '***настроен***';
                 }
-                $masked[$key . '_set'] = true;
-            } else if (!empty($value)) {
+                $masked[$key.'_set'] = true;
+            } elseif (! empty($value)) {
                 $masked[$key] = $value;
             }
         }
-        
+
         return $masked;
     }
-    
+
     /**
      * Get human-readable credentials display info
      */
     protected function getCredentialsDisplay(MarketplaceAccount $account): array
     {
         $display = [];
-        
+
         switch ($account->marketplace) {
             case 'wb':
                 $display[] = ['label' => 'API Token', 'value' => $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
@@ -423,31 +425,31 @@ class MarketplaceAccountController extends Controller
                 $display[] = ['label' => 'Prices Token', 'value' => $account->wb_prices_token ? '✅ Настроен' : '—'];
                 $display[] = ['label' => 'Statistics Token', 'value' => $account->wb_statistics_token ? '✅ Настроен' : '—'];
                 break;
-                
+
             case 'ozon':
                 $creds = $account->getAllCredentials();
                 $display[] = ['label' => 'Client ID', 'value' => $creds['client_id'] ?? '❌ Не настроен'];
-                $display[] = ['label' => 'API Key', 'value' => !empty($creds['api_key']) ? '✅ Настроен' : '❌ Не настроен'];
+                $display[] = ['label' => 'API Key', 'value' => ! empty($creds['api_key']) ? '✅ Настроен' : '❌ Не настроен'];
                 break;
-                
+
             case 'uzum':
                 $display[] = ['label' => 'API Token', 'value' => $account->uzum_access_token || $account->uzum_api_key || $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
                 $shops = $account->credentials_json['shop_ids'] ?? $account->getDecryptedCredentials()['shop_ids'] ?? [];
-                $display[] = ['label' => 'Shop IDs', 'value' => !empty($shops) ? implode(', ', (array)$shops) : '❌ Не настроены'];
+                $display[] = ['label' => 'Shop IDs', 'value' => ! empty($shops) ? implode(', ', (array) $shops) : '❌ Не настроены'];
                 break;
-                
+
             case 'ym':
             case 'yandex_market':
                 $creds = $account->getAllCredentials();
-                $display[] = ['label' => 'API Key', 'value' => !empty($creds['api_key']) ? '✅ Настроен' : '❌ Не настроен'];
+                $display[] = ['label' => 'API Key', 'value' => ! empty($creds['api_key']) ? '✅ Настроен' : '❌ Не настроен'];
                 $display[] = ['label' => 'Campaign ID', 'value' => $creds['campaign_id'] ?? '❌ Не настроен'];
                 $display[] = ['label' => 'Business ID', 'value' => $creds['business_id'] ?? '—'];
                 break;
         }
-        
+
         return $display;
     }
-    
+
     /**
      * Get orders count safely (handle different order models)
      */
@@ -463,7 +465,7 @@ class MarketplaceAccountController extends Controller
 
     public function syncLogs(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -473,7 +475,7 @@ class MarketplaceAccountController extends Controller
             ->get();
 
         return response()->json([
-            'logs' => $logs->map(fn($log) => [
+            'logs' => $logs->map(fn ($log) => [
                 'id' => $log->id,
                 'type' => $log->type,
                 'type_label' => $log->getTypeLabel(),
@@ -495,7 +497,7 @@ class MarketplaceAccountController extends Controller
     public function syncLogsStream(Request $request, MarketplaceAccount $account): StreamedResponse
     {
         $token = $request->bearerToken() ?: $request->query('token');
-        if (!$token) {
+        if (! $token) {
             abort(401);
         }
 
@@ -503,12 +505,12 @@ class MarketplaceAccountController extends Controller
         $token = urldecode($token);
 
         $pat = PersonalAccessToken::findToken($token);
-        if (!$pat || !$pat->tokenable) {
-            \Log::warning('SSE stream auth failed', ['token_prefix' => substr($token, 0, 10) . '...']);
+        if (! $pat || ! $pat->tokenable) {
+            \Log::warning('SSE stream auth failed', ['token_prefix' => substr($token, 0, 10).'...']);
             abort(401);
         }
 
-        if (!$pat->tokenable->hasCompanyAccess($account->company_id)) {
+        if (! $pat->tokenable->hasCompanyAccess($account->company_id)) {
             abort(403);
         }
 
@@ -526,7 +528,7 @@ class MarketplaceAccountController extends Controller
             while (microtime(true) - $start < $timeoutSeconds) {
                 $newLogs = MarketplaceSyncLog::query()
                     ->where('marketplace_account_id', $account->id)
-                    ->when($currentLastId > 0, fn($q) => $q->where('id', '>', $currentLastId))
+                    ->when($currentLastId > 0, fn ($q) => $q->where('id', '>', $currentLastId))
                     ->orderBy('id', 'asc')
                     ->take(50)
                     ->get();
@@ -550,10 +552,10 @@ class MarketplaceAccountController extends Controller
                     })->values();
 
                     echo "event: logs\n";
-                    echo 'data: ' . json_encode([
+                    echo 'data: '.json_encode([
                         'last_id' => $currentLastId,
                         'logs' => $payload,
-                    ]) . "\n\n";
+                    ])."\n\n";
                     @ob_flush();
                     @flush();
                 }
@@ -572,7 +574,7 @@ class MarketplaceAccountController extends Controller
      */
     public function startMonitoring(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -590,7 +592,7 @@ class MarketplaceAccountController extends Controller
      */
     public function stopMonitoring(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -598,7 +600,7 @@ class MarketplaceAccountController extends Controller
         \Illuminate\Support\Facades\DB::table('jobs')
             ->where('queue', config('queue.default'))
             ->where('payload', 'like', '%MonitorMarketplaceChangesJob%')
-            ->where('payload', 'like', '%"id":' . $account->id . '%')
+            ->where('payload', 'like', '%"id":'.$account->id.'%')
             ->delete();
 
         return response()->json([
@@ -614,17 +616,17 @@ class MarketplaceAccountController extends Controller
     {
         $marketplace = $request->query('marketplace');
 
-        if (!$marketplace) {
+        if (! $marketplace) {
             return response()->json([
-                'message' => 'Укажите маркетплейс в параметре marketplace (wb, uzum, ozon, ym)'
+                'message' => 'Укажите маркетплейс в параметре marketplace (wb, uzum, ozon, ym)',
             ], 400);
         }
 
         $requirements = $this->getMarketplaceRequirements($marketplace);
 
-        if (!$requirements) {
+        if (! $requirements) {
             return response()->json([
-                'message' => 'Неизвестный маркетплейс: ' . $marketplace
+                'message' => 'Неизвестный маркетплейс: '.$marketplace,
             ], 404);
         }
 
@@ -651,7 +653,7 @@ class MarketplaceAccountController extends Controller
                         'description' => 'Создайте один токен со всеми необходимыми правами - это самый простой и удобный вариант',
                         'field_name' => 'api_token',
                         'steps' => [
-                            'ЛК WB → Настройки → Доступ к API → Создать токен'
+                            'ЛК WB → Настройки → Доступ к API → Создать токен',
                         ],
                         'permissions' => [
                             '✓ Контент - для работы с товарами и медиа',
@@ -661,8 +663,8 @@ class MarketplaceAccountController extends Controller
                             '✓ Статистика - для получения статистики продаж',
                             '✓ Аналитика - для аналитических данных',
                             '✓ Финансы - для финансовых данных (опционально)',
-                            '✓ Возвраты - для работы с возвратами'
-                        ]
+                            '✓ Возвраты - для работы с возвратами',
+                        ],
                     ],
                     'alternative_approach' => [
                         'title' => '⚙️ Альтернативный способ: Отдельные токены',
@@ -674,8 +676,8 @@ class MarketplaceAccountController extends Controller
                                 'field_name' => 'wb_content_token',
                                 'permissions' => [
                                     '✓ Контент → Управление контентом',
-                                    '✓ Контент → Карточки и медиа'
-                                ]
+                                    '✓ Контент → Карточки и медиа',
+                                ],
                             ],
                             [
                                 'number' => 2,
@@ -684,16 +686,16 @@ class MarketplaceAccountController extends Controller
                                 'permissions' => [
                                     '✓ Маркетплейс → Просмотр',
                                     '✓ Поставки → Управление',
-                                    '✓ Возвраты → Управление'
-                                ]
+                                    '✓ Возвраты → Управление',
+                                ],
                             ],
                             [
                                 'number' => 3,
                                 'name' => 'Prices API Token (Цены)',
                                 'field_name' => 'wb_prices_token',
                                 'permissions' => [
-                                    '✓ Цены и скидки → Управление'
-                                ]
+                                    '✓ Цены и скидки → Управление',
+                                ],
                             ],
                             [
                                 'number' => 4,
@@ -701,13 +703,13 @@ class MarketplaceAccountController extends Controller
                                 'field_name' => 'wb_statistics_token',
                                 'permissions' => [
                                     '✓ Статистика → Просмотр',
-                                    '✓ Аналитика → Просмотр'
-                                ]
-                            ]
-                        ]
+                                    '✓ Аналитика → Просмотр',
+                                ],
+                            ],
+                        ],
                     ],
                     'quick_tip' => 'Быстрая шпаргалка',
-                    'detailed_guide' => 'Подробная инструкция'
+                    'detailed_guide' => 'Подробная инструкция',
                 ],
                 'fields' => [
                     [
@@ -716,7 +718,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'Например: Мой магазин WB',
-                        'help' => 'Произвольное название для различения аккаунтов. Если не указано, будет сгенерировано автоматически.'
+                        'help' => 'Произвольное название для различения аккаунтов. Если не указано, будет сгенерировано автоматически.',
                     ],
                     [
                         'name' => 'api_token',
@@ -724,7 +726,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'eyJhbGciOiJFUzI1NiIsImtpZCI6...',
-                        'help' => '👍 Универсальный токен с доступом ко всем API. Это самый простой и удобный способ - создайте один токен со всеми разделами.'
+                        'help' => '👍 Универсальный токен с доступом ко всем API. Это самый простой и удобный способ - создайте один токен со всеми разделами.',
                     ],
                     [
                         'name' => 'wb_content_token',
@@ -732,7 +734,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'eyJhbGciOiJFUzI1NiIsImtpZCI6...',
-                        'help' => 'Только если не используете универсальный токен. Токен для работы с товарами и контентом.'
+                        'help' => 'Только если не используете универсальный токен. Токен для работы с товарами и контентом.',
                     ],
                     [
                         'name' => 'wb_marketplace_token',
@@ -740,7 +742,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'eyJhbGciOiJFUzI1NiIsImtpZCI6...',
-                        'help' => 'Только если не используете универсальный токен. Токен для работы с заказами и поставками.'
+                        'help' => 'Только если не используете универсальный токен. Токен для работы с заказами и поставками.',
                     ],
                     [
                         'name' => 'wb_prices_token',
@@ -748,7 +750,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'eyJhbGciOiJFUzI1NiIsImtpZCI6...',
-                        'help' => 'Только если не используете универсальный токен. Токен для работы с ценами.'
+                        'help' => 'Только если не используете универсальный токен. Токен для работы с ценами.',
                     ],
                     [
                         'name' => 'wb_statistics_token',
@@ -756,7 +758,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'eyJhbGciOiJFUzI1NiIsImtpZCI6...',
-                        'help' => 'Только если не используете универсальный токен. Токен для работы со статистикой.'
+                        'help' => 'Только если не используете универсальный токен. Токен для работы со статистикой.',
                     ],
                 ],
                 'instructions' => [
@@ -776,20 +778,20 @@ class MarketplaceAccountController extends Controller
                         '  ✓ Возвраты - для работы с возвратами',
                         'Нажмите "Создать" и скопируйте токен',
                         'Вставьте токен в поле "API токен (универсальный)"',
-                        '⚠️ ВАЖНО: Токен показывается только один раз! Сохраните его в безопасном месте.'
+                        '⚠️ ВАЖНО: Токен показывается только один раз! Сохраните его в безопасном месте.',
                     ],
                     'notes' => [
                         '👍 РЕКОМЕНДУЕТСЯ: Используйте один универсальный токен со всеми правами - это проще и удобнее',
                         '⚙️ Альтернатива: Можно создать отдельные токены для каждого API (только для продвинутых пользователей)',
                         'Токен должен быть в формате JWT (начинается с eyJhbGc...)',
-                        'Если синхронизация не работает - проверьте что выбраны все необходимые разделы в личном кабинете WB'
-                    ]
+                        'Если синхронизация не работает - проверьте что выбраны все необходимые разделы в личном кабинете WB',
+                    ],
                 ],
                 'validation' => [
                     'required_one_of' => ['api_token', 'wb_content_token', 'wb_marketplace_token', 'wb_prices_token', 'wb_statistics_token'],
                     'token_format' => 'base64',
-                    'min_length' => 20
-                ]
+                    'min_length' => 20,
+                ],
             ],
 
             'uzum' => [
@@ -807,16 +809,16 @@ class MarketplaceAccountController extends Controller
                             'name' => 'API Token',
                             'field_name' => 'api_token',
                             'steps' => [
-                                'ЛК Uzum → Интеграции → API → Создать токен'
+                                'ЛК Uzum → Интеграции → API → Создать токен',
                             ],
                             'permissions' => [
                                 '✓ Полный доступ ко всем API',
-                                'ℹ️ Все доступные магазины будут подключены автоматически'
-                            ]
-                        ]
+                                'ℹ️ Все доступные магазины будут подключены автоматически',
+                            ],
+                        ],
                     ],
                     'quick_tip' => 'Быстрая шпаргалка',
-                    'detailed_guide' => 'Подробная инструкция'
+                    'detailed_guide' => 'Подробная инструкция',
                 ],
                 'fields' => [
                     [
@@ -825,7 +827,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'Например: Мой магазин Uzum',
-                        'help' => 'Произвольное название для различения аккаунтов'
+                        'help' => 'Произвольное название для различения аккаунтов',
                     ],
                     [
                         'name' => 'api_token',
@@ -833,7 +835,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => 'w/77NI6IG8xzWK5sUj4An8...',
-                        'help' => 'Токен для доступа к API Uzum Market. Все доступные магазины будут подключены автоматически.'
+                        'help' => 'Токен для доступа к API Uzum Market. Все доступные магазины будут подключены автоматически.',
                     ],
                 ],
                 'instructions' => [
@@ -844,18 +846,18 @@ class MarketplaceAccountController extends Controller
                         'Нажмите "Создать новый API токен"',
                         'Скопируйте созданный токен',
                         'Вставьте токен в форму подключения',
-                        'Все доступные магазины будут автоматически найдены и подключены'
+                        'Все доступные магазины будут автоматически найдены и подключены',
                     ],
                     'notes' => [
                         'API токен должен иметь доступ к магазинам',
                         'Все магазины, доступные токену, будут подключены автоматически',
                         'Не нужно вручную указывать ID магазинов - система получит их через API',
-                        'После подключения вы увидите список подключенных магазинов'
-                    ]
+                        'После подключения вы увидите список подключенных магазинов',
+                    ],
                 ],
                 'validation' => [
-                    'required_fields' => ['api_token']
-                ]
+                    'required_fields' => ['api_token'],
+                ],
             ],
 
             'ozon' => [
@@ -873,19 +875,19 @@ class MarketplaceAccountController extends Controller
                             'name' => 'Client-Id (Идентификатор клиента)',
                             'field_name' => 'client_id',
                             'steps' => [
-                                'ЛК OZON Seller → Настройки → API ключи → Сгенерировать ключ'
+                                'ЛК OZON Seller → Настройки → API ключи → Сгенерировать ключ',
                             ],
                             'permissions' => [
                                 'ℹ️ Числовой идентификатор вашего магазина',
-                                'ℹ️ Копируется вместе с API-ключом'
-                            ]
+                                'ℹ️ Копируется вместе с API-ключом',
+                            ],
                         ],
                         [
                             'number' => 2,
                             'name' => 'API-ключ (секретный ключ)',
                             'field_name' => 'api_key',
                             'steps' => [
-                                'Выберите ВСЕ необходимые права доступа'
+                                'Выберите ВСЕ необходимые права доступа',
                             ],
                             'permissions' => [
                                 '✓ Товары - создание, редактирование, удаление',
@@ -893,12 +895,12 @@ class MarketplaceAccountController extends Controller
                                 '✓ Заказы - просмотр и управление заказами',
                                 '✓ Финансы - просмотр финансовых данных',
                                 '✓ Аналитика - доступ к статистике и отчетам',
-                                '⚠️ API-ключ показывается только ОДИН РАЗ!'
-                            ]
-                        ]
+                                '⚠️ API-ключ показывается только ОДИН РАЗ!',
+                            ],
+                        ],
                     ],
                     'quick_tip' => 'Быстрая шпаргалка',
-                    'detailed_guide' => 'Подробная инструкция'
+                    'detailed_guide' => 'Подробная инструкция',
                 ],
                 'fields' => [
                     [
@@ -907,7 +909,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'Например: Мой магазин Ozon',
-                        'help' => 'Произвольное название для различения аккаунтов'
+                        'help' => 'Произвольное название для различения аккаунтов',
                     ],
                     [
                         'name' => 'client_id',
@@ -915,7 +917,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => '123456',
-                        'help' => 'Идентификатор клиента из личного кабинета Ozon'
+                        'help' => 'Идентификатор клиента из личного кабинета Ozon',
                     ],
                     [
                         'name' => 'api_key',
@@ -923,7 +925,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => 'ваш_api_ключ_от_ozon',
-                        'help' => 'API ключ для доступа к Ozon API'
+                        'help' => 'API ключ для доступа к Ozon API',
                     ],
                 ],
                 'instructions' => [
@@ -935,18 +937,18 @@ class MarketplaceAccountController extends Controller
                         'Выберите необходимые права доступа (рекомендуется выбрать все)',
                         'Нажмите "Создать"',
                         'Скопируйте Client ID и API Key',
-                        '⚠️ ВАЖНО: API Key показывается только один раз!'
+                        '⚠️ ВАЖНО: API Key показывается только один раз!',
                     ],
                     'notes' => [
                         'Client ID - это числовой идентификатор вашего магазина',
                         'API Key - это секретный ключ для доступа к API',
                         'Один ключ может использоваться для всех операций с магазином',
-                        'Рекомендуется создать отдельный ключ для каждого приложения'
-                    ]
+                        'Рекомендуется создать отдельный ключ для каждого приложения',
+                    ],
                 ],
                 'validation' => [
-                    'required_fields' => ['client_id', 'api_key']
-                ]
+                    'required_fields' => ['client_id', 'api_key'],
+                ],
             ],
 
             'ym' => [
@@ -974,8 +976,8 @@ class MarketplaceAccountController extends Controller
                                 '✓ Получение информации о заказах',
                                 '✓ Управление остатками',
                                 '✓ Доступ к отчетам и аналитике',
-                                '⚠️ API-ключ показывается только один раз!'
-                            ]
+                                '⚠️ API-ключ показывается только один раз!',
+                            ],
                         ],
                         [
                             'number' => 2,
@@ -990,10 +992,10 @@ class MarketplaceAccountController extends Controller
                             'permissions' => [
                                 'ℹ️ Технический идентификатор вашего магазина',
                                 'ℹ️ Используется во всех запросах к API',
-                                'ℹ️ Можно найти в URL личного кабинета'
-                            ]
-                        ]
-                    ]
+                                'ℹ️ Можно найти в URL личного кабинета',
+                            ],
+                        ],
+                    ],
                 ],
                 'fields' => [
                     [
@@ -1002,7 +1004,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => false,
                         'placeholder' => 'Например: Мой магазин на Яндекс.Маркет',
-                        'help' => 'Произвольное название для различения аккаунтов'
+                        'help' => 'Произвольное название для различения аккаунтов',
                     ],
                     [
                         'name' => 'oauth_token',
@@ -1010,7 +1012,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => 'ваш_api_ключ_или_oauth_токен',
-                        'help' => 'API-ключ (рекомендуется) или OAuth токен для доступа к Partner API'
+                        'help' => 'API-ключ (рекомендуется) или OAuth токен для доступа к Partner API',
                     ],
                     [
                         'name' => 'campaign_id',
@@ -1018,7 +1020,7 @@ class MarketplaceAccountController extends Controller
                         'type' => 'text',
                         'required' => true,
                         'placeholder' => '12345678',
-                        'help' => 'Идентификатор вашей кампании на Яндекс.Маркет'
+                        'help' => 'Идентификатор вашей кампании на Яндекс.Маркет',
                     ],
                 ],
                 'instructions' => [
@@ -1029,18 +1031,18 @@ class MarketplaceAccountController extends Controller
                         'Нажмите "Сгенерировать новый API-ключ"',
                         'Скопируйте полученный ключ',
                         'Перейдите в раздел "Настройки" → "Информация о магазине"',
-                        'Найдите "ID кампании" и скопируйте его'
+                        'Найдите "ID кампании" и скопируйте его',
                     ],
                     'notes' => [
                         'API-ключ является рекомендуемым способом авторизации',
                         'ID кампании - это числовой идентификатор вашего магазина',
                         'Один ключ может использоваться для нескольких кампаний',
-                        'API-ключ показывается только один раз при создании'
-                    ]
+                        'API-ключ показывается только один раз при создании',
+                    ],
                 ],
                 'validation' => [
-                    'required_fields' => ['oauth_token', 'campaign_id']
-                ]
+                    'required_fields' => ['oauth_token', 'campaign_id'],
+                ],
             ],
         ];
 
@@ -1055,15 +1057,15 @@ class MarketplaceAccountController extends Controller
         switch ($marketplace) {
             case 'wb':
                 // Проверяем что есть хотя бы один токен
-                $hasToken = !empty($credentials['api_token']) ||
-                           !empty($credentials['wb_content_token']) ||
-                           !empty($credentials['wb_marketplace_token']) ||
-                           !empty($credentials['wb_prices_token']) ||
-                           !empty($credentials['wb_statistics_token']);
+                $hasToken = ! empty($credentials['api_token']) ||
+                           ! empty($credentials['wb_content_token']) ||
+                           ! empty($credentials['wb_marketplace_token']) ||
+                           ! empty($credentials['wb_prices_token']) ||
+                           ! empty($credentials['wb_statistics_token']);
 
-                if (!$hasToken) {
-                    return 'Для Wildberries необходимо указать хотя бы один API токен. ' .
-                           'Вы можете указать универсальный токен (api_token) или отдельные токены для каждого API ' .
+                if (! $hasToken) {
+                    return 'Для Wildberries необходимо указать хотя бы один API токен. '.
+                           'Вы можете указать универсальный токен (api_token) или отдельные токены для каждого API '.
                            '(wb_content_token, wb_marketplace_token, wb_prices_token, wb_statistics_token).';
                 }
 
@@ -1077,9 +1079,9 @@ class MarketplaceAccountController extends Controller
                 ]);
 
                 foreach ($tokensToCheck as $key => $token) {
-                    if (!$this->isValidBase64Token($token)) {
-                        return "Токен '{$key}' имеет неправильный формат. " .
-                               "API токены Wildberries должны быть в формате base64 (например: eyJhbGc... или w/77NI6...).";
+                    if (! $this->isValidBase64Token($token)) {
+                        return "Токен '{$key}' имеет неправильный формат. ".
+                               'API токены Wildberries должны быть в формате base64 (например: eyJhbGc... или w/77NI6...).';
                     }
                 }
                 break;
@@ -1093,18 +1095,18 @@ class MarketplaceAccountController extends Controller
 
             case 'ozon':
                 if (empty($credentials['client_id'])) {
-                    return 'Для Ozon необходимо указать Client ID (client_id). ' .
+                    return 'Для Ozon необходимо указать Client ID (client_id). '.
                            'Получить можно в личном кабинете: Настройки → API ключи.';
                 }
 
                 if (empty($credentials['api_key'])) {
-                    return 'Для Ozon необходимо указать API ключ (api_key). ' .
+                    return 'Для Ozon необходимо указать API ключ (api_key). '.
                            'Получить можно в личном кабинете: Настройки → API ключи → Сгенерировать ключ.';
                 }
 
                 // Валидация формата Client-Id (должен быть числом)
-                if (!is_numeric($credentials['client_id'])) {
-                    return 'Client ID должен быть числом (например: 123456). ' .
+                if (! is_numeric($credentials['client_id'])) {
+                    return 'Client ID должен быть числом (например: 123456). '.
                            'Проверьте правильность введенного Client ID.';
                 }
 
@@ -1115,26 +1117,26 @@ class MarketplaceAccountController extends Controller
 
                 // Проверка на UUID формат (OZON часто использует UUID)
                 $apiKey = trim($credentials['api_key']);
-                if (!preg_match('/^[a-f0-9\-]+$/i', $apiKey)) {
-                    return 'API ключ содержит недопустимые символы. ' .
+                if (! preg_match('/^[a-f0-9\-]+$/i', $apiKey)) {
+                    return 'API ключ содержит недопустимые символы. '.
                            'API ключ OZON обычно состоит из букв (a-f), цифр (0-9) и дефисов.';
                 }
                 break;
 
             case 'ym':
                 if (empty($credentials['oauth_token'])) {
-                    return 'Для Яндекс.Маркет необходимо указать API-ключ или OAuth токен (oauth_token). ' .
+                    return 'Для Яндекс.Маркет необходимо указать API-ключ или OAuth токен (oauth_token). '.
                            'Получить можно в личном кабинете: Настройки → API → Сгенерировать новый API-ключ.';
                 }
 
                 if (empty($credentials['campaign_id'])) {
-                    return 'Для Яндекс.Маркет необходимо указать ID кампании (campaign_id). ' .
+                    return 'Для Яндекс.Маркет необходимо указать ID кампании (campaign_id). '.
                            'Найдите в личном кабинете: Настройки → Информация о магазине или используйте метод GET /campaigns.';
                 }
 
                 // Валидация формата campaign_id (должен быть числом)
-                if (!is_numeric($credentials['campaign_id'])) {
-                    return 'ID кампании должен быть числом (например: 12345678). ' .
+                if (! is_numeric($credentials['campaign_id'])) {
+                    return 'ID кампании должен быть числом (например: 12345678). '.
                            'Проверьте правильность введенного ID кампании.';
                 }
 
@@ -1146,8 +1148,8 @@ class MarketplaceAccountController extends Controller
                 // Проверка формата токена (буквы, цифры, дефисы, подчеркивания, двоеточия)
                 // Yandex Market токены могут содержать двоеточия (формат: XXXX:token:hash)
                 $token = trim($credentials['oauth_token']);
-                if (!preg_match('/^[a-zA-Z0-9_\-:]+$/i', $token)) {
-                    return 'API-ключ содержит недопустимые символы. ' .
+                if (! preg_match('/^[a-zA-Z0-9_\-:]+$/i', $token)) {
+                    return 'API-ключ содержит недопустимые символы. '.
                            'API-ключ Яндекс.Маркет обычно состоит из букв, цифр, дефисов, подчеркиваний и двоеточий.';
                 }
                 break;
@@ -1161,7 +1163,7 @@ class MarketplaceAccountController extends Controller
      */
     protected function isValidBase64Token(?string $token): bool
     {
-        if (!$token) {
+        if (! $token) {
             return false;
         }
 
@@ -1172,7 +1174,7 @@ class MarketplaceAccountController extends Controller
 
         // Проверяем что токен содержит base64-подобные символы
         // Также разрешаем точку (.) для JWT токенов формата header.payload.signature
-        if (!preg_match('/^[A-Za-z0-9+\/=_.-]+$/', $token)) {
+        if (! preg_match('/^[A-Za-z0-9+\/=_.-]+$/', $token)) {
             return false;
         }
 
@@ -1201,13 +1203,13 @@ class MarketplaceAccountController extends Controller
                 default:
                     return [
                         'success' => true,
-                        'message' => 'Тестирование для этого маркетплейса не реализовано.'
+                        'message' => 'Тестирование для этого маркетплейса не реализовано.',
                     ];
             }
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'error' => 'Ошибка при тестировании: ' . $e->getMessage()
+                'error' => 'Ошибка при тестировании: '.$e->getMessage(),
             ];
         }
     }
@@ -1227,7 +1229,7 @@ class MarketplaceAccountController extends Controller
             return [
                 'success' => true,
                 'message' => 'Подключение к Wildberries API успешно проверено.',
-                'details' => 'Найдено поставок: ' . count($result['supplies'] ?? [])
+                'details' => 'Найдено поставок: '.count($result['supplies'] ?? []),
             ];
         } catch (\Exception $e) {
             // Анализируем ошибку и возвращаем понятное сообщение
@@ -1247,7 +1249,7 @@ class MarketplaceAccountController extends Controller
             return [
                 'success' => false,
                 'error' => $userMessage,
-                'technical_details' => $errorMessage
+                'technical_details' => $errorMessage,
             ];
         }
     }
@@ -1258,7 +1260,7 @@ class MarketplaceAccountController extends Controller
     protected function testYandexMarketConnection(MarketplaceAccount $account): array
     {
         try {
-            $httpClient = new \App\Services\Marketplaces\YandexMarket\YandexMarketHttpClient();
+            $httpClient = new \App\Services\Marketplaces\YandexMarket\YandexMarketHttpClient;
             $client = new \App\Services\Marketplaces\YandexMarket\YandexMarketClient($httpClient);
 
             // Пробуем получить список кампаний
@@ -1270,19 +1272,19 @@ class MarketplaceAccountController extends Controller
 
                 if ($campaignsCount > 0) {
                     $campaigns = $pingResult['campaigns'] ?? [];
-                    $campaignsList = implode(', ', array_map(fn($c) => $c['name'], $campaigns));
+                    $campaignsList = implode(', ', array_map(fn ($c) => $c['name'], $campaigns));
                     $message .= ". Кампании: {$campaignsList}";
                 }
 
                 return [
                     'success' => true,
                     'message' => $message,
-                    'details' => $pingResult
+                    'details' => $pingResult,
                 ];
             } else {
                 return [
                     'success' => false,
-                    'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения'
+                    'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения',
                 ];
             }
         } catch (\Exception $e) {
@@ -1304,7 +1306,7 @@ class MarketplaceAccountController extends Controller
             return [
                 'success' => false,
                 'error' => $userMessage,
-                'technical_details' => $errorMessage
+                'technical_details' => $errorMessage,
             ];
         }
     }
@@ -1315,7 +1317,7 @@ class MarketplaceAccountController extends Controller
     protected function testOzonConnection(MarketplaceAccount $account): array
     {
         try {
-            $httpClient = new \App\Services\Marketplaces\MarketplaceHttpClient();
+            $httpClient = new \App\Services\Marketplaces\MarketplaceHttpClient;
             $client = new \App\Services\Marketplaces\OzonClient($httpClient);
 
             // Пробуем получить список складов
@@ -1324,26 +1326,26 @@ class MarketplaceAccountController extends Controller
             if ($pingResult['success']) {
                 $warehouses = $pingResult['data']['result'] ?? [];
                 $warehouseCount = count($warehouses);
-                $message = "Подключение к Ozon API успешно проверено.";
+                $message = 'Подключение к Ozon API успешно проверено.';
 
                 if ($warehouseCount > 0) {
-                    $warehouseNames = array_map(fn($w) => $w['name'] ?? 'Склад', $warehouses);
+                    $warehouseNames = array_map(fn ($w) => $w['name'] ?? 'Склад', $warehouses);
                     $warehousesList = implode(', ', array_slice($warehouseNames, 0, 3));
                     $message .= " Найдено складов: {$warehouseCount}. Склады: {$warehousesList}";
                     if ($warehouseCount > 3) {
-                        $message .= " и ещё " . ($warehouseCount - 3);
+                        $message .= ' и ещё '.($warehouseCount - 3);
                     }
                 }
 
                 return [
                     'success' => true,
                     'message' => $message,
-                    'details' => $pingResult
+                    'details' => $pingResult,
                 ];
             } else {
                 return [
                     'success' => false,
-                    'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения'
+                    'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения',
                 ];
             }
         } catch (\Exception $e) {
@@ -1365,7 +1367,7 @@ class MarketplaceAccountController extends Controller
             return [
                 'success' => false,
                 'error' => $userMessage,
-                'technical_details' => $errorMessage
+                'technical_details' => $errorMessage,
             ];
         }
     }
@@ -1388,23 +1390,23 @@ class MarketplaceAccountController extends Controller
 
                 $message = 'Подключение к Uzum API успешно проверено.';
                 if ($shopCount > 0) {
-                    $shopNames = array_map(fn($s) => $s['name'] ?? 'Shop', array_slice($shops, 0, 3));
-                    $message .= " Найдено магазинов: {$shopCount}. " . implode(', ', $shopNames);
+                    $shopNames = array_map(fn ($s) => $s['name'] ?? 'Shop', array_slice($shops, 0, 3));
+                    $message .= " Найдено магазинов: {$shopCount}. ".implode(', ', $shopNames);
                     if ($shopCount > 3) {
-                        $message .= " и ещё " . ($shopCount - 3);
+                        $message .= ' и ещё '.($shopCount - 3);
                     }
                 }
 
                 return [
                     'success' => true,
                     'message' => $message,
-                    'details' => $pingResult
+                    'details' => $pingResult,
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения к Uzum API'
+                'error' => $pingResult['message'] ?? 'Неизвестная ошибка подключения к Uzum API',
             ];
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
@@ -1413,7 +1415,7 @@ class MarketplaceAccountController extends Controller
             return [
                 'success' => false,
                 'error' => $userMessage,
-                'technical_details' => $errorMessage
+                'technical_details' => $errorMessage,
             ];
         }
     }
@@ -1423,7 +1425,7 @@ class MarketplaceAccountController extends Controller
      */
     public function getSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -1437,7 +1439,7 @@ class MarketplaceAccountController extends Controller
      */
     public function updateSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

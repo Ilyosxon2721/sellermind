@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\DialogResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Dialog;
 use Illuminate\Http\JsonResponse;
@@ -19,15 +18,15 @@ class DialogAdminController extends Controller
         $user = $request->user();
 
         // Check if user is admin
-        if (!$user->is_admin) {
+        if (! $user->is_admin) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $dialogs = Dialog::onlyHidden()
             ->with(['user:id,name,email', 'company:id,name'])
-            ->when($request->company_id, fn($q) => $q->where('company_id', $request->company_id))
-            ->when($request->user_id, fn($q) => $q->where('user_id', $request->user_id))
-            ->when($request->private_only, fn($q) => $q->where('is_private', true))
+            ->when($request->company_id, fn ($q) => $q->where('company_id', $request->company_id))
+            ->when($request->user_id, fn ($q) => $q->where('user_id', $request->user_id))
+            ->when($request->private_only, fn ($q) => $q->where('is_private', true))
             ->orderByDesc('hidden_at')
             ->paginate($request->per_page ?? 20);
 
@@ -50,7 +49,7 @@ class DialogAdminController extends Controller
         $user = $request->user();
 
         // Check if user is admin
-        if (!$user->is_admin) {
+        if (! $user->is_admin) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -82,7 +81,7 @@ class DialogAdminController extends Controller
         $user = $request->user();
 
         // Check if user is admin
-        if (!$user->is_admin) {
+        if (! $user->is_admin) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

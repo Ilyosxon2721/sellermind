@@ -4,7 +4,6 @@ namespace App\Services\AP;
 
 use App\Models\AP\SupplierInvoice;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class APReportsService
 {
@@ -34,6 +33,7 @@ class APReportsService
     public function overdue(int $companyId, ?string $asOfDate = null)
     {
         $date = $asOfDate ? Carbon::parse($asOfDate) : Carbon::today();
+
         return SupplierInvoice::byCompany($companyId)
             ->where('amount_outstanding', '>', 0)
             ->whereDate('due_date', '<', $date)

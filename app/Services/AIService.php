@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Log;
 class AIService
 {
     private string $apiKey;
+
     private array $models;
+
     private string $baseUrl;
 
     public function __construct()
@@ -68,7 +70,7 @@ class AIService
         return $content;
     }
 
-    public function analyzeImage(string $imageUrl, array $productContext = [], int $companyId = null, int $userId = null): array
+    public function analyzeImage(string $imageUrl, array $productContext = [], ?int $companyId = null, ?int $userId = null): array
     {
         $prompt = $this->buildImageAnalysisPrompt($productContext);
 
@@ -113,8 +115,8 @@ class AIService
         array $productContext,
         string $marketplace,
         string $language,
-        int $companyId = null,
-        int $userId = null
+        ?int $companyId = null,
+        ?int $userId = null
     ): array {
         $prompt = $this->buildProductTextPrompt($productContext, $marketplace, $language);
 
@@ -157,8 +159,8 @@ class AIService
         string $prompt,
         string $quality = 'medium',
         int $count = 1,
-        int $companyId = null,
-        int $userId = null,
+        ?int $companyId = null,
+        ?int $userId = null,
         string $imageModel = 'dalle3'
     ): array {
         if ($imageModel === 'gpt4o') {
@@ -172,8 +174,8 @@ class AIService
         string $prompt,
         string $quality = 'medium',
         int $count = 1,
-        int $companyId = null,
-        int $userId = null
+        ?int $companyId = null,
+        ?int $userId = null
     ): array {
         $size = config("openai.image.quality.{$quality}", '1024x1024');
 
@@ -187,7 +189,7 @@ class AIService
                 'quality' => $quality === 'high' ? 'hd' : 'standard',
             ]);
 
-            if (!empty($response['data'][0]['url'])) {
+            if (! empty($response['data'][0]['url'])) {
                 $images[] = $response['data'][0]['url'];
             }
         }
@@ -209,8 +211,8 @@ class AIService
 
     private function generateImagesWithGpt4o(
         string $prompt,
-        int $companyId = null,
-        int $userId = null
+        ?int $companyId = null,
+        ?int $userId = null
     ): array {
         // GPT-4o image generation uses chat completions with image output
         $payload = [
@@ -218,8 +220,8 @@ class AIService
             'messages' => [
                 [
                     'role' => 'user',
-                    'content' => "Generate a photorealistic product image: {$prompt}. Make it look like a professional e-commerce photo with clean white background, studio lighting, high resolution."
-                ]
+                    'content' => "Generate a photorealistic product image: {$prompt}. Make it look like a professional e-commerce photo with clean white background, studio lighting, high resolution.",
+                ],
             ],
         ];
 
@@ -247,7 +249,7 @@ class AIService
                 'style' => 'natural', // More photorealistic
             ]);
 
-            if (!empty($dalleResponse['data'][0]['url'])) {
+            if (! empty($dalleResponse['data'][0]['url'])) {
                 $images[] = $dalleResponse['data'][0]['url'];
             }
         }
@@ -333,14 +335,14 @@ class AIService
             'Content-Type' => 'application/json',
         ])->timeout(120)->post("{$this->baseUrl}{$endpoint}", $data);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('OpenAI API Error', [
                 'endpoint' => $endpoint,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
-            throw new \Exception('Ошибка при обращении к AI: ' . $response->body());
+            throw new \Exception('Ошибка при обращении к AI: '.$response->body());
         }
 
         return $response->json();
@@ -369,7 +371,7 @@ class AIService
         }
 
         // Handle images in the prompt
-        if (!empty($meta['images'])) {
+        if (! empty($meta['images'])) {
             $content = [
                 ['type' => 'text', 'text' => $prompt],
             ];
@@ -386,7 +388,7 @@ class AIService
 
     private function getSystemPrompt(): string
     {
-        return <<<PROMPT
+        return <<<'PROMPT'
 Ты — SellerMind AI, умный ассистент для селлеров маркетплейсов (Uzum, Wildberries, Ozon, Yandex Market).
 
 Твои возможности:
@@ -444,10 +446,10 @@ PROMPT;
         $prompt .= "4. Примерный ценовой сегмент\n";
         $prompt .= "5. Целевую аудиторию\n\n";
 
-        if (!empty($context['category'])) {
+        if (! empty($context['category'])) {
             $prompt .= "Предполагаемая категория: {$context['category']}\n";
         }
-        if (!empty($context['brand'])) {
+        if (! empty($context['brand'])) {
             $prompt .= "Бренд: {$context['brand']}\n";
         }
 
@@ -461,17 +463,17 @@ PROMPT;
     {
         $prompt = "Создай карточку товара для маркетплейса.\n\n";
 
-        if (!empty($context['images'])) {
+        if (! empty($context['images'])) {
             $prompt .= "Изображения товара приложены.\n";
         }
-        if (!empty($context['category'])) {
+        if (! empty($context['category'])) {
             $prompt .= "Категория: {$context['category']}\n";
         }
-        if (!empty($context['brand'])) {
+        if (! empty($context['brand'])) {
             $prompt .= "Бренд: {$context['brand']}\n";
         }
-        if (!empty($context['analysis'])) {
-            $prompt .= "Анализ изображения: " . json_encode($context['analysis'], JSON_UNESCAPED_UNICODE) . "\n";
+        if (! empty($context['analysis'])) {
+            $prompt .= 'Анализ изображения: '.json_encode($context['analysis'], JSON_UNESCAPED_UNICODE)."\n";
         }
 
         return $prompt;
@@ -537,6 +539,7 @@ PROMPT;
     {
         // Remove any potentially problematic content
         $prompt = preg_replace('/[^\p{L}\p{N}\s\-.,!?()]/u', '', $prompt);
+
         return mb_substr($prompt, 0, 1000);
     }
 }

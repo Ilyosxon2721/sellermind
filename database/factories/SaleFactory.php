@@ -20,7 +20,7 @@ class SaleFactory extends Factory
 
         return [
             'company_id' => Company::factory(),
-            'sale_number' => 'SALE-' . strtoupper($this->faker->bothify('??###')),
+            'sale_number' => 'SALE-'.strtoupper($this->faker->bothify('??###')),
             'type' => $this->faker->randomElement(['marketplace', 'manual', 'pos']),
             'source' => $this->faker->randomElement(['uzum', 'wb', 'ozon', 'ym', 'manual', 'pos']),
             'counterparty_id' => null,

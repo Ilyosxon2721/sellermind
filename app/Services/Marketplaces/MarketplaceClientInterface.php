@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceClientInterface.php
 
 namespace App\Services\Marketplaces;
@@ -24,24 +25,21 @@ interface MarketplaceClientInterface
     /**
      * Sync products catalog (create/update cards, offers)
      *
-     * @param MarketplaceAccount $account
-     * @param MarketplaceProduct[] $products
+     * @param  MarketplaceProduct[]  $products
      */
     public function syncProducts(MarketplaceAccount $account, array $products): void;
 
     /**
      * Update prices on marketplace
      *
-     * @param MarketplaceAccount $account
-     * @param MarketplaceProduct[] $products
+     * @param  MarketplaceProduct[]  $products
      */
     public function syncPrices(MarketplaceAccount $account, array $products): void;
 
     /**
      * Update stock levels on marketplace
      *
-     * @param MarketplaceAccount $account
-     * @param MarketplaceProduct[] $products
+     * @param  MarketplaceProduct[]  $products
      */
     public function syncStocks(MarketplaceAccount $account, array $products): void;
 

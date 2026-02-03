@@ -15,6 +15,7 @@ class StockReservationPolicy
     protected function canEdit(User $user): bool
     {
         $role = $this->role($user);
+
         return in_array($role, ['owner', 'manager', 'warehouse']);
     }
 

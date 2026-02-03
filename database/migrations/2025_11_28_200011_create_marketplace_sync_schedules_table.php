@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_200011_create_marketplace_sync_schedules_table.php
 
 use Illuminate\Database\Migrations\Migration;

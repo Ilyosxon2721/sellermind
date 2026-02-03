@@ -3,11 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Warehouse\Sku;
-use App\Models\Warehouse\StockLedger;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
-use Illuminate\Database\Eloquent\Builder;
 
 class LowStockAlerts extends BaseWidget
 {

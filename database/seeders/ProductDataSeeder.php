@@ -53,7 +53,7 @@ class ProductDataSeeder extends Seeder
                 ['name' => $cat['name'], 'sort_order' => $index, 'is_active' => true]
             );
 
-            if (!empty($cat['children'])) {
+            if (! empty($cat['children'])) {
                 foreach ($cat['children'] as $childIndex => $child) {
                     ProductCategory::firstOrCreate(
                         ['company_id' => $companyId, 'slug' => $child['slug']],

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceProduct.php
 
 namespace App\Models;
@@ -9,8 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplaceProduct extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_ERROR = 'error';
+
     public const STATUS_ARCHIVED = 'archived';
 
     protected $fillable = [

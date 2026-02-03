@@ -11,9 +11,13 @@ class SupplierInvoice extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'DRAFT';
+
     public const STATUS_CONFIRMED = 'CONFIRMED';
+
     public const STATUS_PARTIALLY_PAID = 'PARTIALLY_PAID';
+
     public const STATUS_PAID = 'PAID';
+
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [

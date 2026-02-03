@@ -22,7 +22,7 @@ return [
     'pricing' => 'Pricing',
     'debts' => 'Money',
     'company_profile' => 'Company profile',
-    
+
     // Warehouse submenu
     'warehouse_section' => 'Warehouse',
     'warehouse_dashboard' => 'Dashboard',
@@ -34,7 +34,7 @@ return [
     'warehouse_docs' => 'Documents',
     'warehouse_reservations' => 'Reservations',
     'warehouse_ledger' => 'Movement ledger',
-    
+
     // Company modal
     'create_company' => 'Create company',
     'create_company_desc' => 'To work with the system, you need to create a company. It will only take a minute!',
@@ -48,7 +48,7 @@ return [
     'company_create_error' => 'An error occurred while creating the company. Please try again.',
     'additional_info_later' => 'You can add additional information about the company later in settings',
     'close' => 'Close',
-    
+
     // Common
     'welcome' => 'Welcome',
     'select_company' => 'Select company',

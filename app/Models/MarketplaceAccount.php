@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceAccount.php
 
 namespace App\Models;
@@ -126,7 +127,7 @@ class MarketplaceAccount extends Model
                 self::$encryptedFields
             );
 
-            if (!empty($credentialFields)) {
+            if (! empty($credentialFields)) {
                 MarketplaceAccountAudit::logCredentialsChange($account->id, $credentialFields);
             }
 
@@ -152,7 +153,7 @@ class MarketplaceAccount extends Model
                 ['is_active' => true, 'updated_at' => true]
             );
 
-            if (!empty($nonCredentialChanges)) {
+            if (! empty($nonCredentialChanges)) {
                 MarketplaceAccountAudit::log(
                     $account->id,
                     MarketplaceAccountAudit::EVENT_UPDATED,
@@ -267,7 +268,7 @@ class MarketplaceAccount extends Model
      */
     public function getApiKeyAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -287,7 +288,7 @@ class MarketplaceAccount extends Model
 
     public function getUzumApiKeyAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -312,7 +313,7 @@ class MarketplaceAccount extends Model
 
     public function getUzumAccessTokenAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -330,7 +331,7 @@ class MarketplaceAccount extends Model
 
     public function getUzumRefreshTokenAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -348,7 +349,7 @@ class MarketplaceAccount extends Model
 
     public function getUzumClientSecretAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -372,7 +373,7 @@ class MarketplaceAccount extends Model
      */
     public function getClientSecretAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -396,7 +397,7 @@ class MarketplaceAccount extends Model
      */
     public function getOauthTokenAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -420,7 +421,7 @@ class MarketplaceAccount extends Model
      */
     public function getOauthRefreshTokenAttribute(?string $value): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -577,6 +578,7 @@ class MarketplaceAccount extends Model
     public function getSyncSetting(string $key, mixed $default = null): mixed
     {
         $settings = $this->sync_settings ?? [];
+
         return $settings[$key] ?? self::$defaultSyncSettings[$key] ?? $default;
     }
 
@@ -624,6 +626,7 @@ class MarketplaceAccount extends Model
     public function isWildberries(): bool
     {
         $code = strtolower((string) $this->marketplace);
+
         return $code === 'wb' || $code === 'wildberries';
     }
 
@@ -637,7 +640,7 @@ class MarketplaceAccount extends Model
      */
     public function isUzumConfigured(): bool
     {
-        if (!$this->isUzum()) {
+        if (! $this->isUzum()) {
             return false;
         }
 
@@ -655,13 +658,13 @@ class MarketplaceAccount extends Model
         // DEBUG: Log token info for troubleshooting
         \Log::debug('Uzum getUzumAuthHeaders token check', [
             'account_id' => $this->id,
-            'has_token' => !empty($token),
+            'has_token' => ! empty($token),
             'token_length' => $token ? strlen($token) : 0,
             'token_start' => $token ? substr($token, 0, 10) : null,
             'token_looks_encrypted' => $token && str_starts_with($token, 'eyJ'),
         ]);
 
-        if (!$token) {
+        if (! $token) {
             return [];
         }
 
@@ -669,7 +672,7 @@ class MarketplaceAccount extends Model
         // По спецификации Uzum токен передается без Bearer-префикса,
         // но оставляем поддержку кастомного префикса через конфиг.
         $prefix = trim(config('uzum.auth.prefix', ''));
-        $value = $prefix !== '' ? trim($prefix . ' ' . $token) : $token;
+        $value = $prefix !== '' ? trim($prefix.' '.$token) : $token;
 
         // Отдаем сразу оба заголовка: Authorization и X-API-KEY,
         // чтобы исключить проблемы с ожиданиями на стороне API.
@@ -695,34 +698,34 @@ class MarketplaceAccount extends Model
     /**
      * Get WB token for specific API category
      *
-     * @param string $category content|marketplace|prices|statistics
+     * @param  string  $category  content|marketplace|prices|statistics
      */
     public function getWbToken(string $category): ?string
     {
         // First try direct column attributes
         $token = match ($category) {
-            'content'     => $this->wb_content_token,
+            'content' => $this->wb_content_token,
             'marketplace' => $this->wb_marketplace_token,
-            'prices'      => $this->wb_prices_token,
-            'statistics'  => $this->wb_statistics_token,
-            default       => null,
+            'prices' => $this->wb_prices_token,
+            'statistics' => $this->wb_statistics_token,
+            default => null,
         };
 
         // Fallback to credentials JSON if column is empty
-        if (!$token) {
+        if (! $token) {
             $credentials = $this->getDecryptedCredentials();
             $credKey = match ($category) {
-                'content'     => 'wb_content_token',
+                'content' => 'wb_content_token',
                 'marketplace' => 'wb_marketplace_token',
-                'prices'      => 'wb_prices_token',
-                'statistics'  => 'wb_statistics_token',
-                default       => null,
+                'prices' => 'wb_prices_token',
+                'statistics' => 'wb_statistics_token',
+                default => null,
             };
             $token = $credKey ? ($credentials[$credKey] ?? null) : null;
         }
 
         // Final fallback to api_key/api_token
-        if (!$token) {
+        if (! $token) {
             $credentials = $this->getDecryptedCredentials();
             $token = $this->api_key ?: ($credentials['api_key'] ?? $credentials['api_token'] ?? null);
         }
@@ -736,11 +739,11 @@ class MarketplaceAccount extends Model
     public function setWbToken(string $category, ?string $token): void
     {
         $field = match ($category) {
-            'content'     => 'wb_content_token',
+            'content' => 'wb_content_token',
             'marketplace' => 'wb_marketplace_token',
-            'prices'      => 'wb_prices_token',
-            'statistics'  => 'wb_statistics_token',
-            default       => null,
+            'prices' => 'wb_prices_token',
+            'statistics' => 'wb_statistics_token',
+            default => null,
         };
 
         if ($field) {
@@ -776,7 +779,9 @@ class MarketplaceAccount extends Model
 
     public function getWbContentTokenAttribute(?string $value): ?string
     {
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
@@ -791,7 +796,9 @@ class MarketplaceAccount extends Model
 
     public function getWbMarketplaceTokenAttribute(?string $value): ?string
     {
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
@@ -806,7 +813,9 @@ class MarketplaceAccount extends Model
 
     public function getWbPricesTokenAttribute(?string $value): ?string
     {
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
@@ -821,7 +830,9 @@ class MarketplaceAccount extends Model
 
     public function getWbStatisticsTokenAttribute(?string $value): ?string
     {
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {

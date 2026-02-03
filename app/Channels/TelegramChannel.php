@@ -14,22 +14,22 @@ class TelegramChannel
     public function send(object $notifiable, Notification $notification): void
     {
         // Check if user has Telegram configured
-        if (!$notifiable->telegram_id) {
+        if (! $notifiable->telegram_id) {
             return;
         }
 
         // Check if Telegram notifications are enabled for this user
-        if (!$notifiable->telegram_notifications_enabled) {
+        if (! $notifiable->telegram_notifications_enabled) {
             return;
         }
 
         // Check if user has notification settings
-        if ($notifiable->notificationSettings && !$notifiable->notificationSettings->channel_telegram) {
+        if ($notifiable->notificationSettings && ! $notifiable->notificationSettings->channel_telegram) {
             return;
         }
 
         // Get the Telegram message from the notification
-        if (!method_exists($notification, 'toTelegram')) {
+        if (! method_exists($notification, 'toTelegram')) {
             return;
         }
 

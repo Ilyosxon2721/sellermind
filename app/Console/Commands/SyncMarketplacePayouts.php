@@ -31,11 +31,12 @@ class SyncMarketplacePayouts extends Command
 
         if ($companies->isEmpty()) {
             $this->error('Компании не найдены');
+
             return 1;
         }
 
-        $this->info("Синхронизация выплат маркетплейсов...");
-        $this->info("Период: " . ($from ?? 'начало') . " - " . ($to ?? 'сегодня'));
+        $this->info('Синхронизация выплат маркетплейсов...');
+        $this->info('Период: '.($from ?? 'начало').' - '.($to ?? 'сегодня'));
         $this->newLine();
 
         $totalResults = [
@@ -51,7 +52,7 @@ class SyncMarketplacePayouts extends Command
             $this->info("Компания: {$company->name} (ID: {$company->id})");
 
             try {
-                if ($marketplace === 'uzum' || !$marketplace) {
+                if ($marketplace === 'uzum' || ! $marketplace) {
                     $result = $service->syncUzum($company->id, $from, $to);
                     $this->displayResult('Uzum', $result);
                     $this->mergeResults($totalResults, $result);
@@ -71,7 +72,7 @@ class SyncMarketplacePayouts extends Command
             $this->newLine();
         }
 
-        $this->info("=== ИТОГО ===");
+        $this->info('=== ИТОГО ===');
         $this->table(
             ['Показатель', 'Значение'],
             [
@@ -79,7 +80,7 @@ class SyncMarketplacePayouts extends Command
                 ['Выплат обновлено', $totalResults['payouts_updated']],
                 ['Выплат пропущено', $totalResults['payouts_skipped']],
                 ['Транзакций создано', $totalResults['transactions_created']],
-                ['Общая сумма', number_format($totalResults['total_amount'], 0, '', ' ') . ' UZS'],
+                ['Общая сумма', number_format($totalResults['total_amount'], 0, '', ' ').' UZS'],
                 ['Ошибок', $totalResults['errors']],
             ]
         );
@@ -92,7 +93,7 @@ class SyncMarketplacePayouts extends Command
         $this->line("  {$marketplace}:");
         $this->line("    Выплат: создано {$result['payouts_created']}, обновлено {$result['payouts_updated']}, пропущено {$result['payouts_skipped']}");
         $this->line("    Транзакций создано: {$result['transactions_created']}");
-        $this->line("    Сумма: " . number_format($result['total_amount'], 0, '', ' ') . " UZS");
+        $this->line('    Сумма: '.number_format($result['total_amount'], 0, '', ' ').' UZS');
 
         if ($result['errors'] > 0) {
             $this->warn("    Ошибок: {$result['errors']}");

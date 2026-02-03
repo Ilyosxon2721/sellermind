@@ -1,14 +1,15 @@
 <?php
+
 // file: app/Services/Marketplaces/Sync/OrdersSyncService.php
 
 namespace App\Services\Marketplaces\Sync;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceSyncLog;
-use App\Models\WbOrder;
-use App\Models\WbOrderItem;
 use App\Models\UzumOrder;
 use App\Models\UzumOrderItem;
+use App\Models\WbOrder;
+use App\Models\WbOrderItem;
 use App\Services\Marketplaces\MarketplaceClientFactory;
 use App\Services\Stock\OrderStockService;
 use Carbon\Carbon;
@@ -23,7 +24,7 @@ class OrdersSyncService
         protected MarketplaceClientFactory $clientFactory,
         ?OrderStockService $orderStockService = null
     ) {
-        $this->orderStockService = $orderStockService ?? new OrderStockService();
+        $this->orderStockService = $orderStockService ?? new OrderStockService;
     }
 
     /**
@@ -220,7 +221,7 @@ class OrdersSyncService
     {
         $externalOrderId = $orderData['external_order_id'] ?? null;
 
-        if (!$externalOrderId) {
+        if (! $externalOrderId) {
             throw new \RuntimeException('Missing external_order_id');
         }
 
@@ -232,7 +233,7 @@ class OrdersSyncService
 
         // Parse ordered_at date
         $orderedAt = null;
-        if (!empty($orderData['ordered_at'])) {
+        if (! empty($orderData['ordered_at'])) {
             try {
                 $orderedAt = Carbon::parse($orderData['ordered_at']);
             } catch (\Exception $e) {
@@ -242,15 +243,15 @@ class OrdersSyncService
 
         // Получаем SKU (берём первый из массива skus если есть)
         $sku = null;
-        if (!empty($orderData['wb_skus']) && is_array($orderData['wb_skus'])) {
+        if (! empty($orderData['wb_skus']) && is_array($orderData['wb_skus'])) {
             $sku = (string) $orderData['wb_skus'][0];
         }
 
         // Получаем office (берём первый из массива offices если есть)
         $office = null;
-        if (!empty($orderData['wb_offices']) && is_array($orderData['wb_offices'])) {
+        if (! empty($orderData['wb_offices']) && is_array($orderData['wb_offices'])) {
             $office = (string) $orderData['wb_offices'][0];
-        } elseif (!empty($orderData['wb_office_id'])) {
+        } elseif (! empty($orderData['wb_office_id'])) {
             $office = (string) $orderData['wb_office_id'];
         }
 
@@ -285,7 +286,7 @@ class OrdersSyncService
             'is_b2b' => $orderData['wb_is_b2b'] ?? false,
             'is_zero_order' => $orderData['wb_is_zero_order'] ?? false,
             'ordered_at' => $orderedAt,
-            'delivered_at' => !empty($orderData['delivered_at']) ? Carbon::parse($orderData['delivered_at']) : null,
+            'delivered_at' => ! empty($orderData['delivered_at']) ? Carbon::parse($orderData['delivered_at']) : null,
             'raw_payload' => $orderData['raw_payload'] ?? $orderData,
         ];
 
@@ -294,7 +295,7 @@ class OrdersSyncService
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
                 foreach ($orderPayload as $key => $value) {
-                    if ($existingOrder->$key != $value) {
+                    if ($value != $existingOrder->$key) {
                         $hasChanges = true;
                         break;
                     }
@@ -303,7 +304,7 @@ class OrdersSyncService
                 $existingOrder->update($orderPayload);
 
                 // Даже если данные не изменились, обновляем updated_at чтобы показать что синхронизация прошла
-                if (!$hasChanges) {
+                if (! $hasChanges) {
                     $existingOrder->touch();
                 }
 
@@ -342,7 +343,7 @@ class OrdersSyncService
     {
         $externalOrderId = $orderData['external_order_id'] ?? null;
 
-        if (!$externalOrderId) {
+        if (! $externalOrderId) {
             throw new \RuntimeException('Missing external_order_id');
         }
 
@@ -354,7 +355,7 @@ class OrdersSyncService
 
         // Parse ordered_at date with millisecond support
         $orderedAt = null;
-        if (!empty($orderData['ordered_at'])) {
+        if (! empty($orderData['ordered_at'])) {
             try {
                 if (is_numeric($orderData['ordered_at'])) {
                     $ts = (string) $orderData['ordered_at'];
@@ -400,7 +401,7 @@ class OrdersSyncService
                 // Проверяем были ли реальные изменения
                 $hasChanges = false;
                 foreach ($orderPayload as $key => $value) {
-                    if ($existingOrder->$key != $value) {
+                    if ($value != $existingOrder->$key) {
                         $hasChanges = true;
                         break;
                     }
@@ -409,7 +410,7 @@ class OrdersSyncService
                 $existingOrder->update($orderPayload);
 
                 // Даже если данные не изменились, обновляем updated_at чтобы показать что синхронизация прошла
-                if (!$hasChanges) {
+                if (! $hasChanges) {
                     $existingOrder->touch();
                 }
 
@@ -509,7 +510,7 @@ class OrdersSyncService
         $isCancelled = in_array($order->status, $cancelledStatuses, true);
         $isSold = in_array($order->status, $soldStatuses, true);
 
-        if (!$isCancelled && !$isSold) {
+        if (! $isCancelled && ! $isSold) {
             return;
         }
 

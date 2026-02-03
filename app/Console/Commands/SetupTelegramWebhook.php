@@ -18,10 +18,12 @@ class SetupTelegramWebhook extends Command
 
             if ($result) {
                 $this->info('Webhook removed successfully!');
+
                 return Command::SUCCESS;
             }
 
             $this->error('Failed to remove webhook');
+
             return Command::FAILURE;
         }
 
@@ -29,6 +31,7 @@ class SetupTelegramWebhook extends Command
 
         if (empty($webhookUrl)) {
             $this->error('TELEGRAM_WEBHOOK_URL is not set in .env');
+
             return Command::FAILURE;
         }
 
@@ -36,10 +39,12 @@ class SetupTelegramWebhook extends Command
 
         if ($result) {
             $this->info("Webhook set successfully: {$webhookUrl}");
+
             return Command::SUCCESS;
         }
 
         $this->error('Failed to set webhook');
+
         return Command::FAILURE;
     }
 }

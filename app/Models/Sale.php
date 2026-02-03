@@ -151,14 +151,16 @@ class Sale extends Model
 
     public function scopeSearch($query, ?string $search)
     {
-        if (!$search) return $query;
+        if (! $search) {
+            return $query;
+        }
 
         return $query->where(function ($q) use ($search) {
             $q->where('sale_number', 'like', "%{$search}%")
-              ->orWhere('notes', 'like', "%{$search}%")
-              ->orWhereHas('counterparty', function ($q2) use ($search) {
-                  $q2->where('name', 'like', "%{$search}%");
-              });
+                ->orWhere('notes', 'like', "%{$search}%")
+                ->orWhereHas('counterparty', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                });
         });
     }
 
@@ -167,7 +169,7 @@ class Sale extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'Черновик',
             'confirmed' => 'Подтверждена',
             'completed' => 'Завершена',
@@ -178,7 +180,7 @@ class Sale extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'marketplace' => 'С маркетплейса',
             'manual' => 'Ручная',
             'pos' => 'POS',
@@ -195,7 +197,7 @@ class Sale extends Model
      */
     public static function generateSaleNumber(string $type = 'manual'): string
     {
-        $prefix = match($type) {
+        $prefix = match ($type) {
             'manual' => 'MAN',
             'pos' => 'POS',
             'marketplace' => 'MP',
@@ -210,7 +212,7 @@ class Sale extends Model
         $sequence = 1;
         if ($lastSale) {
             $parts = explode('-', $lastSale->sale_number);
-            $sequence = isset($parts[2]) ? (int)$parts[2] + 1 : 1;
+            $sequence = isset($parts[2]) ? (int) $parts[2] + 1 : 1;
         }
 
         return sprintf('%s-%s-%04d', $prefix, $date, $sequence);
@@ -239,7 +241,7 @@ class Sale extends Model
      */
     public function complete(): bool
     {
-        if (!in_array($this->status, ['draft', 'confirmed'])) {
+        if (! in_array($this->status, ['draft', 'confirmed'])) {
             return false;
         }
 

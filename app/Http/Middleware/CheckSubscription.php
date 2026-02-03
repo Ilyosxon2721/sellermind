@@ -16,14 +16,14 @@ class CheckSubscription
         $user = $request->user();
 
         // If no user, let auth middleware handle it
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 
         $companyId = $user->company_id;
 
         // If no company, allow access (they need to create one first)
-        if (!$companyId) {
+        if (! $companyId) {
             return $next($request);
         }
 
@@ -31,21 +31,21 @@ class CheckSubscription
         $company = $user->company;
 
         // If company doesn't match company_id, user might have switched companies
-        if (!$company || $company->id !== $companyId) {
+        if (! $company || $company->id !== $companyId) {
             // Try to find in user's companies (if many-to-many exists)
             if (method_exists($user, 'companies') && $user->companies()->exists()) {
                 $company = $user->companies()->where('companies.id', $companyId)->first();
             }
         }
 
-        if (!$company) {
+        if (! $company) {
             return $this->handleNoSubscription($request);
         }
 
         $subscription = $company->activeSubscription;
 
         // No active subscription
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->handleNoSubscription($request);
         }
 

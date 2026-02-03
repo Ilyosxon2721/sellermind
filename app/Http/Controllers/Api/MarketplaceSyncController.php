@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceSyncController.php
 
 namespace App\Http\Controllers\Api;
@@ -23,7 +24,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncPrices(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -52,7 +53,7 @@ class MarketplaceSyncController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -60,7 +61,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncStocks(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -89,7 +90,7 @@ class MarketplaceSyncController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -97,7 +98,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncProducts(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -126,7 +127,7 @@ class MarketplaceSyncController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -134,7 +135,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncOrders(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -171,7 +172,7 @@ class MarketplaceSyncController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -179,7 +180,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncSupplies(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -206,7 +207,7 @@ class MarketplaceSyncController extends Controller
             ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+                'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -214,7 +215,7 @@ class MarketplaceSyncController extends Controller
 
     public function syncAll(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

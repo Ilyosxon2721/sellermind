@@ -23,7 +23,7 @@ class WarehouseLocation extends Model
 
     public function scopeByCompany($query, int $companyId)
     {
-        return $query->whereHas('warehouse', fn($q) => $q->where('company_id', $companyId));
+        return $query->whereHas('warehouse', fn ($q) => $q->where('company_id', $companyId));
     }
 
     public function warehouse(): BelongsTo

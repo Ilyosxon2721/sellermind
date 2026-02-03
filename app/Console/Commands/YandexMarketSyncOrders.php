@@ -29,6 +29,7 @@ class YandexMarketSyncOrders extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных Yandex Market аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -56,7 +57,7 @@ class YandexMarketSyncOrders extends Command
     {
         $httpClient = app(YandexMarketHttpClient::class);
         $client = new YandexMarketClient($httpClient);
-        $orderStockService = new OrderStockService();
+        $orderStockService = new OrderStockService;
 
         $this->line('  Начинаем синхронизацию заказов...');
         $startTime = microtime(true);
@@ -78,7 +79,7 @@ class YandexMarketSyncOrders extends Command
         foreach ($orders as $orderData) {
             try {
                 $orderId = $orderData['external_order_id'] ?? null;
-                if (!$orderId) {
+                if (! $orderId) {
                     continue;
                 }
 

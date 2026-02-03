@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_200006_alter_marketplace_orders_add_status_fields.php
 
 use Illuminate\Database\Migrations\Migration;

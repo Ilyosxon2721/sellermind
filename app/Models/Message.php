@@ -28,7 +28,7 @@ class Message extends Model
 
     public function hasAttachments(): bool
     {
-        return !empty($this->meta['attachments'] ?? []);
+        return ! empty($this->meta['attachments'] ?? []);
     }
 
     public function getAttachments(): array
@@ -38,7 +38,7 @@ class Message extends Model
 
     public function hasImages(): bool
     {
-        return !empty($this->meta['images'] ?? []);
+        return ! empty($this->meta['images'] ?? []);
     }
 
     public function getImages(): array

@@ -65,8 +65,8 @@ class ProductService
     }
 
     /**
-    * @return array{byId: array<int, ProductVariant>, bySku: array<string, ProductVariant>}
-    */
+     * @return array{byId: array<int, ProductVariant>, bySku: array<string, ProductVariant>}
+     */
     protected function syncVariants(Product $product, array $variants): array
     {
         /** @var Collection<int, ProductVariant> $existing */
@@ -112,7 +112,7 @@ class ProductService
             if ($variantId && $existing->has($variantId)) {
                 $variant = $existing->get($variantId);
                 $variant->update($payload);
-                \Log::info("Updated existing variant by ID", ['id' => $variant->id]);
+                \Log::info('Updated existing variant by ID', ['id' => $variant->id]);
             } else {
                 // Check if variant with this SKU already exists for this product
                 $existingBySku = $product->variants()
@@ -122,10 +122,10 @@ class ProductService
                 if ($existingBySku) {
                     $existingBySku->update($payload);
                     $variant = $existingBySku;
-                    \Log::info("Updated existing variant by SKU", ['id' => $variant->id, 'sku' => $payload['sku']]);
+                    \Log::info('Updated existing variant by SKU', ['id' => $variant->id, 'sku' => $payload['sku']]);
                 } else {
                     $variant = $product->variants()->create($payload);
-                    \Log::info("Created new variant", ['id' => $variant->id, 'sku' => $payload['sku']]);
+                    \Log::info('Created new variant', ['id' => $variant->id, 'sku' => $payload['sku']]);
                 }
             }
 
@@ -221,7 +221,7 @@ class ProductService
         }
 
         foreach ($optionValueIds as $optionValueId) {
-            if (!$existing->has($optionValueId)) {
+            if (! $existing->has($optionValueId)) {
                 ProductVariantOptionValue::create([
                     'company_id' => $variant->company_id,
                     'product_variant_id' => $variant->id,
@@ -240,13 +240,13 @@ class ProductService
             $imageId = $imageData['id'] ?? null;
             $payload = Arr::only($imageData, ['variant_id', 'file_path', 'alt_text', 'is_main', 'sort_order']);
             $payload['company_id'] = $product->company_id;
-            
+
             // Fix: Convert empty string, 0, or non-numeric string to null for variant_id
             if (array_key_exists('variant_id', $payload)) {
                 $variantId = $payload['variant_id'];
                 if ($variantId === '' || $variantId === 0 || $variantId === '0' || $variantId === null) {
                     $payload['variant_id'] = null;
-                } elseif (is_string($variantId) && !ctype_digit($variantId)) {
+                } elseif (is_string($variantId) && ! ctype_digit($variantId)) {
                     // variant_id is a SKU string, try to find actual variant ID
                     $variant = $product->variants()->where('sku', $variantId)->first();
                     $payload['variant_id'] = $variant?->id;
@@ -291,7 +291,7 @@ class ProductService
     {
         foreach ($settings as $setting) {
             $channelId = $this->resolveChannelId($setting);
-            if (!$channelId) {
+            if (! $channelId) {
                 continue;
             }
 
@@ -331,15 +331,15 @@ class ProductService
 
         foreach ($settings as $setting) {
             $variant = null;
-            if (!empty($setting['product_variant_id']) && isset($byId[$setting['product_variant_id']])) {
+            if (! empty($setting['product_variant_id']) && isset($byId[$setting['product_variant_id']])) {
                 $variant = $byId[$setting['product_variant_id']];
-            } elseif (!empty($setting['variant_sku'])) {
+            } elseif (! empty($setting['variant_sku'])) {
                 $key = strtolower($setting['variant_sku']);
                 $variant = $bySku[$key] ?? null;
             }
 
             $channelId = $this->resolveChannelId($setting);
-            if (!$variant || !$channelId) {
+            if (! $variant || ! $channelId) {
                 continue;
             }
 
@@ -368,12 +368,13 @@ class ProductService
 
     protected function resolveChannelId(array $input): ?int
     {
-        if (!empty($input['channel_id'])) {
+        if (! empty($input['channel_id'])) {
             return (int) $input['channel_id'];
         }
 
-        if (!empty($input['channel_code'])) {
+        if (! empty($input['channel_code'])) {
             $channel = Channel::query()->where('code', $input['channel_code'])->first();
+
             return $channel?->id;
         }
 

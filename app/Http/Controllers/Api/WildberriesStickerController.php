@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesStickerController.php
 
 namespace App\Http\Controllers\Api;
@@ -25,11 +26,11 @@ class WildberriesStickerController extends Controller
      */
     public function generate(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -69,7 +70,7 @@ class WildberriesStickerController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось сгенерировать стикеры: ' . $e->getMessage(),
+                'message' => 'Не удалось сгенерировать стикеры: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -79,11 +80,11 @@ class WildberriesStickerController extends Controller
      */
     public function crossBorder(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -116,7 +117,7 @@ class WildberriesStickerController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось сгенерировать кроссбордер стикеры: ' . $e->getMessage(),
+                'message' => 'Не удалось сгенерировать кроссбордер стикеры: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -126,18 +127,18 @@ class WildberriesStickerController extends Controller
      */
     public function download(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $encodedPath = $request->query('path');
-        if (!$encodedPath) {
+        if (! $encodedPath) {
             return response()->json(['message' => 'Путь к файлу не указан.'], 400);
         }
 
         $filePath = base64_decode($encodedPath);
 
-        if (!Storage::disk('local')->exists($filePath)) {
+        if (! Storage::disk('local')->exists($filePath)) {
             return response()->json(['message' => 'Файл не найден.'], 404);
         }
 
@@ -155,7 +156,7 @@ class WildberriesStickerController extends Controller
      */
     public function cleanup(Request $request): JsonResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -176,7 +177,7 @@ class WildberriesStickerController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось очистить старые стикеры: ' . $e->getMessage(),
+                'message' => 'Не удалось очистить старые стикеры: '.$e->getMessage(),
             ], 500);
         }
     }

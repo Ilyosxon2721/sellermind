@@ -86,13 +86,13 @@ class MarketplaceExpenseCache extends Model
     {
         return $query->where(function ($q) use ($hours) {
             $q->whereNull('synced_at')
-              ->orWhere('synced_at', '<', now()->subHours($hours));
+                ->orWhere('synced_at', '<', now()->subHours($hours));
         });
     }
 
     public function isStale(int $hours = 4): bool
     {
-        if (!$this->synced_at) {
+        if (! $this->synced_at) {
             return true;
         }
 

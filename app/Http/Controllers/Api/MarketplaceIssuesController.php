@@ -44,7 +44,7 @@ class MarketplaceIssuesController extends Controller
             ->get();
 
         return response()->json([
-            'issues' => $issues->map(function($issue) {
+            'issues' => $issues->map(function ($issue) {
                 return [
                     'id' => $issue->id,
                     'marketplace_account_id' => $issue->marketplace_account_id,

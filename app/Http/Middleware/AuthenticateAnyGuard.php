@@ -34,6 +34,7 @@ class AuthenticateAnyGuard
 
             if ($isAuthenticated) {
                 Auth::setDefaultDriver($guard);
+
                 return $next($request);
             }
         }
@@ -46,7 +47,7 @@ class AuthenticateAnyGuard
         // For API requests, return JSON
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
-                'message' => 'Unauthenticated.'
+                'message' => 'Unauthenticated.',
             ], 401);
         }
 

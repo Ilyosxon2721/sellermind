@@ -23,6 +23,7 @@ class ProcessPendingTasks extends Command
 
         if ($tasks->isEmpty()) {
             $this->info('No pending tasks found.');
+
             return Command::SUCCESS;
         }
 

@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
-use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\OzonClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -25,6 +25,7 @@ class OzonSyncCatalog extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных OZON аккаунтов');
+
             return self::SUCCESS;
         }
 

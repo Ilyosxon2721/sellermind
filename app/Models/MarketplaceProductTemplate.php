@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceProductTemplate.php
 
 namespace App\Models;
@@ -58,7 +59,7 @@ class MarketplaceProductTemplate extends Model
     {
         foreach ($data as $key => $value) {
             if (is_string($value) || is_numeric($value)) {
-                $template = str_replace('{{' . $key . '}}', (string) $value, $template);
+                $template = str_replace('{{'.$key.'}}', (string) $value, $template);
             }
         }
 

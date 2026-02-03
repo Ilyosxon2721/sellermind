@@ -22,6 +22,7 @@ class MonitorMarketplaceChangesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 60; // 1 минута на выполнение
+
     public int $tries = 1; // Не повторять при ошибке
 
     protected MarketplaceAccount $account;
@@ -48,8 +49,9 @@ class MonitorMarketplaceChangesJob implements ShouldQueue
      */
     public function handle(): void
     {
-        if (!$this->account->is_active) {
+        if (! $this->account->is_active) {
             Log::info("Monitoring skipped for inactive account {$this->account->id}");
+
             return;
         }
 
@@ -70,7 +72,7 @@ class MonitorMarketplaceChangesJob implements ShouldQueue
 
             Log::info("All monitoring jobs started for account {$this->account->id}");
         } catch (\Throwable $e) {
-            Log::error("Failed to start monitoring for account {$this->account->id}: " . $e->getMessage());
+            Log::error("Failed to start monitoring for account {$this->account->id}: ".$e->getMessage());
         }
     }
 }

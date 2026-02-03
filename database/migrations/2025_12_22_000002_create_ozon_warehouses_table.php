@@ -22,7 +22,7 @@ return new class extends Migration
             $table->boolean('can_print_act_in_advance')->default(false);
             $table->json('metadata')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['marketplace_account_id', 'warehouse_id'], 'ozon_warehouses_account_wh_unique');
         });
     }
