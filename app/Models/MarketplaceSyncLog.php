@@ -145,6 +145,7 @@ class MarketplaceSyncLog extends Model
             return null;
         }
 
-        return $this->finished_at->diffInSeconds($this->started_at);
+        // Используем прямое вычитание timestamp для корректного расчета длительности
+        return max(0, $this->finished_at->timestamp - $this->started_at->timestamp);
     }
 }
