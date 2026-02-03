@@ -289,13 +289,27 @@
          },
          async syncAll() {
              this.syncing.all = true;
-             await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/all', {
-                 method: 'POST',
-                 headers: this.getAuthHeaders()
-             });
-             this.syncing.all = false;
-             this.logsPollAttempts = this.maxPollAttempts;
-             setTimeout(() => this.loadLogs(), 200);
+             try {
+                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/all', {
+                     method: 'POST',
+                     headers: this.getAuthHeaders()
+                 });
+
+                 if (res.ok) {
+                     const data = await res.json();
+                     this.showNotification('Синхронизация запущена успешно!', 'success');
+                 } else {
+                     const error = await res.json();
+                     this.showNotification(error.message || 'Ошибка при синхронизации', 'error');
+                 }
+             } catch (error) {
+                 console.error('Sync error:', error);
+                 this.showNotification('Ошибка подключения к серверу', 'error');
+             } finally {
+                 this.syncing.all = false;
+                 this.logsPollAttempts = this.maxPollAttempts;
+                 setTimeout(() => this.loadLogs(), 200);
+             }
          },
          getStatusColor(status) {
              const colors = {
@@ -321,6 +335,17 @@
              if (mp === 'ozon') return 'OZ';
              if (mp === 'ym' || mp === 'yandex_market') return 'YM';
              return 'MP';
+         },
+         showNotification(message, type = 'info') {
+             // Simple toast notification
+             const toast = document.createElement('div');
+             toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+                 type === 'success' ? 'bg-green-600' :
+                 type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+             } text-white font-medium`;
+             toast.textContent = message;
+             document.body.appendChild(toast);
+             setTimeout(() => toast.remove(), 4000);
          }
      }"
      class="flex h-screen bg-gray-100" :class="[getBrandClass(), {
@@ -678,8 +703,25 @@
          },
          async syncAll() {
              this.syncing.all = true;
-             await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/all', { method: 'POST', headers: this.getAuthHeaders() });
-             this.syncing.all = false;
+             try {
+                 const res = await fetch('/api/marketplace/accounts/{{ $accountId }}/sync/all', {
+                     method: 'POST',
+                     headers: this.getAuthHeaders()
+                 });
+
+                 if (res.ok) {
+                     const data = await res.json();
+                     alert('Синхронизация запущена успешно!');
+                 } else {
+                     const error = await res.json();
+                     alert(error.message || 'Ошибка при синхронизации');
+                 }
+             } catch (error) {
+                 console.error('Sync error:', error);
+                 alert('Ошибка подключения к серверу');
+             } finally {
+                 this.syncing.all = false;
+             }
          }
      }" style="background: #f2f2f7;">
     <x-pwa-header title="Аккаунт" :backUrl="'/marketplace'">

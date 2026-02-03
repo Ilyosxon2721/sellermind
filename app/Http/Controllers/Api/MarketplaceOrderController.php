@@ -16,11 +16,11 @@ use Illuminate\Http\Request;
 
 class MarketplaceOrderController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, $accountId = null): JsonResponse
     {
         $request->validate([
             'marketplace_account_id' => ['nullable', 'exists:marketplace_accounts,id'],
-            'company_id' => ['required', 'exists:companies,id'],
+            'company_id' => ['nullable', 'exists:companies,id'],
             'status' => ['nullable', 'string'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -28,13 +28,20 @@ class MarketplaceOrderController extends Controller
             'delivery_type' => ['nullable', 'string', 'in:fbs,fbo,dbs,edbs'],
         ]);
 
-        if (! $request->user()->hasCompanyAccess($request->company_id)) {
-            return response()->json(['message' => 'Доступ запрещён.'], 403);
-        }
+        // Приоритет: параметр из URL, потом из query, потом из user's company
+        $accountIdToUse = $accountId ?? $request->marketplace_account_id;
 
         $account = null;
-        if ($request->marketplace_account_id) {
-            $account = MarketplaceAccount::find($request->marketplace_account_id);
+        if ($accountIdToUse) {
+            $account = MarketplaceAccount::find($accountIdToUse);
+
+            if ($account && ! $request->user()->hasCompanyAccess($account->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+        } elseif ($request->company_id) {
+            if (! $request->user()->hasCompanyAccess($request->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
         }
 
         // Загружаем заказы из соответствующих таблиц
@@ -548,23 +555,30 @@ class MarketplaceOrderController extends Controller
         }
     }
 
-    public function stats(Request $request): JsonResponse
+    public function stats(Request $request, $accountId = null): JsonResponse
     {
         $request->validate([
-            'company_id' => ['required', 'exists:companies,id'],
+            'company_id' => ['nullable', 'exists:companies,id'],
             'marketplace_account_id' => ['nullable', 'exists:marketplace_accounts,id'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'shop_id' => ['nullable', 'string'],
         ]);
 
-        if (! $request->user()->hasCompanyAccess($request->company_id)) {
-            return response()->json(['message' => 'Доступ запрещён.'], 403);
-        }
+        // Приоритет: параметр из URL, потом из query
+        $accountIdToUse = $accountId ?? $request->marketplace_account_id;
 
         $account = null;
-        if ($request->marketplace_account_id) {
-            $account = MarketplaceAccount::find($request->marketplace_account_id);
+        if ($accountIdToUse) {
+            $account = MarketplaceAccount::find($accountIdToUse);
+
+            if ($account && ! $request->user()->hasCompanyAccess($account->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+        } elseif ($request->company_id) {
+            if (! $request->user()->hasCompanyAccess($request->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
         }
 
         if ($account && $account->marketplace === 'wb') {

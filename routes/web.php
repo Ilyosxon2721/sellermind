@@ -292,6 +292,8 @@ Route::middleware('auth.any')->group(function () {
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
         ->name('marketplace.sync-logs');
+    Route::get('/marketplace/sync-logs/json', [MarketplaceSyncLogController::class, 'json'])
+        ->name('marketplace.sync-logs.json');
 
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);

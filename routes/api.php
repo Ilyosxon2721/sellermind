@@ -397,6 +397,11 @@ Route::middleware('auth.any')->group(function () {
             });
         });
 
+        // Orders by Account ID (для orders-table компонента)
+        Route::get('{accountId}/orders', [MarketplaceOrderController::class, 'index']);
+        Route::get('{accountId}/orders/stats', [MarketplaceOrderController::class, 'stats']);
+        Route::post('{account}/orders/sync', [MarketplaceSyncController::class, 'syncOrders']);
+
         // Marketplace Orders
         Route::get('orders', [MarketplaceOrderController::class, 'index']);
         Route::get('orders/stats', [MarketplaceOrderController::class, 'stats']);

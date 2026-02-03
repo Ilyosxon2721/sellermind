@@ -8,6 +8,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceSyncLog;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -102,6 +103,70 @@ class MarketplaceSyncLogController extends Controller
                 'type' => $validated['type'] ?? null,
             ],
             'noCompany' => false,
+        ]);
+    }
+
+    /**
+     * API endpoint для получения логов синхронизации в JSON формате
+     */
+    public function json(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'marketplace' => ['nullable', 'string', 'max:50'],
+            'account_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', 'in:success,error,partial'],
+            'type' => ['nullable', 'string', 'max:50'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $user = $request->user();
+        $companyId = $user?->company_id ?? $user?->companies()->first()?->id;
+
+        if (! $companyId) {
+            return response()->json([
+                'logs' => [],
+                'total' => 0,
+                'current_page' => 1,
+                'last_page' => 1,
+            ]);
+        }
+
+        $query = MarketplaceSyncLog::query()
+            ->with('account:id,name,marketplace')
+            ->whereHas('account', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId);
+            })
+            ->orderByDesc('created_at');
+
+        // Применяем фильтры
+        if (! empty($validated['marketplace'])) {
+            $query->whereHas('account', function ($q) use ($validated) {
+                $q->where('marketplace', $validated['marketplace']);
+            });
+        }
+
+        if (! empty($validated['account_id'])) {
+            $query->where('marketplace_account_id', $validated['account_id']);
+        }
+
+        if (! empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (! empty($validated['type'])) {
+            $query->where('type', $validated['type']);
+        }
+
+        $perPage = $validated['per_page'] ?? 50;
+        $logs = $query->paginate($perPage);
+
+        return response()->json([
+            'logs' => $logs->items(),
+            'total' => $logs->total(),
+            'current_page' => $logs->currentPage(),
+            'last_page' => $logs->lastPage(),
+            'per_page' => $logs->perPage(),
         ]);
     }
 }
