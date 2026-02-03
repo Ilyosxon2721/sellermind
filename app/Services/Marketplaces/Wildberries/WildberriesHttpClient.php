@@ -3,6 +3,7 @@
 
 namespace App\Services\Marketplaces\Wildberries;
 
+use App\Exceptions\RateLimitException;
 use App\Models\MarketplaceAccount;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -75,51 +76,66 @@ class WildberriesHttpClient
     }
 
     /**
-     * Make GET request and return binary response (for files, images, etc.)
+     * GET запрос с бинарным ответом (файлы, изображения) и retry при 429
      *
      * @param string $category API category
      * @param string $uri Endpoint URI
      * @param array $query Query parameters
      * @return string Binary content
      * @throws \RuntimeException
+     * @throws RateLimitException если все попытки исчерпаны
      */
     public function getBinary(string $category, string $uri, array $query = []): string
     {
-        $client = $this->baseClient($category);
+        return $this->executeWithRetry(function () use ($category, $uri, $query): string {
+            $client = $this->baseClient($category);
 
-        // Log request
-        $this->logRequest($category, 'GET', $uri, ['query' => $query]);
+            $this->logRequest($category, 'GET', $uri, ['query' => $query]);
 
-        $startTime = microtime(true);
+            $startTime = microtime(true);
 
-        try {
-            $response = $client->get($uri, $query);
-        } catch (\Exception $e) {
-            $this->logError($category, 'GET', $uri, $e->getMessage());
-            throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
-        }
+            try {
+                $response = $client->get($uri, $query);
+            } catch (\Exception $e) {
+                if ($e instanceof RateLimitException) {
+                    throw $e;
+                }
+                $this->logError($category, 'GET', $uri, $e->getMessage());
+                throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
+            }
 
-        $duration = round((microtime(true) - $startTime) * 1000);
+            $duration = round((microtime(true) - $startTime) * 1000);
 
-        if (!$response->successful()) {
-            $this->logError($category, 'GET', $uri, "HTTP {$response->status()}: {$response->body()}");
-            throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
-        }
+            // Проверка rate limit (429)
+            if ($response->status() === 429) {
+                $retryAfter = (int) ($response->header('X-Ratelimit-Retry') ?: $response->header('Retry-After') ?: 60);
+                throw new RateLimitException(
+                    "Wildberries rate limit exceeded (429). Retry after: {$retryAfter}s",
+                    429,
+                    $retryAfter
+                );
+            }
 
-        Log::info('WB API binary response received', [
-            'category' => $category,
-            'method' => 'GET',
-            'uri' => $uri,
-            'status' => $response->status(),
-            'size' => strlen($response->body()),
-            'duration_ms' => $duration,
-        ]);
+            if (!$response->successful()) {
+                $this->logError($category, 'GET', $uri, "HTTP {$response->status()}: {$response->body()}");
+                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
+            }
 
-        return $response->body();
+            Log::info('WB API binary response received', [
+                'category' => $category,
+                'method' => 'GET',
+                'uri' => $uri,
+                'status' => $response->status(),
+                'size' => strlen($response->body()),
+                'duration_ms' => $duration,
+            ]);
+
+            return $response->body();
+        }, $category, 'GET', $uri);
     }
 
     /**
-     * Make POST request and return binary response (for stickers, barcodes, etc.)
+     * POST запрос с бинарным ответом (стикеры, штрихкоды) и retry при 429
      *
      * @param string $category API category
      * @param string $uri Endpoint URI
@@ -127,81 +143,165 @@ class WildberriesHttpClient
      * @param array $query Query parameters
      * @return string Binary content
      * @throws \RuntimeException
+     * @throws RateLimitException если все попытки исчерпаны
      */
     public function postBinary(string $category, string $uri, array $payload = [], array $query = []): string
     {
-        $client = $this->baseClient($category);
+        return $this->executeWithRetry(function () use ($category, $uri, $payload, $query): string {
+            $client = $this->baseClient($category);
 
-        // Log request
-        $this->logRequest($category, 'POST', $uri, ['json' => $payload, 'query' => $query]);
+            $this->logRequest($category, 'POST', $uri, ['json' => $payload, 'query' => $query]);
 
-        $startTime = microtime(true);
+            $startTime = microtime(true);
 
-        try {
-            // Combine payload and query parameters
-            $fullUrl = $uri;
-            if (!empty($query)) {
-                $fullUrl .= '?' . http_build_query($query);
+            try {
+                $fullUrl = $uri;
+                if (!empty($query)) {
+                    $fullUrl .= '?' . http_build_query($query);
+                }
+
+                $response = $client->post($fullUrl, $payload);
+            } catch (\Exception $e) {
+                if ($e instanceof RateLimitException) {
+                    throw $e;
+                }
+                $this->logError($category, 'POST', $uri, $e->getMessage());
+                throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
             }
 
-            $response = $client->post($fullUrl, $payload);
-        } catch (\Exception $e) {
-            $this->logError($category, 'POST', $uri, $e->getMessage());
-            throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
-        }
+            $duration = round((microtime(true) - $startTime) * 1000);
 
-        $duration = round((microtime(true) - $startTime) * 1000);
+            // Проверка rate limit (429)
+            if ($response->status() === 429) {
+                $retryAfter = (int) ($response->header('X-Ratelimit-Retry') ?: $response->header('Retry-After') ?: 60);
+                throw new RateLimitException(
+                    "Wildberries rate limit exceeded (429). Retry after: {$retryAfter}s",
+                    429,
+                    $retryAfter
+                );
+            }
 
-        if (!$response->successful()) {
-            $this->logError($category, 'POST', $uri, "HTTP {$response->status()}: {$response->body()}");
-            throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
-        }
+            if (!$response->successful()) {
+                $this->logError($category, 'POST', $uri, "HTTP {$response->status()}: {$response->body()}");
+                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
+            }
 
-        Log::info('WB API binary response received (POST)', [
-            'category' => $category,
-            'method' => 'POST',
-            'uri' => $uri,
-            'status' => $response->status(),
-            'size' => strlen($response->body()),
-            'content_type' => $response->header('Content-Type'),
-            'duration_ms' => $duration,
-        ]);
+            Log::info('WB API binary response received (POST)', [
+                'category' => $category,
+                'method' => 'POST',
+                'uri' => $uri,
+                'status' => $response->status(),
+                'size' => strlen($response->body()),
+                'content_type' => $response->header('Content-Type'),
+                'duration_ms' => $duration,
+            ]);
 
-        return $response->body();
+            return $response->body();
+        }, $category, 'POST', $uri);
     }
 
     /**
-     * General request method with logging and error handling
+     * Основной метод запроса с логированием, обработкой ошибок и retry при 429
      *
      * @throws \RuntimeException
+     * @throws RateLimitException если все попытки исчерпаны
      */
     public function request(string $category, string $method, string $uri, array $options = []): array
     {
-        $client = $this->baseClient($category);
+        return $this->executeWithRetry(function () use ($category, $method, $uri, $options): array {
+            $client = $this->baseClient($category);
 
-        // Log request
-        $this->logRequest($category, $method, $uri, $options);
+            $this->logRequest($category, $method, $uri, $options);
 
-        // Make request
-        $startTime = microtime(true);
+            $startTime = microtime(true);
 
-        try {
-            $response = match (strtoupper($method)) {
-                'GET' => $client->get($uri, $options['query'] ?? []),
-                'POST' => $client->post($uri, $options['json'] ?? []),
-                'PUT' => $client->put($uri, $options['json'] ?? []),
-                'PATCH' => $client->patch($uri, $options['json'] ?? []),
-                'DELETE' => $client->delete($uri),
-                default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
-            };
-        } catch (\Exception $e) {
-            $this->logError($category, $method, $uri, $e->getMessage());
-            throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
+            try {
+                $response = match (strtoupper($method)) {
+                    'GET' => $client->get($uri, $options['query'] ?? []),
+                    'POST' => $client->post($uri, $options['json'] ?? []),
+                    'PUT' => $client->put($uri, $options['json'] ?? []),
+                    'PATCH' => $client->patch($uri, $options['json'] ?? []),
+                    'DELETE' => $client->delete($uri),
+                    default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
+                };
+            } catch (\Exception $e) {
+                if ($e instanceof RateLimitException) {
+                    throw $e;
+                }
+                $this->logError($category, $method, $uri, $e->getMessage());
+                throw new \RuntimeException("WB API request failed: {$e->getMessage()}", 0, $e);
+            }
+
+            $duration = round((microtime(true) - $startTime) * 1000);
+
+            return $this->handleResponse($response, $category, $method, $uri, $duration);
+        }, $category, $method, $uri);
+    }
+
+    /**
+     * Выполнить запрос с автоматическим повтором при rate limit (429)
+     *
+     * @template T
+     * @param callable(): T $requestFn
+     * @return T
+     * @throws RateLimitException если все попытки исчерпаны
+     */
+    protected function executeWithRetry(callable $requestFn, string $category, string $method, string $uri): mixed
+    {
+        $maxRetries = (int) config('wildberries.retry.max_attempts', 3);
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $requestFn();
+            } catch (RateLimitException $e) {
+                $attempt++;
+
+                if ($attempt >= $maxRetries) {
+                    Log::error('WB API rate limit: все попытки исчерпаны', [
+                        'account_id' => $this->account->id,
+                        'category' => $category,
+                        'method' => $method,
+                        'uri' => $uri,
+                        'attempts' => $attempt,
+                    ]);
+                    throw $e;
+                }
+
+                $delay = $this->getRetryDelay($attempt, $e->getRetryAfter());
+
+                Log::warning('WB API rate limit: повтор запроса', [
+                    'account_id' => $this->account->id,
+                    'category' => $category,
+                    'method' => $method,
+                    'uri' => $uri,
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'delay_seconds' => $delay,
+                ]);
+
+                sleep($delay);
+            }
+        }
+    }
+
+    /**
+     * Рассчитать задержку перед повтором запроса
+     */
+    protected function getRetryDelay(int $attempt, int $retryAfterHeader): int
+    {
+        $maxDelay = (int) config('wildberries.retry.max_delay', 120);
+
+        // Если сервер указал Retry-After, используем его (но не больше максимума)
+        if ($retryAfterHeader > 0) {
+            return min(max($retryAfterHeader, 1), $maxDelay);
         }
 
-        $duration = round((microtime(true) - $startTime) * 1000);
+        // Иначе используем задержки из конфига
+        $configDelays = config('wildberries.retry.delays', [5, 15, 30]);
+        $delay = $configDelays[$attempt - 1] ?? end($configDelays);
 
-        return $this->handleResponse($response, $category, $method, $uri, $duration);
+        return min($delay, $maxDelay);
     }
 
     /**
@@ -256,9 +356,9 @@ class WildberriesHttpClient
         // Log response
         $this->logResponse($category, $method, $uri, $status, $body, $durationMs);
 
-        // Handle rate limiting (429)
+        // Обработка rate limit (429) — выбрасываем RateLimitException для retry логики
         if ($status === 429) {
-            $retryAfter = $response->header('X-Ratelimit-Retry') ?? $response->header('Retry-After') ?? 60;
+            $retryAfter = (int) ($response->header('X-Ratelimit-Retry') ?: $response->header('Retry-After') ?: 60);
 
             Log::warning('WB API rate limit exceeded', [
                 'account_id' => $this->account->id,
@@ -266,7 +366,11 @@ class WildberriesHttpClient
                 'retry_after' => $retryAfter,
             ]);
 
-            throw new \RuntimeException("Wildberries rate limit exceeded (429). Retry after: {$retryAfter}s");
+            throw new RateLimitException(
+                "Wildberries rate limit exceeded (429). Retry after: {$retryAfter}s",
+                429,
+                $retryAfter
+            );
         }
 
         // Handle auth errors (401, 403)

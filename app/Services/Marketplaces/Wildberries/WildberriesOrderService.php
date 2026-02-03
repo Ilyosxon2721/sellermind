@@ -38,6 +38,14 @@ class WildberriesOrderService
     }
 
     /**
+     * Get the OrderStockService instance
+     */
+    public function getOrderStockService(): OrderStockService
+    {
+        return $this->orderStockService;
+    }
+
+    /**
      * Get HTTP client for the specified account
      */
     protected function getHttpClient(MarketplaceAccount $account): WildberriesHttpClient
@@ -155,7 +163,7 @@ class WildberriesOrderService
         $created = 0;
         $updated = 0;
         $errors = [];
-        $syncedOrderIds = []; // Собираем ID всех синхронизированных заказов
+        $syncedOrderIds = []; // Собираем ID всех синхронизированных заказов со ВСЕХ страниц
 
         Log::info('Fetching all WB FBS orders', [
             'account_id' => $account->id,
@@ -173,43 +181,71 @@ class WildberriesOrderService
         ));
 
         try {
-            // GET /api/v3/orders - получаем ВСЕ заказы (не только новые)
-            $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders', [
-                'limit' => $limit,
-                'next' => $next,
-            ]);
+            $currentNext = $next;
+            $pageCount = 0;
+            $maxPages = 50; // Защита от бесконечного цикла
 
-            $orders = $response['orders'] ?? [];
+            // Пагинация: получаем ВСЕ заказы через все страницы
+            do {
+                $pageCount++;
 
-            foreach ($orders as $orderData) {
-                try {
-                    $result = $this->processOrderFromMarketplace($account, $orderData);
+                // GET /api/v3/orders - получаем ВСЕ заказы (не только новые)
+                $response = $this->getHttpClient($account)->get('marketplace', '/api/v3/orders', [
+                    'limit' => $limit,
+                    'next' => $currentNext,
+                ]);
 
-                    // Сохраняем ID синхронизированного заказа
-                    $syncedOrderIds[] = $orderData['id'];
+                $orders = $response['orders'] ?? [];
+                $nextCursor = $response['next'] ?? 0;
 
-                    if ($result['created']) {
-                        $created++;
-                    } else {
-                        $updated++;
+                Log::info('WB fetchAllOrders page', [
+                    'account_id' => $account->id,
+                    'page' => $pageCount,
+                    'orders_count' => count($orders),
+                    'next_cursor' => $nextCursor,
+                ]);
+
+                foreach ($orders as $orderData) {
+                    try {
+                        $result = $this->processOrderFromMarketplace($account, $orderData);
+
+                        // Сохраняем ID синхронизированного заказа
+                        $syncedOrderIds[] = $orderData['id'];
+
+                        if ($result['created']) {
+                            $created++;
+                        } else {
+                            $updated++;
+                        }
+
+                        $synced++;
+                    } catch (\Exception $e) {
+                        $errors[] = [
+                            'order_id' => $orderData['id'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ];
                     }
-
-                    $synced++;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'order_id' => $orderData['id'] ?? 'unknown',
-                        'error' => $e->getMessage(),
-                    ];
                 }
-            }
+
+                // Переходим к следующей странице
+                // WB API: next=0 означает последняя страница
+                $currentNext = $nextCursor;
+
+                // Небольшая пауза между страницами
+                if ($currentNext > 0 && count($orders) >= $limit) {
+                    usleep(300000); // 0.3 секунды
+                }
+
+            } while ($currentNext > 0 && count($orders) >= $limit && $pageCount < $maxPages);
 
             // Помечаем заказы, которых нет в ответе API, как отменённые
             // Но только те, которые ещё не в статусе archive или canceled
+            // Важно: только после полной пагинации всех страниц
             if (!empty($syncedOrderIds)) {
-                // Сначала получаем заказы для обработки остатков
+                // Также добавляем 'cancelled' в excluded statuses (двойное написание)
                 $ordersToCancel = WbOrder::where('marketplace_account_id', $account->id)
                     ->whereNotIn('external_order_id', $syncedOrderIds)
-                    ->whereNotIn('status', ['archive', 'canceled', 'completed'])
+                    ->whereNotIn('status', ['archive', 'canceled', 'cancelled', 'completed'])
                     ->get();
 
                 foreach ($ordersToCancel as $orderToCancel) {
@@ -217,7 +253,8 @@ class WildberriesOrderService
 
                     // Обновляем статус
                     $orderToCancel->update([
-                        'status' => 'canceled',
+                        'status' => 'cancelled',
+                        'status_normalized' => 'cancelled',
                         'wb_status_group' => 'canceled',
                     ]);
 
@@ -228,7 +265,7 @@ class WildberriesOrderService
                             $account,
                             $orderToCancel,
                             $oldStatus,
-                            'canceled',
+                            'cancelled',
                             $items
                         );
                     } catch (\Throwable $e) {
@@ -240,7 +277,11 @@ class WildberriesOrderService
                 }
 
                 if ($ordersToCancel->count() > 0) {
-                    Log::info("Marked {$ordersToCancel->count()} orders as canceled (not in API response)");
+                    Log::info("Marked {$ordersToCancel->count()} orders as canceled (not in API response)", [
+                        'account_id' => $account->id,
+                        'total_synced_ids' => count($syncedOrderIds),
+                        'pages_fetched' => $pageCount,
+                    ]);
                 }
             }
 
@@ -249,6 +290,7 @@ class WildberriesOrderService
                 'synced' => $synced,
                 'created' => $created,
                 'updated' => $updated,
+                'pages' => $pageCount,
             ]);
 
         } catch (\Exception $e) {

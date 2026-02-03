@@ -1,533 +1,283 @@
-# SellerMind AI
+# 🤖 SellerMind Autopilot
 
-**Платформа управления продажами на маркетплейсах с AI-powered автоматизацией**
-
-Комплексное решение для управления продажами, складом и аналитикой на ведущих маркетплейсах СНГ.
-
-[![Production Ready](https://img.shields.io/badge/status-production%20ready-brightgreen)](https://github.com/Ilyosxon2721/sellermind)
-[![Laravel](https://img.shields.io/badge/Laravel-12.x-red)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2+-blue)](https://php.net)
-[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+Полная автоматизация разработки с Claude Code.
 
 ---
 
-## 🎉 NEW: Quick Wins Ready for Production!
+## 📦 Что в комплекте
 
-**5 powerful features ready to deploy:**
-
-1. **🔄 Bulk Operations** - 80% time savings on product management
-2. **📱 Telegram Notifications** - Real-time alerts for critical events
-3. **💡 Smart Promotions** - Auto-detect and discount slow inventory (25% reduction)
-4. **📊 Sales Analytics** - Data-driven dashboards with charts
-5. **🤖 AI Review Responses** - 70% faster customer service
-
-**[▶️ DEPLOY NOW - Quick Start Guide](START_HERE.md)**
-
----
-
-## 🎯 Quick Wins (NEW!)
-
-We've implemented 5 high-impact features that provide immediate business value:
-
-| # | Feature | Impact | Status |
-|---|---------|--------|--------|
-| 1 | **Bulk Operations** | 80% time savings | ✅ Ready |
-| 2 | **Telegram Notifications** | Real-time alerts | ✅ Ready |
-| 3 | **Smart Promotions** | 25% inventory reduction | ✅ Ready |
-| 4 | **Sales Analytics** | Data-driven decisions | ✅ Ready |
-| 5 | **Review Response Generator** | 70% time saved | ✅ Ready |
-
-**All features include full automation with Laravel Scheduler + Queue Workers!**
+```
+sellermind-autopilot/
+├── CLAUDE.md                    # Главный конфиг проекта
+├── TASKS.md                     # Список задач
+├── AUTOPILOT_LOG.md             # Лог автопилота
+├── BLOCKERS.md                  # Заблокированные задачи
+├── .claude/
+│   ├── settings.json            # Hooks и настройки
+│   ├── agents/
+│   │   ├── architect.md         # Проектирование
+│   │   ├── backend.md           # PHP/Laravel
+│   │   ├── frontend.md          # Alpine/Tailwind
+│   │   ├── tester.md            # Тестирование
+│   │   └── reviewer.md          # Code review
+│   └── commands/
+│       ├── autopilot.md         # /autopilot
+│       ├── implement.md         # /implement
+│       ├── fix.md               # /fix
+│       └── review.md            # /review
+└── scripts/
+    └── night-dev.sh             # Ночной режим
+```
 
 ---
 
-## 🚀 Quick Deploy to Production
+## 🚀 Установка
 
-### Option 1: Laravel Forge (5 minutes) 🔥 **RECOMMENDED**
-
-**Easiest way to deploy!**
-
-Laravel Forge автоматизирует всё:
-- ✅ Server setup (Nginx, PHP, MySQL, Redis, Supervisor)
-- ✅ SSL certificates (Let's Encrypt)
-- ✅ Queue workers & Scheduler
-- ✅ Auto-deploy from GitHub
-- ✅ Monitoring & Backups
-
-**Cost:** ~$24-31/month (окупается за 1 час работы!)
-
-**Quick Start:**
-1. Sign up at [forge.laravel.com](https://forge.laravel.com)
-2. Create server + site (5 clicks)
-3. Connect GitHub repo
-4. Deploy!
-
-**📖 Full Guide:** See `FORGE_DEPLOYMENT.md`
-
----
-
-### Option 2: Automated Script (10 minutes) ⚡
+### 1. Скопируй файлы в проект
 
 ```bash
-# On your production server:
-wget https://raw.githubusercontent.com/Ilyosxon2721/sellermind/claude/review-production-readiness-LSoNy/deploy.sh
-chmod +x deploy.sh
-nano deploy.sh  # Edit DOMAIN variable
-./deploy.sh
+# Распакуй архив
+unzip sellermind-autopilot.zip
+
+# Скопируй в проект
+cp -r sellermind-autopilot/* ~/projects/sellermind/
+
+# Перейди в проект
+cd ~/projects/sellermind
 ```
 
-**That's it!** The script will handle everything automatically.
-
----
-
-### Option 3: Manual Guides
-
-- **Quick Start (30 min):** See `PRODUCTION_DEPLOYMENT.md`
-- **Complete Guide:** See `DEPLOYMENT_CHECKLIST.md`
-- **Full Documentation:** See `docs/AUTOMATION_AND_DEPLOYMENT.md`
-
----
-
-## 🎁 Quick Wins (Production-Ready)
-
-All 5 Quick Wins are implemented and ready to use:
-
-### 1. 🚀 Bulk Operations
-**Impact:** 80% time savings on repetitive tasks
-
-- Bulk price updates
-- Bulk stock adjustments
-- Bulk status changes
-- Bulk marketplace sync
-
-**Location:** `/products` page
-
----
-
-### 2. 📱 Telegram Notifications
-**Impact:** Real-time alerts
-
-- Low stock alerts
-- New order notifications
-- Price change warnings
-- Error notifications
-- Multi-channel support
-
----
-
-### 3. 💰 Smart Promotions
-**Impact:** 25% reduction in slow-moving inventory
-
-- Automatic slow-product detection
-- Smart discount calculation (15-50%)
-- ROI tracking
-- Expiring alerts
-- Full automation
-
-**Documentation:** `docs/SMART_PROMOTIONS_GUIDE.md`
-
----
-
-### 4. Sales Analytics Dashboard
-**Impact:** Data-driven decision making
-
-- Revenue overview with growth %
-- Time-series sales charts
-- Top/flop products
-- Category analysis
-- Marketplace comparison
-
-**UI:** `/analytics`
-**Documentation:** `docs/SALES_ANALYTICS_GUIDE.md`
-
----
-
-### 5. Review Response Generator
-**Impact:** 70% time saved on customer service
-
-- AI-powered response generation
-- 14 system templates
-- Sentiment analysis
-- Bulk generation
-- Statistics dashboard
-
-**UI:** `/reviews`
-**Documentation:** `docs/REVIEW_RESPONSE_GENERATOR_GUIDE.md`
-
----
-
-## 🤖 Automation
-
-All Quick Wins run automatically:
-
-- **Auto Promotions:** Every Monday 9am
-- **Expiring Alerts:** Daily at 10am
-- **Analytics Cache:** Every hour
-- **Marketplace Sync:** Every 10 minutes
-
-**Powered by:**
-- Laravel Scheduler (cron)
-- Queue Workers (Supervisor)
-- Background Jobs (Redis/Database)
-
----
-
-## 🚀 Quick Deploy (10 minutes)
+### 2. Установи Claude Code (если ещё нет)
 
 ```bash
-# Download deployment script
-wget https://raw.githubusercontent.com/Ilyosxon2721/sellermind/claude/review-production-readiness-LSoNy/deploy.sh
-
-# Edit configuration
-nano deploy.sh  # Set your DOMAIN
-
-# Run deployment
-chmod +x deploy.sh
-./deploy.sh
+npm install -g @anthropic-ai/claude-code
 ```
 
-**See [START_HERE.md](START_HERE.md) for detailed instructions.**
-
----
-
-## 📚 Documentation
-
-- **[START_HERE.md](START_HERE.md)** - Quick deployment guide (10 min)
-- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Full deployment guide (30 min)
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Step-by-step checklist
-- **[docs/AUTOMATION_AND_DEPLOYMENT.md](docs/AUTOMATION_AND_DEPLOYMENT.md)** - Complete guide (600+ lines)
-
-### Feature Documentation
-- **[SMART_PROMOTIONS_GUIDE.md](docs/SMART_PROMOTIONS_GUIDE.md)** - Smart Promotions System
-- **[SALES_ANALYTICS_GUIDE.md](docs/SALES_ANALYTICS_GUIDE.md)** - Sales Analytics Dashboard
-- **[REVIEW_RESPONSE_GENERATOR_GUIDE.md](docs/REVIEW_RESPONSE_GENERATOR_GUIDE.md)** - AI Review Responses
-
----
-
-## 🎉 What's New - Production Ready Release (v1.0)
-
-### 5 Quick Wins Implemented
-
-All 5 Quick Wins are now complete and production-ready:
-
-1. **✅ Bulk Operations** (80% time saved)
-   - Bulk price updates
-   - Bulk stock adjustments
-   - Bulk status changes
-   - Bulk marketplace sync
-
-2. **✅ Telegram Notifications** (Real-time alerts)
-   - Low stock alerts
-   - New order notifications
-   - Price change warnings
-   - Error notifications
-
-3. **✅ Smart Promotions** (25% inventory reduction)
-   - Auto-detect slow-moving products
-   - Smart discount calculation
-   - ROI tracking
-   - Expiring promotion alerts
-
-4. **✅ Sales Analytics Dashboard**
-   - Revenue trends & growth
-   - Top/flop products
-   - Category analysis
-   - Marketplace comparison
-   - Beautiful Chart.js visualizations
-
-5. **✅ Review Response Generator**
-   - AI-powered response generation
-   - 14 system templates
-   - Sentiment analysis
-   - Bulk operations
-
-### 🤖 Full Automation
-- **Weekly:** Auto-create promotions for slow inventory (Mon 9am)
-- **Daily:** Expiring promotion notifications (10am)
-- **Hourly:** Analytics caching & marketplace sync
-- **Every 10 min:** Orders & stock synchronization
-
----
-
-## 🚀 **Quick Deploy (10 Minutes)**
+### 3. Настрой API ключ
 
 ```bash
-# 1. Download deployment script
-wget https://raw.githubusercontent.com/Ilyosxon2721/sellermind/claude/review-production-readiness-LSoNy/deploy.sh
-
-# 2. Make executable
-chmod +x deploy.sh
-
-# 3. Edit configuration
-nano deploy.sh
-# Change: DOMAIN="your-domain.com"
-
-# 4. Run
-./deploy.sh
+# Добавь в ~/.bashrc или ~/.zshrc
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-**Done!** Your production instance is live with:
-- ✅ All 5 Quick Wins
-- ✅ Full automation
-- ✅ HTTPS/SSL
-- ✅ Queue workers
-- ✅ Scheduler
-
-📖 **For detailed instructions:** See `START_HERE.md`
-
----
-
-## 📦 **What's Included (5 Quick Wins)**
-
-### 1️⃣ Bulk Operations
-**Impact:** 80% time savings
-- Bulk price updates
-- Bulk stock adjustments
-- Bulk status changes
-- One-click marketplace sync
-
-### 2️⃣ Telegram Notifications
-**Impact:** Real-time alerts
-- Low stock warnings
-- New order alerts
-- Price change notifications
-- Error alerts
-
-### 3️⃣ Smart Promotions
-**Impact:** 25% inventory reduction
-- Auto-detect slow-moving products
-- Smart discount calculation (15-50%)
-- ROI tracking
-- Automatic weekly execution
-
-### 4️⃣ Sales Analytics Dashboard
-**Impact:** Data-driven decisions
-- Revenue trends with growth %
-- Top/flop products
-- Category breakdown
-- Marketplace comparison
-- Beautiful Chart.js visualizations
-
-### 5️⃣ Review Response Generator
-**Impact:** 70% time savings
-- AI-powered responses
-- 14 system templates
-- Sentiment analysis
-- Bulk generation
-- Multi-language support
-
----
-
-## 🤖 **Automation**
-
-### Scheduled Tasks
-```
-Monday 9am     → Auto-create promotions for slow inventory
-Daily 10am     → Send expiring promotion alerts
-Every hour     → Cache analytics, sync marketplace stocks
-Every 10 min   → Sync orders from WB/Ozon/Yandex
-```
-
-### Queue Workers (Background Jobs)
-- 4 default workers for regular tasks
-- 2 high-priority workers for notifications
-- Auto-restart on failure
-- Comprehensive logging
-
----
-
-## 📚 **Documentation**
-
-| File | Description | Lines |
-|------|-------------|-------|
-| `START_HERE.md` | **Start here!** Quick deployment guide | - |
-| `PRODUCTION_DEPLOYMENT.md` | 30-minute deployment walkthrough | 500+ |
-| `DEPLOYMENT_CHECKLIST.md` | Step-by-step checklist | 800+ |
-| `docs/AUTOMATION_AND_DEPLOYMENT.md` | Complete automation guide | 600+ |
-| `docs/SMART_PROMOTIONS_GUIDE.md` | Smart Promotions documentation | 550+ |
-| `docs/SALES_ANALYTICS_GUIDE.md` | Analytics documentation | 500+ |
-| `docs/REVIEW_RESPONSE_GENERATOR_GUIDE.md` | Review responses guide | 600+ |
-
-**Total:** 2000+ lines of comprehensive documentation
-
----
-
-## 🧪 **Testing**
+### 4. Сделай скрипт исполняемым
 
 ```bash
-# Run automated smoke tests
-./tests/smoke-tests.sh
-
-# Tests:
-# ✓ API endpoints
-# ✓ Database connectivity
-# ✓ Cache drivers
-# ✓ Scheduler configuration
-# ✓ All UI pages
+chmod +x scripts/night-dev.sh
 ```
 
 ---
 
-## 🔧 **Tech Stack**
+## 🎮 Использование
 
-- **Backend:** Laravel 12, PHP 8.2+
-- **Database:** MySQL 8.0+ with Redis caching
-- **Frontend:** Alpine.js, Tailwind CSS 4.0, Chart.js 4.4
-- **Queue:** Laravel Queues with Supervisor
-- **Scheduler:** Laravel Scheduler (cron-based)
-- **Server:** Nginx, PHP-FPM
-- **SSL:** Let's Encrypt (automated)
-
----
-
-## 📊 **Business Impact**
-
-| Metric | Improvement |
-|--------|-------------|
-| Bulk operations time | **-80%** |
-| Review response time | **-70%** |
-| Slow inventory | **-25%** |
-| Critical alerts | **Real-time** (Telegram) |
-| Analytics access | **Instant** (cached) |
-
-**Expected ROI:** 3-6 months
-
----
-
-## 🎯 **Quick Commands**
+### Режим 1: Интерактивный (VS Code)
 
 ```bash
-# View logs
-sudo tail -f /var/www/sellermind/storage/logs/laravel.log
+# Открой проект
+cd ~/projects/sellermind
+code .
 
-# Check workers
-sudo supervisorctl status
+# Запусти Claude Code (Ctrl+Shift+P → "Claude Code")
 
-# Check scheduler
-php artisan schedule:list
-
-# Restart workers
-sudo supervisorctl restart sellermind-worker:*
-
-# Clear cache
-php artisan cache:clear
-
-# Run migrations
-php artisan migrate
-
-# Seed templates
-php artisan db:seed --class=ReviewTemplatesSeeder
+# Используй команды:
+/autopilot           # Автономная разработка
+/implement <фича>    # Реализовать функцию
+/fix <баг>          # Исправить баг
+/review             # Code review
 ```
 
----
-
-## 🆘 **Troubleshooting**
-
-See `DEPLOYMENT_CHECKLIST.md` for common issues and solutions:
-- Workers not running
-- Scheduler not executing
-- Permission errors
-- Database connection issues
-- SSL certificate problems
-
----
-
-## 📞 **Support**
-
-- **Documentation:** See `/docs/` folder
-- **Issues:** GitHub Issues
-- **Email:** support@sellermind.ai (if configured)
-
----
-
-## ✅ **Production Checklist**
-
-Before going live:
-- [ ] Domain DNS configured
-- [ ] SSL certificate obtained
-- [ ] Environment variables set
-- [ ] Database migrated
-- [ ] Queue workers running
-- [ ] Cron scheduler active
-- [ ] Smoke tests passing
-- [ ] All Quick Wins tested
-- [ ] Backups configured
-- [ ] Monitoring enabled
-
----
-
-## 🎉 **Status: Production Ready!**
-
-**Version:** 1.0
-**Release Date:** 2026-01-12
-**Branch:** `claude/review-production-readiness-LSoNy`
-
-**All 5 Quick Wins implemented ✅**
-**Full automation configured ✅**
-**Production deployment ready ✅**
-
----
-
-## 🚀 **Deploy Now**
+### Режим 2: Ночной (терминал)
 
 ```bash
-# One-line deploy
-wget https://raw.githubusercontent.com/Ilyosxon2721/sellermind/claude/review-production-readiness-LSoNy/deploy.sh && chmod +x deploy.sh && ./deploy.sh
-```
+# Вечером перед сном:
+./scripts/night-dev.sh
 
-**Need help?** Read `START_HERE.md` first!
+# Утром проверь:
+cat AUTOPILOT_LOG.md
+git log --oneline -10
+
+# Если всё ок — пушь вручную:
+php artisan test --parallel
+git push origin develop
+```
 
 ---
 
-**Made with ❤️ for sellers on marketplaces**
+## 📋 Workflow
 
-
-# Сгенерировать ключ
-php artisan key:generate
-
-# Применить миграции
-php artisan migrate
-
-# Запустить сервер
-php artisan serve
+```
+┌─────────────────────────────────────────────┐
+│                  TASKS.md                   │
+│                                             │
+│  🟡 Очередь        →  🔴 В работе          │
+│                           │                 │
+│                    ┌──────┴──────┐          │
+│                    │  AUTOPILOT  │          │
+│                    │             │          │
+│                    │ 1. Анализ   │          │
+│                    │ 2. Код      │          │
+│                    │ 3. Тесты    │          │
+│                    │ 4. Review   │          │
+│                    │ 5. Коммит   │          │
+│                    └──────┬──────┘          │
+│                           │                 │
+│  ✅ Выполнено      ←──────┘                │
+│                                             │
+│  🚫 Заблокировано  ←  (если проблема)      │
+│         ↓                                   │
+│    BLOCKERS.md                              │
+└─────────────────────────────────────────────┘
 ```
 
-## 📦 Продакшн
+---
 
-См. [DEPLOYMENT.md](DEPLOYMENT.md) для полной инструкции по развертыванию.
+## ⚙️ Настройка
 
-Краткий чек-лист: [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md)
+### Изменить лимит задач
 
-## 🔑 API Ключи маркетплейсов
+В `scripts/night-dev.sh`:
+```bash
+MAX_TASKS=10  # По умолчанию 5
+```
 
-Для работы нужны API ключи маркетплейсов. Добавьте их в `.env` или через веб-интерфейс:
+### Добавить свои hooks
 
-- `WB_*` — Wildberries (требуется несколько токенов по секциям)
-- `OZON_CLIENT_ID`, `OZON_API_KEY` — Ozon
-- `UZUM_API_KEY` — Uzum
-- `YM_API_KEY` — Yandex Market
+В `.claude/settings.json`:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "your-command"
+        }]
+      }
+    ]
+  }
+}
+```
 
-## 📚 Документация
+### Добавить свою задачу
 
-### Production
-- [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md) — полный аудит готовности к production
-- [DEPLOYMENT.md](DEPLOYMENT.md) — развертывание на продакшн
-- [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md) — чек-лист деплоя
-- [QUEUE_WORKER_PRODUCTION_GUIDE.md](QUEUE_WORKER_PRODUCTION_GUIDE.md) — настройка очередей для production
-- [REVERB_FORGE_SETUP.md](REVERB_FORGE_SETUP.md) — настройка WebSocket на Laravel Forge
+В `TASKS.md` добавь:
+```markdown
+- [ ] #XXX **[TYPE]** Описание задачи
+  - Файлы: `app/...`
+  - Детали: ...
+```
 
-### Разработка
-- [QUEUE_SETUP.md](QUEUE_SETUP.md) — настройка очередей для разработки
-- [ENABLE_WEBSOCKET_GUIDE.md](ENABLE_WEBSOCKET_GUIDE.md) — включение WebSocket (Reverb) для real-time обновлений
-- [WEBSOCKET_ANALYSIS.md](WEBSOCKET_ANALYSIS.md) — анализ WebSocket конфигурации
-- [docs/](docs/) — дополнительная документация
+---
 
-### Функции
-- [docs/BULK_OPERATIONS_GUIDE.md](docs/BULK_OPERATIONS_GUIDE.md) — массовые операции с товарами (экспорт/импорт, bulk update)
+## 🛡 Безопасность
 
-### Планирование
-- [IMPROVEMENT_RECOMMENDATIONS.md](IMPROVEMENT_RECOMMENDATIONS.md) — рекомендации по улучшению проекта (47 функций)
+### ⚠️ GIT PUSH ОТКЛЮЧЁН!
 
-## 📄 Лицензия
+Claude Code **только коммитит локально** и никогда не пушит в GitHub.
+Это защита от автодеплоя на Forge.
 
-Проприетарное ПО. Все права защищены.
+**Workflow:**
+```
+Claude Code                          Ты
+     │                                │
+     ├── код                          │
+     ├── тесты                        │
+     ├── git commit ──────────────▶  проверяешь
+     │                                │
+     │                           git push (вручную)
+     │                                │
+     │                           Forge деплоит
+```
+
+**После работы Claude проверь:**
+```bash
+# Посмотри что накоммитил Claude
+git log --oneline -10
+
+# Проверь изменения
+git diff HEAD~5 --stat
+
+# Прогони тесты
+php artisan test --parallel
+
+# Если всё ок — пушь
+git push origin develop
+```
+
+### Что НЕ будет делать автопилот:
+- ❌ `git push` — запрещено полностью!
+- ❌ `migrate:fresh` — удаление БД
+- ❌ `rm -rf` — удаление файлов
+- ❌ Изменение `.env.production`
+
+### Когда остановится:
+- Тесты падают 3 раза подряд
+- Нужны миграции (требует подтверждения)
+- Непонятная задача
+
+---
+
+## 📊 Мониторинг
+
+### Логи
+```bash
+# Лог автопилота
+cat AUTOPILOT_LOG.md
+
+# Лог hooks
+cat .claude/autopilot.log
+
+# Лог тестов
+cat .claude/test.log
+```
+
+### Git история
+```bash
+# Коммиты за ночь
+git log --since="8 hours ago" --oneline
+
+# Изменённые файлы
+git diff --stat HEAD~5
+```
+
+---
+
+## ❓ FAQ
+
+**Q: Сколько стоит?**
+A: Зависит от использования API. ~$0.01-0.05 за задачу.
+
+**Q: Безопасно ли?**
+A: Да, есть ограничения на опасные команды.
+
+**Q: Что если сломает код?**
+A: Используй `git checkout .` для отката. Тесты должны ловить проблемы.
+
+**Q: Работает без интернета?**
+A: Нет, требуется API Anthropic.
+
+---
+
+## 🆘 Проблемы
+
+### Claude не запускается
+```bash
+# Проверь установку
+claude --version
+
+# Проверь API ключ
+echo $ANTHROPIC_API_KEY
+```
+
+### Тесты падают
+```bash
+# Проверь логи
+cat .claude/test.log
+
+# Откати изменения
+git checkout .
+```
+
+---
+
+Сделано с ❤️ для автоматизации SellerMind

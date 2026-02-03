@@ -133,8 +133,8 @@ class OrderStockService
 
         // 3. Отмена заказа
         if ($isCancelledStatus) {
-            // Если был резерв или статус не установлен - отменяем резерв
-            if ($currentStockStatus === 'reserved' || $currentStockStatus === 'none') {
+            // Если был резерв, статус не установлен или skipped - отменяем резерв и возвращаем остаток
+            if (in_array($currentStockStatus, ['reserved', 'none', 'skipped'])) {
                 return $this->releaseReserve($account, $order, $items, $marketplace);
             }
             // Если уже продан - ничего не делаем (возврат вручную)
@@ -205,11 +205,9 @@ class OrderStockService
 
                 $stockBefore = $variant->stock_default;
 
-                // Decrease stock in ProductVariant (for marketplace sync)
-                // Используем saveQuietly() чтобы НЕ триггерить ProductVariantObserver,
-                // т.к. ledger-запись создаётся ниже через createWarehouseStockLedger()
-                $variant->stock_default = max(0, $variant->stock_default - $quantity);
-                $variant->saveQuietly();
+                // Decrease stock in ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
+                // Observer would create stock_adjustment ledger entry, but we create our own below
+                $variant->decrementStockQuietly($quantity);
                 $stockAfter = $variant->stock_default;
 
                 // Create warehouse stock ledger entry (actual deduction)
@@ -372,10 +370,8 @@ class OrderStockService
                     if ($variant) {
                         $stockBefore = $variant->stock_default;
 
-                        // Возвращаем остатки
-                        // Используем saveQuietly() — ledger-запись создаётся ниже напрямую
-                        $variant->stock_default = $variant->stock_default + $qty;
-                        $variant->saveQuietly();
+                        // Возвращаем остатки (quietly to avoid Observer creating duplicate ledger entry)
+                        $variant->incrementStockQuietly($qty);
                         $stockAfter = $variant->stock_default;
 
                         // Создаём запись в журнале
@@ -421,10 +417,8 @@ class OrderStockService
 
                     $stockBefore = $variant->stock_default;
 
-                    // Return stock to ProductVariant (for marketplace sync)
-                    // Используем saveQuietly() — ledger-запись создаётся ниже через createWarehouseStockLedger()
-                    $variant->stock_default = $variant->stock_default + $quantity;
-                    $variant->saveQuietly();
+                    // Return stock to ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
+                    $variant->incrementStockQuietly($quantity);
                     $stockAfter = $variant->stock_default;
 
                     // Create warehouse stock ledger entry (positive to return stock)

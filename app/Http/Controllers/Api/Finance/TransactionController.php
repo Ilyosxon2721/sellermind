@@ -112,15 +112,42 @@ class TransactionController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
+        $transaction = FinanceTransaction::byCompany($companyId)->find($id);
 
-        if (!$transaction->isDraft()) {
-            return $this->errorResponse('Only draft transactions can be deleted', 'invalid_state', null, 422);
+        if (!$transaction) {
+            return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
         }
 
-        $transaction->delete();
+        if ($transaction->isDeleted()) {
+            return $this->errorResponse('Транзакция уже удалена', 'invalid_state', null, 422);
+        }
 
-        return $this->successResponse(['deleted' => true]);
+        // Soft delete - mark as deleted but keep in database
+        $transaction->softDelete();
+
+        return $this->successResponse(['deleted' => true, 'transaction' => $transaction->fresh(['category', 'subcategory', 'counterparty', 'employee'])]);
+    }
+
+    public function restore($id)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (!$companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $transaction = FinanceTransaction::byCompany($companyId)->find($id);
+
+        if (!$transaction) {
+            return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
+        }
+
+        if (!$transaction->isDeleted()) {
+            return $this->errorResponse('Транзакция не удалена', 'invalid_state', null, 422);
+        }
+
+        $transaction->restore();
+
+        return $this->successResponse($transaction->fresh(['category', 'subcategory', 'counterparty', 'employee']));
     }
 
     public function confirm($id)
@@ -130,10 +157,14 @@ class TransactionController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
+        $transaction = FinanceTransaction::byCompany($companyId)->find($id);
+
+        if (!$transaction) {
+            return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
+        }
 
         if (!$transaction->isDraft()) {
-            return $this->errorResponse('Transaction already confirmed or cancelled', 'invalid_state', null, 422);
+            return $this->errorResponse('Транзакция уже подтверждена или отменена', 'invalid_state', null, 422);
         }
 
         $transaction->confirm(Auth::id());
@@ -148,10 +179,14 @@ class TransactionController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
+        $transaction = FinanceTransaction::byCompany($companyId)->find($id);
+
+        if (!$transaction) {
+            return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
+        }
 
         if ($transaction->isCancelled()) {
-            return $this->errorResponse('Transaction already cancelled', 'invalid_state', null, 422);
+            return $this->errorResponse('Транзакция уже отменена', 'invalid_state', null, 422);
         }
 
         $transaction->cancel();

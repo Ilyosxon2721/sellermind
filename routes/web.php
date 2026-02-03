@@ -163,6 +163,10 @@ Route::middleware('auth.any')->group(function () {
         return $controller->ledger(request());
     })->name('ledger');
 
+    // Write-off
+    Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
+    Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
+
     // Web-based API routes for warehouse CRUD (uses session auth)
     Route::middleware('auth')->group(function () {
         Route::get('/api/list', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'index'])->name('api.list');
@@ -193,6 +197,10 @@ Route::middleware('auth.any')->group(function () {
             $controller = app(WarehouseController::class);
             return $controller->ledger(request());
         })->name('cabinet.warehouse.ledger');
+
+        // Write-off
+        Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('cabinet.warehouse.write-offs');
+        Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('cabinet.warehouse.write-off.create');
     });
 
     Route::get('/tasks', function () {
@@ -268,6 +276,14 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/finance', function () {
         return view('finance.index');
     })->name('finance.index');
+
+    Route::get('/debts', function () {
+        return view('debts.index');
+    })->name('debts.index');
+
+    Route::get('/debts/{id}', function ($id) {
+        return view('debts.show', ['debtId' => $id]);
+    })->name('debts.show');
 
     Route::get('/pricing', function () {
         return view('pricing.index');

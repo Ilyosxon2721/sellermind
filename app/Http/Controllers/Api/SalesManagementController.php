@@ -87,9 +87,13 @@ class SalesManagementController extends Controller
     /**
      * Получить одну продажу
      */
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::with(['items.productVariant', 'counterparty', 'createdBy', 'confirmedBy'])
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->with(['items.productVariant', 'counterparty', 'createdBy', 'confirmedBy'])
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
             ->findOrFail($id);
 
         return response()->json([
@@ -153,7 +157,11 @@ class SalesManagementController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         // Можно обновлять только черновики
         if ($sale->status !== 'draft') {
@@ -185,9 +193,13 @@ class SalesManagementController extends Controller
     /**
      * Удалить продажу
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         // Можно удалять только черновики
         if ($sale->status !== 'draft') {
@@ -206,9 +218,13 @@ class SalesManagementController extends Controller
     /**
      * Подтвердить продажу
      */
-    public function confirm(int $id, Request $request): JsonResponse
+    public function confirm(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         $deductStock = $request->boolean('deduct_stock', true);
 
@@ -230,9 +246,13 @@ class SalesManagementController extends Controller
     /**
      * Завершить продажу
      */
-    public function complete(int $id): JsonResponse
+    public function complete(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         try {
             $sale = $this->saleService->completeSale($sale);
@@ -252,9 +272,13 @@ class SalesManagementController extends Controller
     /**
      * Отменить продажу
      */
-    public function cancel(int $id): JsonResponse
+    public function cancel(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         try {
             $sale = $this->saleService->cancelSale($sale);
@@ -276,7 +300,11 @@ class SalesManagementController extends Controller
      */
     public function ship(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
             'item_ids' => 'nullable|array',
@@ -310,9 +338,13 @@ class SalesManagementController extends Controller
     /**
      * Получить информацию о резервах продажи
      */
-    public function getReservations(int $id): JsonResponse
+    public function getReservations(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         $reservations = $this->reservationService->getActiveReservations($sale);
         $isFullyShipped = $this->reservationService->isFullyShipped($sale);
@@ -330,7 +362,11 @@ class SalesManagementController extends Controller
      */
     public function addItem(Request $request, int $id): JsonResponse
     {
-        $sale = Sale::findOrFail($id);
+        $companyId = $this->getCompanyId($request);
+
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($id);
 
         if ($sale->status !== 'draft') {
             return response()->json([
@@ -376,6 +412,13 @@ class SalesManagementController extends Controller
      */
     public function updateItem(Request $request, int $saleId, int $itemId): JsonResponse
     {
+        $companyId = $this->getCompanyId($request);
+
+        // Проверяем что продажа принадлежит компании пользователя
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($saleId);
+
         $item = SaleItem::where('sale_id', $saleId)->findOrFail($itemId);
 
         if ($item->sale->status !== 'draft') {
@@ -417,8 +460,15 @@ class SalesManagementController extends Controller
     /**
      * Удалить позицию из продажи
      */
-    public function deleteItem(int $saleId, int $itemId): JsonResponse
+    public function deleteItem(Request $request, int $saleId, int $itemId): JsonResponse
     {
+        $companyId = $this->getCompanyId($request);
+
+        // Проверяем что продажа принадлежит компании пользователя
+        $sale = Sale::query()
+            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->findOrFail($saleId);
+
         $item = SaleItem::where('sale_id', $saleId)->findOrFail($itemId);
 
         if ($item->sale->status !== 'draft') {

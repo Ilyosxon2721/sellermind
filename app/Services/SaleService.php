@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Counterparty;
+use App\Models\Finance\FinanceDebt;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -227,14 +228,64 @@ class SaleService
      */
     public function completeSale(Sale $sale): Sale
     {
-        $sale->complete();
+        return DB::transaction(function () use ($sale) {
+            $sale->complete();
 
-        Log::info('Sale completed', [
-            'sale_id' => $sale->id,
-            'sale_number' => $sale->sale_number,
+            // Автоматически создаём долг если продажа с контрагентом
+            if ($sale->counterparty_id && $sale->total_amount > 0) {
+                $this->createDebtFromSale($sale);
+            }
+
+            Log::info('Sale completed', [
+                'sale_id' => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'debt_created' => (bool) $sale->counterparty_id,
+            ]);
+
+            return $sale->fresh();
+        });
+    }
+
+    /**
+     * Создать долг из завершённой продажи
+     */
+    protected function createDebtFromSale(Sale $sale): FinanceDebt
+    {
+        // Проверяем что долг ещё не создавался для этой продажи
+        $existing = FinanceDebt::where('source_type', Sale::class)
+            ->where('source_id', $sale->id)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $debt = FinanceDebt::create([
+            'company_id' => $sale->company_id,
+            'type' => FinanceDebt::TYPE_RECEIVABLE,
+            'purpose' => FinanceDebt::PURPOSE_DEBT,
+            'counterparty_entity_id' => $sale->counterparty_id,
+            'description' => 'Продажа ' . $sale->sale_number,
+            'reference' => $sale->sale_number,
+            'original_amount' => $sale->total_amount,
+            'amount_paid' => 0,
+            'amount_outstanding' => $sale->total_amount,
+            'currency_code' => $sale->currency ?? 'UZS',
+            'debt_date' => now(),
+            'status' => FinanceDebt::STATUS_ACTIVE,
+            'source_type' => Sale::class,
+            'source_id' => $sale->id,
+            'created_by' => auth()->id(),
         ]);
 
-        return $sale->fresh();
+        Log::info('Debt auto-created from sale', [
+            'debt_id' => $debt->id,
+            'sale_id' => $sale->id,
+            'counterparty_id' => $sale->counterparty_id,
+            'amount' => $sale->total_amount,
+        ]);
+
+        return $debt;
     }
 
     /**

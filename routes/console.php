@@ -67,6 +67,7 @@ Schedule::call(function () {
     }
 })->everyFiveMinutes()
     ->name('wb-sync-new-orders')
+    ->withoutOverlapping(5)
     ->onFailure(function () {
         \Log::error('WB new orders sync failed');
     });
@@ -82,6 +83,7 @@ Schedule::call(function () {
     }
 })->everyTenMinutes()
     ->name('wb-update-orders-status')
+    ->withoutOverlapping(10)
     ->onFailure(function () {
         \Log::error('WB orders status update failed');
     });
@@ -124,6 +126,7 @@ Schedule::call(function () {
     }
 })->hourly()
     ->name('uzum-sync-products')
+    ->withoutOverlapping(30)
     ->onFailure(function () {
         \Log::error('Uzum products sync failed');
     });
@@ -245,6 +248,7 @@ Schedule::call(function () {
     }
 })->hourly()
     ->name('cache-sales-analytics')
+    ->withoutOverlapping(30)
     ->onFailure(function () {
         \Log::error('Failed to cache sales analytics');
     });

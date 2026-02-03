@@ -4,6 +4,7 @@ namespace App\Models\Finance;
 
 use App\Models\AP\Supplier;
 use App\Models\Company;
+use App\Models\Counterparty;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,12 @@ class FinanceDebt extends Model
     public const TYPE_RECEIVABLE = 'receivable'; // дебиторка (нам должны)
     public const TYPE_PAYABLE = 'payable';       // кредиторка (мы должны)
 
+    public const PURPOSE_DEBT = 'debt';
+    public const PURPOSE_PREPAYMENT = 'prepayment';
+    public const PURPOSE_ADVANCE = 'advance';
+    public const PURPOSE_LOAN = 'loan';
+    public const PURPOSE_OTHER = 'other';
+
     public const STATUS_ACTIVE = 'active';
     public const STATUS_PARTIALLY_PAID = 'partially_paid';
     public const STATUS_PAID = 'paid';
@@ -26,7 +33,9 @@ class FinanceDebt extends Model
     protected $fillable = [
         'company_id',
         'type',
+        'purpose',
         'counterparty_id',
+        'counterparty_entity_id',
         'employee_id',
         'description',
         'reference',
@@ -41,6 +50,10 @@ class FinanceDebt extends Model
         'source_id',
         'interest_rate',
         'notes',
+        'cash_account_id',
+        'written_off_at',
+        'written_off_by',
+        'written_off_reason',
         'created_by',
     ];
 
@@ -51,6 +64,7 @@ class FinanceDebt extends Model
         'amount_paid' => 'float',
         'amount_outstanding' => 'float',
         'interest_rate' => 'float',
+        'written_off_at' => 'datetime',
     ];
 
     public function company(): BelongsTo
@@ -63,6 +77,11 @@ class FinanceDebt extends Model
         return $this->belongsTo(Supplier::class, 'counterparty_id');
     }
 
+    public function counterpartyEntity(): BelongsTo
+    {
+        return $this->belongsTo(Counterparty::class, 'counterparty_entity_id');
+    }
+
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
@@ -71,6 +90,16 @@ class FinanceDebt extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function writtenOffByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'written_off_by');
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
     }
 
     public function source(): MorphTo
@@ -122,7 +151,7 @@ class FinanceDebt extends Model
         $this->save();
     }
 
-    public function writeOff(): bool
+    public function writeOff(int $userId, ?string $reason = null): bool
     {
         if ($this->isPaid()) {
             return false;
@@ -131,11 +160,17 @@ class FinanceDebt extends Model
         return $this->update([
             'status' => self::STATUS_WRITTEN_OFF,
             'amount_outstanding' => 0,
+            'written_off_at' => now(),
+            'written_off_by' => $userId,
+            'written_off_reason' => $reason,
         ]);
     }
 
     public function getCounterpartyNameAttribute(): ?string
     {
+        if ($this->counterpartyEntity) {
+            return $this->counterpartyEntity->getDisplayName();
+        }
         if ($this->counterparty) {
             return $this->counterparty->name;
         }
@@ -170,5 +205,15 @@ class FinanceDebt extends Model
         return $query->active()
             ->whereNotNull('due_date')
             ->where('due_date', '<', now());
+    }
+
+    public function scopeByPurpose($query, string $purpose)
+    {
+        return $query->where('purpose', $purpose);
+    }
+
+    public function scopeByCounterpartyEntity($query, int $id)
+    {
+        return $query->where('counterparty_entity_id', $id);
     }
 }

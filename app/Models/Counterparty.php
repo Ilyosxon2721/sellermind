@@ -55,6 +55,11 @@ class Counterparty extends Model
         return $this->hasMany(CounterpartyContract::class);
     }
 
+    public function debts(): HasMany
+    {
+        return $this->hasMany(\App\Models\Finance\FinanceDebt::class, 'counterparty_entity_id');
+    }
+
     public function activeContract(): ?CounterpartyContract
     {
         return $this->contracts()
