@@ -20,6 +20,7 @@ return [
     'finance' => 'Финансы',
     'accounts_payable' => 'Счета (AP)',
     'pricing' => 'Цены',
+    'integrations' => 'Интеграции',
     'company_profile' => 'Профиль компании',
     
     // Warehouse submenu
