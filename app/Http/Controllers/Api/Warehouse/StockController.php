@@ -193,7 +193,8 @@ class StockController extends Controller
             ->with(['document:id,doc_no,type', 'warehouse:id,name', 'sku:id,sku_code'])
             ->where('company_id', $companyId)
             ->where('warehouse_id', $request->warehouse_id)
-            ->orderBy('occurred_at', 'desc');
+            ->orderBy('occurred_at', 'desc')
+            ->orderBy('id', 'desc');
 
         if ($request->sku_id) {
             $query->where('sku_id', $request->sku_id);
@@ -203,7 +204,7 @@ class StockController extends Controller
             $query->where('occurred_at', '>=', $request->from);
         }
         if ($request->to) {
-            $query->where('occurred_at', '<=', $request->to);
+            $query->where('occurred_at', '<=', $request->to . ' 23:59:59');
         }
 
         if ($request->query('query')) {

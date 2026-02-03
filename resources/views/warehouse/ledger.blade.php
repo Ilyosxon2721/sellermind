@@ -158,11 +158,14 @@
                 </div>
 
                 <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-t">
-                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.prev" @click="paginate(cursor.prev)">
+                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.prev" @click="paginate('prev')">
                         ← Назад
                     </button>
-                    <div class="text-sm text-gray-600">Страница: <span class="font-semibold" x-text="cursor.page"></span></div>
-                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.next" @click="paginate(cursor.next)">
+                    <div class="text-sm text-gray-600">
+                        Страница <span class="font-semibold" x-text="cursor.page"></span> из <span class="font-semibold" x-text="cursor.lastPage"></span>
+                        <span class="text-gray-400 ml-2" x-text="'(' + cursor.total + ' записей)'"></span>
+                    </div>
+                    <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.next" @click="paginate('next')">
                         Вперёд →
                     </button>
                 </div>
@@ -181,7 +184,7 @@
                 to: new Date().toISOString().slice(0, 10),
             },
             items: [],
-            cursor: {next: null, prev: null, page: 1},
+            cursor: {next: false, prev: false, page: 1, lastPage: 1, total: 0},
             status: '',
             error: '',
             loading: false,
@@ -230,9 +233,13 @@
                 this.load();
             },
 
-            async paginate(url) {
-                if (!url) return;
-                await this.load(url);
+            async paginate(direction) {
+                const newPage = direction === 'next' ? this.cursor.page + 1 : this.cursor.page - 1;
+                if (newPage < 1 || newPage > this.cursor.lastPage) return;
+                const params = new URLSearchParams();
+                Object.entries(this.filters).forEach(([k, v]) => { if (v) params.append(k, v); });
+                params.set('page', newPage);
+                await this.load(`/api/marketplace/stock/ledger?${params.toString()}`);
             },
 
             async load(url = null) {
@@ -250,10 +257,12 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.data || json.data || [];
-                    const meta = json.meta || json.data?.meta || {};
-                    this.cursor.next = meta.next_cursor_url || meta.next_cursor || null;
-                    this.cursor.prev = meta.prev_cursor_url || meta.prev_cursor || null;
-                    this.cursor.page = meta.current_page || 1;
+                    const pag = json.data?.pagination || json.meta || {};
+                    this.cursor.page = pag.current_page || 1;
+                    this.cursor.lastPage = pag.last_page || 1;
+                    this.cursor.total = pag.total || 0;
+                    this.cursor.next = this.cursor.page < this.cursor.lastPage;
+                    this.cursor.prev = this.cursor.page > 1;
                 } catch (e) {
                     console.error(e);
                     this.error = e.message || 'Ошибка';
