@@ -401,7 +401,7 @@ class ProcessRismentQueues extends Command
             return;
         }
 
-        if (property_exists($order, 'status_normalized')) {
+        if (array_key_exists('status_normalized', $order->getAttributes())) {
             $order->status_normalized = 'shipped';
         } else {
             $order->status = 'shipped';
@@ -420,7 +420,7 @@ class ProcessRismentQueues extends Command
         $order = $this->resolveOrder($data, $companyId);
         if (!$order) return;
 
-        if (property_exists($order, 'status_normalized')) {
+        if (array_key_exists('status_normalized', $order->getAttributes())) {
             $order->status_normalized = 'delivered';
         } else {
             $order->status = 'delivered';
@@ -436,7 +436,7 @@ class ProcessRismentQueues extends Command
         $order = $this->resolveOrder($data, $companyId);
         if (!$order) return;
 
-        if (property_exists($order, 'status_normalized')) {
+        if (array_key_exists('status_normalized', $order->getAttributes())) {
             $order->status_normalized = 'cancelled';
         } else {
             $order->status = 'cancelled';
