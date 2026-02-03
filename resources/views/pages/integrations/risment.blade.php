@@ -187,14 +187,18 @@ function rismentSettingsPage() {
             this.successMsg = null;
 
             try {
+                const token = localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+
                 const res = await fetch('/api/integration/link', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                        'Authorization': 'Bearer ' + localStorage.getItem('_x_auth_token'),
-                    },
+                    headers,
+                    credentials: 'same-origin',
                     body: JSON.stringify({ link_token: this.linkToken }),
                 });
 
@@ -221,13 +225,17 @@ function rismentSettingsPage() {
             this.error = null;
 
             try {
+                const token = localStorage.getItem('_x_auth_token')?.replace(/"/g, '');
+                const headers = {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+
                 const res = await fetch('/api/integration/link', {
                     method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                        'Authorization': 'Bearer ' + localStorage.getItem('_x_auth_token'),
-                    },
+                    headers,
+                    credentials: 'same-origin',
                 });
 
                 const data = await res.json();

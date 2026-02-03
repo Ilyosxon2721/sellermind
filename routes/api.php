@@ -62,7 +62,7 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 });
 
 // RISMENT Integration Link (uses session + sanctum auth)
-Route::middleware('auth.any')->prefix('integration')->group(function () {
+Route::middleware(['web', 'auth.any'])->prefix('integration')->group(function () {
     Route::post('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'store']);
     Route::delete('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'destroy']);
 });
