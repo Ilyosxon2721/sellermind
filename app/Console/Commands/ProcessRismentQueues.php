@@ -223,23 +223,13 @@ class ProcessRismentQueues extends Command
             return;
         }
 
-        // Пропуск если товар уже существует
-        $existing = Product::where('company_id', $companyId)
-            ->where('risment_product_id', $rismentId)
-            ->first();
-
-        if ($existing) {
-            $this->line("  Product risment:{$rismentId} already exists (#{$existing->id}), skipping");
-            return;
-        }
-
         // Маппинг полей: RISMENT → SellerMind
         // RISMENT шлёт: title, article, variants[]
         // SellerMind ожидает: name, article, brand_name
         $productName = $data['title'] ?? $data['name'] ?? "RISMENT #{$rismentId}";
         $article = $data['article'] ?? "RISMENT-{$rismentId}";
 
-        Log::info('ProcessRisment: Создание товара', [
+        Log::info('ProcessRisment: Создание/обновление товара', [
             'risment_id' => $rismentId,
             'company_id' => $companyId,
             'name' => $productName,
@@ -250,14 +240,21 @@ class ProcessRismentQueues extends Command
 
         DB::beginTransaction();
         try {
-            $product = Product::create([
-                'company_id' => $companyId,
-                'name' => $productName,
-                'article' => $article,
-                'brand_name' => $data['brand'] ?? $data['brand_name'] ?? null,
-                'risment_product_id' => $rismentId,
-                'is_active' => true,
-            ]);
+            $product = Product::updateOrCreate(
+                [
+                    'company_id' => $companyId,
+                    'risment_product_id' => $rismentId,
+                ],
+                [
+                    'name' => $productName,
+                    'article' => $article,
+                    'brand_name' => $data['brand'] ?? $data['brand_name'] ?? null,
+                    'is_active' => true,
+                    'is_archived' => false,
+                ]
+            );
+
+            $wasRecentlyCreated = $product->wasRecentlyCreated;
 
             // Обработка вариантов
             $variants = $data['variants'] ?? [];
@@ -275,46 +272,55 @@ class ProcessRismentQueues extends Command
                     ?? $variantData['article']
                     ?? "{$article}-V" . ($i + 1);
 
-                $variant = ProductVariant::create([
-                    'product_id' => $product->id,
-                    'company_id' => $companyId,
-                    'sku' => $sku,
-                    'barcode' => $variantData['barcode'] ?? null,
-                    'price_default' => $variantData['price']
-                        ?? $variantData['sell_price']
-                        ?? $variantData['price_default']
-                        ?? 0,
-                    'purchase_price' => $variantData['purchase_price']
-                        ?? $variantData['cost_price']
-                        ?? null,
-                    'option_values_summary' => $variantData['option_values_summary']
-                        ?? $variantData['title']
-                        ?? null,
-                    'stock_default' => 0,
-                    'is_active' => true,
-                ]);
+                $variant = ProductVariant::updateOrCreate(
+                    [
+                        'product_id' => $product->id,
+                        'sku' => $sku,
+                    ],
+                    [
+                        'company_id' => $companyId,
+                        'barcode' => $variantData['barcode'] ?? null,
+                        'price_default' => $variantData['price']
+                            ?? $variantData['sell_price']
+                            ?? $variantData['price_default']
+                            ?? 0,
+                        'purchase_price' => $variantData['purchase_price']
+                            ?? $variantData['cost_price']
+                            ?? null,
+                        'option_values_summary' => $variantData['option_values_summary']
+                            ?? $variantData['title']
+                            ?? null,
+                        'is_active' => true,
+                    ]
+                );
 
-                Sku::create([
-                    'product_id' => $product->id,
-                    'product_variant_id' => $variant->id,
-                    'company_id' => $companyId,
-                    'sku_code' => $sku,
-                    'barcode_ean13' => $variantData['barcode'] ?? null,
-                    'is_active' => true,
-                ]);
+                Sku::updateOrCreate(
+                    [
+                        'company_id' => $companyId,
+                        'sku_code' => $sku,
+                    ],
+                    [
+                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
+                        'barcode_ean13' => $variantData['barcode'] ?? null,
+                        'is_active' => true,
+                    ]
+                );
 
                 $this->line("    Variant #{$variant->id}: sku={$sku}");
             }
 
             DB::commit();
 
-            Log::info('ProcessRisment: Товар создан успешно', [
+            $action = $wasRecentlyCreated ? 'Created' : 'Updated';
+            Log::info("ProcessRisment: Товар {$action}", [
                 'product_id' => $product->id,
                 'risment_id' => $rismentId,
-                'variants_created' => count($variants),
+                'variants_count' => count($variants),
+                'action' => $action,
             ]);
 
-            $this->info("  Created product #{$product->id} \"{$productName}\" (risment:{$rismentId}), variants: " . count($variants));
+            $this->info("  {$action} product #{$product->id} \"{$productName}\" (risment:{$rismentId}), variants: " . count($variants));
 
         } catch (\Exception $e) {
             DB::rollBack();
