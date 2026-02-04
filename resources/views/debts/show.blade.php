@@ -1,7 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="browser-only flex h-screen bg-gray-50" x-data="debtShowPage({{ $debtId }})">
+<div class="browser-only flex h-screen bg-gray-50" x-data="debtShowPage({{ $debtId }})"
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
     <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
         <x-sidebar />
     </template>
