@@ -17,7 +17,7 @@ return [
     'back' => 'Назад',
     'next' => 'Далее',
     'previous' => 'Предыдущая',
-    
+
     // Table
     'actions' => 'Действия',
     'status' => 'Статус',
@@ -27,14 +27,14 @@ return [
     'showing' => 'Показано',
     'of' => 'из',
     'entries' => 'записей',
-    
+
     // Status
     'active' => 'Активный',
     'inactive' => 'Неактивный',
     'pending' => 'В ожидании',
     'completed' => 'Завершён',
     'cancelled' => 'Отменён',
-    
+
     // Messages
     'success' => 'Успешно!',
     'error' => 'Ошибка!',

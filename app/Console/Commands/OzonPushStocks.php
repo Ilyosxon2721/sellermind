@@ -4,9 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\VariantMarketplaceLink;
-use App\Services\Marketplaces\OzonClient;
-use App\Services\Marketplaces\MarketplaceHttpClient;
 use App\Services\Marketplaces\IssueDetectorService;
+use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\OzonClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -29,6 +29,7 @@ class OzonPushStocks extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных Ozon аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -70,10 +71,11 @@ class OzonPushStocks extends Command
 
         if ($links->isEmpty()) {
             $this->warn('  Нет активных связей для синхронизации');
+
             return;
         }
 
-        $this->line("  Найдено связей: " . $links->count());
+        $this->line('  Найдено связей: '.$links->count());
 
         // Получить warehouse_id из настроек
         $credentials = $account->credentials_json ?? [];
@@ -82,7 +84,7 @@ class OzonPushStocks extends Command
         if ($warehouseId) {
             $this->line("  Склад Ozon ID: {$warehouseId}");
         } else {
-            $this->line("  Склад не указан, будет использован склад по умолчанию");
+            $this->line('  Склад не указан, будет использован склад по умолчанию');
         }
 
         // Подготовить данные для синхронизации
@@ -94,8 +96,9 @@ class OzonPushStocks extends Command
             // external_offer_id содержит product_id, который НЕ подходит для API остатков
             $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
-            if (!$offerId) {
+            if (! $offerId) {
                 $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id/external_sku");
+
                 continue;
             }
 
@@ -110,6 +113,7 @@ class OzonPushStocks extends Command
 
         if (empty($stocksData)) {
             $this->warn('  Нет данных для синхронизации');
+
             return;
         }
 
@@ -118,6 +122,7 @@ class OzonPushStocks extends Command
             foreach ($stocksData as $item) {
                 $this->line("    Offer: {$item['offer_id']}, Amount: {$item['stock']}");
             }
+
             return;
         }
 
@@ -146,7 +151,7 @@ class OzonPushStocks extends Command
                     'offer_id' => $stockItem['offer_id'],
                     'error' => $e->getMessage(),
                 ]);
-                $this->error("  Ошибка для offer {$stockItem['offer_id']}: " . $e->getMessage());
+                $this->error("  Ошибка для offer {$stockItem['offer_id']}: ".$e->getMessage());
             }
         }
 

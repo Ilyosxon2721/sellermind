@@ -221,5 +221,3 @@ if (window.Alpine) {
 // Export
 window.emptyState = emptyState;
 export default emptyState;
-
-console.log('✅ Empty State: Loaded');

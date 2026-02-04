@@ -1,14 +1,15 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesHttpClient.php
 
 namespace App\Services\Marketplaces\Wildberries;
 
 use App\Exceptions\RateLimitException;
 use App\Models\MarketplaceAccount;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * HTTP client for Wildberries API with support for different API categories.
@@ -23,6 +24,7 @@ use Illuminate\Http\Client\Response;
 class WildberriesHttpClient
 {
     protected MarketplaceAccount $account;
+
     protected bool $debugMode;
 
     public function __construct(MarketplaceAccount $account)
@@ -34,9 +36,9 @@ class WildberriesHttpClient
     /**
      * Make GET request to WB API
      *
-     * @param string $category API category (content, marketplace, prices, statistics, common)
-     * @param string $uri Endpoint URI
-     * @param array $query Query parameters
+     * @param  string  $category  API category (content, marketplace, prices, statistics, common)
+     * @param  string  $uri  Endpoint URI
+     * @param  array  $query  Query parameters
      */
     public function get(string $category, string $uri, array $query = []): array
     {
@@ -78,10 +80,11 @@ class WildberriesHttpClient
     /**
      * GET запрос с бинарным ответом (файлы, изображения) и retry при 429
      *
-     * @param string $category API category
-     * @param string $uri Endpoint URI
-     * @param array $query Query parameters
+     * @param  string  $category  API category
+     * @param  string  $uri  Endpoint URI
+     * @param  array  $query  Query parameters
      * @return string Binary content
+     *
      * @throws \RuntimeException
      * @throws RateLimitException если все попытки исчерпаны
      */
@@ -116,9 +119,9 @@ class WildberriesHttpClient
                 );
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->logError($category, 'GET', $uri, "HTTP {$response->status()}: {$response->body()}");
-                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
+                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): ".$response->body());
             }
 
             Log::info('WB API binary response received', [
@@ -137,11 +140,12 @@ class WildberriesHttpClient
     /**
      * POST запрос с бинарным ответом (стикеры, штрихкоды) и retry при 429
      *
-     * @param string $category API category
-     * @param string $uri Endpoint URI
-     * @param array $payload Request body
-     * @param array $query Query parameters
+     * @param  string  $category  API category
+     * @param  string  $uri  Endpoint URI
+     * @param  array  $payload  Request body
+     * @param  array  $query  Query parameters
      * @return string Binary content
+     *
      * @throws \RuntimeException
      * @throws RateLimitException если все попытки исчерпаны
      */
@@ -156,8 +160,8 @@ class WildberriesHttpClient
 
             try {
                 $fullUrl = $uri;
-                if (!empty($query)) {
-                    $fullUrl .= '?' . http_build_query($query);
+                if (! empty($query)) {
+                    $fullUrl .= '?'.http_build_query($query);
                 }
 
                 $response = $client->post($fullUrl, $payload);
@@ -181,9 +185,9 @@ class WildberriesHttpClient
                 );
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $this->logError($category, 'POST', $uri, "HTTP {$response->status()}: {$response->body()}");
-                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): " . $response->body());
+                throw new \RuntimeException("Wildberries API error (HTTP {$response->status()}): ".$response->body());
             }
 
             Log::info('WB API binary response received (POST)', [
@@ -242,8 +246,10 @@ class WildberriesHttpClient
      * Выполнить запрос с автоматическим повтором при rate limit (429)
      *
      * @template T
-     * @param callable(): T $requestFn
+     *
+     * @param  callable(): T  $requestFn
      * @return T
+     *
      * @throws RateLimitException если все попытки исчерпаны
      */
     protected function executeWithRetry(callable $requestFn, string $category, string $method, string $uri): mixed
@@ -311,7 +317,7 @@ class WildberriesHttpClient
     {
         $config = config('wildberries');
 
-        $useSandbox = (bool)($config['sandbox'] ?? false);
+        $useSandbox = (bool) ($config['sandbox'] ?? false);
         $baseUrls = $useSandbox
             ? ($config['sandbox_base_urls'] ?? [])
             : ($config['base_urls'] ?? []);
@@ -323,7 +329,7 @@ class WildberriesHttpClient
             ?: $this->account->api_key
             ?: ($config['tokens'][$category] ?? null);
 
-        if (!$token) {
+        if (! $token) {
             throw new \RuntimeException("No API token available for WB category: {$category}. Please configure wb_marketplace_token or api_key for account ID {$this->account->id}");
         }
 
@@ -336,7 +342,7 @@ class WildberriesHttpClient
             ->timeout($config['timeout'] ?? 30);
 
         // SSL verification (disable for local development on Windows if needed)
-        if (!($config['verify_ssl'] ?? true)) {
+        if (! ($config['verify_ssl'] ?? true)) {
             $client = $client->withOptions(['verify' => false]);
         }
 
@@ -382,7 +388,7 @@ class WildberriesHttpClient
 
         // Handle other errors
         if ($status < 200 || $status >= 300) {
-            throw new \RuntimeException("Wildberries API error (HTTP {$status}): " . mb_substr($body, 0, 500));
+            throw new \RuntimeException("Wildberries API error (HTTP {$status}): ".mb_substr($body, 0, 500));
         }
 
         // Mark tokens as valid after successful request
@@ -391,7 +397,7 @@ class WildberriesHttpClient
         // Parse JSON
         $json = $response->json();
 
-        if (!is_array($json) && $json !== null) {
+        if (! is_array($json) && $json !== null) {
             throw new \RuntimeException('Wildberries API returned invalid JSON');
         }
 
@@ -444,7 +450,7 @@ class WildberriesHttpClient
      */
     protected function logRequest(string $category, string $method, string $uri, array $options): void
     {
-        if (!$this->debugMode) {
+        if (! $this->debugMode) {
             return;
         }
 
@@ -462,7 +468,7 @@ class WildberriesHttpClient
      */
     protected function logResponse(string $category, string $method, string $uri, int $status, string $body, int $durationMs): void
     {
-        if (!$this->debugMode) {
+        if (! $this->debugMode) {
             return;
         }
 

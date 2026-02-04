@@ -81,14 +81,14 @@ class WarehouseMappingController extends Controller
         }
 
         $data = $validator->validated();
-        
+
         // Валидация: local_warehouse_id должен быть уникальным в рамках аккаунта
-        if (!empty($data['local_warehouse_id'])) {
+        if (! empty($data['local_warehouse_id'])) {
             $existingMapping = MarketplaceWarehouse::where('marketplace_account_id', $account->id)
                 ->where('local_warehouse_id', $data['local_warehouse_id'])
                 ->where('marketplace_warehouse_id', '!=', $data['marketplace_warehouse_id'])
                 ->first();
-            
+
             if ($existingMapping) {
                 return response()->json([
                     'success' => false,
@@ -96,7 +96,7 @@ class WarehouseMappingController extends Controller
                 ], 422);
             }
         }
-        
+
         $data['marketplace_account_id'] = $account->id;
         $data['is_active'] = true;
 
@@ -183,12 +183,12 @@ class WarehouseMappingController extends Controller
     {
         $companyId = $request->input('company_id');
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['warehouses' => []]);
         }
 
         // Check user has access to this company
-        if (!$request->user()->hasCompanyAccess($companyId)) {
+        if (! $request->user()->hasCompanyAccess($companyId)) {
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 // file: config/uzum.php
 
 return [

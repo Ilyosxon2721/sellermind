@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/WildberriesHealthCheck.php
 
 namespace App\Console\Commands;
@@ -22,13 +23,15 @@ class WildberriesHealthCheck extends Command
 
         $account = MarketplaceAccount::find($accountId);
 
-        if (!$account) {
+        if (! $account) {
             $this->error("Аккаунт с ID {$accountId} не найден");
+
             return self::FAILURE;
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             $this->error("Аккаунт #{$accountId} не является Wildberries (marketplace: {$account->marketplace})");
+
             return self::FAILURE;
         }
 
@@ -74,7 +77,7 @@ class WildberriesHealthCheck extends Command
 
             // Check if it's an auth error
             foreach ($results as $result) {
-                if (!$result['success'] && str_contains($result['message'] ?? '', 'auth')) {
+                if (! $result['success'] && str_contains($result['message'] ?? '', 'auth')) {
                     $this->error('Проверьте API токены в настройках аккаунта');
                     break;
                 }

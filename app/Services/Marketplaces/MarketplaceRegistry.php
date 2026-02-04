@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceRegistry.php
 
 namespace App\Services\Marketplaces;
@@ -28,7 +29,7 @@ class MarketplaceRegistry
     {
         $code = $account->marketplace;
 
-        if (!isset($this->clients[$code])) {
+        if (! isset($this->clients[$code])) {
             throw new InvalidArgumentException("No marketplace client registered for [{$code}]");
         }
 
@@ -40,7 +41,7 @@ class MarketplaceRegistry
      */
     public function getClient(string $marketplaceCode): MarketplaceClientInterface
     {
-        if (!isset($this->clients[$marketplaceCode])) {
+        if (! isset($this->clients[$marketplaceCode])) {
             throw new InvalidArgumentException("No marketplace client registered for [{$marketplaceCode}]");
         }
 

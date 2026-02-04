@@ -33,10 +33,13 @@ class OrderStockReturn extends Model
     protected $table = 'marketplace_returns';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSED = 'processed';
+
     public const STATUS_REJECTED = 'rejected';
 
     public const ACTION_RETURN_TO_STOCK = 'return_to_stock';
+
     public const ACTION_WRITE_OFF = 'write_off';
 
     protected $fillable = [
@@ -97,17 +100,17 @@ class OrderStockReturn extends Model
         }
 
         $order = $this->getOrder();
-        if (!$order) {
+        if (! $order) {
             return false;
         }
 
         $account = $this->marketplaceAccount;
-        if (!$account) {
+        if (! $account) {
             return false;
         }
 
         // Получаем товары из заказа
-        $orderStockService = new \App\Services\Stock\OrderStockService();
+        $orderStockService = new \App\Services\Stock\OrderStockService;
         $items = $orderStockService->getOrderItems($order, $this->order_type);
 
         // Возвращаем товары на склад
@@ -175,7 +178,7 @@ class OrderStockReturn extends Model
      */
     protected function findVariant(MarketplaceAccount $account, array $item): ?ProductVariant
     {
-        $orderStockService = new \App\Services\Stock\OrderStockService();
+        $orderStockService = new \App\Services\Stock\OrderStockService;
 
         // Используем reflection для доступа к protected методу
         $reflection = new \ReflectionClass($orderStockService);

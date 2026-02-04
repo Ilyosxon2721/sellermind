@@ -3,11 +3,11 @@
 namespace App\Services\Agent;
 
 use App\Services\Agent\Contracts\AgentToolInterface;
+use App\Services\Agent\Tools\CheckProductByUrlTool;
 use App\Services\Agent\Tools\EchoTool;
 use App\Services\Agent\Tools\GetProductContextTool;
-use App\Services\Agent\Tools\VpcBrowserTool;
 use App\Services\Agent\Tools\MarketplaceLoginTool;
-use App\Services\Agent\Tools\CheckProductByUrlTool;
+use App\Services\Agent\Tools\VpcBrowserTool;
 
 class ToolRegistry
 {
@@ -16,13 +16,13 @@ class ToolRegistry
     public function __construct()
     {
         // Register default tools
-        $this->register(new EchoTool());
-        $this->register(new GetProductContextTool());
+        $this->register(new EchoTool);
+        $this->register(new GetProductContextTool);
 
         // Register VPC/Browser tools
-        $this->register(new VpcBrowserTool());
-        $this->register(new MarketplaceLoginTool());
-        $this->register(new CheckProductByUrlTool());
+        $this->register(new VpcBrowserTool);
+        $this->register(new MarketplaceLoginTool);
+        $this->register(new CheckProductByUrlTool);
     }
 
     public function register(AgentToolInterface $tool): void
@@ -58,11 +58,11 @@ class ToolRegistry
     {
         $tools = empty($toolNames) ? $this->tools : array_filter(
             $this->tools,
-            fn($tool) => in_array($tool->getName(), $toolNames)
+            fn ($tool) => in_array($tool->getName(), $toolNames)
         );
 
         return array_map(
-            fn(AgentToolInterface $tool) => $tool->getSchema(),
+            fn (AgentToolInterface $tool) => $tool->getSchema(),
             array_values($tools)
         );
     }
@@ -74,7 +74,7 @@ class ToolRegistry
     {
         $tool = $this->get($name);
 
-        if (!$tool) {
+        if (! $tool) {
             return [
                 'success' => false,
                 'error' => "Tool '{$name}' not found",

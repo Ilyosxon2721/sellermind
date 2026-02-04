@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 class DatabaseBackup extends Command
 {
@@ -35,8 +34,9 @@ class DatabaseBackup extends Command
         $disk = $this->option('disk');
         $keepDays = (int) $this->option('keep');
 
-        if (!$database) {
+        if (! $database) {
             $this->error('Database connection not found!');
+
             return self::FAILURE;
         }
 
@@ -49,7 +49,7 @@ class DatabaseBackup extends Command
         $backupPath = storage_path("app/backups/{$filename}");
 
         // Ensure backup directory exists
-        if (!file_exists(storage_path('app/backups'))) {
+        if (! file_exists(storage_path('app/backups'))) {
             mkdir(storage_path('app/backups'), 0755, true);
         }
 
@@ -66,7 +66,7 @@ class DatabaseBackup extends Command
 
             // Compress backup
             if (file_exists($backupPath)) {
-                $gzPath = $backupPath . '.gz';
+                $gzPath = $backupPath.'.gz';
                 $this->compressFile($backupPath, $gzPath);
                 unlink($backupPath);
                 $this->info("✓ Backup compressed: {$filename}.gz");
@@ -76,10 +76,12 @@ class DatabaseBackup extends Command
             $this->cleanOldBackups($keepDays);
 
             $this->info('✓ Database backup completed successfully!');
+
             return self::SUCCESS;
 
         } catch (\Exception $e) {
             $this->error("Backup failed: {$e->getMessage()}");
+
             return self::FAILURE;
         }
     }
@@ -100,7 +102,7 @@ class DatabaseBackup extends Command
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
-            $password ? '--password=' . escapeshellarg($password) : '',
+            $password ? '--password='.escapeshellarg($password) : '',
             escapeshellarg($dbName),
             escapeshellarg($path)
         );
@@ -147,11 +149,11 @@ class DatabaseBackup extends Command
     {
         $dbPath = $database['database'];
 
-        if (!file_exists($dbPath)) {
+        if (! file_exists($dbPath)) {
             throw new \Exception("SQLite database not found: {$dbPath}");
         }
 
-        if (!copy($dbPath, $path)) {
+        if (! copy($dbPath, $path)) {
             throw new \Exception('SQLite backup failed');
         }
     }
@@ -165,7 +167,7 @@ class DatabaseBackup extends Command
         $file = fopen($source, 'rb');
         $gzFile = gzopen($destination, 'wb9');
 
-        while (!feof($file)) {
+        while (! feof($file)) {
             gzwrite($gzFile, fread($file, $bufferSize));
         }
 
@@ -179,7 +181,7 @@ class DatabaseBackup extends Command
     protected function cleanOldBackups(int $keepDays): void
     {
         $backupDir = storage_path('app/backups');
-        $files = glob($backupDir . '/backup-*.sql.gz');
+        $files = glob($backupDir.'/backup-*.sql.gz');
         $cutoffTime = now()->subDays($keepDays)->timestamp;
 
         $deleted = 0;

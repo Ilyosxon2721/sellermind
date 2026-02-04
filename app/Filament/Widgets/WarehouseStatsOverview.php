@@ -9,7 +9,6 @@ use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\Warehouse;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class WarehouseStatsOverview extends BaseWidget
 {
@@ -56,7 +55,7 @@ class WarehouseStatsOverview extends BaseWidget
                 ->chart($this->getStockTrend()),
 
             Stat::make('Резервы', $activeReservations)
-                ->description(number_format($reservedQty, 0, '.', ' ') . ' ед. зарезервировано')
+                ->description(number_format($reservedQty, 0, '.', ' ').' ед. зарезервировано')
                 ->descriptionIcon('heroicon-m-lock-closed')
                 ->color('warning'),
 
@@ -81,6 +80,7 @@ class WarehouseStatsOverview extends BaseWidget
             // Cumulative stock up to that date
             $data[] = (float) StockLedger::whereDate('created_at', '<=', $date)->sum('qty_delta');
         }
+
         return $data;
     }
 
@@ -91,6 +91,7 @@ class WarehouseStatsOverview extends BaseWidget
             $date = now()->subDays($i)->toDateString();
             $data[] = StockLedger::whereDate('created_at', $date)->count();
         }
+
         return $data;
     }
 }

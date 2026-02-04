@@ -15,8 +15,7 @@ class ProductPublishService
         protected OzonProductPublisher $ozonPublisher,
         protected YandexMarketProductPublisher $yandexMarketPublisher,
         protected UzumProductPublisher $uzumPublisher
-    ) {
-    }
+    ) {}
 
     public function publish(Product $product, array $channels): array
     {

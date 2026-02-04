@@ -42,6 +42,7 @@ class ProductVariant extends Model
     protected $fillable = [
         'company_id',
         'product_id',
+        'name',
         'sku',
         'barcode',
         'article_suffix',
@@ -54,6 +55,7 @@ class ProductVariant extends Model
         'length_mm',
         'width_mm',
         'height_mm',
+        'risment_variant_id',
         'main_image_id',
         'is_active',
         'is_deleted',
@@ -113,6 +115,7 @@ class ProductVariant extends Model
     public function getDisplayNameAttribute(): string
     {
         $parts = array_filter([$this->option_values_summary, $this->sku]);
+
         return implode(' • ', $parts);
     }
 
@@ -162,6 +165,7 @@ class ProductVariant extends Model
     public function decrementStock(int $quantity): bool
     {
         $newStock = max(0, $this->stock_default - $quantity);
+
         return $this->updateStock($newStock);
     }
 
@@ -171,6 +175,7 @@ class ProductVariant extends Model
     public function incrementStock(int $quantity): bool
     {
         $newStock = $this->stock_default + $quantity;
+
         return $this->updateStock($newStock);
     }
 
@@ -184,6 +189,7 @@ class ProductVariant extends Model
     {
         $newStock = max(0, $this->stock_default - $quantity);
         $this->stock_default = $newStock;
+
         return $this->updateQuietly(['stock_default' => $newStock]);
     }
 
@@ -196,6 +202,7 @@ class ProductVariant extends Model
     {
         $newStock = $this->stock_default + $quantity;
         $this->stock_default = $newStock;
+
         return $this->updateQuietly(['stock_default' => $newStock]);
     }
 
@@ -209,15 +216,12 @@ class ProductVariant extends Model
 
     /**
      * Получить остаток товара на конкретном складе из warehouse системы
-     *
-     * @param int $warehouseId
-     * @return float
      */
     public function getWarehouseStock(int $warehouseId): float
     {
         $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $this->id)->first();
 
-        if (!$warehouseSku) {
+        if (! $warehouseSku) {
             return 0;
         }
 
@@ -228,14 +232,12 @@ class ProductVariant extends Model
 
     /**
      * Получить общий остаток со всех складов из warehouse системы
-     *
-     * @return float
      */
     public function getTotalWarehouseStock(): float
     {
         $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $this->id)->first();
 
-        if (!$warehouseSku) {
+        if (! $warehouseSku) {
             return 0;
         }
 
@@ -245,15 +247,12 @@ class ProductVariant extends Model
 
     /**
      * Получить доступный остаток (с учётом резервов)
-     *
-     * @param int $warehouseId
-     * @return float
      */
     public function getAvailableWarehouseStock(int $warehouseId): float
     {
         $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $this->id)->first();
 
-        if (!$warehouseSku) {
+        if (! $warehouseSku) {
             return 0;
         }
 
@@ -269,4 +268,3 @@ class ProductVariant extends Model
         return max(0, $currentStock - $activeReservations);
     }
 }
-

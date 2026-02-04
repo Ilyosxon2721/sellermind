@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Subscriptions\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class SubscriptionForm
@@ -22,12 +22,12 @@ class SubscriptionForm
                     ->required(),
                 Select::make('status')
                     ->options([
-            'active' => 'Active',
-            'trial' => 'Trial',
-            'expired' => 'Expired',
-            'cancelled' => 'Cancelled',
-            'pending' => 'Pending',
-        ])
+                        'active' => 'Active',
+                        'trial' => 'Trial',
+                        'expired' => 'Expired',
+                        'cancelled' => 'Cancelled',
+                        'pending' => 'Pending',
+                    ])
                     ->default('trial')
                     ->required(),
                 DateTimePicker::make('starts_at')

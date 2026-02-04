@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use Illuminate\Console\Command;
@@ -61,7 +60,7 @@ class CleanupDuplicateLedgerEntries extends Command
                 $affectedSkuIds[$entry->sku_id] = true;
 
                 $this->line(sprintf(
-                    "  Дубликат #%d (stock_adjustment, qty=%s, sku=%d, %s) ← оригинал #%d (%s, %s)",
+                    '  Дубликат #%d (stock_adjustment, qty=%s, sku=%d, %s) ← оригинал #%d (%s, %s)',
                     $duplicate->id,
                     $duplicate->qty_delta,
                     $duplicate->sku_id,
@@ -74,16 +73,17 @@ class CleanupDuplicateLedgerEntries extends Command
         }
 
         $this->newLine();
-        $this->info("Найдено дубликатов: " . count($duplicateIds));
-        $this->info("Затронуто SKU: " . count($affectedSkuIds));
+        $this->info('Найдено дубликатов: '.count($duplicateIds));
+        $this->info('Затронуто SKU: '.count($affectedSkuIds));
 
         if (empty($duplicateIds)) {
             $this->info('Дубликатов не найдено. Завершение.');
+
             return self::SUCCESS;
         }
 
         // 2. Удалить дубликаты
-        if (!$dryRun) {
+        if (! $dryRun) {
             $this->info('Удаление дубликатов...');
             DB::beginTransaction();
             try {
@@ -96,8 +96,9 @@ class CleanupDuplicateLedgerEntries extends Command
 
                 foreach (array_keys($affectedSkuIds) as $skuId) {
                     $sku = Sku::with('productVariant')->find($skuId);
-                    if (!$sku || !$sku->productVariant) {
+                    if (! $sku || ! $sku->productVariant) {
                         $this->warn("  SKU #{$skuId}: вариант товара не найден, пропуск");
+
                         continue;
                     }
 
@@ -114,7 +115,7 @@ class CleanupDuplicateLedgerEntries extends Command
                         $variant->updateQuietly(['stock_default' => $newStock]);
 
                         $this->line(sprintf(
-                            "  %s (variant #%d): %d → %d (разница: %+d)",
+                            '  %s (variant #%d): %d → %d (разница: %+d)',
                             $variant->sku,
                             $variant->id,
                             $oldStock,
@@ -124,7 +125,7 @@ class CleanupDuplicateLedgerEntries extends Command
                         $recalculated++;
                     } else {
                         $this->line(sprintf(
-                            "  %s (variant #%d): остаток корректен (%d)",
+                            '  %s (variant #%d): остаток корректен (%d)',
                             $variant->sku,
                             $variant->id,
                             $oldStock,
@@ -150,6 +151,7 @@ class CleanupDuplicateLedgerEntries extends Command
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
+
                 return self::FAILURE;
             }
         } else {
@@ -159,8 +161,9 @@ class CleanupDuplicateLedgerEntries extends Command
 
             foreach (array_keys($affectedSkuIds) as $skuId) {
                 $sku = Sku::with('productVariant')->find($skuId);
-                if (!$sku || !$sku->productVariant) {
+                if (! $sku || ! $sku->productVariant) {
                     $this->warn("  SKU #{$skuId}: вариант не найден");
+
                     continue;
                 }
 
@@ -179,7 +182,7 @@ class CleanupDuplicateLedgerEntries extends Command
                 $newStock = max(0, (int) $correctedBalance);
 
                 $this->line(sprintf(
-                    "  %s (variant #%d): текущий=%d, ledger=%s, дубликаты=%s, после=%d %s",
+                    '  %s (variant #%d): текущий=%d, ledger=%s, дубликаты=%s, после=%d %s',
                     $variant->sku,
                     $variant->id,
                     $currentStock,

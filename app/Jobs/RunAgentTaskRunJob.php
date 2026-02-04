@@ -16,7 +16,9 @@ class RunAgentTaskRunJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 300;
+
     public int $backoff = 60;
 
     public function __construct(
@@ -27,16 +29,18 @@ class RunAgentTaskRunJob implements ShouldQueue
     {
         $run = AgentTaskRun::with(['task.agent'])->find($this->runId);
 
-        if (!$run) {
-            Log::warning("AgentTaskRun not found", ['run_id' => $this->runId]);
+        if (! $run) {
+            Log::warning('AgentTaskRun not found', ['run_id' => $this->runId]);
+
             return;
         }
 
-        if (!$run->isPending()) {
-            Log::info("AgentTaskRun already processed", [
+        if (! $run->isPending()) {
+            Log::info('AgentTaskRun already processed', [
                 'run_id' => $this->runId,
                 'status' => $run->status,
             ]);
+
             return;
         }
 
@@ -45,13 +49,13 @@ class RunAgentTaskRunJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("RunAgentTaskRunJob failed", [
+        Log::error('RunAgentTaskRunJob failed', [
             'run_id' => $this->runId,
             'error' => $exception->getMessage(),
         ]);
 
         $run = AgentTaskRun::find($this->runId);
-        if ($run && !$run->isFinished()) {
+        if ($run && ! $run->isFinished()) {
             $run->markAsFailed("Job failed: {$exception->getMessage()}");
         }
     }

@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class TaxCalculationService
 {
-    public function __construct(protected TransactionService $transactionService)
-    {
-    }
+    public function __construct(protected TransactionService $transactionService) {}
 
     public function calculate(
         int $companyId,
@@ -79,9 +77,9 @@ class TaxCalculationService
                 'type' => FinanceTransaction::TYPE_EXPENSE,
                 'category_id' => $taxCategory?->id,
                 'amount' => $amount,
-                'description' => $tax->tax_type_label . ' за ' . $tax->period_label,
+                'description' => $tax->tax_type_label.' за '.$tax->period_label,
                 'transaction_date' => $paymentDate,
-                'reference' => 'TAX-' . $tax->id,
+                'reference' => 'TAX-'.$tax->id,
                 'status' => FinanceTransaction::STATUS_CONFIRMED,
                 'created_by' => $userId,
                 'confirmed_by' => $userId,
@@ -156,7 +154,7 @@ class TaxCalculationService
     {
         $salaryCategory = FinanceCategory::where('code', 'PAYROLL_SALARY')->first();
 
-        if (!$salaryCategory) {
+        if (! $salaryCategory) {
             return 0;
         }
 
@@ -178,6 +176,7 @@ class TaxCalculationService
         if ($periodType === TaxCalculation::PERIOD_QUARTER) {
             // До 25 числа месяца после квартала
             $endMonth = $quarter * 3;
+
             return Carbon::create($year, $endMonth, 1)->addMonth()->day(25);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesPassController.php
 
 namespace App\Http\Controllers\Api;
@@ -24,11 +25,11 @@ class WildberriesPassController extends Controller
      */
     public function offices(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -47,7 +48,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить список офисов: ' . $e->getMessage(),
+                'message' => 'Не удалось получить список офисов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -57,11 +58,11 @@ class WildberriesPassController extends Controller
      */
     public function index(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -80,7 +81,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить список пропусков: ' . $e->getMessage(),
+                'message' => 'Не удалось получить список пропусков: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -90,11 +91,11 @@ class WildberriesPassController extends Controller
      */
     public function store(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -124,7 +125,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось создать пропуск: ' . $e->getMessage(),
+                'message' => 'Не удалось создать пропуск: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -134,11 +135,11 @@ class WildberriesPassController extends Controller
      */
     public function update(Request $request, MarketplaceAccount $account, string $passId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -168,7 +169,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось обновить пропуск: ' . $e->getMessage(),
+                'message' => 'Не удалось обновить пропуск: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -178,11 +179,11 @@ class WildberriesPassController extends Controller
      */
     public function destroy(Request $request, MarketplaceAccount $account, string $passId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -202,7 +203,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось удалить пропуск: ' . $e->getMessage(),
+                'message' => 'Не удалось удалить пропуск: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -212,11 +213,11 @@ class WildberriesPassController extends Controller
      */
     public function expiring(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -238,7 +239,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить истекающие пропуски: ' . $e->getMessage(),
+                'message' => 'Не удалось получить истекающие пропуски: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -248,11 +249,11 @@ class WildberriesPassController extends Controller
      */
     public function cleanup(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -272,7 +273,7 @@ class WildberriesPassController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось очистить просроченные пропуски: ' . $e->getMessage(),
+                'message' => 'Не удалось очистить просроченные пропуски: '.$e->getMessage(),
             ], 500);
         }
     }

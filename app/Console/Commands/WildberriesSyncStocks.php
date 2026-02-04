@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/WildberriesSyncStocks.php
 
 namespace App\Console\Commands;
@@ -24,13 +25,15 @@ class WildberriesSyncStocks extends Command
 
         $account = MarketplaceAccount::find($accountId);
 
-        if (!$account) {
+        if (! $account) {
             $this->error("Аккаунт с ID {$accountId} не найден");
+
             return self::FAILURE;
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             $this->error("Аккаунт #{$accountId} не является Wildberries");
+
             return self::FAILURE;
         }
 
@@ -38,7 +41,7 @@ class WildberriesSyncStocks extends Command
         $from = $fromOption ? Carbon::parse($fromOption) : null;
 
         $this->info("Синхронизация остатков для аккаунта: {$account->name}");
-        $this->info("Дата начала: " . ($from ? $from->format('Y-m-d') : 'вчера'));
+        $this->info('Дата начала: '.($from ? $from->format('Y-m-d') : 'вчера'));
 
         // Create sync log
         $syncLog = MarketplaceSyncLog::create([
@@ -71,7 +74,7 @@ class WildberriesSyncStocks extends Command
 
             // Output results
             $this->newLine();
-            $this->info("✓ Синхронизация остатков завершена!");
+            $this->info('✓ Синхронизация остатков завершена!');
             $this->table(
                 ['Метрика', 'Значение'],
                 [
@@ -82,7 +85,7 @@ class WildberriesSyncStocks extends Command
                 ]
             );
 
-            if (!empty($result['errors'])) {
+            if (! empty($result['errors'])) {
                 $this->newLine();
                 $this->warn('Ошибки при синхронизации:');
                 foreach (array_slice($result['errors'], 0, 5) as $error) {
@@ -102,6 +105,7 @@ class WildberriesSyncStocks extends Command
             ]);
 
             $this->error("Ошибка синхронизации: {$e->getMessage()}");
+
             return self::FAILURE;
         }
     }

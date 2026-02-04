@@ -2,16 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Models\AP\Supplier;
+use App\Models\AP\SupplierInvoice;
+use App\Models\AP\SupplierPayment;
 use App\Models\Company;
+use App\Models\Pricing\PricingScenario;
 use App\Models\Product;
 use App\Models\ProductDescription;
 use App\Models\User;
 use App\Models\UserCompanyRole;
-use App\Models\AP\Supplier;
-use App\Models\AP\SupplierInvoice;
-use App\Models\AP\SupplierPayment;
-use App\Models\Pricing\PricingScenario;
-use Database\Seeders\WarehouseCoreSeeder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -62,7 +61,7 @@ class DatabaseSeeder extends Seeder
             ProductDescription::firstOrCreate(
                 ['product_id' => $product->id, 'marketplace' => 'universal', 'language' => 'ru'],
                 [
-                    'title' => $productData['name'] . ' — качество и комфорт',
+                    'title' => $productData['name'].' — качество и комфорт',
                     'short_description' => 'Отличное качество по доступной цене',
                     'full_description' => 'Подробное описание товара будет сгенерировано ИИ.',
                     'bullets' => ['Высокое качество', 'Доступная цена', 'Быстрая доставка'],
@@ -78,7 +77,7 @@ class DatabaseSeeder extends Seeder
 
         // Warehouse core defaults (units, channels, main warehouse)
         $this->call(WarehouseCoreSeeder::class);
-        
+
         // Plans and pricing tiers
         $this->call(PlanSeeder::class);
 

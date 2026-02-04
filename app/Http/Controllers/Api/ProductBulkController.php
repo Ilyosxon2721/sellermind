@@ -10,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 /**
@@ -24,7 +23,6 @@ class ProductBulkController extends Controller
     /**
      * Export products with variants to Excel
      *
-     * @param Request $request
      * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
      */
     public function export(Request $request)
@@ -53,7 +51,7 @@ class ProductBulkController extends Controller
         }
 
         // Include/exclude archived
-        if (!$request->boolean('include_archived', false)) {
+        if (! $request->boolean('include_archived', false)) {
             $query->where('is_archived', false);
         }
 
@@ -98,11 +96,11 @@ class ProductBulkController extends Controller
         }
 
         // Create CSV file
-        $filename = 'products_export_' . now()->format('Y-m-d_His') . '.csv';
-        $filePath = storage_path('app/temp/' . $filename);
+        $filename = 'products_export_'.now()->format('Y-m-d_His').'.csv';
+        $filePath = storage_path('app/temp/'.$filename);
 
         // Ensure temp directory exists
-        if (!file_exists(storage_path('app/temp'))) {
+        if (! file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
 
@@ -124,9 +122,6 @@ class ProductBulkController extends Controller
 
     /**
      * Preview bulk import from Excel
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function previewImport(Request $request): JsonResponse
     {
@@ -135,7 +130,7 @@ class ProductBulkController extends Controller
         ]);
 
         $file = $request->file('file');
-        $csvData = array_map(function($row) {
+        $csvData = array_map(function ($row) {
             return str_getcsv($row, ';');
         }, file($file->getPathname()));
 
@@ -174,14 +169,15 @@ class ProductBulkController extends Controller
             if ($variantId) {
                 $variant = ProductVariant::with('product')
                     ->where('id', $variantId)
-                    ->whereHas('product', function($q) use ($companyId) {
+                    ->whereHas('product', function ($q) use ($companyId) {
                         $q->where('company_id', $companyId);
                     })
                     ->first();
             }
 
-            if (!$variant) {
+            if (! $variant) {
                 $errors[] = "Row {$rowNumber}: Variant not found (ID: {$variantId})";
+
                 continue;
             }
 
@@ -218,7 +214,7 @@ class ProductBulkController extends Controller
                 ];
             }
 
-            if (!empty($changes)) {
+            if (! empty($changes)) {
                 $preview[] = [
                     'row' => $rowNumber,
                     'variant_id' => $variant->id,
@@ -240,9 +236,6 @@ class ProductBulkController extends Controller
 
     /**
      * Apply bulk import from Excel
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function applyImport(Request $request): JsonResponse
     {
@@ -251,7 +244,7 @@ class ProductBulkController extends Controller
         ]);
 
         $file = $request->file('file');
-        $csvData = array_map(function($row) {
+        $csvData = array_map(function ($row) {
             return str_getcsv($row, ';');
         }, file($file->getPathname()));
 
@@ -264,8 +257,8 @@ class ProductBulkController extends Controller
         array_shift($csvData);
 
         // Store file temporarily and dispatch job
-        $tempFilePath = storage_path('app/temp/import_' . uniqid() . '.csv');
-        if (!file_exists(dirname($tempFilePath))) {
+        $tempFilePath = storage_path('app/temp/import_'.uniqid().'.csv');
+        if (! file_exists(dirname($tempFilePath))) {
             mkdir(dirname($tempFilePath), 0755, true);
         }
         $file->move(dirname($tempFilePath), basename($tempFilePath));
@@ -284,9 +277,6 @@ class ProductBulkController extends Controller
 
     /**
      * Bulk update product variants (selected items)
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function bulkUpdate(Request $request): JsonResponse
     {
@@ -308,7 +298,7 @@ class ProductBulkController extends Controller
         // Verify all variants belong to user's company
         $variantIds = $request->variant_ids;
         $validVariants = ProductVariant::whereIn('id', $variantIds)
-            ->whereHas('product', function($q) use ($companyId) {
+            ->whereHas('product', function ($q) use ($companyId) {
                 $q->where('company_id', $companyId);
             })
             ->pluck('id')
@@ -349,7 +339,7 @@ class ProductBulkController extends Controller
                         $updateData['old_price'] = (float) $data['old_price'];
                     }
 
-                    if (!empty($updateData)) {
+                    if (! empty($updateData)) {
                         $updated = ProductVariant::whereIn('id', $validVariants)
                             ->update($updateData);
                     }
@@ -406,16 +396,13 @@ class ProductBulkController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Bulk update failed: ' . $e->getMessage(),
+                'message' => 'Bulk update failed: '.$e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * Format variant options for export
-     *
-     * @param ProductVariant $variant
-     * @return string
      */
     protected function formatVariantOptions(ProductVariant $variant): string
     {

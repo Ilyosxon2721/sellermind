@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\DB;
 class AIUsageChart extends ChartWidget
 {
     protected ?string $heading = 'Использование ИИ (токены)';
+
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'md';
+
+    protected int|string|array $columnSpan = 'md';
 
     protected function getData(): array
     {
@@ -20,12 +22,12 @@ class AIUsageChart extends ChartWidget
         for ($i = 14; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $labels[] = $date->format('d.m');
-            
+
             // Суммируем входные и выходные токены
             $usage = AIUsageLog::whereDate('created_at', $date->toDateString())
                 ->select(DB::raw('SUM(tokens_input + tokens_output) as total'))
                 ->first();
-                
+
             $data[] = $usage->total ?? 0;
         }
 

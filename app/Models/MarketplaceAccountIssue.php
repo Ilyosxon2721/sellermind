@@ -126,7 +126,7 @@ class MarketplaceAccountIssue extends Model
      */
     public function getTypeLabel(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'token_invalid' => 'Недействительный токен',
             'token_expired' => 'Токен истёк',
             'insufficient_permissions' => 'Недостаточно прав',
@@ -144,7 +144,7 @@ class MarketplaceAccountIssue extends Model
      */
     public function getSeverityColor(): string
     {
-        return match($this->severity) {
+        return match ($this->severity) {
             'critical' => 'red',
             'warning' => 'yellow',
             'info' => 'blue',
@@ -157,7 +157,7 @@ class MarketplaceAccountIssue extends Model
      */
     public function getSeverityIcon(): string
     {
-        return match($this->severity) {
+        return match ($this->severity) {
             'critical' => '🔴',
             'warning' => '⚠️',
             'info' => 'ℹ️',

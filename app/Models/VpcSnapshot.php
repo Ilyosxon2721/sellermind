@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/VpcSnapshot.php
 
 namespace App\Models;
@@ -31,6 +32,6 @@ class VpcSnapshot extends Model
     public function getImageUrl(): string
     {
         // TODO: Implement proper storage URL generation
-        return asset('storage/' . $this->image_path);
+        return asset('storage/'.$this->image_path);
     }
 }

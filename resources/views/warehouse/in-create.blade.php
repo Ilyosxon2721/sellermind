@@ -117,7 +117,7 @@
                         <p class="text-sm text-gray-500">Введите товары, количество и цену</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button class="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-colors text-sm font-medium" @click="addLine()">
+                        <button class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-colors text-sm font-medium" @click="addLine()">
                             + Добавить строку
                         </button>
                         <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm" @click="clearLines()">
@@ -410,8 +410,6 @@
                     });
                     if (resp.ok) {
                         const json = await resp.json();
-                        console.log('Search response:', json);
-
                         // Get already selected SKU IDs in this document (exclude current line)
                         const selectedSkuIds = this.form.lines
                             .filter((l, i) => i !== idx && l.sku_id)
@@ -430,7 +428,6 @@
                                 available: item.available
                             }));
                         line.noResults = line.suggestions.length === 0;
-                        console.log('Suggestions:', line.suggestions);
                     } else {
                         console.warn('Search failed:', resp.status, await resp.text());
                         line.noResults = true;
@@ -568,7 +565,7 @@
                     <span x-show="!saving">Сохранить черновик</span>
                     <span x-show="saving">Сохранение...</span>
                 </button>
-                <button class="native-btn w-full bg-green-600" @click="save(true)" :disabled="saving">
+                <button class="native-btn w-full bg-blue-600" @click="save(true)" :disabled="saving">
                     <span x-show="!saving">Сохранить и провести</span>
                     <span x-show="saving">Обработка...</span>
                 </button>

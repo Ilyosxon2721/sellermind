@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceAutomationRule.php
 
 namespace App\Models;
@@ -10,20 +11,32 @@ class MarketplaceAutomationRule extends Model
 {
     // Event types
     public const EVENT_LOW_STOCK = 'low_stock';
+
     public const EVENT_NO_SALES = 'no_sales';
+
     public const EVENT_HIGH_RETURN_RATE = 'high_return_rate';
+
     public const EVENT_COMPETITOR_PRICE_DROP = 'competitor_price_drop';
+
     public const EVENT_ORDER_CREATED = 'order_created';
+
     public const EVENT_ORDER_DELIVERED = 'order_delivered';
+
     public const EVENT_ORDER_CANCELED = 'order_canceled';
+
     public const EVENT_RETURN_CREATED = 'return_created';
+
     public const EVENT_PAYOUT_RECEIVED = 'payout_received';
 
     // Action types
     public const ACTION_NOTIFY = 'notify';
+
     public const ACTION_ADJUST_PRICE = 'adjust_price';
+
     public const ACTION_CREATE_AGENT_TASK = 'create_agent_task';
+
     public const ACTION_SYNC_STOCKS = 'sync_stocks';
+
     public const ACTION_DISABLE_PRODUCT = 'disable_product';
 
     protected $fillable = [
@@ -92,7 +105,7 @@ class MarketplaceAutomationRule extends Model
         $conditions = $this->conditions_json ?? [];
 
         foreach ($conditions as $key => $value) {
-            if (!isset($context[$key])) {
+            if (! isset($context[$key])) {
                 continue;
             }
 

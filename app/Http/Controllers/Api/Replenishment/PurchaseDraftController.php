@@ -12,14 +12,12 @@ class PurchaseDraftController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected PurchaseDraftService $service)
-    {
-    }
+    public function __construct(protected PurchaseDraftService $service) {}
 
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -39,6 +37,7 @@ class PurchaseDraftController extends Controller
                 $data['supplier_id'] ?? null,
                 $data['items']
             );
+
             return $this->successResponse($po);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), 'purchase_draft_failed', null, 422);

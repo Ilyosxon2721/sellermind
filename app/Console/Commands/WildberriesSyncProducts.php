@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/WildberriesSyncProducts.php
 
 namespace App\Console\Commands;
@@ -31,19 +32,22 @@ class WildberriesSyncProducts extends Command
 
             if ($accounts->isEmpty()) {
                 $this->warn('Нет активных аккаунтов Wildberries для синхронизации');
+
                 return self::SUCCESS;
             }
         } else {
             $accountId = (int) $accountArg;
             $account = MarketplaceAccount::find($accountId);
 
-            if (!$account) {
+            if (! $account) {
                 $this->error("Аккаунт с ID {$accountId} не найден");
+
                 return self::FAILURE;
             }
 
-            if (!$account->isWildberries()) {
+            if (! $account->isWildberries()) {
                 $this->error("Аккаунт #{$accountId} не является Wildberries");
+
                 return self::FAILURE;
             }
 
@@ -53,7 +57,7 @@ class WildberriesSyncProducts extends Command
         foreach ($accounts as $account) {
             $this->info("Синхронизация товаров для аккаунта: {$account->name}");
 
-        // Create sync log
+            // Create sync log
             $syncLog = MarketplaceSyncLog::create([
                 'marketplace_account_id' => $account->id,
                 'type' => 'products',
@@ -61,64 +65,64 @@ class WildberriesSyncProducts extends Command
                 'started_at' => now(),
             ]);
 
-        try {
-            $httpClient = new WildberriesHttpClient($account);
-            $service = new WildberriesProductService($httpClient);
+            try {
+                $httpClient = new WildberriesHttpClient($account);
+                $service = new WildberriesProductService($httpClient);
 
-            // Build filters
-            $filters = [];
+                // Build filters
+                $filters = [];
 
-            if ($search = $this->option('search')) {
-                $filters['textSearch'] = $search;
-            }
+                if ($search = $this->option('search')) {
+                    $filters['textSearch'] = $search;
+                }
 
-            if ($this->option('with-photo')) {
-                $filters['withPhoto'] = 1;
-            } elseif ($this->option('without-photo')) {
-                $filters['withPhoto'] = 0;
-            }
+                if ($this->option('with-photo')) {
+                    $filters['withPhoto'] = 1;
+                } elseif ($this->option('without-photo')) {
+                    $filters['withPhoto'] = 0;
+                }
 
-            $this->info('Загрузка карточек из WB Content API...');
+                $this->info('Загрузка карточек из WB Content API...');
 
-            $result = $service->syncProducts($account, $filters);
+                $result = $service->syncProducts($account, $filters);
 
-            // Update sync log
-            $syncLog->update([
-                'status' => empty($result['errors']) ? 'success' : 'warning',
-                'finished_at' => now(),
-                'message' => sprintf(
-                    'Синхронизировано: %d (создано: %d, обновлено: %d)',
-                    $result['synced'],
-                    $result['created'],
-                    $result['updated']
-                ),
-                'details' => $result,
-            ]);
+                // Update sync log
+                $syncLog->update([
+                    'status' => empty($result['errors']) ? 'success' : 'warning',
+                    'finished_at' => now(),
+                    'message' => sprintf(
+                        'Синхронизировано: %d (создано: %d, обновлено: %d)',
+                        $result['synced'],
+                        $result['created'],
+                        $result['updated']
+                    ),
+                    'details' => $result,
+                ]);
 
-            // Output results
-            $this->newLine();
-            $this->info("✓ Синхронизация завершена!");
-            $this->table(
-                ['Метрика', 'Значение'],
-                [
-                    ['Всего синхронизировано', $result['synced']],
-                    ['Создано новых', $result['created']],
-                    ['Обновлено', $result['updated']],
-                    ['Ошибок', count($result['errors'])],
-                ]
-            );
-
-            if (!empty($result['errors'])) {
+                // Output results
                 $this->newLine();
-                $this->warn('Ошибки при синхронизации:');
-                foreach (array_slice($result['errors'], 0, 10) as $error) {
-                    $this->line("  - nmID {$error['nm_id']}: {$error['error']}");
-                }
+                $this->info('✓ Синхронизация завершена!');
+                $this->table(
+                    ['Метрика', 'Значение'],
+                    [
+                        ['Всего синхронизировано', $result['synced']],
+                        ['Создано новых', $result['created']],
+                        ['Обновлено', $result['updated']],
+                        ['Ошибок', count($result['errors'])],
+                    ]
+                );
 
-                if (count($result['errors']) > 10) {
-                    $this->line("  ... и ещё " . (count($result['errors']) - 10) . " ошибок");
+                if (! empty($result['errors'])) {
+                    $this->newLine();
+                    $this->warn('Ошибки при синхронизации:');
+                    foreach (array_slice($result['errors'], 0, 10) as $error) {
+                        $this->line("  - nmID {$error['nm_id']}: {$error['error']}");
+                    }
+
+                    if (count($result['errors']) > 10) {
+                        $this->line('  ... и ещё '.(count($result['errors']) - 10).' ошибок');
+                    }
                 }
-            }
 
                 // Продолжаем к следующему аккаунту
             } catch (\Exception $e) {
@@ -129,6 +133,7 @@ class WildberriesSyncProducts extends Command
                 ]);
 
                 $this->error("Ошибка синхронизации: {$e->getMessage()} (аккаунт {$account->name})");
+
                 // Переходим к следующему аккаунту, не падаем целиком
                 continue;
             }

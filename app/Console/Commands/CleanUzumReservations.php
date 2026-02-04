@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
-use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\StockReservation;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +34,7 @@ class CleanUzumReservations extends Command
 
         if ($uzumAccounts->isEmpty()) {
             $this->error('No active Uzum accounts found');
+
             return 1;
         }
 
@@ -86,12 +87,12 @@ class CleanUzumReservations extends Command
         }
 
         $this->newLine();
-        $this->info("Summary:");
+        $this->info('Summary:');
         $this->info("  Reservations deleted: {$totalReservationsDeleted}");
         $this->info("  Orders reset: {$totalOrdersReset}");
         $this->info("  Total stock returned: {$totalStockReturned}");
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             $this->warn("\nIMPORTANT: Run 'php artisan reservations:fix-uzum' to re-process orders with correct logic");
         }
 
@@ -118,10 +119,11 @@ class CleanUzumReservations extends Command
 
         if ($reservations->isEmpty()) {
             // No reservations, just reset status if needed
-            if ($order->stock_status !== 'none' && !$dryRun) {
+            if ($order->stock_status !== 'none' && ! $dryRun) {
                 $order->update(['stock_status' => 'none', 'stock_reserved_at' => null, 'stock_sold_at' => null]);
                 $result['order_reset'] = true;
             }
+
             return $result;
         }
 
@@ -136,7 +138,7 @@ class CleanUzumReservations extends Command
 
             // Show what items SHOULD be reserved based on correct barcode lookup
             $items = $order->items;
-            $this->line("    Order items:");
+            $this->line('    Order items:');
             foreach ($items as $item) {
                 $barcode = $item->raw_payload['barcode'] ?? 'NO_BARCODE';
                 $correctVariant = $this->findVariantByBarcodeInSkuList($account, $barcode);
@@ -145,6 +147,7 @@ class CleanUzumReservations extends Command
             }
 
             $result['reservations_deleted'] = $reservations->count();
+
             return $result;
         }
 
@@ -230,10 +233,11 @@ class CleanUzumReservations extends Command
                         return true;
                     }
                 }
+
                 return false;
             });
 
-        if (!$marketplaceProduct) {
+        if (! $marketplaceProduct) {
             return null;
         }
 
@@ -246,7 +250,7 @@ class CleanUzumReservations extends Command
             }
         }
 
-        if (!$matchedSkuId) {
+        if (! $matchedSkuId) {
             return null;
         }
 

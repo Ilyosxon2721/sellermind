@@ -18,8 +18,7 @@ class CriticalErrorNotification extends Notification
         public string $title,
         public string $message,
         public ?string $context = null
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.

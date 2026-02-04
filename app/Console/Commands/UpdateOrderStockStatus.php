@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Models\YandexMarketOrder;
 use App\Services\Stock\OrderStockService;
@@ -27,7 +26,7 @@ class UpdateOrderStockStatus extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->stockService = new OrderStockService();
+        $this->stockService = new OrderStockService;
     }
 
     public function handle(): int
@@ -36,9 +35,9 @@ class UpdateOrderStockStatus extends Command
         $accountId = $this->option('account');
         $force = $this->option('force');
 
-        $this->info("Обновление stock_status для заказов...");
+        $this->info('Обновление stock_status для заказов...');
         $this->info("Маркетплейс: {$marketplace}");
-        $this->info("Режим: " . ($force ? 'принудительное обновление всех' : 'только необработанные'));
+        $this->info('Режим: '.($force ? 'принудительное обновление всех' : 'только необработанные'));
 
         if ($marketplace === 'all' || $marketplace === 'ozon') {
             $this->updateOzonOrders($accountId, $force);
@@ -49,13 +48,14 @@ class UpdateOrderStockStatus extends Command
         }
 
         $this->info("\n✓ Обновление завершено");
+
         return self::SUCCESS;
     }
 
     protected function updateOzonOrders(?int $accountId, bool $force): void
     {
         $this->newLine();
-        $this->info("=== OZON заказы ===");
+        $this->info('=== OZON заказы ===');
 
         $query = OzonOrder::query();
 
@@ -63,11 +63,11 @@ class UpdateOrderStockStatus extends Command
             $query->where('marketplace_account_id', $accountId);
         }
 
-        if (!$force) {
+        if (! $force) {
             // Только заказы с stock_status = 'none' или null
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhereNull('stock_status');
+                    ->orWhereNull('stock_status');
             });
         }
 
@@ -75,7 +75,8 @@ class UpdateOrderStockStatus extends Command
         $this->line("Найдено заказов для обработки: {$total}");
 
         if ($total === 0) {
-            $this->info("Нет заказов для обновления");
+            $this->info('Нет заказов для обновления');
+
             return;
         }
 
@@ -95,14 +96,14 @@ class UpdateOrderStockStatus extends Command
                         $updateData = ['stock_status' => $newStockStatus];
 
                         // Установить временные метки в зависимости от статуса
-                        if ($newStockStatus === 'sold' && !$order->stock_sold_at) {
+                        if ($newStockStatus === 'sold' && ! $order->stock_sold_at) {
                             // Используем дату изменения статуса или текущую дату
                             $updateData['stock_sold_at'] = $order->shipment_date ?? $order->in_process_at ?? now();
                         }
-                        if ($newStockStatus === 'reserved' && !$order->stock_reserved_at) {
+                        if ($newStockStatus === 'reserved' && ! $order->stock_reserved_at) {
                             $updateData['stock_reserved_at'] = $order->in_process_at ?? $order->created_at_ozon ?? now();
                         }
-                        if ($newStockStatus === 'released' && !$order->stock_released_at) {
+                        if ($newStockStatus === 'released' && ! $order->stock_released_at) {
                             $updateData['stock_released_at'] = $order->cancelled_at ?? now();
                         }
 
@@ -131,7 +132,7 @@ class UpdateOrderStockStatus extends Command
     protected function updateYmOrders(?int $accountId, bool $force): void
     {
         $this->newLine();
-        $this->info("=== Yandex Market заказы ===");
+        $this->info('=== Yandex Market заказы ===');
 
         $query = YandexMarketOrder::query();
 
@@ -139,11 +140,11 @@ class UpdateOrderStockStatus extends Command
             $query->where('marketplace_account_id', $accountId);
         }
 
-        if (!$force) {
+        if (! $force) {
             // Только заказы с stock_status = 'none' или null
             $query->where(function ($q) {
                 $q->where('stock_status', 'none')
-                  ->orWhereNull('stock_status');
+                    ->orWhereNull('stock_status');
             });
         }
 
@@ -151,7 +152,8 @@ class UpdateOrderStockStatus extends Command
         $this->line("Найдено заказов для обработки: {$total}");
 
         if ($total === 0) {
-            $this->info("Нет заказов для обновления");
+            $this->info('Нет заказов для обновления');
+
             return;
         }
 
@@ -171,13 +173,13 @@ class UpdateOrderStockStatus extends Command
                         $updateData = ['stock_status' => $newStockStatus];
 
                         // Установить временные метки в зависимости от статуса
-                        if ($newStockStatus === 'sold' && !$order->stock_sold_at) {
+                        if ($newStockStatus === 'sold' && ! $order->stock_sold_at) {
                             $updateData['stock_sold_at'] = $order->updated_at_ym ?? now();
                         }
-                        if ($newStockStatus === 'reserved' && !$order->stock_reserved_at) {
+                        if ($newStockStatus === 'reserved' && ! $order->stock_reserved_at) {
                             $updateData['stock_reserved_at'] = $order->created_at_ym ?? now();
                         }
-                        if ($newStockStatus === 'released' && !$order->stock_released_at) {
+                        if ($newStockStatus === 'released' && ! $order->stock_released_at) {
                             $updateData['stock_released_at'] = now();
                         }
 

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ProductVariant;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductDescription;
+use App\Models\ProductVariant;
 use App\Models\Sale;
-use App\Models\Inventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,71 +19,72 @@ class ClientApiController extends Controller
     public function getProducts(Request $request)
     {
         $company = $request->user()->company;
-        
+
         $products = ProductVariant::where('company_id', $company->id)
             ->with(['product', 'images', 'variantMarketplaceLinks'])
             ->when($request->search, function ($query, $search) {
+                $search = $this->escapeLike($search);
                 $query->whereHas('product', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
                 });
             })
             ->paginate($request->per_page ?? 20);
-            
+
         return response()->json($products);
     }
-    
+
     /**
      * Получить заказы клиента
      */
     public function getOrders(Request $request)
     {
         $company = $request->user()->company;
-        
+
         $orders = Sale::where('company_id', $company->id)
             ->with(['items.productVariant.product', 'marketplaceAccount'])
-            ->when($request->status, fn($q, $status) => $q->where('status', $status))
-            ->when($request->date_from, fn($q, $date) => $q->whereDate('created_at', '>=', $date))
-            ->when($request->date_to, fn($q, $date) => $q->whereDate('created_at', '<=', $date))
+            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+            ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
             ->latest()
             ->paginate($request->per_page ?? 20);
-            
+
         return response()->json($orders);
     }
-    
+
     /**
      * Получить остатки товаров
      */
     public function getInventory(Request $request)
     {
         $company = $request->user()->company;
-        
+
         $inventory = Inventory::where('company_id', $company->id)
             ->with(['productVariant.product', 'warehouse'])
-            ->when($request->warehouse_id, fn($q, $id) => $q->where('warehouse_id', $id))
+            ->when($request->warehouse_id, fn ($q, $id) => $q->where('warehouse_id', $id))
             ->get()
             ->groupBy('productVariant.id')
             ->map(function ($items) {
                 return [
                     'product' => $items->first()->productVariant,
                     'total_quantity' => $items->sum('quantity'),
-                    'warehouses' => $items->map(fn($item) => [
+                    'warehouses' => $items->map(fn ($item) => [
                         'warehouse' => $item->warehouse,
                         'quantity' => $item->quantity,
                     ]),
                 ];
             })
             ->values();
-            
+
         return response()->json(['data' => $inventory]);
     }
-    
+
     /**
      * Статистика по клиенту
      */
     public function getStatistics(Request $request)
     {
         $company = $request->user()->company;
-        
+
         $stats = [
             'total_products' => ProductVariant::where('company_id', $company->id)->count(),
             'total_orders' => Sale::where('company_id', $company->id)->count(),
@@ -99,10 +100,10 @@ class ClientApiController extends Controller
                 ->pluck('count', 'status'),
             'total_inventory' => Inventory::where('company_id', $company->id)->sum('quantity'),
         ];
-        
+
         return response()->json($stats);
     }
-    
+
     /**
      * Профиль клиента
      */
@@ -110,7 +111,7 @@ class ClientApiController extends Controller
     {
         $user = $request->user();
         $company = $user->company;
-        
+
         return response()->json([
             'user' => $user->only(['id', 'name', 'email']),
             'company' => $company->only(['id', 'name', 'phone', 'address']),
@@ -121,14 +122,14 @@ class ClientApiController extends Controller
             ],
         ]);
     }
-    
+
     /**
      * Создать товар клиента
      */
     public function createProduct(Request $request)
     {
         $company = $request->user()->company;
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:100',
@@ -142,7 +143,7 @@ class ClientApiController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:product_categories,id',
         ]);
-        
+
         DB::beginTransaction();
         try {
             // Создать основной Product
@@ -151,7 +152,7 @@ class ClientApiController extends Controller
                 'name' => $validated['name'],
                 'category_id' => $validated['category_id'] ?? null,
             ]);
-            
+
             // Создать ProductVariant
             $variant = ProductVariant::create([
                 'product_id' => $product->id,
@@ -164,24 +165,25 @@ class ClientApiController extends Controller
                 'width' => $validated['dimensions']['width'] ?? null,
                 'height' => $validated['dimensions']['height'] ?? null,
             ]);
-            
+
             // Создать описание
-            if (!empty($validated['description'])) {
+            if (! empty($validated['description'])) {
                 ProductDescription::create([
                     'product_id' => $product->id,
                     'description' => $validated['description'],
                 ]);
             }
-            
+
             DB::commit();
-            
+
             return response()->json([
                 'success' => true,
                 'product' => $variant->load(['product', 'images']),
             ], 201);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create product',
@@ -189,18 +191,18 @@ class ClientApiController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Обновить товар
      */
     public function updateProduct(Request $request, $id)
     {
         $company = $request->user()->company;
-        
+
         $variant = ProductVariant::where('id', $id)
             ->where('company_id', $company->id)
             ->firstOrFail();
-        
+
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'price' => 'sometimes|numeric|min:0',
@@ -208,33 +210,33 @@ class ClientApiController extends Controller
             'sku' => 'sometimes|string|max:100',
             'barcode' => 'sometimes|string|max:100',
         ]);
-        
+
         if (isset($validated['name'])) {
             $variant->product->update(['name' => $validated['name']]);
             unset($validated['name']);
         }
-        
+
         $variant->update($validated);
-        
+
         return response()->json([
             'success' => true,
             'product' => $variant->load(['product']),
         ]);
     }
-    
+
     /**
      * Удалить товар
      */
     public function deleteProduct(Request $request, $id)
     {
         $company = $request->user()->company;
-        
+
         $variant = ProductVariant::where('id', $id)
             ->where('company_id', $company->id)
             ->firstOrFail();
-        
+
         $variant->delete();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Product deleted successfully',

@@ -13,14 +13,21 @@ class InventoryDocument extends Model
     use HasFactory;
 
     public const TYPE_IN = 'IN';
+
     public const TYPE_OUT = 'OUT';
+
     public const TYPE_MOVE = 'MOVE';
+
     public const TYPE_WRITE_OFF = 'WRITE_OFF';
+
     public const TYPE_INVENTORY = 'INVENTORY';
+
     public const TYPE_REVERSAL = 'REVERSAL';
 
     public const STATUS_DRAFT = 'DRAFT';
+
     public const STATUS_POSTED = 'POSTED';
+
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [

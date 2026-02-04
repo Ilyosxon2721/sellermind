@@ -37,9 +37,6 @@ class ProductVariantObserver
      *
      * Fires after the model is successfully saved. We can check which attributes were changed
      * and dispatch events accordingly.
-     *
-     * @param  \App\Models\ProductVariant  $variant
-     * @return void
      */
     public function updated(ProductVariant $variant): void
     {
@@ -104,7 +101,6 @@ class ProductVariantObserver
 
     /**
      * Синхронизировать ProductVariant в Warehouse\Sku
-     * @return Sku|null
      */
     protected function syncToWarehouseSku(ProductVariant $variant): ?Sku
     {
@@ -141,6 +137,7 @@ class ProductVariantObserver
                 'variant_id' => $variant->id,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -156,16 +153,17 @@ class ProductVariantObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 // Try to get any warehouse for this company
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for initial stock', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 
@@ -206,15 +204,16 @@ class ProductVariantObserver
         try {
             // Find SKU in warehouse system
             $sku = Sku::where('product_variant_id', $variant->id)->first();
-            if (!$sku) {
+            if (! $sku) {
                 // Try to create it
                 $sku = $this->syncToWarehouseSku($variant);
             }
 
-            if (!$sku) {
+            if (! $sku) {
                 Log::warning('No SKU found for stock sync', [
                     'variant_id' => $variant->id,
                 ]);
+
                 return;
             }
 
@@ -230,6 +229,7 @@ class ProductVariantObserver
                     'ledger_balance' => $currentLedgerBalance,
                     'new_stock' => $newStock,
                 ]);
+
                 return;
             }
 
@@ -238,15 +238,16 @@ class ProductVariantObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for stock sync', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 

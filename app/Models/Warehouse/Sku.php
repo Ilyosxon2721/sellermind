@@ -54,9 +54,6 @@ class Sku extends Model
 
     /**
      * Получить текущий остаток на складе
-     *
-     * @param int|null $warehouseId
-     * @return float
      */
     public function getCurrentBalance(?int $warehouseId = null): float
     {

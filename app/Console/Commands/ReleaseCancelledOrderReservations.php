@@ -5,10 +5,10 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
-use App\Models\WbOrder;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\Warehouse;
+use App\Models\WbOrder;
 use App\Services\Stock\OrderStockService;
 use App\Services\Stock\StockSyncService;
 use Illuminate\Console\Command;
@@ -24,6 +24,7 @@ class ReleaseCancelledOrderReservations extends Command
     protected $description = 'Release stock reservations for cancelled marketplace orders and sync stock to marketplaces';
 
     protected OrderStockService $orderStockService;
+
     protected StockSyncService $stockSyncService;
 
     public function __construct(OrderStockService $orderStockService, StockSyncService $stockSyncService)
@@ -56,10 +57,10 @@ class ReleaseCancelledOrderReservations extends Command
         $this->info('=== Summary ===');
         $this->info("Reservations released: {$releasedCount}");
         $this->info("Stock returned (qty): {$stockReturnedCount}");
-        $this->info("Variants synced to marketplaces: " . count($syncedVariants));
+        $this->info('Variants synced to marketplaces: '.count($syncedVariants));
 
-        if (!empty($errors)) {
-            $this->warn("Errors: " . count($errors));
+        if (! empty($errors)) {
+            $this->warn('Errors: '.count($errors));
             foreach ($errors as $error) {
                 $this->error("  - {$error}");
             }
@@ -87,7 +88,7 @@ class ReleaseCancelledOrderReservations extends Command
             ->whereIn('status', OrderStockService::CANCELLED_STATUSES['uzum'])
             ->where(function ($q) {
                 $q->where('stock_status', 'reserved')
-                  ->orWhereNull('stock_status');
+                    ->orWhereNull('stock_status');
             })
             ->with(['account', 'items']);
 
@@ -121,7 +122,7 @@ class ReleaseCancelledOrderReservations extends Command
             ->whereIn('status', OrderStockService::CANCELLED_STATUSES['wb'])
             ->where(function ($q) {
                 $q->where('stock_status', 'reserved')
-                  ->orWhereNull('stock_status');
+                    ->orWhereNull('stock_status');
             })
             ->with(['account', 'items']);
 
@@ -151,8 +152,9 @@ class ReleaseCancelledOrderReservations extends Command
     ): void {
         $account = $order->account;
 
-        if (!$account) {
+        if (! $account) {
             $errors[] = "Order {$order->id}: No account found";
+
             return;
         }
 
@@ -176,30 +178,32 @@ class ReleaseCancelledOrderReservations extends Command
                 $this->line("    Reservations already cancelled ({$cancelledReservations->count()} items)");
 
                 // Update order stock_status if not set
-                if (!$dryRun && $order->stock_status !== 'released') {
+                if (! $dryRun && $order->stock_status !== 'released') {
                     $order->update([
                         'stock_status' => 'released',
                         'stock_released_at' => $order->stock_released_at ?? now(),
                     ]);
                 }
+
                 return;
             }
 
-            $this->line("    No active reservations found, getting items from order...");
+            $this->line('    No active reservations found, getting items from order...');
 
             // Try to release stock via OrderStockService using order items
             $items = $this->orderStockService->getOrderItems($order, $marketplace);
 
             if (empty($items)) {
-                $this->warn("    No items found for order");
+                $this->warn('    No items found for order');
 
                 // Still update stock_status
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $order->update([
                         'stock_status' => 'released',
                         'stock_released_at' => now(),
                     ]);
                 }
+
                 return;
             }
 
@@ -208,7 +212,7 @@ class ReleaseCancelledOrderReservations extends Command
                 $this->processOrderItem($order, $account, $item, $marketplace, $dryRun, $stockReturnedCount, $syncedVariants, $errors);
             }
 
-            if (!$dryRun) {
+            if (! $dryRun) {
                 $order->update([
                     'stock_status' => 'released',
                     'stock_released_at' => now(),
@@ -224,11 +228,12 @@ class ReleaseCancelledOrderReservations extends Command
         if ($dryRun) {
             foreach ($reservations as $reservation) {
                 $variant = $reservation->sku?->productVariant;
-                $this->line("    [DRY] Would release: SKU {$reservation->sku_id}, qty: {$reservation->qty}" .
-                    ($variant ? ", variant: {$variant->sku}" : ""));
+                $this->line("    [DRY] Would release: SKU {$reservation->sku_id}, qty: {$reservation->qty}".
+                    ($variant ? ", variant: {$variant->sku}" : ''));
                 $releasedCount++;
                 $stockReturnedCount += $reservation->qty;
             }
+
             return;
         }
 
@@ -257,7 +262,7 @@ class ReleaseCancelledOrderReservations extends Command
                     $this->createLedgerEntry($account, $order, $reservation, $qty, $marketplace);
 
                     // Track for sync
-                    if (!in_array($variant->id, $syncedVariants)) {
+                    if (! in_array($variant->id, $syncedVariants)) {
                         $syncedVariants[] = $variant->id;
                     }
 
@@ -293,19 +298,21 @@ class ReleaseCancelledOrderReservations extends Command
         array &$syncedVariants,
         array &$errors
     ): void {
-        $qty = (int)($item['quantity'] ?? $item['amount'] ?? $item['qty'] ?? 1);
+        $qty = (int) ($item['quantity'] ?? $item['amount'] ?? $item['qty'] ?? 1);
 
         // Find variant
         $variant = $this->findVariant($account, $item, $marketplace);
 
-        if (!$variant) {
-            $this->warn("    Item not linked: " . json_encode($item));
+        if (! $variant) {
+            $this->warn('    Item not linked: '.json_encode($item));
+
             return;
         }
 
         if ($dryRun) {
             $this->line("    [DRY] Would return stock: {$variant->sku}, qty: +{$qty}");
             $stockReturnedCount += $qty;
+
             return;
         }
 
@@ -321,7 +328,7 @@ class ReleaseCancelledOrderReservations extends Command
         $this->createLedgerEntryForVariant($account, $order, $variant, $qty, $marketplace);
 
         // Track and sync
-        if (!in_array($variant->id, $syncedVariants)) {
+        if (! in_array($variant->id, $syncedVariants)) {
             $syncedVariants[] = $variant->id;
         }
 
@@ -351,8 +358,12 @@ class ReleaseCancelledOrderReservations extends Command
             $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $account->id)
                 ->where('is_active', true)
                 ->where(function ($q) use ($skuId, $offerId) {
-                    if ($skuId) $q->orWhere('external_sku_id', $skuId);
-                    if ($offerId) $q->orWhere('external_offer_id', $offerId);
+                    if ($skuId) {
+                        $q->orWhere('external_sku_id', $skuId);
+                    }
+                    if ($offerId) {
+                        $q->orWhere('external_offer_id', $offerId);
+                    }
                 })
                 ->first();
 
@@ -366,14 +377,18 @@ class ReleaseCancelledOrderReservations extends Command
             $variant = ProductVariant::where('barcode', $barcode)
                 ->where('company_id', $account->company_id)
                 ->first();
-            if ($variant) return $variant;
+            if ($variant) {
+                return $variant;
+            }
         }
 
         if ($offerId) {
             $variant = ProductVariant::where('sku', $offerId)
                 ->where('company_id', $account->company_id)
                 ->first();
-            if ($variant) return $variant;
+            if ($variant) {
+                return $variant;
+            }
         }
 
         return null;
@@ -419,7 +434,7 @@ class ReleaseCancelledOrderReservations extends Command
                 ->where('is_active', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 return;
             }
 

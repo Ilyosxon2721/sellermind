@@ -107,8 +107,6 @@ function offlineIndicator() {
                 window.haptic.success();
             }
 
-            console.log('✅ Network: Back online');
-
             // Dispatch event for other components
             window.dispatchEvent(new CustomEvent('connection-restored'));
 
@@ -144,7 +142,6 @@ function offlineIndicator() {
                 }
             } catch (error) {
                 // Still offline
-                console.log('Still offline, attempt:', this.reconnectAttempts);
             }
         },
 

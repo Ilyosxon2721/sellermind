@@ -28,7 +28,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2" x-show="debt && debt.status !== 'paid' && debt.status !== 'written_off'">
-                    <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1.5"
+                    <button class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1.5"
                             @click="openPaymentModal()">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v1"/></svg>
                         {{ __('debts.add_payment') }}
@@ -265,7 +265,7 @@
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                     <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50" @click="showPaymentModal = false">{{ __('common.cancel') }}</button>
-                    <button class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                             @click="createPayment()" :disabled="savingPayment">
                         <svg x-show="savingPayment" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span x-text="savingPayment ? '...' : '{{ __('debts.add_payment') }}'"></span>
@@ -340,7 +340,7 @@
 
                 {{-- Actions --}}
                 <div class="flex gap-2" x-show="debt.status !== 'paid' && debt.status !== 'written_off'">
-                    <button class="flex-1 px-4 py-2.5 bg-green-600 text-white text-sm rounded-lg font-medium" @click="openPaymentModal()">{{ __('debts.add_payment') }}</button>
+                    <button class="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm rounded-lg font-medium" @click="openPaymentModal()">{{ __('debts.add_payment') }}</button>
                     <button class="px-4 py-2.5 border border-amber-300 text-amber-700 text-sm rounded-lg" @click="showWriteOffModal = true">{{ __('debts.write_off') }}</button>
                 </div>
 

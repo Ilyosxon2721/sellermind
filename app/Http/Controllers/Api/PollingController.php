@@ -2,20 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceSyncLog;
 use App\Models\Supply;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
 
 /**
  * Polling Controller
- * 
+ *
  * Provides endpoints for HTTP polling to check for updates
  * Replaces WebSocket (Reverb) for cPanel compatibility
  */
@@ -24,9 +22,7 @@ class PollingController extends Controller
     /**
      * Check for new or updated marketplace orders
      *
-     * @param Request $request
-     * @param int $accountId
-     * @return JsonResponse
+     * @param  int  $accountId
      */
     public function checkMarketplaceOrders(Request $request, $accountId): JsonResponse
     {
@@ -37,14 +33,14 @@ class PollingController extends Controller
         $account = MarketplaceAccount::findOrFail($accountId);
 
         // Verify user has access to this account
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
         $lastCheck = $request->input('last_check', now()->subMinutes(5));
 
         // Cache key unique per user and account
-        $cacheKey = "polling:orders:{$accountId}:" . auth()->id() . ":" . $lastCheck;
+        $cacheKey = "polling:orders:{$accountId}:".auth()->id().':'.$lastCheck;
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($accountId, $lastCheck) {
             // Count new orders
@@ -76,19 +72,17 @@ class PollingController extends Controller
     /**
      * Check marketplace synchronization status
      *
-     * @param Request $request
-     * @param int $accountId
-     * @return JsonResponse
+     * @param  int  $accountId
      */
     public function checkSyncStatus(Request $request, $accountId): JsonResponse
     {
         $account = MarketplaceAccount::findOrFail($accountId);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        $cacheKey = "polling:sync:{$accountId}:" . auth()->id();
+        $cacheKey = "polling:sync:{$accountId}:".auth()->id();
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($accountId) {
             // Get latest sync log
@@ -96,13 +90,13 @@ class PollingController extends Controller
                 ->latest()
                 ->first();
 
-            $isSyncing = $latestSync && 
-                         $latestSync->status === 'in_progress' && 
+            $isSyncing = $latestSync &&
+                         $latestSync->status === 'in_progress' &&
                          $latestSync->started_at->isAfter(now()->subMinutes(10));
 
-            $completedRecently = $latestSync && 
-                                $latestSync->status === 'completed' && 
-                                $latestSync->completed_at && 
+            $completedRecently = $latestSync &&
+                                $latestSync->status === 'completed' &&
+                                $latestSync->completed_at &&
                                 $latestSync->completed_at->isAfter(now()->subMinutes(2));
 
             return [
@@ -120,9 +114,6 @@ class PollingController extends Controller
 
     /**
      * Check for new notifications
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function checkNotifications(Request $request): JsonResponse
     {
@@ -132,7 +123,7 @@ class PollingController extends Controller
 
         $lastCheck = $request->input('last_check', now()->subMinutes(5));
 
-        $cacheKey = "polling:notifications:" . auth()->id() . ":" . $lastCheck;
+        $cacheKey = 'polling:notifications:'.auth()->id().':'.$lastCheck;
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($request, $lastCheck) {
             $newNotifications = $request->user()
@@ -161,15 +152,12 @@ class PollingController extends Controller
 
     /**
      * Get dashboard statistics
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function getDashboardStats(Request $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
-        $cacheKey = "polling:dashboard:{$companyId}:" . auth()->id();
+        $cacheKey = "polling:dashboard:{$companyId}:".auth()->id();
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($companyId) {
             // Today's sales
@@ -213,15 +201,13 @@ class PollingController extends Controller
     /**
      * Check supplies status
      *
-     * @param Request $request
-     * @param int $accountId
-     * @return JsonResponse
+     * @param  int  $accountId
      */
     public function checkSupplies(Request $request, $accountId): JsonResponse
     {
         $account = MarketplaceAccount::findOrFail($accountId);
 
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -231,7 +217,7 @@ class PollingController extends Controller
 
         $lastCheck = $request->input('last_check', now()->subMinutes(5));
 
-        $cacheKey = "polling:supplies:{$accountId}:" . auth()->id() . ":" . $lastCheck;
+        $cacheKey = "polling:supplies:{$accountId}:".auth()->id().':'.$lastCheck;
 
         $data = Cache::remember($cacheKey, config('polling.cache_ttl', 5), function () use ($accountId, $lastCheck) {
             // New supplies

@@ -4,9 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Session;
+use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
 {
@@ -26,20 +26,20 @@ class SetLocale
         }
 
         // 2. Priority: Authenticated User preference
-        if (!$locale && auth()->check() && auth()->user()->locale) {
+        if (! $locale && auth()->check() && auth()->user()->locale) {
             $locale = auth()->user()->locale;
             // \Log::debug('Locale chosen from User pref: ' . $locale);
         }
 
         // 3. Priority: Session
-        if (!$locale && Session::has('locale')) {
+        if (! $locale && Session::has('locale')) {
             $locale = Session::get('locale');
             // \Log::debug('Locale chosen from Session: ' . $locale);
         }
 
         // 4. Default
-        if (!$locale || !in_array($locale, $supportedLocales)) {
-            $locale = config('app.locale', 'uz');
+        if (! $locale || ! in_array($locale, $supportedLocales)) {
+            $locale = config('app.locale', 'ru');
             // \Log::debug('Locale chosen from Default: ' . $locale);
         }
 

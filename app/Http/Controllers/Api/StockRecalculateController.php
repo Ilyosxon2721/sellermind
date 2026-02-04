@@ -19,7 +19,7 @@ class StockRecalculateController extends Controller
         'waiting_pickup', 'issued',
         'CREATED', 'PACKING', 'PENDING_DELIVERY', 'DELIVERING',
         'ACCEPTED_AT_DP', 'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
-        'DELIVERED', 'COMPLETED'
+        'DELIVERED', 'COMPLETED',
     ];
 
     /**
@@ -43,6 +43,18 @@ class StockRecalculateController extends Controller
 
         $orders = $query->get();
 
+        // Предзагрузка всех VariantMarketplaceLink по баркодам (N+1 fix)
+        $allBarcodes = $orders->flatMap(fn ($order) => $order->items->map(
+            fn ($item) => $item->raw_payload['barcode'] ?? null
+        ))->filter()->unique()->values()->all();
+
+        $allLinks = VariantMarketplaceLink::query()
+            ->where('is_active', true)
+            ->whereHas('variant', fn ($q) => $q->whereIn('barcode', $allBarcodes))
+            ->with('variant')
+            ->get()
+            ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->variant->barcode);
+
         $stockChanges = [];
 
         foreach ($orders as $order) {
@@ -50,25 +62,20 @@ class StockRecalculateController extends Controller
                 $rawPayload = $item->raw_payload ?? [];
                 $barcode = $rawPayload['barcode'] ?? null;
 
-                if (!$barcode) {
+                if (! $barcode) {
                     continue;
                 }
 
-                $link = VariantMarketplaceLink::query()
-                    ->where('marketplace_account_id', $order->marketplace_account_id)
-                    ->where('is_active', true)
-                    ->whereHas('variant', fn($q) => $q->where('barcode', $barcode))
-                    ->with('variant')
-                    ->first();
+                $link = ($allLinks[$order->marketplace_account_id.':'.$barcode] ?? collect())->first();
 
-                if (!$link || !$link->variant) {
+                if (! $link || ! $link->variant) {
                     continue;
                 }
 
                 $variantId = $link->variant->id;
                 $sku = $link->variant->sku;
 
-                if (!isset($stockChanges[$variantId])) {
+                if (! isset($stockChanges[$variantId])) {
                     $stockChanges[$variantId] = [
                         'variant_id' => $variantId,
                         'sku' => $sku,
@@ -112,8 +119,12 @@ class StockRecalculateController extends Controller
 
         $results = [];
 
+        // Предзагрузка всех вариантов по SKU (N+1 fix)
+        $skus = array_keys($stocks);
+        $variants = ProductVariant::whereIn('sku', $skus)->get()->keyBy('sku');
+
         foreach ($stocks as $sku => $stock) {
-            $variant = ProductVariant::where('sku', $sku)->first();
+            $variant = $variants[$sku] ?? null;
             if ($variant) {
                 $old = $variant->stock_default;
                 $variant->update(['stock_default' => (int) $stock]);
@@ -158,6 +169,18 @@ class StockRecalculateController extends Controller
 
         $orders = $query->get();
 
+        // Предзагрузка всех VariantMarketplaceLink по баркодам (N+1 fix)
+        $allBarcodes = $orders->flatMap(fn ($order) => $order->items->map(
+            fn ($item) => $item->raw_payload['barcode'] ?? null
+        ))->filter()->unique()->values()->all();
+
+        $allLinks = VariantMarketplaceLink::query()
+            ->where('is_active', true)
+            ->whereHas('variant', fn ($q) => $q->whereIn('barcode', $allBarcodes))
+            ->with('variant')
+            ->get()
+            ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->variant->barcode);
+
         $stockChanges = [];
         $processedOrders = [];
 
@@ -166,24 +189,19 @@ class StockRecalculateController extends Controller
                 $rawPayload = $item->raw_payload ?? [];
                 $barcode = $rawPayload['barcode'] ?? null;
 
-                if (!$barcode) {
+                if (! $barcode) {
                     continue;
                 }
 
-                $link = VariantMarketplaceLink::query()
-                    ->where('marketplace_account_id', $order->marketplace_account_id)
-                    ->where('is_active', true)
-                    ->whereHas('variant', fn($q) => $q->where('barcode', $barcode))
-                    ->with('variant')
-                    ->first();
+                $link = ($allLinks[$order->marketplace_account_id.':'.$barcode] ?? collect())->first();
 
-                if (!$link || !$link->variant) {
+                if (! $link || ! $link->variant) {
                     continue;
                 }
 
                 $variantId = $link->variant->id;
 
-                if (!isset($stockChanges[$variantId])) {
+                if (! isset($stockChanges[$variantId])) {
                     $stockChanges[$variantId] = [
                         'variant' => $link->variant,
                         'sku' => $link->variant->sku,
@@ -249,7 +267,7 @@ class StockRecalculateController extends Controller
             Log::error('Stock recalculation failed', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'error' => 'Recalculation failed: ' . $e->getMessage(),
+                'error' => 'Recalculation failed: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -268,6 +286,7 @@ class StockRecalculateController extends Controller
             ->where('is_deleted', false);
 
         if ($search) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('sku', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%");

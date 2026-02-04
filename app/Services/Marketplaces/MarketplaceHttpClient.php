@@ -1,13 +1,14 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceHttpClient.php
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class MarketplaceHttpClient
 {
@@ -28,8 +29,8 @@ class MarketplaceHttpClient
         $request = $this->baseRequest($account);
 
         // Debug: log full URL
-        $config = config("marketplaces." . $this->getConfigKey($account->marketplace));
-        $fullUrl = ($config['base_url'] ?? '') . $url;
+        $config = config('marketplaces.'.$this->getConfigKey($account->marketplace));
+        $fullUrl = ($config['base_url'] ?? '').$url;
         \Log::debug('Making HTTP GET request', [
             'base_url' => $config['base_url'] ?? '',
             'path' => $url,
@@ -51,7 +52,7 @@ class MarketplaceHttpClient
 
         // For Ozon: empty array [] becomes "[]" in JSON, but API expects "{}" (empty object)
         // Use object for empty payloads to send proper JSON object
-        $body = (is_array($payload) && empty($payload)) ? new \stdClass() : $payload;
+        $body = (is_array($payload) && empty($payload)) ? new \stdClass : $payload;
 
         $response = $this->baseRequest($account)
             ->post($url, $body);
@@ -107,7 +108,7 @@ class MarketplaceHttpClient
         $configKey = $this->getConfigKey($marketplace);
         $config = config("marketplaces.{$configKey}");
 
-        if (!$config) {
+        if (! $config) {
             throw new \InvalidArgumentException("No config found for marketplace: {$marketplace}");
         }
 
@@ -115,7 +116,7 @@ class MarketplaceHttpClient
             ->baseUrl($config['base_url'] ?? '');
 
         // SSL verification (disable for local development on Windows if needed)
-        if (!($config['verify_ssl'] ?? true)) {
+        if (! ($config['verify_ssl'] ?? true)) {
             $request = $request->withOptions(['verify' => false]);
         }
 
@@ -173,10 +174,10 @@ class MarketplaceHttpClient
                         'prefix' => $prefix,
                         'prefix_from_config' => $config['auth_prefix'] ?? 'NOT_SET',
                         'api_key_length' => strlen($apiKey),
-                        'api_key_preview' => $apiKey ? (substr($apiKey, 0, 8) . '...' . substr($apiKey, -4)) : 'EMPTY',
-                        'has_uzum_access_token' => !empty($credentials['uzum_access_token']),
-                        'has_uzum_api_key' => !empty($credentials['uzum_api_key']),
-                        'has_api_key' => !empty($credentials['api_key']),
+                        'api_key_preview' => $apiKey ? (substr($apiKey, 0, 8).'...'.substr($apiKey, -4)) : 'EMPTY',
+                        'has_uzum_access_token' => ! empty($credentials['uzum_access_token']),
+                        'has_uzum_api_key' => ! empty($credentials['uzum_api_key']),
+                        'has_api_key' => ! empty($credentials['api_key']),
                     ]);
                 } else {
                     $apiKey = $credentials['api_key'] ?? '';
@@ -218,7 +219,7 @@ class MarketplaceHttpClient
      */
     protected function logRequest(MarketplaceAccount $account, string $method, string $url, array $options = []): void
     {
-        if (!$this->debugMode) {
+        if (! $this->debugMode) {
             return;
         }
 
@@ -341,6 +342,7 @@ class MarketplaceHttpClient
     public function getConfig(string $marketplace): array
     {
         $configKey = $this->getConfigKey($marketplace);
+
         return config("marketplaces.{$configKey}", []);
     }
 }

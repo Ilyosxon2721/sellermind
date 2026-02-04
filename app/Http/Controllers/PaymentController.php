@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subscription;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PaymentController extends Controller
@@ -16,7 +16,7 @@ class PaymentController extends Controller
     {
         // Verify user owns the company
         $user = $request->user();
-        if (!$user || $subscription->company_id !== $user->company_id) {
+        if (! $user || $subscription->company_id !== $user->company_id) {
             abort(403, 'Forbidden');
         }
 
@@ -44,7 +44,7 @@ class PaymentController extends Controller
     public function initiateClick(Request $request, Subscription $subscription): RedirectResponse
     {
         $user = $request->user();
-        if (!$user || $subscription->company_id !== $user->company_id) {
+        if (! $user || $subscription->company_id !== $user->company_id) {
             abort(403);
         }
 
@@ -56,7 +56,7 @@ class PaymentController extends Controller
         $secretKey = config('payments.click.secret_key');
 
         // Generate transaction ID
-        $transactionId = 'SUB-' . $subscription->id . '-' . time();
+        $transactionId = 'SUB-'.$subscription->id.'-'.time();
 
         // Store transaction info
         $subscription->update([
@@ -68,7 +68,7 @@ class PaymentController extends Controller
         $returnUrl = route('payment.callback.click', ['subscription' => $subscription->id]);
         $amount = $plan->price;
 
-        $clickUrl = "https://my.click.uz/services/pay?" . http_build_query([
+        $clickUrl = 'https://my.click.uz/services/pay?'.http_build_query([
             'service_id' => $serviceId,
             'merchant_id' => $merchantId,
             'amount' => $amount,
@@ -85,7 +85,7 @@ class PaymentController extends Controller
     public function initiatePayme(Request $request, Subscription $subscription): RedirectResponse
     {
         $user = $request->user();
-        if (!$user || $subscription->company_id !== $user->company_id) {
+        if (! $user || $subscription->company_id !== $user->company_id) {
             abort(403);
         }
 
@@ -95,7 +95,7 @@ class PaymentController extends Controller
         $merchantId = config('payments.payme.merchant_id');
 
         // Generate transaction ID
-        $transactionId = 'SUB-' . $subscription->id . '-' . time();
+        $transactionId = 'SUB-'.$subscription->id.'-'.time();
 
         // Store transaction info
         $subscription->update([
@@ -112,7 +112,7 @@ class PaymentController extends Controller
             'subscription_id' => $subscription->id,
         ]));
 
-        $paymeUrl = "https://checkout.paycom.uz/" . urlencode($merchantId) . "?" . http_build_query([
+        $paymeUrl = 'https://checkout.paycom.uz/'.urlencode($merchantId).'?'.http_build_query([
             'amount' => $amount,
             'account' => $account,
             'return_url' => $returnUrl,
@@ -151,12 +151,12 @@ class PaymentController extends Controller
     public function renew(Request $request, Subscription $subscription): RedirectResponse|View
     {
         $user = $request->user();
-        if (!$user || $subscription->company_id !== $user->company_id) {
+        if (! $user || $subscription->company_id !== $user->company_id) {
             abort(403);
         }
 
         // Check if user is owner
-        if (!$user->isOwnerOf($subscription->company_id)) {
+        if (! $user->isOwnerOf($subscription->company_id)) {
             return redirect()
                 ->back()
                 ->with('error', 'Только владелец компании может продлевать подписку');

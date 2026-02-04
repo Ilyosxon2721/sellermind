@@ -3,15 +3,13 @@
 namespace App\Services\Finance;
 
 use App\Models\Finance\FinanceCategory;
-use App\Models\Finance\FinanceTransaction;
 use App\Models\Finance\FinanceSettings;
+use App\Models\Finance\FinanceTransaction;
 use App\Models\MarketplaceAccount;
+use App\Models\OzonOrder;
 use App\Models\UzumExpense;
 use App\Models\UzumFinanceOrder;
-use App\Models\WildberriesOrder;
-use App\Models\OzonOrder;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -22,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 class MarketplaceExpensesSyncService
 {
     protected array $categoryCache = [];
+
     protected ?float $rubRate = null;
 
     /**
@@ -55,6 +54,7 @@ class MarketplaceExpensesSyncService
         }
 
         $results['total'] = $total;
+
         return $results;
     }
 
@@ -386,7 +386,7 @@ class MarketplaceExpensesSyncService
     {
         $result = $this->emptyResult();
 
-        if (!class_exists(OzonOrder::class)) {
+        if (! class_exists(OzonOrder::class)) {
             return $result;
         }
 
@@ -460,28 +460,28 @@ class MarketplaceExpensesSyncService
     {
         $result = $this->emptyResult();
 
-        if (!class_exists(UzumFinanceOrder::class)) {
+        if (! class_exists(UzumFinanceOrder::class)) {
             return $result;
         }
 
         $orders = UzumFinanceOrder::where('marketplace_account_id', $account->id)
             ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
             ->where('status', '!=', 'CANCELED')
-            ->where(function($q) use ($from, $to) {
-                $q->where(function($sub) use ($from, $to) {
+            ->where(function ($q) use ($from, $to) {
+                $q->where(function ($sub) use ($from, $to) {
                     $sub->whereNotNull('date_issued')
                         ->whereDate('date_issued', '>=', $from)
                         ->whereDate('date_issued', '<=', $to);
                 })
-                ->orWhere(function($sub) use ($from, $to) {
-                    $sub->whereNull('date_issued')
-                        ->whereDate('order_date', '>=', $from)
-                        ->whereDate('order_date', '<=', $to);
-                });
+                    ->orWhere(function ($sub) use ($from, $to) {
+                        $sub->whereNull('date_issued')
+                            ->whereDate('order_date', '>=', $from)
+                            ->whereDate('order_date', '<=', $to);
+                    });
             })
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('commission', '>', 0)
-                  ->orWhere('logistic_delivery_fee', '>', 0);
+                    ->orWhere('logistic_delivery_fee', '>', 0);
             })
             ->get();
 
@@ -547,14 +547,14 @@ class MarketplaceExpensesSyncService
     {
         $result = $this->emptyResult();
 
-        if (!class_exists(UzumExpense::class)) {
+        if (! class_exists(UzumExpense::class)) {
             return $result;
         }
 
         $expenses = UzumExpense::where('marketplace_account_id', $account->id)
-            ->where(function($q) use ($from, $to) {
+            ->where(function ($q) use ($from, $to) {
                 $q->whereDate('date_service', '>=', $from)
-                  ->whereDate('date_service', '<=', $to);
+                    ->whereDate('date_service', '<=', $to);
             })
             ->where('payment_price', '>', 0)
             ->get();
@@ -608,7 +608,7 @@ class MarketplaceExpensesSyncService
     ): string {
         $categoryId = $this->getCategoryId($companyId, $categoryCode);
 
-        if (!$categoryId) {
+        if (! $categoryId) {
             throw new \Exception("Category not found: {$categoryCode}");
         }
 
@@ -631,6 +631,7 @@ class MarketplaceExpensesSyncService
                 'amount_base' => $amount,
                 'description' => $description,
             ]);
+
             return 'updated';
         }
 

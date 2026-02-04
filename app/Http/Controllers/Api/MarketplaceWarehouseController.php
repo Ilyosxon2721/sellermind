@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceWarehouseController.php
 
 namespace App\Http\Controllers\Api;
@@ -19,7 +20,7 @@ class MarketplaceWarehouseController extends Controller
         ]);
 
         $account = MarketplaceAccount::findOrFail($data['account_id']);
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 
@@ -32,13 +33,13 @@ class MarketplaceWarehouseController extends Controller
 
     public function sync(Request $request, MarketplaceAccount $account, WildberriesStockService $service): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 
         // Check if account has required token
-        $hasMarketplaceToken = !empty($account->wb_marketplace_token);
-        $hasApiKey = !empty($account->api_key);
+        $hasMarketplaceToken = ! empty($account->wb_marketplace_token);
+        $hasApiKey = ! empty($account->api_key);
 
         \Log::info('WB warehouse sync started', [
             'account_id' => $account->id,
@@ -55,7 +56,7 @@ class MarketplaceWarehouseController extends Controller
         $created = 0;
         foreach ($list as $item) {
             $warehouseId = $item['id'] ?? null;
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 continue;
             }
 
@@ -66,7 +67,7 @@ class MarketplaceWarehouseController extends Controller
                 ],
                 [
                     'wildberries_warehouse_id' => $warehouseId,
-                    'name' => $item['name'] ?? ('WB склад ' . $warehouseId),
+                    'name' => $item['name'] ?? ('WB склад '.$warehouseId),
                     'type' => $this->getWarehouseType($item['deliveryType'] ?? null),
                     'is_active' => true,
                 ]
@@ -88,9 +89,9 @@ class MarketplaceWarehouseController extends Controller
 
         // Provide helpful message if no warehouses found
         if ($totalCount === 0 && empty($syncResult['created']) && empty($syncResult['updated'])) {
-            if (!$hasMarketplaceToken && !$hasApiKey) {
+            if (! $hasMarketplaceToken && ! $hasApiKey) {
                 $errors[] = 'Не настроен токен API. Укажите wb_marketplace_token или api_key в настройках аккаунта.';
-            } elseif (!$hasMarketplaceToken) {
+            } elseif (! $hasMarketplaceToken) {
                 $note = 'Используется общий api_key. Для FBS складов рекомендуется настроить отдельный wb_marketplace_token.';
             }
         }

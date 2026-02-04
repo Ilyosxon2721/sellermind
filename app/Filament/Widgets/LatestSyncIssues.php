@@ -3,16 +3,18 @@
 namespace App\Filament\Widgets;
 
 use App\Models\MarketplaceSyncLog;
-use Filament\Tables;
 use Filament\Actions\Action;
+use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class LatestSyncIssues extends BaseWidget
 {
     protected static ?string $heading = 'Последние ошибки синхронизации';
+
     protected static ?int $sort = 4;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {

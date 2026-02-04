@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
-use App\Models\Warehouse\Warehouse;
 use App\Models\Warehouse\Unit;
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -54,6 +54,7 @@ class SyncProductVariantsToWarehouse extends Command
 
         if ($variants->isEmpty()) {
             $this->warn('⚠️  Нет активных ProductVariants для синхронизации');
+
             return 0;
         }
 
@@ -76,7 +77,7 @@ class SyncProductVariantsToWarehouse extends Command
 
                 if ($warehouseSku) {
                     // Обновляем существующий
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $warehouseSku->update([
                             'sku_code' => $variant->sku,
                             'barcode_ean13' => $variant->barcode,
@@ -99,7 +100,7 @@ class SyncProductVariantsToWarehouse extends Command
                     $this->line("   ✓ Обновлен: {$variant->sku}");
                 } else {
                     // Создаем новый Warehouse\Sku
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $warehouseSku = Sku::create([
                             'product_id' => $variant->product_id,
                             'product_variant_id' => $variant->id,
@@ -119,7 +120,7 @@ class SyncProductVariantsToWarehouse extends Command
                         }
                     }
                     $created++;
-                    $this->line("   + Создан: {$variant->sku}" . ($variant->stock_default > 0 ? " (остаток: {$variant->stock_default})" : ''));
+                    $this->line("   + Создан: {$variant->sku}".($variant->stock_default > 0 ? " (остаток: {$variant->stock_default})" : ''));
                 }
             }
 
@@ -147,8 +148,9 @@ class SyncProductVariantsToWarehouse extends Command
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('❌ Ошибка: ' . $e->getMessage());
+            $this->error('❌ Ошибка: '.$e->getMessage());
             $this->error($e->getTraceAsString());
+
             return 1;
         }
     }
@@ -168,7 +170,7 @@ class SyncProductVariantsToWarehouse extends Command
             ->where('is_default', true)
             ->first();
 
-        if (!$defaultWarehouse) {
+        if (! $defaultWarehouse) {
             // Если нет дефолтного, берем первый склад компании
             $defaultWarehouse = Warehouse::where('company_id', $variant->company_id)->first();
         }
@@ -199,4 +201,3 @@ class SyncProductVariantsToWarehouse extends Command
         }
     }
 }
-

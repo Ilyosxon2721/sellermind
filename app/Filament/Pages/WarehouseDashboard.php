@@ -2,10 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\WarehouseStatsOverview;
 use App\Filament\Widgets\LowStockAlerts;
 use App\Filament\Widgets\RecentStockMovements;
 use App\Filament\Widgets\StockByWarehouse;
+use App\Filament\Widgets\WarehouseStatsOverview;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;

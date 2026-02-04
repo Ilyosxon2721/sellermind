@@ -44,6 +44,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                 Log::info('No active marketplace links for variant', [
                     'variant_id' => $event->variant->id,
                 ]);
+
                 return;
             }
 
@@ -64,7 +65,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                 ]);
 
                 // Проверяем настройки аккаунта маркетплейса
-                if (!$account || !$account->isAutoSyncOnChangeEnabled()) {
+                if (! $account || ! $account->isAutoSyncOnChangeEnabled()) {
                     $skippedAccounts[] = [
                         'account_id' => $account?->id,
                         'account_name' => $account?->name,
@@ -76,6 +77,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                         'account_id' => $account?->id,
                         'marketplace' => $account?->marketplace,
                     ]);
+
                     continue;
                 }
 
@@ -88,6 +90,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                         'link_id' => $link->id,
                         'reason' => 'source link (already has correct stock)',
                     ];
+
                     continue;
                 }
 
@@ -125,7 +128,7 @@ class SyncStockToMarketplaces implements ShouldQueue
                         'account_id' => $account->id,
                         'account_name' => $account->name,
                         'marketplace' => $account->marketplace,
-                        'reason' => 'sync error: ' . $e->getMessage(),
+                        'reason' => 'sync error: '.$e->getMessage(),
                     ];
                 }
             }

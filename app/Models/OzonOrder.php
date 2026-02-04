@@ -83,8 +83,8 @@ class OzonOrder extends Model
     public function isInTransit(): bool
     {
         return in_array($this->status, ['awaiting_packaging', 'awaiting_deliver', 'acceptance_in_progress', 'delivering'])
-            && !$this->isCancelled()
-            && !$this->isSold();
+            && ! $this->isCancelled()
+            && ! $this->isSold();
     }
 
     /**
@@ -94,8 +94,8 @@ class OzonOrder extends Model
     public function isAwaitingPickup(): bool
     {
         return in_array($this->status, ['driver_pickup'])
-            && !$this->isCancelled()
-            && !$this->isSold();
+            && ! $this->isCancelled()
+            && ! $this->isSold();
     }
 
     /**
@@ -117,6 +117,7 @@ class OzonOrder extends Model
         if ($this->isSold()) {
             return 'delivered';
         }
+
         return 'processing';
     }
 
@@ -165,12 +166,12 @@ class OzonOrder extends Model
      */
     public function getProductsList(): array
     {
-        if (!empty($this->products) && is_array($this->products)) {
+        if (! empty($this->products) && is_array($this->products)) {
             return $this->products;
         }
 
         // Если в products пусто, попробовать извлечь из order_data
-        if (!empty($this->order_data['products'])) {
+        if (! empty($this->order_data['products'])) {
             return $this->order_data['products'];
         }
 

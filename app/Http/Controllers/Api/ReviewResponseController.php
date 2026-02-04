@@ -3,46 +3,54 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Review;
 use App\Models\ReviewTemplate;
 use App\Services\ReviewResponseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class ReviewResponseController extends Controller
 {
+    use HasCompanyScope;
+
     public function __construct(
         protected ReviewResponseService $reviewService
-    ) {
-    }
+    ) {}
 
     /**
-     * Get all reviews.
+     * Получить все отзывы.
      */
     public function index(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $validated = $request->validate([
+            'status' => ['nullable', 'string'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'sentiment' => ['nullable', 'string', 'in:positive,negative,neutral'],
+            'has_response' => ['nullable', 'boolean'],
+        ]);
+
+        $companyId = $this->getCompanyId();
 
         $query = Review::where('company_id', $companyId)
             ->with(['product:id,name', 'marketplaceAccount:id,name,marketplace']);
 
-        // Filters
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        // Фильтры
+        if (isset($validated['status'])) {
+            $query->where('status', $validated['status']);
         }
 
-        if ($request->has('rating')) {
-            $query->where('rating', $request->rating);
+        if (isset($validated['rating'])) {
+            $query->where('rating', $validated['rating']);
         }
 
-        if ($request->has('sentiment')) {
-            $query->where('sentiment', $request->sentiment);
+        if (isset($validated['sentiment'])) {
+            $query->where('sentiment', $validated['sentiment']);
         }
 
-        if ($request->has('has_response')) {
-            if ($request->boolean('has_response')) {
+        if (array_key_exists('has_response', $validated) && $validated['has_response'] !== null) {
+            if ($validated['has_response']) {
                 $query->whereNotNull('response_text');
             } else {
                 $query->whereNull('response_text');
@@ -59,7 +67,9 @@ class ReviewResponseController extends Controller
      */
     public function show(Review $review): JsonResponse
     {
-        $this->authorizeCompanyAccess($review->company_id);
+        if ($review->company_id !== $this->getCompanyId()) {
+            abort(403, 'Unauthorized access to company');
+        }
 
         $review->load(['product', 'marketplaceAccount', 'responder:id,name', 'template']);
 
@@ -71,7 +81,7 @@ class ReviewResponseController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
             'product_id' => 'nullable|exists:products,id',
@@ -102,7 +112,9 @@ class ReviewResponseController extends Controller
      */
     public function generateResponse(Request $request, Review $review): JsonResponse
     {
-        $this->authorizeCompanyAccess($review->company_id);
+        if ($review->company_id !== $this->getCompanyId()) {
+            abort(403, 'Unauthorized access to company');
+        }
 
         $validated = $request->validate([
             'tone' => 'sometimes|in:professional,friendly,formal',
@@ -123,7 +135,9 @@ class ReviewResponseController extends Controller
      */
     public function saveResponse(Request $request, Review $review): JsonResponse
     {
-        $this->authorizeCompanyAccess($review->company_id);
+        if ($review->company_id !== $this->getCompanyId()) {
+            abort(403, 'Unauthorized access to company');
+        }
 
         $validated = $request->validate([
             'response_text' => 'required|string',
@@ -154,7 +168,9 @@ class ReviewResponseController extends Controller
      */
     public function suggestTemplates(Review $review): JsonResponse
     {
-        $this->authorizeCompanyAccess($review->company_id);
+        if ($review->company_id !== $this->getCompanyId()) {
+            abort(403, 'Unauthorized access to company');
+        }
 
         $templates = $this->reviewService->suggestTemplates($review, 5);
 
@@ -166,7 +182,7 @@ class ReviewResponseController extends Controller
      */
     public function bulkGenerate(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
             'review_ids' => 'required|array',
@@ -189,7 +205,7 @@ class ReviewResponseController extends Controller
         return response()->json([
             'results' => $results,
             'total' => count($results),
-            'successful' => count(array_filter($results, fn($r) => $r['success'])),
+            'successful' => count(array_filter($results, fn ($r) => $r['success'])),
         ]);
     }
 
@@ -198,7 +214,7 @@ class ReviewResponseController extends Controller
      */
     public function statistics(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $stats = [
             'total' => Review::where('company_id', $companyId)->count(),
@@ -228,7 +244,7 @@ class ReviewResponseController extends Controller
      */
     public function templates(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $templates = ReviewTemplate::active()
             ->where(function ($query) use ($companyId) {
@@ -247,7 +263,7 @@ class ReviewResponseController extends Controller
      */
     public function storeTemplate(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -281,31 +297,5 @@ class ReviewResponseController extends Controller
         $responded = Review::where('company_id', $companyId)->whereNotNull('response_text')->count();
 
         return round(($responded / $total) * 100, 2);
-    }
-
-    /**
-     * Get company ID from request.
-     */
-    protected function getCompanyId(Request $request): int
-    {
-        $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
-
-        if (!$companyId) {
-            abort(404, 'Company not found');
-        }
-
-        $this->authorizeCompanyAccess($companyId);
-
-        return $companyId;
-    }
-
-    /**
-     * Authorize company access.
-     */
-    protected function authorizeCompanyAccess(int $companyId): void
-    {
-        if (!Auth::user()->hasCompanyAccess($companyId)) {
-            abort(403, 'Unauthorized access to company');
-        }
     }
 }

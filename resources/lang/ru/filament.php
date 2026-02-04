@@ -24,7 +24,7 @@ return [
             'label' => 'Компания',
             'plural' => 'Компании',
         ],
-        
+
         // Billing group
         'plan' => [
             'label' => 'Тариф',
@@ -34,7 +34,7 @@ return [
             'label' => 'Подписка',
             'plural' => 'Подписки',
         ],
-        
+
         // Finance group
         'sale' => [
             'label' => 'Продажа',
@@ -44,7 +44,7 @@ return [
             'label' => 'Выплата',
             'plural' => 'Выплаты маркетплейсов',
         ],
-        
+
         // Catalog group
         'product' => [
             'label' => 'Товар',
@@ -54,7 +54,7 @@ return [
             'label' => 'Категория',
             'plural' => 'Категории',
         ],
-        
+
         // Warehouse group
         'warehouse' => [
             'label' => 'Склад',
@@ -90,7 +90,7 @@ return [
             'label' => 'Правило автоматизации',
             'plural' => 'Автоматизация',
         ],
-        
+
         // AI & Content group
         'agent' => [
             'label' => 'Агент',
@@ -108,7 +108,7 @@ return [
             'label' => 'Лог ИИ',
             'plural' => 'Использование ИИ',
         ],
-        
+
         // System group
         'global_option' => [
             'label' => 'Глобальная настройка',

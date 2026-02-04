@@ -1,4 +1,5 @@
 <?php
+
 // file: config/wildberries.php
 
 return [
@@ -17,28 +18,28 @@ return [
 
     // Base URLs for production (WB uses different domains for different API categories)
     'base_urls' => [
-        'common'      => 'https://common-api.wildberries.ru',
-        'content'     => 'https://content-api.wildberries.ru',
+        'common' => 'https://common-api.wildberries.ru',
+        'content' => 'https://content-api.wildberries.ru',
         'marketplace' => 'https://marketplace-api.wildberries.ru',
-        'prices'      => 'https://discounts-prices-api.wildberries.ru',
-        'statistics'  => 'https://statistics-api.wildberries.ru',
-        'analytics'   => 'https://seller-analytics-api.wildberries.ru',
-        'adv'         => 'https://advert-api.wildberries.ru',
-        'feedbacks'   => 'https://feedbacks-api.wildberries.ru',
-        'questions'   => 'https://questions-api.wildberries.ru',
+        'prices' => 'https://discounts-prices-api.wildberries.ru',
+        'statistics' => 'https://statistics-api.wildberries.ru',
+        'analytics' => 'https://seller-analytics-api.wildberries.ru',
+        'adv' => 'https://advert-api.wildberries.ru',
+        'feedbacks' => 'https://feedbacks-api.wildberries.ru',
+        'questions' => 'https://questions-api.wildberries.ru',
     ],
 
     // Sandbox base URLs (same as production for WB)
     'sandbox_base_urls' => [
-        'common'      => 'https://common-api.wildberries.ru',
-        'content'     => 'https://content-api.wildberries.ru',
+        'common' => 'https://common-api.wildberries.ru',
+        'content' => 'https://content-api.wildberries.ru',
         'marketplace' => 'https://marketplace-api.wildberries.ru',
-        'prices'      => 'https://discounts-prices-api.wildberries.ru',
-        'statistics'  => 'https://statistics-api.wildberries.ru',
-        'analytics'   => 'https://seller-analytics-api.wildberries.ru',
-        'adv'         => 'https://advert-api.wildberries.ru',
-        'feedbacks'   => 'https://feedbacks-api.wildberries.ru',
-        'questions'   => 'https://questions-api.wildberries.ru',
+        'prices' => 'https://discounts-prices-api.wildberries.ru',
+        'statistics' => 'https://statistics-api.wildberries.ru',
+        'analytics' => 'https://seller-analytics-api.wildberries.ru',
+        'adv' => 'https://advert-api.wildberries.ru',
+        'feedbacks' => 'https://feedbacks-api.wildberries.ru',
+        'questions' => 'https://questions-api.wildberries.ru',
     ],
 
     'timeout' => 30,
@@ -46,10 +47,10 @@ return [
 
     // Default tokens (if not using per-account tokens)
     'tokens' => [
-        'content'     => env('WB_CONTENT_TOKEN'),
+        'content' => env('WB_CONTENT_TOKEN'),
         'marketplace' => env('WB_MARKETPLACE_TOKEN'),
-        'prices'      => env('WB_PRICES_TOKEN'),
-        'statistics'  => env('WB_STATISTICS_TOKEN'),
+        'prices' => env('WB_PRICES_TOKEN'),
+        'statistics' => env('WB_STATISTICS_TOKEN'),
     ],
 
     /*
@@ -62,11 +63,11 @@ return [
     */
 
     'rate_limits' => [
-        'content'     => 100, // requests per minute
+        'content' => 100, // requests per minute
         'marketplace' => 60,
-        'prices'      => 100,
-        'statistics'  => 60,
-        'analytics'   => 100,
+        'prices' => 100,
+        'statistics' => 60,
+        'analytics' => 100,
     ],
 
     /*
@@ -77,8 +78,8 @@ return [
 
     'retry' => [
         'max_attempts' => 3,          // максимум повторных попыток
-        'delays'       => [5, 15, 30], // задержки между попытками (секунды)
-        'max_delay'    => 120,         // максимальная задержка (секунды)
+        'delays' => [5, 15, 30], // задержки между попытками (секунды)
+        'max_delay' => 120,         // максимальная задержка (секунды)
     ],
 
     /*

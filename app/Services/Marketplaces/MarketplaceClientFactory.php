@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceClientFactory.php
 
 namespace App\Services\Marketplaces;
@@ -10,8 +11,11 @@ use InvalidArgumentException;
 class MarketplaceClientFactory
 {
     protected WildberriesClient $wildberriesClient;
+
     protected OzonClient $ozonClient;
+
     protected UzumClient $uzumClient;
+
     protected YandexMarketClient $yandexMarketClient;
 
     public function __construct(

@@ -16,7 +16,7 @@ return new class extends Migration
             // For WB: stores ID from /api/v3/warehouses (FBS/DBS/EDBS/C&C warehouses)
             // Different from wildberries_warehouse_id which is from Statistics API
             $table->unsignedBigInteger('marketplace_warehouse_id')->nullable()->after('wildberries_warehouse_id');
-            
+
             // Add index
             $table->index(['marketplace_account_id', 'marketplace_warehouse_id'], 'mp_wh_mp_wh_id_idx');
         });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\OrderStockReturn;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Http\Request;
  */
 class OrderStockReturnController extends Controller
 {
+    use HasPaginatedResponse;
+
     /**
      * Получить список возвратов
      */
@@ -24,7 +27,7 @@ class OrderStockReturnController extends Controller
             'order_type' => ['nullable', 'in:wb,uzum,ozon'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -44,7 +47,9 @@ class OrderStockReturnController extends Controller
             $query->where('order_type', $request->order_type);
         }
 
-        $returns = $query->paginate(50);
+        $perPage = $this->getPerPage($request, 50);
+
+        $returns = $query->paginate($perPage);
 
         // Добавляем информацию о заказе
         $returns->getCollection()->transform(function ($return) {
@@ -80,12 +85,7 @@ class OrderStockReturnController extends Controller
 
         return response()->json([
             'returns' => $returns->items(),
-            'meta' => [
-                'total' => $returns->total(),
-                'per_page' => $returns->perPage(),
-                'current_page' => $returns->currentPage(),
-                'last_page' => $returns->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($returns),
         ]);
     }
 
@@ -96,11 +96,11 @@ class OrderStockReturnController extends Controller
     {
         $return = OrderStockReturn::with(['marketplaceAccount', 'processedByUser'])->find($id);
 
-        if (!$return) {
+        if (! $return) {
             return response()->json(['message' => 'Возврат не найден.'], 404);
         }
 
-        if (!$request->user()->hasCompanyAccess($return->company_id)) {
+        if (! $request->user()->hasCompanyAccess($return->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -109,7 +109,7 @@ class OrderStockReturnController extends Controller
         // Получаем товары из заказа
         $items = [];
         if ($order) {
-            $orderStockService = new \App\Services\Stock\OrderStockService();
+            $orderStockService = new \App\Services\Stock\OrderStockService;
             $items = $orderStockService->getOrderItems($order, $return->order_type);
         }
 
@@ -155,11 +155,11 @@ class OrderStockReturnController extends Controller
 
         $return = OrderStockReturn::find($id);
 
-        if (!$return) {
+        if (! $return) {
             return response()->json(['message' => 'Возврат не найден.'], 404);
         }
 
-        if (!$request->user()->hasCompanyAccess($return->company_id)) {
+        if (! $request->user()->hasCompanyAccess($return->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -169,7 +169,7 @@ class OrderStockReturnController extends Controller
 
         $success = $return->processReturnToStock($request->user(), $request->notes);
 
-        if (!$success) {
+        if (! $success) {
             return response()->json(['message' => 'Не удалось обработать возврат.'], 500);
         }
 
@@ -195,11 +195,11 @@ class OrderStockReturnController extends Controller
 
         $return = OrderStockReturn::find($id);
 
-        if (!$return) {
+        if (! $return) {
             return response()->json(['message' => 'Возврат не найден.'], 404);
         }
 
-        if (!$request->user()->hasCompanyAccess($return->company_id)) {
+        if (! $request->user()->hasCompanyAccess($return->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -209,7 +209,7 @@ class OrderStockReturnController extends Controller
 
         $success = $return->processWriteOff($request->user(), $request->notes);
 
-        if (!$success) {
+        if (! $success) {
             return response()->json(['message' => 'Не удалось обработать возврат.'], 500);
         }
 
@@ -235,11 +235,11 @@ class OrderStockReturnController extends Controller
 
         $return = OrderStockReturn::find($id);
 
-        if (!$return) {
+        if (! $return) {
             return response()->json(['message' => 'Возврат не найден.'], 404);
         }
 
-        if (!$request->user()->hasCompanyAccess($return->company_id)) {
+        if (! $request->user()->hasCompanyAccess($return->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -249,7 +249,7 @@ class OrderStockReturnController extends Controller
 
         $success = $return->reject($request->user(), $request->notes);
 
-        if (!$success) {
+        if (! $success) {
             return response()->json(['message' => 'Не удалось отклонить возврат.'], 500);
         }
 
@@ -273,7 +273,7 @@ class OrderStockReturnController extends Controller
             'marketplace_account_id' => ['nullable', 'exists:marketplace_accounts,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 // file: config/marketplaces.php
 
 return [

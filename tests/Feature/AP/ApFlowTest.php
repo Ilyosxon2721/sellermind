@@ -5,7 +5,6 @@ namespace Tests\Feature\AP;
 use App\Models\AP\Supplier;
 use App\Models\AP\SupplierInvoice;
 use App\Models\AP\SupplierPayment;
-use App\Models\AP\SupplierPaymentAllocation;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\UserCompanyRole;
@@ -20,6 +19,7 @@ class ApFlowTest extends TestCase
     use RefreshDatabase;
 
     protected Company $company;
+
     protected Supplier $supplier;
 
     protected function setUp(): void

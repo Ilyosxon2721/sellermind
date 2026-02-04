@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\VariantMarketplaceLink;
-use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\UzumClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +26,7 @@ class UzumSyncStocks extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных Uzum Market аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -67,10 +68,11 @@ class UzumSyncStocks extends Command
 
         if ($links->isEmpty()) {
             $this->warn('  Нет активных связей для синхронизации');
+
             return;
         }
 
-        $this->line("  Найдено связей: " . $links->count());
+        $this->line('  Найдено связей: '.$links->count());
 
         // Подготовить данные для синхронизации
         $stocksData = [];
@@ -81,8 +83,9 @@ class UzumSyncStocks extends Command
             $productId = $link->marketplaceProduct?->external_product_id;
             $skuId = $link->external_sku_id;
 
-            if (!$productId || !$skuId) {
+            if (! $productId || ! $skuId) {
                 $this->warn("  Пропуск связи #{$link->id}: отсутствует productId ({$productId}) или skuId ({$skuId})");
+
                 continue;
             }
 
@@ -97,6 +100,7 @@ class UzumSyncStocks extends Command
 
         if (empty($stocksData)) {
             $this->warn('  Нет данных для синхронизации');
+
             return;
         }
 
@@ -127,11 +131,11 @@ class UzumSyncStocks extends Command
                     'sku_id' => $stockItem['skuId'],
                     'error' => $e->getMessage(),
                 ]);
-                $this->error("  Ошибка для SKU {$stockItem['skuId']}: " . $e->getMessage());
+                $this->error("  Ошибка для SKU {$stockItem['skuId']}: ".$e->getMessage());
 
                 // Если rate limit - подождать дольше перед следующим запросом
                 if (str_contains($e->getMessage(), 'много запросов') || str_contains($e->getMessage(), 'rate') || str_contains($e->getMessage(), 'Подождите')) {
-                    $this->warn("    Rate limit, ждём 3 секунды...");
+                    $this->warn('    Rate limit, ждём 3 секунды...');
                     sleep(3);
                 }
             }

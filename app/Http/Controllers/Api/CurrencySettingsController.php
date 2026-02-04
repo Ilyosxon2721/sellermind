@@ -24,7 +24,7 @@ class CurrencySettingsController extends Controller
         $user = $request->user();
         $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
         }
 
@@ -57,7 +57,7 @@ class CurrencySettingsController extends Controller
         $user = $request->user();
         $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
         }
 
@@ -85,7 +85,7 @@ class CurrencySettingsController extends Controller
         $user = $request->user();
         $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
         }
 
@@ -115,7 +115,7 @@ class CurrencySettingsController extends Controller
         $user = $request->user();
         $company = $user ? \App\Models\Company::find($user->company_id) : null;
 
-        if (!$company) {
+        if (! $company) {
             return response()->json(['message' => 'Компания не выбрана'], 400);
         }
 

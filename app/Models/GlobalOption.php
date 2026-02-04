@@ -66,7 +66,7 @@ class GlobalOption extends Model
     public static function sizesWithCompany(?int $companyId = null)
     {
         $option = static::sizes();
-        if (!$option) {
+        if (! $option) {
             return collect();
         }
 
@@ -88,7 +88,7 @@ class GlobalOption extends Model
     public static function colorsWithCompany(?int $companyId = null)
     {
         $option = static::colors();
-        if (!$option) {
+        if (! $option) {
             return collect();
         }
 

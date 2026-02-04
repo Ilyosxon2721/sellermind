@@ -91,7 +91,7 @@ class OzonProduct extends Model
             $images = json_decode($images, true);
         }
 
-        if (!is_array($images) || empty($images)) {
+        if (! is_array($images) || empty($images)) {
             return null;
         }
 

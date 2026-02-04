@@ -1,15 +1,16 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceInsightsService.php
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\UzumOrder;
-use App\Models\WildberriesOrder;
+use App\Models\MarketplacePayout;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceReturn;
-use App\Models\MarketplacePayout;
 use App\Models\MarketplaceStock;
+use App\Models\UzumOrder;
+use App\Models\WildberriesOrder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -22,13 +23,12 @@ class MarketplaceInsightsService
      * Статусы отменённых заказов (исключаются из расчёта выручки)
      */
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     /**
      * Get comprehensive summary for a period
      *
-     * @param int $companyId
-     * @param string $periodFrom Y-m-d
-     * @param string $periodTo Y-m-d
-     * @return array
+     * @param  string  $periodFrom  Y-m-d
+     * @param  string  $periodTo  Y-m-d
      */
     public function getSummaryForPeriod(int $companyId, string $periodFrom, string $periodTo): array
     {
@@ -63,32 +63,35 @@ class MarketplaceInsightsService
     {
         // Собираем заказы из всех маркетплейсов
         $uzumOrders = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+            ->whereBetween('ordered_at', [$from, $to.' 23:59:59'])
             ->get();
 
         $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->whereBetween('order_date', [$from, $to.' 23:59:59'])
             ->get();
 
         // Фильтруем по статусам
         $uzumDelivered = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
+
             return in_array($status, ['delivered', 'completed', 'issued', 'DELIVERED']);
         });
-        $wbDelivered = $wbOrders->filter(fn($o) => $o->is_realization && !$o->is_cancel && !$o->is_return);
+        $wbDelivered = $wbOrders->filter(fn ($o) => $o->is_realization && ! $o->is_cancel && ! $o->is_return);
 
         $uzumCancelled = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
+
             return in_array($status, self::CANCELLED_STATUSES);
         });
-        $wbCancelled = $wbOrders->filter(fn($o) => $o->is_cancel || $o->is_return);
+        $wbCancelled = $wbOrders->filter(fn ($o) => $o->is_cancel || $o->is_return);
 
         // Не отменённые заказы для расчёта выручки
         $uzumNotCancelled = $uzumOrders->filter(function ($order) {
             $status = $order->status_normalized ?? $order->status;
-            return !in_array($status, self::CANCELLED_STATUSES);
+
+            return ! in_array($status, self::CANCELLED_STATUSES);
         });
-        $wbNotCancelled = $wbOrders->filter(fn($o) => !$o->is_cancel && !$o->is_return);
+        $wbNotCancelled = $wbOrders->filter(fn ($o) => ! $o->is_cancel && ! $o->is_return);
 
         // По маркетплейсам (только не отменённые)
         $byMarketplace = [];
@@ -132,17 +135,17 @@ class MarketplaceInsightsService
     protected function getReturnsSummary(Collection $accountIds, string $from, string $to): array
     {
         $returns = MarketplaceReturn::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+            ->whereBetween('created_at', [$from, $to.' 23:59:59'])
             ->get();
 
         // Считаем общее количество заказов (исключая отменённые)
         $uzumOrdersCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+            ->whereBetween('ordered_at', [$from, $to.' 23:59:59'])
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->count();
 
         $wbOrdersCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->whereBetween('order_date', [$from, $to.' 23:59:59'])
             ->where('is_cancel', false)
             ->where('is_return', false)
             ->count();
@@ -150,7 +153,7 @@ class MarketplaceInsightsService
         $totalOrders = $uzumOrdersCount + $wbOrdersCount;
 
         $topReasons = $returns->groupBy('reason_code')
-            ->map(fn($group) => [
+            ->map(fn ($group) => [
                 'count' => $group->count(),
                 'amount' => round($group->sum('amount'), 2),
             ])
@@ -175,7 +178,7 @@ class MarketplaceInsightsService
         $products = MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)->get();
 
         $byStatus = $products->groupBy('status')
-            ->map(fn($group) => $group->count());
+            ->map(fn ($group) => $group->count());
 
         return [
             'total' => $products->count(),
@@ -193,8 +196,8 @@ class MarketplaceInsightsService
     {
         $stocks = MarketplaceStock::whereIn('marketplace_account_id', $accountIds)->get();
 
-        $outOfStock = $stocks->filter(fn($s) => $s->getAvailableQuantity() <= 0)->count();
-        $lowStock = $stocks->filter(fn($s) => $s->getAvailableQuantity() > 0 && $s->isLowStock())->count();
+        $outOfStock = $stocks->filter(fn ($s) => $s->getAvailableQuantity() <= 0)->count();
+        $lowStock = $stocks->filter(fn ($s) => $s->getAvailableQuantity() > 0 && $s->isLowStock())->count();
         $healthy = $stocks->count() - $outOfStock - $lowStock;
 
         return [
@@ -224,7 +227,7 @@ class MarketplaceInsightsService
             'total_amount' => round($payouts->sum('total_amount'), 2),
             'total_commission' => round($payouts->sum('commission_amount'), 2),
             'total_logistics' => round($payouts->sum('logistics_amount'), 2),
-            'net_profit' => round($payouts->sum(fn($p) => $p->getNetProfit()), 2),
+            'net_profit' => round($payouts->sum(fn ($p) => $p->getNetProfit()), 2),
         ];
     }
 
@@ -237,7 +240,7 @@ class MarketplaceInsightsService
 
         // Uzum orders (excluding cancelled)
         $uzumOrders = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$from, $to . ' 23:59:59'])
+            ->whereBetween('ordered_at', [$from, $to.' 23:59:59'])
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->with('items')
             ->get();
@@ -245,7 +248,7 @@ class MarketplaceInsightsService
         foreach ($uzumOrders as $order) {
             foreach ($order->items as $item) {
                 $key = $item->external_offer_id ?? $item->name;
-                if (!isset($topProducts[$key])) {
+                if (! isset($topProducts[$key])) {
                     $topProducts[$key] = [
                         'sku' => $item->external_offer_id,
                         'name' => $item->name,
@@ -262,14 +265,14 @@ class MarketplaceInsightsService
 
         // WB orders (excluding cancelled) - each WildberriesOrder row is one item
         $wbOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$from, $to . ' 23:59:59'])
+            ->whereBetween('order_date', [$from, $to.' 23:59:59'])
             ->where('is_cancel', false)
             ->where('is_return', false)
             ->get();
 
         foreach ($wbOrders as $order) {
             $key = $order->supplier_article ?? $order->barcode ?? $order->subject;
-            if (!isset($topProducts[$key])) {
+            if (! isset($topProducts[$key])) {
                 $topProducts[$key] = [
                     'sku' => $order->supplier_article ?? $order->barcode,
                     'name' => $order->subject,
@@ -284,7 +287,7 @@ class MarketplaceInsightsService
         }
 
         // Sort by revenue and limit
-        usort($topProducts, fn($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
+        usort($topProducts, fn ($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
 
         return array_slice(array_map(function ($item) {
             return [
@@ -368,6 +371,7 @@ class MarketplaceInsightsService
         // Sort by severity
         usort($problems, function ($a, $b) {
             $severityOrder = ['high' => 1, 'medium' => 2, 'low' => 3];
+
             return ($severityOrder[$a['severity']] ?? 4) <=> ($severityOrder[$b['severity']] ?? 4);
         });
 
@@ -392,33 +396,33 @@ class MarketplaceInsightsService
 
         $lines = [
             "=== Сводка по маркетплейсам за период {$periodFrom} - {$periodTo} ===",
-            "",
-            "ПРОДАЖИ:",
+            '',
+            'ПРОДАЖИ:',
             "- Всего заказов: {$sales['total_orders']}",
             "- Доставлено: {$sales['delivered_orders']}",
             "- Отменено: {$sales['cancelled_orders']}",
-            "- Выручка: " . number_format($sales['total_revenue'], 0, '.', ' ') . " руб.",
-            "- Средний чек: " . number_format($sales['average_order_value'], 0, '.', ' ') . " руб.",
-            "",
-            "ВОЗВРАТЫ:",
+            '- Выручка: '.number_format($sales['total_revenue'], 0, '.', ' ').' руб.',
+            '- Средний чек: '.number_format($sales['average_order_value'], 0, '.', ' ').' руб.',
+            '',
+            'ВОЗВРАТЫ:',
             "- Всего возвратов: {$returns['total_returns']}",
             "- Процент возвратов: {$returns['return_rate']}%",
-            "- Сумма возвратов: " . number_format($returns['total_amount'], 0, '.', ' ') . " руб.",
-            "",
-            "СКЛАДЫ:",
+            '- Сумма возвратов: '.number_format($returns['total_amount'], 0, '.', ' ').' руб.',
+            '',
+            'СКЛАДЫ:',
             "- Всего SKU: {$stocks['total_skus']}",
             "- Нет в наличии: {$stocks['out_of_stock']}",
             "- Низкий остаток: {$stocks['low_stock']}",
-            "",
+            '',
         ];
 
-        if (!empty($problems)) {
-            $lines[] = "ПРОБЛЕМЫ (" . count($problems) . "):";
+        if (! empty($problems)) {
+            $lines[] = 'ПРОБЛЕМЫ ('.count($problems).'):';
             foreach (array_slice($problems, 0, 5) as $problem) {
                 $lines[] = "- [{$problem['severity']}] {$problem['message']}";
             }
             if (count($problems) > 5) {
-                $lines[] = "  ... и ещё " . (count($problems) - 5) . " проблем";
+                $lines[] = '  ... и ещё '.(count($problems) - 5).' проблем';
             }
         }
 
@@ -514,6 +518,7 @@ class MarketplaceInsightsService
         // Sort by priority
         usort($recommendations, function ($a, $b) {
             $priorityOrder = ['high' => 1, 'medium' => 2, 'low' => 3];
+
             return ($priorityOrder[$a['priority']] ?? 4) <=> ($priorityOrder[$b['priority']] ?? 4);
         });
 

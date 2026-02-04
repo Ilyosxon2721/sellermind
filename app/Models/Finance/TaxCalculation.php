@@ -12,18 +12,26 @@ class TaxCalculation extends Model
     use HasFactory;
 
     public const PERIOD_MONTH = 'month';
+
     public const PERIOD_QUARTER = 'quarter';
+
     public const PERIOD_YEAR = 'year';
 
     // Uzbekistan tax types
     public const TYPE_INCOME_TAX = 'income_tax';    // Налог на прибыль (15%)
+
     public const TYPE_VAT = 'vat';                   // НДС (12%)
+
     public const TYPE_SOCIAL_TAX = 'social_tax';    // ИНПС - работодатель платит 12% от ФОТ
+
     public const TYPE_SIMPLIFIED = 'simplified';     // Оборотный налог (4% для торговли)
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_CALCULATED = 'calculated';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_OVERDUE = 'overdue';
 
     protected $fillable = [
@@ -80,11 +88,11 @@ class TaxCalculation extends Model
         $quarters = [1 => 'I кв.', 2 => 'II кв.', 3 => 'III кв.', 4 => 'IV кв.'];
 
         if ($this->tax_period_type === self::PERIOD_MONTH) {
-            return ($months[$this->period_month] ?? '') . ' ' . $this->period_year;
+            return ($months[$this->period_month] ?? '').' '.$this->period_year;
         }
 
         if ($this->tax_period_type === self::PERIOD_QUARTER) {
-            return ($quarters[$this->period_quarter] ?? '') . ' ' . $this->period_year;
+            return ($quarters[$this->period_quarter] ?? '').' '.$this->period_year;
         }
 
         return (string) $this->period_year;

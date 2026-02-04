@@ -14,10 +14,11 @@ return new class extends Migration
         if (Schema::hasTable('reviews')) {
             // Table exists, add only new columns if missing
             Schema::table('reviews', function (Blueprint $table) {
-                if (!Schema::hasColumn('reviews', 'is_published')) {
+                if (! Schema::hasColumn('reviews', 'is_published')) {
                     $table->boolean('is_published')->default(false)->after('status');
                 }
             });
+
             return;
         }
 

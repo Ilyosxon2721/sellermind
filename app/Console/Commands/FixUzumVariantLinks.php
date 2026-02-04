@@ -2,8 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceProduct;
 use App\Models\VariantMarketplaceLink;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -47,9 +45,10 @@ class FixUzumVariantLinks extends Command
         foreach ($links as $link) {
             try {
                 $product = $link->marketplaceProduct;
-                if (!$product) {
+                if (! $product) {
                     $this->warn("  Пропущен link #{$link->id}: нет marketplaceProduct");
                     $skipped++;
+
                     continue;
                 }
 
@@ -57,13 +56,15 @@ class FixUzumVariantLinks extends Command
                 if (empty($skuList)) {
                     $this->warn("  Пропущен link #{$link->id}: пустой skuList");
                     $skipped++;
+
                     continue;
                 }
 
                 $variant = $link->variant;
-                if (!$variant) {
+                if (! $variant) {
                     $this->warn("  Пропущен link #{$link->id}: нет варианта");
                     $skipped++;
+
                     continue;
                 }
 
@@ -82,29 +83,31 @@ class FixUzumVariantLinks extends Command
                 }
 
                 // Если не нашли по баркоду и есть только один SKU - берём его
-                if (!$matchedSku && count($skuList) === 1) {
+                if (! $matchedSku && count($skuList) === 1) {
                     $matchedSku = $skuList[0];
                 }
 
-                if (!$matchedSku) {
+                if (! $matchedSku) {
                     $this->warn("  Пропущен link #{$link->id}: не найден matching SKU для barcode {$barcodeToMatch}");
-                    $this->line("    Доступные баркоды: " . implode(', ', array_column($skuList, 'barcode')));
+                    $this->line('    Доступные баркоды: '.implode(', ', array_column($skuList, 'barcode')));
                     $skipped++;
+
                     continue;
                 }
 
                 $skuId = isset($matchedSku['skuId']) ? (string) $matchedSku['skuId'] : null;
                 $skuBarcode = isset($matchedSku['barcode']) ? (string) $matchedSku['barcode'] : null;
 
-                if (!$skuId) {
+                if (! $skuId) {
                     $this->warn("  Пропущен link #{$link->id}: SKU не имеет skuId");
                     $skipped++;
+
                     continue;
                 }
 
                 $this->line("  Link #{$link->id}: {$variant->sku} -> skuId={$skuId}, barcode={$skuBarcode}");
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $link->update([
                         'external_sku_id' => $skuId,
                         'marketplace_barcode' => $skuBarcode ?? $link->marketplace_barcode,

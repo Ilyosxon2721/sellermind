@@ -1,10 +1,11 @@
 <?php
+
 // file: app/Services/Vpc/VpcCommandClient.php
 
 namespace App\Services\Vpc;
 
-use App\Models\VpcSession;
 use App\Models\VpcAction;
+use App\Models\VpcSession;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -37,6 +38,7 @@ class VpcCommandClient
                 'action_type' => $actionType,
                 'payload' => $payload,
             ]);
+
             // TODO: интеграция с реальным VPC-менеджером
             return $action;
         }

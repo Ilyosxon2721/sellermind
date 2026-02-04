@@ -1,15 +1,16 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceDashboardController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplacePayout;
+use App\Models\MarketplaceProduct;
+use App\Models\MarketplaceReturn;
 use App\Models\UzumOrder;
 use App\Models\WildberriesOrder;
-use App\Models\MarketplaceProduct;
-use App\Models\MarketplacePayout;
-use App\Models\MarketplaceReturn;
 use App\Services\Marketplaces\MarketplaceDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class MarketplaceDashboardController extends Controller
      * Статусы отменённых заказов (исключаются из расчёта выручки)
      */
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     /**
      * Get dashboard overview for company marketplaces
      */
@@ -30,7 +32,7 @@ class MarketplaceDashboardController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -51,7 +53,7 @@ class MarketplaceDashboardController extends Controller
             ->orderByDesc('period_to')
             ->limit(5)
             ->get()
-            ->map(fn($p) => [
+            ->map(fn ($p) => [
                 'id' => $p->id,
                 'period' => $p->getPeriodLabel(),
                 'amount' => $p->getFormattedAmount(),
@@ -59,7 +61,7 @@ class MarketplaceDashboardController extends Controller
             ]);
 
         return response()->json([
-            'accounts' => $accounts->map(fn($a) => [
+            'accounts' => $accounts->map(fn ($a) => [
                 'id' => $a->id,
                 'marketplace' => $a->marketplace,
                 'name' => $a->getDisplayName(),
@@ -106,13 +108,13 @@ class MarketplaceDashboardController extends Controller
 
         // Cancelled counts
         $cancelledToday = (clone $uzumTodayAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbTodayAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
+            + (clone $wbTodayAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         $cancelledWeek = (clone $uzumWeekAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbWeekAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
+            + (clone $wbWeekAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         $cancelledMonth = (clone $uzumMonthAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbMonthAll)->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
+            + (clone $wbMonthAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
 
         // By status (for month)
         $uzumByStatus = UzumOrder::whereIn('marketplace_account_id', $accountIds)
@@ -181,7 +183,7 @@ class MarketplaceDashboardController extends Controller
 
         $wbCancelledMonth = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('order_date', '>=', $monthAgo)
-            ->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
             ->sum('for_pay');
 
         $cancelledMonthAmount = (float) ($uzumCancelledMonth + $wbCancelledMonth);
@@ -296,7 +298,7 @@ class MarketplaceDashboardController extends Controller
             'marketplace' => ['sometimes', 'string'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -322,7 +324,7 @@ class MarketplaceDashboardController extends Controller
 
         return response()->json([
             'filters' => $filters,
-            'accounts' => $accounts->map(fn($a) => [
+            'accounts' => $accounts->map(fn ($a) => [
                 'id' => $a->id,
                 'marketplace' => $a->marketplace,
                 'marketplace_label' => $a->getDisplayName(),
@@ -365,7 +367,7 @@ class MarketplaceDashboardController extends Controller
             'marketplace' => ['sometimes', 'string'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

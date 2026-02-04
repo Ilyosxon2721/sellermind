@@ -103,6 +103,7 @@ class AutoLinkService
         // Проверяем, есть ли уже привязка
         if ($this->hasActiveLink($account, $product)) {
             $this->stats['already_linked']++;
+
             return;
         }
 
@@ -110,36 +111,39 @@ class AutoLinkService
         $identifiers = $this->extractIdentifiers($account, $product);
 
         // 1. Пробуем найти по баркоду
-        if (!empty($identifiers['barcodes'])) {
+        if (! empty($identifiers['barcodes'])) {
             foreach ($identifiers['barcodes'] as $barcode) {
                 if (isset($variantsByBarcode[$barcode])) {
                     $this->createLink($account, $product, $variantsByBarcode[$barcode], 'barcode', $barcode);
                     $this->stats['linked_by_barcode']++;
+
                     return;
                 }
             }
         }
 
         // 2. Пробуем найти по SKU/артикулу
-        if (!empty($identifiers['skus'])) {
+        if (! empty($identifiers['skus'])) {
             foreach ($identifiers['skus'] as $sku) {
                 if (isset($variantsBySku[$sku])) {
                     $this->createLink($account, $product, $variantsBySku[$sku], 'sku', $sku);
                     $this->stats['linked_by_sku']++;
+
                     return;
                 }
                 // Поиск без учёта регистра
-                $variant = $variantsBySku->first(fn($v) => strcasecmp($v->sku, $sku) === 0);
+                $variant = $variantsBySku->first(fn ($v) => strcasecmp($v->sku, $sku) === 0);
                 if ($variant) {
                     $this->createLink($account, $product, $variant, 'sku', $sku);
                     $this->stats['linked_by_sku']++;
+
                     return;
                 }
             }
         }
 
         // 3. Пробуем найти по артикулу (article)
-        if (!empty($identifiers['articles'])) {
+        if (! empty($identifiers['articles'])) {
             foreach ($identifiers['articles'] as $article) {
                 // Ищем вариант где SKU начинается с артикула
                 $variant = $variantsBySku->first(function ($v) use ($article) {
@@ -148,6 +152,7 @@ class AutoLinkService
                 if ($variant) {
                     $this->createLink($account, $product, $variant, 'article', $article);
                     $this->stats['linked_by_article']++;
+
                     return;
                 }
             }
@@ -169,10 +174,10 @@ class AutoLinkService
 
         if ($marketplace === 'wb') {
             // WildberriesProduct
-            if (!empty($product->barcode)) {
+            if (! empty($product->barcode)) {
                 $barcodes[] = $product->barcode;
             }
-            if (!empty($product->supplier_article)) {
+            if (! empty($product->supplier_article)) {
                 $articles[] = $product->supplier_article;
                 $skus[] = $product->supplier_article;
             }
@@ -180,45 +185,45 @@ class AutoLinkService
             $sizes = $product->raw_payload['sizes'] ?? [];
             foreach ($sizes as $size) {
                 foreach ($size['skus'] ?? [] as $sku) {
-                    if (!empty($sku)) {
+                    if (! empty($sku)) {
                         $barcodes[] = $sku; // В WB skus это баркоды
                     }
                 }
             }
         } elseif ($marketplace === 'ozon') {
             // OzonProduct
-            if (!empty($product->barcode)) {
+            if (! empty($product->barcode)) {
                 $barcodes[] = $product->barcode;
             }
-            if (!empty($product->external_offer_id)) {
+            if (! empty($product->external_offer_id)) {
                 $skus[] = $product->external_offer_id;
                 $articles[] = $product->external_offer_id;
             }
             // Из raw_payload
             $sources = $product->raw_payload['sources'] ?? [];
             foreach ($sources as $source) {
-                if (!empty($source['sku'])) {
+                if (! empty($source['sku'])) {
                     $skus[] = $source['sku'];
                 }
             }
         } elseif ($marketplace === 'uzum') {
             // MarketplaceProduct (Uzum)
-            if (!empty($product->external_offer_id)) {
+            if (! empty($product->external_offer_id)) {
                 $skus[] = $product->external_offer_id;
             }
             // Из skuList
             $skuList = $product->raw_payload['skuList'] ?? [];
             foreach ($skuList as $sku) {
-                if (!empty($sku['barcode'])) {
+                if (! empty($sku['barcode'])) {
                     $barcodes[] = (string) $sku['barcode'];
                 }
-                if (!empty($sku['skuTitle'])) {
+                if (! empty($sku['skuTitle'])) {
                     // Пробуем извлечь артикул из названия
                     $articles[] = $sku['skuTitle'];
                 }
             }
             // Артикул из title
-            if (!empty($product->title)) {
+            if (! empty($product->title)) {
                 // Ищем артикул в начале названия (часто формат "АРТИКУЛ - Название")
                 if (preg_match('/^([A-Z0-9\-]+)/i', $product->title, $m)) {
                     $articles[] = $m[1];
@@ -226,15 +231,15 @@ class AutoLinkService
             }
         } elseif ($marketplace === 'ym') {
             // MarketplaceProduct (Yandex Market)
-            if (!empty($product->external_offer_id)) {
+            if (! empty($product->external_offer_id)) {
                 $skus[] = $product->external_offer_id;
                 $articles[] = $product->external_offer_id;
             }
             // Из raw_payload
-            if (!empty($product->raw_payload['shopSku'])) {
+            if (! empty($product->raw_payload['shopSku'])) {
                 $skus[] = $product->raw_payload['shopSku'];
             }
-            if (!empty($product->raw_payload['barcodes'])) {
+            if (! empty($product->raw_payload['barcodes'])) {
                 foreach ($product->raw_payload['barcodes'] as $bc) {
                     $barcodes[] = $bc;
                 }
@@ -302,7 +307,7 @@ class AutoLinkService
             }
 
             // Если не нашли по баркоду, берём первый SKU
-            if (!$externalSkuId && !empty($skuList[0])) {
+            if (! $externalSkuId && ! empty($skuList[0])) {
                 $externalSkuId = isset($skuList[0]['skuId']) ? (string) $skuList[0]['skuId'] : null;
                 $marketplaceBarcode = isset($skuList[0]['barcode']) ? (string) $skuList[0]['barcode'] : null;
                 $externalSku = $skuList[0]['skuTitle'] ?? $variant->sku;

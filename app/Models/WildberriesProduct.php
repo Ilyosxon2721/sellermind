@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/WildberriesProduct.php
 
 namespace App\Models;

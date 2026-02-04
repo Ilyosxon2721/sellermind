@@ -34,6 +34,7 @@ class IntegrationLinkController extends Controller
     {
         $validated = $request->validate([
             'link_token' => 'required|string|min:8|max:128',
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
         ]);
 
         $user = $request->user();
@@ -58,6 +59,7 @@ class IntegrationLinkController extends Controller
             'company_id' => $company->id,
             'external_system' => 'risment',
             'link_token' => $validated['link_token'],
+            'warehouse_id' => $validated['warehouse_id'] ?? null,
             'is_active' => true,
             'linked_at' => now(),
         ]);
@@ -68,6 +70,51 @@ class IntegrationLinkController extends Controller
             'data' => [
                 'id' => $link->id,
                 'linked_at' => $link->linked_at->toIso8601String(),
+                'warehouse_id' => $link->warehouse_id,
+            ],
+        ]);
+    }
+
+    /**
+     * Обновить настройки интеграции (склад и др.)
+     */
+    public function update(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+        ]);
+
+        $user = $request->user();
+        $company = $user->companies()->first();
+
+        if (!$company) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No company found.',
+            ], 422);
+        }
+
+        $link = IntegrationLink::where('company_id', $company->id)
+            ->where('external_system', 'risment')
+            ->where('is_active', true)
+            ->first();
+
+        if (!$link) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active RISMENT integration found.',
+            ], 404);
+        }
+
+        $link->update([
+            'warehouse_id' => $validated['warehouse_id'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Integration settings updated.',
+            'data' => [
+                'warehouse_id' => $link->warehouse_id,
             ],
         ]);
     }

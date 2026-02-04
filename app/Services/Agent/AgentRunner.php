@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 class AgentRunner
 {
     private OpenAiClient $openAiClient;
+
     private ToolRegistry $toolRegistry;
 
     public function __construct(
@@ -210,8 +211,8 @@ class AgentRunner
         $userContent = $task->description ?? $task->title;
 
         // Add input payload context if present
-        if (!empty($task->input_payload)) {
-            $userContent .= "\n\nДополнительный контекст:\n" . json_encode($task->input_payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        if (! empty($task->input_payload)) {
+            $userContent .= "\n\nДополнительный контекст:\n".json_encode($task->input_payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         }
 
         $messages[] = [
@@ -263,8 +264,9 @@ class AgentRunner
         // Simple summary: first 200 characters
         $summary = strip_tags($content);
         if (mb_strlen($summary) > 200) {
-            $summary = mb_substr($summary, 0, 197) . '...';
+            $summary = mb_substr($summary, 0, 197).'...';
         }
+
         return $summary;
     }
 }

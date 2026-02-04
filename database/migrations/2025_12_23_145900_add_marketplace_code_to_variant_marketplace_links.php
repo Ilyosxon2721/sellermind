@@ -13,7 +13,7 @@ return new class extends Migration
                 ->after('marketplace_account_id')
                 ->nullable()
                 ->comment('Marketplace code: wb, ozon, uzum, yandex_market');
-            
+
             // Add index for faster queries
             $table->index(['marketplace_account_id', 'marketplace_code', 'is_active'], 'vml_account_marketplace_idx');
         });

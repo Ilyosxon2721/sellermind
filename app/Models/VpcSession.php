@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/VpcSession.php
 
 namespace App\Models;
@@ -11,15 +12,22 @@ class VpcSession extends Model
 {
     // Статусы жизненного цикла
     const STATUS_CREATING = 'creating';
+
     const STATUS_READY = 'ready';
+
     const STATUS_RUNNING = 'running';
+
     const STATUS_PAUSED = 'paused';
+
     const STATUS_STOPPED = 'stopped';
+
     const STATUS_ERROR = 'error';
 
     // Режимы управления
     const CONTROL_AGENT = 'AGENT_CONTROL';
+
     const CONTROL_USER = 'USER_CONTROL';
+
     const CONTROL_PAUSED = 'PAUSED';
 
     protected $fillable = [

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Remove foreign key constraint on marketplace_product_id
      * because WB products are in wildberries_products table, not marketplace_products
      */

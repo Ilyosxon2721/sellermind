@@ -44,7 +44,7 @@ class MarketplaceIssuesController extends Controller
             ->get();
 
         return response()->json([
-            'issues' => $issues->map(function($issue) {
+            'issues' => $issues->map(function ($issue) {
                 return [
                     'id' => $issue->id,
                     'marketplace_account_id' => $issue->marketplace_account_id,
@@ -75,7 +75,8 @@ class MarketplaceIssuesController extends Controller
      */
     public function resolve(int $id): JsonResponse
     {
-        $issue = MarketplaceAccountIssue::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $issue = MarketplaceAccountIssue::where('company_id', $companyId)->findOrFail($id);
         $issue->markAsResolved();
 
         return response()->json([
@@ -89,7 +90,8 @@ class MarketplaceIssuesController extends Controller
      */
     public function ignore(int $id): JsonResponse
     {
-        $issue = MarketplaceAccountIssue::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $issue = MarketplaceAccountIssue::where('company_id', $companyId)->findOrFail($id);
         $issue->markAsIgnored();
 
         return response()->json([

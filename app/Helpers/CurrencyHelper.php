@@ -23,8 +23,7 @@ class CurrencyHelper
     /**
      * Get currency info by ISO numeric code
      *
-     * @param string|int|null $numericCode
-     * @return array
+     * @param  string|int|null  $numericCode
      */
     public static function getCurrencyByCode($numericCode): array
     {
@@ -48,8 +47,7 @@ class CurrencyHelper
     /**
      * Get currency name by ISO numeric code
      *
-     * @param string|int|null $numericCode
-     * @return string
+     * @param  string|int|null  $numericCode
      */
     public static function getCurrencyName($numericCode): string
     {
@@ -59,8 +57,7 @@ class CurrencyHelper
     /**
      * Get currency code (3-letter) by ISO numeric code
      *
-     * @param string|int|null $numericCode
-     * @return string
+     * @param  string|int|null  $numericCode
      */
     public static function getCurrencyCode($numericCode): string
     {
@@ -70,8 +67,7 @@ class CurrencyHelper
     /**
      * Get currency symbol by ISO numeric code
      *
-     * @param string|int|null $numericCode
-     * @return string
+     * @param  string|int|null  $numericCode
      */
     public static function getCurrencySymbol($numericCode): string
     {
@@ -81,10 +77,9 @@ class CurrencyHelper
     /**
      * Format price with currency
      *
-     * @param float|int|string|null $amount
-     * @param string|int|null $currencyCode ISO numeric code
-     * @param bool $withSymbol Include currency symbol
-     * @return string
+     * @param  float|int|string|null  $amount
+     * @param  string|int|null  $currencyCode  ISO numeric code
+     * @param  bool  $withSymbol  Include currency symbol
      */
     public static function formatPrice($amount, $currencyCode = null, bool $withSymbol = true): string
     {
@@ -98,17 +93,14 @@ class CurrencyHelper
         $formatted = number_format($amount, 2, '.', ' ');
 
         if ($withSymbol) {
-            return $formatted . ' ' . $currency['symbol'];
+            return $formatted.' '.$currency['symbol'];
         }
 
-        return $formatted . ' ' . $currency['code'];
+        return $formatted.' '.$currency['code'];
     }
 
     /**
      * Convert price from kopecks to currency units
-     *
-     * @param int|null $kopecks
-     * @return float
      */
     public static function fromKopecks(?int $kopecks): float
     {

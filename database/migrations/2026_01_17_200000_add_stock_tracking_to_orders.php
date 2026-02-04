@@ -21,17 +21,17 @@ return new class extends Migration
         // WB Orders
         if (Schema::hasTable('wb_orders')) {
             Schema::table('wb_orders', function (Blueprint $table) {
-                if (!Schema::hasColumn('wb_orders', 'stock_status')) {
+                if (! Schema::hasColumn('wb_orders', 'stock_status')) {
                     $table->string('stock_status', 20)->default('none')->after('raw_payload')
                         ->comment('none, reserved, sold, released, returned');
                 }
-                if (!Schema::hasColumn('wb_orders', 'stock_reserved_at')) {
+                if (! Schema::hasColumn('wb_orders', 'stock_reserved_at')) {
                     $table->timestamp('stock_reserved_at')->nullable()->after('stock_status');
                 }
-                if (!Schema::hasColumn('wb_orders', 'stock_sold_at')) {
+                if (! Schema::hasColumn('wb_orders', 'stock_sold_at')) {
                     $table->timestamp('stock_sold_at')->nullable()->after('stock_reserved_at');
                 }
-                if (!Schema::hasColumn('wb_orders', 'stock_released_at')) {
+                if (! Schema::hasColumn('wb_orders', 'stock_released_at')) {
                     $table->timestamp('stock_released_at')->nullable()->after('stock_sold_at');
                 }
             });
@@ -40,17 +40,17 @@ return new class extends Migration
         // Uzum Orders
         if (Schema::hasTable('uzum_orders')) {
             Schema::table('uzum_orders', function (Blueprint $table) {
-                if (!Schema::hasColumn('uzum_orders', 'stock_status')) {
+                if (! Schema::hasColumn('uzum_orders', 'stock_status')) {
                     $table->string('stock_status', 20)->default('none')->after('raw_payload')
                         ->comment('none, reserved, sold, released, returned');
                 }
-                if (!Schema::hasColumn('uzum_orders', 'stock_reserved_at')) {
+                if (! Schema::hasColumn('uzum_orders', 'stock_reserved_at')) {
                     $table->timestamp('stock_reserved_at')->nullable()->after('stock_status');
                 }
-                if (!Schema::hasColumn('uzum_orders', 'stock_sold_at')) {
+                if (! Schema::hasColumn('uzum_orders', 'stock_sold_at')) {
                     $table->timestamp('stock_sold_at')->nullable()->after('stock_reserved_at');
                 }
-                if (!Schema::hasColumn('uzum_orders', 'stock_released_at')) {
+                if (! Schema::hasColumn('uzum_orders', 'stock_released_at')) {
                     $table->timestamp('stock_released_at')->nullable()->after('stock_sold_at');
                 }
             });
@@ -59,24 +59,24 @@ return new class extends Migration
         // Ozon Orders
         if (Schema::hasTable('ozon_orders')) {
             Schema::table('ozon_orders', function (Blueprint $table) {
-                if (!Schema::hasColumn('ozon_orders', 'stock_status')) {
+                if (! Schema::hasColumn('ozon_orders', 'stock_status')) {
                     $table->string('stock_status', 20)->default('none')->after('order_data')
                         ->comment('none, reserved, sold, released, returned');
                 }
-                if (!Schema::hasColumn('ozon_orders', 'stock_reserved_at')) {
+                if (! Schema::hasColumn('ozon_orders', 'stock_reserved_at')) {
                     $table->timestamp('stock_reserved_at')->nullable()->after('stock_status');
                 }
-                if (!Schema::hasColumn('ozon_orders', 'stock_sold_at')) {
+                if (! Schema::hasColumn('ozon_orders', 'stock_sold_at')) {
                     $table->timestamp('stock_sold_at')->nullable()->after('stock_reserved_at');
                 }
-                if (!Schema::hasColumn('ozon_orders', 'stock_released_at')) {
+                if (! Schema::hasColumn('ozon_orders', 'stock_released_at')) {
                     $table->timestamp('stock_released_at')->nullable()->after('stock_sold_at');
                 }
             });
         }
 
         // Таблица для отслеживания возвратов (для ручной обработки)
-        if (!Schema::hasTable('marketplace_returns')) {
+        if (! Schema::hasTable('marketplace_returns')) {
             Schema::create('marketplace_returns', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('company_id')->constrained()->cascadeOnDelete();
@@ -112,7 +112,7 @@ return new class extends Migration
         }
 
         // Таблица для детального логирования операций с остатками
-        if (!Schema::hasTable('order_stock_logs')) {
+        if (! Schema::hasTable('order_stock_logs')) {
             Schema::create('order_stock_logs', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('company_id')->constrained()->cascadeOnDelete();

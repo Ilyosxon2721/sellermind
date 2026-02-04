@@ -18,6 +18,7 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $companyId;
+
     public int $daysThreshold;
 
     /**
@@ -49,8 +50,9 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
 
             $company = Company::find($this->companyId);
 
-            if (!$company || !$company->is_active) {
+            if (! $company || ! $company->is_active) {
                 Log::warning("Company {$this->companyId} not found or inactive");
+
                 return;
             }
 
@@ -68,6 +70,7 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
 
             if ($expiringPromotions->isEmpty()) {
                 Log::info("No expiring promotions found for company {$this->companyId}");
+
                 return;
             }
 
@@ -80,6 +83,7 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
 
             if ($users->isEmpty()) {
                 Log::warning("No active users found for company {$this->companyId}");
+
                 return;
             }
 
@@ -94,13 +98,13 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
                     $notifiedCount++;
                     Log::info("Sent expiring notification for promotion {$promotion->id}");
                 } catch (\Exception $e) {
-                    Log::error("Failed to send notification for promotion {$promotion->id}: " . $e->getMessage());
+                    Log::error("Failed to send notification for promotion {$promotion->id}: ".$e->getMessage());
                 }
             }
 
             Log::info("Successfully sent {$notifiedCount} expiring promotion notifications for company {$this->companyId}");
         } catch (\Exception $e) {
-            Log::error("Failed to send expiring notifications for company {$this->companyId}: " . $e->getMessage());
+            Log::error("Failed to send expiring notifications for company {$this->companyId}: ".$e->getMessage());
             throw $e;
         }
     }
@@ -110,6 +114,6 @@ class SendPromotionExpiringNotificationsJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("SendPromotionExpiringNotificationsJob failed for company {$this->companyId}: " . $exception->getMessage());
+        Log::error("SendPromotionExpiringNotificationsJob failed for company {$this->companyId}: ".$exception->getMessage());
     }
 }

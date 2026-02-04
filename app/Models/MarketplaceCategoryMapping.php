@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceCategoryMapping.php
 
 namespace App\Models;

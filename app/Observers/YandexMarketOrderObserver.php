@@ -4,11 +4,11 @@ namespace App\Observers;
 
 use App\Events\MarketplaceOrdersUpdated;
 use App\Events\StockUpdated;
-use App\Models\YandexMarketOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
+use App\Models\YandexMarketOrder;
 use Illuminate\Support\Facades\Log;
 
 class YandexMarketOrderObserver
@@ -89,23 +89,25 @@ class YandexMarketOrderObserver
             $sku = $item['sku'] ?? null;
             $quantity = $item['count'] ?? 1;
 
-            if (!$offerId && !$shopSku && !$sku) {
+            if (! $offerId && ! $shopSku && ! $sku) {
                 Log::debug('YandexMarket order item has no identifier', [
                     'order_id' => $order->order_id,
                     'item' => $item,
                 ]);
+
                 continue;
             }
 
             // Find linked variant
             $link = $this->findVariantLink($order->marketplace_account_id, $offerId, $shopSku, $sku);
 
-            if (!$link || !$link->variant) {
+            if (! $link || ! $link->variant) {
                 Log::info('No linked variant found for YandexMarket order item', [
                     'order_id' => $order->order_id,
                     'offer_id' => $offerId,
                     'shop_sku' => $shopSku,
                 ]);
+
                 continue;
             }
 
@@ -149,13 +151,13 @@ class YandexMarketOrderObserver
             $sku = $item['sku'] ?? null;
             $quantity = $item['count'] ?? 1;
 
-            if (!$offerId && !$shopSku && !$sku) {
+            if (! $offerId && ! $shopSku && ! $sku) {
                 continue;
             }
 
             $link = $this->findVariantLink($order->marketplace_account_id, $offerId, $shopSku, $sku);
 
-            if (!$link || !$link->variant) {
+            if (! $link || ! $link->variant) {
                 continue;
             }
 
@@ -192,11 +194,12 @@ class YandexMarketOrderObserver
         try {
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
-            if (!$warehouseSku) {
+            if (! $warehouseSku) {
                 Log::debug('No warehouse SKU found for variant', [
                     'variant_id' => $variant->id,
                     'sku' => $variant->sku,
                 ]);
+
                 return;
             }
 
@@ -204,15 +207,16 @@ class YandexMarketOrderObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for variant company', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 
@@ -264,6 +268,7 @@ class YandexMarketOrderObserver
             $link = (clone $query)->where('marketplace_barcode', $shopSku)->first();
             if ($link) {
                 Log::debug('YandexMarketOrderObserver: Found link by marketplace_barcode', ['shopSku' => $shopSku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -273,6 +278,7 @@ class YandexMarketOrderObserver
             $link = (clone $query)->where('external_sku', $shopSku)->first();
             if ($link) {
                 Log::debug('YandexMarketOrderObserver: Found link by external_sku', ['shopSku' => $shopSku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -282,6 +288,7 @@ class YandexMarketOrderObserver
             $link = (clone $query)->where('external_offer_id', $offerId)->first();
             if ($link) {
                 Log::debug('YandexMarketOrderObserver: Found link by external_offer_id', ['offerId' => $offerId, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -291,6 +298,7 @@ class YandexMarketOrderObserver
             $link = (clone $query)->where('external_sku_id', $sku)->first();
             if ($link) {
                 Log::debug('YandexMarketOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -305,6 +313,7 @@ class YandexMarketOrderObserver
                 ->first();
             if ($link) {
                 Log::debug('YandexMarketOrderObserver: Found link by variant barcode/sku', ['value' => $searchValue, 'link_id' => $link->id]);
+
                 return $link;
             }
         }

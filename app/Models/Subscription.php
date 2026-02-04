@@ -58,7 +58,7 @@ class Subscription extends Model
      */
     public function isActive(): bool
     {
-        return $this->status === 'active' && 
+        return $this->status === 'active' &&
                ($this->ends_at === null || $this->ends_at->isFuture());
     }
 
@@ -67,8 +67,8 @@ class Subscription extends Model
      */
     public function isTrial(): bool
     {
-        return $this->status === 'trial' && 
-               $this->trial_ends_at !== null && 
+        return $this->status === 'trial' &&
+               $this->trial_ends_at !== null &&
                $this->trial_ends_at->isFuture();
     }
 
@@ -77,7 +77,7 @@ class Subscription extends Model
      */
     public function isExpired(): bool
     {
-        return $this->status === 'expired' || 
+        return $this->status === 'expired' ||
                ($this->ends_at !== null && $this->ends_at->isPast());
     }
 
@@ -86,10 +86,10 @@ class Subscription extends Model
      */
     public function daysRemaining(): ?int
     {
-        if (!$this->ends_at) {
+        if (! $this->ends_at) {
             return null;
         }
-        
+
         return max(0, now()->diffInDays($this->ends_at, false));
     }
 
@@ -122,7 +122,7 @@ class Subscription extends Model
      */
     public function incrementUsage(string $type, int $count = 1): void
     {
-        $field = match($type) {
+        $field = match ($type) {
             'products' => 'current_products_count',
             'orders' => 'current_orders_count',
             'ai' => 'current_ai_requests',
@@ -160,7 +160,7 @@ class Subscription extends Model
     public function scopeExpiringSoon($query, int $days = 7)
     {
         return $query->where('status', 'active')
-                     ->whereNotNull('ends_at')
-                     ->where('ends_at', '<=', now()->addDays($days));
+            ->whereNotNull('ends_at')
+            ->where('ends_at', '<=', now()->addDays($days));
     }
 }

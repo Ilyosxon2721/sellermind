@@ -25,17 +25,17 @@ return new class extends Migration
             $table->string('last_sync_status')->nullable()->comment('success/error');
             $table->text('last_sync_error')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
             $table->foreign('product_variant_id')->references('id')->on('product_variants')->onDelete('cascade');
             $table->foreign('marketplace_product_id')->references('id')->on('marketplace_products')->onDelete('cascade');
             $table->foreign('marketplace_account_id')->references('id')->on('marketplace_accounts')->onDelete('cascade');
-            
+
             $table->unique(['product_variant_id', 'marketplace_product_id'], 'variant_mp_unique');
             $table->index(['company_id', 'is_active'], 'vml_company_active_idx');
             $table->index(['marketplace_account_id', 'sync_stock_enabled'], 'vml_account_sync_idx');
         });
-        
+
         // Таблица логов синхронизации
         Schema::create('stock_sync_logs', function (Blueprint $table) {
             $table->id();
@@ -52,7 +52,7 @@ return new class extends Migration
             $table->json('response_payload')->nullable();
             $table->timestamp('synced_at')->nullable();
             $table->timestamps();
-            
+
             $table->index(['company_id', 'created_at']);
             $table->index(['marketplace_account_id', 'status']);
         });

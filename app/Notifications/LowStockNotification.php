@@ -19,8 +19,7 @@ class LowStockNotification extends Notification implements ShouldQueue
     public function __construct(
         public ProductVariant $variant,
         public int $currentStock
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.
@@ -32,7 +31,7 @@ class LowStockNotification extends Notification implements ShouldQueue
         if ($notifiable->notificationSettings) {
             // Check business hours if configured
             if ($notifiable->notificationSettings->notify_only_business_hours &&
-                !$notifiable->notificationSettings->shouldNotifyNow()) {
+                ! $notifiable->notificationSettings->shouldNotifyNow()) {
                 return ['database']; // Only database during off-hours
             }
 
@@ -75,7 +74,7 @@ class LowStockNotification extends Notification implements ShouldQueue
 
         $message .= "\n📦 Остаток: *{$this->currentStock}* шт.\n";
         $message .= "⚡ Порог: {$threshold} шт.\n\n";
-        $message .= "Рекомендуется пополнить запас!";
+        $message .= 'Рекомендуется пополнить запас!';
 
         return [
             'text' => $message,

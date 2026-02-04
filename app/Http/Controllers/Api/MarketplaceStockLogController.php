@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceStockLogController.php
 
 namespace App\Http\Controllers\Api;
@@ -19,7 +20,7 @@ class MarketplaceStockLogController extends Controller
         ]);
 
         $account = MarketplaceAccount::findOrFail($data['account_id']);
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 

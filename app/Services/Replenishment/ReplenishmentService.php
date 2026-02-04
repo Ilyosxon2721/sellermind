@@ -4,19 +4,15 @@ namespace App\Services\Replenishment;
 
 use App\Models\Replenishment\ReplenishmentSetting;
 use App\Models\Replenishment\ReplenishmentSnapshot;
-use App\Models\Warehouse\Sku;
 use App\Services\Warehouse\StockBalanceService;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class ReplenishmentService
 {
     public function __construct(
         protected DemandService $demandService,
         protected StockBalanceService $balanceService
-    ) {
-    }
+    ) {}
 
     public function calculate(int $companyId, int $warehouseId, int $skuId): ?array
     {
@@ -25,7 +21,7 @@ class ReplenishmentService
             ->where('sku_id', $skuId)
             ->first();
 
-        if (!$setting || !$setting->is_enabled) {
+        if (! $setting || ! $setting->is_enabled) {
             return null;
         }
 
@@ -131,6 +127,7 @@ class ReplenishmentService
         return $settings->map(function (ReplenishmentSetting $setting) use ($balances, $avgMap) {
             $balance = $balances[$setting->sku_id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
             $avg = $avgMap[$setting->sku_id] ?? 0;
+
             return $this->calculateFromSetting($setting, $balance, $avg);
         })->filter();
     }

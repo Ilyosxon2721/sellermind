@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesAnalyticsService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -35,11 +36,7 @@ class WildberriesAnalyticsService
     /**
      * Get sales funnel statistics for products (period)
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @param array $nmIds Product IDs (optional)
-     * @return array
+     * @param  array  $nmIds  Product IDs (optional)
      */
     public function getSalesFunnel(
         MarketplaceAccount $account,
@@ -53,7 +50,7 @@ class WildberriesAnalyticsService
                 'dateTo' => $dateTo->format('Y-m-d'),
             ];
 
-            if (!empty($nmIds)) {
+            if (! empty($nmIds)) {
                 $payload['nmIDs'] = array_map('intval', $nmIds);
             }
 
@@ -80,11 +77,7 @@ class WildberriesAnalyticsService
     /**
      * Get sales funnel history by days
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @param array $nmIds Product IDs
-     * @return array
+     * @param  array  $nmIds  Product IDs
      */
     public function getSalesFunnelHistory(
         MarketplaceAccount $account,
@@ -120,11 +113,7 @@ class WildberriesAnalyticsService
     /**
      * Get grouped sales funnel history
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @param string $groupBy Grouping: 'brand', 'subject', 'vendor_code'
-     * @return array
+     * @param  string  $groupBy  Grouping: 'brand', 'subject', 'vendor_code'
      */
     public function getGroupedSalesFunnelHistory(
         MarketplaceAccount $account,
@@ -159,11 +148,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get search analytics report (main page)
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getSearchReport(
         MarketplaceAccount $account,
@@ -196,11 +180,7 @@ class WildberriesAnalyticsService
     /**
      * Get search texts for specific product
      *
-     * @param MarketplaceAccount $account
-     * @param int $nmId Product ID
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
+     * @param  int  $nmId  Product ID
      */
     public function getProductSearchTexts(
         MarketplaceAccount $account,
@@ -236,11 +216,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get stocks report by product groups
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getStocksReportGroups(
         MarketplaceAccount $account,
@@ -272,11 +247,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get excise goods report
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getExciseReport(
         MarketplaceAccount $account,
@@ -308,11 +278,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get antifraud details (self-buyouts)
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getAntifraudDetails(
         MarketplaceAccount $account,
@@ -345,11 +310,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get incorrect attachments report (product substitution)
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getIncorrectAttachments(
         MarketplaceAccount $account,
@@ -382,9 +342,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get blocked products
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getBlockedProducts(MarketplaceAccount $account): array
     {
@@ -409,9 +366,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get shadowed products (hidden from catalog)
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getShadowedProducts(MarketplaceAccount $account): array
     {
@@ -436,11 +390,6 @@ class WildberriesAnalyticsService
 
     /**
      * Get comprehensive analytics dashboard data
-     *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @return array
      */
     public function getDashboardData(
         MarketplaceAccount $account,

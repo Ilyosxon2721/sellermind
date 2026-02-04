@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // Replenishment settings
-        if (!Schema::hasTable('replenishment_settings')) {
+        if (! Schema::hasTable('replenishment_settings')) {
             Schema::create('replenishment_settings', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -34,7 +34,7 @@ return new class extends Migration
         }
 
         // Replenishment snapshots (history/cache)
-        if (!Schema::hasTable('replenishment_snapshots')) {
+        if (! Schema::hasTable('replenishment_snapshots')) {
             Schema::create('replenishment_snapshots', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -59,7 +59,7 @@ return new class extends Migration
         }
 
         // Demand events (optional)
-        if (!Schema::hasTable('demand_events')) {
+        if (! Schema::hasTable('demand_events')) {
             Schema::create('demand_events', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -75,7 +75,7 @@ return new class extends Migration
         }
 
         // Minimal Purchase Core tables (only if отсутствуют)
-        if (!Schema::hasTable('purchase_orders')) {
+        if (! Schema::hasTable('purchase_orders')) {
             Schema::create('purchase_orders', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -90,7 +90,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('purchase_order_lines')) {
+        if (! Schema::hasTable('purchase_order_lines')) {
             Schema::create('purchase_order_lines', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('purchase_order_id');
@@ -104,7 +104,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('goods_receipt_lines')) {
+        if (! Schema::hasTable('goods_receipt_lines')) {
             Schema::create('goods_receipt_lines', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id')->nullable();

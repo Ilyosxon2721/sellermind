@@ -27,6 +27,7 @@ class WildberriesPushStocks extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных WB аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -51,7 +52,7 @@ class WildberriesPushStocks extends Command
 
     protected function pushStocks(MarketplaceAccount $account, bool $dryRun): void
     {
-        $wbStockService = new WildberriesStockService();
+        $wbStockService = new WildberriesStockService;
 
         $this->line('  Начинаем отправку остатков в WB...');
         $startTime = microtime(true);
@@ -66,15 +67,17 @@ class WildberriesPushStocks extends Command
 
         if ($links->isEmpty()) {
             $this->warn('  Нет активных связей для синхронизации');
+
             return;
         }
 
-        $this->line("  Найдено связей: " . $links->count());
+        $this->line('  Найдено связей: '.$links->count());
 
         // Получить warehouse_id
         $warehouseId = $wbStockService->getDefaultWarehouseId($account);
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $this->error('  Не найден склад WB для отправки остатков');
+
             return;
         }
         $this->line("  Склад WB ID: {$warehouseId}");
@@ -87,8 +90,9 @@ class WildberriesPushStocks extends Command
             // Для WB нужен barcode (external_sku)
             $barcode = $link->external_sku;
 
-            if (!$barcode) {
+            if (! $barcode) {
                 $this->warn("  Пропуск связи #{$link->id}: отсутствует barcode (external_sku)");
+
                 continue;
             }
 
@@ -103,6 +107,7 @@ class WildberriesPushStocks extends Command
 
         if (empty($stocksData)) {
             $this->warn('  Нет данных для синхронизации');
+
             return;
         }
 
@@ -111,6 +116,7 @@ class WildberriesPushStocks extends Command
             foreach ($stocksData as $item) {
                 $this->line("    SKU: {$item['barcode']}, Amount: {$item['stock']}");
             }
+
             return;
         }
 
@@ -139,7 +145,7 @@ class WildberriesPushStocks extends Command
                     'barcode' => $stockItem['barcode'],
                     'error' => $e->getMessage(),
                 ]);
-                $this->error("  Ошибка для barcode {$stockItem['barcode']}: " . $e->getMessage());
+                $this->error("  Ошибка для barcode {$stockItem['barcode']}: ".$e->getMessage());
             }
         }
 

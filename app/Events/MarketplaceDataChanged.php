@@ -2,8 +2,8 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -13,11 +13,17 @@ class MarketplaceDataChanged implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $companyId;
+
     public int $marketplaceAccountId;
+
     public string $dataType; // 'orders', 'products', 'stocks', 'prices'
+
     public string $changeType; // 'created', 'updated', 'deleted'
+
     public int $affectedCount;
+
     public ?array $changes; // Детали изменений
+
     public ?array $metadata;
 
     /**

@@ -22,9 +22,11 @@ class MonitorPricesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 300; // 5 минут на выполнение
+
     public int $tries = 1; // Не повторять при ошибке
 
     protected MarketplaceAccount $account;
+
     protected int $checkInterval = 7200; // Проверять каждые 2 часа
 
     /**
@@ -48,8 +50,9 @@ class MonitorPricesJob implements ShouldQueue
      */
     public function handle(MarketplaceSyncService $syncService): void
     {
-        if (!$this->account->is_active) {
+        if (! $this->account->is_active) {
             Log::info("Prices monitoring skipped for inactive account {$this->account->id}");
+
             return;
         }
 
@@ -61,7 +64,7 @@ class MonitorPricesJob implements ShouldQueue
             // Перезапускаем мониторинг через 2 часа
             $this->rescheduleMonitoring();
         } catch (\Throwable $e) {
-            Log::error("Prices monitoring error for account {$this->account->id}: " . $e->getMessage());
+            Log::error("Prices monitoring error for account {$this->account->id}: ".$e->getMessage());
 
             // Даже при ошибке перезапускаем мониторинг
             $this->rescheduleMonitoring();
@@ -94,7 +97,7 @@ class MonitorPricesJob implements ShouldQueue
 
             Cache::put($cacheKey, now(), now()->addHours(3));
         } catch (\Throwable $e) {
-            Log::error("Failed to sync prices for account {$this->account->id}: " . $e->getMessage());
+            Log::error("Failed to sync prices for account {$this->account->id}: ".$e->getMessage());
             throw $e;
         }
     }

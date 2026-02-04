@@ -22,7 +22,7 @@ class RecalculateStockFromOrders extends Command
         'waiting_pickup', 'issued',
         'CREATED', 'PACKING', 'PENDING_DELIVERY', 'DELIVERING',
         'ACCEPTED_AT_DP', 'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
-        'DELIVERED', 'COMPLETED'
+        'DELIVERED', 'COMPLETED',
     ];
 
     public function handle(): int
@@ -57,7 +57,7 @@ class RecalculateStockFromOrders extends Command
                 $rawPayload = $item->raw_payload ?? [];
                 $barcode = $rawPayload['barcode'] ?? null;
 
-                if (!$barcode) {
+                if (! $barcode) {
                     continue;
                 }
 
@@ -65,18 +65,18 @@ class RecalculateStockFromOrders extends Command
                 $link = VariantMarketplaceLink::query()
                     ->where('marketplace_account_id', $order->marketplace_account_id)
                     ->where('is_active', true)
-                    ->whereHas('variant', fn($q) => $q->where('barcode', $barcode))
+                    ->whereHas('variant', fn ($q) => $q->where('barcode', $barcode))
                     ->with('variant')
                     ->first();
 
-                if (!$link || !$link->variant) {
+                if (! $link || ! $link->variant) {
                     continue;
                 }
 
                 $variantId = $link->variant->id;
                 $sku = $link->variant->sku;
 
-                if (!isset($stockChanges[$variantId])) {
+                if (! isset($stockChanges[$variantId])) {
                     $stockChanges[$variantId] = [
                         'variant' => $link->variant,
                         'sku' => $sku,
@@ -94,6 +94,7 @@ class RecalculateStockFromOrders extends Command
 
         if (empty($stockChanges)) {
             $this->info('No stock changes needed');
+
             return 0;
         }
 
@@ -101,7 +102,7 @@ class RecalculateStockFromOrders extends Command
         $this->info('Stock changes to apply:');
         $this->table(
             ['SKU', 'Current Stock', 'To Deduct', 'New Stock', 'Orders Count'],
-            collect($stockChanges)->map(fn($data) => [
+            collect($stockChanges)->map(fn ($data) => [
                 $data['sku'],
                 $data['current_stock'],
                 $data['to_deduct'],
@@ -112,11 +113,13 @@ class RecalculateStockFromOrders extends Command
 
         if ($dryRun) {
             $this->warn('DRY RUN - no changes made. Remove --dry-run to apply changes.');
+
             return 0;
         }
 
-        if (!$this->confirm('Apply these stock changes?')) {
+        if (! $this->confirm('Apply these stock changes?')) {
             $this->info('Cancelled');
+
             return 0;
         }
 
@@ -148,12 +151,13 @@ class RecalculateStockFromOrders extends Command
 
             DB::commit();
             $this->info('Stock recalculated successfully!');
-            $this->info('Processed ' . count($processedOrders) . ' orders');
+            $this->info('Processed '.count($processedOrders).' orders');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
             Log::error('Stock recalculation failed', ['error' => $e->getMessage()]);
+
             return 1;
         }
 

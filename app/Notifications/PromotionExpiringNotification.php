@@ -19,8 +19,7 @@ class PromotionExpiringNotification extends Notification implements ShouldQueue
     public function __construct(
         public Promotion $promotion,
         public int $daysLeft
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.
@@ -60,20 +59,20 @@ class PromotionExpiringNotification extends Notification implements ShouldQueue
         $message .= "*{$this->promotion->name}*\n";
 
         if ($this->promotion->description) {
-            $message .= $this->promotion->description . "\n\n";
+            $message .= $this->promotion->description."\n\n";
         }
 
-        $message .= "⏰ Осталось: *{$this->daysLeft} " . $this->pluralize($this->daysLeft) . "*\n";
-        $message .= "📅 Конец: " . $this->promotion->end_date->format('d.m.Y H:i') . "\n";
+        $message .= "⏰ Осталось: *{$this->daysLeft} ".$this->pluralize($this->daysLeft)."*\n";
+        $message .= '📅 Конец: '.$this->promotion->end_date->format('d.m.Y H:i')."\n";
         $message .= "🏷️ Товаров: *{$this->promotion->products_count}*\n";
         $message .= "💰 Скидка: *{$this->promotion->discount_value}";
         $message .= $this->promotion->type === 'percentage' ? '%' : ' ₽';
         $message .= "*\n\n";
 
         if ($this->daysLeft <= 1) {
-            $message .= "⚡ Последний шанс продлить или завершить акцию!";
+            $message .= '⚡ Последний шанс продлить или завершить акцию!';
         } else {
-            $message .= "Проверьте результаты и решите, продлить или завершить акцию.";
+            $message .= 'Проверьте результаты и решите, продлить или завершить акцию.';
         }
 
         return [
@@ -93,10 +92,10 @@ class PromotionExpiringNotification extends Notification implements ShouldQueue
 
         return (new MailMessage)
             ->subject("{$urgency}: Акция «{$this->promotion->name}» заканчивается!")
-            ->line("Ваша акция «{$this->promotion->name}» заканчивается через {$this->daysLeft} " . $this->pluralize($this->daysLeft) . ".")
-            ->line("Конец акции: " . $this->promotion->end_date->format('d.m.Y H:i'))
+            ->line("Ваша акция «{$this->promotion->name}» заканчивается через {$this->daysLeft} ".$this->pluralize($this->daysLeft).'.')
+            ->line('Конец акции: '.$this->promotion->end_date->format('d.m.Y H:i'))
             ->line("Товаров в акции: {$this->promotion->products_count}")
-            ->line("Скидка: {$this->promotion->discount_value}" . ($this->promotion->type === 'percentage' ? '%' : ' ₽'))
+            ->line("Скидка: {$this->promotion->discount_value}".($this->promotion->type === 'percentage' ? '%' : ' ₽'))
             ->action('Управление акциями', url('/promotions'))
             ->line('Проверьте результаты и решите, продлить или завершить акцию.');
     }
@@ -115,7 +114,7 @@ class PromotionExpiringNotification extends Notification implements ShouldQueue
             'products_count' => $this->promotion->products_count,
             'discount_value' => $this->promotion->discount_value,
             'discount_type' => $this->promotion->type,
-            'message' => "Акция «{$this->promotion->name}» заканчивается через {$this->daysLeft} " . $this->pluralize($this->daysLeft),
+            'message' => "Акция «{$this->promotion->name}» заканчивается через {$this->daysLeft} ".$this->pluralize($this->daysLeft),
         ];
     }
 
@@ -126,7 +125,7 @@ class PromotionExpiringNotification extends Notification implements ShouldQueue
     {
         if ($days % 10 === 1 && $days % 100 !== 11) {
             return 'день';
-        } elseif (in_array($days % 10, [2, 3, 4]) && !in_array($days % 100, [12, 13, 14])) {
+        } elseif (in_array($days % 10, [2, 3, 4]) && ! in_array($days % 100, [12, 13, 14])) {
             return 'дня';
         }
 

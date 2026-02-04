@@ -14,7 +14,9 @@ class MarketplaceFeeImport extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_IMPORTED = 'imported';
+
     public const STATUS_POSTED = 'posted';
 
     protected $fillable = [
@@ -80,7 +82,8 @@ class MarketplaceFeeImport extends Model
         if ($this->period_from->eq($this->period_to)) {
             return $this->period_from->format('d.m.Y');
         }
-        return $this->period_from->format('d.m.Y') . ' - ' . $this->period_to->format('d.m.Y');
+
+        return $this->period_from->format('d.m.Y').' - '.$this->period_to->format('d.m.Y');
     }
 
     public function isDraft(): bool

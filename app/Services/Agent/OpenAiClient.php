@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class OpenAiClient
 {
     private string $apiKey;
+
     private string $apiUrl;
+
     private int $timeout;
 
     public function __construct()
@@ -20,10 +22,10 @@ class OpenAiClient
 
     public function sendChat(
         array $messages,
-        string $model = null,
+        ?string $model = null,
         array $tools = [],
-        float $temperature = null,
-        int $maxTokens = null
+        ?float $temperature = null,
+        ?int $maxTokens = null
     ): array {
         $model = $model ?? config('openai.models.agent_default', 'gpt-4o-mini');
         $temperature = $temperature ?? config('openai.agent.temperature', 0.7);
@@ -40,7 +42,7 @@ class OpenAiClient
 
         $this->applyTokenLimit($payload, $maxTokens);
 
-        if (!empty($tools)) {
+        if (! empty($tools)) {
             $payload['tools'] = $tools;
             $payload['tool_choice'] = 'auto';
         }
@@ -50,8 +52,8 @@ class OpenAiClient
                 'Authorization' => "Bearer {$this->apiKey}",
                 'Content-Type' => 'application/json',
             ])
-            ->timeout($this->timeout)
-            ->post("{$this->apiUrl}/chat/completions", $payload);
+                ->timeout($this->timeout)
+                ->post("{$this->apiUrl}/chat/completions", $payload);
 
             if ($response->failed()) {
                 $error = $response->json('error.message') ?? $response->body();
@@ -83,7 +85,7 @@ class OpenAiClient
 
     public function hasToolCalls(array $response): bool
     {
-        return !empty($this->extractToolCalls($response));
+        return ! empty($this->extractToolCalls($response));
     }
 
     public function getUsage(array $response): array
@@ -102,6 +104,6 @@ class OpenAiClient
 
     private function supportsTemperature(string $model): bool
     {
-        return !str_starts_with($model, 'o1-');
+        return ! str_starts_with($model, 'o1-');
     }
 }

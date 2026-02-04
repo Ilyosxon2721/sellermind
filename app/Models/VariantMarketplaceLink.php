@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Связь между вариантом товара и карточкой на маркетплейсе
- * 
+ *
  * @property int $id
  * @property int $company_id
  * @property int $product_variant_id
@@ -82,7 +82,7 @@ class VariantMarketplaceLink extends Model
         $account = $this->account;
         $companyId = $account->company_id ?? null;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->variant?->stock_default ?? 0;
         }
 
@@ -92,7 +92,7 @@ class VariantMarketplaceLink extends Model
         // Get variant SKU
         $variant = $this->variant;
         $variantSku = $variant?->sku;
-        if (!$variantSku) {
+        if (! $variantSku) {
             return $variant?->stock_default ?? 0;
         }
 
@@ -103,7 +103,7 @@ class VariantMarketplaceLink extends Model
             ->value('id');
 
         // If no SKU in warehouse system, try by barcode
-        if (!$skuId && $variant?->barcode) {
+        if (! $skuId && $variant?->barcode) {
             $skuId = \DB::table('skus')
                 ->where('company_id', $companyId)
                 ->where('barcode_ean13', $variant->barcode)
@@ -111,12 +111,13 @@ class VariantMarketplaceLink extends Model
         }
 
         // If still no SKU, fallback to stock_default
-        if (!$skuId) {
+        if (! $skuId) {
             \Log::debug('No SKU in warehouse system, using stock_default', [
                 'variant_sku' => $variantSku,
                 'variant_id' => $variant?->id,
                 'stock_default' => $variant?->stock_default,
             ]);
+
             return $variant?->stock_default ?? 0;
         }
 
@@ -136,7 +137,7 @@ class VariantMarketplaceLink extends Model
                     ->where('id', $localWarehouseId)
                     ->where('company_id', $companyId)
                     ->exists();
-                if (!$exists) {
+                if (! $exists) {
                     $localWarehouseId = null;
                 }
             }
@@ -144,29 +145,30 @@ class VariantMarketplaceLink extends Model
             return $this->getBasicStock($companyId, $skuId, $localWarehouseId);
         }
     }
-    
+
     /**
      * Получить суммированный остаток с выбранных складов (aggregated mode)
      */
     protected function getAggregatedStock($companyId, $skuId, $account): int
     {
         $sourceWarehouseIds = $account->credentials_json['source_warehouse_ids'] ?? [];
-        
+
         if (empty($sourceWarehouseIds)) {
             // Если склады не выбраны, берём со всех
             \Log::warning('Aggregated mode but no source warehouses selected', [
-                'account_id' => $account->id
+                'account_id' => $account->id,
             ]);
+
             return $this->variant?->stock_default ?? 0;
         }
-        
+
         // Sum stock from selected warehouses
         $totalStock = \DB::table('stock_ledger')
             ->where('company_id', $companyId)
             ->where('sku_id', $skuId)
             ->whereIn('warehouse_id', $sourceWarehouseIds)
             ->sum('qty_delta');
-        
+
         // Subtract reservations from selected warehouses
         // Status ACTIVE = active reservation (pending/confirmed are legacy)
         $reservedQty = \DB::table('stock_reservations')
@@ -175,20 +177,20 @@ class VariantMarketplaceLink extends Model
             ->whereIn('warehouse_id', $sourceWarehouseIds)
             ->whereIn('status', ['ACTIVE', 'pending', 'confirmed'])
             ->sum('qty');
-        
+
         $availableStock = max(0, $totalStock - $reservedQty);
-        
+
         \Log::debug('Aggregated stock calculated', [
             'sku' => $this->variant?->sku,
             'source_warehouses' => $sourceWarehouseIds,
             'total' => $totalStock,
             'reserved' => $reservedQty,
-            'available' => $availableStock
+            'available' => $availableStock,
         ]);
-        
+
         return (int) $availableStock;
     }
-    
+
     /**
      * Получить остаток для базового режима (basic mode)
      * Если указан warehouseId - берёт с конкретного склада, иначе общий
@@ -248,7 +250,7 @@ class VariantMarketplaceLink extends Model
      */
     public function needsSync(): bool
     {
-        if (!$this->is_active || !$this->sync_stock_enabled) {
+        if (! $this->is_active || ! $this->sync_stock_enabled) {
             return false;
         }
 

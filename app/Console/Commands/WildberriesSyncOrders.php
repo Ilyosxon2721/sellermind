@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/WildberriesSyncOrders.php
 
 namespace App\Console\Commands;
@@ -26,13 +27,15 @@ class WildberriesSyncOrders extends Command
 
         $account = MarketplaceAccount::find($accountId);
 
-        if (!$account) {
+        if (! $account) {
             $this->error("Аккаунт с ID {$accountId} не найден");
+
             return self::FAILURE;
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             $this->error("Аккаунт #{$accountId} не является Wildberries");
+
             return self::FAILURE;
         }
 
@@ -63,7 +66,7 @@ class WildberriesSyncOrders extends Command
                     ? Carbon::parse($fromOption)
                     : now()->subDays($days);
 
-                $this->info("Загрузка заказов с " . $from->format('Y-m-d') . " (Statistics API)...");
+                $this->info('Загрузка заказов с '.$from->format('Y-m-d').' (Statistics API)...');
                 $result = $service->syncOrders($account, $from);
             }
 
@@ -82,7 +85,7 @@ class WildberriesSyncOrders extends Command
 
             // Output results
             $this->newLine();
-            $this->info("✓ Синхронизация заказов завершена!");
+            $this->info('✓ Синхронизация заказов завершена!');
             $this->table(
                 ['Метрика', 'Значение'],
                 [
@@ -93,7 +96,7 @@ class WildberriesSyncOrders extends Command
                 ]
             );
 
-            if (!empty($result['errors'])) {
+            if (! empty($result['errors'])) {
                 $this->newLine();
                 $this->warn('Ошибки при синхронизации:');
                 foreach (array_slice($result['errors'], 0, 5) as $error) {
@@ -113,6 +116,7 @@ class WildberriesSyncOrders extends Command
             ]);
 
             $this->error("Ошибка синхронизации: {$e->getMessage()}");
+
             return self::FAILURE;
         }
     }

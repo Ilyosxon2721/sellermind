@@ -4,9 +4,9 @@ namespace App\Jobs;
 
 use App\Models\MarketplaceAccount;
 use App\Models\UzumExpense;
-use App\Services\Marketplaces\UzumClient;
-use App\Services\Marketplaces\MarketplaceHttpClient;
 use App\Services\Marketplaces\IssueDetectorService;
+use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\UzumClient;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,6 +31,7 @@ class SyncUzumExpensesJob implements ShouldQueue
     public int $tries = 3;
 
     protected int $accountId;
+
     protected int $days;
 
     /**
@@ -52,8 +53,7 @@ class SyncUzumExpensesJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param MarketplaceAccount $account
-     * @param int $days Количество дней для синхронизации (0 = все данные)
+     * @param  int  $days  Количество дней для синхронизации (0 = все данные)
      */
     public function __construct(MarketplaceAccount $account, int $days = 365)
     {
@@ -85,15 +85,17 @@ class SyncUzumExpensesJob implements ShouldQueue
     {
         $account = MarketplaceAccount::find($this->accountId);
 
-        if (!$account || $account->marketplace !== 'uzum') {
+        if (! $account || $account->marketplace !== 'uzum') {
             Log::warning('SyncUzumExpensesJob skipped: account not found or not Uzum', [
                 'account_id' => $this->accountId,
             ]);
+
             return;
         }
 
-        if (!$account->is_active) {
+        if (! $account->is_active) {
             Log::info('SyncUzumExpensesJob skipped for inactive account', ['account_id' => $account->id]);
+
             return;
         }
 
@@ -138,7 +140,7 @@ class SyncUzumExpensesJob implements ShouldQueue
                 'status' => 'failed',
                 'error' => $e->getMessage(),
                 'finished_at' => now()->toIso8601String(),
-                'message' => 'Ошибка: ' . $e->getMessage(),
+                'message' => 'Ошибка: '.$e->getMessage(),
             ]);
 
             Log::error('SyncUzumExpensesJob failed', [
@@ -150,6 +152,7 @@ class SyncUzumExpensesJob implements ShouldQueue
             if ($this->isRateLimitError($e)) {
                 $delay = $this->attempts() * 60;
                 $this->release($delay);
+
                 return;
             }
 
@@ -174,6 +177,7 @@ class SyncUzumExpensesJob implements ShouldQueue
 
         if (empty($shopIds)) {
             Log::warning('SyncUzumExpensesJob: no shops found', ['account_id' => $account->id]);
+
             return ['created' => 0, 'updated' => 0, 'errors' => 0];
         }
 
@@ -193,7 +197,7 @@ class SyncUzumExpensesJob implements ShouldQueue
 
         $this->updateProgress([
             'total' => count($allExpenses),
-            'message' => 'Найдено ' . count($allExpenses) . ' записей расходов',
+            'message' => 'Найдено '.count($allExpenses).' записей расходов',
         ]);
 
         foreach ($allExpenses as $expense) {
@@ -208,8 +212,9 @@ class SyncUzumExpensesJob implements ShouldQueue
                 }
 
                 $uzumId = $expense['id'] ?? null;
-                if (!$uzumId) {
+                if (! $uzumId) {
                     $errors++;
+
                     continue;
                 }
 
@@ -287,7 +292,7 @@ class SyncUzumExpensesJob implements ShouldQueue
      */
     protected function parseTimestamp($timestamp): ?Carbon
     {
-        if (!$timestamp) {
+        if (! $timestamp) {
             return null;
         }
 
@@ -313,6 +318,7 @@ class SyncUzumExpensesJob implements ShouldQueue
     protected function isRateLimitError(\Throwable $e): bool
     {
         $message = $e->getMessage();
+
         return str_contains($message, '429') ||
                str_contains($message, 'Too Many Requests') ||
                str_contains($message, 'rate limit');

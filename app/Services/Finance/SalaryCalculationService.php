@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class SalaryCalculationService
 {
-    public function __construct(protected TransactionService $transactionService)
-    {
-    }
+    public function __construct(protected TransactionService $transactionService) {}
 
     public function calculate(int $companyId, int $year, int $month): SalaryCalculation
     {
@@ -104,9 +102,9 @@ class SalaryCalculationService
                     'category_id' => $salaryCategory?->id,
                     'employee_id' => $item->employee_id,
                     'amount' => $item->net_amount,
-                    'description' => 'Зарплата ' . $calculation->period_label . ': ' . $item->employee->full_name,
+                    'description' => 'Зарплата '.$calculation->period_label.': '.$item->employee->full_name,
                     'transaction_date' => $paymentDate,
-                    'reference' => 'SAL-' . $calculation->id . '-' . $item->id,
+                    'reference' => 'SAL-'.$calculation->id.'-'.$item->id,
                     'status' => FinanceTransaction::STATUS_CONFIRMED,
                     'created_by' => $userId,
                     'confirmed_by' => $userId,
@@ -135,9 +133,9 @@ class SalaryCalculationService
                 'category_id' => $salaryCategory?->id,
                 'employee_id' => $item->employee_id,
                 'amount' => $item->net_amount,
-                'description' => 'Зарплата ' . $calculation->period_label . ': ' . $item->employee->full_name,
+                'description' => 'Зарплата '.$calculation->period_label.': '.$item->employee->full_name,
                 'transaction_date' => $paymentDate,
-                'reference' => 'SAL-' . $calculation->id . '-' . $item->id,
+                'reference' => 'SAL-'.$calculation->id.'-'.$item->id,
                 'status' => FinanceTransaction::STATUS_CONFIRMED,
                 'created_by' => $userId,
                 'confirmed_by' => $userId,

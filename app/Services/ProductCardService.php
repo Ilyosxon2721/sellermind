@@ -107,7 +107,7 @@ class ProductCardService
         string $language,
         int $companyId,
         int $userId,
-        callable $onProgress = null
+        ?callable $onProgress = null
     ): Collection {
         $results = collect();
         $total = count($products);
@@ -115,17 +115,18 @@ class ProductCardService
         foreach ($products as $index => $productData) {
             try {
                 $product = Product::find($productData['id']);
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
 
                 $primaryImage = $product->primaryImage();
-                if (!$primaryImage) {
+                if (! $primaryImage) {
                     $results->push([
                         'product_id' => $product->id,
                         'success' => false,
                         'error' => 'No image available',
                     ]);
+
                     continue;
                 }
 
@@ -177,7 +178,7 @@ class ProductCardService
         $targetLang = $targetLanguage === 'ru' ? 'русский' : 'узбекский';
 
         $prompt = "Переведи карточку товара с {$sourceLang} на {$targetLang} язык.\n\n";
-        $prompt .= "Исходные данные:\n" . json_encode($sourceData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $prompt .= "Исходные данные:\n".json_encode($sourceData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         $prompt .= "\n\nВерни результат в том же JSON формате.";
 
         // Use AI service for translation

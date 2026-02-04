@@ -3,9 +3,7 @@
 namespace App\Events;
 
 use App\Models\UzumOrder;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -26,8 +24,8 @@ class UzumOrderUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('company.' . $this->order->account->company_id),
-            new PrivateChannel('marketplace-account.' . $this->order->marketplace_account_id),
+            new PrivateChannel('company.'.$this->order->account->company_id),
+            new PrivateChannel('marketplace-account.'.$this->order->marketplace_account_id),
         ];
     }
 

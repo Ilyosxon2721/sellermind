@@ -15,11 +15,15 @@ class FinanceTransaction extends Model
     use HasFactory;
 
     public const TYPE_INCOME = 'income';
+
     public const TYPE_EXPENSE = 'expense';
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_DELETED = 'deleted';
 
     protected $fillable = [
@@ -135,7 +139,7 @@ class FinanceTransaction extends Model
      */
     public function restore(): bool
     {
-        if (!$this->isDeleted()) {
+        if (! $this->isDeleted()) {
             return false;
         }
 
@@ -146,7 +150,7 @@ class FinanceTransaction extends Model
 
     public function confirm(int $userId): bool
     {
-        if (!$this->isDraft()) {
+        if (! $this->isDraft()) {
             return false;
         }
 

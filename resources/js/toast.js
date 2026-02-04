@@ -577,5 +577,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-console.log('✅ Toast Notifications: Loaded');

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\MarketplaceAccountIssues\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class MarketplaceAccountIssueForm
@@ -47,7 +47,7 @@ class MarketplaceAccountIssueForm
                             ->options([
                                 'critical' => 'Критическая',
                                 'warning' => 'Предупреждение',
-                                'info' => 'Инфо'
+                                'info' => 'Инфо',
                             ])
                             ->required(),
                         TextInput::make('title')
@@ -77,7 +77,7 @@ class MarketplaceAccountIssueForm
                             ->options([
                                 'active' => 'Активна',
                                 'resolved' => 'Решена',
-                                'ignored' => 'Игнорируется'
+                                'ignored' => 'Игнорируется',
                             ])
                             ->required(),
                         TextInput::make('occurrences')

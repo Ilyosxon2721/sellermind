@@ -10,7 +10,6 @@ use App\Models\Warehouse\Sku as WarehouseSku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\Warehouse;
-use App\Services\Stock\StockSyncService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -69,11 +68,10 @@ class OrderStockService
     /**
      * Обработать изменение статуса заказа
      *
-     * @param MarketplaceAccount $account
-     * @param Model $order Модель заказа (WbOrder, UzumOrder, OzonOrder)
-     * @param string|null $oldStatus Предыдущий статус
-     * @param string $newStatus Новый статус
-     * @param array $items Позиции заказа
+     * @param  Model  $order  Модель заказа (WbOrder, UzumOrder, OzonOrder)
+     * @param  string|null  $oldStatus  Предыдущий статус
+     * @param  string  $newStatus  Новый статус
+     * @param  array  $items  Позиции заказа
      * @return array Результат обработки
      */
     public function processOrderStatusChange(
@@ -128,6 +126,7 @@ class OrderStockService
                 'order_id' => $order->id,
                 'previous_stock_status' => $currentStockStatus,
             ]);
+
             return ['success' => true, 'action' => 'sold_historical', 'message' => 'Order marked as sold'];
         }
 
@@ -142,6 +141,7 @@ class OrderStockService
                 Log::info('OrderStockService: Order cancelled after sold, manual return needed', [
                     'order_id' => $order->id,
                 ]);
+
                 return ['success' => true, 'action' => 'none', 'message' => 'Order was already sold, manual return needed'];
             }
             // Если уже освобождён - ничего не делаем
@@ -149,6 +149,7 @@ class OrderStockService
                 Log::info('OrderStockService: Order already released', [
                     'order_id' => $order->id,
                 ]);
+
                 return ['success' => true, 'action' => 'none', 'message' => 'Stock already released'];
             }
         }
@@ -192,14 +193,15 @@ class OrderStockService
 
                 $variant = $this->findVariantByOrderItem($account, $item, $marketplace);
 
-                if (!$variant) {
+                if (! $variant) {
                     Log::warning('OrderStockService: Variant not found for order item', [
                         'account_id' => $account->id,
                         'order_id' => $order->id,
                         'item' => $item,
                     ]);
                     $results['items_failed']++;
-                    $results['errors'][] = 'Variant not found: ' . json_encode($item);
+                    $results['errors'][] = 'Variant not found: '.json_encode($item);
+
                     continue;
                 }
 
@@ -410,8 +412,9 @@ class OrderStockService
 
                     $variant = $this->findVariantByOrderItem($account, $item, $marketplace);
 
-                    if (!$variant) {
+                    if (! $variant) {
                         $results['items_failed']++;
+
                         continue;
                     }
 
@@ -587,6 +590,7 @@ class OrderStockService
                         'link_id' => $link->id,
                         'variant_id' => $link->variant->id,
                     ]);
+
                     return $link->variant;
                 }
             }
@@ -600,6 +604,7 @@ class OrderStockService
                         'variant_id' => $variant->id,
                         'variant_sku' => $variant->sku,
                     ]);
+
                     return $variant;
                 }
             }
@@ -611,6 +616,7 @@ class OrderStockService
                 'sku_id' => $skuId,
                 'account_id' => $account->id,
             ]);
+
             return null;
         }
 
@@ -632,6 +638,7 @@ class OrderStockService
                     'link_id' => $link->id,
                     'variant_id' => $link->variant->id,
                 ]);
+
                 return $link->variant;
             }
         }
@@ -654,6 +661,7 @@ class OrderStockService
                     'link_id' => $link->id,
                     'variant_id' => $link->variant->id,
                 ]);
+
                 return $link->variant;
             }
         }
@@ -672,6 +680,7 @@ class OrderStockService
                     'link_id' => $link->id,
                     'variant_id' => $link->variant->id,
                 ]);
+
                 return $link->variant;
             }
         }
@@ -690,8 +699,8 @@ class OrderStockService
                 }
                 // По nm_id для WB (может храниться в external_offer_id)
                 if ($nmId) {
-                    $query->orWhere('external_offer_id', (string)$nmId);
-                    $query->orWhere('external_sku_id', (string)$nmId);
+                    $query->orWhere('external_offer_id', (string) $nmId);
+                    $query->orWhere('external_sku_id', (string) $nmId);
                 }
             })
             ->first();
@@ -701,6 +710,7 @@ class OrderStockService
                 'link_id' => $link->id,
                 'variant_id' => $link->variant->id,
             ]);
+
             return $link->variant;
         }
 
@@ -714,7 +724,7 @@ class OrderStockService
                         $query->orWhere('external_product_id', $skuId);
                     }
                     if ($nmId) {
-                        $query->orWhere('external_product_id', (string)$nmId);
+                        $query->orWhere('external_product_id', (string) $nmId);
                     }
                     if ($offerId) {
                         $query->orWhere('external_offer_id', $offerId);
@@ -727,6 +737,7 @@ class OrderStockService
                     'link_id' => $link->id,
                     'variant_id' => $link->variant->id,
                 ]);
+
                 return $link->variant;
             }
         }
@@ -742,6 +753,7 @@ class OrderStockService
                     'barcode' => $barcode,
                     'variant_id' => $variant->id,
                 ]);
+
                 return $variant;
             }
         }
@@ -757,6 +769,7 @@ class OrderStockService
                     'sku' => $offerId,
                     'variant_id' => $variant->id,
                 ]);
+
                 return $variant;
             }
         }
@@ -791,14 +804,16 @@ class OrderStockService
                         return true;
                     }
                 }
+
                 return false;
             });
 
-        if (!$marketplaceProduct) {
+        if (! $marketplaceProduct) {
             Log::debug('OrderStockService: No MarketplaceProduct found with barcode in skuList', [
                 'barcode' => $barcode,
                 'account_id' => $account->id,
             ]);
+
             return null;
         }
 
@@ -812,11 +827,12 @@ class OrderStockService
             }
         }
 
-        if (!$matchedSkuId) {
+        if (! $matchedSkuId) {
             Log::warning('OrderStockService: Found barcode but no skuId in skuList', [
                 'barcode' => $barcode,
                 'product_id' => $marketplaceProduct->id,
             ]);
+
             return null;
         }
 
@@ -835,6 +851,7 @@ class OrderStockService
                 'variant_id' => $link->variant->id,
                 'variant_sku' => $link->variant->sku,
             ]);
+
             return $link->variant;
         }
 
@@ -852,13 +869,10 @@ class OrderStockService
 
     /**
      * Create warehouse stock ledger entry for marketplace order
-     * 
-     * @param MarketplaceAccount $account
-     * @param Model $order
-     * @param ProductVariant $variant
-     * @param int $qtyDelta Quantity change (negative for outgoing, positive for incoming)
-     * @param string $sourceType Type of operation (e.g., 'marketplace_order_reserve')
-     * @param string $marketplace Marketplace code
+     *
+     * @param  int  $qtyDelta  Quantity change (negative for outgoing, positive for incoming)
+     * @param  string  $sourceType  Type of operation (e.g., 'marketplace_order_reserve')
+     * @param  string  $marketplace  Marketplace code
      * @return WarehouseSku|null Returns warehouse SKU if successful
      */
     protected function createWarehouseStockLedger(
@@ -887,11 +901,12 @@ class OrderStockService
             // Determine warehouse to use
             $warehouseId = $this->determineWarehouse($account);
 
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 Log::warning('OrderStockService: No warehouse found for stock ledger entry', [
                     'account_id' => $account->id,
                     'variant_id' => $variant->id,
                 ]);
+
                 return null;
             }
 
@@ -929,16 +944,13 @@ class OrderStockService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return null;
         }
     }
 
     /**
      * Get or create warehouse SKU without creating ledger entry
-     *
-     * @param MarketplaceAccount $account
-     * @param ProductVariant $variant
-     * @return WarehouseSku|null
      */
     protected function getOrCreateWarehouseSku(
         MarketplaceAccount $account,
@@ -962,6 +974,7 @@ class OrderStockService
                 'variant_id' => $variant->id,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -969,7 +982,6 @@ class OrderStockService
     /**
      * Determine which warehouse to use for marketplace orders
      *
-     * @param MarketplaceAccount $account
      * @return int|null Warehouse ID or null if not found
      */
     protected function determineWarehouse(MarketplaceAccount $account): ?int
@@ -1010,19 +1022,13 @@ class OrderStockService
                 'company_id' => $account->company_id,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
 
     /**
      * Create stock reservation for marketplace order
-     * 
-     * @param MarketplaceAccount $account
-     * @param Model $order
-     * @param WarehouseSku $warehouseSku
-     * @param int $quantity
-     * @param string $marketplace
-     * @return void
      */
     protected function createStockReservation(
         MarketplaceAccount $account,
@@ -1034,7 +1040,7 @@ class OrderStockService
         try {
             $warehouseId = $this->determineWarehouse($account);
 
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 return;
             }
 
@@ -1067,9 +1073,6 @@ class OrderStockService
 
     /**
      * Consume (mark as used) stock reservations for an order
-     * 
-     * @param Model $order
-     * @return void
      */
     protected function consumeStockReservations(Model $order): void
     {
@@ -1094,9 +1097,6 @@ class OrderStockService
 
     /**
      * Cancel stock reservations for an order
-     * 
-     * @param Model $order
-     * @return void
      */
     protected function cancelStockReservations(Model $order): void
     {
@@ -1163,7 +1163,7 @@ class OrderStockService
      */
     protected function getItemQuantity(array $item): int
     {
-        return (int)($item['quantity'] ?? $item['amount'] ?? $item['qty'] ?? 1);
+        return (int) ($item['quantity'] ?? $item['amount'] ?? $item['qty'] ?? 1);
     }
 
     /**
@@ -1171,7 +1171,7 @@ class OrderStockService
      */
     protected function getExternalOrderId(Model $order): string
     {
-        return (string)($order->external_order_id ?? $order->order_id ?? $order->posting_number ?? $order->id);
+        return (string) ($order->external_order_id ?? $order->order_id ?? $order->posting_number ?? $order->id);
     }
 
     /**
@@ -1180,6 +1180,7 @@ class OrderStockService
     public function isReserveStatus(string $marketplace, string $status): bool
     {
         $statuses = self::RESERVE_STATUSES[$marketplace] ?? [];
+
         return in_array(strtolower($status), array_map('strtolower', $statuses))
             || in_array($status, $statuses);
     }
@@ -1190,6 +1191,7 @@ class OrderStockService
     public function isSoldStatus(string $marketplace, string $status): bool
     {
         $statuses = self::SOLD_STATUSES[$marketplace] ?? [];
+
         return in_array(strtolower($status), array_map('strtolower', $statuses))
             || in_array($status, $statuses);
     }
@@ -1200,6 +1202,7 @@ class OrderStockService
     public function isCancelledStatus(string $marketplace, string $status): bool
     {
         $statuses = self::CANCELLED_STATUSES[$marketplace] ?? [];
+
         return in_array(strtolower($status), array_map('strtolower', $statuses))
             || in_array($status, $statuses);
     }
@@ -1210,6 +1213,7 @@ class OrderStockService
     public function isReturnedStatus(string $marketplace, string $status): bool
     {
         $statuses = self::RETURNED_STATUSES[$marketplace] ?? [];
+
         return in_array(strtolower($status), array_map('strtolower', $statuses))
             || in_array($status, $statuses);
     }
@@ -1230,7 +1234,7 @@ class OrderStockService
                     if ($marketplace === 'wb') {
                         // WB stores barcode in skus array, not in barcode field
                         $skus = $rawPayload['skus'] ?? [];
-                        $barcode = !empty($skus) ? (string) $skus[0] : null;
+                        $barcode = ! empty($skus) ? (string) $skus[0] : null;
 
                         // chrtId is the characteristic ID (identifies size/color)
                         // This is the key identifier for matching variants
@@ -1266,8 +1270,9 @@ class OrderStockService
         }
 
         // Для Ozon - данные в order_data JSON
-        if ($marketplace === 'ozon' && !empty($order->order_data)) {
+        if ($marketplace === 'ozon' && ! empty($order->order_data)) {
             $orderData = is_array($order->order_data) ? $order->order_data : json_decode($order->order_data, true);
+
             return $orderData['products'] ?? [];
         }
 
@@ -1282,7 +1287,7 @@ class OrderStockService
             if (isset($rawPayload['nmId'])) {
                 // WB stores barcode in skus array
                 $skus = $rawPayload['skus'] ?? [];
-                $barcode = !empty($skus) ? (string) $skus[0] : ($rawPayload['barcode'] ?? null);
+                $barcode = ! empty($skus) ? (string) $skus[0] : ($rawPayload['barcode'] ?? null);
 
                 return [[
                     'nm_id' => $rawPayload['nmId'],
@@ -1298,6 +1303,7 @@ class OrderStockService
         // Uzum specific
         if ($marketplace === 'uzum') {
             $items = $rawPayload['orderItems'] ?? [];
+
             return array_map(function ($item) {
                 return [
                     'sku_id' => $item['skuId'] ?? null,
@@ -1315,6 +1321,7 @@ class OrderStockService
                 $orderData = json_decode($orderData, true) ?? [];
             }
             $items = $orderData['items'] ?? [];
+
             return array_map(function ($item) {
                 return [
                     'sku_id' => $item['shopSku'] ?? $item['offerId'] ?? null,
@@ -1333,9 +1340,7 @@ class OrderStockService
      * Синхронизировать остатки варианта с ДРУГИМИ маркетплейсами
      * Исключаем маркетплейс, откуда пришёл заказ (sourceLinkId)
      *
-     * @param ProductVariant $variant
-     * @param int|null $sourceAccountId ID аккаунта маркетплейса, откуда пришёл заказ (исключаем)
-     * @return void
+     * @param  int|null  $sourceAccountId  ID аккаунта маркетплейса, откуда пришёл заказ (исключаем)
      */
     protected function syncVariantToOtherMarketplaces(ProductVariant $variant, ?int $sourceAccountId = null): void
     {
@@ -1350,6 +1355,7 @@ class OrderStockService
                 Log::debug('OrderStockService: No active marketplace links for variant', [
                     'variant_id' => $variant->id,
                 ]);
+
                 return;
             }
 
@@ -1364,6 +1370,7 @@ class OrderStockService
                         'variant_id' => $variant->id,
                         'account_id' => $link->marketplace_account_id,
                     ]);
+
                     continue;
                 }
 

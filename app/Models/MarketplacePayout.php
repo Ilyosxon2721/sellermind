@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplacePayout.php
 
 namespace App\Models;
@@ -59,7 +60,7 @@ class MarketplacePayout extends Model
     public function getPeriodLabel(): string
     {
         if ($this->period_from && $this->period_to) {
-            return $this->period_from->format('d.m.Y') . ' - ' . $this->period_to->format('d.m.Y');
+            return $this->period_from->format('d.m.Y').' - '.$this->period_to->format('d.m.Y');
         }
 
         return 'Период не указан';
@@ -71,7 +72,8 @@ class MarketplacePayout extends Model
     public function getFormattedAmount(): string
     {
         $currency = $this->currency ?? 'UZS';
-        return number_format($this->amount ?? 0, 2, '.', ' ') . ' ' . $currency;
+
+        return number_format($this->amount ?? 0, 2, '.', ' ').' '.$currency;
     }
 
     /**
@@ -93,7 +95,7 @@ class MarketplacePayout extends Model
      */
     public function getProfitMargin(): float
     {
-        if (!$this->sales_amount || $this->sales_amount == 0) {
+        if (! $this->sales_amount || $this->sales_amount == 0) {
             return 0;
         }
 

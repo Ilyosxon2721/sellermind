@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_12_07_000006_add_stock_strategies_to_marketplace_accounts.php
 
 use Illuminate\Database\Migrations\Migration;

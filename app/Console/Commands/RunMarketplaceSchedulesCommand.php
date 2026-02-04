@@ -1,15 +1,17 @@
 <?php
+
 // file: app/Console/Commands/RunMarketplaceSchedulesCommand.php
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\MarketplaceSyncSchedule;
 use Cron\CronExpression;
+use Illuminate\Console\Command;
 
 class RunMarketplaceSchedulesCommand extends Command
 {
     protected $signature = 'marketplaces:run-schedules';
+
     protected $description = 'Запуск запланированных задач синхронизации маркетплейсов';
 
     public function handle(): int
@@ -28,13 +30,14 @@ class RunMarketplaceSchedulesCommand extends Command
             try {
                 $cron = new CronExpression($schedule->cron_expression);
 
-                if (!$cron->isDue($now)) {
+                if (! $cron->isDue($now)) {
                     continue;
                 }
 
                 $account = $schedule->account;
-                if (!$account || !$account->is_active) {
+                if (! $account || ! $account->is_active) {
                     $this->warn("Аккаунт #{$schedule->marketplace_account_id} не активен, пропускаем");
+
                     continue;
                 }
 

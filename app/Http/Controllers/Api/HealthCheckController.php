@@ -66,7 +66,7 @@ class HealthCheckController extends Controller
 
         // Cache check
         try {
-            $cacheKey = 'health_check_' . time();
+            $cacheKey = 'health_check_'.time();
             Cache::put($cacheKey, 'test', 5);
             $value = Cache::get($cacheKey);
             Cache::forget($cacheKey);

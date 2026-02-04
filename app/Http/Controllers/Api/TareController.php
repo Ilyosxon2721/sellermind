@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\WbOrder;
 use App\Models\Supply;
 use App\Models\Tare;
+use App\Models\WbOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +36,7 @@ class TareController extends Controller
     {
         // Проверяем, что поставка синхронизирована с WB
         if ($supply->account->marketplace === 'wb' &&
-            (!$supply->external_supply_id || !str_starts_with($supply->external_supply_id, 'WB-'))) {
+            (! $supply->external_supply_id || ! str_starts_with($supply->external_supply_id, 'WB-'))) {
             return response()->json([
                 'message' => 'Поставка не синхронизирована с WB. Сначала синхронизируйте поставку.',
             ], 422);
@@ -84,7 +84,7 @@ class TareController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Не удалось создать коробку: ' . $e->getMessage(),
+                'message' => 'Не удалось создать коробку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -109,7 +109,7 @@ class TareController extends Controller
                     'wb_supplier_status',
                     'wb_status_group'
                 );
-            }
+            },
         ]);
 
         return response()->json([
@@ -236,7 +236,7 @@ class TareController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Не удалось добавить заказ в коробку: ' . $e->getMessage(),
+                'message' => 'Не удалось добавить заказ в коробку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -281,18 +281,18 @@ class TareController extends Controller
     public function getBarcode(Request $request, Tare $tare)
     {
         // Check if supply belongs to Wildberries account
-        if (!$tare->supply->account->isWildberries()) {
+        if (! $tare->supply->account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 422);
         }
 
         // Check if supply is synced with WB
-        if (!$tare->supply->external_supply_id || !str_starts_with($tare->supply->external_supply_id, 'WB-')) {
+        if (! $tare->supply->external_supply_id || ! str_starts_with($tare->supply->external_supply_id, 'WB-')) {
             return response()->json(['message' => 'Поставка не синхронизирована с WB.'], 422);
         }
 
         // Check if tare has barcode or external_tare_id
         $tareId = $tare->external_tare_id ?? $tare->barcode;
-        if (!$tareId) {
+        if (! $tareId) {
             return response()->json(['message' => 'У коробки нет штрихкода или ID.'], 422);
         }
 
@@ -323,7 +323,7 @@ class TareController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Ошибка получения баркода: ' . $e->getMessage(),
+                'message' => 'Ошибка получения баркода: '.$e->getMessage(),
             ], 500);
         }
     }

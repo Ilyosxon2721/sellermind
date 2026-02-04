@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/UzumSettingsController.php
 
 namespace App\Http\Controllers\Api;
@@ -14,11 +15,11 @@ class UzumSettingsController extends Controller
 {
     public function show(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isUzum()) {
+        if (! $account->isUzum()) {
             return response()->json(['message' => 'Аккаунт не является Uzum.'], 400);
         }
 
@@ -35,7 +36,7 @@ class UzumSettingsController extends Controller
                 'shop_id' => $account->shop_id,
                 'shop_ids' => $account->credentials_json['shop_ids'] ?? ($account->shop_id ? [$account->shop_id] : []),
                 'tokens' => [
-                    'api_key' => !empty($account->api_key) || !empty($account->uzum_api_key) || !empty($account->uzum_access_token),
+                    'api_key' => ! empty($account->api_key) || ! empty($account->uzum_api_key) || ! empty($account->uzum_access_token),
                 ],
                 'api_key_preview' => $preview,
                 'last_successful_call' => $account->wb_last_successful_call, // reuse field for now
@@ -46,11 +47,11 @@ class UzumSettingsController extends Controller
 
     public function update(Request $request, MarketplaceAccount $account, UzumClient $client): JsonResponse
     {
-        if (!$request->user()->isOwnerOf($account->company_id)) {
+        if (! $request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки токенов.'], 403);
         }
 
-        if (!$account->isUzum()) {
+        if (! $account->isUzum()) {
             return response()->json(['message' => 'Аккаунт не является Uzum.'], 400);
         }
 
@@ -82,7 +83,7 @@ class UzumSettingsController extends Controller
             $credentialsJson['shop_ids'] = $validated['shop_ids'] ?? [];
             $needsCredentialsUpdate = true;
             // Also set first shop_id for backwards compatibility
-            if (!empty($validated['shop_ids'])) {
+            if (! empty($validated['shop_ids'])) {
                 $updateData['shop_id'] = $validated['shop_ids'][0];
             }
         }
@@ -103,7 +104,7 @@ class UzumSettingsController extends Controller
             $updateData['credentials_json'] = $credentialsJson;
         }
 
-        if (!empty($updateData)) {
+        if (! empty($updateData)) {
             $account->update($updateData);
         }
 
@@ -126,7 +127,7 @@ class UzumSettingsController extends Controller
                 'shop_id' => $account->shop_id,
                 'shop_ids' => $account->credentials_json['shop_ids'] ?? ($account->shop_id ? [$account->shop_id] : []),
                 'tokens' => [
-                    'api_key' => !empty($account->api_key),
+                    'api_key' => ! empty($account->api_key),
                 ],
                 'api_key_preview' => $this->maskToken(
                     $account->api_key ?? $account->uzum_api_key ?? $account->uzum_access_token
@@ -137,11 +138,11 @@ class UzumSettingsController extends Controller
 
     public function test(Request $request, MarketplaceAccount $account, UzumClient $client): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isUzum()) {
+        if (! $account->isUzum()) {
             return response()->json(['message' => 'Аккаунт не является Uzum.'], 400);
         }
 
@@ -159,11 +160,11 @@ class UzumSettingsController extends Controller
      */
     public function shops(Request $request, MarketplaceAccount $account, UzumClient $client): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isUzum()) {
+        if (! $account->isUzum()) {
             return response()->json(['message' => 'Аккаунт не является Uzum.'], 400);
         }
 
@@ -180,10 +181,11 @@ class UzumSettingsController extends Controller
                 'name' => $s->name,
                 'raw_payload' => $s->raw_payload,
             ]);
+
             return response()->json(['shops' => $payload]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Ошибка получения магазинов: ' . $e->getMessage(),
+                'message' => 'Ошибка получения магазинов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -194,7 +196,7 @@ class UzumSettingsController extends Controller
     protected function storeShops(MarketplaceAccount $account, array $shops): void
     {
         foreach ($shops as $shop) {
-            if (!isset($shop['id'])) {
+            if (! isset($shop['id'])) {
                 continue;
             }
             MarketplaceShop::updateOrCreate(
@@ -212,7 +214,7 @@ class UzumSettingsController extends Controller
 
     protected function maskToken(?string $token): ?string
     {
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
@@ -221,6 +223,6 @@ class UzumSettingsController extends Controller
             return $token;
         }
 
-        return mb_substr($token, 0, 4) . '...' . mb_substr($token, -4);
+        return mb_substr($token, 0, 4).'...'.mb_substr($token, -4);
     }
 }

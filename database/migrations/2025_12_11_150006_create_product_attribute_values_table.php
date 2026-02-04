@@ -27,8 +27,8 @@ return new class extends Migration
 
         if (DB::getDriverName() !== 'sqlite') {
             DB::statement(
-                'ALTER TABLE product_attribute_values ADD CONSTRAINT chk_product_attribute_values_target ' .
-                'CHECK ( (product_id IS NOT NULL AND product_variant_id IS NULL) ' .
+                'ALTER TABLE product_attribute_values ADD CONSTRAINT chk_product_attribute_values_target '.
+                'CHECK ( (product_id IS NOT NULL AND product_variant_id IS NULL) '.
                 'OR (product_id IS NULL AND product_variant_id IS NOT NULL) )'
             );
         }

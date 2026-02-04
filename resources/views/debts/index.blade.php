@@ -140,7 +140,7 @@
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{{ __('debts.amount') }}</th>
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{{ __('debts.outstanding') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">{{ __('debts.due_date') }}</th>
-                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Статус</th>
                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase"></th>
                             </tr>
                         </thead>
@@ -496,7 +496,7 @@
                 </div>
                 <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                     <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50" @click="showPaymentModal = false" :disabled="savingPayment">{{ __('common.cancel') }}</button>
-                    <button class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                             @click="createPayment()" :disabled="savingPayment">
                         <svg x-show="savingPayment" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span x-text="savingPayment ? '...' : '{{ __('debts.add_payment') }}'"></span>

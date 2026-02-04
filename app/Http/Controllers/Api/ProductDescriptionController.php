@@ -13,7 +13,7 @@ class ProductDescriptionController extends Controller
 {
     public function index(Request $request, Product $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -30,7 +30,7 @@ class ProductDescriptionController extends Controller
 
     public function store(Request $request, Product $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -63,7 +63,7 @@ class ProductDescriptionController extends Controller
 
     public function show(Request $request, Product $product, ProductDescription $description): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -78,7 +78,7 @@ class ProductDescriptionController extends Controller
 
     public function versions(Request $request, Product $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -100,7 +100,7 @@ class ProductDescriptionController extends Controller
 
     public function destroy(Request $request, Product $product, ProductDescription $description): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

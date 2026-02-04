@@ -34,7 +34,7 @@ class GetProductContextTool implements AgentToolInterface
     {
         $productId = $arguments['product_id'] ?? null;
 
-        if (!$productId) {
+        if (! $productId) {
             return [
                 'success' => false,
                 'error' => 'Product ID is required',
@@ -44,7 +44,7 @@ class GetProductContextTool implements AgentToolInterface
         $product = Product::with(['descriptions', 'images', 'company'])
             ->find($productId);
 
-        if (!$product) {
+        if (! $product) {
             return [
                 'success' => false,
                 'error' => "Product with ID {$productId} not found",
@@ -60,7 +60,7 @@ class GetProductContextTool implements AgentToolInterface
                 'category' => $product->category,
                 'status' => $product->status,
                 'company' => $product->company?->name,
-                'descriptions' => $product->descriptions->map(fn($d) => [
+                'descriptions' => $product->descriptions->map(fn ($d) => [
                     'id' => $d->id,
                     'marketplace' => $d->marketplace,
                     'language' => $d->language,

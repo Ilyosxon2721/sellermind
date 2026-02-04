@@ -48,6 +48,7 @@ class MarketplacePayoutSyncService
         }
 
         $results['total'] = $total;
+
         return $results;
     }
 
@@ -67,6 +68,7 @@ class MarketplacePayoutSyncService
             Log::info('MarketplacePayoutSyncService: No active Uzum accounts found', [
                 'company_id' => $companyId,
             ]);
+
             return $result;
         }
 
@@ -123,7 +125,7 @@ class MarketplacePayoutSyncService
         ]);
 
         foreach ($dailyPayouts as $daily) {
-            if (!$daily->payout_date || $daily->net_amount <= 0) {
+            if (! $daily->payout_date || $daily->net_amount <= 0) {
                 continue;
             }
 

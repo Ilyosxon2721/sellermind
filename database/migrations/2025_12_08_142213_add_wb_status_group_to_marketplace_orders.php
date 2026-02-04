@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('marketplace_orders', 'wb_status_group')) {
+        if (! Schema::hasColumn('marketplace_orders', 'wb_status_group')) {
             Schema::table('marketplace_orders', function (Blueprint $table) {
                 $table->string('wb_status_group')->nullable()->after('wb_supplier_status')->index();
             });

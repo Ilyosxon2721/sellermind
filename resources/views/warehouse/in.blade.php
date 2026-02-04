@@ -66,7 +66,7 @@
                         <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500" x-model="filters.to">
                     </div>
                     <div class="flex items-end">
-                        <button class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium" @click="load()">
+                        <button class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="load()">
                             Применить
                         </button>
                     </div>
@@ -158,7 +158,7 @@
                                     <a :href="`/warehouse/documents/${doc.id}`" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
                                         Открыть
                                     </a>
-                                    <button class="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-sm transition-colors" 
+                                    <button class="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm transition-colors" 
                                             @click="postDoc(doc.id)" 
                                             x-show="doc.status === 'DRAFT'">
                                         Провести

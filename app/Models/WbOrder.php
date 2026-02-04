@@ -84,7 +84,7 @@ class WbOrder extends Model
      */
     public function getPhotoUrlAttribute(): ?string
     {
-        if (!$this->nm_id) {
+        if (! $this->nm_id) {
             return null;
         }
 
@@ -128,7 +128,7 @@ class WbOrder extends Model
         $part = (int) ($nmId / 1000);
 
         // Определяем basket
-        $basket = match(true) {
+        $basket = match (true) {
             $vol >= 0 && $vol <= 143 => '01',
             $vol >= 144 && $vol <= 287 => '02',
             $vol >= 288 && $vol <= 431 => '03',
@@ -158,6 +158,7 @@ class WbOrder extends Model
     public function getProductNameAttribute(): ?string
     {
         $firstItem = $this->items->first();
+
         return $firstItem ? $firstItem->name : $this->article;
     }
 
@@ -166,7 +167,7 @@ class WbOrder extends Model
      */
     public function getTimeElapsedAttribute(): string
     {
-        if (!$this->ordered_at) {
+        if (! $this->ordered_at) {
             return '';
         }
 
@@ -174,13 +175,13 @@ class WbOrder extends Model
 
         $parts = [];
         if ($diff->days > 0) {
-            $parts[] = $diff->days . ' дн.';
+            $parts[] = $diff->days.' дн.';
         }
         if ($diff->h > 0) {
-            $parts[] = $diff->h . ' ч.';
+            $parts[] = $diff->h.' ч.';
         }
         if ($diff->i > 0 || empty($parts)) {
-            $parts[] = $diff->i . ' мин.';
+            $parts[] = $diff->i.' мин.';
         }
 
         return implode(' ', $parts);

@@ -33,7 +33,7 @@
             <!-- Tabs -->
             <div class="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex flex-wrap gap-1">
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'overview' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'overview'; loadOverview()">
                     Обзор
                 </button>
@@ -48,22 +48,22 @@
                     Долги
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'salary' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'salary' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'salary'; loadEmployees(); loadSalaryCalculations()">
                     Зарплата
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'taxes' ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'taxes' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'taxes'; loadTaxes()">
                     Налоги
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'accounts' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'accounts' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'accounts'; loadCashAccounts()">
                     Счета
                 </button>
                 <button class="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                        :class="activeTab === 'reports' ? 'bg-cyan-100 text-cyan-700' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="activeTab === 'reports' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
                         @click="activeTab = 'reports'">
                     Отчёты
                 </button>
@@ -78,7 +78,7 @@
                             <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodFrom">
                             <span class="text-gray-500">—</span>
                             <input type="date" class="border border-gray-300 rounded-xl px-4 py-2" x-model="periodTo">
-                            <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="loadOverview()">Применить</button>
+                            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="loadOverview()">Применить</button>
                         </div>
                     </div>
 
@@ -86,7 +86,7 @@
                     <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm font-medium text-gray-600">Курсы валют</span>
-                            <button @click="showCurrencyModal = true" class="text-xs text-emerald-600 hover:text-emerald-700">
+                            <button @click="showCurrencyModal = true" class="text-xs text-blue-600 hover:text-blue-700">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </button>
                         </div>
@@ -115,7 +115,7 @@
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-lg font-semibold" style="color: #ffffff !important;">Баланс компании</h2>
                         <div class="flex items-center space-x-2">
-                            <span class="px-3 py-1 rounded-full text-xs font-medium"
+                            <span class="px-3 py-1 rounded-full text-xs font-medium text-slate-300 bg-slate-600/30"
                                   :class="{
                                       'bg-green-500/20 text-green-300': overview.balance?.health?.status === 'good' || overview.balance?.health?.status === 'excellent',
                                       'bg-amber-500/20 text-amber-300': overview.balance?.health?.status === 'warning',
@@ -277,14 +277,14 @@
                             <div class="bg-amber-50 rounded-xl p-4">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-sm text-amber-700">Заказы клиентов в пути</span>
-                                    <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.orders_in_transit?.count + ' шт'"></span>
+                                    <span class="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full" x-text="(overview.transit?.orders_in_transit?.count || 0) + ' шт'"></span>
                                 </div>
                                 <div class="text-xl font-bold text-amber-700" x-text="formatMoney(overview.transit?.orders_in_transit?.amount || 0)"></div>
                             </div>
                             <div class="bg-blue-50 rounded-xl p-4">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-sm text-blue-700">Закупки в пути</span>
-                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full" x-text="overview.transit?.purchases_in_transit?.count + ' шт'"></span>
+                                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full" x-text="(overview.transit?.purchases_in_transit?.count || 0) + ' шт'"></span>
                                 </div>
                                 <div class="text-xl font-bold text-blue-700" x-text="formatMoney(overview.transit?.purchases_in_transit?.amount || 0)"></div>
                             </div>
@@ -334,7 +334,7 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             </template>
-                            <button @click="loadMarketplaceIncome()" class="text-sm text-emerald-600 hover:text-emerald-700">
+                            <button @click="loadMarketplaceIncome()" class="text-sm text-blue-600 hover:text-blue-700">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
                         </div>
@@ -638,7 +638,7 @@
                     <template x-if="!marketplaceIncome && !loadingIncome">
                         <div class="text-center py-8 text-gray-500">
                             <p class="text-sm">Данные о доходах маркетплейсов недоступны</p>
-                            <button @click="loadMarketplaceIncome()" class="mt-2 text-sm text-emerald-600 hover:text-emerald-700">Загрузить</button>
+                            <button @click="loadMarketplaceIncome()" class="mt-2 text-sm text-blue-600 hover:text-blue-700">Загрузить</button>
                         </div>
                     </template>
                 </div>
@@ -654,7 +654,7 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             </template>
-                            <button @click="loadMarketplaceExpenses(true)" class="text-sm text-emerald-600 hover:text-emerald-700" :disabled="loadingExpenses" title="Обновить данные с маркетплейсов">
+                            <button @click="loadMarketplaceExpenses(true)" class="text-sm text-blue-600 hover:text-blue-700" :disabled="loadingExpenses" title="Обновить данные с маркетплейсов">
                                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
                         </div>
@@ -1031,7 +1031,7 @@
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
-                        <button class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center space-x-2"
+                        <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center space-x-2"
                                 @click="showTransactionForm = true; transactionForm = { type: 'expense', amount: '', transaction_date: new Date().toISOString().slice(0,10), description: '', category_id: '' }">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>Добавить</span>
@@ -1087,7 +1087,7 @@
                                 <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-medium" :class="statusClass(tx.status)" x-text="statusLabel(tx.status)"></span></td>
                                 <td class="px-6 py-4 text-right space-x-2">
                                     <template x-if="tx.status === 'draft'">
-                                        <button class="text-emerald-600 hover:text-emerald-700 text-sm font-medium" @click="confirmTransaction(tx.id)">Подтвердить</button>
+                                        <button class="text-blue-600 hover:text-blue-700 text-sm font-medium" @click="confirmTransaction(tx.id)">Подтвердить</button>
                                     </template>
                                     <template x-if="tx.status !== 'deleted'">
                                         <button class="text-red-500 hover:text-red-600 text-sm" @click="deleteTransaction(tx.id)" title="Удалить">
@@ -1177,7 +1177,7 @@
                                 <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-medium" :class="debtStatusClass(debt.status)" x-text="debtStatusLabel(debt.status)"></span></td>
                                 <td class="px-6 py-4 text-right">
                                     <template x-if="debt.status !== 'paid' && debt.status !== 'written_off'">
-                                        <button class="text-emerald-600 hover:text-emerald-700 text-sm font-medium" @click="openPaymentForm(debt)">Погасить</button>
+                                        <button class="text-blue-600 hover:text-blue-700 text-sm font-medium" @click="openPaymentForm(debt)">Погасить</button>
                                     </template>
                                 </td>
                             </tr>
@@ -1196,7 +1196,7 @@
                             <h2 class="text-lg font-semibold text-gray-900">Сотрудники</h2>
                             <p class="text-sm text-gray-500">Управление сотрудниками для учёта зарплат и расходов</p>
                         </div>
-                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all flex items-center space-x-2"
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all flex items-center space-x-2"
                                 @click="showEmployeeForm = true; employeeForm = { first_name: '', last_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' }">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>Добавить сотрудника</span>
@@ -1220,7 +1220,7 @@
 
                                 <!-- Action buttons -->
                                 <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
-                                    <button class="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium flex items-center space-x-1"
                                             @click="openPaySalaryModal(emp)">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         <span>Зарплата</span>
@@ -1247,7 +1247,7 @@
                             <div class="col-span-full text-center py-8 text-gray-500">
                                 <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                 <p>Нет сотрудников</p>
-                                <button class="mt-2 text-purple-600 hover:text-purple-700 font-medium" @click="showEmployeeForm = true">Добавить первого сотрудника</button>
+                                <button class="mt-2 text-blue-600 hover:text-blue-700 font-medium" @click="showEmployeeForm = true">Добавить первого сотрудника</button>
                             </div>
                         </template>
                     </div>
@@ -1257,7 +1257,7 @@
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-lg font-semibold text-gray-900">Расчёты зарплаты</h2>
-                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                                 @click="showCalculateSalaryForm = true">
                             Рассчитать за период
                         </button>
@@ -1275,10 +1275,10 @@
                                 <div class="text-right">
                                     <div class="text-lg font-bold text-purple-600" x-text="formatMoney(calc.total_net)"></div>
                                     <template x-if="calc.status === 'calculated'">
-                                        <button class="text-sm text-purple-600 hover:text-purple-700 font-medium" @click="approveSalary(calc.id)">Утвердить</button>
+                                        <button class="text-sm text-blue-600 hover:text-blue-700 font-medium" @click="approveSalary(calc.id)">Утвердить</button>
                                     </template>
                                     <template x-if="calc.status === 'approved'">
-                                        <button class="text-sm text-green-600 hover:text-green-700 font-medium" @click="paySalary(calc.id)">Выплатить</button>
+                                        <button class="text-sm text-blue-600 hover:text-blue-700 font-medium" @click="paySalary(calc.id)">Выплатить</button>
                                     </template>
                                 </div>
                             </div>
@@ -1391,17 +1391,17 @@
                 <!-- Actions -->
                 <div class="flex justify-between items-center">
                     <div class="flex items-center space-x-3">
-                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center space-x-2"
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2"
                                 @click="showCashAccountModal = true; resetCashAccountForm()">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>Добавить счёт</span>
                         </button>
-                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center space-x-2"
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2"
                                 @click="showTransferModal = true">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                             <span>Перевод</span>
                         </button>
-                        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2"
+                        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2"
                                 @click="syncMarketplacePayouts()" :disabled="syncingPayouts">
                             <svg class="w-5 h-5" :class="syncingPayouts ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             <span x-text="syncingPayouts ? 'Синхронизация...' : 'Синхр. выплат'"></span>
@@ -1474,7 +1474,7 @@
                     <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">Нет денежных счетов</h3>
                     <p class="text-gray-500 mb-4">Добавьте кассу, банковский счёт или карту для учёта денежных средств</p>
-                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" @click="showCashAccountModal = true; resetCashAccountForm()">
+                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="showCashAccountModal = true; resetCashAccountForm()">
                         Добавить счёт
                     </button>
                 </div>
@@ -1489,7 +1489,7 @@
                             <h3 class="text-lg font-semibold text-gray-900">Движения: <span x-text="selectedCashAccount?.name"></span></h3>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button class="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl text-sm"
+                            <button class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm"
                                     @click="showIncomeModal = true">
                                 + Приход
                             </button>
@@ -1833,7 +1833,7 @@
                                        x-model="newCategoryName"
                                        @keydown.enter.prevent="createCustomCategory()">
                                 <button type="button"
-                                        class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm"
+                                        class="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm"
                                         @click="createCustomCategory()"
                                         :disabled="!newCategoryName.trim() || savingCategory">
                                     <span x-show="!savingCategory">Добавить</span>
@@ -1864,7 +1864,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransactionForm = false" :disabled="savingTransaction">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createTransaction()" :disabled="!transactionForm.amount || !transactionForm.category_id || savingTransaction">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createTransaction()" :disabled="!transactionForm.amount || !transactionForm.category_id || savingTransaction">
                     <svg x-show="savingTransaction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span x-text="savingTransaction ? 'Сохранение...' : 'Сохранить'"></span>
                 </button>
@@ -1946,7 +1946,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showDebtPaymentForm = false" :disabled="savingDebtPayment">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createDebtPayment()" :disabled="savingDebtPayment">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createDebtPayment()" :disabled="savingDebtPayment">
                     <svg x-show="savingDebtPayment" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span x-text="savingDebtPayment ? 'Погашение...' : 'Погасить'"></span>
                 </button>
@@ -2003,7 +2003,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showEmployeeForm = false" :disabled="savingEmployee">Отмена</button>
-                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createEmployee()" :disabled="savingEmployee">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createEmployee()" :disabled="savingEmployee">
                     <svg x-show="savingEmployee" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span x-text="savingEmployee ? 'Сохранение...' : 'Сохранить'"></span>
                 </button>
@@ -2047,7 +2047,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showPaySalaryModal = false" :disabled="savingEmployeeAction">Отмена</button>
-                <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50" @click="submitPaySalary()" :disabled="savingEmployeeAction || !paySalaryForm.amount">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50" @click="submitPaySalary()" :disabled="savingEmployeeAction || !paySalaryForm.amount">
                     <svg x-show="savingEmployeeAction" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span>Выплатить</span>
                 </button>
@@ -2226,7 +2226,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCalculateSalaryForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl" @click="calculateSalary()">Рассчитать</button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="calculateSalary()">Рассчитать</button>
             </div>
         </div>
     </div>
@@ -2320,7 +2320,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCurrencyModal = false">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" @click="saveCurrencyRates()">Сохранить</button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="saveCurrencyRates()">Сохранить</button>
             </div>
         </div>
     </div>
@@ -2387,7 +2387,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showCashAccountModal = false">Отмена</button>
-                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50" :disabled="savingCashAccount || !cashAccountForm.name" @click="saveCashAccount()">
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50" :disabled="savingCashAccount || !cashAccountForm.name" @click="saveCashAccount()">
                     <span x-show="!savingCashAccount">Создать</span>
                     <span x-show="savingCashAccount">Сохранение...</span>
                 </button>
@@ -2438,7 +2438,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showTransferModal = false">Отмена</button>
-                <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50"
                         :disabled="savingCashAccount || !transferForm.from_account_id || !transferForm.to_account_id || !transferForm.amount"
                         @click="saveTransfer()">
                     <span x-show="!savingCashAccount">Перевести</span>
@@ -2477,7 +2477,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showIncomeModal = false">Отмена</button>
-                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl disabled:opacity-50"
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50"
                         :disabled="savingCashAccount || !incomeForm.amount"
                         @click="saveAccountIncome()">
                     <span x-show="!savingCashAccount">Добавить</span>
@@ -2541,7 +2541,7 @@
             <!-- Tabs -->
             <div class="flex bg-white rounded-xl p-1 shadow-sm overflow-x-auto">
                 <button class="flex-shrink-0 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
-                        :class="activeTab === 'overview' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600'"
+                        :class="activeTab === 'overview' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'"
                         @click="activeTab = 'overview'">
                     Обзор
                 </button>
@@ -2556,7 +2556,7 @@
                     Долги
                 </button>
                 <button class="flex-shrink-0 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
-                        :class="activeTab === 'salary' ? 'bg-purple-100 text-purple-700' : 'text-gray-600'"
+                        :class="activeTab === 'salary' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'"
                         @click="activeTab = 'salary'">
                     Зарплата
                 </button>
@@ -2653,7 +2653,7 @@
             <div x-show="activeTab === 'salary'" class="space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="native-caption">Сотрудники</div>
-                    <button class="native-btn bg-purple-600 text-white text-sm py-1.5 px-3" @click="showEmployeeForm = true">+ Добавить</button>
+                    <button class="native-btn bg-blue-600 text-white text-sm py-1.5 px-3" @click="showEmployeeForm = true">+ Добавить</button>
                 </div>
                 <template x-for="emp in employees" :key="emp.id">
                     <div class="native-card p-4">

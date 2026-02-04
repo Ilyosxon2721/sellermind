@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/WildberriesOrder.php
 
 namespace App\Models;
@@ -106,7 +107,7 @@ class WildberriesOrder extends Model
      */
     public function hasMarking(): bool
     {
-        return !empty($this->sgtin) || !empty($this->uin) || !empty($this->imei) || !empty($this->gtin);
+        return ! empty($this->sgtin) || ! empty($this->uin) || ! empty($this->imei) || ! empty($this->gtin);
     }
 
     /**
@@ -114,7 +115,7 @@ class WildberriesOrder extends Model
      */
     public function hasExpirationDate(): bool
     {
-        return !empty($this->expiration_date);
+        return ! empty($this->expiration_date);
     }
 
     /**
@@ -122,7 +123,7 @@ class WildberriesOrder extends Model
      */
     public function isInSupply(): bool
     {
-        return !empty($this->supply_id);
+        return ! empty($this->supply_id);
     }
 
     /**
@@ -138,7 +139,7 @@ class WildberriesOrder extends Model
      */
     protected function mapWbStatus(?string $wbStatus): string
     {
-        if (!$wbStatus) {
+        if (! $wbStatus) {
             return 'unknown';
         }
 
@@ -190,7 +191,7 @@ class WildberriesOrder extends Model
     {
         $country = $this->country_name ?? ($this->raw_data['countryName'] ?? null);
 
-        if (!$country) {
+        if (! $country) {
             return null;
         }
 
@@ -210,7 +211,7 @@ class WildberriesOrder extends Model
      */
     public function isCompletedSale(): bool
     {
-        return !$this->is_cancel && !$this->is_return && $this->is_realization;
+        return ! $this->is_cancel && ! $this->is_return && $this->is_realization;
     }
 
     // ========== Scopes ==========
@@ -260,7 +261,7 @@ class WildberriesOrder extends Model
             ->where('is_return', false)
             ->where(function ($q) {
                 $q->whereNull('wb_status')
-                  ->orWhereNotIn('wb_status', ['ready_for_pickup']);
+                    ->orWhereNotIn('wb_status', ['ready_for_pickup']);
             });
     }
 
@@ -280,6 +281,6 @@ class WildberriesOrder extends Model
      */
     public function scopeCancelled($query)
     {
-        return $query->where(fn($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+        return $query->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
     }
 }

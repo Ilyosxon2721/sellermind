@@ -27,8 +27,11 @@ class AgentMessage extends Model
     ];
 
     const ROLE_SYSTEM = 'system';
+
     const ROLE_USER = 'user';
+
     const ROLE_ASSISTANT = 'assistant';
+
     const ROLE_TOOL = 'tool';
 
     public function run(): BelongsTo

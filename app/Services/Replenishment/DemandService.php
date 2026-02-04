@@ -32,6 +32,7 @@ class DemandService
         return collect($skuIds)->mapWithKeys(function ($skuId) use ($rows, $windowDays) {
             $demand = (float) ($rows[$skuId] ?? 0);
             $avg = $windowDays > 0 ? $demand / $windowDays : 0;
+
             return [$skuId => $avg];
         });
     }

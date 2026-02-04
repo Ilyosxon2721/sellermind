@@ -43,6 +43,7 @@ class StockBalanceService
         return collect($skuIds)->mapWithKeys(function ($skuId) use ($ledger, $reservations) {
             $onHand = (float) ($ledger[$skuId] ?? 0);
             $reserved = (float) ($reservations[$skuId] ?? 0);
+
             return [
                 $skuId => [
                     'on_hand' => $onHand,
@@ -62,6 +63,7 @@ class StockBalanceService
         if ($locationId) {
             $query->where('location_id', $locationId);
         }
+
         return (float) $query->sum('qty_delta');
     }
 
@@ -72,6 +74,7 @@ class StockBalanceService
             ->whereIn('warehouse_id', $warehouseIds)
             ->whereIn('sku_id', $skuIds)
             ->where('status', StockReservation::STATUS_ACTIVE);
+
         // location is optional; if enabled, extend model/table later
         return (float) $query->sum('qty');
     }
@@ -113,12 +116,7 @@ class StockBalanceService
     /**
      * Update cost for SKU by creating an adjustment ledger entry
      *
-     * @param int $companyId
-     * @param int $warehouseId
-     * @param int $skuId
-     * @param float $newUnitCost New unit cost in UZS
-     * @param int|null $userId
-     * @return array
+     * @param  float  $newUnitCost  New unit cost in UZS
      */
     public function updateCost(int $companyId, int $warehouseId, int $skuId, float $newUnitCost, ?int $userId = null): array
     {

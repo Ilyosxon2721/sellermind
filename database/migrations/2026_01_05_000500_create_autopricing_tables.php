@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('autopricing_policies')) {
+        if (! Schema::hasTable('autopricing_policies')) {
             Schema::create('autopricing_policies', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -33,7 +33,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('autopricing_rules')) {
+        if (! Schema::hasTable('autopricing_rules')) {
             Schema::create('autopricing_rules', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -51,7 +51,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('autopricing_proposals')) {
+        if (! Schema::hasTable('autopricing_proposals')) {
             Schema::create('autopricing_proposals', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -78,7 +78,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('autopricing_daily_counters')) {
+        if (! Schema::hasTable('autopricing_daily_counters')) {
             Schema::create('autopricing_daily_counters', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -91,7 +91,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('autopricing_change_log')) {
+        if (! Schema::hasTable('autopricing_change_log')) {
             Schema::create('autopricing_change_log', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');

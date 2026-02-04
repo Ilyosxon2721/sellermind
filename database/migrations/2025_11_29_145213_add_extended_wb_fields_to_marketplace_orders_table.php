@@ -87,7 +87,7 @@ return new class extends Migration
                 'wb_sale_price', 'wb_scan_price', 'wb_currency_code', 'wb_converted_currency_code',
                 'wb_ddate', 'wb_created_at_utc',
                 'wb_required_meta', 'wb_optional_meta', 'wb_comment',
-                'wb_status_group'
+                'wb_status_group',
             ]);
         });
     }

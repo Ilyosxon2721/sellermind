@@ -6,9 +6,6 @@ use App\Models\Autopricing\AutopricingChangeLog;
 use App\Models\Autopricing\AutopricingDailyCounter;
 use App\Models\Autopricing\AutopricingPolicy;
 use App\Models\Autopricing\AutopricingProposal;
-use App\Services\Pricing\PricePublishService;
-use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class AutopricingApplyService
 {
@@ -17,6 +14,7 @@ class AutopricingApplyService
         $prop = AutopricingProposal::byCompany($companyId)->findOrFail($proposalId);
         $prop->status = 'APPROVED';
         $prop->save();
+
         return $prop;
     }
 
@@ -26,6 +24,7 @@ class AutopricingApplyService
         $prop->status = 'REJECTED';
         $prop->error_message = $reason;
         $prop->save();
+
         return $prop;
     }
 

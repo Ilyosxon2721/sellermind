@@ -257,7 +257,7 @@
                         @if($session->status !== 'running')
                             <form action="{{ route('vpc_sessions.start', $session) }}" method="POST">
                                 @csrf
-                                <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center">
+                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center">
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                                     </svg>
@@ -429,7 +429,7 @@ function vpcShowPage(sessionId) {
                 <p class="font-medium text-gray-900">Режим управления</p>
             </div>
             <div class="p-2 space-y-1">
-                <button @click="setControlMode('AGENT_CONTROL')" class="w-full p-3 rounded-xl flex items-center" :class="session.control_mode === 'AGENT_CONTROL' ? 'bg-purple-50' : 'bg-white'">
+                <button @click="setControlMode('AGENT_CONTROL')" class="w-full p-3 rounded-xl flex items-center" :class="session.control_mode === 'AGENT_CONTROL' ? 'bg-blue-50' : 'bg-white'">
                     <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
                         <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -470,7 +470,7 @@ function vpcShowPage(sessionId) {
             @if($session->status !== 'running')
                 <form id="pwa-start-form" action="{{ route('vpc_sessions.start', $session) }}" method="POST">
                     @csrf
-                    <button type="submit" class="native-btn w-full bg-green-500 text-white">Запустить</button>
+                    <button type="submit" class="native-btn w-full bg-blue-600 text-white">Запустить</button>
                 </form>
             @endif
 

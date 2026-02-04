@@ -27,6 +27,7 @@ class YandexMarketPushStocks extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных Yandex Market аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -66,10 +67,11 @@ class YandexMarketPushStocks extends Command
 
         if ($links->isEmpty()) {
             $this->warn('  Нет активных связей для синхронизации');
+
             return;
         }
 
-        $this->line("  Найдено связей: " . $links->count());
+        $this->line('  Найдено связей: '.$links->count());
 
         // Подготовить данные для синхронизации
         $stocksData = [];
@@ -79,8 +81,9 @@ class YandexMarketPushStocks extends Command
             // Для YM API нужен shopSku (артикул), проверяем сначала external_sku
             $offerId = $link->external_sku ?? $link->external_offer_id ?? $link->marketplaceProduct?->external_offer_id;
 
-            if (!$offerId) {
+            if (! $offerId) {
                 $this->warn("  Пропуск связи #{$link->id}: отсутствует offer_id/external_sku");
+
                 continue;
             }
 
@@ -95,6 +98,7 @@ class YandexMarketPushStocks extends Command
 
         if (empty($stocksData)) {
             $this->warn('  Нет данных для синхронизации');
+
             return;
         }
 
@@ -103,6 +107,7 @@ class YandexMarketPushStocks extends Command
             foreach ($stocksData as $item) {
                 $this->line("    Offer: {$item['offer_id']}, Amount: {$item['stock']}");
             }
+
             return;
         }
 
@@ -130,7 +135,7 @@ class YandexMarketPushStocks extends Command
                     'offer_id' => $stockItem['offer_id'],
                     'error' => $e->getMessage(),
                 ]);
-                $this->error("  Ошибка для offer {$stockItem['offer_id']}: " . $e->getMessage());
+                $this->error("  Ошибка для offer {$stockItem['offer_id']}: ".$e->getMessage());
             }
         }
 

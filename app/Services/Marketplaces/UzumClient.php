@@ -1,10 +1,10 @@
 <?php
+
 // file: app/Services/Marketplaces/UzumClient.php
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceShop;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Http;
@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class UzumClient implements MarketplaceClientInterface
 {
     protected MarketplaceHttpClient $http;
+
     protected IssueDetectorService $issueDetector;
 
     public function __construct(MarketplaceHttpClient $http, IssueDetectorService $issueDetector)
@@ -54,7 +55,7 @@ class UzumClient implements MarketplaceClientInterface
                 }
 
                 $page++;
-            } while (!empty($list) && count($list) === $pageSize);
+            } while (! empty($list) && count($list) === $pageSize);
         }
 
         return $all;
@@ -125,7 +126,7 @@ class UzumClient implements MarketplaceClientInterface
                     }
 
                     $page++;
-                } while (!empty($list));
+                } while (! empty($list));
 
                 $successfulShops[] = $shopId;
                 Log::info('Uzum syncCatalog shop completed', [
@@ -142,6 +143,7 @@ class UzumClient implements MarketplaceClientInterface
                         'error' => $e->getMessage(),
                     ]);
                     $failedShops[] = $shopId;
+
                     continue; // Skip this shop, try next one
                 }
                 // Re-throw other errors
@@ -150,8 +152,8 @@ class UzumClient implements MarketplaceClientInterface
         }
 
         // If all shops failed, throw error
-        if (empty($successfulShops) && !empty($failedShops)) {
-            throw new \RuntimeException('Доступ запрещён ко всем магазинам. Проверьте, что токен Uzum активен и имеет доступ к магазинам: ' . implode(', ', $failedShops));
+        if (empty($successfulShops) && ! empty($failedShops)) {
+            throw new \RuntimeException('Доступ запрещён ко всем магазинам. Проверьте, что токен Uzum активен и имеет доступ к магазинам: '.implode(', ', $failedShops));
         }
 
         return [
@@ -197,6 +199,7 @@ class UzumClient implements MarketplaceClientInterface
                     ]);
 
                     sleep($waitTime);
+
                     continue;
                 }
 
@@ -212,7 +215,7 @@ class UzumClient implements MarketplaceClientInterface
     protected function storeProduct(MarketplaceAccount $account, string|int $shopId, array $product): void
     {
         $externalId = $product['productId'] ?? $product['id'] ?? null;
-        if (!$externalId) {
+        if (! $externalId) {
             return;
         }
 
@@ -222,13 +225,13 @@ class UzumClient implements MarketplaceClientInterface
         $price = null;
         if (isset($product['price'])) {
             $price = (float) $product['price'];
-        } elseif (!empty($product['skuList'][0]['price'])) {
+        } elseif (! empty($product['skuList'][0]['price'])) {
             $price = (float) $product['skuList'][0]['price'];
         }
 
         // Stock: prefer product quantityFbs/Active, otherwise sum of SKUs
         $stock = $product['quantityFbs'] ?? $product['quantityActive'] ?? null;
-        if ($stock === null && !empty($product['skuList'])) {
+        if ($stock === null && ! empty($product['skuList'])) {
             $stock = collect($product['skuList'])->sum(function ($sku) {
                 return ($sku['quantityFbs'] ?? 0)
                     + ($sku['quantityActive'] ?? 0)
@@ -255,7 +258,7 @@ class UzumClient implements MarketplaceClientInterface
         );
 
         // For completeness, save SKU-level info into raw_payload (already there), external_offer_id
-        if (!$mp->external_offer_id && !empty($product['skuList'][0]['skuId'])) {
+        if (! $mp->external_offer_id && ! empty($product['skuList'][0]['skuId'])) {
             $mp->external_offer_id = (string) $product['skuList'][0]['skuId'];
             $mp->save();
         }
@@ -281,7 +284,7 @@ class UzumClient implements MarketplaceClientInterface
             'RETURNED',
         ];
 
-        if (!$internalStatuses || empty($internalStatuses)) {
+        if (! $internalStatuses || empty($internalStatuses)) {
             return $default;
         }
 
@@ -310,6 +313,7 @@ class UzumClient implements MarketplaceClientInterface
     public function fetchShops(MarketplaceAccount $account): array
     {
         $response = $this->request($account, 'GET', '/v1/shops');
+
         // Uzum API returns shops in payload array
         return $response['payload'] ?? $response ?? [];
     }
@@ -321,23 +325,24 @@ class UzumClient implements MarketplaceClientInterface
     {
         // 1. from explicit argument
         $shopIds = $this->normalizeShopIds($shopIds);
-        if (!empty($shopIds)) {
+        if (! empty($shopIds)) {
             return $shopIds;
         }
 
         // 2. from credentials_json['shop_ids'] - user selected shops
         $credentialsJson = $account->credentials_json ?? [];
-        if (!empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
+        if (! empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
             Log::debug('Uzum resolveShopIds: raw shop_ids from credentials_json', [
                 'account_id' => $account->id,
                 'raw_shop_ids' => $credentialsJson['shop_ids'],
             ]);
             $shopIds = $this->normalizeShopIds($credentialsJson['shop_ids']);
-            if (!empty($shopIds)) {
+            if (! empty($shopIds)) {
                 Log::info('Uzum resolveShopIds: normalized shop_ids from credentials_json', [
                     'account_id' => $account->id,
                     'shop_ids' => $shopIds,
                 ]);
+
                 return $shopIds;
             }
         }
@@ -346,7 +351,7 @@ class UzumClient implements MarketplaceClientInterface
         $shopIds = $this->normalizeShopIds(
             is_array($account->shop_id) ? $account->shop_id : explode(',', (string) $account->shop_id)
         );
-        if (!empty($shopIds)) {
+        if (! empty($shopIds)) {
             return $shopIds;
         }
 
@@ -362,11 +367,11 @@ class UzumClient implements MarketplaceClientInterface
             $this->storeShops($account, $apiShops);
             $ids = $this->normalizeShopIds(array_column($apiShops, 'id'));
 
-            if (empty($account->shop_id) && !empty($ids)) {
+            if (empty($account->shop_id) && ! empty($ids)) {
                 $account->update(['shop_id' => implode(',', $ids)]);
             }
 
-            if (!empty($ids)) {
+            if (! empty($ids)) {
                 return $ids;
             }
         } catch (\Throwable $e) {
@@ -385,7 +390,7 @@ class UzumClient implements MarketplaceClientInterface
     protected function storeShops(MarketplaceAccount $account, array $shops): void
     {
         foreach ($shops as $shop) {
-            if (!isset($shop['id'])) {
+            if (! isset($shop['id'])) {
                 continue;
             }
             MarketplaceShop::updateOrCreate(
@@ -477,7 +482,7 @@ class UzumClient implements MarketplaceClientInterface
 
         return [
             'success' => false,
-            'message' => 'Ошибка пинга Uzum: ' . ($lastError ?? 'endpoint not found'),
+            'message' => 'Ошибка пинга Uzum: '.($lastError ?? 'endpoint not found'),
             'response_time_ms' => null,
         ];
     }
@@ -502,14 +507,16 @@ class UzumClient implements MarketplaceClientInterface
             foreach ($products as $mp) {
                 $mp->markAsFailed('Shop ID не настроен для аккаунта Uzum');
             }
+
             return;
         }
         $shopId = $shopIds[0]; // Используем первый магазин
 
         foreach ($products as $marketplaceProduct) {
             $product = $marketplaceProduct->product;
-            if (!$product) {
+            if (! $product) {
                 $marketplaceProduct->markAsFailed('Product not found');
+
                 continue;
             }
 
@@ -517,7 +524,7 @@ class UzumClient implements MarketplaceClientInterface
                 // Маппим товар в формат Uzum
                 $uzumData = $this->mapProductToUzumFormat($marketplaceProduct, $product, $shopId);
 
-                if (!empty($marketplaceProduct->external_product_id)) {
+                if (! empty($marketplaceProduct->external_product_id)) {
                     // Обновляем существующий товар
                     $response = $this->request(
                         $account,
@@ -564,11 +571,11 @@ class UzumClient implements MarketplaceClientInterface
     protected function mapProductToUzumFormat($marketplaceProduct, $product, string $shopId): array
     {
         // Артикул продавца
-        $sku = $product->article ?? $product->sku ?? 'SKU-' . $product->id;
+        $sku = $product->article ?? $product->sku ?? 'SKU-'.$product->id;
 
         // Получаем категорию Uzum
         $categoryId = $marketplaceProduct->external_category_id ?? null;
-        if (!$categoryId) {
+        if (! $categoryId) {
             throw new \Exception('Категория Uzum не указана. Укажите категорию перед публикацией.');
         }
 
@@ -577,10 +584,10 @@ class UzumClient implements MarketplaceClientInterface
 
         // Собираем изображения
         $images = [];
-        if (!empty($product->main_image)) {
+        if (! empty($product->main_image)) {
             $images[] = ['url' => $product->main_image, 'main' => true];
         }
-        if (!empty($product->images) && is_array($product->images)) {
+        if (! empty($product->images) && is_array($product->images)) {
             foreach ($product->images as $img) {
                 $url = is_string($img) ? $img : ($img['url'] ?? null);
                 if ($url) {
@@ -623,21 +630,21 @@ class UzumClient implements MarketplaceClientInterface
     {
         $characteristics = [];
 
-        if (!empty($product->composition)) {
+        if (! empty($product->composition)) {
             $characteristics[] = [
                 'title' => 'Состав',
                 'value' => $product->composition,
             ];
         }
 
-        if (!empty($product->country_of_origin)) {
+        if (! empty($product->country_of_origin)) {
             $characteristics[] = [
                 'title' => 'Страна производства',
                 'value' => $product->country_of_origin,
             ];
         }
 
-        if (!empty($product->manufacturer)) {
+        if (! empty($product->manufacturer)) {
             $characteristics[] = [
                 'title' => 'Производитель',
                 'value' => $product->manufacturer,
@@ -654,27 +661,27 @@ class UzumClient implements MarketplaceClientInterface
          * - PUT /v2/fbs/sku/price - обновление цены SKU
          * Цены в Uzum указываются в сумах (без деления)
          */
-
         foreach ($products as $marketplaceProduct) {
-            if (!$marketplaceProduct->external_product_id) {
+            if (! $marketplaceProduct->external_product_id) {
                 continue;
             }
 
             $product = $marketplaceProduct->product;
-            if (!$product || !$product->price) {
+            if (! $product || ! $product->price) {
                 continue;
             }
 
             // Получаем SKU ID из raw_payload
             $skuId = $marketplaceProduct->external_offer_id;
-            if (!$skuId && !empty($marketplaceProduct->raw_payload['skuList'][0]['skuId'])) {
+            if (! $skuId && ! empty($marketplaceProduct->raw_payload['skuList'][0]['skuId'])) {
                 $skuId = $marketplaceProduct->raw_payload['skuList'][0]['skuId'];
             }
 
-            if (!$skuId) {
+            if (! $skuId) {
                 Log::warning('Uzum syncPrices: SKU ID not found', [
                     'product_id' => $marketplaceProduct->external_product_id,
                 ]);
+
                 continue;
             }
 
@@ -720,13 +727,12 @@ class UzumClient implements MarketplaceClientInterface
 
     /**
      * Update stock for a specific SKU within an Uzum product
-     * 
+     *
      * Uzum API: POST /v2/fbs/sku/stocks
-     * 
-     * @param MarketplaceAccount $account
-     * @param string $productId External product ID
-     * @param string $skuId External SKU ID within the product
-     * @param int $stock Stock quantity to set
+     *
+     * @param  string  $productId  External product ID
+     * @param  string  $skuId  External SKU ID within the product
+     * @param  int  $stock  Stock quantity to set
      * @return array Response data
      */
     public function updateStock(MarketplaceAccount $account, string $productId, string $skuId, int $stock): array
@@ -735,44 +741,44 @@ class UzumClient implements MarketplaceClientInterface
         $marketplaceProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
             ->where('external_product_id', $productId)
             ->first();
-            
+
         $skuData = null;
-        if ($marketplaceProduct && !empty($marketplaceProduct->raw_payload['skuList'])) {
+        if ($marketplaceProduct && ! empty($marketplaceProduct->raw_payload['skuList'])) {
             foreach ($marketplaceProduct->raw_payload['skuList'] as $sku) {
-                if (isset($sku['skuId']) && (string)$sku['skuId'] === (string)$skuId) {
+                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                     $skuData = $sku;
                     break;
                 }
             }
         }
-        
+
         // Uzum API v2 endpoint for stock updates
         $path = '/v2/fbs/sku/stocks';
-        
+
         $requestData = [
             'skuAmountList' => [
                 [
-                    'skuId' => (int)$skuId,
+                    'skuId' => (int) $skuId,
                     'skuTitle' => $skuData['skuTitle'] ?? $skuData['skuFullTitle'] ?? '',
                     'productTitle' => $marketplaceProduct->title ?? '',
                     'barcode' => $skuData['barcode'] ?? '',
                     'amount' => $stock,
                     'fbsLinked' => true,
                     'dbsLinked' => false,
-                ]
-            ]
+                ],
+            ],
         ];
 
         try {
             $response = $this->request($account, 'POST', $path, [], $requestData);
-            
+
             Log::info('Uzum stock update successful', [
                 'product_id' => $productId,
                 'sku_id' => $skuId,
                 'stock' => $stock,
                 'response' => $response,
             ]);
-            
+
             return [
                 'success' => true,
                 'stock' => $stock,
@@ -789,8 +795,8 @@ class UzumClient implements MarketplaceClientInterface
                 'request' => $requestData,
                 'error' => $e->getMessage(),
             ]);
-            
-            throw new \RuntimeException("Не удалось обновить остаток товара. Попробуйте позже или проверьте настройки API.");
+
+            throw new \RuntimeException('Не удалось обновить остаток товара. Попробуйте позже или проверьте настройки API.');
         }
     }
 
@@ -798,11 +804,11 @@ class UzumClient implements MarketplaceClientInterface
     {
         // This method is for batch stock sync if needed in the future
         // For now, we use updateStock for individual SKU-level updates
-        
+
         $stockUpdates = [];
 
         foreach ($products as $marketplaceProduct) {
-            if (!$marketplaceProduct->external_product_id) {
+            if (! $marketplaceProduct->external_product_id) {
                 continue;
             }
 
@@ -815,7 +821,7 @@ class UzumClient implements MarketplaceClientInterface
                 ->get();
 
             foreach ($links as $link) {
-                if (!$link->external_sku_id || !$link->variant) {
+                if (! $link->external_sku_id || ! $link->variant) {
                     continue;
                 }
 
@@ -849,7 +855,7 @@ class UzumClient implements MarketplaceClientInterface
     /**
      * Загрузка заказов Uzum с фильтром по статусам (если переданы)
      *
-     * @param array|null $internalStatuses Список наших внутренних статусов (new, in_assembly, in_supply, waiting_pickup, issued, cancelled, returns)
+     * @param  array|null  $internalStatuses  Список наших внутренних статусов (new, in_assembly, in_supply, waiting_pickup, issued, cancelled, returns)
      */
     public function fetchOrdersByStatuses(MarketplaceAccount $account, DateTimeInterface $from, DateTimeInterface $to, ?array $internalStatuses = null): array
     {
@@ -931,10 +937,11 @@ class UzumClient implements MarketplaceClientInterface
 
                         foreach ($list as $orderData) {
                             // Для активных статусов загружаем все заказы без фильтрации по дате
-                            if (!$isActiveStatus) {
+                            if (! $isActiveStatus) {
                                 $created = $orderData['dateCreated'] ?? null;
                                 if ($fromMs && $created && is_numeric($created) && $created < $fromMs) {
                                     $stopStatus = true;
+
                                     continue;
                                 }
                                 if ($toMs && $created && is_numeric($created) && $created > $toMs) {
@@ -945,7 +952,7 @@ class UzumClient implements MarketplaceClientInterface
                         }
 
                         $page++;
-                    } while (!$stopStatus && !empty($list) && count($list) === $size);
+                    } while (! $stopStatus && ! empty($list) && count($list) === $size);
                 } catch (\Throwable $e) {
                     Log::warning('Uzum fetchOrders status failed', [
                         'status' => $status,
@@ -990,14 +997,14 @@ class UzumClient implements MarketplaceClientInterface
     public function getOrderLabel(MarketplaceAccount $account, string $orderId, string $size = 'LARGE'): ?array
     {
         $size = strtoupper($size);
-        if (!in_array($size, ['LARGE', 'BIG'])) {
+        if (! in_array($size, ['LARGE', 'BIG'])) {
             $size = 'LARGE';
         }
 
         $path = "/v1/fbs/order/{$orderId}/labels/print";
         $response = $this->request($account, 'GET', $path, ['size' => $size]);
         $doc = $response['payload']['document'] ?? null;
-        if (!$doc) {
+        if (! $doc) {
             return null;
         }
 
@@ -1024,11 +1031,12 @@ class UzumClient implements MarketplaceClientInterface
         ]);
 
         $payload = $response['payload'] ?? null;
-        if (!$payload) {
+        if (! $payload) {
             Log::warning('Uzum confirmOrder: no payload in response', [
                 'order_id' => $orderId,
                 'response' => $response,
             ]);
+
             return null;
         }
 
@@ -1060,11 +1068,12 @@ class UzumClient implements MarketplaceClientInterface
         ]);
 
         $payload = $response['payload'] ?? null;
-        if (!$payload) {
+        if (! $payload) {
             Log::warning('Uzum cancelOrder: no payload in response', [
                 'order_id' => $orderId,
                 'response' => $response,
             ]);
+
             return null;
         }
 
@@ -1099,7 +1108,7 @@ class UzumClient implements MarketplaceClientInterface
         Log::warning('Uzum API DEBUG - Token being sent', [
             'account_id' => $account->id,
             'path' => $path,
-            'has_auth_header' => !empty($authToken),
+            'has_auth_header' => ! empty($authToken),
             'token_length' => $authToken ? strlen($authToken) : 0,
             'token_first_20' => $authToken ? substr($authToken, 0, 20) : null,
             'token_last_10' => $authToken ? substr($authToken, -10) : null,
@@ -1111,7 +1120,7 @@ class UzumClient implements MarketplaceClientInterface
             'Content-Type' => 'application/json',
         ], $this->trimHeaders($authHeaders));
 
-        $url = rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
 
         Log::info('Uzum API request', [
             'account_id' => $account->id,
@@ -1126,8 +1135,8 @@ class UzumClient implements MarketplaceClientInterface
             ->withHeaders($headers);
 
         $upper = strtoupper($method);
-        if ($upper === 'GET' && !empty($query)) {
-            $url = $url . '?' . $this->buildQuery($query);
+        if ($upper === 'GET' && ! empty($query)) {
+            $url = $url.'?'.$this->buildQuery($query);
             $response = $client->get($url);
         } else {
             $response = match ($upper) {
@@ -1151,7 +1160,7 @@ class UzumClient implements MarketplaceClientInterface
             'body' => mb_substr($rawBody, 0, 1000),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $errorInfo = $this->extractError($rawBody);
 
             // 400 Bad Request - неверные параметры запроса
@@ -1194,7 +1203,7 @@ class UzumClient implements MarketplaceClientInterface
                     'Uzum API request'
                 );
 
-                throw new \RuntimeException("Доступ запрещён. Проверьте, что токен Uzum активен и имеет необходимые права.");
+                throw new \RuntimeException('Доступ запрещён. Проверьте, что токен Uzum активен и имеет необходимые права.');
             }
 
             // 429 Too Many Requests - rate limit exceeded
@@ -1204,7 +1213,7 @@ class UzumClient implements MarketplaceClientInterface
                     'url' => $url,
                 ]);
 
-                throw new \RuntimeException("Слишком много запросов. Подождите минуту и попробуйте снова.");
+                throw new \RuntimeException('Слишком много запросов. Подождите минуту и попробуйте снова.');
             }
 
             $message = $this->formatUserFriendlyError($status, $errorInfo, $rawBody);
@@ -1212,6 +1221,7 @@ class UzumClient implements MarketplaceClientInterface
         }
 
         $json = $response->json();
+
         return is_array($json) ? $json : [];
     }
 
@@ -1244,10 +1254,10 @@ class UzumClient implements MarketplaceClientInterface
         foreach ($params as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $item) {
-                    $parts[] = rawurlencode($key) . '=' . rawurlencode($item);
+                    $parts[] = rawurlencode($key).'='.rawurlencode($item);
                 }
             } else {
-                $parts[] = rawurlencode($key) . '=' . rawurlencode($value);
+                $parts[] = rawurlencode($key).'='.rawurlencode($value);
             }
         }
 
@@ -1256,12 +1266,12 @@ class UzumClient implements MarketplaceClientInterface
 
     protected function extractError(?string $rawBody): ?string
     {
-        if (!$rawBody) {
+        if (! $rawBody) {
             return null;
         }
 
         $json = json_decode($rawBody, true);
-        if (!is_array($json)) {
+        if (! is_array($json)) {
             return null;
         }
 
@@ -1271,6 +1281,7 @@ class UzumClient implements MarketplaceClientInterface
         if ($code && $message) {
             return "{$code}: {$message}";
         }
+
         return $message ?? $code;
     }
 
@@ -1317,6 +1328,7 @@ class UzumClient implements MarketplaceClientInterface
         if ($errorInfo) {
             // Убираем технические детали для пользователя
             $cleanMessage = preg_replace('/^[\w-]+:\s*/', '', $errorInfo);
+
             return "Ошибка Uzum: {$cleanMessage}";
         }
 
@@ -1362,7 +1374,7 @@ class UzumClient implements MarketplaceClientInterface
         $address = $deliveryInfo['address'] ?? [];
 
         return [
-            'external_order_id' => isset($orderData['id']) ? (string)$orderData['id'] : null,
+            'external_order_id' => isset($orderData['id']) ? (string) $orderData['id'] : null,
             'status' => $statusNormalized,
             'status_normalized' => $statusNormalized,
             'customer_name' => $deliveryInfo['customerFullname'] ?? null,
@@ -1388,7 +1400,7 @@ class UzumClient implements MarketplaceClientInterface
 
     protected function mapOrderStatus(?string $status): ?string
     {
-        if (!$status) {
+        if (! $status) {
             return null;
         }
 
@@ -1415,6 +1427,7 @@ class UzumClient implements MarketplaceClientInterface
         ];
 
         $upper = strtoupper($status);
+
         return $map[$upper] ?? strtolower($status);
     }
 
@@ -1439,11 +1452,10 @@ class UzumClient implements MarketplaceClientInterface
      * Используется для аналитики, дашборда, отчётов
      * Содержит все типы заказов: FBO/FBS/DBS/EDBS
      *
-     * @param MarketplaceAccount $account
-     * @param array $shopIds Shop IDs to fetch orders for
-     * @param int $page Page number (0-based)
-     * @param int $size Page size (max 100)
-     * @param bool $group Group by order (false = individual items)
+     * @param  array  $shopIds  Shop IDs to fetch orders for
+     * @param  int  $page  Page number (0-based)
+     * @param  int  $size  Page size (max 100)
+     * @param  bool  $group  Group by order (false = individual items)
      * @return array ['orderItems' => [...], 'totalElements' => int]
      */
     public function fetchFinanceOrders(
@@ -1459,6 +1471,7 @@ class UzumClient implements MarketplaceClientInterface
 
         if (empty($shopIds)) {
             Log::warning('Uzum fetchFinanceOrders: no shop IDs', ['account_id' => $account->id]);
+
             return ['orderItems' => [], 'totalElements' => 0];
         }
 
@@ -1517,9 +1530,8 @@ class UzumClient implements MarketplaceClientInterface
      * Fetch all finance orders with pagination
      * Автоматически обходит все страницы
      *
-     * @param MarketplaceAccount $account
-     * @param array $shopIds Shop IDs
-     * @param int $maxPages Max pages to fetch (0 = unlimited)
+     * @param  array  $shopIds  Shop IDs
+     * @param  int  $maxPages  Max pages to fetch (0 = unlimited)
      * @return array All order items
      */
     public function fetchAllFinanceOrders(
@@ -1546,7 +1558,7 @@ class UzumClient implements MarketplaceClientInterface
                     $page++;
 
                     // Добавим небольшую задержку чтобы не превысить rate limit
-                    if (!empty($items)) {
+                    if (! empty($items)) {
                         usleep(200000); // 200ms
                     }
 
@@ -1563,7 +1575,7 @@ class UzumClient implements MarketplaceClientInterface
                     ]);
                     break;
                 }
-            } while (!empty($items) && count($items) === $size);
+            } while (! empty($items) && count($items) === $size);
         }
 
         Log::info('Uzum fetchAllFinanceOrders completed', [
@@ -1577,7 +1589,7 @@ class UzumClient implements MarketplaceClientInterface
     /**
      * Map finance order item to model data
      *
-     * @param array $item Raw order item from API
+     * @param  array  $item  Raw order item from API
      * @return array Mapped data for UzumFinanceOrder model
      */
     public function mapFinanceOrderData(array $item): array
@@ -1626,7 +1638,7 @@ class UzumClient implements MarketplaceClientInterface
      */
     protected function mapFinanceOrderStatus(?string $status): ?string
     {
-        if (!$status) {
+        if (! $status) {
             return null;
         }
 
@@ -1643,7 +1655,7 @@ class UzumClient implements MarketplaceClientInterface
      */
     protected function convertTimestamp($timestamp): ?\Carbon\Carbon
     {
-        if (!$timestamp) {
+        if (! $timestamp) {
             return null;
         }
 
@@ -1663,12 +1675,11 @@ class UzumClient implements MarketplaceClientInterface
      * Response structure: { payload: { payments: [...] } }
      * Payment item: { id, name, source, shopId, paymentPrice, amount, dateCreated, dateUpdated, status }
      *
-     * @param MarketplaceAccount $account
-     * @param array $shopIds Shop IDs to fetch expenses for
-     * @param int|null $dateFromMs Start date in milliseconds
-     * @param int|null $dateToMs End date in milliseconds
-     * @param int $page Page number (0-based)
-     * @param int $size Page size (max 100)
+     * @param  array  $shopIds  Shop IDs to fetch expenses for
+     * @param  int|null  $dateFromMs  Start date in milliseconds
+     * @param  int|null  $dateToMs  End date in milliseconds
+     * @param  int  $page  Page number (0-based)
+     * @param  int  $size  Page size (max 100)
      * @return array ['expenses' => [...], 'totalElements' => int]
      */
     public function fetchFinanceExpenses(
@@ -1683,6 +1694,7 @@ class UzumClient implements MarketplaceClientInterface
 
         if (empty($shopIds)) {
             Log::warning('Uzum fetchFinanceExpenses: no shop IDs', ['account_id' => $account->id]);
+
             return ['expenses' => [], 'totalElements' => 0];
         }
 
@@ -1718,7 +1730,7 @@ class UzumClient implements MarketplaceClientInterface
                     'expenses_count' => count($expenses),
                     'total_elements' => $total,
                     'response_keys' => array_keys($response),
-                    'sample' => !empty($expenses) ? array_slice($expenses, 0, 2) : [],
+                    'sample' => ! empty($expenses) ? array_slice($expenses, 0, 2) : [],
                 ]);
 
                 $allExpenses = array_merge($allExpenses, $expenses);
@@ -1742,11 +1754,10 @@ class UzumClient implements MarketplaceClientInterface
      * Fetch all finance expenses with pagination
      * Автоматически обходит все страницы
      *
-     * @param MarketplaceAccount $account
-     * @param array $shopIds Shop IDs
-     * @param int|null $dateFromMs Start date in milliseconds
-     * @param int|null $dateToMs End date in milliseconds
-     * @param int $maxPages Max pages to fetch (0 = unlimited)
+     * @param  array  $shopIds  Shop IDs
+     * @param  int|null  $dateFromMs  Start date in milliseconds
+     * @param  int|null  $dateToMs  End date in milliseconds
+     * @param  int  $maxPages  Max pages to fetch (0 = unlimited)
      * @return array All expense items
      */
     public function fetchAllFinanceExpenses(
@@ -1774,7 +1785,7 @@ class UzumClient implements MarketplaceClientInterface
                     $page++;
 
                     // Rate limit protection
-                    if (!empty($expenses)) {
+                    if (! empty($expenses)) {
                         usleep(200000); // 200ms
                     }
 
@@ -1790,7 +1801,7 @@ class UzumClient implements MarketplaceClientInterface
                     ]);
                     break;
                 }
-            } while (!empty($expenses) && count($expenses) === $size);
+            } while (! empty($expenses) && count($expenses) === $size);
         }
 
         Log::info('Uzum fetchAllFinanceExpenses completed', [
@@ -1804,7 +1815,7 @@ class UzumClient implements MarketplaceClientInterface
     /**
      * Map finance expense item to structured data
      *
-     * @param array $expense Raw expense item from API
+     * @param  array  $expense  Raw expense item from API
      * @return array Mapped expense data
      */
     public function mapFinanceExpenseData(array $expense): array
@@ -1831,7 +1842,7 @@ class UzumClient implements MarketplaceClientInterface
      */
     protected function mapExpenseTypeLabel(?string $type): string
     {
-        if (!$type) {
+        if (! $type) {
             return 'Прочее';
         }
 
@@ -1864,9 +1875,6 @@ class UzumClient implements MarketplaceClientInterface
      * Note: Uzum expenses API dateFrom/dateTo filters are unreliable (return empty results).
      * We fetch all expenses and filter locally by dateService field.
      *
-     * @param MarketplaceAccount $account
-     * @param \DateTimeInterface $from
-     * @param \DateTimeInterface $to
      * @return array Summary of expenses by type
      */
     public function getExpensesSummary(
@@ -1882,8 +1890,9 @@ class UzumClient implements MarketplaceClientInterface
         $allExpenses = $this->fetchAllFinanceExpenses($account, [], null, null);
 
         // Filter by dateService (the actual service date, not creation date)
-        $expenses = array_filter($allExpenses, function($expense) use ($dateFromMs, $dateToMs) {
+        $expenses = array_filter($allExpenses, function ($expense) use ($dateFromMs, $dateToMs) {
             $dateService = $expense['dateService'] ?? $expense['dateCreated'] ?? 0;
+
             return $dateService >= $dateFromMs && $dateService <= $dateToMs;
         });
 
@@ -1910,7 +1919,7 @@ class UzumClient implements MarketplaceClientInterface
 
             // Track unique sources with amounts for debugging
             if ($source) {
-                if (!isset($summary['sources'][$source])) {
+                if (! isset($summary['sources'][$source])) {
                     $summary['sources'][$source] = 0;
                 }
                 $summary['sources'][$source] += $amount;
@@ -1960,5 +1969,4 @@ class UzumClient implements MarketplaceClientInterface
 
         return $summary;
     }
-
 }

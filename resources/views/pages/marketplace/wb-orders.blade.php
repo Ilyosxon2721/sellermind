@@ -120,44 +120,44 @@
 
     <div class="flex-1 flex flex-col overflow-hidden font-sans"
          :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
-        <!-- WB Header - Classic Wildberries Style -->
-        <header class="wb-header-bg shadow-lg">
+        <!-- WB Header - White Clean Style -->
+        <header class="bg-white border-b border-gray-200 shadow-sm">
             <div class="px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <a href="/marketplace/{{ $accountId }}" class="text-white/70 hover:text-white transition p-1 rounded hover:bg-white/10">
+                        <a href="/marketplace/{{ $accountId }}" class="text-gray-400 hover:text-gray-600 transition p-1 rounded hover:bg-gray-100">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </a>
                         <div class="flex items-center space-x-3">
-                            <!-- WB Logo - Classic White Badge -->
-                            <div class="w-11 h-11 bg-white rounded-xl flex items-center justify-center shadow-md">
-                                <span class="text-[#CB11AB] font-bold text-lg tracking-tight">WB</span>
+                            <!-- WB Logo - Gradient Badge -->
+                            <div class="w-11 h-11 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                                <span class="text-white font-bold text-lg tracking-tight">WB</span>
                             </div>
                             <div>
                                 <div class="flex items-center space-x-3">
-                                    <h1 class="text-xl font-bold text-white drop-shadow-sm" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
+                                    <h1 class="text-xl font-bold text-gray-900" x-text="orderMode === 'fbs' ? 'FBS Заказы' : (orderMode === 'dbs' ? 'DBS Заказы' : 'Финансовый отчёт')"></h1>
                                     <!-- FBS/DBS/FBO Toggle - Pill Style -->
-                                    <div class="flex items-center bg-white/20 backdrop-blur rounded-full p-1">
+                                    <div class="flex items-center bg-gray-100 rounded-full p-1">
                                         <button @click="switchMode('fbs')"
                                                 class="px-4 py-1.5 text-xs font-bold rounded-full transition"
-                                                :class="orderMode === 'fbs' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
+                                                :class="orderMode === 'fbs' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             FBS
                                         </button>
                                         <button @click="switchMode('dbs')"
                                                 class="px-4 py-1.5 text-xs font-bold rounded-full transition"
-                                                :class="orderMode === 'dbs' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
+                                                :class="orderMode === 'dbs' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             DBS
                                         </button>
                                         <button @click="switchMode('fbo')"
                                                 class="px-4 py-1.5 text-xs font-bold rounded-full transition"
-                                                :class="orderMode === 'fbo' ? 'bg-white text-[#CB11AB] shadow' : 'text-white/90 hover:text-white'">
+                                                :class="orderMode === 'fbo' ? 'bg-purple-600 text-white shadow' : 'text-gray-600 hover:text-gray-900'">
                                             FBO
                                         </button>
                                     </div>
                                 </div>
-                                <p class="text-sm text-white opacity-90">{{ $accountName ?? 'Wildberries' }}</p>
+                                <p class="text-sm text-gray-500">{{ $accountName ?? 'Wildberries' }}</p>
                             </div>
                         </div>
                     </div>
@@ -165,15 +165,15 @@
                     <!-- Action Buttons -->
                     <div class="flex items-center space-x-3">
                         <!-- WebSocket Indicator - Pill Style -->
-                        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full backdrop-blur"
-                             :class="wsConnected ? 'bg-green-400/20 border border-green-400/40' : 'bg-white/10 border border-white/20'">
-                            <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-400 animate-pulse' : 'bg-white/50'"></span>
-                            <span class="text-xs font-semibold" :class="wsConnected ? 'text-green-100' : 'text-white/70'" x-text="wsConnected ? (syncInProgress ? syncProgress + '%' : 'Live') : 'Offline'"></span>
+                        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full"
+                             :class="wsConnected ? 'bg-green-50 border border-green-200' : 'bg-gray-100 border border-gray-200'">
+                            <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'"></span>
+                            <span class="text-xs font-semibold" :class="wsConnected ? 'text-green-700' : 'text-gray-600'" x-text="wsConnected ? (syncInProgress ? syncProgress + '%' : 'Live') : 'Offline'"></span>
                         </div>
 
                         <button @click="triggerSync()"
                                 :disabled="syncInProgress"
-                                class="px-4 py-2 bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20 rounded-lg font-semibold transition flex items-center space-x-2 disabled:opacity-50 text-sm">
+                                class="px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 rounded-lg font-semibold transition flex items-center space-x-2 disabled:opacity-50 text-sm">
                             <svg x-show="syncInProgress" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -185,7 +185,7 @@
                         </button>
 
                         <a href="/marketplace/{{ $accountId }}/supplies"
-                           class="px-4 py-2 bg-white text-[#CB11AB] rounded-lg font-bold transition flex items-center space-x-2 hover:bg-pink-50 text-sm shadow">
+                           class="px-4 py-2 bg-purple-600 text-white rounded-lg font-bold transition flex items-center space-x-2 hover:bg-purple-700 text-sm shadow">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                             </svg>
@@ -855,7 +855,7 @@
 
                 <!-- Footer -->
                 <div class="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button @click="printOrderSticker(selectedOrder)" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">Печать стикера</button>
+                    <button @click="printOrderSticker(selectedOrder)" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Печать стикера</button>
                     <button @click="showOrderModal = false" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Закрыть</button>
                 </div>
             </div>
@@ -953,7 +953,7 @@
                 </div>
                 <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
                     <button @click="showDeliverSupplyModal = false" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Отмена</button>
-                    <button @click="deliverSupply()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">Передать в доставку</button>
+                    <button @click="deliverSupply()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">Передать в доставку</button>
                 </div>
             </div>
         </div>

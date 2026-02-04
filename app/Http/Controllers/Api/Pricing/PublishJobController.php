@@ -14,24 +14,31 @@ class PublishJobController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected PricePublishService $service)
-    {
-    }
+    public function __construct(protected PricePublishService $service) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $q = PricePublishJob::byCompany($companyId);
-        if ($request->status) $q->where('status', $request->status);
-        if ($request->channel_code) $q->where('channel_code', $request->channel_code);
+        if ($request->status) {
+            $q->where('status', $request->status);
+        }
+        if ($request->channel_code) {
+            $q->where('channel_code', $request->channel_code);
+        }
+
         return $this->successResponse($q->orderByDesc('id')->limit(200)->get());
     }
 
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $request->validate([
             'scenario_id' => ['required', 'integer'],
             'channel_code' => ['required', 'string'],
@@ -39,29 +46,38 @@ class PublishJobController extends Controller
         ]);
 
         $job = $this->service->buildJob($companyId, $data['scenario_id'], $data['channel_code'], $data['sku_ids'], Auth::id());
+
         return $this->successResponse($job);
     }
 
     public function queue($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $job = $this->service->queue($id, $companyId);
+
         return $this->successResponse($job);
     }
 
     public function run($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $job = $this->service->run($id, $companyId);
+
         return $this->successResponse($job);
     }
 
     public function exportCsv($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) abort(403);
+        if (! $companyId) {
+            abort(403);
+        }
 
         $job = PricePublishJob::byCompany($companyId)->findOrFail($id);
         $items = $job->payload_json['items'] ?? [];
@@ -76,6 +92,7 @@ class PublishJobController extends Controller
         });
         $response->headers->set('Content-Type', 'text/csv');
         $response->headers->set('Content-Disposition', 'attachment; filename="prices.csv"');
+
         return $response;
     }
 }

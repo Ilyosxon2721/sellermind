@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use Illuminate\Console\Command;
@@ -55,8 +54,9 @@ class SyncWarehouseStockToVariants extends Command
         try {
             foreach ($skus as $sku) {
                 $variant = $sku->productVariant;
-                if (!$variant) {
+                if (! $variant) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -67,6 +67,7 @@ class SyncWarehouseStockToVariants extends Command
                 // Skip if already in sync
                 if (abs($ledgerStock - $currentStock) < 0.001) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -78,7 +79,7 @@ class SyncWarehouseStockToVariants extends Command
                     'action' => $dryRun ? 'would update' : 'updated',
                 ];
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $variant->update(['stock_default' => $ledgerStock]);
 
                     Log::info('Synced warehouse stock to variant', [
@@ -98,10 +99,10 @@ class SyncWarehouseStockToVariants extends Command
                 DB::commit();
             }
 
-            if (!empty($results)) {
+            if (! empty($results)) {
                 $this->table(
                     ['SKU', 'Barcode', 'stock_default', 'stock_ledger', 'Action'],
-                    collect($results)->map(fn($r) => [
+                    collect($results)->map(fn ($r) => [
                         $r['sku'],
                         $r['barcode'],
                         $r['current_stock_default'],
@@ -123,8 +124,9 @@ class SyncWarehouseStockToVariants extends Command
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Ошибка: ' . $e->getMessage());
+            $this->error('Ошибка: '.$e->getMessage());
             Log::error('Warehouse to variant sync failed', ['error' => $e->getMessage()]);
+
             return 1;
         }
     }

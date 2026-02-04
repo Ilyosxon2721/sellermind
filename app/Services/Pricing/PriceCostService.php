@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schema;
 class PriceCostService
 {
     /**
-    * Determine unit cost with confidence.
-    */
+     * Determine unit cost with confidence.
+     */
     public function unitCost(int $companyId, int $skuId, ?string $date = null): array
     {
         // 1) SKU override

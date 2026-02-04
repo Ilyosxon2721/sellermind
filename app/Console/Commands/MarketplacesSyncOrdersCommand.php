@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Console/Commands/MarketplacesSyncOrdersCommand.php
 
 namespace App\Console\Commands;
@@ -44,8 +45,9 @@ class MarketplacesSyncOrdersCommand extends Command
             // Sync specific account
             $account = \App\Models\MarketplaceAccount::find($accountId);
 
-            if (!$account) {
+            if (! $account) {
                 $this->error("Аккаунт #{$accountId} не найден.");
+
                 return self::FAILURE;
             }
 
@@ -81,7 +83,7 @@ class MarketplacesSyncOrdersCommand extends Command
             } else {
                 $totalErrors++;
                 $error = $result['error'] ?? 'Unknown error';
-                $this->line("  Аккаунт #{$accId}: <fg=red>ERROR</> - " . mb_substr($error, 0, 60));
+                $this->line("  Аккаунт #{$accId}: <fg=red>ERROR</> - ".mb_substr($error, 0, 60));
             }
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplacePayoutItem.php
 
 namespace App\Models;
@@ -9,12 +10,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplacePayoutItem extends Model
 {
     public const TYPE_SALE = 'sale';
+
     public const TYPE_RETURN = 'return';
+
     public const TYPE_COMMISSION = 'commission';
+
     public const TYPE_LOGISTICS = 'logistics';
+
     public const TYPE_STORAGE = 'storage';
+
     public const TYPE_ADV = 'adv';
+
     public const TYPE_PENALTY = 'penalty';
+
     public const TYPE_OTHER = 'other';
 
     protected $fillable = [

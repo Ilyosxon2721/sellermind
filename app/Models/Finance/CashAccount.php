@@ -11,10 +11,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CashAccount extends Model
 {
     public const TYPE_CASH = 'cash';
+
     public const TYPE_BANK = 'bank';
+
     public const TYPE_CARD = 'card';
+
     public const TYPE_EWALLET = 'ewallet';
+
     public const TYPE_MARKETPLACE = 'marketplace';
+
     public const TYPE_OTHER = 'other';
 
     protected $fillable = [
@@ -91,6 +96,7 @@ class CashAccount extends Model
         if ($marketplace) {
             $query->where('marketplace', $marketplace);
         }
+
         return $query;
     }
 
@@ -160,6 +166,7 @@ class CashAccount extends Model
         }
 
         $this->save();
+
         return $this->balance;
     }
 
@@ -174,7 +181,7 @@ class CashAccount extends Model
                 'marketplace_account_id' => $marketplaceAccount->id,
             ],
             [
-                'name' => $marketplaceAccount->name . ' (выплаты)',
+                'name' => $marketplaceAccount->name.' (выплаты)',
                 'type' => self::TYPE_MARKETPLACE,
                 'marketplace' => $marketplaceAccount->marketplace,
                 'currency_code' => $marketplaceAccount->marketplace === 'uzum' ? 'UZS' : 'RUB',

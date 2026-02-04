@@ -20,8 +20,7 @@ class MarketplaceSyncCompletedNotification extends Notification implements Shoul
         public int $syncedCount,
         public bool $hasErrors = false,
         public ?string $errorMessage = null
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.

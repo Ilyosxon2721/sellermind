@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Jobs/Marketplace/SyncMarketplaceOrdersJob.php
 
 namespace App\Jobs\Marketplace;
@@ -17,6 +18,7 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     public function __construct(
@@ -30,7 +32,7 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
     {
         // Берём свежие данные аккаунта, чтобы учитывать обновлённые токены/shop_id/флаги активности
         $account = MarketplaceAccount::find($this->account->id);
-        if (!$account || !$account->is_active) {
+        if (! $account || ! $account->is_active) {
             return;
         }
 
@@ -42,7 +44,7 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
         return [
             'marketplace-sync',
             'orders',
-            'account:' . $this->account->id,
+            'account:'.$this->account->id,
         ];
     }
 }

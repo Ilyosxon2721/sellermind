@@ -53,6 +53,7 @@ class WildberriesPass extends Model
     public function isExpiringSoon(int $days = 7): bool
     {
         $cutoffDate = now()->addDays($days)->startOfDay();
+
         return $this->date_to <= $cutoffDate && $this->date_to >= now()->startOfDay();
     }
 
@@ -79,6 +80,7 @@ class WildberriesPass extends Model
     public function scopeExpiringSoon($query, int $days = 7)
     {
         $cutoffDate = now()->addDays($days)->startOfDay();
+
         return $query->where('date_to', '<=', $cutoffDate)
             ->where('date_to', '>=', now()->startOfDay());
     }

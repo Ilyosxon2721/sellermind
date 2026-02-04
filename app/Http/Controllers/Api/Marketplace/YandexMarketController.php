@@ -20,9 +20,9 @@ class YandexMarketController extends Controller
     public function ping(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $result = $this->client->ping($account);
-        
+
         return response()->json($result);
     }
 
@@ -32,10 +32,10 @@ class YandexMarketController extends Controller
     public function campaigns(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         try {
             $campaigns = $this->client->getCampaigns($account);
-            
+
             return response()->json([
                 'success' => true,
                 'campaigns' => $campaigns,
@@ -70,7 +70,7 @@ class YandexMarketController extends Controller
 
         // Only update api_key if it's a real token (not masked value)
         $apiKey = $validated['api_key'] ?? '';
-        if (!empty($apiKey) && !str_starts_with($apiKey, '***') && !str_contains($apiKey, '...')) {
+        if (! empty($apiKey) && ! str_starts_with($apiKey, '***') && ! str_contains($apiKey, '...')) {
             $credentials['api_key'] = $apiKey;
         }
         if (isset($validated['campaign_id'])) {
@@ -111,10 +111,10 @@ class YandexMarketController extends Controller
     public function syncCatalog(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         try {
             $result = $this->client->syncCatalog($account);
-            
+
             return response()->json([
                 'success' => true,
                 'synced' => $result['synced'] ?? 0,
@@ -134,17 +134,17 @@ class YandexMarketController extends Controller
     public function orders(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $from = $request->input('from', now()->subDays(30)->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
-        
+
         try {
             $orders = $this->client->fetchOrders(
                 $account,
                 new \DateTime($from),
                 new \DateTime($to)
             );
-            
+
             return response()->json([
                 'success' => true,
                 'orders' => $orders,
@@ -164,13 +164,13 @@ class YandexMarketController extends Controller
     public function syncOrders(Request $request, MarketplaceAccount $account): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $from = $request->input('from') ? new \DateTime($request->input('from')) : null;
         $to = $request->input('to') ? new \DateTime($request->input('to')) : null;
-        
+
         try {
             $result = $this->client->syncOrders($account, $from, $to);
-            
+
             return response()->json([
                 'success' => true,
                 'synced' => $result['synced'] ?? 0,
@@ -193,8 +193,8 @@ class YandexMarketController extends Controller
         if ($account->marketplace !== 'yandex_market' && $account->marketplace !== 'ym') {
             abort(400, 'Аккаунт не является Yandex Market');
         }
-        
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             abort(403, 'Доступ запрещён');
         }
     }
@@ -207,10 +207,10 @@ class YandexMarketController extends Controller
     public function readyToShip(Request $request, MarketplaceAccount $account, string $orderId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         try {
             $result = $this->client->setOrderReadyToShip($account, $orderId);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Заказ готов к отгрузке',
@@ -230,12 +230,12 @@ class YandexMarketController extends Controller
     public function downloadLabels(Request $request, MarketplaceAccount $account, string $orderId)
     {
         $this->authorizeAccount($request, $account);
-        
+
         $format = $request->input('format', 'A7');
-        
+
         try {
             $pdfContent = $this->client->getOrderLabels($account, $orderId, $format);
-            
+
             return response($pdfContent, 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => "attachment; filename=\"order-{$orderId}-labels.pdf\"",
@@ -254,19 +254,19 @@ class YandexMarketController extends Controller
     public function setBoxes(Request $request, MarketplaceAccount $account, string $orderId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $boxes = $request->input('boxes', []);
-        
+
         if (empty($boxes)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Необходимо указать грузоместа',
             ], 400);
         }
-        
+
         try {
             $result = $this->client->setOrderBoxes($account, $orderId, $boxes);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Грузоместа установлены',
@@ -286,12 +286,12 @@ class YandexMarketController extends Controller
     public function cancelOrder(Request $request, MarketplaceAccount $account, string $orderId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         $reason = $request->input('reason', 'SHOP_FAILED');
-        
+
         try {
             $result = $this->client->cancelOrder($account, $orderId, $reason);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Заказ отменён',
@@ -311,10 +311,10 @@ class YandexMarketController extends Controller
     public function getOrderDetails(Request $request, MarketplaceAccount $account, string $orderId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
-        
+
         try {
             $order = $this->client->getOrder($account, $orderId);
-            
+
             return response()->json([
                 'success' => true,
                 'order' => $order,

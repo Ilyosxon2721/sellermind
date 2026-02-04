@@ -6,7 +6,6 @@ use App\Models\UzumOrder;
 use App\Models\Warehouse\StockReservation;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class FixExistingReservations extends Command
@@ -48,6 +47,7 @@ class FixExistingReservations extends Command
 
         if ($reservations->isEmpty()) {
             $this->info('Нет резервов для исправления');
+
             return self::SUCCESS;
         }
 
@@ -62,8 +62,9 @@ class FixExistingReservations extends Command
         foreach ($orderIds as $orderId) {
             $order = UzumOrder::with(['account', 'items'])->find($orderId);
 
-            if (!$order) {
+            if (! $order) {
                 $this->warn("  Заказ #{$orderId} не найден, пропускаем");
+
                 continue;
             }
 
@@ -71,7 +72,7 @@ class FixExistingReservations extends Command
 
             $this->line("  Заказ #{$order->external_order_id}: {$orderReservations->count()} резервов");
 
-            if (!$dryRun) {
+            if (! $dryRun) {
                 // 1. Удаляем старые резервы
                 foreach ($orderReservations as $reservation) {
                     // Возвращаем остатки через sku
@@ -85,12 +86,12 @@ class FixExistingReservations extends Command
                 // Сбрасываем статус обработки заказа
                 $order->update(['stock_status' => 'none']);
 
-                if (!$deleteOnly) {
+                if (! $deleteOnly) {
                     // 2. Пересоздаём резервы с правильными вариантами
                     try {
                         $items = $this->orderStockService->getOrderItems($order, 'uzum');
 
-                        if (!empty($items)) {
+                        if (! empty($items)) {
                             $result = $this->orderStockService->processOrderStatusChange(
                                 $order->account,
                                 $order,
@@ -101,7 +102,7 @@ class FixExistingReservations extends Command
 
                             if ($result['success'] && $result['action'] === 'reserve') {
                                 $recreated += $result['items_processed'] ?? 0;
-                                $this->info("    -> Создано новых резервов: " . ($result['items_processed'] ?? 0));
+                                $this->info('    -> Создано новых резервов: '.($result['items_processed'] ?? 0));
                             }
                         }
                     } catch (\Throwable $e) {

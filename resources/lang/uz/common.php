@@ -17,7 +17,7 @@ return [
     'back' => 'Ortga',
     'next' => 'Keyingi',
     'previous' => 'Oldingi',
-    
+
     // Table
     'actions' => 'Amallar',
     'status' => 'Holat',
@@ -27,14 +27,14 @@ return [
     'showing' => 'Ko\'rsatilmoqda',
     'of' => 'dan',
     'entries' => 'yozuv',
-    
+
     // Status
     'active' => 'Faol',
     'inactive' => 'Nofaol',
     'pending' => 'Kutilmoqda',
     'completed' => 'Yakunlandi',
     'cancelled' => 'Bekor qilindi',
-    
+
     // Messages
     'success' => 'Muvaffaqiyatli!',
     'error' => 'Xatolik!',

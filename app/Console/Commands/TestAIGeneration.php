@@ -39,11 +39,11 @@ class TestAIGeneration extends Command
                         language: 'ru',
                         style: 'professional'
                     );
-                    $this->line("Generated card:");
-                    $this->line("Title: " . ($response['title'] ?? 'N/A'));
-                    $this->line("Short: " . ($response['short_description'] ?? 'N/A'));
+                    $this->line('Generated card:');
+                    $this->line('Title: '.($response['title'] ?? 'N/A'));
+                    $this->line('Short: '.($response['short_description'] ?? 'N/A'));
                     $this->newLine();
-                    $this->line("Bullets:");
+                    $this->line('Bullets:');
                     foreach ($response['bullets'] ?? [] as $bullet) {
                         $this->line("  - {$bullet}");
                     }
@@ -56,25 +56,28 @@ class TestAIGeneration extends Command
                         style: 'friendly',
                         count: 3
                     );
-                    $this->line("Generated responses:");
+                    $this->line('Generated responses:');
                     foreach ($responses as $i => $response) {
                         $this->newLine();
-                        $this->line("Option " . ($i + 1) . ":");
+                        $this->line('Option '.($i + 1).':');
                         $this->line($response);
                     }
                     break;
 
                 default:
                     $this->error("Unknown test type: {$type}");
+
                     return Command::FAILURE;
             }
 
             $this->newLine();
             $this->info('Test completed successfully!');
+
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("Error: " . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }

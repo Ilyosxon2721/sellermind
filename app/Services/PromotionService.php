@@ -12,10 +12,6 @@ class PromotionService
 {
     /**
      * Detect slow-moving products for a company.
-     *
-     * @param int $companyId
-     * @param array $criteria
-     * @return Collection
      */
     public function detectSlowMovingProducts(int $companyId, array $criteria = []): Collection
     {
@@ -63,7 +59,7 @@ class PromotionService
             ->where('product_variant_id', $variant->id)
             ->max('created_at');
 
-        if (!$lastSaleDate) {
+        if (! $lastSaleDate) {
             // If no sales found, assume it's been 365 days
             return 365;
         }
@@ -122,7 +118,7 @@ class PromotionService
             $promotion = Promotion::create([
                 'company_id' => $company->id,
                 'created_by' => $userId,
-                'name' => 'Автоакция ' . now()->format('d.m.Y'),
+                'name' => 'Автоакция '.now()->format('d.m.Y'),
                 'description' => 'Автоматическая акция на медленно движущиеся товары',
                 'type' => 'percentage',
                 'discount_value' => $maxDiscount,
@@ -179,7 +175,7 @@ class PromotionService
             ->where('product_variant_id', $variant->id)
             ->first();
 
-        if (!$promotionProduct) {
+        if (! $promotionProduct) {
             return false;
         }
 
@@ -200,7 +196,7 @@ class PromotionService
             ->where('product_variant_id', $variant->id)
             ->first();
 
-        if (!$promotionProduct) {
+        if (! $promotionProduct) {
             return false;
         }
 

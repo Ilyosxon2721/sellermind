@@ -20,6 +20,7 @@ class InventoryDocumentPolicy
     protected function canEdit(Authenticatable $user): bool
     {
         $role = $this->role($user);
+
         return in_array($role, ['owner', 'manager', 'warehouse']);
     }
 

@@ -22,7 +22,7 @@ return [
     'pricing' => 'Цены',
     'debts' => 'Деньги',
     'company_profile' => 'Профиль компании',
-    
+
     // Warehouse submenu
     'warehouse_section' => 'Склад',
     'warehouse_dashboard' => 'Дашборд',
@@ -34,7 +34,7 @@ return [
     'warehouse_docs' => 'Документы',
     'warehouse_reservations' => 'Резервы',
     'warehouse_ledger' => 'Журнал движений',
-    
+
     // Company modal
     'create_company' => 'Создайте компанию',
     'create_company_desc' => 'Для работы с системой необходимо создать компанию. Это займет всего минуту!',
@@ -48,7 +48,7 @@ return [
     'company_create_error' => 'Произошла ошибка при создании компании. Попробуйте еще раз.',
     'additional_info_later' => 'Вы сможете добавить дополнительную информацию о компании позже в настройках',
     'close' => 'Закрыть',
-    
+
     // Common
     'welcome' => 'Добро пожаловать',
     'select_company' => 'Выберите компанию',

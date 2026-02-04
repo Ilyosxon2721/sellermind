@@ -19,6 +19,7 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 600; // 10 minutes
+
     public int $tries = 1;
 
     /**
@@ -28,8 +29,7 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
         protected int $companyId,
         protected int $userId,
         protected string $filePath
-    ) {
-    }
+    ) {}
 
     /**
      * Execute the job.
@@ -42,7 +42,7 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
             'file' => $this->filePath,
         ]);
 
-        $csvData = array_map(function($row) {
+        $csvData = array_map(function ($row) {
             return str_getcsv($row, ';');
         }, file($this->filePath));
 
@@ -79,13 +79,14 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                 // Find variant
                 $variant = ProductVariant::with('product')
                     ->where('id', $variantId)
-                    ->whereHas('product', function($q) {
+                    ->whereHas('product', function ($q) {
                         $q->where('company_id', $this->companyId);
                     })
                     ->first();
 
-                if (!$variant) {
+                if (! $variant) {
                     $errors[] = "Row {$rowNumber}: Variant not found (ID: {$variantId})";
+
                     continue;
                 }
 
@@ -108,7 +109,7 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                     $updateData['is_active'] = $isActive;
                 }
 
-                if (!empty($updateData)) {
+                if (! empty($updateData)) {
                     $variant->update($updateData);
                     $updated++;
                 }

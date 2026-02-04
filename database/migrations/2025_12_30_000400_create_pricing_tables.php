@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('pricing_scenarios')) {
+        if (! Schema::hasTable('pricing_scenarios')) {
             Schema::create('pricing_scenarios', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -29,7 +29,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('pricing_channel_overrides')) {
+        if (! Schema::hasTable('pricing_channel_overrides')) {
             Schema::create('pricing_channel_overrides', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -44,7 +44,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('pricing_sku_overrides')) {
+        if (! Schema::hasTable('pricing_sku_overrides')) {
             Schema::create('pricing_sku_overrides', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -62,7 +62,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('price_calculations')) {
+        if (! Schema::hasTable('price_calculations')) {
             Schema::create('price_calculations', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -82,7 +82,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('price_publish_jobs')) {
+        if (! Schema::hasTable('price_publish_jobs')) {
             Schema::create('price_publish_jobs', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');

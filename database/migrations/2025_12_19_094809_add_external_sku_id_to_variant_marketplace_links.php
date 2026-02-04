@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('variant_marketplace_links', function (Blueprint $table) {
             $table->string('external_sku_id')->nullable()->after('external_offer_id')
-                  ->comment('SKU ID for marketplaces with multi-SKU products (e.g., Uzum)');
+                ->comment('SKU ID for marketplaces with multi-SKU products (e.g., Uzum)');
             $table->index('external_sku_id');
         });
     }
