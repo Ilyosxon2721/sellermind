@@ -11,6 +11,7 @@ use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
 use App\Observers\OzonOrderObserver;
 use App\Observers\ProductVariantObserver;
+use App\Observers\RismentOrderObserver;
 use App\Observers\UzumOrderObserver;
 use App\Observers\WbOrderObserver;
 use App\Observers\YandexMarketOrderObserver;
@@ -51,6 +52,12 @@ class AppServiceProvider extends ServiceProvider
         WbOrder::observe(WbOrderObserver::class);
         OzonOrder::observe(OzonOrderObserver::class);
         YandexMarketOrder::observe(YandexMarketOrderObserver::class);
+
+        // RISMENT integration observer (FBS orders → Redis queue)
+        WbOrder::observe(RismentOrderObserver::class);
+        UzumOrder::observe(RismentOrderObserver::class);
+        OzonOrder::observe(RismentOrderObserver::class);
+        YandexMarketOrder::observe(RismentOrderObserver::class);
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);

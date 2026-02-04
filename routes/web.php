@@ -105,6 +105,17 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    // Integrations
+    Route::get('/integrations', [\App\Http\Controllers\Web\IntegrationController::class, 'index'])
+        ->name('integrations.index');
+    Route::get('/integrations/risment', [\App\Http\Controllers\Web\IntegrationController::class, 'risment'])
+        ->name('integrations.risment');
+
+    // RISMENT Integration Link page (legacy redirect)
+    Route::get('/integration/risment', function () {
+        return redirect()->route('integrations.risment');
+    })->name('integration.risment');
+
     Route::get('/promotions', function () {
         return view('pages.promotions');
     })->name('promotions');

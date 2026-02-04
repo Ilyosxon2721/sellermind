@@ -234,6 +234,17 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.pricing') }}</span>
         </a>
 
+        {{-- Integrations --}}
+        <a href="/integrations"
+           class="flex items-center rounded-lg transition {{ request()->is('integrations*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? '{{ __('admin.integrations') }}' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.integrations') }}</span>
+        </a>
+
         <hr class="my-2 border-gray-200" x-show="!$store.ui.sidebarCollapsed">
         <div x-show="$store.ui.sidebarCollapsed" class="my-2 flex justify-center">
             <div class="w-6 h-px bg-gray-200"></div>

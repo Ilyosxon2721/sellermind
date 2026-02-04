@@ -63,10 +63,49 @@ class MarketplaceOrderController extends Controller
             ]);
         }
 
+        if ($account && $account->marketplace === 'ozon') {
+            $orders = $this->loadOzonOrders($request, $account);
+            return response()->json([
+                'orders' => $orders,
+                'meta' => ['total' => count($orders)],
+            ]);
+        }
+
         // Если маркетплейс не указан или не поддерживается
         return response()->json([
             'orders' => [],
             'meta' => ['total' => 0],
+        ]);
+    }
+
+    /**
+     * Получить FBO заказы (сводные финансовые данные).
+     * GET /api/marketplace/orders/fbo
+     */
+    public function fboOrders(Request $request): JsonResponse
+    {
+        $request->validate([
+            'company_id' => ['required', 'exists:companies,id'],
+            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
+        ]);
+
+        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+
+        if ($account->marketplace === 'wb') {
+            return $this->wbFinanceOrders($request, $account);
+        }
+
+        if ($account->marketplace === 'uzum') {
+            return $this->uzumFinanceOrders($request, $account);
+        }
+
+        return response()->json([
+            'orderItems' => [],
+            'totalElements' => 0,
         ]);
     }
 
@@ -590,6 +629,11 @@ class MarketplaceOrderController extends Controller
         if ($account && $account->marketplace === 'uzum') {
             $stats = $this->statsUzum($request, $account);
 
+            return response()->json($stats);
+        }
+
+        if ($account && $account->marketplace === 'ozon') {
+            $stats = $this->statsOzon($request, $account);
             return response()->json($stats);
         }
 
@@ -1289,6 +1333,73 @@ class MarketplaceOrderController extends Controller
                 'cancelled' => (int) ($byStatus->cancelled_count ?? 0),
                 'returns' => (int) ($byStatus->returns_count ?? 0),
             ],
+        ];
+    }
+
+    /**
+     * Подгрузка Ozon заказов из таблицы ozon_orders
+     */
+    private function loadOzonOrders(Request $request, MarketplaceAccount $account): array
+    {
+        $query = \App\Models\OzonOrder::query()->where('marketplace_account_id', $account->id);
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+        if ($request->from) {
+            $query->where('created_at_ozon', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        $orders = $query->orderByDesc('created_at_ozon')->limit(1000)->get();
+
+        return $orders->map(function ($o) {
+            return [
+                'id' => $o->id,
+                'marketplace_account_id' => $o->marketplace_account_id,
+                'external_order_id' => $o->order_id,
+                'posting_number' => $o->posting_number,
+                'status' => $o->status,
+                'total_amount' => $o->total_price,
+                'currency' => 'RUB',
+                'ordered_at' => $o->created_at_ozon,
+                'products' => $o->products,
+            ];
+        })->all();
+    }
+
+    private function statsOzon(Request $request, MarketplaceAccount $account): array
+    {
+        $query = \App\Models\OzonOrder::query()->where('marketplace_account_id', $account->id);
+        if ($request->from) {
+            $query->where('created_at_ozon', '>=', Carbon::parse($request->from)->startOfDay());
+        }
+        if ($request->to) {
+            $query->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay());
+        }
+
+        $total = $query->count();
+        if ($total === 0) {
+            return [
+                'total_orders' => 0,
+                'total_amount' => 0,
+                'by_status' => [],
+            ];
+        }
+
+        $byStatus = \App\Models\OzonOrder::where('marketplace_account_id', $account->id)
+            ->when($request->from, fn($q) => $q->where('created_at_ozon', '>=', Carbon::parse($request->from)->startOfDay()))
+            ->when($request->to, fn($q) => $q->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay()))
+            ->selectRaw('status, count(*) as cnt')
+            ->groupBy('status')
+            ->pluck('cnt', 'status');
+
+        return [
+            'total_orders' => $total,
+            'total_amount' => $query->sum('total_price'),
+            'by_status' => $byStatus->toArray(),
         ];
     }
 }

@@ -32,7 +32,7 @@
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-[#1a1a1a]">Заказы Ozon</h1>
-                                <p class="text-sm text-gray-500">Управление отправлениями</p>
+                                <p class="text-sm text-gray-500">{{ $accountName ?? 'Ozon' }}</p>
                             </div>
                         </div>
                     </div>
