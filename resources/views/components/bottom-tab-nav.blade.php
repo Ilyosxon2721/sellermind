@@ -43,7 +43,7 @@
                 <div class="mx-1 h-8 w-px self-center" style="background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.1), transparent);"></div>
 
                 {{-- === GROUP 2: Warehouse (with flyout) === --}}
-                <div class="relative" @click.outside="warehouseMenuOpen = false">
+                <div class="relative" @click.outside="warehouseMenuOpen = false" x-ref="warehouseWrapper">
                     <button type="button"
                             @click="warehouseMenuOpen = !warehouseMenuOpen"
                             class="group relative flex flex-col items-center justify-end px-2 py-1 transition-all duration-150"
@@ -74,8 +74,8 @@
                          x-transition:leave="transition ease-in duration-100"
                          x-transition:leave-start="opacity-100 scale-100"
                          x-transition:leave-end="opacity-0 scale-95"
-                         class="absolute left-1/2 z-50 w-56 -translate-x-1/2 rounded-2xl border border-white/30 bg-white py-2 shadow-xl"
-                         :class="position === 'top' ? 'top-full mt-2' : 'bottom-full mb-2'"
+                         class="fixed z-9999 w-56 rounded-2xl border border-white/30 bg-white py-2 shadow-xl"
+                         :style="getWarehouseFlyoutStyle()"
                          style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
                         <a href="/warehouse" @click="warehouseMenuOpen = false"
                            class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors"
@@ -735,6 +735,20 @@ function dockNav() {
                 return this.currentPath === '/marketplace' || (this.currentPath.startsWith('/marketplace') && !this.currentPath.startsWith('/marketplace/sync-logs'));
             }
             return this.currentPath.startsWith(path);
+        },
+
+        getWarehouseFlyoutStyle() {
+            const wrapper = this.$refs.warehouseWrapper;
+            if (!wrapper) return '';
+            const rect = wrapper.getBoundingClientRect();
+            const flyoutWidth = 224; // w-56 = 14rem = 224px
+            let left = rect.left + rect.width / 2 - flyoutWidth / 2;
+            if (left < 8) left = 8;
+            if (left + flyoutWidth > window.innerWidth - 8) left = window.innerWidth - flyoutWidth - 8;
+            if (this.position === 'top') {
+                return `left: ${left}px; top: ${rect.bottom + 8}px;`;
+            }
+            return `left: ${left}px; bottom: ${window.innerHeight - rect.top + 8}px;`;
         },
 
         isWarehouseActive() {
