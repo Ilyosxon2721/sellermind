@@ -1,9 +1,10 @@
 <!-- Sidebar Component -->
-<div class="bg-white border-r border-gray-200 flex flex-col h-full transition-all duration-300
-            fixed inset-y-0 left-0 z-40
+<div class="bg-white flex flex-col h-full transition-all duration-300
+            fixed inset-y-0 z-40
             lg:relative lg:translate-x-0 lg:z-auto"
      :class="[
-         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+         $store.ui.navPosition === 'right' ? 'right-0 border-l border-gray-200' : 'left-0 border-r border-gray-200',
+         sidebarOpen ? 'translate-x-0' : ($store.ui.navPosition === 'right' ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
          $store.ui.sidebarCollapsed ? 'w-16' : 'w-72'
      ]"
      role="complementary">
