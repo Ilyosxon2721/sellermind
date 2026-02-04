@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,6 +14,7 @@ class IntegrationLink extends Model
         'external_system',
         'external_user_id',
         'link_token',
+        'warehouse_id',
         'is_active',
         'linked_at',
     ];
@@ -33,6 +35,11 @@ class IntegrationLink extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     public function scopeActive($query)

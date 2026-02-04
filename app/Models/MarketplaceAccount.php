@@ -44,6 +44,8 @@ class MarketplaceAccount extends Model
         'stock_sync_strategy',
         'stock_size_strategy',
         'sync_settings',
+        'risment_credential_id',
+        'source',
     ];
 
     // Fields that should be encrypted

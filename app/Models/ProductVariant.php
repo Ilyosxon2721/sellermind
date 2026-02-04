@@ -42,6 +42,7 @@ class ProductVariant extends Model
     protected $fillable = [
         'company_id',
         'product_id',
+        'name',
         'sku',
         'barcode',
         'article_suffix',
@@ -54,6 +55,7 @@ class ProductVariant extends Model
         'length_mm',
         'width_mm',
         'height_mm',
+        'risment_variant_id',
         'main_image_id',
         'is_active',
         'is_deleted',
