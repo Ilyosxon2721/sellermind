@@ -9,6 +9,13 @@ const api = axios.create({
     withCredentials: true, // Include cookies for session auth
 });
 
+// Флаг для предотвращения редиректа во время логина
+let isLoggingIn = false;
+
+export function setLoggingIn(value) {
+    isLoggingIn = value;
+}
+
 // Add token to requests
 api.interceptors.request.use((config) => {
     // Try Alpine persist format first, then fallback to regular
@@ -35,16 +42,25 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
+            // Не редиректить во время процесса логина — это вызывает loop
+            if (isLoggingIn) {
+                console.warn('401 during login flow, skipping redirect');
+                return Promise.reject(error);
+            }
+
+            // Не редиректить если уже на странице логина
+            if (window.location.pathname.includes('/login')) {
+                return Promise.reject(error);
+            }
+
             // Clear all auth data
             localStorage.removeItem('_x_auth_token');
             localStorage.removeItem('_x_auth_user');
             localStorage.removeItem('_x_current_company');
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
-            // Only redirect if not already on login page
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
-            }
+
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }
@@ -52,15 +68,25 @@ api.interceptors.response.use(
 
 export const auth = {
     async register(data) {
-        const response = await api.post('/auth/register', data);
-        // Alpine store will persist the token via $persist
-        return response.data;
+        setLoggingIn(true);
+        try {
+            const response = await api.post('/auth/register', data);
+            return response.data;
+        } finally {
+            // Сбрасываем флаг после небольшой задержки, чтобы loadCompanies успел выполниться
+            setTimeout(() => setLoggingIn(false), 3000);
+        }
     },
 
     async login(email, password) {
-        const response = await api.post('/auth/login', { email, password });
-        // Alpine store will persist the token via $persist
-        return response.data;
+        setLoggingIn(true);
+        try {
+            const response = await api.post('/auth/login', { email, password });
+            return response.data;
+        } finally {
+            // Сбрасываем флаг после небольшой задержки, чтобы loadCompanies успел выполниться
+            setTimeout(() => setLoggingIn(false), 3000);
+        }
     },
 
     async logout() {

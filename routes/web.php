@@ -49,17 +49,14 @@ Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function
     })->name('register.localized');
 });
 
-// Root redirect to Uzbek
-Route::get('/', function () {
-    if (request()->header('X-Requested-With') === 'com.sellermind.pwa') {
+// Root route - Smart routing based on PWA mode
+Route::get('/', function (Illuminate\Http\Request $request) {
+    // Check for native app header
+    if ($request->header('X-Requested-With') === 'com.sellermind.pwa') {
         $plans = \App\Models\Plan::where('is_active', true)->orderBy('sort_order')->get();
         return view('welcome', compact('plans'));
     }
-    return redirect('/uz');
-});
 
-// Public pages - Smart routing based on PWA mode
-Route::get('/', function (Illuminate\Http\Request $request) {
     // Check if PWA is installed (standalone mode)
     $isPWA = $request->cookie('pwa_installed') === 'true';
 
