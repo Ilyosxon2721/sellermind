@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_12_07_000002_make_product_id_nullable_in_marketplace_products.php
 
 use Illuminate\Database\Migrations\Migration;

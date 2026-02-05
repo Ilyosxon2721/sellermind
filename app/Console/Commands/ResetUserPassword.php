@@ -21,8 +21,9 @@ class ResetUserPassword extends Command
 
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error("Пользователь с email {$email} не найден");
+
             return Command::FAILURE;
         }
 
@@ -36,7 +37,7 @@ class ResetUserPassword extends Command
         $this->line("Email: {$email}");
         $this->line("Новый пароль: <fg=green;options=bold>{$password}</>");
         $this->newLine();
-        $this->warn("Сохраните пароль - он больше не будет показан!");
+        $this->warn('Сохраните пароль - он больше не будет показан!');
 
         return Command::SUCCESS;
     }

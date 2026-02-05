@@ -51,9 +51,10 @@ class ConsumeInSupplyReservations extends Command
         foreach ($reservations as $reservation) {
             $order = $this->findOrder($reservation);
 
-            if (!$order) {
+            if (! $order) {
                 $this->warn("  Резерв #{$reservation->id}: заказ не найден (source_id: {$reservation->source_id})");
                 $skipped++;
+
                 continue;
             }
 
@@ -64,7 +65,7 @@ class ConsumeInSupplyReservations extends Command
             if ($this->orderStockService->isSoldStatus($marketplace, $status)) {
                 $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' → СПИСАНИЕ");
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $reservation->update(['status' => StockReservation::STATUS_CONSUMED]);
 
                     if ($order->stock_status !== 'sold') {
@@ -76,6 +77,7 @@ class ConsumeInSupplyReservations extends Command
                 }
 
                 $consumed++;
+
                 continue;
             }
 
@@ -86,7 +88,7 @@ class ConsumeInSupplyReservations extends Command
 
                 $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' → ОТМЕНА + ВОЗВРАТ {$qty} шт");
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::beginTransaction();
                     try {
                         // Отменяем резерв
@@ -113,7 +115,7 @@ class ConsumeInSupplyReservations extends Command
                         }
 
                         // Обновляем статус заказа
-                        if (!in_array($order->stock_status, ['released'])) {
+                        if (! in_array($order->stock_status, ['released'])) {
                             $order->update([
                                 'stock_status' => 'released',
                                 'stock_released_at' => now(),
@@ -130,11 +132,13 @@ class ConsumeInSupplyReservations extends Command
                             'error' => $e->getMessage(),
                         ]);
                         $skipped++;
+
                         continue;
                     }
                 }
 
                 $cancelled++;
+
                 continue;
             }
 
@@ -179,10 +183,19 @@ class ConsumeInSupplyReservations extends Command
 
     protected function extractMarketplace(string $reason): string
     {
-        if (stripos($reason, 'uzum') !== false) return 'uzum';
-        if (stripos($reason, 'wildberries') !== false || stripos($reason, 'wb') !== false) return 'wb';
-        if (stripos($reason, 'ozon') !== false) return 'ozon';
-        if (stripos($reason, 'yandex') !== false || stripos($reason, 'ym') !== false) return 'ym';
+        if (stripos($reason, 'uzum') !== false) {
+            return 'uzum';
+        }
+        if (stripos($reason, 'wildberries') !== false || stripos($reason, 'wb') !== false) {
+            return 'wb';
+        }
+        if (stripos($reason, 'ozon') !== false) {
+            return 'ozon';
+        }
+        if (stripos($reason, 'yandex') !== false || stripos($reason, 'ym') !== false) {
+            return 'ym';
+        }
+
         return 'unknown';
     }
 }

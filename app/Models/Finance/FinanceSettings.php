@@ -12,7 +12,9 @@ class FinanceSettings extends Model
     use HasFactory;
 
     public const TAX_SYSTEM_SIMPLIFIED = 'simplified';
+
     public const TAX_SYSTEM_GENERAL = 'general';
+
     public const TAX_SYSTEM_BOTH = 'both';
 
     protected $fillable = [

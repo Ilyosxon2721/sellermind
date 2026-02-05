@@ -8,7 +8,6 @@ use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
-use App\Models\Warehouse\StockReservation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -44,13 +43,13 @@ class DocumentPostingService
                         break;
                     case InventoryDocument::TYPE_OUT:
                     case InventoryDocument::TYPE_WRITE_OFF:
-                        if (!$allowNegative) {
+                        if (! $allowNegative) {
                             $this->ensureAvailable($companyId, $document->warehouse_id, $line->sku_id, (float) $line->qty);
                         }
                         $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, -$totalCostBase, $userId);
                         break;
                     case InventoryDocument::TYPE_MOVE:
-                        if (!$allowNegative) {
+                        if (! $allowNegative) {
                             $this->ensureAvailable($companyId, $document->warehouse_id, $line->sku_id, (float) $line->qty);
                         }
                         $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, 0, $userId, $document->warehouse_id, $line->location_id);
@@ -98,7 +97,7 @@ class DocumentPostingService
             try {
                 $sku = Sku::with('productVariant')->find($line->sku_id);
 
-                if (!$sku || !$sku->productVariant) {
+                if (! $sku || ! $sku->productVariant) {
                     continue;
                 }
 
@@ -165,7 +164,7 @@ class DocumentPostingService
         if ($line->qty <= 0) {
             throw new RuntimeException('Line qty must be greater than 0');
         }
-        if (!$line->sku || !$line->sku->is_active) {
+        if (! $line->sku || ! $line->sku->is_active) {
             throw new RuntimeException('SKU inactive or missing');
         }
     }
@@ -196,6 +195,7 @@ class DocumentPostingService
 
         // Otherwise convert using finance settings
         $currency = $line->currency_code ?? 'UZS';
+
         return $settings->convertToBase($totalCostOriginal, $currency);
     }
 }

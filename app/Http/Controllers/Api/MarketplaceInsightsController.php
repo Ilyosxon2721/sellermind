@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/MarketplaceInsightsController.php
 
 namespace App\Http\Controllers\Api;
@@ -25,7 +26,7 @@ class MarketplaceInsightsController extends Controller
             'period_to' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:period_from'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -50,7 +51,7 @@ class MarketplaceInsightsController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -74,7 +75,7 @@ class MarketplaceInsightsController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -92,7 +93,7 @@ class MarketplaceInsightsController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -115,7 +116,7 @@ class MarketplaceInsightsController extends Controller
             'period_to' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:period_from'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesOrderMetaService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -31,15 +32,13 @@ class WildberriesOrderMetaService
     /**
      * Get metadata for multiple orders
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Array of order IDs
-     * @return array
+     * @param  array  $orderIds  Array of order IDs
      */
     public function getOrdersMeta(MarketplaceAccount $account, array $orderIds = []): array
     {
         try {
             $params = [];
-            if (!empty($orderIds)) {
+            if (! empty($orderIds)) {
                 $params['orders'] = $orderIds;
             }
 
@@ -63,10 +62,6 @@ class WildberriesOrderMetaService
 
     /**
      * Get metadata for a specific order
-     *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @return array|null
      */
     public function getOrderMeta(MarketplaceAccount $account, int $orderId): ?array
     {
@@ -94,10 +89,7 @@ class WildberriesOrderMetaService
      * Attach SGTIN marking code to order
      * Used for: alcohol, tobacco, perfumes, etc.
      *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @param string $sgtin SGTIN marking code
-     * @return bool
+     * @param  string  $sgtin  SGTIN marking code
      */
     public function attachSGTIN(MarketplaceAccount $account, int $orderId, string $sgtin): bool
     {
@@ -128,10 +120,7 @@ class WildberriesOrderMetaService
      * Attach UIN (Unique Identification Number) to order
      * Used for: furs, jewelry, etc.
      *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @param string $uin UIN code
-     * @return bool
+     * @param  string  $uin  UIN code
      */
     public function attachUIN(MarketplaceAccount $account, int $orderId, string $uin): bool
     {
@@ -162,10 +151,7 @@ class WildberriesOrderMetaService
      * Attach IMEI to order
      * Used for: electronics, phones, tablets, etc.
      *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @param string $imei IMEI code
-     * @return bool
+     * @param  string  $imei  IMEI code
      */
     public function attachIMEI(MarketplaceAccount $account, int $orderId, string $imei): bool
     {
@@ -196,10 +182,7 @@ class WildberriesOrderMetaService
      * Attach GTIN to order
      * Used for: general product identification
      *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @param string $gtin GTIN code
-     * @return bool
+     * @param  string  $gtin  GTIN code
      */
     public function attachGTIN(MarketplaceAccount $account, int $orderId, string $gtin): bool
     {
@@ -230,10 +213,7 @@ class WildberriesOrderMetaService
      * Attach expiration date to order
      * Used for: food products, cosmetics, medicines, etc.
      *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @param string $expirationDate Date in format YYYY-MM-DD
-     * @return bool
+     * @param  string  $expirationDate  Date in format YYYY-MM-DD
      */
     public function attachExpiration(MarketplaceAccount $account, int $orderId, string $expirationDate): bool
     {
@@ -262,10 +242,6 @@ class WildberriesOrderMetaService
 
     /**
      * Delete order metadata
-     *
-     * @param MarketplaceAccount $account
-     * @param int $orderId
-     * @return bool
      */
     public function deleteOrderMeta(MarketplaceAccount $account, int $orderId): bool
     {
@@ -292,8 +268,7 @@ class WildberriesOrderMetaService
     /**
      * Batch attach metadata to multiple orders
      *
-     * @param MarketplaceAccount $account
-     * @param array $metaData Array of ['order_id' => int, 'type' => 'sgtin|uin|imei|gtin|expiration', 'value' => string]
+     * @param  array  $metaData  Array of ['order_id' => int, 'type' => 'sgtin|uin|imei|gtin|expiration', 'value' => string]
      * @return array Results with success/error for each order
      */
     public function batchAttachMeta(MarketplaceAccount $account, array $metaData): array
@@ -305,12 +280,13 @@ class WildberriesOrderMetaService
             $type = $meta['type'] ?? null;
             $value = $meta['value'] ?? null;
 
-            if (!$orderId || !$type || !$value) {
+            if (! $orderId || ! $type || ! $value) {
                 $results[] = [
                     'order_id' => $orderId,
                     'success' => false,
                     'error' => 'Missing required fields',
                 ];
+
                 continue;
             }
 

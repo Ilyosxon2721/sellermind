@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_200009_create_marketplace_payout_items_table.php
 
 use Illuminate\Database\Migrations\Migration;

@@ -14,7 +14,9 @@ class Employee extends Model
     use HasFactory;
 
     public const SALARY_TYPE_FIXED = 'fixed';
+
     public const SALARY_TYPE_HOURLY = 'hourly';
+
     public const SALARY_TYPE_COMMISSION = 'commission';
 
     protected $fillable = [
@@ -73,6 +75,7 @@ class Employee extends Model
     public function getFullNameAttribute(): string
     {
         $parts = array_filter([$this->last_name, $this->first_name, $this->middle_name]);
+
         return implode(' ', $parts);
     }
 
@@ -80,12 +83,13 @@ class Employee extends Model
     {
         $initials = '';
         if ($this->first_name) {
-            $initials .= mb_substr($this->first_name, 0, 1) . '.';
+            $initials .= mb_substr($this->first_name, 0, 1).'.';
         }
         if ($this->middle_name) {
-            $initials .= mb_substr($this->middle_name, 0, 1) . '.';
+            $initials .= mb_substr($this->middle_name, 0, 1).'.';
         }
-        return trim($this->last_name . ' ' . $initials);
+
+        return trim($this->last_name.' '.$initials);
     }
 
     public function scopeByCompany($query, int $companyId)

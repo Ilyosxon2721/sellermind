@@ -11,7 +11,9 @@ class SupplierPayment extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'DRAFT';
+
     public const STATUS_POSTED = 'POSTED';
+
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [

@@ -52,7 +52,7 @@ class WildberriesSticker extends Model
      */
     public function getFileUrl(): ?string
     {
-        if (!$this->fileExists()) {
+        if (! $this->fileExists()) {
             return null;
         }
 
@@ -64,7 +64,7 @@ class WildberriesSticker extends Model
      */
     public function getFileContent(): ?string
     {
-        if (!$this->fileExists()) {
+        if (! $this->fileExists()) {
             return null;
         }
 

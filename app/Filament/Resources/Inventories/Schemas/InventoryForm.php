@@ -4,11 +4,11 @@ namespace App\Filament\Resources\Inventories\Schemas;
 
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class InventoryForm
@@ -57,7 +57,7 @@ class InventoryForm
                             ->label('Тип')
                             ->options([
                                 'full' => 'Полная',
-                                'partial' => 'Частичная'
+                                'partial' => 'Частичная',
                             ])
                             ->default('full')
                             ->required(),

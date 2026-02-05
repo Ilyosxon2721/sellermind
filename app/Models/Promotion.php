@@ -92,11 +92,12 @@ class Promotion extends Model
      */
     public function isCurrentlyActive(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
         $now = now();
+
         return $now->between($this->start_date, $this->end_date);
     }
 
@@ -111,12 +112,12 @@ class Promotion extends Model
     /**
      * Check if promotion is expiring soon.
      */
-    public function isExpiringSoon(int $days = null): bool
+    public function isExpiringSoon(?int $days = null): bool
     {
         $days = $days ?? $this->notify_days_before;
         $threshold = now()->addDays($days);
 
-        return $this->end_date->isBefore($threshold) && !$this->hasExpired();
+        return $this->end_date->isBefore($threshold) && ! $this->hasExpired();
     }
 
     /**

@@ -22,7 +22,7 @@ class CleanupOldData extends Command
         $dryRun = $this->option('dry-run');
         $cutoff = Carbon::now()->subDays($days);
 
-        $this->info($dryRun ? "DRY RUN - showing what would be deleted:" : "Cleaning up data older than {$days} days...");
+        $this->info($dryRun ? 'DRY RUN - showing what would be deleted:' : "Cleaning up data older than {$days} days...");
         $this->newLine();
 
         // Old dialogs without activity
@@ -43,11 +43,13 @@ class CleanupOldData extends Command
 
         if ($dryRun) {
             $this->warn('No data was deleted (dry run mode)');
+
             return Command::SUCCESS;
         }
 
-        if (!$this->confirm('Do you want to proceed with deletion?')) {
+        if (! $this->confirm('Do you want to proceed with deletion?')) {
             $this->info('Cancelled.');
+
             return Command::SUCCESS;
         }
 

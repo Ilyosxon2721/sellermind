@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesFinanceController.php
 
 namespace App\Http\Controllers\Api;
@@ -26,11 +27,11 @@ class WildberriesFinanceController extends Controller
      */
     public function balance(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -49,7 +50,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить баланс: ' . $e->getMessage(),
+                'message' => 'Не удалось получить баланс: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -59,11 +60,11 @@ class WildberriesFinanceController extends Controller
      */
     public function report(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -103,7 +104,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить детальный отчёт: ' . $e->getMessage(),
+                'message' => 'Не удалось получить детальный отчёт: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -113,11 +114,11 @@ class WildberriesFinanceController extends Controller
      */
     public function documentCategories(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -136,7 +137,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить категории документов: ' . $e->getMessage(),
+                'message' => 'Не удалось получить категории документов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -146,11 +147,11 @@ class WildberriesFinanceController extends Controller
      */
     public function documents(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -180,7 +181,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить список документов: ' . $e->getMessage(),
+                'message' => 'Не удалось получить список документов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -190,11 +191,11 @@ class WildberriesFinanceController extends Controller
      */
     public function downloadDocument(Request $request, MarketplaceAccount $account, string $documentId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -222,7 +223,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось скачать документ: ' . $e->getMessage(),
+                'message' => 'Не удалось скачать документ: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -232,11 +233,11 @@ class WildberriesFinanceController extends Controller
      */
     public function downloadAll(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -251,8 +252,8 @@ class WildberriesFinanceController extends Controller
         try {
             $downloaded = $this->financeService->downloadAllDocuments($account, $dateFrom, $dateTo, true);
 
-            $successful = array_filter($downloaded, fn($d) => !isset($d['error']));
-            $failed = array_filter($downloaded, fn($d) => isset($d['error']));
+            $successful = array_filter($downloaded, fn ($d) => ! isset($d['error']));
+            $failed = array_filter($downloaded, fn ($d) => isset($d['error']));
 
             return response()->json([
                 'success' => true,
@@ -270,7 +271,7 @@ class WildberriesFinanceController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось загрузить документы: ' . $e->getMessage(),
+                'message' => 'Не удалось загрузить документы: '.$e->getMessage(),
             ], 500);
         }
     }

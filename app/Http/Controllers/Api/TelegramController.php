@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Models\UserNotificationSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class TelegramController extends Controller
 {
@@ -20,7 +19,7 @@ class TelegramController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'connected' => !empty($user->telegram_id),
+            'connected' => ! empty($user->telegram_id),
             'telegram_id' => $user->telegram_id,
             'telegram_username' => $user->telegram_username,
             'notifications_enabled' => $user->telegram_notifications_enabled,
@@ -39,8 +38,8 @@ class TelegramController extends Controller
             'code' => $linkCode->code,
             'expires_at' => $linkCode->expires_at->toIso8601String(),
             'instructions' => [
-                'step_1' => 'Откройте Telegram и найдите бота @' . config('telegram.bot_username'),
-                'step_2' => 'Отправьте команду: /link ' . $linkCode->code,
+                'step_1' => 'Откройте Telegram и найдите бота @'.config('telegram.bot_username'),
+                'step_2' => 'Отправьте команду: /link '.$linkCode->code,
                 'step_3' => 'Дождитесь подтверждения',
             ],
         ]);
@@ -120,7 +119,7 @@ class TelegramController extends Controller
         $user = $request->user();
         $settings = $user->notificationSettings;
 
-        if (!$settings) {
+        if (! $settings) {
             // Return defaults
             return response()->json([
                 'notify_low_stock' => true,

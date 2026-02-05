@@ -18,8 +18,7 @@ class BulkOperationCompletedNotification extends Notification implements ShouldQ
     public function __construct(
         public int $updatedCount,
         public array $errors = []
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.
@@ -56,13 +55,13 @@ class BulkOperationCompletedNotification extends Notification implements ShouldQ
         $message .= "Обновлено товаров: *{$this->updatedCount}*\n";
 
         if (count($this->errors) > 0) {
-            $message .= "⚠️ Ошибок: *" . count($this->errors) . "*\n\n";
+            $message .= '⚠️ Ошибок: *'.count($this->errors)."*\n\n";
             $message .= "Первые ошибки:\n";
             foreach (array_slice($this->errors, 0, 3) as $error) {
-                $message .= "• " . $error . "\n";
+                $message .= '• '.$error."\n";
             }
         } else {
-            $message .= "✨ Все изменения применены успешно!";
+            $message .= '✨ Все изменения применены успешно!';
         }
 
         return [
@@ -82,7 +81,7 @@ class BulkOperationCompletedNotification extends Notification implements ShouldQ
             ->subject('Массовое обновление товаров завершено')
             ->line("Обновлено товаров: {$this->updatedCount}")
             ->when(count($this->errors) > 0, function ($mail) {
-                return $mail->line("Ошибок: " . count($this->errors));
+                return $mail->line('Ошибок: '.count($this->errors));
             })
             ->action('Перейти к товарам', url('/products'))
             ->line('Спасибо за использование SellerMind!');

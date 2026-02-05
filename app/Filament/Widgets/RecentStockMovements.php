@@ -42,7 +42,7 @@ class RecentStockMovements extends BaseWidget
                     ->label('Кол-во')
                     ->numeric(decimalPlaces: 0)
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->formatStateUsing(fn ($state) => ($state > 0 ? '+' : '') . number_format($state, 0)),
+                    ->formatStateUsing(fn ($state) => ($state > 0 ? '+' : '').number_format($state, 0)),
                 TextColumn::make('source_type')
                     ->label('Источник')
                     ->badge()

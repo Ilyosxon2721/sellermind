@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Finance\Employee;
-use App\Models\UserCompanyRole;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +18,7 @@ class EmployeeController extends Controller
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -71,7 +70,7 @@ class EmployeeController extends Controller
     public function show($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -85,7 +84,7 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -100,7 +99,7 @@ class EmployeeController extends Controller
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -115,7 +114,7 @@ class EmployeeController extends Controller
     public function destroy($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -125,6 +124,7 @@ class EmployeeController extends Controller
         if ($employee->salaryItems()->exists() || $employee->transactions()->exists() || $employee->debts()->exists()) {
             // Вместо удаления - деактивируем
             $employee->update(['is_active' => false]);
+
             return $this->successResponse(['deactivated' => true, 'employee' => $employee]);
         }
 
@@ -136,7 +136,7 @@ class EmployeeController extends Controller
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -157,7 +157,7 @@ class EmployeeController extends Controller
     public function paySalary($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -205,7 +205,7 @@ class EmployeeController extends Controller
     public function addPenalty($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -252,7 +252,7 @@ class EmployeeController extends Controller
     public function addExpense($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -308,7 +308,7 @@ class EmployeeController extends Controller
     public function transactions($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -346,7 +346,7 @@ class EmployeeController extends Controller
             })
             ->first();
 
-        if (!$category) {
+        if (! $category) {
             $category = \App\Models\Finance\FinanceCategory::create([
                 'company_id' => null,
                 'type' => 'expense',
@@ -370,7 +370,7 @@ class EmployeeController extends Controller
             })
             ->first();
 
-        if (!$category) {
+        if (! $category) {
             $category = \App\Models\Finance\FinanceCategory::create([
                 'company_id' => null,
                 'type' => 'income',
@@ -394,7 +394,7 @@ class EmployeeController extends Controller
             })
             ->first();
 
-        if (!$category) {
+        if (! $category) {
             $category = \App\Models\Finance\FinanceCategory::create([
                 'company_id' => null,
                 'type' => 'expense',

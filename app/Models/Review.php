@@ -88,7 +88,7 @@ class Review extends Model
      */
     public function hasResponse(): bool
     {
-        return !empty($this->response_text);
+        return ! empty($this->response_text);
     }
 
     /**

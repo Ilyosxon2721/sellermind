@@ -24,7 +24,7 @@ return [
             'label' => 'Company',
             'plural' => 'Companies',
         ],
-        
+
         // Billing group
         'plan' => [
             'label' => 'Plan',
@@ -34,7 +34,7 @@ return [
             'label' => 'Subscription',
             'plural' => 'Subscriptions',
         ],
-        
+
         // Finance group
         'sale' => [
             'label' => 'Sale',
@@ -44,7 +44,7 @@ return [
             'label' => 'Payout',
             'plural' => 'Marketplace Payouts',
         ],
-        
+
         // Catalog group
         'product' => [
             'label' => 'Product',
@@ -54,7 +54,7 @@ return [
             'label' => 'Category',
             'plural' => 'Categories',
         ],
-        
+
         // Warehouse group
         'warehouse' => [
             'label' => 'Warehouse',
@@ -64,7 +64,7 @@ return [
             'label' => 'Inventory Count',
             'plural' => 'Inventory Counts',
         ],
-        
+
         // Marketplaces group
         'marketplace_account' => [
             'label' => 'Marketplace Account',
@@ -82,7 +82,7 @@ return [
             'label' => 'Automation Rule',
             'plural' => 'Automation Rules',
         ],
-        
+
         // AI & Content group
         'agent' => [
             'label' => 'Agent',
@@ -100,7 +100,7 @@ return [
             'label' => 'AI Log',
             'plural' => 'AI Usage Logs',
         ],
-        
+
         // System group
         'global_option' => [
             'label' => 'Global Setting',

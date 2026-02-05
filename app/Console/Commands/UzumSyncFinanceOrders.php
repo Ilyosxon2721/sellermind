@@ -27,11 +27,11 @@ class UzumSyncFinanceOrders extends Command
 
         // Если --full, игнорируем days
         $dateFrom = null;
-        if (!$fullSync && $days > 0) {
+        if (! $fullSync && $days > 0) {
             $dateFrom = now()->subDays($days)->startOfDay();
             $this->info("Syncing orders from last {$days} days (since {$dateFrom->format('Y-m-d')})");
         } else {
-            $this->info("Full sync mode - fetching all orders");
+            $this->info('Full sync mode - fetching all orders');
         }
 
         $query = MarketplaceAccount::where('marketplace', 'uzum')
@@ -45,6 +45,7 @@ class UzumSyncFinanceOrders extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('No active Uzum accounts found.');
+
             return Command::SUCCESS;
         }
 
@@ -94,7 +95,7 @@ class UzumSyncFinanceOrders extends Command
         $shops = $client->fetchShops($account);
         $shopIds = array_column($shops, 'id');
 
-        $this->line("  Found " . count($shopIds) . " shops");
+        $this->line('  Found '.count($shopIds).' shops');
 
         // Конвертируем дату в timestamp (миллисекунды) для API
         $dateFromMs = $dateFrom ? $dateFrom->getTimestampMs() : null;
@@ -122,8 +123,9 @@ class UzumSyncFinanceOrders extends Command
                         try {
                             $data = $client->mapFinanceOrderData($item);
 
-                            if (!$data['uzum_id']) {
+                            if (! $data['uzum_id']) {
                                 $errors++;
+
                                 continue;
                             }
 
@@ -163,7 +165,7 @@ class UzumSyncFinanceOrders extends Command
                     }
 
                     // Задержка чтобы не превысить rate limit
-                    if (!empty($items)) {
+                    if (! empty($items)) {
                         usleep(200000); // 200ms
                     }
 
@@ -186,7 +188,7 @@ class UzumSyncFinanceOrders extends Command
                         'page' => $page,
                         'error' => $e->getMessage(),
                     ]);
-                    $this->warn("    Error on page {$page}: " . $e->getMessage());
+                    $this->warn("    Error on page {$page}: ".$e->getMessage());
                     break;
                 }
             } while ($itemsCount === 100);

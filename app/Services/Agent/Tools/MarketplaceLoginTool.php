@@ -66,14 +66,14 @@ class MarketplaceLoginTool implements AgentToolInterface
         $companyId = $arguments['company_id'] ?? null;
         $sessionId = $arguments['session_id'] ?? null;
 
-        if (!$marketplace) {
+        if (! $marketplace) {
             return [
                 'success' => false,
                 'error' => 'Marketplace is required',
             ];
         }
 
-        if (!isset(self::LOGIN_URLS[$marketplace])) {
+        if (! isset(self::LOGIN_URLS[$marketplace])) {
             return [
                 'success' => false,
                 'error' => "Unsupported marketplace: {$marketplace}",
@@ -82,7 +82,7 @@ class MarketplaceLoginTool implements AgentToolInterface
 
         // Get marketplace account with credentials
         $account = $this->getMarketplaceAccount($marketplace, $companyId);
-        if (!$account) {
+        if (! $account) {
             return [
                 'success' => false,
                 'error' => "No active {$marketplace} account found. Please add marketplace credentials first.",
@@ -91,7 +91,7 @@ class MarketplaceLoginTool implements AgentToolInterface
 
         // Get VPC session
         $session = $this->getSession($sessionId);
-        if (!$session) {
+        if (! $session) {
             return [
                 'success' => false,
                 'error' => 'No active VPC session found. Please create a VPC session first.',

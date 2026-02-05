@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -31,12 +29,12 @@ return new class extends Migration
         }
 
         // Make company_id nullable
-        DB::statement("ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NULL");
-        DB::statement("ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NULL");
+        DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NULL');
+        DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NULL');
 
         // Re-add foreign keys (allowing NULL)
-        DB::statement("ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
-        DB::statement("ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
+        DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
+        DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
 
         // Create universal global options (company_id = NULL)
         $this->createUniversalOptions();
@@ -45,14 +43,14 @@ return new class extends Migration
     protected function getForeignKeyName(string $table, string $column): ?string
     {
         $database = DB::getDatabaseName();
-        $result = DB::selectOne("
+        $result = DB::selectOne('
             SELECT CONSTRAINT_NAME
             FROM information_schema.KEY_COLUMN_USAGE
             WHERE TABLE_SCHEMA = ?
             AND TABLE_NAME = ?
             AND COLUMN_NAME = ?
             AND REFERENCED_TABLE_NAME IS NOT NULL
-        ", [$database, $table, $column]);
+        ', [$database, $table, $column]);
 
         return $result?->CONSTRAINT_NAME;
     }
@@ -94,13 +92,13 @@ return new class extends Migration
         }
 
         // Make company_id NOT NULL again
-        DB::statement("ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NOT NULL");
-        DB::statement("ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NOT NULL");
+        DB::statement('ALTER TABLE `global_options` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
+        DB::statement('ALTER TABLE `global_option_values` MODIFY `company_id` BIGINT UNSIGNED NOT NULL');
 
         // Restore unique constraint and foreign keys
-        DB::statement("ALTER TABLE `global_options` ADD UNIQUE INDEX `global_options_company_id_code_unique` (`company_id`, `code`)");
-        DB::statement("ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
-        DB::statement("ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE");
+        DB::statement('ALTER TABLE `global_options` ADD UNIQUE INDEX `global_options_company_id_code_unique` (`company_id`, `code`)');
+        DB::statement('ALTER TABLE `global_options` ADD CONSTRAINT `global_options_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
+        DB::statement('ALTER TABLE `global_option_values` ADD CONSTRAINT `global_option_values_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE');
     }
 
     protected function createUniversalOptions(): void

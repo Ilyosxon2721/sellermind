@@ -16,10 +16,11 @@ class InvoiceService
     {
         return DB::transaction(function () use ($data, $lines) {
             $invoice = SupplierInvoice::create($data);
-            if (!empty($lines)) {
+            if (! empty($lines)) {
                 $this->replaceLines($invoice, $lines);
             }
             $this->recalc($invoice->id);
+
             return $invoice->fresh('lines');
         });
     }
@@ -32,10 +33,11 @@ class InvoiceService
                 throw new RuntimeException('Invoice not in draft');
             }
             $invoice->update($data);
-            if (!empty($lines)) {
+            if (! empty($lines)) {
                 $this->replaceLines($invoice, $lines);
             }
             $this->recalc($invoice->id);
+
             return $invoice->fresh('lines');
         });
     }
@@ -84,7 +86,7 @@ class InvoiceService
             'type' => FinanceDebt::TYPE_PAYABLE,
             'purpose' => FinanceDebt::PURPOSE_DEBT,
             'counterparty_id' => $invoice->supplier_id,
-            'description' => 'Счёт поставщика ' . ($invoice->invoice_no ?? '#' . $invoice->id),
+            'description' => 'Счёт поставщика '.($invoice->invoice_no ?? '#'.$invoice->id),
             'reference' => $invoice->invoice_no,
             'original_amount' => $invoice->amount_total,
             'amount_paid' => 0,
@@ -136,6 +138,7 @@ class InvoiceService
                 $invoice->save();
             }
             $this->refreshPaidAndOutstanding($invoice->id);
+
             return $invoice;
         });
     }
@@ -160,6 +163,7 @@ class InvoiceService
                 }
             }
             $invoice->save();
+
             return $invoice;
         });
     }

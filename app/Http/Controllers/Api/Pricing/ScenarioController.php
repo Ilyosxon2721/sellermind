@@ -15,37 +15,49 @@ class ScenarioController extends Controller
     public function index()
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
         return $this->successResponse(PricingScenario::byCompany($companyId)->orderByDesc('is_default')->get());
     }
 
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $this->validateData($request);
         $data['company_id'] = $companyId;
         $scenario = PricingScenario::create($data);
+
         return $this->successResponse($scenario);
     }
 
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $scenario = PricingScenario::byCompany($companyId)->findOrFail($id);
         $scenario->update($this->validateData($request));
+
         return $this->successResponse($scenario);
     }
 
     public function setDefault($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         PricingScenario::byCompany($companyId)->update(['is_default' => false]);
         $scenario = PricingScenario::byCompany($companyId)->findOrFail($id);
         $scenario->is_default = true;
         $scenario->save();
+
         return $this->successResponse($scenario);
     }
 

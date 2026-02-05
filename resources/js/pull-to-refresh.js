@@ -284,5 +284,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-console.log('✅ Pull-to-Refresh: Loaded');

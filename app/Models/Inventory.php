@@ -43,10 +43,10 @@ class Inventory extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
-            if (!$model->number) {
-                $model->number = 'INV-' . date('Ymd') . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+            if (! $model->number) {
+                $model->number = 'INV-'.date('Ymd').'-'.str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -78,7 +78,7 @@ class Inventory extends Model
 
     public function getStatusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'Черновик',
             'in_progress' => 'В процессе',
             'completed' => 'Завершена',
@@ -95,15 +95,15 @@ class Inventory extends Model
     public function calculateResults(): void
     {
         $items = $this->items()->whereNotNull('actual_quantity')->get();
-        
+
         $this->total_items = $items->count();
         $this->matched_items = $items->where('difference', 0)->count();
         $this->surplus_items = $items->where('difference', '>', 0)->count();
         $this->shortage_items = $items->where('difference', '<', 0)->count();
-        
+
         $this->surplus_amount = $items->where('difference', '>', 0)->sum('difference_amount');
         $this->shortage_amount = abs($items->where('difference', '<', 0)->sum('difference_amount'));
-        
+
         $this->save();
     }
 
@@ -119,7 +119,7 @@ class Inventory extends Model
                 $stock = WarehouseStock::where('warehouse_id', $this->warehouse_id)
                     ->where('product_id', $item->product_id)
                     ->first();
-                
+
                 if ($stock) {
                     $stock->quantity = $item->actual_quantity;
                     $stock->save();

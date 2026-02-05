@@ -44,7 +44,7 @@ class AuthController extends Controller
         $credentials = $request->only('email', 'password');
         $remember = $request->boolean('remember');
 
-        if (!Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt($credentials, $remember)) {
             return response()->json([
                 'message' => 'Неверный email или пароль.',
             ], 401);
@@ -153,7 +153,7 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'message' => 'Текущий пароль неверен.',
             ], 422);
@@ -216,6 +216,7 @@ class AuthController extends Controller
 
         } catch (\Exception $e) {
             \DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed',
@@ -234,7 +235,7 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             return response()->json([
                 'success' => false,
                 'message' => 'The provided credentials are incorrect.',

@@ -1,15 +1,15 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceAutomationService.php
 
 namespace App\Services\Marketplaces;
 
-use App\Models\MarketplaceAutomationRule;
-use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceProduct;
-use App\Models\MarketplaceStock;
-use App\Models\MarketplaceOrder;
-use App\Models\MarketplaceReturn;
 use App\Models\AgentTask;
+use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceAutomationRule;
+use App\Models\MarketplaceProduct;
+use App\Models\MarketplaceReturn;
+use App\Models\MarketplaceStock;
 use Illuminate\Support\Facades\Log;
 
 class MarketplaceAutomationService
@@ -46,7 +46,7 @@ class MarketplaceAutomationService
         $context = $this->buildContext($rule);
         $triggered = $rule->checkConditions($context);
 
-        if (!$triggered) {
+        if (! $triggered) {
             return ['triggered' => false];
         }
 
@@ -141,7 +141,7 @@ class MarketplaceAutomationService
     protected function buildReturnRateContext(int $accountId): array
     {
         $account = MarketplaceAccount::find($accountId);
-        if (!$account) {
+        if (! $account) {
             return ['return_rate' => 0];
         }
 
@@ -234,7 +234,7 @@ class MarketplaceAutomationService
         $params = $rule->action_params_json ?? [];
         $account = $rule->account;
 
-        if (!$account) {
+        if (! $account) {
             return ['success' => false, 'message' => 'Account not found'];
         }
 
@@ -283,13 +283,14 @@ class MarketplaceAutomationService
         $params = $rule->action_params_json ?? [];
         $productId = $params['product_id'] ?? $context['product_id'] ?? null;
 
-        if (!$productId) {
+        if (! $productId) {
             return ['success' => false, 'message' => 'Product ID not specified'];
         }
 
         $product = MarketplaceProduct::find($productId);
         if ($product) {
             $product->update(['status' => MarketplaceProduct::STATUS_ARCHIVED]);
+
             return ['success' => true, 'message' => "Product #{$productId} disabled"];
         }
 

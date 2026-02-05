@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceAttributeMapping.php
 
 namespace App\Models;
@@ -8,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 class MarketplaceAttributeMapping extends Model
 {
     public const VALUE_MODE_SIMPLE = 'simple';
+
     public const VALUE_MODE_DICTIONARY = 'dictionary';
+
     public const VALUE_MODE_CUSTOM = 'custom';
 
     protected $fillable = [

@@ -1,10 +1,10 @@
 <?php
+
 // file: app/Services/Marketplaces/OzonClient.php
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
-use App\Models\MarketplaceProduct;
 use DateTimeInterface;
 
 class OzonClient implements MarketplaceClientInterface
@@ -40,7 +40,7 @@ class OzonClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка: ' . $e->getMessage(),
+                'message' => 'Ошибка: '.$e->getMessage(),
                 'response_time_ms' => null,
             ];
         }
@@ -60,7 +60,7 @@ class OzonClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка подключения: ' . $e->getMessage(),
+                'message' => 'Ошибка подключения: '.$e->getMessage(),
             ];
         }
     }
@@ -74,7 +74,6 @@ class OzonClient implements MarketplaceClientInterface
          * Allows creating and updating products in batch
          * Max 100 products per request
          */
-
         $batchSize = 100;
         $batches = array_chunk($products, $batchSize);
 
@@ -84,8 +83,9 @@ class OzonClient implements MarketplaceClientInterface
             foreach ($batch as $marketplaceProduct) {
                 try {
                     $product = $marketplaceProduct->product;
-                    if (!$product) {
+                    if (! $product) {
                         $marketplaceProduct->markAsFailed('Product not found');
+
                         continue;
                     }
 
@@ -95,7 +95,7 @@ class OzonClient implements MarketplaceClientInterface
                         $importItems[] = $importItem;
                     }
                 } catch (\Exception $e) {
-                    $marketplaceProduct->markAsFailed('Mapping error: ' . $e->getMessage());
+                    $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
                 }
             }
 
@@ -106,7 +106,7 @@ class OzonClient implements MarketplaceClientInterface
             try {
                 // Import products to OZON
                 $response = $this->http->post($account, '/v2/product/import', [
-                    'items' => $importItems
+                    'items' => $importItems,
                 ]);
 
                 // Check import status
@@ -118,7 +118,7 @@ class OzonClient implements MarketplaceClientInterface
                 }
             } catch (\Exception $e) {
                 foreach ($batch as $marketplaceProduct) {
-                    $marketplaceProduct->markAsFailed('API error: ' . $e->getMessage());
+                    $marketplaceProduct->markAsFailed('API error: '.$e->getMessage());
                 }
             }
         }
@@ -131,7 +131,7 @@ class OzonClient implements MarketplaceClientInterface
     {
         // Get category_id from marketplace product or product mapping
         $categoryId = $marketplaceProduct->external_category_id ?? null;
-        if (!$categoryId) {
+        if (! $categoryId) {
             throw new \Exception('Category ID not set. Please set category before importing.');
         }
 
@@ -166,7 +166,7 @@ class OzonClient implements MarketplaceClientInterface
         }
 
         // Add images
-        if (!empty($images)) {
+        if (! empty($images)) {
             $data['images'] = array_slice($images, 0, 10); // OZON allows max 10 images
             $data['primary_image'] = $images[0];
         }
@@ -201,7 +201,7 @@ class OzonClient implements MarketplaceClientInterface
         if ($product->brand) {
             $attributes[] = [
                 'id' => 85, // Brand attribute ID
-                'value' => $product->brand
+                'value' => $product->brand,
             ];
         }
 
@@ -218,7 +218,7 @@ class OzonClient implements MarketplaceClientInterface
     {
         try {
             $response = $this->http->post($account, '/v1/product/import/info', [
-                'task_id' => $taskId
+                'task_id' => $taskId,
             ]);
 
             $result = $response['result'] ?? [];
@@ -239,7 +239,7 @@ class OzonClient implements MarketplaceClientInterface
                             $marketplaceProduct->external_offer_id = $offerId;
                             $marketplaceProduct->markAsSynced();
                         } else {
-                            $errorMsg = !empty($errors) ? json_encode($errors) : 'Import failed';
+                            $errorMsg = ! empty($errors) ? json_encode($errors) : 'Import failed';
                             $marketplaceProduct->markAsFailed($errorMsg);
                         }
                         break;
@@ -248,7 +248,7 @@ class OzonClient implements MarketplaceClientInterface
             }
         } catch (\Exception $e) {
             // Log error but don't fail all products
-            \Log::error('OZON import status check failed: ' . $e->getMessage());
+            \Log::error('OZON import status check failed: '.$e->getMessage());
         }
     }
 
@@ -261,7 +261,6 @@ class OzonClient implements MarketplaceClientInterface
          * Updates product prices in batch
          * Max 1000 products per request
          */
-
         $batchSize = 1000;
         $batches = array_chunk($products, $batchSize);
 
@@ -270,12 +269,12 @@ class OzonClient implements MarketplaceClientInterface
 
             foreach ($batch as $marketplaceProduct) {
                 // Need either product_id or offer_id
-                if (!$marketplaceProduct->external_product_id && !$marketplaceProduct->external_offer_id) {
+                if (! $marketplaceProduct->external_product_id && ! $marketplaceProduct->external_offer_id) {
                     continue;
                 }
 
                 $product = $marketplaceProduct->product;
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
 
@@ -308,7 +307,7 @@ class OzonClient implements MarketplaceClientInterface
 
             try {
                 $response = $this->http->post($account, '/v1/product/import/prices', [
-                    'prices' => $priceUpdates
+                    'prices' => $priceUpdates,
                 ]);
 
                 // OZON returns updated prices immediately
@@ -320,9 +319,9 @@ class OzonClient implements MarketplaceClientInterface
                     $marketplaceProduct->save();
                 }
             } catch (\Exception $e) {
-                \Log::error('OZON price sync failed: ' . $e->getMessage(), [
+                \Log::error('OZON price sync failed: '.$e->getMessage(), [
                     'account_id' => $account->id,
-                    'products_count' => count($priceUpdates)
+                    'products_count' => count($priceUpdates),
                 ]);
                 throw $e;
             }
@@ -338,7 +337,6 @@ class OzonClient implements MarketplaceClientInterface
          * Updates product stock quantities
          * Max 100 products per request
          */
-
         $batchSize = 100;
         $batches = array_chunk($products, $batchSize);
 
@@ -347,12 +345,12 @@ class OzonClient implements MarketplaceClientInterface
 
             foreach ($batch as $marketplaceProduct) {
                 // Need either product_id or offer_id
-                if (!$marketplaceProduct->external_product_id && !$marketplaceProduct->external_offer_id) {
+                if (! $marketplaceProduct->external_product_id && ! $marketplaceProduct->external_offer_id) {
                     continue;
                 }
 
                 $product = $marketplaceProduct->product;
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
 
@@ -381,7 +379,7 @@ class OzonClient implements MarketplaceClientInterface
 
             try {
                 $response = $this->http->post($account, '/v2/products/stocks', [
-                    'stocks' => $stockUpdates
+                    'stocks' => $stockUpdates,
                 ]);
 
                 // OZON returns updated stocks
@@ -393,9 +391,9 @@ class OzonClient implements MarketplaceClientInterface
                     $marketplaceProduct->save();
                 }
             } catch (\Exception $e) {
-                \Log::error('OZON stock sync failed: ' . $e->getMessage(), [
+                \Log::error('OZON stock sync failed: '.$e->getMessage(), [
                     'account_id' => $account->id,
-                    'products_count' => count($stockUpdates)
+                    'products_count' => count($stockUpdates),
                 ]);
                 throw $e;
             }
@@ -440,6 +438,7 @@ class OzonClient implements MarketplaceClientInterface
     {
         try {
             $response = $this->http->post($account, '/v1/warehouse/list', []);
+
             return $response['result'] ?? [];
         } catch (\Exception $e) {
             return [];
@@ -456,7 +455,6 @@ class OzonClient implements MarketplaceClientInterface
          * Fetches orders within date range
          * Max 1000 orders per request
          */
-
         $orders = [];
 
         try {
@@ -469,7 +467,7 @@ class OzonClient implements MarketplaceClientInterface
             // $orders = array_merge($orders, $fboOrders);
 
         } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to fetch OZON orders: " . $e->getMessage());
+            throw new \RuntimeException('Failed to fetch OZON orders: '.$e->getMessage());
         }
 
         return $orders;
@@ -497,7 +495,7 @@ class OzonClient implements MarketplaceClientInterface
                     'with' => [
                         'analytics_data' => true,
                         'financial_data' => true,
-                    ]
+                    ],
                 ]);
 
                 $postings = $response['result']['postings'] ?? [];
@@ -514,14 +512,14 @@ class OzonClient implements MarketplaceClientInterface
                 if ($offset > 10000) {
                     \Log::warning('OZON FBS orders pagination limit reached', [
                         'account_id' => $account->id,
-                        'offset' => $offset
+                        'offset' => $offset,
                     ]);
                     break;
                 }
             } catch (\Exception $e) {
-                \Log::error('OZON FBS orders fetch failed: ' . $e->getMessage(), [
+                \Log::error('OZON FBS orders fetch failed: '.$e->getMessage(), [
                     'account_id' => $account->id,
-                    'offset' => $offset
+                    'offset' => $offset,
                 ]);
                 throw $e;
             }
@@ -552,7 +550,7 @@ class OzonClient implements MarketplaceClientInterface
                     'with' => [
                         'analytics_data' => true,
                         'financial_data' => true,
-                    ]
+                    ],
                 ]);
 
                 $postings = $response['result'] ?? [];
@@ -570,7 +568,7 @@ class OzonClient implements MarketplaceClientInterface
                     break;
                 }
             } catch (\Exception $e) {
-                \Log::error('OZON FBO orders fetch failed: ' . $e->getMessage());
+                \Log::error('OZON FBO orders fetch failed: '.$e->getMessage());
                 throw $e;
             }
         }
@@ -580,12 +578,14 @@ class OzonClient implements MarketplaceClientInterface
 
     /**
      * Get detailed info for a single product
+     *
      * @deprecated Use getProductsInfo() for batch operations
      */
     public function getProductInfo(MarketplaceAccount $account, string $externalId): ?array
     {
         // Use batch method for consistency
         $results = $this->getProductsInfo($account, [(int) $externalId]);
+
         return $results[0] ?? null;
     }
 
@@ -614,11 +614,12 @@ class OzonClient implements MarketplaceClientInterface
             // v3 API returns items directly, not in result.items
             return $response['items'] ?? [];
         } catch (\Exception $e) {
-            \Log::error('Ozon getProductsInfo failed: ' . $e->getMessage(), [
+            \Log::error('Ozon getProductsInfo failed: '.$e->getMessage(), [
                 'account_id' => $account->id,
                 'product_ids_count' => count($productIds),
                 'exception' => $e,
             ]);
+
             return [];
         }
     }
@@ -632,7 +633,7 @@ class OzonClient implements MarketplaceClientInterface
         try {
             $request = [
                 // OZON API requires filter to be an object, not array
-                'filter' => empty($filters) ? new \stdClass() : $filters,
+                'filter' => empty($filters) ? new \stdClass : $filters,
                 'limit' => min($limit, 1000), // Max 1000 per request
             ];
 
@@ -660,7 +661,7 @@ class OzonClient implements MarketplaceClientInterface
                 'last_id' => $response['result']['last_id'] ?? '',
             ];
         } catch (\Exception $e) {
-            \Log::error('Ozon getProducts failed: ' . $e->getMessage(), [
+            \Log::error('Ozon getProducts failed: '.$e->getMessage(), [
                 'account_id' => $account->id,
                 'filters' => $filters,
                 'exception' => $e,
@@ -756,15 +757,16 @@ class OzonClient implements MarketplaceClientInterface
                     $productId = $item['product_id'] ?? null;
                     $offerId = $item['offer_id'] ?? null;
 
-                    if (!$productId) {
+                    if (! $productId) {
                         \Log::warning('Skipping product without ID', ['item' => $item]);
+
                         continue;
                     }
 
                     // Get product info from batch results
                     $productInfo = $infoByProductId[$productId] ?? null;
 
-                    if (!$productInfo) {
+                    if (! $productInfo) {
                         \Log::warning('No detailed info for product', [
                             'product_id' => $productId,
                             'offer_id' => $offerId,
@@ -780,11 +782,11 @@ class OzonClient implements MarketplaceClientInterface
                         'external_offer_id' => $offerId,
                         'name' => $productInfo['name'] ?? null,
                         'status' => $productInfo['statuses']['status_name'] ?? 'unknown',
-                        'barcode' => !empty($productInfo['barcodes']) ? $productInfo['barcodes'][0] : null,
+                        'barcode' => ! empty($productInfo['barcodes']) ? $productInfo['barcodes'][0] : null,
                         'price' => $productInfo['price'] ?? null,
                         'vat' => $productInfo['vat'] ?? null,
                         'category_id' => $productInfo['description_category_id'] ?? null,
-                        'images' => !empty($productInfo['images']) ? $productInfo['images'] : [], // Laravel cast 'array' handles JSON encoding
+                        'images' => ! empty($productInfo['images']) ? $productInfo['images'] : [], // Laravel cast 'array' handles JSON encoding
                         'description' => null, // v3 API doesn't include description in product/info/list
                         'last_synced_at' => now(),
                     ];
@@ -816,7 +818,7 @@ class OzonClient implements MarketplaceClientInterface
 
                 // Check if there are more products
                 $lastId = $result['last_id'] ?? '';
-                $hasMore = !empty($lastId) && count($items) >= 1000;
+                $hasMore = ! empty($lastId) && count($items) >= 1000;
 
                 \Log::info('Pagination status', [
                     'last_id' => $lastId,
@@ -828,7 +830,7 @@ class OzonClient implements MarketplaceClientInterface
                 if ($synced > 50000) {
                     \Log::warning('Ozon catalog sync limit reached', [
                         'account_id' => $account->id,
-                        'synced' => $synced
+                        'synced' => $synced,
                     ]);
                     break;
                 }
@@ -852,7 +854,7 @@ class OzonClient implements MarketplaceClientInterface
                 'updated' => $updated,
             ];
         } catch (\Exception $e) {
-            \Log::error('Ozon catalog sync failed: ' . $e->getMessage(), [
+            \Log::error('Ozon catalog sync failed: '.$e->getMessage(), [
                 'account_id' => $account->id,
                 'synced_before_error' => $synced,
                 'exception' => $e,
@@ -951,6 +953,7 @@ class OzonClient implements MarketplaceClientInterface
     public function getCancelReasons(MarketplaceAccount $account): array
     {
         $response = $this->http->post($account, '/v2/posting/fbs/cancel-reason/list', []);
+
         return $response['reasons'] ?? [];
     }
 
@@ -1009,7 +1012,7 @@ class OzonClient implements MarketplaceClientInterface
                 'account_id' => $account->id,
                 'response' => $response,
             ]);
-            throw new \RuntimeException('Не удалось получить этикетку от Ozon API: ' . json_encode($response));
+            throw new \RuntimeException('Не удалось получить этикетку от Ozon API: '.json_encode($response));
         }
 
         return $response['result'];
@@ -1052,13 +1055,6 @@ class OzonClient implements MarketplaceClientInterface
     /**
      * Получить список транзакций за период
      * POST /v3/finance/transaction/list
-     *
-     * @param MarketplaceAccount $account
-     * @param DateTimeInterface $from
-     * @param DateTimeInterface $to
-     * @param int $page
-     * @param int $pageSize
-     * @return array
      */
     public function getFinanceTransactions(
         MarketplaceAccount $account,
@@ -1083,11 +1079,6 @@ class OzonClient implements MarketplaceClientInterface
 
     /**
      * Получить все транзакции за период с пагинацией
-     *
-     * @param MarketplaceAccount $account
-     * @param DateTimeInterface $from
-     * @param DateTimeInterface $to
-     * @return array
      */
     public function getAllFinanceTransactions(
         MarketplaceAccount $account,
@@ -1125,11 +1116,6 @@ class OzonClient implements MarketplaceClientInterface
     /**
      * Получить итоговую сумму транзакций
      * POST /v3/finance/transaction/totals
-     *
-     * @param MarketplaceAccount $account
-     * @param DateTimeInterface $from
-     * @param DateTimeInterface $to
-     * @return array
      */
     public function getFinanceTransactionTotals(
         MarketplaceAccount $account,
@@ -1150,11 +1136,6 @@ class OzonClient implements MarketplaceClientInterface
 
     /**
      * Получить сводку расходов маркетплейса
-     *
-     * @param MarketplaceAccount $account
-     * @param DateTimeInterface $from
-     * @param DateTimeInterface $to
-     * @return array
      */
     public function getExpensesSummary(
         MarketplaceAccount $account,
@@ -1216,7 +1197,7 @@ class OzonClient implements MarketplaceClientInterface
 
             \Log::info('Ozon expenses summary calculated', [
                 'account_id' => $account->id,
-                'period' => $from->format('Y-m-d') . ' - ' . $to->format('Y-m-d'),
+                'period' => $from->format('Y-m-d').' - '.$to->format('Y-m-d'),
                 'transactions_count' => count($transactions),
                 'summary' => $summary,
             ]);
@@ -1235,11 +1216,6 @@ class OzonClient implements MarketplaceClientInterface
     /**
      * Получить отчёт о реализации товаров
      * POST /v1/finance/realization
-     *
-     * @param MarketplaceAccount $account
-     * @param int $year
-     * @param int $month
-     * @return array
      */
     public function getRealizationReport(
         MarketplaceAccount $account,

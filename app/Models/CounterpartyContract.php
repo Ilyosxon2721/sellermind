@@ -70,7 +70,7 @@ class CounterpartyContract extends Model
 
     public function getStatusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'Черновик',
             'active' => 'Действует',
             'suspended' => 'Приостановлен',
@@ -99,7 +99,7 @@ class CounterpartyContract extends Model
         return $query->where('status', 'active')
             ->where(function ($q) {
                 $q->whereNull('valid_until')
-                  ->orWhere('valid_until', '>=', now());
+                    ->orWhere('valid_until', '>=', now());
             });
     }
 

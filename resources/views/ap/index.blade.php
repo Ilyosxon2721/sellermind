@@ -52,7 +52,7 @@
                         <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
                         <div class="flex items-center space-x-3">
                             <button class="text-sm text-gray-500 hover:text-gray-700" @click="resetInvoices()">Сбросить</button>
-                            <button class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center space-x-2" @click="showInvoiceForm = true">
+                            <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center space-x-2" @click="showInvoiceForm = true">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                 <span>Создать счёт</span>
                             </button>
@@ -80,7 +80,7 @@
                             <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-cyan-500" placeholder="№ счета" x-model="filtersInvoices.query" @keydown.enter.prevent="loadInvoices()">
                         </div>
                         <div class="flex items-end">
-                            <button class="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium" @click="loadInvoices()">Применить</button>
+                            <button class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="loadInvoices()">Применить</button>
                         </div>
                     </div>
                     <template x-if="errorInvoices"><div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="errorInvoices"></div></template>
@@ -125,7 +125,7 @@
                         <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
                         <div class="flex items-center space-x-3">
                             <button class="text-sm text-gray-500 hover:text-gray-700" @click="resetPayments()">Сбросить</button>
-                            <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center space-x-2" @click="showPaymentForm = true">
+                            <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center space-x-2" @click="showPaymentForm = true">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                 <span>Создать оплату</span>
                             </button>
@@ -153,7 +153,7 @@
                             <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500" placeholder="№ платежа" x-model="filtersPayments.query" @keydown.enter.prevent="loadPayments()">
                         </div>
                         <div class="flex items-end">
-                            <button class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium" @click="loadPayments()">Применить</button>
+                            <button class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="loadPayments()">Применить</button>
                         </div>
                     </div>
                     <template x-if="errorPayments"><div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="errorPayments"></div></template>
@@ -194,7 +194,7 @@
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчёты</h2>
                     <div class="flex items-center space-x-4">
                         <input type="date" x-model="reportFilters.as_of" class="border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500">
-                        <button class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium" @click="loadAging()">Aging</button>
+                        <button class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="loadAging()">Aging</button>
                         <button class="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium" @click="loadOverdue()">Просроченные</button>
                     </div>
                 </div>
@@ -250,7 +250,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showInvoiceForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" @click="createInvoice()">Сохранить</button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="createInvoice()">Сохранить</button>
             </div>
         </div>
     </div>
@@ -270,7 +270,7 @@
             </div>
             <div class="flex justify-end space-x-3">
                 <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showPaymentForm = false">Отмена</button>
-                <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl" @click="createPayment()">Сохранить</button>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" @click="createPayment()">Сохранить</button>
             </div>
         </div>
     </div>
@@ -350,7 +350,7 @@
             <div x-show="activeTab === 'payments'" class="space-y-3" x-pull-to-refresh="loadPayments()">
                 <div class="flex items-center justify-between">
                     <div class="native-caption">Оплаты</div>
-                    <button class="native-btn bg-green-600 text-white text-sm py-1.5 px-3" @click="showPaymentForm = true">+ Создать</button>
+                    <button class="native-btn bg-blue-600 text-white text-sm py-1.5 px-3" @click="showPaymentForm = true">+ Создать</button>
                 </div>
                 <template x-if="payments.length === 0">
                     <div class="native-card p-8 text-center">
@@ -516,7 +516,7 @@
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button class="native-btn flex-1" @click="showPaymentForm = false">Отмена</button>
-                    <button class="native-btn bg-green-600 text-white flex-1" @click="createPayment()">Сохранить</button>
+                    <button class="native-btn bg-blue-600 text-white flex-1" @click="createPayment()">Сохранить</button>
                 </div>
             </div>
         </div>

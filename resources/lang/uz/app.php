@@ -84,14 +84,14 @@ return [
             'title' => 'BILDIRISHNOMALAR',
         ],
     ],
-    
+
     // Languages
     'languages' => [
         'ru' => 'Русский',
         'uz' => 'O\'zbekcha',
         'en' => 'English',
     ],
-    
+
     // Common actions
     'actions' => [
         'save' => 'Saqlash',
@@ -103,7 +103,7 @@ return [
         'delete' => 'O\'chirish',
         'confirm' => 'Tasdiqlash',
     ],
-    
+
     // Messages
     'messages' => [
         'profile_updated' => 'Profil yangilandi',
@@ -117,7 +117,7 @@ return [
         'loading' => 'Yuklanmoqda...',
         'saving' => 'Saqlanmoqda...',
     ],
-    
+
     // Navigation
     'nav' => [
         'dashboard' => 'Bosh sahifa',
@@ -130,14 +130,14 @@ return [
         'finance' => 'Moliya',
         'sales' => 'Sotuvlar',
     ],
-    
+
     // User
     'user' => [
         'profile' => 'Profil',
         'settings' => 'Sozlamalar',
         'logout' => 'Chiqish',
     ],
-    
+
     // App info
     'app' => [
         'name' => 'SellerMind',

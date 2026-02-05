@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class DebtPaymentService
 {
-    public function __construct(protected TransactionService $transactionService)
-    {
-    }
+    public function __construct(protected TransactionService $transactionService) {}
 
     public function createPayment(FinanceDebt $debt, array $data, int $userId): FinanceDebtPayment
     {
@@ -52,7 +50,7 @@ class DebtPaymentService
                 'employee_id' => $debt->employee_id,
                 'amount' => $data['amount'],
                 'currency_code' => $debt->currency_code,
-                'description' => 'Погашение долга: ' . $debt->description,
+                'description' => 'Погашение долга: '.$debt->description,
                 'transaction_date' => $data['payment_date'],
                 'reference' => $data['reference'] ?? $payment->id,
                 'status' => FinanceTransaction::STATUS_CONFIRMED,
@@ -111,7 +109,7 @@ class DebtPaymentService
             'finance_transaction_id' => $transaction->id,
             'source_type' => FinanceDebtPayment::class,
             'source_id' => $payment->id,
-            'description' => 'Погашение долга: ' . $debt->description,
+            'description' => 'Погашение долга: '.$debt->description,
             'reference' => $payment->reference,
             'transaction_date' => $payment->payment_date,
             'status' => CashTransaction::STATUS_CONFIRMED,

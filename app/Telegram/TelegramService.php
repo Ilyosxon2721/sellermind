@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 class TelegramService
 {
     private string $token;
+
     private string $baseUrl = 'https://api.telegram.org/bot';
 
     public function __construct()
@@ -98,9 +99,10 @@ class TelegramService
     public function getFileUrl(string $fileId): ?string
     {
         $result = $this->getFile($fileId);
-        if (!empty($result['result']['file_path'])) {
+        if (! empty($result['result']['file_path'])) {
             return "https://api.telegram.org/file/bot{$this->token}/{$result['result']['file_path']}";
         }
+
         return null;
     }
 
@@ -124,7 +126,7 @@ class TelegramService
 
         $response = Http::post($url, $params);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('Telegram API Error', [
                 'method' => $method,
                 'status' => $response->status(),

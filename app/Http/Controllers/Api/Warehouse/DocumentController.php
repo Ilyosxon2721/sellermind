@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
 use App\Models\Warehouse\Unit;
@@ -14,23 +15,12 @@ use Illuminate\Support\Facades\DB;
 class DocumentController extends Controller
 {
     use ApiResponder;
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(): ?int
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return null;
-        }
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
+    use HasCompanyScope;
 
     public function index(Request $request)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -38,11 +28,21 @@ class DocumentController extends Controller
             ->with('warehouse')
             ->orderByDesc('created_at');
 
-        if ($request->type) $query->where('type', $request->type);
-        if ($request->status) $query->where('status', $request->status);
-        if ($request->warehouse_id) $query->where('warehouse_id', $request->warehouse_id);
-        if ($request->from) $query->where('created_at', '>=', $request->from);
-        if ($request->to) $query->where('created_at', '<=', $request->to);
+        if ($request->type) {
+            $query->where('type', $request->type);
+        }
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+        if ($request->warehouse_id) {
+            $query->where('warehouse_id', $request->warehouse_id);
+        }
+        if ($request->from) {
+            $query->where('created_at', '>=', $request->from);
+        }
+        if ($request->to) {
+            $query->where('created_at', '<=', $request->to);
+        }
 
         return $this->successResponse($query->limit(200)->get());
     }
@@ -60,7 +60,7 @@ class DocumentController extends Controller
         ]);
         $companyId = $this->getCompanyId();
         $userId = Auth::id();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -83,7 +83,7 @@ class DocumentController extends Controller
     public function addLines($id, Request $request)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
         $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
@@ -107,7 +107,7 @@ class DocumentController extends Controller
             foreach ($lines as $line) {
                 // Ensure unit exists (auto-create default if missing)
                 $unitId = $line['unit_id'];
-                if (!Unit::find($unitId)) {
+                if (! Unit::find($unitId)) {
                     $unit = Unit::firstOrCreate(['code' => 'pcs'], ['name' => 'Шт']);
                     $unitId = $unit->id;
                 }
@@ -132,7 +132,7 @@ class DocumentController extends Controller
     public function show($id)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -156,13 +156,14 @@ class DocumentController extends Controller
     {
         $companyId = $this->getCompanyId();
         $userId = Auth::id();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
         $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
 
         try {
             $result = app(\App\Services\Warehouse\DocumentPostingService::class)->post((int) $id, $companyId, $userId);
+
             return $this->successResponse($result);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), 'post_failed', null, 422);
@@ -173,12 +174,13 @@ class DocumentController extends Controller
     {
         $companyId = $this->getCompanyId();
         $userId = Auth::id();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
         $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
         try {
             $doc = app(\App\Services\Warehouse\DocumentReversalService::class)->reverse((int) $id, $companyId, $userId);
+
             return $this->successResponse($doc);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), 'reverse_failed', null, 422);

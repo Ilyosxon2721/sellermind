@@ -103,7 +103,6 @@ Alpine.store('auth', {
         try {
             console.log('Loading companies...', retryCount > 0 ? `(retry ${retryCount})` : '');
             this.companies = await companies.list();
-            console.log('Companies loaded:', this.companies);
 
             // Auto-select company: prefer user's company_id, then persisted, then first
             if (this.companies.length > 0) {
@@ -112,12 +111,10 @@ Alpine.store('auth', {
                 if (!currentExists) {
                     // Try to find user's primary company first
                     const userCompanyId = this.user?.company_id;
-                    console.log('User company_id:', userCompanyId);
                     const userCompany = userCompanyId
                         ? this.companies.find(c => c.id === userCompanyId)
                         : null;
                     this.currentCompany = userCompany || this.companies[0];
-                    console.log('Selected company:', this.currentCompany);
 
                     // Ensure persist saves immediately
                     localStorage.setItem('_x_current_company', JSON.stringify(this.currentCompany));
@@ -125,7 +122,6 @@ Alpine.store('auth', {
                 this.showCompanyPrompt = false;
             } else {
                 // No companies found - check if user has company_id but no access
-                console.log('No companies found for user');
                 this.showCompanyPrompt = true;
                 this.currentCompany = null;
             }

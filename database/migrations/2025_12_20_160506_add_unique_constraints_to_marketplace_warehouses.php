@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,15 +18,15 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Index doesn't exist, continue
         }
-        
+
         // Check if unique_mp_wh_per_account already exists
         $indexExists = DB::select("SHOW INDEX FROM marketplace_warehouses WHERE Key_name = 'unique_mp_wh_per_account'");
-        
+
         if (empty($indexExists)) {
             Schema::table('marketplace_warehouses', function (Blueprint $table) {
                 // Unique: одна пара marketplace_warehouse_id + account
                 $table->unique(['marketplace_account_id', 'marketplace_warehouse_id'], 'unique_mp_wh_per_account');
-                
+
                 // Note: local_warehouse_id uniqueness (excluding NULLs) enforced at application level
                 // MySQL doesn't support partial unique indexes
                 // Validation: one local_warehouse_id per account in MarketplaceWarehouse model

@@ -52,7 +52,7 @@ class InventoryItem extends Model
 
     public function getStatusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'Ожидает',
             'counted' => 'Подсчитано',
             'verified' => 'Проверено',
@@ -62,15 +62,25 @@ class InventoryItem extends Model
 
     public function getDiscrepancyType(): string
     {
-        if ($this->difference > 0) return 'surplus';
-        if ($this->difference < 0) return 'shortage';
+        if ($this->difference > 0) {
+            return 'surplus';
+        }
+        if ($this->difference < 0) {
+            return 'shortage';
+        }
+
         return 'match';
     }
 
     public function getDiscrepancyLabel(): string
     {
-        if ($this->difference > 0) return 'Излишек';
-        if ($this->difference < 0) return 'Недостача';
+        if ($this->difference > 0) {
+            return 'Излишек';
+        }
+        if ($this->difference < 0) {
+            return 'Недостача';
+        }
+
         return 'Совпадает';
     }
 }

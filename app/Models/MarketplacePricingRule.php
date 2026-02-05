@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplacePricingRule.php
 
 namespace App\Models;
@@ -9,15 +10,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplacePricingRule extends Model
 {
     public const MODE_FIXED_MARGIN = 'fixed_margin';
+
     public const MODE_TARGET_ROI = 'target_roi';
+
     public const MODE_COPY_FROM_CHANNEL = 'copy_from_channel';
+
     public const MODE_CUSTOM = 'custom';
 
     public const ROUNDING_NONE = 'none';
+
     public const ROUNDING_TO_1 = 'to_1';
+
     public const ROUNDING_TO_10 = 'to_10';
+
     public const ROUNDING_TO_50 = 'to_50';
+
     public const ROUNDING_TO_100 = 'to_100';
+
     public const ROUNDING_TO_9_99 = 'to_9_99';
 
     protected $fillable = [

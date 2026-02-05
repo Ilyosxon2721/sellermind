@@ -186,10 +186,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Log initialization
-    if (haptic.isSupported) {
-        console.log('✅ Haptic Feedback: Enabled');
-    } else {
-        console.log('⚠️ Haptic Feedback: Not supported on this device');
-    }
 });

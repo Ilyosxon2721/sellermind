@@ -73,7 +73,7 @@ class Plan extends Model
         if (empty($this->allowed_marketplaces)) {
             return false;
         }
-        
+
         return in_array($marketplace, $this->allowed_marketplaces);
     }
 
@@ -82,7 +82,7 @@ class Plan extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return number_format($this->price, 0, '.', ' ') . ' ' . $this->currency;
+        return number_format($this->price, 0, '.', ' ').' '.$this->currency;
     }
 
     /**

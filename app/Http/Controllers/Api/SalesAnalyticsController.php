@@ -3,25 +3,30 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Services\SalesAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class SalesAnalyticsController extends Controller
 {
+    use HasCompanyScope;
+
     public function __construct(
         protected SalesAnalyticsService $analyticsService
-    ) {
-    }
+    ) {}
 
     /**
      * Get sales overview.
      */
     public function overview(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
 
         $overview = $this->analyticsService->getOverview($companyId, $period);
 
@@ -33,8 +38,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByDay(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByDay($companyId, $period);
 
@@ -46,9 +55,14 @@ class SalesAnalyticsController extends Controller
      */
     public function topProducts(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
-        $limit = (int) $request->input('limit', 10);
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
+        $limit = $validated['limit'] ?? 10;
 
         $products = $this->analyticsService->getTopProducts($companyId, $period, $limit);
 
@@ -60,9 +74,14 @@ class SalesAnalyticsController extends Controller
      */
     public function flopProducts(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
-        $limit = (int) $request->input('limit', 10);
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
+        $limit = $validated['limit'] ?? 10;
 
         $products = $this->analyticsService->getFlopProducts($companyId, $period, $limit);
 
@@ -74,8 +93,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByCategory(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByCategory($companyId, $period);
 
@@ -87,8 +110,12 @@ class SalesAnalyticsController extends Controller
      */
     public function salesByMarketplace(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
 
         $data = $this->analyticsService->getSalesByMarketplace($companyId, $period);
 
@@ -100,7 +127,11 @@ class SalesAnalyticsController extends Controller
      */
     public function productPerformance(Request $request, int $productId): JsonResponse
     {
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $period = $validated['period'] ?? '30days';
 
         $performance = $this->analyticsService->getProductPerformance($productId, $period);
 
@@ -112,8 +143,12 @@ class SalesAnalyticsController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $period = $request->input('period', '30days');
+        $validated = $request->validate([
+            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        $period = $validated['period'] ?? '30days';
 
         $data = [
             'overview' => $this->analyticsService->getOverview($companyId, $period),
@@ -124,24 +159,5 @@ class SalesAnalyticsController extends Controller
         ];
 
         return response()->json($data);
-    }
-
-    /**
-     * Get company ID from request or auth user.
-     */
-    protected function getCompanyId(Request $request): int
-    {
-        $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
-
-        if (!$companyId) {
-            abort(404, 'Company not found');
-        }
-
-        // Verify access
-        if (!Auth::user()->hasCompanyAccess($companyId)) {
-            abort(403, 'Unauthorized access to company');
-        }
-
-        return $companyId;
     }
 }

@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -107,7 +107,7 @@ class User extends Authenticatable
     {
         $companyId = $companyId ?? $this->company_id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 

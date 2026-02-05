@@ -29,16 +29,16 @@ return new class extends Migration
     {
         if (Schema::hasTable('marketplace_accounts')) {
             if (Schema::hasColumn('marketplace_accounts', 'api_key')) {
-                DB::statement("ALTER TABLE marketplace_accounts MODIFY api_key VARCHAR(255) NULL");
+                DB::statement('ALTER TABLE marketplace_accounts MODIFY api_key VARCHAR(255) NULL');
             }
             if (Schema::hasColumn('marketplace_accounts', 'client_secret')) {
-                DB::statement("ALTER TABLE marketplace_accounts MODIFY client_secret VARCHAR(255) NULL");
+                DB::statement('ALTER TABLE marketplace_accounts MODIFY client_secret VARCHAR(255) NULL');
             }
             if (Schema::hasColumn('marketplace_accounts', 'oauth_token')) {
-                DB::statement("ALTER TABLE marketplace_accounts MODIFY oauth_token VARCHAR(255) NULL");
+                DB::statement('ALTER TABLE marketplace_accounts MODIFY oauth_token VARCHAR(255) NULL');
             }
             if (Schema::hasColumn('marketplace_accounts', 'oauth_refresh_token')) {
-                DB::statement("ALTER TABLE marketplace_accounts MODIFY oauth_refresh_token VARCHAR(255) NULL");
+                DB::statement('ALTER TABLE marketplace_accounts MODIFY oauth_refresh_token VARCHAR(255) NULL');
             }
         }
     }

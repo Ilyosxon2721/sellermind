@@ -62,8 +62,8 @@ class YandexMarketOrder extends Model
     public function isInTransit(): bool
     {
         return in_array($this->status, ['PROCESSING', 'DELIVERY', 'RESERVED'])
-            && !$this->isCancelled()
-            && !$this->isSold();
+            && ! $this->isCancelled()
+            && ! $this->isSold();
     }
 
     /**
@@ -73,8 +73,8 @@ class YandexMarketOrder extends Model
     public function isAwaitingPickup(): bool
     {
         return $this->status === 'PICKUP'
-            && !$this->isCancelled()
-            && !$this->isSold();
+            && ! $this->isCancelled()
+            && ! $this->isSold();
     }
 
     /**
@@ -96,6 +96,7 @@ class YandexMarketOrder extends Model
         if ($this->isSold()) {
             return 'delivered';
         }
+
         return 'processing';
     }
 
@@ -193,7 +194,9 @@ class YandexMarketOrder extends Model
      */
     public function getSubstatusLabel(): ?string
     {
-        if (!$this->substatus) return null;
+        if (! $this->substatus) {
+            return null;
+        }
 
         return match ($this->substatus) {
             'STARTED' => 'Подтверждён',

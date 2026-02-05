@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Services\Marketplaces\OzonClient;
@@ -14,6 +15,8 @@ use Illuminate\Http\Request;
  */
 class OzonOrderController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function __construct(
         protected OzonClient $ozonClient
     ) {}
@@ -35,9 +38,10 @@ class OzonOrderController extends Controller
 
         // Поиск
         if ($search = $request->input('search')) {
-            $query->where(function($q) use ($search) {
+            $search = $this->escapeLike($search);
+            $query->where(function ($q) use ($search) {
                 $q->where('posting_number', 'like', "%{$search}%")
-                  ->orWhere('order_id', 'like', "%{$search}%");
+                    ->orWhere('order_id', 'like', "%{$search}%");
             });
         }
 
@@ -47,18 +51,15 @@ class OzonOrderController extends Controller
             ->groupBy('status')
             ->pluck('count', 'status');
 
+        $perPage = $this->getPerPage($request);
+
         $orders = $query->orderBy('created_at_ozon', 'desc')
-                        ->paginate($request->input('per_page', 20));
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'orders' => $orders->items(),
-            'pagination' => [
-                'total' => $orders->total(),
-                'per_page' => $orders->perPage(),
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($orders),
             'status_counts' => $statusCounts,
         ]);
     }
@@ -111,10 +112,10 @@ class OzonOrderController extends Controller
             'cancel_reason_message' => 'nullable|string|max:500',
         ]);
 
-        if (!$order->canBeCancelled()) {
+        if (! $order->canBeCancelled()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Заказ в статусе "' . $order->getStatusLabel() . '" не может быть отменен',
+                'message' => 'Заказ в статусе "'.$order->getStatusLabel().'" не может быть отменен',
             ], 400);
         }
 
@@ -140,7 +141,7 @@ class OzonOrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при отмене заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка при отмене заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -163,7 +164,7 @@ class OzonOrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка получения причин отмены: ' . $e->getMessage(),
+                'message' => 'Ошибка получения причин отмены: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -176,7 +177,7 @@ class OzonOrderController extends Controller
     {
         $this->authorize($account);
 
-        if (!$order->canBeShipped()) {
+        if (! $order->canBeShipped()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Заказ не может быть отправлен в текущем статусе',
@@ -189,7 +190,7 @@ class OzonOrderController extends Controller
 
             // Затем собираем
             $result = $this->ozonClient->shipPosting($account, [
-                ['posting_number' => $order->posting_number]
+                ['posting_number' => $order->posting_number],
             ]);
 
             $order->update([
@@ -205,7 +206,7 @@ class OzonOrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при отправке заказа: ' . $e->getMessage(),
+                'message' => 'Ошибка при отправке заказа: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -236,7 +237,7 @@ class OzonOrderController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при получении этикетки: ' . $e->getMessage(),
+                'message' => 'Ошибка при получении этикетки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -255,8 +256,8 @@ class OzonOrderController extends Controller
         ]);
 
         $orders = OzonOrder::whereIn('id', $request->order_ids)
-                          ->where('marketplace_account_id', $account->id)
-                          ->get();
+            ->where('marketplace_account_id', $account->id)
+            ->get();
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -273,19 +274,19 @@ class OzonOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'label' => $pdfBase64,
-                'filename' => 'labels_' . date('Ymd_His') . '.pdf',
+                'filename' => 'labels_'.date('Ymd_His').'.pdf',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при получении этикеток: ' . $e->getMessage(),
+                'message' => 'Ошибка при получении этикеток: '.$e->getMessage(),
             ], 500);
         }
     }
 
     protected function authorize(MarketplaceAccount $account): void
     {
-        if (!auth()->user()->hasCompanyAccess($account->company_id)) {
+        if (! auth()->user()->hasCompanyAccess($account->company_id)) {
             abort(403, 'Доступ запрещён');
         }
     }

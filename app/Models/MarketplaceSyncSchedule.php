@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/MarketplaceSyncSchedule.php
 
 namespace App\Models;
@@ -9,11 +10,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketplaceSyncSchedule extends Model
 {
     public const TYPE_PRODUCTS = 'products';
+
     public const TYPE_PRICES = 'prices';
+
     public const TYPE_STOCKS = 'stocks';
+
     public const TYPE_ORDERS = 'orders';
+
     public const TYPE_PAYOUTS = 'payouts';
+
     public const TYPE_ANALYTICS = 'analytics';
+
     public const TYPE_AUTOMATION = 'automation';
 
     protected $fillable = [

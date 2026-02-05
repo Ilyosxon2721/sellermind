@@ -22,6 +22,7 @@ class AutopricingRuleResolver
                 if ($rule->scope_type === 'CATEGORY') {
                     return $categoryId && (int) $rule->scope_id === $categoryId;
                 }
+
                 return true; // GLOBAL
             })
             ->sortBy('priority')

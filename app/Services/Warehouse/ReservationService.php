@@ -26,7 +26,7 @@ class ReservationService
         $allowNegative = CompanySetting::where('company_id', $companyId)->value('allow_negative_stock') ?? false;
 
         return DB::transaction(function () use ($companyId, $warehouseId, $skuId, $qty, $reason, $sourceType, $sourceId, $userId, $allowNegative) {
-            if (!$allowNegative) {
+            if (! $allowNegative) {
                 $balanceService = app(StockBalanceService::class);
                 $balance = $balanceService->balance($companyId, $warehouseId, $skuId);
                 if ($balance['available'] < $qty) {
@@ -62,6 +62,7 @@ class ReservationService
     {
         $reservation = StockReservation::where('company_id', $companyId)->findOrFail($reservationId);
         $reservation->update(['status' => $status]);
+
         return $reservation;
     }
 }

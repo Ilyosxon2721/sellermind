@@ -145,7 +145,7 @@ class ReviewTemplatesSeeder extends Seeder
                 ->where('is_system', true)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 ReviewTemplate::create($template);
             }
         }

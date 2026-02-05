@@ -18,7 +18,7 @@ interface AgentToolInterface
     /**
      * Execute the tool with given arguments.
      *
-     * @param array $arguments The arguments passed to the tool
+     * @param  array  $arguments  The arguments passed to the tool
      * @return array The result of the tool execution
      */
     public function handle(array $arguments): array;

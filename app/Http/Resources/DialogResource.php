@@ -19,7 +19,7 @@ class DialogResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'messages' => MessageResource::collection($this->whenLoaded('messages')),
-            'last_message' => new MessageResource($this->whenLoaded('messages', fn() => $this->lastMessage())),
+            'last_message' => new MessageResource($this->whenLoaded('messages', fn () => $this->lastMessage())),
         ];
     }
 }

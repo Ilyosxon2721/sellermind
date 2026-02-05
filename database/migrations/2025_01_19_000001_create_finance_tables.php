@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Finance Categories - Категории расходов/доходов
-        if (!Schema::hasTable('finance_categories')) {
+        if (! Schema::hasTable('finance_categories')) {
             Schema::create('finance_categories', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id')->nullable(); // NULL = системные категории
@@ -31,7 +31,7 @@ return new class extends Migration
         }
 
         // 2. Finance Settings - Настройки компании
-        if (!Schema::hasTable('finance_settings')) {
+        if (! Schema::hasTable('finance_settings')) {
             Schema::create('finance_settings', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -48,7 +48,7 @@ return new class extends Migration
         }
 
         // 3. Employees - Сотрудники
-        if (!Schema::hasTable('employees')) {
+        if (! Schema::hasTable('employees')) {
             Schema::create('employees', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -78,7 +78,7 @@ return new class extends Migration
         }
 
         // 4. Finance Transactions - Главный журнал операций
-        if (!Schema::hasTable('finance_transactions')) {
+        if (! Schema::hasTable('finance_transactions')) {
             Schema::create('finance_transactions', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -124,7 +124,7 @@ return new class extends Migration
         }
 
         // 5. Finance Debts - Долги (дебиторка/кредиторка)
-        if (!Schema::hasTable('finance_debts')) {
+        if (! Schema::hasTable('finance_debts')) {
             Schema::create('finance_debts', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -164,7 +164,7 @@ return new class extends Migration
         }
 
         // 6. Finance Debt Payments - Погашения долгов
-        if (!Schema::hasTable('finance_debt_payments')) {
+        if (! Schema::hasTable('finance_debt_payments')) {
             Schema::create('finance_debt_payments', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -186,7 +186,7 @@ return new class extends Migration
         }
 
         // 7. Salary Calculations - Расчёты зарплат (по месяцам)
-        if (!Schema::hasTable('salary_calculations')) {
+        if (! Schema::hasTable('salary_calculations')) {
             Schema::create('salary_calculations', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -207,7 +207,7 @@ return new class extends Migration
         }
 
         // 8. Salary Items - Позиции зарплаты сотрудников
-        if (!Schema::hasTable('salary_items')) {
+        if (! Schema::hasTable('salary_items')) {
             Schema::create('salary_items', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('salary_calculation_id');
@@ -233,7 +233,7 @@ return new class extends Migration
         }
 
         // 9. Tax Calculations - Расчёты налогов
-        if (!Schema::hasTable('tax_calculations')) {
+        if (! Schema::hasTable('tax_calculations')) {
             Schema::create('tax_calculations', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -259,7 +259,7 @@ return new class extends Migration
         }
 
         // 10. Marketplace Fee Imports - Импорт комиссий с маркетплейсов
-        if (!Schema::hasTable('marketplace_fee_imports')) {
+        if (! Schema::hasTable('marketplace_fee_imports')) {
             Schema::create('marketplace_fee_imports', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesOrderService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -28,13 +29,15 @@ use Illuminate\Support\Facades\Log;
 class WildberriesOrderService
 {
     protected ?WildberriesHttpClient $httpClient = null;
+
     protected ?MarketplaceAccount $currentAccount = null;
+
     protected OrderStockService $orderStockService;
 
     public function __construct(?WildberriesHttpClient $httpClient = null, ?OrderStockService $orderStockService = null)
     {
         $this->httpClient = $httpClient;
-        $this->orderStockService = $orderStockService ?? new OrderStockService();
+        $this->orderStockService = $orderStockService ?? new OrderStockService;
     }
 
     /**
@@ -51,17 +54,17 @@ class WildberriesOrderService
     protected function getHttpClient(MarketplaceAccount $account): WildberriesHttpClient
     {
         // If account changed or no client, create new one
-        if (!$this->httpClient || $this->currentAccount?->id !== $account->id) {
+        if (! $this->httpClient || $this->currentAccount?->id !== $account->id) {
             $this->httpClient = new WildberriesHttpClient($account);
             $this->currentAccount = $account;
         }
+
         return $this->httpClient;
     }
 
     /**
      * Fetch new FBS orders (Marketplace API)
      *
-     * @param MarketplaceAccount $account
      * @return array Sync results
      */
     public function fetchNewOrders(MarketplaceAccount $account): array
@@ -152,9 +155,8 @@ class WildberriesOrderService
     /**
      * Fetch orders with all statuses from Marketplace API
      *
-     * @param MarketplaceAccount $account
-     * @param int $limit Limit of orders to fetch (default 1000)
-     * @param int $next Pagination offset
+     * @param  int  $limit  Limit of orders to fetch (default 1000)
+     * @param  int  $next  Pagination offset
      * @return array Sync results
      */
     public function fetchAllOrders(MarketplaceAccount $account, int $limit = 1000, int $next = 0): array
@@ -241,7 +243,7 @@ class WildberriesOrderService
             // Помечаем заказы, которых нет в ответе API, как отменённые
             // Но только те, которые ещё не в статусе archive или canceled
             // Важно: только после полной пагинации всех страниц
-            if (!empty($syncedOrderIds)) {
+            if (! empty($syncedOrderIds)) {
                 // Также добавляем 'cancelled' в excluded statuses (двойное написание)
                 $ordersToCancel = WbOrder::where('marketplace_account_id', $account->id)
                     ->whereNotIn('external_order_id', $syncedOrderIds)
@@ -336,9 +338,7 @@ class WildberriesOrderService
     /**
      * Sync orders from Statistics API (includes financial data)
      *
-     * @param MarketplaceAccount $account
-     * @param \DateTimeInterface|null $from
-     * @param int $flag 0=all, 1=income only
+     * @param  int  $flag  0=all, 1=income only
      * @return array Sync results
      */
     public function syncOrders(MarketplaceAccount $account, ?\DateTimeInterface $from = null, int $flag = 0): array
@@ -446,7 +446,7 @@ class WildberriesOrderService
     {
         $orderId = $orderData['id'] ?? null;
 
-        if (!$orderId) {
+        if (! $orderId) {
             throw new \RuntimeException('Order data missing id');
         }
 
@@ -469,14 +469,14 @@ class WildberriesOrderService
         $mapped = $client->mapOrderData($orderData);
 
         // Добавляем supply_id если есть
-        if (!empty($orderData['supplyId'])) {
+        if (! empty($orderData['supplyId'])) {
             $mapped['supply_id'] = $orderData['supplyId'];
         }
 
         // Устанавливаем wb_status_group на основе статуса поставки или API статуса
-        if (!empty($orderData['supply_status_group'])) {
+        if (! empty($orderData['supply_status_group'])) {
             $mapped['wb_status_group'] = $orderData['supply_status_group'];
-        } elseif (!empty($mapped['supply_id'])) {
+        } elseif (! empty($mapped['supply_id'])) {
             // Если есть поставка, но нет статуса - ищем поставку в БД
             $supply = Supply::where('marketplace_account_id', $account->id)
                 ->where('external_supply_id', $mapped['supply_id'])
@@ -484,7 +484,7 @@ class WildberriesOrderService
 
             if ($supply) {
                 // Определяем статус на основе статуса поставки
-                $mapped['wb_status_group'] = match($supply->status) {
+                $mapped['wb_status_group'] = match ($supply->status) {
                     'draft', 'in_assembly' => 'assembling',
                     'ready' => 'assembling',
                     'sent', 'in_delivery' => 'shipping',
@@ -518,12 +518,12 @@ class WildberriesOrderService
                 'order_id' => $orderId,
                 'preserved_status' => $oldStatus,
             ]);
-        } elseif (!empty($orderData['supply_status'])) {
+        } elseif (! empty($orderData['supply_status'])) {
             $mapped['status'] = $orderData['supply_status'];
             $mapped['status_normalized'] = $orderData['supply_status'];
-        } elseif (!empty($mapped['wb_status_group'])) {
+        } elseif (! empty($mapped['wb_status_group'])) {
             // Устанавливаем status на основе wb_status_group
-            $mapped['status'] = match($mapped['wb_status_group']) {
+            $mapped['status'] = match ($mapped['wb_status_group']) {
                 'new' => 'new',
                 'assembling' => 'in_assembly',
                 'shipping' => 'in_delivery',
@@ -604,7 +604,7 @@ class WildberriesOrderService
     {
         $srid = $orderData['srid'] ?? null;
 
-        if (!$srid) {
+        if (! $srid) {
             throw new \RuntimeException('Order data missing srid');
         }
 
@@ -612,10 +612,10 @@ class WildberriesOrderService
             ->where('srid', $srid)
             ->first();
 
-        $created = !$order;
+        $created = ! $order;
 
-        if (!$order) {
-            $order = new WildberriesOrder();
+        if (! $order) {
+            $order = new WildberriesOrder;
             $order->marketplace_account_id = $account->id;
             $order->srid = $srid;
         }
@@ -636,10 +636,10 @@ class WildberriesOrderService
             'warehouse_type' => $orderData['warehouseType'] ?? null,
             'status' => $this->mapStatisticsStatus($orderData),
             'wb_status' => $orderData['orderType'] ?? null,
-            'is_cancel' => (bool)($orderData['isCancel'] ?? false),
-            'is_return' => (bool)($orderData['isReturn'] ?? false),
+            'is_cancel' => (bool) ($orderData['isCancel'] ?? false),
+            'is_return' => (bool) ($orderData['isReturn'] ?? false),
             // isRealization - boolean field from Statistics API indicating completed sale
-            'is_realization' => (bool)($orderData['isRealization'] ?? false),
+            'is_realization' => (bool) ($orderData['isRealization'] ?? false),
             'price' => $orderData['priceWithDisc'] ?? null,
             'discount_percent' => $orderData['discountPercent'] ?? null,
             'total_price' => $orderData['totalPrice'] ?? null,
@@ -668,7 +668,7 @@ class WildberriesOrderService
      */
     protected function mapMarketplaceStatus(?string $status): string
     {
-        if (!$status) {
+        if (! $status) {
             return 'unknown';
         }
 
@@ -689,7 +689,7 @@ class WildberriesOrderService
     protected function mapWbStatusGroup(?string $wbStatus, ?string $supplyId): string
     {
         // Если заказ прикреплён к поставке – считаем "На сборке"
-        if (!empty($supplyId)) {
+        if (! empty($supplyId)) {
             return 'assembling';
         }
 
@@ -836,9 +836,8 @@ class WildberriesOrderService
     /**
      * Get supply barcode/QR code
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
-     * @param string $type Barcode type: 'svg', 'png', 'pdf' (default: 'png')
+     * @param  string  $supplyId  Supply ID (UUID)
+     * @param  string  $type  Barcode type: 'svg', 'png', 'pdf' (default: 'png')
      * @return array ['file_content' => string, 'content_type' => string, 'format' => string]
      */
     public function getSupplyBarcode(MarketplaceAccount $account, string $supplyId, string $type = 'png'): array
@@ -886,12 +885,12 @@ class WildberriesOrderService
      * Get stickers for orders
      * POST /api/v3/orders/stickers
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Array of order IDs (max 100)
-     * @param string $type Format: png|svg|zplv|zplh
-     * @param int $width Width in mm (default 58)
-     * @param int $height Height in mm (default 40)
+     * @param  array  $orderIds  Array of order IDs (max 100)
+     * @param  string  $type  Format: png|svg|zplv|zplh
+     * @param  int  $width  Width in mm (default 58)
+     * @param  int  $height  Height in mm (default 40)
      * @return string Binary content
+     *
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
      */
@@ -911,8 +910,8 @@ class WildberriesOrderService
         }
 
         $allowedTypes = ['png', 'svg', 'zplv', 'zplh'];
-        if (!in_array($type, $allowedTypes)) {
-            throw new \InvalidArgumentException("Invalid sticker type. Allowed: " . implode(', ', $allowedTypes));
+        if (! in_array($type, $allowedTypes)) {
+            throw new \InvalidArgumentException('Invalid sticker type. Allowed: '.implode(', ', $allowedTypes));
         }
 
         try {
@@ -973,9 +972,8 @@ class WildberriesOrderService
      * According to WB API documentation, boxes are created after orders are added to the supply.
      * The request body requires an 'amount' field specifying the quantity of boxes to create.
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (WB-GI-XXXXXXX format)
-     * @param int $amount Number of boxes to create (default: 1, max: 1000)
+     * @param  string  $supplyId  Supply ID (WB-GI-XXXXXXX format)
+     * @param  int  $amount  Number of boxes to create (default: 1, max: 1000)
      * @return array Response with trbxIds array
      */
     public function createTare(MarketplaceAccount $account, string $supplyId, int $amount = 1): array
@@ -1009,10 +1007,9 @@ class WildberriesOrderService
      * Add orders to tare (box) via WB API
      * PATCH /api/v3/supplies/{supplyId}/trbx/{trbxId}
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID
-     * @param string $trbxId Tare/box ID
-     * @param array $orderIds Array of order IDs to add to the box
+     * @param  string  $supplyId  Supply ID
+     * @param  string  $trbxId  Tare/box ID
+     * @param  array  $orderIds  Array of order IDs to add to the box
      * @return array Response
      */
     public function addOrdersToTare(MarketplaceAccount $account, string $supplyId, string $trbxId, array $orderIds): array
@@ -1046,8 +1043,7 @@ class WildberriesOrderService
      * Get list of tares (boxes) with orders for supply
      * GET /api/v3/supplies/{supplyId}/trbx
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID
+     * @param  string  $supplyId  Supply ID
      * @return array List of tares/boxes
      */
     public function getTares(MarketplaceAccount $account, string $supplyId): array
@@ -1077,9 +1073,8 @@ class WildberriesOrderService
      * Get tare stickers/barcodes for supply
      * POST /api/v3/supplies/{supplyId}/trbx/stickers
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID
-     * @param string $type Format: png, svg, pdf
+     * @param  string  $supplyId  Supply ID
+     * @param  string  $type  Format: png, svg, pdf
      * @return array Binary content with metadata
      */
     public function getTareStickers(MarketplaceAccount $account, string $supplyId, string $type = 'png'): array
@@ -1110,11 +1105,9 @@ class WildberriesOrderService
     /**
      * Get tare (box) barcode from WB API
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID
-     * @param string $tareId Tare ID (barcode)
-     * @param string $type Format: png, svg, pdf
-     * @return array
+     * @param  string  $supplyId  Supply ID
+     * @param  string  $tareId  Tare ID (barcode)
+     * @param  string  $type  Format: png, svg, pdf
      */
     public function getTareBarcode(MarketplaceAccount $account, string $supplyId, string $tareId, string $type = 'png'): array
     {
@@ -1163,9 +1156,7 @@ class WildberriesOrderService
     /**
      * Cancel supply
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
-     * @return bool
+     * @param  string  $supplyId  Supply ID (UUID)
      */
     public function cancelSupply(MarketplaceAccount $account, string $supplyId): bool
     {
@@ -1193,10 +1184,8 @@ class WildberriesOrderService
     /**
      * Remove order from supply
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
-     * @param int $orderId Order ID
-     * @return bool
+     * @param  string  $supplyId  Supply ID (UUID)
+     * @param  int  $orderId  Order ID
      */
     public function removeOrderFromSupply(MarketplaceAccount $account, string $supplyId, int $orderId): bool
     {
@@ -1225,7 +1214,6 @@ class WildberriesOrderService
     /**
      * Get orders that require reshipment
      *
-     * @param MarketplaceAccount $account
      * @return array Orders requiring reshipment
      */
     public function getReshipmentOrders(MarketplaceAccount $account): array
@@ -1252,8 +1240,7 @@ class WildberriesOrderService
     /**
      * Get supply details
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
+     * @param  string  $supplyId  Supply ID (UUID)
      * @return array Supply details
      */
     public function getSupplyDetails(MarketplaceAccount $account, string $supplyId): array
@@ -1281,8 +1268,7 @@ class WildberriesOrderService
     /**
      * Get order IDs in supply (new API method)
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
+     * @param  string  $supplyId  Supply ID (UUID)
      * @return array Order IDs in the supply
      */
     public function getSupplyOrderIds(MarketplaceAccount $account, string $supplyId): array
@@ -1314,8 +1300,7 @@ class WildberriesOrderService
     /**
      * Get orders in supply with full details
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
+     * @param  string  $supplyId  Supply ID (UUID)
      * @return array Orders in the supply with details
      */
     public function getSupplyOrders(MarketplaceAccount $account, string $supplyId): array
@@ -1329,6 +1314,7 @@ class WildberriesOrderService
                     'account_id' => $account->id,
                     'supply_id' => $supplyId,
                 ]);
+
                 return [];
             }
 
@@ -1358,8 +1344,7 @@ class WildberriesOrderService
     /**
      * Sync orders from a specific supply
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
+     * @param  string  $supplyId  Supply ID (UUID)
      * @return array Sync results
      */
     public function syncSupplyOrders(MarketplaceAccount $account, string $supplyId): array
@@ -1384,7 +1369,7 @@ class WildberriesOrderService
             $wbStatusGroup = 'new';
             $status = 'new';
             if ($supply) {
-                [$wbStatusGroup, $status] = match($supply->status) {
+                [$wbStatusGroup, $status] = match ($supply->status) {
                     'draft' => ['assembling', 'in_assembly'],
                     'sent' => ['shipping', 'in_delivery'],
                     'delivered' => ['archive', 'completed'],
@@ -1486,7 +1471,7 @@ class WildberriesOrderService
             ->get()
             ->each(function ($supply) use (&$supplies) {
                 $supplies[$supply->external_supply_id] = $supply;
-                $supplies['SUPPLY-' . $supply->id] = $supply;
+                $supplies['SUPPLY-'.$supply->id] = $supply;
                 $supplies[(string) $supply->id] = $supply;
             });
 
@@ -1497,7 +1482,7 @@ class WildberriesOrderService
             ->chunkById(200, function ($orders) use (&$updated, $supplies) {
                 foreach ($orders as $order) {
                     $supply = $supplies[$order->supply_id] ?? null;
-                    if (!$supply) {
+                    if (! $supply) {
                         continue;
                     }
 
@@ -1507,17 +1492,17 @@ class WildberriesOrderService
                     }
 
                     $payload = [];
-                    if (!empty($mapped['status']) && $order->status !== $mapped['status']) {
+                    if (! empty($mapped['status']) && $order->status !== $mapped['status']) {
                         $payload['status'] = $mapped['status'];
                     }
-                    if (!empty($mapped['wb_status_group']) && $order->wb_status_group !== $mapped['wb_status_group']) {
+                    if (! empty($mapped['wb_status_group']) && $order->wb_status_group !== $mapped['wb_status_group']) {
                         $payload['wb_status_group'] = $mapped['wb_status_group'];
                     }
-                    if (!empty($mapped['delivered_at']) && !$order->delivered_at) {
+                    if (! empty($mapped['delivered_at']) && ! $order->delivered_at) {
                         $payload['delivered_at'] = $mapped['delivered_at'];
                     }
 
-                    if (!empty($payload)) {
+                    if (! empty($payload)) {
                         $order->update($payload);
                         $updated++;
                     }
@@ -1571,9 +1556,8 @@ class WildberriesOrderService
     /**
      * Add orders to supply
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId Supply ID (UUID)
-     * @param array $orderIds Array of order IDs
+     * @param  string  $supplyId  Supply ID (UUID)
+     * @param  array  $orderIds  Array of order IDs
      * @return array Result with updated count
      */
     public function addOrdersToSupply(MarketplaceAccount $account, string $supplyId, array $orderIds): array
@@ -1600,7 +1584,7 @@ class WildberriesOrderService
                 ->where('external_supply_id', $supplyId)
                 ->first();
 
-            if (!$supply) {
+            if (! $supply) {
                 throw new \RuntimeException("Supply with external_supply_id {$supplyId} not found in database");
             }
 
@@ -1655,8 +1639,7 @@ class WildberriesOrderService
     /**
      * Create new supply
      *
-     * @param MarketplaceAccount $account
-     * @param string $name Supply name
+     * @param  string  $name  Supply name
      * @return array Created supply data with ID
      */
     public function createSupply(MarketplaceAccount $account, string $name): array
@@ -1687,9 +1670,8 @@ class WildberriesOrderService
     /**
      * Get list of supplies
      *
-     * @param MarketplaceAccount $account
-     * @param int $limit Limit per page (default: 1000, max: 1000)
-     * @param int $next Cursor for pagination
+     * @param  int  $limit  Limit per page (default: 1000, max: 1000)
+     * @param  int  $next  Cursor for pagination
      * @return array Supplies list with pagination info
      */
     public function getSupplies(MarketplaceAccount $account, int $limit = 1000, int $next = 0): array
@@ -1724,9 +1706,7 @@ class WildberriesOrderService
      * Получить статусы заказов
      * POST /api/v3/orders/status
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Массив external_order_id (до 1000)
-     * @return array
+     * @param  array  $orderIds  Массив external_order_id (до 1000)
      */
     public function getOrdersStatus(MarketplaceAccount $account, array $orderIds): array
     {
@@ -1756,12 +1736,10 @@ class WildberriesOrderService
      * Получить стикеры заказов
      * POST /api/v3/orders/stickers
      *
-     * @param MarketplaceAccount $account
-     * @param array $orderIds Массив external_order_id (до 100)
-     * @param string $type Формат: svg|zplv|zplh|png
-     * @param int $width Ширина: 58|40
-     * @param int $height Высота: 40|30
-     * @return array
+     * @param  array  $orderIds  Массив external_order_id (до 100)
+     * @param  string  $type  Формат: svg|zplv|zplh|png
+     * @param  int  $width  Ширина: 58|40
+     * @param  int  $height  Высота: 40|30
      */
     public function getOrderStickers(
         MarketplaceAccount $account,
@@ -1801,9 +1779,7 @@ class WildberriesOrderService
      * Отменить заказ
      * PATCH /api/v3/orders/{orderId}/cancel
      *
-     * @param MarketplaceAccount $account
-     * @param string $orderId external_order_id
-     * @return array
+     * @param  string  $orderId  external_order_id
      */
     public function cancelOrder(MarketplaceAccount $account, string $orderId): array
     {
@@ -1831,9 +1807,7 @@ class WildberriesOrderService
      * Передать поставку в доставку
      * PATCH /api/v3/supplies/{supplyId}/deliver
      *
-     * @param MarketplaceAccount $account
-     * @param string $supplyId ID поставки (WB-GI-XXXXXXX)
-     * @return array
+     * @param  string  $supplyId  ID поставки (WB-GI-XXXXXXX)
      */
     public function deliverSupply(MarketplaceAccount $account, string $supplyId): array
     {

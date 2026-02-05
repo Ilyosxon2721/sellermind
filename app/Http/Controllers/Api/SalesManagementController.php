@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\Counterparty;
-use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Warehouse\Warehouse;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\Validator;
  */
 class SalesManagementController extends Controller
 {
+    use HasCompanyScope;
+    use HasPaginatedResponse;
+
     public function __construct(
         protected SaleService $saleService,
         protected SaleReservationService $reservationService
@@ -29,11 +33,11 @@ class SalesManagementController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $query = Sale::query()
             ->with(['items', 'counterparty', 'createdBy'])
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId));
+            ->where('company_id', $companyId);
 
         // Фильтры
         if ($type = $request->get('type')) {
@@ -61,7 +65,7 @@ class SalesManagementController extends Controller
         }
 
         if ($search = $request->get('search')) {
-            $query->search($search);
+            $query->search($this->escapeLike($search));
         }
 
         // Сортировка
@@ -70,17 +74,12 @@ class SalesManagementController extends Controller
         $query->orderBy($sortBy, $sortOrder);
 
         // Пагинация
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = $this->getPerPage($request);
         $sales = $query->paginate($perPage);
 
         return response()->json([
             'data' => $sales->items(),
-            'meta' => [
-                'current_page' => $sales->currentPage(),
-                'per_page' => $sales->perPage(),
-                'total' => $sales->total(),
-                'last_page' => $sales->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($sales),
         ]);
     }
 
@@ -89,11 +88,11 @@ class SalesManagementController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
             ->with(['items.productVariant', 'counterparty', 'createdBy', 'confirmedBy'])
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         return response()->json([
@@ -131,7 +130,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $sale = $this->saleService->createSale($request->all());
+            $sale = $this->saleService->createSale($validator->validated());
 
             return response()->json([
                 'message' => 'Sale created successfully',
@@ -157,10 +156,10 @@ class SalesManagementController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         // Можно обновлять только черновики
@@ -195,10 +194,10 @@ class SalesManagementController extends Controller
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         // Можно удалять только черновики
@@ -220,10 +219,10 @@ class SalesManagementController extends Controller
      */
     public function confirm(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         $deductStock = $request->boolean('deduct_stock', true);
@@ -248,10 +247,10 @@ class SalesManagementController extends Controller
      */
     public function complete(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         try {
@@ -274,10 +273,10 @@ class SalesManagementController extends Controller
      */
     public function cancel(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         try {
@@ -300,10 +299,10 @@ class SalesManagementController extends Controller
      */
     public function ship(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -340,10 +339,10 @@ class SalesManagementController extends Controller
      */
     public function getReservations(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         $reservations = $this->reservationService->getActiveReservations($sale);
@@ -362,10 +361,10 @@ class SalesManagementController extends Controller
      */
     public function addItem(Request $request, int $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($id);
 
         if ($sale->status !== 'draft') {
@@ -391,7 +390,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $item = $this->saleService->addItemToSale($sale, $request->all());
+            $item = $this->saleService->addItemToSale($sale, $validator->validated());
             $sale->recalculateTotals();
 
             return response()->json([
@@ -412,11 +411,11 @@ class SalesManagementController extends Controller
      */
     public function updateItem(Request $request, int $saleId, int $itemId): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         // Проверяем что продажа принадлежит компании пользователя
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($saleId);
 
         $item = SaleItem::where('sale_id', $saleId)->findOrFail($itemId);
@@ -442,7 +441,7 @@ class SalesManagementController extends Controller
         }
 
         try {
-            $item = $this->saleService->updateSaleItem($item, $request->all());
+            $item = $this->saleService->updateSaleItem($item, $validator->validated());
 
             return response()->json([
                 'message' => 'Item updated successfully',
@@ -462,11 +461,11 @@ class SalesManagementController extends Controller
      */
     public function deleteItem(Request $request, int $saleId, int $itemId): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         // Проверяем что продажа принадлежит компании пользователя
         $sale = Sale::query()
-            ->when($companyId, fn($q) => $q->byCompany($companyId))
+            ->byCompany($companyId)
             ->findOrFail($saleId);
 
         $item = SaleItem::where('sale_id', $saleId)->findOrFail($itemId);
@@ -496,7 +495,7 @@ class SalesManagementController extends Controller
      */
     public function statistics(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $filters = [
             'date_from' => $request->get('date_from'),
@@ -516,13 +515,13 @@ class SalesManagementController extends Controller
      */
     public function getCounterparties(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         $counterparties = Counterparty::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->where('is_customer', true)
             ->where('is_active', true)
-            ->when($request->get('search'), fn($q, $search) => $q->search($search))
+            ->when($request->get('search'), fn ($q, $search) => $q->search($this->escapeLike($search)))
             ->orderBy('name')
             ->limit(50)
             ->get(['id', 'name', 'short_name', 'inn', 'phone']);
@@ -535,43 +534,11 @@ class SalesManagementController extends Controller
      */
     public function getProducts(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
-        $warehouseId = $request->get('warehouse_id');
+        $companyId = $this->getCompanyId();
+        $search = $request->get('search') ? $this->escapeLike($request->get('search')) : null;
+        $warehouseId = $request->get('warehouse_id') ? (int) $request->get('warehouse_id') : null;
 
-        $products = ProductVariant::query()
-            ->with('product:id,name,category_id')
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->where('is_active', true)
-            ->where('is_deleted', false)
-            ->when($request->get('search'), function($q, $search) {
-                $q->where(function($query) use ($search) {
-                    $query->where('sku', 'like', "%{$search}%")
-                          ->orWhere('barcode', 'like', "%{$search}%")
-                          ->orWhereHas('product', fn($q2) => $q2->where('name', 'like', "%{$search}%"));
-                });
-            })
-            ->orderBy('sku')
-            ->limit(50)
-            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price']);
-
-        // Получить все связанные SKU из складской системы
-        $variantIds = $products->pluck('id')->all();
-        $warehouseSkus = \App\Models\Warehouse\Sku::whereIn('product_variant_id', $variantIds)
-            ->get()
-            ->keyBy('product_variant_id');
-
-        // Добавляем доступные остатки по складу и warehouse_sku_id
-        $products->each(function($variant) use ($warehouseId, $warehouseSkus) {
-            // Добавить warehouse_sku_id для использования в документах оприходования
-            $warehouseSku = $warehouseSkus->get($variant->id);
-            $variant->warehouse_sku_id = $warehouseSku?->id;
-
-            if ($warehouseId) {
-                $variant->available_stock = $this->reservationService->getAvailableStock($variant, $warehouseId);
-            } else {
-                $variant->available_stock = $variant->stock_default;
-            }
-        });
+        $products = $this->saleService->getProductsForSale($companyId, $search, $warehouseId);
 
         return response()->json(['data' => $products]);
     }
@@ -581,33 +548,21 @@ class SalesManagementController extends Controller
      */
     public function getWarehouses(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
         // Get warehouses directly from Warehouse model
         $warehouses = Warehouse::select([
-                'warehouses.id as id',
-                'warehouses.name as name',
-                'warehouses.code as code',
-                'warehouses.address as address'
-            ])
-            ->when($companyId, fn($q) => $q->where('warehouses.company_id', $companyId))
+            'warehouses.id as id',
+            'warehouses.name as name',
+            'warehouses.code as code',
+            'warehouses.address as address',
+        ])
+            ->where('warehouses.company_id', $companyId)
             ->where('warehouses.is_active', true)
             ->orderBy('warehouses.is_default', 'desc')
             ->orderBy('warehouses.name')
             ->get();
 
         return response()->json(['data' => $warehouses]);
-    }
-
-    /**
-     * Получить ID компании
-     */
-    protected function getCompanyId(Request $request): ?int
-    {
-        if (auth()->check() && auth()->user()->company_id) {
-            return auth()->user()->company_id;
-        }
-
-        return null;
     }
 }

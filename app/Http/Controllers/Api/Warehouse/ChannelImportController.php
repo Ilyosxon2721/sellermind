@@ -3,34 +3,21 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Channel;
 use App\Models\Warehouse\ChannelOrder;
 use App\Models\Warehouse\ChannelOrderItem;
 use App\Models\Warehouse\ChannelSkuMap;
 use App\Models\Warehouse\ProcessedEvent;
-use App\Models\Warehouse\StockReservation;
 use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ChannelImportController extends Controller
 {
     use ApiResponder;
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(): ?int
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return null;
-        }
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
+    use HasCompanyScope;
 
     public function import(Request $request)
     {
@@ -47,12 +34,12 @@ class ChannelImportController extends Controller
         ]);
 
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $channel = Channel::where('company_id', $companyId)->where('code', strtoupper($data['channel_code']))->first();
-        if (!$channel) {
+        if (! $channel) {
             return $this->errorResponse('Channel not found', 'not_found', 'channel_code', 404);
         }
 
@@ -96,7 +83,7 @@ class ChannelImportController extends Controller
                     'payload_json' => $item,
                 ]);
 
-                if (!$mappedSkuId) {
+                if (! $mappedSkuId) {
                     $unmappedItems[] = $item['external_sku_id'];
                 } else {
                     // Create reservation for NEW/CREATED/CONFIRMED

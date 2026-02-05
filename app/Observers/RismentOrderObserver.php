@@ -6,6 +6,8 @@ use App\Jobs\Risment\SendOrderToRisment;
 use App\Jobs\Risment\SendReturnToRisment;
 use App\Models\IntegrationLink;
 use App\Models\MarketplaceAccount;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
@@ -35,6 +37,13 @@ class RismentOrderObserver
         }
 
         $marketplace = $this->getMarketplaceCode($order);
+        $items = $this->extractItems($order, $marketplace, $companyId);
+
+        // Фильтрация: отправлять только заказы с товарами из RISMENT
+        $rismentItems = array_filter($items, fn($item) => !empty($item['risment_product_id']));
+        if (empty($rismentItems)) {
+            return;
+        }
 
         SendOrderToRisment::dispatch($companyId, 'order.created', [
             'order_id' => $order->id,
@@ -47,13 +56,14 @@ class RismentOrderObserver
             'currency' => $order->currency ?? $order->currency_code ?? null,
             'delivery_type' => $this->getDeliveryType($order),
             'ordered_at' => $order->ordered_at?->toIso8601String(),
-            'items' => $this->extractItems($order, $marketplace),
+            'items' => array_values($rismentItems),
         ]);
 
         Log::info('RismentOrderObserver: FBS order dispatched to RISMENT', [
             'order_id' => $order->id,
             'marketplace' => $marketplace,
             'company_id' => $companyId,
+            'risment_items_count' => count($rismentItems),
         ]);
     }
 
@@ -80,7 +90,12 @@ class RismentOrderObserver
             return;
         }
 
+        // Проверяем наличие RISMENT-товаров в заказе
         $marketplace = $this->getMarketplaceCode($order);
+        if (!$this->hasRismentProducts($order, $marketplace, $companyId)) {
+            return;
+        }
+
         $newStatus = $order->status_normalized ?? $order->status;
 
         // Cancelled orders → risment:returns queue
@@ -177,11 +192,13 @@ class RismentOrderObserver
         return null;
     }
 
-    protected function extractItems(Model $order, string $marketplace): array
+    protected function extractItems(Model $order, string $marketplace, ?int $companyId = null): array
     {
+        $items = [];
+
         // WB: each order row = 1 item
         if ($marketplace === 'wb') {
-            return [[
+            $items = [[
                 'sku' => $order->sku,
                 'article' => $order->article,
                 'nm_id' => $order->nm_id,
@@ -191,26 +208,79 @@ class RismentOrderObserver
         }
 
         // Ozon: items stored in products JSON column
-        if ($marketplace === 'ozon' && $order instanceof OzonOrder) {
+        elseif ($marketplace === 'ozon' && $order instanceof OzonOrder) {
             $products = $order->products ?? [];
-            return collect($products)->map(fn($p) => [
+            $items = collect($products)->map(fn($p) => [
                 'sku' => $p['offer_id'] ?? null,
                 'quantity' => $p['quantity'] ?? 1,
                 'price' => $p['price'] ?? null,
             ])->toArray();
         }
 
+        // Uzum: items relationship
+        elseif ($marketplace === 'uzum' && $order instanceof UzumOrder && method_exists($order, 'items')) {
+            $items = $order->items->map(fn($i) => [
+                'sku' => $i->sku ?? null,
+                'quantity' => $i->quantity ?? 1,
+                'price' => $i->price ?? null,
+            ])->toArray();
+        }
+
         // YM: items stored in order_data JSON column
-        if ($marketplace === 'ym' && $order instanceof YandexMarketOrder) {
-            $items = $order->order_data['items'] ?? [];
-            return collect($items)->map(fn($i) => [
+        elseif ($marketplace === 'ym' && $order instanceof YandexMarketOrder) {
+            $orderItems = $order->order_data['items'] ?? [];
+            $items = collect($orderItems)->map(fn($i) => [
                 'sku' => $i['offerId'] ?? null,
                 'quantity' => $i['count'] ?? 1,
                 'price' => $i['price'] ?? null,
             ])->toArray();
         }
 
-        return [];
+        // Обогатить items данными из RISMENT (risment_product_id, risment_variant_id)
+        if ($companyId) {
+            $items = array_map(fn($item) => $this->enrichItemWithRisment($item, $companyId), $items);
+        }
+
+        return $items;
+    }
+
+    /**
+     * Обогатить item данными из RISMENT: найти связанный товар по SKU
+     */
+    protected function enrichItemWithRisment(array $item, int $companyId): array
+    {
+        $sku = $item['sku'] ?? null;
+        if (!$sku) {
+            $item['risment_product_id'] = null;
+            $item['risment_variant_id'] = null;
+            return $item;
+        }
+
+        $variant = ProductVariant::where('company_id', $companyId)
+            ->where('sku', $sku)
+            ->first();
+
+        if ($variant) {
+            $product = $variant->product;
+            $item['risment_product_id'] = $product?->risment_product_id;
+            $item['risment_variant_id'] = $variant->risment_variant_id;
+            $item['barcode'] = $variant->barcode;
+            $item['name'] = $item['name'] ?? $variant->name ?? $product?->name;
+        } else {
+            $item['risment_product_id'] = null;
+            $item['risment_variant_id'] = null;
+        }
+
+        return $item;
+    }
+
+    /**
+     * Проверить, есть ли в заказе товары с risment_product_id
+     */
+    protected function hasRismentProducts(Model $order, string $marketplace, int $companyId): bool
+    {
+        $items = $this->extractItems($order, $marketplace, $companyId);
+        return collect($items)->contains(fn($item) => !empty($item['risment_product_id']));
     }
 
     protected function isCancelled(?string $status): bool

@@ -2,8 +2,6 @@
 
 namespace App\Telegram;
 
-use App\Models\Dialog;
-use App\Models\Message;
 use App\Models\User;
 use App\Services\AIService;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 class TelegramBotHandler
 {
     private TelegramService $telegram;
+
     private AIService $aiService;
 
     public function __construct(TelegramService $telegram, AIService $aiService)
@@ -44,12 +43,14 @@ class TelegramBotHandler
         // Handle commands
         if (str_starts_with($text, '/')) {
             $this->handleCommand($chatId, $text, $message);
+
             return;
         }
 
         // Handle photos
         if ($photo) {
             $this->handlePhoto($chatId, $photo, $message['caption'] ?? '', $message);
+
             return;
         }
 
@@ -70,7 +71,7 @@ class TelegramBotHandler
             '/review' => $this->commandReview($chatId, implode(' ', $args), $message),
             '/status' => $this->commandStatus($chatId, $message),
             '/link' => $this->commandLink($chatId, $args, $message),
-            default => $this->telegram->sendMessage($chatId, "Неизвестная команда. Используйте /help для списка команд."),
+            default => $this->telegram->sendMessage($chatId, 'Неизвестная команда. Используйте /help для списка команд.'),
         };
     }
 
@@ -91,7 +92,7 @@ class TelegramBotHandler
         $text .= "/status — статус ваших задач\n";
         $text .= "/link — привязать аккаунт\n";
         $text .= "/help — справка\n\n";
-        $text .= "💬 Просто напишите мне или отправьте фото товара!";
+        $text .= '💬 Просто напишите мне или отправьте фото товара!';
 
         $keyboard = $this->telegram->buildInlineKeyboard([
             [
@@ -119,7 +120,7 @@ class TelegramBotHandler
         $text .= "<b>Без команд:</b>\n";
         $text .= "• Отправьте фото — создам карточку товара\n";
         $text .= "• Напишите вопрос — отвечу как ассистент\n\n";
-        $text .= "🌐 Веб-версия: sellermind.ai";
+        $text .= '🌐 Веб-версия: sellermind.ai';
 
         $this->telegram->sendMessage($chatId, $text);
     }
@@ -129,14 +130,14 @@ class TelegramBotHandler
         $marketplace = $args[0] ?? 'universal';
         $validMarketplaces = ['uzum', 'wb', 'ozon', 'ym', 'universal'];
 
-        if (!in_array($marketplace, $validMarketplaces)) {
+        if (! in_array($marketplace, $validMarketplaces)) {
             $marketplace = 'universal';
         }
 
         $text = "📦 <b>Создание карточки товара</b>\n\n";
-        $text .= "Маркетплейс: <b>" . strtoupper($marketplace) . "</b>\n\n";
+        $text .= 'Маркетплейс: <b>'.strtoupper($marketplace)."</b>\n\n";
         $text .= "📸 Отправьте фото товара (1-5 штук), и я создам для вас карточку.\n\n";
-        $text .= "💡 Совет: лучше всего работают фото на белом фоне с хорошим освещением.";
+        $text .= '💡 Совет: лучше всего работают фото на белом фоне с хорошим освещением.';
 
         // Store state for this chat (waiting for photo)
         $this->setState($chatId, [
@@ -153,10 +154,11 @@ class TelegramBotHandler
             $text = "💬 <b>Ответ на отзыв</b>\n\n";
             $text .= "Отправьте текст отзыва после команды:\n";
             $text .= "<code>/review Товар пришёл с браком, очень разочарован</code>\n\n";
-            $text .= "Или просто отправьте текст отзыва следующим сообщением.";
+            $text .= 'Или просто отправьте текст отзыва следующим сообщением.';
 
             $this->setState($chatId, ['action' => 'waiting_review_text']);
             $this->telegram->sendMessage($chatId, $text);
+
             return;
         }
 
@@ -167,8 +169,9 @@ class TelegramBotHandler
     {
         $user = $this->getUserByTelegramId($message['from']['id']);
 
-        if (!$user) {
-            $this->telegram->sendMessage($chatId, "❌ Аккаунт не привязан. Используйте /link для привязки.");
+        if (! $user) {
+            $this->telegram->sendMessage($chatId, '❌ Аккаунт не привязан. Используйте /link для привязки.');
+
             return;
         }
 
@@ -179,7 +182,8 @@ class TelegramBotHandler
             ->get();
 
         if ($tasks->isEmpty()) {
-            $this->telegram->sendMessage($chatId, "✅ У вас нет активных задач.");
+            $this->telegram->sendMessage($chatId, '✅ У вас нет активных задач.');
+
             return;
         }
 
@@ -204,9 +208,10 @@ class TelegramBotHandler
             $text .= "1. Войдите на сайт sellermind.ai\n";
             $text .= "2. Перейдите в Настройки → Telegram\n";
             $text .= "3. Скопируйте код привязки\n";
-            $text .= "4. Отправьте: /link ВАШ_КОД";
+            $text .= '4. Отправьте: /link ВАШ_КОД';
 
             $this->telegram->sendMessage($chatId, $text);
+
             return;
         }
 
@@ -214,13 +219,15 @@ class TelegramBotHandler
         $code = strtoupper($args[0]);
         $linkCode = \App\Models\TelegramLinkCode::where('code', $code)->first();
 
-        if (!$linkCode) {
-            $this->telegram->sendMessage($chatId, "❌ Неверный код. Проверьте и попробуйте снова.");
+        if (! $linkCode) {
+            $this->telegram->sendMessage($chatId, '❌ Неверный код. Проверьте и попробуйте снова.');
+
             return;
         }
 
-        if (!$linkCode->isValid()) {
-            $this->telegram->sendMessage($chatId, "❌ Код истёк или уже использован. Сгенерируйте новый код на сайте.");
+        if (! $linkCode->isValid()) {
+            $this->telegram->sendMessage($chatId, '❌ Код истёк или уже использован. Сгенерируйте новый код на сайте.');
+
             return;
         }
 
@@ -240,7 +247,7 @@ class TelegramBotHandler
         $text .= "• Завершении массовых операций\n";
         $text .= "• Синхронизации с маркетплейсами\n";
         $text .= "• Критических ошибках\n\n";
-        $text .= "Настройте уведомления в Настройках на сайте.";
+        $text .= 'Настройте уведомления в Настройках на сайте.';
 
         $this->telegram->sendMessage($chatId, $text);
     }
@@ -251,14 +258,15 @@ class TelegramBotHandler
         $photo = end($photos);
         $fileId = $photo['file_id'];
 
-        $this->telegram->sendMessage($chatId, "📸 Получил фото! Анализирую...");
+        $this->telegram->sendMessage($chatId, '📸 Получил фото! Анализирую...');
 
         try {
             // Get file URL
             $fileUrl = $this->telegram->getFileUrl($fileId);
 
-            if (!$fileUrl) {
-                $this->telegram->sendMessage($chatId, "❌ Не удалось загрузить фото. Попробуйте ещё раз.");
+            if (! $fileUrl) {
+                $this->telegram->sendMessage($chatId, '❌ Не удалось загрузить фото. Попробуйте ещё раз.');
+
                 return;
             }
 
@@ -283,11 +291,11 @@ class TelegramBotHandler
             $text = "✅ <b>Карточка товара готова!</b>\n\n";
             $text .= "<b>Название:</b>\n{$cardData['title']}\n\n";
 
-            if (!empty($cardData['short_description'])) {
+            if (! empty($cardData['short_description'])) {
                 $text .= "<b>Краткое описание:</b>\n{$cardData['short_description']}\n\n";
             }
 
-            if (!empty($cardData['bullets'])) {
+            if (! empty($cardData['bullets'])) {
                 $text .= "<b>Преимущества:</b>\n";
                 foreach ($cardData['bullets'] as $bullet) {
                     $text .= "• {$bullet}\n";
@@ -295,7 +303,7 @@ class TelegramBotHandler
                 $text .= "\n";
             }
 
-            if (!empty($cardData['keywords'])) {
+            if (! empty($cardData['keywords'])) {
                 $text .= "<b>Ключевые слова:</b>\n";
                 $text .= implode(', ', array_slice($cardData['keywords'], 0, 10));
             }
@@ -315,7 +323,7 @@ class TelegramBotHandler
 
         } catch (\Exception $e) {
             Log::error('Error generating card from photo', ['error' => $e->getMessage()]);
-            $this->telegram->sendMessage($chatId, "❌ Произошла ошибка при создании карточки. Попробуйте позже.");
+            $this->telegram->sendMessage($chatId, '❌ Произошла ошибка при создании карточки. Попробуйте позже.');
         }
     }
 
@@ -330,6 +338,7 @@ class TelegramBotHandler
                 default => $this->handleGeneralMessage($chatId, $text, $message),
             };
             $this->clearState($chatId);
+
             return;
         }
 
@@ -338,7 +347,7 @@ class TelegramBotHandler
 
     private function handleGeneralMessage(int $chatId, string $text, array $message): void
     {
-        $this->telegram->sendMessage($chatId, "🤔 Думаю...");
+        $this->telegram->sendMessage($chatId, '🤔 Думаю...');
 
         try {
             $user = $this->getUserByTelegramId($message['from']['id']);
@@ -358,13 +367,13 @@ class TelegramBotHandler
 
         } catch (\Exception $e) {
             Log::error('Error generating response', ['error' => $e->getMessage()]);
-            $this->telegram->sendMessage($chatId, "❌ Произошла ошибка. Попробуйте позже.");
+            $this->telegram->sendMessage($chatId, '❌ Произошла ошибка. Попробуйте позже.');
         }
     }
 
     private function generateReviewResponse(int $chatId, string $reviewText, array $message): void
     {
-        $this->telegram->sendMessage($chatId, "💬 Генерирую варианты ответа...");
+        $this->telegram->sendMessage($chatId, '💬 Генерирую варианты ответа...');
 
         try {
             $user = $this->getUserByTelegramId($message['from']['id']);
@@ -389,7 +398,7 @@ class TelegramBotHandler
 
         } catch (\Exception $e) {
             Log::error('Error generating review response', ['error' => $e->getMessage()]);
-            $this->telegram->sendMessage($chatId, "❌ Произошла ошибка. Попробуйте позже.");
+            $this->telegram->sendMessage($chatId, '❌ Произошла ошибка. Попробуйте позже.');
         }
     }
 

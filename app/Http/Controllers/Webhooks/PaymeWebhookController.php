@@ -1,32 +1,40 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PaymeWebhookController extends Controller
 {
     /**
-     * Handle Payme webhook (JSON-RPC)
+     * Обработка Payme вебхука (JSON-RPC)
      */
     public function handle(Request $request): JsonResponse
     {
         Log::info('Payme webhook request', $request->all());
 
-        // Verify authorization
-        if (!$this->verifyAuthorization($request)) {
+        // Проверка авторизации
+        if (! $this->verifyAuthorization($request)) {
             return $this->error(-32504, 'Insufficient privilege to perform this method', $request->input('id'));
         }
 
-        $method = $request->input('method');
-        $params = $request->input('params', []);
-        $id = $request->input('id');
+        $validated = $request->validate([
+            'method' => ['required', 'string'],
+            'params' => ['required', 'array'],
+            'id' => ['required'],
+        ]);
 
-        return match($method) {
+        $method = $validated['method'];
+        $params = $validated['params'];
+        $id = $validated['id'];
+
+        return match ($method) {
             'CheckPerformTransaction' => $this->checkPerformTransaction($params, $id),
             'CreateTransaction' => $this->createTransaction($params, $id),
             'PerformTransaction' => $this->performTransaction($params, $id),
@@ -47,7 +55,7 @@ class PaymeWebhookController extends Controller
         $subscriptionId = $account['subscription_id'] ?? null;
         $subscription = Subscription::find($subscriptionId);
 
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->error(-31050, 'Subscription not found', $id);
         }
 
@@ -83,7 +91,7 @@ class PaymeWebhookController extends Controller
         $subscriptionId = $account['subscription_id'] ?? null;
         $subscription = Subscription::find($subscriptionId);
 
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->error(-31050, 'Subscription not found', $id);
         }
 
@@ -115,7 +123,7 @@ class PaymeWebhookController extends Controller
             ->where('payment_method', 'payme')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->error(-31003, 'Transaction not found', $id);
         }
 
@@ -126,7 +134,7 @@ class PaymeWebhookController extends Controller
             'status' => 'active',
             'amount_paid' => $amount,
             'starts_at' => now(),
-            'ends_at' => match($subscription->plan->billing_period) {
+            'ends_at' => match ($subscription->plan->billing_period) {
                 'monthly' => now()->addMonth(),
                 'quarterly' => now()->addMonths(3),
                 'yearly' => now()->addYear(),
@@ -159,7 +167,7 @@ class PaymeWebhookController extends Controller
             ->where('payment_method', 'payme')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->error(-31003, 'Transaction not found', $id);
         }
 
@@ -196,11 +204,11 @@ class PaymeWebhookController extends Controller
             ->where('payment_method', 'payme')
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return $this->error(-31003, 'Transaction not found', $id);
         }
 
-        $state = match($subscription->status) {
+        $state = match ($subscription->status) {
             'pending' => 1,
             'active' => 2,
             'cancelled' => -2,
@@ -228,7 +236,7 @@ class PaymeWebhookController extends Controller
         $merchantId = config('payments.payme.merchant_id');
         $secretKey = config('payments.payme.secret_key');
 
-        $expectedAuth = 'Basic ' . base64_encode("Paycom:{$secretKey}");
+        $expectedAuth = 'Basic '.base64_encode("Paycom:{$secretKey}");
         $providedAuth = $request->header('Authorization');
 
         return $providedAuth === $expectedAuth;

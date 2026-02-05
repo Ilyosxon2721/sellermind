@@ -14,45 +14,51 @@ class PromotionController extends Controller
 {
     public function __construct(
         protected PromotionService $promotionService
-    ) {
-    }
+    ) {}
 
     /**
-     * Get all promotions for the company.
+     * Получить все акции компании.
      */
     public function index(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', 'in:active,expired,upcoming'],
+            'is_automatic' => ['nullable', 'boolean'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? Auth::user()->companies()->first()?->id;
+
+        if (! $companyId) {
             return response()->json(['error' => 'Company not found'], 404);
         }
 
         $query = Promotion::where('company_id', $companyId)
             ->with(['creator:id,name', 'promotionProducts']);
 
-        // Filters
-        if ($request->has('status')) {
-            if ($request->status === 'active') {
+        // Фильтры
+        if (isset($validated['status'])) {
+            if ($validated['status'] === 'active') {
                 $query->active();
-            } elseif ($request->status === 'expired') {
+            } elseif ($validated['status'] === 'expired') {
                 $query->where('end_date', '<', now());
-            } elseif ($request->status === 'upcoming') {
+            } elseif ($validated['status'] === 'upcoming') {
                 $query->where('start_date', '>', now());
             }
         }
 
-        if ($request->has('is_automatic')) {
-            $query->where('is_automatic', $request->boolean('is_automatic'));
+        if (array_key_exists('is_automatic', $validated) && $validated['is_automatic'] !== null) {
+            $query->where('is_automatic', (bool) $validated['is_automatic']);
         }
 
         $promotions = $query->orderByDesc('created_at')->paginate(20);
 
-        // Add stats to each promotion
+        // Добавить статистику к каждой акции
         $promotions->getCollection()->transform(function ($promotion) {
             $promotion->stats = $this->promotionService->getPromotionStats($promotion);
             $promotion->is_currently_active = $promotion->isCurrentlyActive();
             $promotion->days_until_expiration = $promotion->getDaysUntilExpiration();
+
             return $promotion;
         });
 
@@ -81,7 +87,7 @@ class PromotionController extends Controller
     {
         $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['error' => 'Company not found'], 404);
         }
 
@@ -120,7 +126,7 @@ class PromotionController extends Controller
             // Attach products
             foreach ($validated['product_variant_ids'] as $variantId) {
                 $variant = \App\Models\ProductVariant::find($variantId);
-                if (!$variant) {
+                if (! $variant) {
                     continue;
                 }
 
@@ -146,6 +152,7 @@ class PromotionController extends Controller
             return response()->json($promotion, 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -222,23 +229,24 @@ class PromotionController extends Controller
     }
 
     /**
-     * Detect slow-moving products.
+     * Обнаружить медленно продающиеся товары.
      */
     public function detectSlowMoving(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+            'min_days_no_sale' => ['sometimes', 'integer', 'min:1'],
+            'min_stock' => ['sometimes', 'integer', 'min:1'],
+            'min_price' => ['sometimes', 'numeric', 'min:0'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? Auth::user()->companies()->first()?->id;
+
+        if (! $companyId) {
             return response()->json(['error' => 'Company not found'], 404);
         }
 
         $this->authorizeCompanyAccess($companyId);
-
-        $validated = $request->validate([
-            'min_days_no_sale' => 'sometimes|integer|min:1',
-            'min_stock' => 'sometimes|integer|min:1',
-            'min_price' => 'sometimes|numeric|min:0',
-        ]);
 
         $slowMoving = $this->promotionService->detectSlowMovingProducts(
             $companyId,
@@ -252,25 +260,26 @@ class PromotionController extends Controller
     }
 
     /**
-     * Create automatic promotion from slow-moving products.
+     * Создать автоматическую акцию из медленно продающихся товаров.
      */
     public function createAutomatic(Request $request): JsonResponse
     {
-        $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
+        $validated = $request->validate([
+            'company_id' => ['nullable', 'integer'],
+            'min_days_no_sale' => ['sometimes', 'integer', 'min:1'],
+            'min_stock' => ['sometimes', 'integer', 'min:1'],
+            'duration_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
+            'max_discount' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'apply_immediately' => ['sometimes', 'boolean'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $validated['company_id'] ?? Auth::user()->companies()->first()?->id;
+
+        if (! $companyId) {
             return response()->json(['error' => 'Company not found'], 404);
         }
 
         $this->authorizeCompanyAccess($companyId);
-
-        $validated = $request->validate([
-            'min_days_no_sale' => 'sometimes|integer|min:1',
-            'min_stock' => 'sometimes|integer|min:1',
-            'duration_days' => 'sometimes|integer|min:1|max:365',
-            'max_discount' => 'sometimes|integer|min:1|max:100',
-            'apply_immediately' => 'sometimes|boolean',
-        ]);
 
         // Detect slow-moving products
         $slowMoving = $this->promotionService->detectSlowMovingProducts(
@@ -329,7 +338,7 @@ class PromotionController extends Controller
     protected function authorizeCompanyAccess(int $companyId): void
     {
         $user = Auth::user();
-        if (!$user->hasCompanyAccess($companyId)) {
+        if (! $user->hasCompanyAccess($companyId)) {
             abort(403, 'Unauthorized access to company');
         }
     }

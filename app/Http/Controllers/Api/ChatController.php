@@ -40,7 +40,7 @@ class ChatController extends Controller
         if ($request->dialog_id) {
             $dialog = Dialog::findOrFail($request->dialog_id);
 
-            if (method_exists($user, 'hasCompanyAccess') && !$user->hasCompanyAccess($dialog->company_id)) {
+            if (method_exists($user, 'hasCompanyAccess') && ! $user->hasCompanyAccess($dialog->company_id)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
@@ -49,11 +49,11 @@ class ChatController extends Controller
             }
         } else {
             $companyId = $request->input('company_id', $user->company_id);
-            if (!$companyId) {
+            if (! $companyId) {
                 return response()->json(['message' => 'Компания не выбрана.'], 422);
             }
 
-            if (method_exists($user, 'hasCompanyAccess') && !$user->hasCompanyAccess($companyId)) {
+            if (method_exists($user, 'hasCompanyAccess') && ! $user->hasCompanyAccess($companyId)) {
                 return response()->json(['message' => 'Доступ запрещён.'], 403);
             }
 
@@ -103,7 +103,7 @@ class ChatController extends Controller
         ]);
 
         // Update dialog title if it's the first message
-        if ($dialog->messages()->count() <= 2 && !$dialog->title) {
+        if ($dialog->messages()->count() <= 2 && ! $dialog->title) {
             $title = $this->generateDialogTitle($request->message, $mode, $dialog->is_private);
             $dialog->update(['title' => $title]);
         }
@@ -183,7 +183,7 @@ Format your output as a single paragraph describing:
 Example input: "красные кроссовки"
 Example output: "Professional product photography of red athletic sneakers, studio lighting with soft diffused light, clean white background, high resolution, commercial e-commerce style, 45-degree angle view, sharp focus on product details"
 
-IMPORTANT: Output ONLY the prompt text. Do not say you cannot generate images. Do not add any commentary.'
+IMPORTANT: Output ONLY the prompt text. Do not say you cannot generate images. Do not add any commentary.',
                 ]
             );
 
@@ -199,8 +199,9 @@ IMPORTANT: Output ONLY the prompt text. Do not say you cannot generate images. D
 
             $modelName = $imageModel === 'gpt4o' ? 'GPT-4o' : 'DALL-E 3';
 
-            if (!empty($images)) {
+            if (! empty($images)) {
                 $imageUrl = $images[0];
+
                 return "Вот сгенерированное изображение:\n\n![Сгенерированное фото]({$imageUrl})\n\n[download:{$imageUrl}]";
             }
 
@@ -300,24 +301,21 @@ IMPORTANT: Output ONLY the prompt text. Do not say you cannot generate images. D
         };
 
         if ($isPrivate) {
-            $modePrefix = '🔒 ' . $modePrefix;
+            $modePrefix = '🔒 '.$modePrefix;
         }
 
         $title = mb_substr($message, 0, 45);
         if (mb_strlen($message) > 45) {
             $title .= '...';
         }
-        return $modePrefix . $title;
+
+        return $modePrefix.$title;
     }
 
     public function hideDialog(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        $dialog = Dialog::findOrFail($id);
-
-        if ($dialog->user_id !== $user->id) {
-            return response()->json(['message' => 'Это не ваш диалог.'], 403);
-        }
+        $dialog = Dialog::where('user_id', $user->id)->findOrFail($id);
 
         $dialog->hide();
 

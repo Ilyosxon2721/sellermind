@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/WildberriesClient.php
 
 namespace App\Services\Marketplaces;
@@ -41,7 +42,7 @@ class WildberriesClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка: ' . $e->getMessage(),
+                'message' => 'Ошибка: '.$e->getMessage(),
                 'response_time_ms' => null,
             ];
         }
@@ -62,7 +63,7 @@ class WildberriesClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка подключения: ' . $e->getMessage(),
+                'message' => 'Ошибка подключения: '.$e->getMessage(),
             ];
         }
     }
@@ -84,15 +85,16 @@ class WildberriesClient implements MarketplaceClientInterface
 
         foreach ($products as $marketplaceProduct) {
             $product = $marketplaceProduct->product;
-            if (!$product) {
+            if (! $product) {
                 $marketplaceProduct->markAsFailed('Product not found');
+
                 continue;
             }
 
             try {
                 $cardData = $this->mapProductToWbCard($marketplaceProduct, $product, $account);
 
-                if (!empty($marketplaceProduct->external_product_id)) {
+                if (! empty($marketplaceProduct->external_product_id)) {
                     // Есть nmId - обновляем
                     $cardData['nmID'] = (int) $marketplaceProduct->external_product_id;
                     $toUpdate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
@@ -101,17 +103,17 @@ class WildberriesClient implements MarketplaceClientInterface
                     $toCreate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
                 }
             } catch (\Exception $e) {
-                $marketplaceProduct->markAsFailed('Mapping error: ' . $e->getMessage());
+                $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
             }
         }
 
         // Создаём новые карточки (батчами по 100)
-        if (!empty($toCreate)) {
+        if (! empty($toCreate)) {
             $this->createWbCards($wbHttpClient, $toCreate, $account);
         }
 
         // Обновляем существующие карточки (батчами по 100)
-        if (!empty($toUpdate)) {
+        if (! empty($toUpdate)) {
             $this->updateWbCards($wbHttpClient, $toUpdate);
         }
     }
@@ -124,16 +126,17 @@ class WildberriesClient implements MarketplaceClientInterface
         $batches = array_chunk($items, 100);
 
         foreach ($batches as $batch) {
-            $cards = array_map(fn($item) => $item['card'], $batch);
+            $cards = array_map(fn ($item) => $item['card'], $batch);
 
             try {
                 $response = $wbHttpClient->post('content', '/content/v2/cards/upload', $cards);
 
                 // WB возвращает error если есть ошибки
-                if (!empty($response['error'])) {
+                if (! empty($response['error'])) {
                     foreach ($batch as $item) {
-                        $item['marketplaceProduct']->markAsFailed('WB API: ' . ($response['errorText'] ?? $response['error']));
+                        $item['marketplaceProduct']->markAsFailed('WB API: '.($response['errorText'] ?? $response['error']));
                     }
+
                     continue;
                 }
 
@@ -152,7 +155,7 @@ class WildberriesClient implements MarketplaceClientInterface
             } catch (\Exception $e) {
                 \Log::error('WB cards upload error', ['error' => $e->getMessage()]);
                 foreach ($batch as $item) {
-                    $item['marketplaceProduct']->markAsFailed('API error: ' . $e->getMessage());
+                    $item['marketplaceProduct']->markAsFailed('API error: '.$e->getMessage());
                 }
             }
         }
@@ -166,15 +169,16 @@ class WildberriesClient implements MarketplaceClientInterface
         $batches = array_chunk($items, 100);
 
         foreach ($batches as $batch) {
-            $cards = array_map(fn($item) => $item['card'], $batch);
+            $cards = array_map(fn ($item) => $item['card'], $batch);
 
             try {
                 $response = $wbHttpClient->post('content', '/content/v2/cards/update', $cards);
 
-                if (!empty($response['error'])) {
+                if (! empty($response['error'])) {
                     foreach ($batch as $item) {
-                        $item['marketplaceProduct']->markAsFailed('WB API: ' . ($response['errorText'] ?? $response['error']));
+                        $item['marketplaceProduct']->markAsFailed('WB API: '.($response['errorText'] ?? $response['error']));
                     }
+
                     continue;
                 }
 
@@ -185,7 +189,7 @@ class WildberriesClient implements MarketplaceClientInterface
             } catch (\Exception $e) {
                 \Log::error('WB cards update error', ['error' => $e->getMessage()]);
                 foreach ($batch as $item) {
-                    $item['marketplaceProduct']->markAsFailed('API error: ' . $e->getMessage());
+                    $item['marketplaceProduct']->markAsFailed('API error: '.$e->getMessage());
                 }
             }
         }
@@ -246,11 +250,11 @@ class WildberriesClient implements MarketplaceClientInterface
     protected function mapProductToWbCard($marketplaceProduct, $product, MarketplaceAccount $account): array
     {
         // vendorCode - обязательное поле (артикул продавца)
-        $vendorCode = $product->article ?? $product->sku ?? 'ART-' . $product->id;
+        $vendorCode = $product->article ?? $product->sku ?? 'ART-'.$product->id;
 
         // Получаем категорию WB (subjectID) - должна быть настроена в MarketplaceProduct
         $subjectId = $marketplaceProduct->external_category_id ?? null;
-        if (!$subjectId) {
+        if (! $subjectId) {
             throw new \Exception('Категория WB (subjectID) не указана. Укажите категорию перед публикацией.');
         }
 
@@ -285,7 +289,7 @@ class WildberriesClient implements MarketplaceClientInterface
 
         // Добавляем фото, если есть
         $photos = $this->getProductPhotos($product);
-        if (!empty($photos)) {
+        if (! empty($photos)) {
             $card['variants'][0]['photos'] = $photos;
         }
 
@@ -300,7 +304,7 @@ class WildberriesClient implements MarketplaceClientInterface
         $characteristics = [];
 
         // Состав
-        if (!empty($product->composition)) {
+        if (! empty($product->composition)) {
             $characteristics[] = [
                 'id' => 14, // ID характеристики "Состав"
                 'value' => $product->composition,
@@ -308,7 +312,7 @@ class WildberriesClient implements MarketplaceClientInterface
         }
 
         // Страна производства
-        if (!empty($product->country_of_origin)) {
+        if (! empty($product->country_of_origin)) {
             $characteristics[] = [
                 'id' => 8, // ID характеристики "Страна производства"
                 'value' => $product->country_of_origin,
@@ -316,7 +320,7 @@ class WildberriesClient implements MarketplaceClientInterface
         }
 
         // Комплектация
-        if (!empty($product->package_contents)) {
+        if (! empty($product->package_contents)) {
             $characteristics[] = [
                 'id' => 15, // ID "Комплектация"
                 'value' => $product->package_contents,
@@ -334,12 +338,12 @@ class WildberriesClient implements MarketplaceClientInterface
         $photos = [];
 
         // Главное изображение
-        if (!empty($product->main_image)) {
+        if (! empty($product->main_image)) {
             $photos[] = $product->main_image;
         }
 
         // Дополнительные изображения
-        if (!empty($product->images) && is_array($product->images)) {
+        if (! empty($product->images) && is_array($product->images)) {
             foreach ($product->images as $image) {
                 if (is_string($image)) {
                     $photos[] = $image;
@@ -361,12 +365,12 @@ class WildberriesClient implements MarketplaceClientInterface
         foreach ($products as $marketplaceProduct) {
             // nmId - это ID товара на WB
             $nmId = $marketplaceProduct->external_product_id ?? $marketplaceProduct->external_offer_id;
-            if (!$nmId) {
+            if (! $nmId) {
                 continue;
             }
 
             $product = $marketplaceProduct->product;
-            if (!$product || !$product->price) {
+            if (! $product || ! $product->price) {
                 continue;
             }
 
@@ -390,7 +394,7 @@ class WildberriesClient implements MarketplaceClientInterface
         // WB Stocks API: PUT /api/v3/stocks/{warehouseId}
         $warehouseId = $account->credentials_json['warehouse_id'] ?? null;
 
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             throw new \RuntimeException('Warehouse ID не настроен для этого аккаунта WB');
         }
 
@@ -398,12 +402,12 @@ class WildberriesClient implements MarketplaceClientInterface
 
         foreach ($products as $marketplaceProduct) {
             $sku = $marketplaceProduct->external_sku;
-            if (!$sku) {
+            if (! $sku) {
                 continue;
             }
 
             $product = $marketplaceProduct->product;
-            if (!$product) {
+            if (! $product) {
                 continue;
             }
 
@@ -496,7 +500,7 @@ class WildberriesClient implements MarketplaceClientInterface
             }
 
             $next = $response['next'] ?? 0;
-        } while ($next > 0 && !empty($response['orders']));
+        } while ($next > 0 && ! empty($response['orders']));
 
         return $orders;
     }
@@ -557,13 +561,13 @@ class WildberriesClient implements MarketplaceClientInterface
             $recentCompletedSupplies = []; // Закрыты и доставлены недавно - для архива
 
             foreach ($allSupplies as $supply) {
-                $isClosed = !empty($supply['closedAt']);
-                $isScanned = !empty($supply['scanDt']); // Принято на складе WB
+                $isClosed = ! empty($supply['closedAt']);
+                $isScanned = ! empty($supply['scanDt']); // Принято на складе WB
 
-                if (!$isClosed) {
+                if (! $isClosed) {
                     // Поставка не закрыта - заказы на сборке
                     $activeSupplies[] = $supply;
-                } elseif ($isClosed && !$isScanned) {
+                } elseif ($isClosed && ! $isScanned) {
                     // Закрыта, но ещё не принята на склад WB - в доставке до WB
                     $inDeliverySupplies[] = $supply;
                 } else {
@@ -611,10 +615,12 @@ class WildberriesClient implements MarketplaceClientInterface
             // Обрабатываем каждую поставку
             foreach ($suppliesToProcess as $supply) {
                 $supplyId = $supply['id'] ?? null;
-                if (!$supplyId) continue;
+                if (! $supplyId) {
+                    continue;
+                }
 
-                $isClosed = !empty($supply['closedAt']);
-                $isScanned = !empty($supply['scanDt']);
+                $isClosed = ! empty($supply['closedAt']);
+                $isScanned = ! empty($supply['scanDt']);
 
                 try {
                     // Step 1: Get order IDs from supply (new API endpoint)
@@ -635,13 +641,13 @@ class WildberriesClient implements MarketplaceClientInterface
                             $mapped['supply_id'] = $supplyId;
 
                             // Определяем статус на основе состояния поставки
-                            if (!$isClosed) {
+                            if (! $isClosed) {
                                 // Активная поставка - на сборке
                                 $mapped['status'] = 'in_assembly';
                                 $mapped['status_normalized'] = 'in_assembly';
                                 $mapped['wb_supplier_status'] = 'confirm';
                                 $mapped['wb_status_group'] = 'assembling';
-                            } elseif ($isClosed && !$isScanned) {
+                            } elseif ($isClosed && ! $isScanned) {
                                 // Поставка закрыта, но не принята WB - в пути до WB
                                 $mapped['status'] = 'in_delivery';
                                 $mapped['status_normalized'] = 'in_delivery';
@@ -660,6 +666,7 @@ class WildberriesClient implements MarketplaceClientInterface
                     }
                 } catch (\Exception $e) {
                     \Log::warning("WB fetch orders from supply {$supplyId} error", ['error' => $e->getMessage()]);
+
                     continue;
                 }
             }
@@ -699,6 +706,7 @@ class WildberriesClient implements MarketplaceClientInterface
             return $statuses;
         } catch (\Exception $e) {
             \Log::error('WB fetchOrderStatuses error', ['error' => $e->getMessage()]);
+
             return [];
         }
     }
@@ -725,7 +733,7 @@ class WildberriesClient implements MarketplaceClientInterface
             }
 
             $next = $response['next'] ?? 0;
-        } while ($next > 0 && !empty($response['orders']));
+        } while ($next > 0 && ! empty($response['orders']));
 
         return $orders;
     }
@@ -754,7 +762,7 @@ class WildberriesClient implements MarketplaceClientInterface
             }
 
             $next = $response['next'] ?? 0;
-        } while ($next > 0 && !empty($response['orders']));
+        } while ($next > 0 && ! empty($response['orders']));
 
         return $orders;
     }
@@ -801,7 +809,7 @@ class WildberriesClient implements MarketplaceClientInterface
         }
 
         foreach ($clientData as $id => $data) {
-            if (!isset($byId[$id])) {
+            if (! isset($byId[$id])) {
                 continue;
             }
             $idx = $byId[$id];
@@ -809,10 +817,10 @@ class WildberriesClient implements MarketplaceClientInterface
 
             // Попробуем заполнить базовые поля, если есть
             $client = $data['client'] ?? [];
-            if (!empty($client['fio'])) {
+            if (! empty($client['fio'])) {
                 $orders[$idx]['customer_name'] = $client['fio'];
             }
-            if (!empty($client['phone'])) {
+            if (! empty($client['phone'])) {
                 $orders[$idx]['customer_phone'] = $client['phone'];
             }
 
@@ -848,10 +856,11 @@ class WildberriesClient implements MarketplaceClientInterface
                 }
 
                 $next = $response['next'] ?? 0;
-            } while ($next > 0 && !empty($response['supplies']));
+            } while ($next > 0 && ! empty($response['supplies']));
 
         } catch (\Exception $e) {
             \Log::error('WB fetchSupplies error', ['error' => $e->getMessage()]);
+
             // Return empty array on error - supplies may not be available
             return [];
         }
@@ -867,9 +876,11 @@ class WildberriesClient implements MarketplaceClientInterface
     {
         try {
             $response = $this->http->post($account, '/api/v3/supplies', ['name' => $name]);
+
             return $response['id'] ?? null; // Возвращает supply ID (WB-GI-1234567)
         } catch (\Exception $e) {
             \Log::error('WB createSupply error', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -886,13 +897,14 @@ class WildberriesClient implements MarketplaceClientInterface
 
             foreach ($chunks as $chunk) {
                 $this->http->patch($account, "/api/marketplace/v3/supplies/{$supplyId}/orders", [
-                    'orders' => $chunk
+                    'orders' => $chunk,
                 ]);
             }
 
             return true;
         } catch (\Exception $e) {
             \Log::error('WB addOrdersToSupply error', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -905,9 +917,11 @@ class WildberriesClient implements MarketplaceClientInterface
     {
         try {
             $this->http->patch($account, "/api/v3/supplies/{$supplyId}/deliver");
+
             return true;
         } catch (\Exception $e) {
             \Log::error('WB deliverSupply error', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -920,9 +934,11 @@ class WildberriesClient implements MarketplaceClientInterface
     {
         try {
             $this->http->patch($account, "/api/v3/orders/{$orderId}/cancel");
+
             return true;
         } catch (\Exception $e) {
             \Log::error('WB cancelOrder error', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -960,7 +976,7 @@ class WildberriesClient implements MarketplaceClientInterface
         $items = [];
 
         // WB возвращает информацию о товаре в самом заказе
-        if (!empty($orderData['nmId'])) {
+        if (! empty($orderData['nmId'])) {
             // Цена: используем totalPrice, если есть, иначе price, иначе convertedPrice
             $priceValue = $orderData['totalPrice'] ?? $orderData['price'] ?? $orderData['convertedPrice'] ?? 0;
 
@@ -1112,7 +1128,7 @@ class WildberriesClient implements MarketplaceClientInterface
 
         // 6. Если статус не определён, но есть wbStatus - скорее всего это archived заказы
         // Archived заказы без supplierStatus обычно завершены или отменены
-        if ($wbStatus && !$supplierStatus) {
+        if ($wbStatus && ! $supplierStatus) {
             // Если wbStatus есть но не попадает в известные - скорее всего completed
             return 'completed';
         }

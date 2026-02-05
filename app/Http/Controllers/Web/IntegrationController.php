@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationLink;
+use App\Models\Warehouse\Warehouse;
 use Illuminate\Http\Request;
 
 class IntegrationController extends Controller
@@ -37,6 +38,13 @@ class IntegrationController extends Controller
                 ->first()
             : null;
 
-        return view('pages.integrations.risment', compact('link'));
+        $warehouses = $company
+            ? Warehouse::where('company_id', $company->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
+        return view('pages.integrations.risment', compact('link', 'warehouses'));
     }
 }

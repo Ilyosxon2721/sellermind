@@ -47,7 +47,6 @@ function connectGlobalWebSocket() {
         wsConnection = new WebSocket(wsUrl);
 
         wsConnection.onopen = () => {
-            console.log('✅ Global WebSocket connected');
             wsConnected = true;
             reconnectAttempts = 0; // Reset on successful connection
 
@@ -74,12 +73,10 @@ function connectGlobalWebSocket() {
             if (data.event === 'pusher:connection_established') {
                 const connectionData = JSON.parse(data.data);
                 wsSocketId = connectionData.socket_id;
-                console.log('Global Socket ID:', wsSocketId);
             }
 
             // Handle subscription success
             if (data.event === 'pusher:subscription_succeeded') {
-                console.log('✅ Subscription succeeded:', data.channel);
             }
 
             // Relay all channel events to pages via custom events
@@ -117,7 +114,6 @@ function connectGlobalWebSocket() {
                 const delay = BASE_RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts - 1);
 
                 if (reconnectAttempts === 1) {
-                    console.log('🔌 WebSocket disconnected, will retry...');
                 }
 
                 setTimeout(() => connectGlobalWebSocket(), delay);

@@ -1,13 +1,14 @@
 <?php
+
 // file: app/Http/Controllers/VpcControlApiController.php
 
 namespace App\Http\Controllers;
 
-use App\Models\VpcSession;
 use App\Models\VpcAction;
+use App\Models\VpcSession;
 use App\Services\Vpc\VpcCommandClient;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class VpcControlApiController extends Controller
@@ -32,7 +33,7 @@ class VpcControlApiController extends Controller
         }
 
         // Проверяем статус сессии
-        if (!$vpcSession->isRunning()) {
+        if (! $vpcSession->isRunning()) {
             return response()->json([
                 'error' => 'Сессия не запущена.',
                 'current_status' => $vpcSession->status,

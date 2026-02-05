@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Providers/MarketplaceServiceProvider.php
 
 namespace App\Providers;
@@ -19,7 +20,7 @@ class MarketplaceServiceProvider extends ServiceProvider
     {
         // Register HTTP client as singleton
         $this->app->singleton(MarketplaceHttpClient::class, function ($app) {
-            return new MarketplaceHttpClient();
+            return new MarketplaceHttpClient;
         });
 
         // Register marketplace clients
@@ -40,7 +41,7 @@ class MarketplaceServiceProvider extends ServiceProvider
 
         // Register YandexMarket HTTP client
         $this->app->singleton(YandexMarketHttpClient::class, function ($app) {
-            return new YandexMarketHttpClient();
+            return new YandexMarketHttpClient;
         });
 
         $this->app->singleton(YandexMarketClient::class, function ($app) {
@@ -49,7 +50,7 @@ class MarketplaceServiceProvider extends ServiceProvider
 
         // Register marketplace registry
         $this->app->singleton(MarketplaceRegistry::class, function ($app) {
-            $registry = new MarketplaceRegistry();
+            $registry = new MarketplaceRegistry;
 
             // Register all marketplace clients
             $registry->registerClient('wb', $app->make(WildberriesClient::class));

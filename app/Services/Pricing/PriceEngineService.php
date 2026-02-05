@@ -3,9 +3,7 @@
 namespace App\Services\Pricing;
 
 use App\Models\Pricing\PriceCalculation;
-use App\Support\ApiResponder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class PriceEngineService
@@ -14,8 +12,7 @@ class PriceEngineService
         protected PriceCostService $costService,
         protected PricingOverridesService $overrideService,
         protected ChannelCostRuleService $costRuleService
-    ) {
-    }
+    ) {}
 
     public function calculate(int $companyId, int $scenarioId, string $channelCode, int $skuId): ?array
     {
@@ -94,6 +91,7 @@ class PriceEngineService
                 $rows->push($calc);
             }
         }
+
         return $rows;
     }
 
@@ -126,6 +124,7 @@ class PriceEngineService
         if ($denom <= 0) {
             throw new RuntimeException('Invalid percent sum; cannot solve price');
         }
+
         return ($cost + $fixed + $minProfit) / $denom;
     }
 
@@ -138,6 +137,7 @@ class PriceEngineService
             return $this->solvePrice($cost, $fixed, $pct, $vatRatio, max($targetProfitFixed, 0));
         }
         $profitFixed = max($targetProfitFixed, 0);
+
         return ($cost + $fixed + $profitFixed) / $denom;
     }
 
@@ -146,6 +146,7 @@ class PriceEngineService
         if ($step <= 0) {
             return $price;
         }
+
         return match (strtoupper($mode)) {
             'NONE' => $price,
             'NEAREST' => ceil($price / $step - 0.5) * $step,

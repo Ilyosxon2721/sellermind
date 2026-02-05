@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\WbOrder;
 use App\Models\UzumOrder;
+use App\Models\WbOrder;
 use Illuminate\Console\Command;
 
 class RecalculateOrderStatuses extends Command
@@ -24,7 +24,7 @@ class RecalculateOrderStatuses extends Command
         $unchanged = 0;
 
         // Process WB orders
-        if (!$marketplace || $marketplace === 'wb') {
+        if (! $marketplace || $marketplace === 'wb') {
             $this->info('Processing WB orders...');
             $result = $this->processWbOrders();
             $updated += $result['updated'];
@@ -32,7 +32,7 @@ class RecalculateOrderStatuses extends Command
         }
 
         // Process Uzum orders
-        if (!$marketplace || $marketplace === 'uzum') {
+        if (! $marketplace || $marketplace === 'uzum') {
             $this->info('Processing Uzum orders...');
             $result = $this->processUzumOrders();
             $updated += $result['updated'];
@@ -92,7 +92,7 @@ class RecalculateOrderStatuses extends Command
                     'new_group' => $newStatusGroup,
                 ];
 
-                if (!$this->option('dry-run')) {
+                if (! $this->option('dry-run')) {
                     $order->status = $newStatus;
                     $order->wb_status_group = $newStatusGroup;
                     $order->save();
@@ -104,7 +104,7 @@ class RecalculateOrderStatuses extends Command
             }
         }
 
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             $this->line('  WB changes:');
             foreach ($changes as $change) {
                 $this->line("    Order #{$change['external_id']}: {$change['old_status']} → {$change['new_status']}");
@@ -135,7 +135,7 @@ class RecalculateOrderStatuses extends Command
                     'new_status' => $newStatus,
                 ];
 
-                if (!$this->option('dry-run')) {
+                if (! $this->option('dry-run')) {
                     $order->status = $newStatus;
                     $order->save();
                 }
@@ -146,7 +146,7 @@ class RecalculateOrderStatuses extends Command
             }
         }
 
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             $this->line('  Uzum changes:');
             foreach ($changes as $change) {
                 $this->line("    Order #{$change['external_id']}: {$change['old_status']} → {$change['new_status']}");

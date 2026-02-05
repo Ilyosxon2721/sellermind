@@ -12,15 +12,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            
+
             $table->string('type');  // api_call, ai_request, order_sync, product_sync
             $table->string('action')->nullable();  // Детальное действие
             $table->integer('count')->default(1);
-            
+
             $table->json('metadata')->nullable();  // Дополнительные данные
-            
+
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->index(['company_id', 'type', 'created_at']);
             $table->index('created_at');
         });

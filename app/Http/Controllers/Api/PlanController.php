@@ -64,7 +64,7 @@ class PlanController extends Controller
             ? Plan::active()->find($slugOrId)
             : Plan::active()->where('slug', $slugOrId)->first();
 
-        if (!$plan) {
+        if (! $plan) {
             return response()->json([
                 'message' => 'Тариф не найден',
             ], 404);

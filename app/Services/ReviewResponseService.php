@@ -11,8 +11,7 @@ class ReviewResponseService
 {
     public function __construct(
         protected AIService $aiService
-    ) {
-    }
+    ) {}
 
     /**
      * Generate AI response for a review.
@@ -61,9 +60,9 @@ class ReviewResponseService
         $prompt .= "Текст: {$review->review_text}\n\n";
 
         $prompt .= "**Требования к ответу:**\n";
-        $prompt .= "- Тон: " . $this->getToneDescription($tone) . "\n";
-        $prompt .= "- Длина: " . $this->getLengthDescription($length) . "\n";
-        $prompt .= "- Язык: " . ($language === 'ru' ? 'русский' : 'английский') . "\n";
+        $prompt .= '- Тон: '.$this->getToneDescription($tone)."\n";
+        $prompt .= '- Длина: '.$this->getLengthDescription($length)."\n";
+        $prompt .= '- Язык: '.($language === 'ru' ? 'русский' : 'английский')."\n";
 
         if ($sentiment === 'negative') {
             $prompt .= "- Признай проблему и извинись\n";
@@ -85,7 +84,7 @@ class ReviewResponseService
         $prompt .= "- Обращайся по имени если оно указано\n";
         $prompt .= "- Пиши от первого лица (мы, наш магазин)\n\n";
 
-        $prompt .= "Напиши только текст ответа, без дополнительных комментариев.";
+        $prompt .= 'Напиши только текст ответа, без дополнительных комментариев.';
 
         return $prompt;
     }
@@ -105,7 +104,7 @@ class ReviewResponseService
             })
             ->first();
 
-        if (!$template) {
+        if (! $template) {
             return $this->getDefaultResponse($review);
         }
 
@@ -156,14 +155,14 @@ class ReviewResponseService
         $name = $review->customer_name ?? 'покупатель';
 
         if ($review->rating >= 4) {
-            return "Спасибо за ваш отзыв! Мы очень рады, что вам понравился наш товар. Будем рады видеть вас снова!";
+            return 'Спасибо за ваш отзыв! Мы очень рады, что вам понравился наш товар. Будем рады видеть вас снова!';
         }
 
         if ($review->rating <= 2) {
-            return "Здравствуйте! Благодарим за обратную связь. Нам очень жаль, что возникла такая ситуация. Мы обязательно разберемся и примем меры. Пожалуйста, свяжитесь с нами для решения вопроса.";
+            return 'Здравствуйте! Благодарим за обратную связь. Нам очень жаль, что возникла такая ситуация. Мы обязательно разберемся и примем меры. Пожалуйста, свяжитесь с нами для решения вопроса.';
         }
 
-        return "Спасибо за ваш отзыв! Мы ценим любую обратную связь и постоянно работаем над улучшением качества.";
+        return 'Спасибо за ваш отзыв! Мы ценим любую обратную связь и постоянно работаем над улучшением качества.';
     }
 
     /**
@@ -193,7 +192,7 @@ class ReviewResponseService
 
         foreach ($reviewIds as $reviewId) {
             $review = Review::find($reviewId);
-            if (!$review) {
+            if (! $review) {
                 continue;
             }
 
@@ -219,7 +218,7 @@ class ReviewResponseService
      */
     protected function getRatingDescription(int $rating): string
     {
-        return match($rating) {
+        return match ($rating) {
             5 => 'отлично',
             4 => 'хорошо',
             3 => 'нейтрально',
@@ -234,7 +233,7 @@ class ReviewResponseService
      */
     protected function getToneDescription(string $tone): string
     {
-        return match($tone) {
+        return match ($tone) {
             'professional' => 'профессиональный, вежливый',
             'friendly' => 'дружелюбный, неформальный',
             'formal' => 'официальный, сдержанный',
@@ -247,7 +246,7 @@ class ReviewResponseService
      */
     protected function getLengthDescription(string $length): string
     {
-        return match($length) {
+        return match ($length) {
             'short' => '1-2 предложения',
             'medium' => '3-4 предложения',
             'long' => '5-6 предложений',
@@ -260,7 +259,7 @@ class ReviewResponseService
      */
     protected function getMaxTokens(string $length): int
     {
-        return match($length) {
+        return match ($length) {
             'short' => 100,
             'medium' => 200,
             'long' => 300,
@@ -276,7 +275,7 @@ class ReviewResponseService
         $prompt = "Определи эмоциональную окраску отзыва (positive/neutral/negative):\n\n";
         $prompt .= "Оценка: {$review->rating}/5\n";
         $prompt .= "Текст: {$review->review_text}\n\n";
-        $prompt .= "Ответь одним словом: positive, neutral или negative";
+        $prompt .= 'Ответь одним словом: positive, neutral или negative';
 
         try {
             $sentiment = $this->aiService->generateText($prompt, ['max_tokens' => 10]);
@@ -299,11 +298,12 @@ class ReviewResponseService
     public function extractKeywords(Review $review): array
     {
         $prompt = "Извлеки ключевые слова из отзыва (максимум 5 слов через запятую):\n\n";
-        $prompt .= $review->review_text . "\n\n";
-        $prompt .= "Ответь только ключевыми словами через запятую, без дополнительного текста.";
+        $prompt .= $review->review_text."\n\n";
+        $prompt .= 'Ответь только ключевыми словами через запятую, без дополнительного текста.';
 
         try {
             $keywords = $this->aiService->generateText($prompt, ['max_tokens' => 50]);
+
             return array_map('trim', explode(',', $keywords));
         } catch (\Exception $e) {
             return [];

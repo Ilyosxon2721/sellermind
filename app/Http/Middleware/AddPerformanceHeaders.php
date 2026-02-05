@@ -27,7 +27,7 @@ class AddPerformanceHeaders
         }
 
         // Enable gzip compression hint
-        if (!$response->headers->has('Content-Encoding')) {
+        if (! $response->headers->has('Content-Encoding')) {
             $response->headers->set('Vary', 'Accept-Encoding');
         }
 

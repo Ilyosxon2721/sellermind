@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/VpcSessionController.php
 
 namespace App\Http\Controllers;
@@ -173,7 +174,7 @@ class VpcSessionController extends Controller
         ];
 
         return redirect()->route('vpc_sessions.show', $vpcSession)
-            ->with('status', 'Режим изменён на: ' . $modeNames[$data['mode']]);
+            ->with('status', 'Режим изменён на: '.$modeNames[$data['mode']]);
     }
 
     /**

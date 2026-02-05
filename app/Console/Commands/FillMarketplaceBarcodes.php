@@ -51,11 +51,11 @@ class FillMarketplaceBarcodes extends Command
 
         $query = VariantMarketplaceLink::query()
             ->where('is_active', true)
-            ->whereHas('account', fn($q) => $q->where('marketplace', $dbMarketplace))
+            ->whereHas('account', fn ($q) => $q->where('marketplace', $dbMarketplace))
             ->with(['marketplaceProduct', 'variant', 'account']);
 
         // Если не force, то только без заполненного marketplace_barcode
-        if (!$force) {
+        if (! $force) {
             $query->whereNull('marketplace_barcode');
         }
 
@@ -64,7 +64,8 @@ class FillMarketplaceBarcodes extends Command
         $this->info("Найдено связей: {$links->count()}");
 
         if ($links->isEmpty()) {
-            $this->info("Нет связей для обработки.");
+            $this->info('Нет связей для обработки.');
+
             return;
         }
 
@@ -123,7 +124,7 @@ class FillMarketplaceBarcodes extends Command
     protected function extractUzumBarcode(VariantMarketplaceLink $link): ?string
     {
         $mpProduct = $link->marketplaceProduct;
-        if (!$mpProduct) {
+        if (! $mpProduct) {
             return null;
         }
 
@@ -211,7 +212,7 @@ class FillMarketplaceBarcodes extends Command
     protected function extractYandexBarcode(VariantMarketplaceLink $link): ?string
     {
         $mpProduct = $link->marketplaceProduct;
-        if (!$mpProduct) {
+        if (! $mpProduct) {
             return null;
         }
 
@@ -219,11 +220,11 @@ class FillMarketplaceBarcodes extends Command
         $rawPayload = $mpProduct->raw_payload ?? [];
 
         // Yandex Market может хранить баркоды в разных местах
-        if (!empty($rawPayload['barcodes']) && is_array($rawPayload['barcodes'])) {
+        if (! empty($rawPayload['barcodes']) && is_array($rawPayload['barcodes'])) {
             return $rawPayload['barcodes'][0] ?? null;
         }
 
-        if (!empty($rawPayload['barcode'])) {
+        if (! empty($rawPayload['barcode'])) {
             return $rawPayload['barcode'];
         }
 

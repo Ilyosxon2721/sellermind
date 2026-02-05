@@ -23,28 +23,26 @@
                     <p class="text-gray-600 text-sm">{{ __('products.subtitle') }}</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button @click="exportProducts()"
-                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center space-x-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <x-ui.button variant="secondary" @click="exportProducts()">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
-                        <span>{{ __('products.export') }}</span>
-                    </button>
+                        {{ __('products.export') }}
+                    </x-ui.button>
 
-                    <button @click="openImportModal()"
-                            class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition flex items-center space-x-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <x-ui.button variant="secondary" @click="openImportModal()">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                         </svg>
-                        <span>{{ __('products.import') }}</span>
-                    </button>
+                        {{ __('products.import') }}
+                    </x-ui.button>
 
-                    <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center space-x-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <x-ui.button variant="primary" @click="openCreate()">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        <span>{{ __('products.add_product') }}</span>
-                    </button>
+                        {{ __('products.add_product') }}
+                    </x-ui.button>
                 </div>
             </div>
 
@@ -54,11 +52,11 @@
                     <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                    <input type="text"
+                    <x-ui.input type="text"
                            x-model="search"
                            @input.debounce.300ms="loadProducts()"
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                           placeholder="{{ __('products.search_placeholder') }}">
+                           class="pl-10"
+                           placeholder="{{ __('products.search_placeholder') }}"></x-ui.input>
                 </div>
             </div>
         </header>
@@ -67,23 +65,22 @@
         <main class="flex-1 overflow-hidden flex">
             <div class="flex-1 overflow-y-auto p-6 space-y-4">
                 <!-- Empty -->
-                <div x-show="!loading && products.length === 0" class="text-center py-12">
-                    <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mb-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">{{ __('products.no_products') }}</h3>
-                    <p class="text-gray-600 mb-4">{{ __('products.add_first_product') }}</p>
-                    <button @click="openCreate()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
-                        {{ __('products.add_product') }}
-                    </button>
-                </div>
+                <x-ui.empty-state x-show="!loading && products.length === 0"
+                    icon='<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>'
+                    title="{{ __('products.no_products') }}"
+                    description="{{ __('products.add_first_product') }}">
+                    <x-slot name="action">
+                        <x-ui.button variant="primary" @click="openCreate()">
+                            {{ __('products.add_product') }}
+                        </x-ui.button>
+                    </x-slot>
+                </x-ui.empty-state>
 
                 <!-- List -->
                 <div x-show="products.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <template x-for="product in products" :key="product.id">
-                        <div class="border border-gray-200 rounded-xl bg-white p-4 hover:shadow-sm transition flex items-start space-x-4"
+                        <x-ui.card padding="sm" hover="true"
+                             class="cursor-pointer flex items-start space-x-4"
                              :class="selected?.id === product.id ? 'ring-2 ring-indigo-200' : ''"
                              @click="select(product)">
                             <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -114,10 +111,10 @@
                                 </div>
                             </div>
                             <div class="flex flex-col space-y-2">
-                                <button @click.stop="edit(product)" class="text-indigo-600 hover:text-indigo-700 text-sm">{{ __('products.edit') }}</button>
-                                <button @click.stop="confirmDelete(product)" class="text-red-600 hover:text-red-700 text-sm">{{ __('products.delete') }}</button>
+                                <x-ui.button variant="link" size="sm" @click.stop="edit(product)">{{ __('products.edit') }}</x-ui.button>
+                                <x-ui.button variant="link" size="sm" @click.stop="confirmDelete(product)" class="text-red-600 hover:text-red-800">{{ __('products.delete') }}</x-ui.button>
                             </div>
-                        </div>
+                        </x-ui.card>
                     </template>
                 </div>
             </div>
@@ -130,11 +127,11 @@
                             <p class="text-sm text-gray-500" x-text="isEditing ? '{{ __('products.editing') }}' : '{{ __('products.creating') }}'"></p>
                             <h2 class="text-xl font-semibold text-gray-900">{{ __('products.product_card') }}</h2>
                         </div>
-                        <button @click="closeForm()" class="text-gray-400 hover:text-gray-600">
+                        <x-ui.button variant="ghost" size="sm" @click="closeForm()">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
-                        </button>
+                        </x-ui.button>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -142,31 +139,31 @@
                             <h3 class="text-sm font-semibold text-gray-900">{{ __('products.main') }}</h3>
                             <div>
                                 <label class="block text-sm text-gray-700 mb-1">{{ __('products.name') }} *</label>
-                                <input type="text" x-model="form.name_internal" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <x-ui.input type="text" x-model="form.name_internal" />
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">SKU</label>
-                                    <input type="text" x-model="form.sku" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="text" x-model="form.sku" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.barcode') }}</label>
-                                    <input type="text" x-model="form.barcode" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="text" x-model="form.barcode" />
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.category') }}</label>
-                                    <input type="text" x-model="form.category" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="text" x-model="form.category" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.brand') }}</label>
-                                    <input type="text" x-model="form.brand" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="text" x-model="form.brand" />
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-sm text-gray-700 mb-1">{{ __('products.description') }}</label>
-                                <textarea x-model="form.description" rows="4" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                <x-ui.textarea x-model="form.description" rows="4"></x-ui.textarea>
                             </div>
                         </div>
 
@@ -175,11 +172,11 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.price') }}</label>
-                                    <input type="number" step="0.01" x-model="form.price" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" step="0.01" x-model="form.price" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.stock') }}</label>
-                                    <input type="number" x-model="form.stock_quantity" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" x-model="form.stock_quantity" />
                                 </div>
                             </div>
 
@@ -187,19 +184,19 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.weight_kg') }}</label>
-                                    <input type="number" step="0.001" x-model="form.weight_kg" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" step="0.001" x-model="form.weight_kg" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.length_cm') }}</label>
-                                    <input type="number" x-model="form.length_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" x-model="form.length_cm" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.width_cm') }}</label>
-                                    <input type="number" x-model="form.width_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" x-model="form.width_cm" />
                                 </div>
                                 <div>
                                     <label class="block text-sm text-gray-700 mb-1">{{ __('products.height_cm') }}</label>
-                                    <input type="number" x-model="form.height_cm" class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                    <x-ui.input type="number" x-model="form.height_cm" />
                                 </div>
                             </div>
 
@@ -207,21 +204,21 @@
                             <div class="space-y-2">
                                 <template x-for="(attr, index) in attributes" :key="index">
                                     <div class="flex space-x-2">
-                                        <input type="text" x-model="attr.key" placeholder="{{ __('products.attr_name') }}" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                        <input type="text" x-model="attr.value" placeholder="{{ __('products.attr_value') }}" class="flex-1 rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
-                                        <button type="button" @click="removeAttribute(index)" class="px-3 py-2 text-red-600 hover:text-red-700">×</button>
+                                        <x-ui.input type="text" x-model="attr.key" placeholder="{{ __('products.attr_name') }}" class="flex-1" />
+                                        <x-ui.input type="text" x-model="attr.value" placeholder="{{ __('products.attr_value') }}" class="flex-1" />
+                                        <x-ui.button variant="danger" size="sm" type="button" @click="removeAttribute(index)">×</x-ui.button>
                                     </div>
                                 </template>
-                                <button type="button" @click="addAttribute()" class="text-indigo-600 text-sm hover:text-indigo-700">{{ __('products.add_attribute') }}</button>
+                                <x-ui.button variant="link" size="sm" type="button" @click="addAttribute()">{{ __('products.add_attribute') }}</x-ui.button>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex justify-end space-x-3">
-                        <button @click="closeForm()" class="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">{{ __('products.cancel') }}</button>
-                        <button @click="saveProduct()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        <x-ui.button variant="secondary" @click="closeForm()">{{ __('products.cancel') }}</x-ui.button>
+                        <x-ui.button variant="primary" @click="saveProduct()">
                             <span x-text="isEditing ? '{{ __('products.save') }}' : '{{ __('products.create') }}'"></span>
-                        </button>
+                        </x-ui.button>
                     </div>
                 </div>
             </div>

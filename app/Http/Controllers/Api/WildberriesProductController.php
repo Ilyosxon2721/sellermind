@@ -1,28 +1,32 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesProductController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\MarketplaceAccount;
-use App\Models\WildberriesProduct;
 use App\Models\Product;
 use App\Models\VariantMarketplaceLink;
+use App\Models\WildberriesProduct;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WildberriesProductController extends Controller
 {
+    use HasPaginatedResponse;
+
     /**
      * List Wildberries products (cards) with pagination and filters.
      */
     public function index(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -36,14 +40,14 @@ class WildberriesProductController extends Controller
             'sort_dir' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $perPage = $request->integer('per_page', 50);
+        $perPage = $this->getPerPage($request, 50, 200);
         $sortBy = $request->input('sort_by', 'synced_at');
         $sortDir = $request->input('sort_dir', 'desc');
 
         $query = WildberriesProduct::where('marketplace_account_id', $account->id);
 
         if ($request->filled('search')) {
-            $search = $request->string('search');
+            $search = $this->escapeLike((string) $request->string('search'));
             $query->where(function ($q) use ($search) {
                 // Search in basic fields
                 $q->where('title', 'like', "%{$search}%")
@@ -51,7 +55,7 @@ class WildberriesProductController extends Controller
                     ->orWhere('supplier_article', 'like', "%{$search}%")
                     ->orWhere('nm_id', $search)
                     ->orWhere('barcode', 'like', "%{$search}%")
-                    
+
                     // Search in raw_data JSON field (characteristics, sizes, barcodes, brand, description)
                     // Using CAST to text for partial matching in JSON content
                     ->orWhere(\DB::raw('CAST(raw_data AS CHAR)'), 'like', "%{$search}%");
@@ -93,93 +97,88 @@ class WildberriesProductController extends Controller
 
         $products = $query->paginate($perPage);
 
-    // Get ALL linked variants for these products (grouped by product_id)
-    // IMPORTANT: Filter by marketplace_account_id to prevent ID collision with other marketplaces
-    // (wildberries_products.id can match marketplace_products.id from Uzum/YM)
-    $productIds = collect($products->items())->pluck('id')->toArray();
-    $links = VariantMarketplaceLink::whereIn('marketplace_product_id', $productIds)
-        ->where('marketplace_account_id', $account->id) // Filter by account to prevent ID collision
-        ->where('is_active', true)
-        ->with(['variant:id,sku,stock_default,option_values_summary', 'variant.product:id,name'])
-        ->get()
-        ->groupBy('marketplace_product_id'); // Group instead of keyBy to keep all links
+        // Get ALL linked variants for these products (grouped by product_id)
+        // IMPORTANT: Filter by marketplace_account_id to prevent ID collision with other marketplaces
+        // (wildberries_products.id can match marketplace_products.id from Uzum/YM)
+        $productIds = collect($products->items())->pluck('id')->toArray();
+        $links = VariantMarketplaceLink::whereIn('marketplace_product_id', $productIds)
+            ->where('marketplace_account_id', $account->id) // Filter by account to prevent ID collision
+            ->where('is_active', true)
+            ->with(['variant:id,sku,stock_default,option_values_summary', 'variant.product:id,name'])
+            ->get()
+            ->groupBy('marketplace_product_id'); // Group instead of keyBy to keep all links
 
-    $items = collect($products->items())->map(function (WildberriesProduct $product) use ($links) {
-        $data = [
-            'id' => $product->id,
-            'nm_id' => $product->nm_id,
-            'imt_id' => $product->imt_id,
-            'vendor_code' => $product->vendor_code,
-            'supplier_article' => $product->supplier_article,
-            'title' => $product->title,
-            'brand' => $product->brand,
-            'subject_name' => $product->subject_name,
-            'subject_id' => $product->subject_id,
-            'tech_size' => $product->tech_size,
-            'chrt_id' => $product->chrt_id,
-            'barcode' => $product->barcode,
-            'price' => $product->price,
-            'price_with_discount' => $product->price_with_discount,
-            'discount_percent' => $product->discount_percent,
-            'stock_total' => $product->stock_total,
-            'is_active' => $product->is_active,
-            'synced_at' => optional($product->synced_at)->toIso8601String(),
-            'primary_photo' => $product->getPrimaryPhotoUrl(),
-        ];
-
-        // Get all links for this product
-        $productLinks = $links->get($product->id, collect());
-        
-        // Add linked variant info if exists (backward compatibility - first link)
-        $firstLink = $productLinks->first();
-        if ($firstLink && $firstLink->variant) {
-            $data['linked_variant'] = [
-                'id' => $firstLink->variant->id,
-                'sku' => $firstLink->variant->sku,
-                'name' => $firstLink->variant->product?->name,
-                'stock' => $firstLink->variant->stock_default,
-                'options' => $firstLink->variant->option_values_summary,
+        $items = collect($products->items())->map(function (WildberriesProduct $product) use ($links) {
+            $data = [
+                'id' => $product->id,
+                'nm_id' => $product->nm_id,
+                'imt_id' => $product->imt_id,
+                'vendor_code' => $product->vendor_code,
+                'supplier_article' => $product->supplier_article,
+                'title' => $product->title,
+                'brand' => $product->brand,
+                'subject_name' => $product->subject_name,
+                'subject_id' => $product->subject_id,
+                'tech_size' => $product->tech_size,
+                'chrt_id' => $product->chrt_id,
+                'barcode' => $product->barcode,
+                'price' => $product->price,
+                'price_with_discount' => $product->price_with_discount,
+                'discount_percent' => $product->discount_percent,
+                'stock_total' => $product->stock_total,
+                'is_active' => $product->is_active,
+                'synced_at' => optional($product->synced_at)->toIso8601String(),
+                'primary_photo' => $product->getPrimaryPhotoUrl(),
             ];
-        }
 
-        // Add ALL variant links (for barcode-level linking)
-        $data['variant_links'] = $productLinks->map(function ($link) {
-            return [
-                'id' => $link->id,
-                'external_sku_id' => $link->external_sku_id,
-                'variant' => [
-                    'id' => $link->variant->id,
-                    'sku' => $link->variant->sku,
-                    'name' => $link->variant->product?->name,
-                    'stock' => $link->variant->stock_default,
-                    'options' => $link->variant->option_values_summary,
-                ],
-            ];
-        })->values()->all();
+            // Get all links for this product
+            $productLinks = $links->get($product->id, collect());
 
-        return $data;
-    })->all();
+            // Add linked variant info if exists (backward compatibility - first link)
+            $firstLink = $productLinks->first();
+            if ($firstLink && $firstLink->variant) {
+                $data['linked_variant'] = [
+                    'id' => $firstLink->variant->id,
+                    'sku' => $firstLink->variant->sku,
+                    'name' => $firstLink->variant->product?->name,
+                    'stock' => $firstLink->variant->stock_default,
+                    'options' => $firstLink->variant->option_values_summary,
+                ];
+            }
 
-    return response()->json([
-        'products' => $items,
-        'pagination' => [
-            'total' => $products->total(),
-            'per_page' => $products->perPage(),
-            'current_page' => $products->currentPage(),
-            'last_page' => $products->lastPage(),
-        ],
-    ]);
-}
+            // Add ALL variant links (for barcode-level linking)
+            $data['variant_links'] = $productLinks->map(function ($link) {
+                return [
+                    'id' => $link->id,
+                    'external_sku_id' => $link->external_sku_id,
+                    'variant' => [
+                        'id' => $link->variant->id,
+                        'sku' => $link->variant->sku,
+                        'name' => $link->variant->product?->name,
+                        'stock' => $link->variant->stock_default,
+                        'options' => $link->variant->option_values_summary,
+                    ],
+                ];
+            })->values()->all();
+
+            return $data;
+        })->all();
+
+        return response()->json([
+            'products' => $items,
+            'pagination' => $this->paginationMeta($products),
+        ]);
+    }
 
     /**
      * Suggestions for a local product context
      */
     public function suggestions(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -189,7 +188,7 @@ class WildberriesProductController extends Controller
         ]);
 
         $product = Product::find($data['local_product_id']);
-        if (!$product || $product->company_id !== $account->company_id) {
+        if (! $product || $product->company_id !== $account->company_id) {
             return response()->json(['message' => 'Товар не принадлежит компании'], 403);
         }
 
@@ -199,16 +198,16 @@ class WildberriesProductController extends Controller
 
         // Простая эвристика релевантности: совпадение категории, артикула, названия
         $query->orderByRaw(
-            "(title LIKE ? ) desc,
+            '(title LIKE ? ) desc,
              (vendor_code LIKE ? ) desc,
              (supplier_article LIKE ? ) desc,
              (barcode LIKE ? ) desc,
-             synced_at desc",
+             synced_at desc',
             [
-                '%' . ($product->name_internal ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->barcode ?? '') . '%',
+                '%'.($product->name_internal ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->barcode ?? '').'%',
             ]
         );
 
@@ -224,10 +223,10 @@ class WildberriesProductController extends Controller
      */
     public function search(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -238,12 +237,12 @@ class WildberriesProductController extends Controller
         ]);
 
         $product = Product::find($data['local_product_id']);
-        if (!$product || $product->company_id !== $account->company_id) {
+        if (! $product || $product->company_id !== $account->company_id) {
             return response()->json(['message' => 'Товар не принадлежит компании'], 403);
         }
 
         $limit = $request->integer('limit', 20);
-        $queryText = $request->string('query');
+        $queryText = $this->escapeLike((string) $request->string('query'));
 
         $query = WildberriesProduct::where('marketplace_account_id', $account->id)
             ->where(function ($q) use ($queryText) {
@@ -255,16 +254,16 @@ class WildberriesProductController extends Controller
             });
 
         $query->orderByRaw(
-            "(title LIKE ? ) desc,
+            '(title LIKE ? ) desc,
              (vendor_code LIKE ? ) desc,
              (supplier_article LIKE ? ) desc,
              (barcode LIKE ? ) desc,
-             synced_at desc",
+             synced_at desc',
             [
-                '%' . ($product->name_internal ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->sku ?? '') . '%',
-                '%' . ($product->barcode ?? '') . '%',
+                '%'.($product->name_internal ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->sku ?? '').'%',
+                '%'.($product->barcode ?? '').'%',
             ]
         );
 
@@ -280,7 +279,7 @@ class WildberriesProductController extends Controller
      */
     public function show(Request $request, MarketplaceAccount $account, WildberriesProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -294,11 +293,11 @@ class WildberriesProductController extends Controller
     }
 
     /**
-    * Create local WB product record (does not push to WB API)
-    */
+     * Create local WB product record (does not push to WB API)
+     */
     public function store(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -333,7 +332,7 @@ class WildberriesProductController extends Controller
      */
     public function update(Request $request, MarketplaceAccount $account, WildberriesProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -368,7 +367,7 @@ class WildberriesProductController extends Controller
      */
     public function destroy(Request $request, MarketplaceAccount $account, WildberriesProduct $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 

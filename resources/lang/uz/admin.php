@@ -22,7 +22,7 @@ return [
     'pricing' => 'Narxlar',
     'debts' => 'Pullar',
     'company_profile' => 'Kompaniya profili',
-    
+
     // Warehouse submenu
     'warehouse_section' => 'Ombor',
     'warehouse_dashboard' => 'Dashboard',
@@ -34,7 +34,7 @@ return [
     'warehouse_docs' => 'Hujjatlar',
     'warehouse_reservations' => 'Zahiralar',
     'warehouse_ledger' => 'Harakatlar jurnali',
-    
+
     // Company modal
     'create_company' => 'Kompaniya yaratish',
     'create_company_desc' => 'Tizim bilan ishlash uchun kompaniya yaratish kerak. Bu faqat bir daqiqa vaqt oladi!',
@@ -48,7 +48,7 @@ return [
     'company_create_error' => 'Kompaniya yaratishda xatolik yuz berdi. Yana urinib ko\'ring.',
     'additional_info_later' => 'Kompaniya haqida qo\'shimcha ma\'lumotni keyinchalik sozlamalarda qo\'shishingiz mumkin',
     'close' => 'Yopish',
-    
+
     // Common
     'welcome' => 'Xush kelibsiz',
     'select_company' => 'Kompaniya tanlang',

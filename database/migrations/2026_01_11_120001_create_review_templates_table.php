@@ -31,7 +31,7 @@ return new class extends Migration
                 'negative_size',
                 'neutral',
                 'question',
-                'complaint'
+                'complaint',
             ]);
             $table->json('rating_range')->nullable(); // e.g., [1, 3] for low ratings
             $table->json('keywords')->nullable();

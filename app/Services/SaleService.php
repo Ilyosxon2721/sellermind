@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Counterparty;
 use App\Models\Finance\FinanceDebt;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Warehouse\Sku as WarehouseSku;
 use App\Services\Stock\StockSyncService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -24,8 +25,6 @@ class SaleService
     /**
      * Создать новую продажу
      *
-     * @param array $data
-     * @return Sale
      * @throws \Exception
      */
     public function createSale(array $data): Sale
@@ -52,7 +51,7 @@ class SaleService
             ]);
 
             // Добавляем товары если они есть
-            if (!empty($data['items'])) {
+            if (! empty($data['items'])) {
                 foreach ($data['items'] as $itemData) {
                     $this->addItemToSale($sale, $itemData);
                 }
@@ -74,15 +73,11 @@ class SaleService
 
     /**
      * Добавить позицию в продажу
-     *
-     * @param Sale $sale
-     * @param array $itemData
-     * @return SaleItem
      */
     public function addItemToSale(Sale $sale, array $itemData): SaleItem
     {
         // Если указан product_variant_id, создаем позицию из варианта
-        if (!empty($itemData['product_variant_id'])) {
+        if (! empty($itemData['product_variant_id'])) {
             $variant = ProductVariant::findOrFail($itemData['product_variant_id']);
 
             $item = SaleItem::createFromVariant(
@@ -111,10 +106,6 @@ class SaleService
 
     /**
      * Обновить позицию продажи
-     *
-     * @param SaleItem $item
-     * @param array $data
-     * @return SaleItem
      */
     public function updateSaleItem(SaleItem $item, array $data): SaleItem
     {
@@ -130,9 +121,6 @@ class SaleService
 
     /**
      * Удалить позицию из продажи
-     *
-     * @param SaleItem $item
-     * @return bool
      */
     public function removeSaleItem(SaleItem $item): bool
     {
@@ -156,9 +144,8 @@ class SaleService
      * ВАЖНО: Резервирование СРАЗУ списывает товар из stock_ledger,
      * чтобы остатки обновились везде (на маркетплейсах тоже).
      *
-     * @param Sale $sale
-     * @param bool $reserveStock Зарезервировать ли остатки
-     * @return Sale
+     * @param  bool  $reserveStock  Зарезервировать ли остатки
+     *
      * @throws \Exception
      */
     public function confirmSale(Sale $sale, bool $reserveStock = true): Sale
@@ -166,7 +153,7 @@ class SaleService
         return DB::transaction(function () use ($sale, $reserveStock) {
             // Проверяем статус перед резервированием
             if ($sale->status !== 'draft') {
-                throw new \Exception('Cannot confirm sale with status: ' . $sale->status);
+                throw new \Exception('Cannot confirm sale with status: '.$sale->status);
             }
 
             // Резервируем остатки (это СРАЗУ списывает из ledger и синхронизирует с маркетплейсами)
@@ -174,12 +161,12 @@ class SaleService
                 $results = $this->reservationService->reserveStock($sale);
 
                 if ($results['failed'] > 0) {
-                    throw new \Exception('Failed to reserve stock: ' . json_encode($results['errors']));
+                    throw new \Exception('Failed to reserve stock: '.json_encode($results['errors']));
                 }
             }
 
             // Только после успешного резервирования меняем статус
-            if (!$sale->confirm()) {
+            if (! $sale->confirm()) {
                 throw new \Exception('Failed to confirm sale');
             }
 
@@ -197,9 +184,9 @@ class SaleService
      * Отгрузить товары (финализировать резерв)
      * ВАЖНО: Именно здесь происходит синхронизация с маркетплейсами
      *
-     * @param Sale $sale
-     * @param array|null $itemIds Конкретные позиции для отгрузки (null = все)
+     * @param  array|null  $itemIds  Конкретные позиции для отгрузки (null = все)
      * @return array Результаты отгрузки
+     *
      * @throws \Exception
      */
     public function shipStock(Sale $sale, ?array $itemIds = null): array
@@ -209,9 +196,9 @@ class SaleService
 
     /**
      * Списать остатки по всем позициям продажи (DEPRECATED - используйте reserveStock)
+     *
      * @deprecated Используйте reservationService->reserveStock() вместо этого
      *
-     * @param Sale $sale
      * @return array Результаты списания
      */
     public function deductStockForSale(Sale $sale): array
@@ -222,9 +209,6 @@ class SaleService
 
     /**
      * Завершить продажу
-     *
-     * @param Sale $sale
-     * @return Sale
      */
     public function completeSale(Sale $sale): Sale
     {
@@ -265,7 +249,7 @@ class SaleService
             'type' => FinanceDebt::TYPE_RECEIVABLE,
             'purpose' => FinanceDebt::PURPOSE_DEBT,
             'counterparty_entity_id' => $sale->counterparty_id,
-            'description' => 'Продажа ' . $sale->sale_number,
+            'description' => 'Продажа '.$sale->sale_number,
             'reference' => $sale->sale_number,
             'original_amount' => $sale->total_amount,
             'amount_paid' => 0,
@@ -291,8 +275,6 @@ class SaleService
     /**
      * Отменить продажу и вернуть остатки
      *
-     * @param Sale $sale
-     * @return Sale
      * @throws \Exception
      */
     public function cancelSale(Sale $sale): Sale
@@ -308,8 +290,8 @@ class SaleService
                 ]);
             }
 
-            if (!$sale->cancel()) {
-                throw new \Exception('Cannot cancel sale with status: ' . $sale->status);
+            if (! $sale->cancel()) {
+                throw new \Exception('Cannot cancel sale with status: '.$sale->status);
             }
 
             Log::info('Sale cancelled', [
@@ -324,9 +306,6 @@ class SaleService
 
     /**
      * Синхронизировать остатки товара с маркетплейсами
-     *
-     * @param ProductVariant $variant
-     * @return void
      */
     protected function syncStockToMarketplaces(ProductVariant $variant): void
     {
@@ -350,10 +329,9 @@ class SaleService
     /**
      * Создать продажу из заказа маркетплейса
      *
-     * @param string $orderType Тип заказа (uzum_order, wb_order, ozon_order, ym_order)
-     * @param int $orderId ID заказа
-     * @param array $additionalData Дополнительные данные
-     * @return Sale
+     * @param  string  $orderType  Тип заказа (uzum_order, wb_order, ozon_order, ym_order)
+     * @param  int  $orderId  ID заказа
+     * @param  array  $additionalData  Дополнительные данные
      */
     public function createSaleFromMarketplaceOrder(string $orderType, int $orderId, array $additionalData = []): Sale
     {
@@ -388,7 +366,7 @@ class SaleService
      */
     protected function getMarketplaceOrderModel(string $orderType): string
     {
-        return match($orderType) {
+        return match ($orderType) {
             'uzum_order' => \App\Models\UzumOrder::class,
             'wb_order' => \App\Models\WbOrder::class,
             'ozon_order' => \App\Models\OzonOrder::class,
@@ -402,7 +380,7 @@ class SaleService
      */
     protected function extractSourceFromOrderType(string $orderType): string
     {
-        return match($orderType) {
+        return match ($orderType) {
             'uzum_order' => 'uzum',
             'wb_order' => 'wb',
             'ozon_order' => 'ozon',
@@ -433,7 +411,7 @@ class SaleService
         } else {
             // Если items нет, создаем одну позицию из общей суммы заказа
             $items[] = [
-                'product_name' => 'Заказ ' . ($order->order_number ?? $order->external_order_id ?? ''),
+                'product_name' => 'Заказ '.($order->order_number ?? $order->external_order_id ?? ''),
                 'quantity' => 1,
                 'unit_price' => $order->total_amount ?? 0,
                 'discount_percent' => 0,
@@ -453,15 +431,62 @@ class SaleService
             return auth()->user()->company_id;
         }
 
-        return \App\Models\Company::query()->value('id') ?? 1;
+        throw new \Illuminate\Auth\Access\AuthorizationException('Компания пользователя не определена');
+    }
+
+    /**
+     * Получить список товаров для выбора в продаже (с доступными остатками)
+     */
+    public function getProductsForSale(int $companyId, ?string $search, ?int $warehouseId): Collection
+    {
+        $products = ProductVariant::query()
+            ->with('product:id,name,category_id')
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->where('is_deleted', false)
+            ->when($search, function ($q, $search) {
+                $q->where(function ($query) use ($search) {
+                    $query->where('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%")
+                        ->orWhereHas('product', fn ($q2) => $q2->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('sku')
+            ->limit(50)
+            ->get(['id', 'product_id', 'sku', 'barcode', 'option_values_summary', 'price_default', 'stock_default', 'purchase_price']);
+
+        // Получить все связанные SKU из складской системы
+        $variantIds = $products->pluck('id')->all();
+        $warehouseSkus = WarehouseSku::whereIn('product_variant_id', $variantIds)
+            ->get()
+            ->keyBy('product_variant_id');
+
+        // Добавляем доступные остатки по складу и warehouse_sku_id
+        $products->each(function ($variant) use ($warehouseId, $warehouseSkus) {
+            // Добавить warehouse_sku_id для использования в документах оприходования
+            $warehouseSku = $warehouseSkus->get($variant->id);
+            $variant->warehouse_sku_id = $warehouseSku?->id;
+
+            if ($warehouseId) {
+                $variant->available_stock = $this->reservationService->getAvailableStock($variant, $warehouseId);
+            } else {
+                $variant->available_stock = $variant->stock_default;
+            }
+        });
+
+        return $products;
+    }
+
+    /**
+     * Экранировать спецсимволы LIKE для безопасного поиска
+     */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
     /**
      * Получить статистику продаж
-     *
-     * @param int|null $companyId
-     * @param array $filters
-     * @return array
      */
     public function getSalesStatistics(?int $companyId = null, array $filters = []): array
     {
@@ -471,23 +496,23 @@ class SaleService
             $query->where('company_id', $companyId);
         }
 
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->whereDate('created_at', '>=', $filters['date_from']);
         }
 
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['source'])) {
+        if (! empty($filters['source'])) {
             $query->where('source', $filters['source']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
@@ -496,7 +521,7 @@ class SaleService
         return [
             'total_sales' => $sales->count(),
             'total_amount' => $sales->sum('total_amount'),
-            'total_margin' => $sales->sum(fn($sale) => $sale->getMargin()),
+            'total_margin' => $sales->sum(fn ($sale) => $sale->getMargin()),
             'by_status' => $sales->groupBy('status')->map->count(),
             'by_type' => $sales->groupBy('type')->map->count(),
             'by_source' => $sales->groupBy('source')->map->count(),

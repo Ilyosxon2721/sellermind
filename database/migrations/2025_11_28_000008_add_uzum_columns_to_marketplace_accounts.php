@@ -8,50 +8,50 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('marketplace_accounts')) {
+        if (! Schema::hasTable('marketplace_accounts')) {
             return;
         }
 
         $hasShopId = Schema::hasColumn('marketplace_accounts', 'shop_id');
 
         Schema::table('marketplace_accounts', function (Blueprint $table) use ($hasShopId) {
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_client_id')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_client_id')) {
                 $column = $table->string('uzum_client_id')->nullable();
                 if ($hasShopId) {
                     $column->after('shop_id');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_client_secret')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_client_secret')) {
                 $column = $table->text('uzum_client_secret')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_client_id');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_api_key')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_api_key')) {
                 $column = $table->text('uzum_api_key')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_client_secret');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_refresh_token')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_refresh_token')) {
                 $column = $table->text('uzum_refresh_token')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_api_key');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_access_token')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_access_token')) {
                 $column = $table->text('uzum_access_token')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_refresh_token');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_token_expires_at')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_token_expires_at')) {
                 $column = $table->dateTime('uzum_token_expires_at')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_access_token');
                 }
             }
-            if (!Schema::hasColumn('marketplace_accounts', 'uzum_settings')) {
+            if (! Schema::hasColumn('marketplace_accounts', 'uzum_settings')) {
                 $column = $table->json('uzum_settings')->nullable();
                 if ($hasShopId) {
                     $column->after('uzum_token_expires_at');
@@ -62,7 +62,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('marketplace_accounts')) {
+        if (! Schema::hasTable('marketplace_accounts')) {
             return;
         }
 

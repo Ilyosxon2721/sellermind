@@ -20,7 +20,9 @@ class ReplenishmentServiceTest extends TestCase
     use RefreshDatabase;
 
     protected Company $company;
+
     protected Warehouse $warehouse;
+
     protected Sku $sku;
 
     protected function setUp(): void
@@ -128,7 +130,7 @@ class ReplenishmentServiceTest extends TestCase
     {
         $doc = InventoryDocument::create([
             'company_id' => $this->company->id,
-            'doc_no' => 'OUT-' . uniqid(),
+            'doc_no' => 'OUT-'.uniqid(),
             'type' => InventoryDocument::TYPE_OUT,
             'status' => InventoryDocument::STATUS_DRAFT,
             'warehouse_id' => $this->warehouse->id,

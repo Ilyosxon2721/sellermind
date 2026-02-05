@@ -265,7 +265,7 @@
                                placeholder="Номер заказа">
                     </div>
                     <div class="flex items-end">
-                        <button @click="loadOrders()" class="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium">
+                        <button @click="loadOrders()" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium">
                             Применить
                         </button>
                     </div>

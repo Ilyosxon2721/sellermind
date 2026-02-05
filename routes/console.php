@@ -243,7 +243,7 @@ Schedule::call(function () {
                 now()->addHour()
             );
         } catch (\Exception $e) {
-            \Log::error("Analytics cache failed for company {$company->id}: " . $e->getMessage());
+            \Log::error("Analytics cache failed for company {$company->id}: ".$e->getMessage());
         }
     }
 })->hourly()

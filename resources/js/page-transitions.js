@@ -21,14 +21,11 @@ class PageTransitions {
                      window.navigator.standalone === true;
 
         if (!isPWA) {
-            console.log('⏭️  Page Transitions: Disabled (not in PWA mode)');
             return;
         }
 
         // Detect navigation direction
         this.setupNavigationDetection();
-
-        console.log('✅ Page Transitions: Enabled');
     }
 
     setupNavigationDetection() {
@@ -221,5 +218,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-console.log('✅ Page Transitions: Loaded');

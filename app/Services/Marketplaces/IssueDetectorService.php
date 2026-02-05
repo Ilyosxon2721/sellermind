@@ -26,7 +26,7 @@ class IssueDetectorService
         // Определяем тип и серьёзность проблемы
         $issueData = $this->detectIssueType($httpStatus, $errorCode, $errorMessage, $account->marketplace);
 
-        if (!$issueData) {
+        if (! $issueData) {
             // Это не критичная ошибка, не регистрируем
             return null;
         }
@@ -48,7 +48,7 @@ class IssueDetectorService
         );
 
         // Логируем
-        Log::warning("Marketplace issue detected", [
+        Log::warning('Marketplace issue detected', [
             'account_id' => $account->id,
             'marketplace' => $account->marketplace,
             'issue_type' => $issueData['type'],
@@ -65,7 +65,7 @@ class IssueDetectorService
      */
     protected function parseErrorBody(?string $errorBody): array
     {
-        if (!$errorBody) {
+        if (! $errorBody) {
             return [];
         }
 
@@ -173,7 +173,7 @@ class IssueDetectorService
             // Например, если последняя проблема была более 24 часов назад
             if ($issue->last_occurred_at->diffInHours(now()) > 24) {
                 $issue->markAsResolved();
-                Log::info("Marketplace issue auto-resolved", [
+                Log::info('Marketplace issue auto-resolved', [
                     'issue_id' => $issue->id,
                     'account_id' => $account->id,
                     'type' => $issue->type,
@@ -187,7 +187,7 @@ class IssueDetectorService
      */
     public function getResolutionSteps(string $issueType, string $marketplace): array
     {
-        $baseSteps = match($issueType) {
+        $baseSteps = match ($issueType) {
             'token_invalid', 'token_expired' => [
                 '1. Войдите в личный кабинет маркетплейса',
                 '2. Перейдите в раздел API / Интеграции',

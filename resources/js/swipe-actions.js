@@ -373,5 +373,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-console.log('✅ Swipe Actions: Loaded');

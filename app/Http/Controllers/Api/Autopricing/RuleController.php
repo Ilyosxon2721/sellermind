@@ -15,28 +15,37 @@ class RuleController extends Controller
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $request->validate(['policy_id' => ['required', 'integer']]);
         $q = AutopricingRule::byCompany($companyId)->where('policy_id', $request->policy_id);
+
         return $this->successResponse($q->orderBy('priority')->get());
     }
 
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $data = $this->validateData($request);
         $data['company_id'] = $companyId;
         $rule = AutopricingRule::create($data);
+
         return $this->successResponse($rule);
     }
 
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) return $this->errorResponse('No company', 'forbidden', null, 403);
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
         $rule = AutopricingRule::byCompany($companyId)->findOrFail($id);
         $rule->update($this->validateData($request));
+
         return $this->successResponse($rule);
     }
 

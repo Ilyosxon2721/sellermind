@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Models/VpcAction.php
 
 namespace App\Models;
@@ -12,15 +13,22 @@ class VpcAction extends Model
 
     // Источники действий
     const SOURCE_AGENT = 'agent';
+
     const SOURCE_USER = 'user';
 
     // Типы действий
     const ACTION_OPEN_URL = 'open_url';
+
     const ACTION_CLICK = 'click';
+
     const ACTION_TYPE = 'type';
+
     const ACTION_SCROLL = 'scroll';
+
     const ACTION_SCREENSHOT = 'screenshot';
+
     const ACTION_KEY_PRESS = 'key_press';
+
     const ACTION_MOUSE_MOVE = 'mouse_move';
 
     protected $fillable = [

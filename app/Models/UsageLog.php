@@ -68,9 +68,9 @@ class UsageLog extends Model
     public static function getStats(int $companyId, string $type, ?string $period = 'month'): int
     {
         $query = self::where('company_id', $companyId)
-                     ->where('type', $type);
+            ->where('type', $type);
 
-        $query = match($period) {
+        $query = match ($period) {
             'day' => $query->whereDate('created_at', today()),
             'week' => $query->where('created_at', '>=', now()->startOfWeek()),
             'month' => $query->where('created_at', '>=', now()->startOfMonth()),

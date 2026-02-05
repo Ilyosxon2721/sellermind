@@ -3,29 +3,29 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\AP\SupplierInvoice;
+use App\Models\Company;
 use App\Models\Finance\FinanceCategory;
 use App\Models\Finance\FinanceDebt;
 use App\Models\Finance\FinanceSettings;
 use App\Models\Finance\FinanceTransaction;
 use App\Models\Finance\SalaryCalculation;
 use App\Models\Finance\TaxCalculation;
-use App\Models\Warehouse\StockLedger;
-use App\Models\Warehouse\InventoryDocument;
-use App\Models\AP\SupplierInvoice;
-use App\Services\Finance\FinanceReportService;
-use App\Services\Marketplaces\UzumClient;
-use App\Services\Marketplaces\OzonClient;
-use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
-use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
-use App\Services\CurrencyConversionService;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceExpenseCache;
-use App\Models\Company;
+use App\Models\Warehouse\StockLedger;
+use App\Services\CurrencyConversionService;
+use App\Services\Finance\FinanceReportService;
+use App\Services\Marketplaces\OzonClient;
+use App\Services\Marketplaces\UzumClient;
+use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
+use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Support\ApiResponder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FinanceController extends Controller
 {
@@ -36,13 +36,12 @@ class FinanceController extends Controller
         protected UzumClient $uzumClient,
         protected OzonClient $ozonClient,
         protected CurrencyConversionService $currencyService
-    ) {
-    }
+    ) {}
 
     public function overview(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -98,7 +97,7 @@ class FinanceController extends Controller
             ->selectRaw('currency_code, SUM(amount_outstanding) as total')
             ->groupBy('currency_code')
             ->get()
-            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->mapWithKeys(fn ($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
             ->toArray();
 
         $debtsPayableByCurrency = FinanceDebt::byCompany($companyId)
@@ -107,7 +106,7 @@ class FinanceController extends Controller
             ->selectRaw('currency_code, SUM(amount_outstanding) as total')
             ->groupBy('currency_code')
             ->get()
-            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->mapWithKeys(fn ($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
             ->toArray();
 
         $overdueReceivableByCurrency = FinanceDebt::byCompany($companyId)
@@ -116,7 +115,7 @@ class FinanceController extends Controller
             ->selectRaw('currency_code, SUM(amount_outstanding) as total')
             ->groupBy('currency_code')
             ->get()
-            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->mapWithKeys(fn ($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
             ->toArray();
 
         $overduePayableByCurrency = FinanceDebt::byCompany($companyId)
@@ -125,7 +124,7 @@ class FinanceController extends Controller
             ->selectRaw('currency_code, SUM(amount_outstanding) as total')
             ->groupBy('currency_code')
             ->get()
-            ->mapWithKeys(fn($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
+            ->mapWithKeys(fn ($d) => [$d->currency_code ?? 'UZS' => (float) $d->total])
             ->toArray();
 
         // Также считаем общие суммы в displayCurrency для баланса
@@ -288,25 +287,25 @@ class FinanceController extends Controller
         // Фильтрация: по date_issued (дата выкупа)
         try {
             $hasFinanceOrders = class_exists(\App\Models\UzumFinanceOrder::class)
-                && \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->exists();
+                && \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
 
             if ($hasFinanceOrders) {
                 // Используем uzum_finance_orders - точные данные
-                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
-                    ->where(function($q) use ($from, $to) {
+                $uzumSales = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->where(function ($q) use ($from, $to) {
                         // TO_WITHDRAW - деньги выведены = продажа
-                        $q->where(function($sub) use ($from, $to) {
+                        $q->where(function ($sub) use ($from, $to) {
                             $sub->where('status', 'TO_WITHDRAW')
                                 ->whereDate('date_issued', '>=', $from)
                                 ->whereDate('date_issued', '<=', $to);
                         })
                         // PROCESSING + date_issued = товар выкуплен = продажа
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->where('status', 'PROCESSING')
-                                ->whereNotNull('date_issued')
-                                ->whereDate('date_issued', '>=', $from)
-                                ->whereDate('date_issued', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->where('status', 'PROCESSING')
+                                    ->whereNotNull('date_issued')
+                                    ->whereDate('date_issued', '>=', $from)
+                                    ->whereDate('date_issued', '<=', $to);
+                            });
                     })
                     ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as revenue, SUM(seller_profit) as profit')
                     ->first();
@@ -322,7 +321,7 @@ class FinanceController extends Controller
                 \Log::info('Uzum sales fetched from uzum_finance_orders', $result['uzum']);
             } elseif (class_exists(\App\Models\UzumOrder::class)) {
                 // Fallback: uzum_orders (менее точные данные)
-                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $uzumSales = \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('status', 'issued')
                     ->whereDate('ordered_at', '>=', $from)
                     ->whereDate('ordered_at', '<=', $to)
@@ -347,7 +346,7 @@ class FinanceController extends Controller
         // Фильтрация: по last_change_date (дата завершения)
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
                     ->whereDate('last_change_date', '>=', $from)
@@ -374,7 +373,7 @@ class FinanceController extends Controller
         // Фильтрация: по stock_sold_at (дата продажи)
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonSales = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ozonSales = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('stock_status', 'sold')
                     ->whereNotNull('stock_sold_at')
                     ->whereDate('stock_sold_at', '>=', $from)
@@ -401,7 +400,7 @@ class FinanceController extends Controller
         // Фильтрация: по stock_sold_at (дата продажи)
         try {
             if (class_exists(\App\Models\YandexMarketOrder::class)) {
-                $ymSales = \App\Models\YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ymSales = \App\Models\YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('stock_status', 'sold')
                     ->whereNotNull('stock_sold_at')
                     ->whereDate('stock_sold_at', '>=', $from)
@@ -474,7 +473,7 @@ class FinanceController extends Controller
                 ->having('qty', '>', 0)
                 ->get();
 
-            $warehouseData = $byWarehouse->map(function($w) use ($currencyService, $baseCurrency, $displayCurrency) {
+            $warehouseData = $byWarehouse->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
                 $costBase = max(0, (float) $w->cost);
                 $cost = $currencyService
                     ? $currencyService->convert($costBase, $baseCurrency, $displayCurrency)
@@ -495,6 +494,7 @@ class FinanceController extends Controller
             ];
         } catch (\Exception $e) {
             \Log::error('getStockSummary error', ['error' => $e->getMessage()]);
+
             return [
                 'total_qty' => 0,
                 'total_cost' => 0,
@@ -529,7 +529,7 @@ class FinanceController extends Controller
         // Статусы: waiting_pickup, accepted_uzum, in_supply, in_assembly = в пути
         try {
             if (class_exists(\App\Models\UzumOrder::class)) {
-                $uzumTransit = \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $uzumTransit = \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereIn('status', ['waiting_pickup', 'accepted_uzum', 'in_supply', 'in_assembly'])
                     ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as total')
                     ->first();
@@ -547,12 +547,14 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных Uzum', ['error' => $e->getMessage()]);
+        }
 
         // 2. WB заказы в пути (RUB -> UZS)
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbTransit = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $wbTransit = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', false)
                     ->where('is_cancel', false)
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total_rub')
@@ -573,12 +575,14 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных WB', ['error' => $e->getMessage()]);
+        }
 
         // 3. Ozon заказы в пути (RUB -> UZS)
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonTransit = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ozonTransit = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->inTransit()
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as total_rub')
                     ->first();
@@ -598,7 +602,9 @@ class FinanceController extends Controller
                     ];
                 }
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения транзитных данных Ozon', ['error' => $e->getMessage()]);
+        }
 
         // 4. Закупки в пути
         try {
@@ -611,7 +617,9 @@ class FinanceController extends Controller
                 $result['purchases_in_transit']['count'] = (int) ($purchaseTransit?->cnt ?? 0);
                 $result['purchases_in_transit']['amount'] = (float) ($purchaseTransit?->total ?? 0);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            Log::warning('Ошибка получения данных о закупках в пути', ['error' => $e->getMessage()]);
+        }
 
         $result['total_amount'] = $result['orders_in_transit']['amount'] + $result['purchases_in_transit']['amount'];
 
@@ -727,7 +735,7 @@ class FinanceController extends Controller
      */
     protected function convertExpensesByCategory($expensesByCategory, $currencyService, string $baseCurrency, string $displayCurrency): array
     {
-        if (!$currencyService || $displayCurrency === $baseCurrency) {
+        if (! $currencyService || $displayCurrency === $baseCurrency) {
             return $expensesByCategory instanceof \Illuminate\Support\Collection
                 ? $expensesByCategory->toArray()
                 : (array) $expensesByCategory;
@@ -756,7 +764,7 @@ class FinanceController extends Controller
      */
     protected function convertMarketplaceSales(array $sales, $currencyService, string $baseCurrency, string $displayCurrency): array
     {
-        if (!$currencyService || $displayCurrency === $baseCurrency) {
+        if (! $currencyService || $displayCurrency === $baseCurrency) {
             return $sales;
         }
 
@@ -831,7 +839,7 @@ class FinanceController extends Controller
     {
         try {
             // Проверяем есть ли модель CashAccount
-            if (!class_exists(\App\Models\Finance\CashAccount::class)) {
+            if (! class_exists(\App\Models\Finance\CashAccount::class)) {
                 return ['total' => 0, 'accounts' => []];
             }
 
@@ -840,7 +848,7 @@ class FinanceController extends Controller
                 ->get();
 
             // Каждый счёт показываем в своей валюте
-            $accountsData = $accounts->map(fn($a) => [
+            $accountsData = $accounts->map(fn ($a) => [
                 'id' => $a->id,
                 'name' => $a->name,
                 'type' => $a->type,
@@ -871,7 +879,7 @@ class FinanceController extends Controller
     public function categories(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -895,7 +903,7 @@ class FinanceController extends Controller
     public function allCategories(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -917,7 +925,7 @@ class FinanceController extends Controller
     public function storeCategory(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -942,7 +950,7 @@ class FinanceController extends Controller
             'name' => $data['name'],
             'type' => $data['type'],
             'parent_id' => $data['parent_id'] ?? null,
-            'code' => 'CUSTOM_' . strtoupper(str_replace(' ', '_', $data['name'])) . '_' . time(),
+            'code' => 'CUSTOM_'.strtoupper(str_replace(' ', '_', $data['name'])).'_'.time(),
             'is_system' => false,
             'is_active' => true,
             'sort_order' => 999,
@@ -954,18 +962,19 @@ class FinanceController extends Controller
     public function settings(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $settings = FinanceSettings::getForCompany($companyId);
+
         return $this->successResponse($settings);
     }
 
     public function updateSettings(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -988,7 +997,7 @@ class FinanceController extends Controller
             $data['rates_updated_at'] = now();
         }
 
-        $settings->update(array_filter($data, fn($v) => $v !== null));
+        $settings->update(array_filter($data, fn ($v) => $v !== null));
 
         return $this->successResponse($settings->fresh());
     }
@@ -996,7 +1005,7 @@ class FinanceController extends Controller
     public function reports(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -1032,7 +1041,7 @@ class FinanceController extends Controller
     public function marketplaceExpenses(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -1074,7 +1083,7 @@ class FinanceController extends Controller
         ];
 
         // Try to get data from cache first (if enabled and not forcing refresh)
-        if ($useCache && !$forceRefresh) {
+        if ($useCache && ! $forceRefresh) {
             $cachedData = $this->getExpensesFromCache($companyId, $periodType);
             if ($cachedData) {
                 return $this->successResponse($cachedData);
@@ -1111,17 +1120,17 @@ class FinanceController extends Controller
                 $orderExpenses = \App\Models\UzumFinanceOrder::where('marketplace_account_id', $account->id)
                     ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
                     ->where('status', '!=', 'CANCELED')
-                    ->where(function($q) use ($from, $to) {
-                        $q->where(function($sub) use ($from, $to) {
+                    ->where(function ($q) use ($from, $to) {
+                        $q->where(function ($sub) use ($from, $to) {
                             $sub->whereNotNull('date_issued')
                                 ->whereDate('date_issued', '>=', $from)
                                 ->whereDate('date_issued', '<=', $to);
                         })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->whereNull('date_issued')
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
                     })
                     ->selectRaw('
                         SUM(commission) as total_commission,
@@ -1170,7 +1179,7 @@ class FinanceController extends Controller
         unset($uzumTotalExpenses['accounts_db'], $uzumTotalExpenses['accounts_api']);
 
         // Add Uzum expenses to result and totals
-        if ($uzumTotalExpenses['total'] > 0 || !empty($uzumAccounts)) {
+        if ($uzumTotalExpenses['total'] > 0 || ! empty($uzumAccounts)) {
             $result['uzum'] = $uzumTotalExpenses;
 
             // Add Uzum expenses to totals (already in UZS)
@@ -1318,14 +1327,14 @@ class FinanceController extends Controller
                 $ozonTotalExpenses['other'] += $expenses['other'] ?? 0;
                 $ozonTotalExpenses['total'] += $expenses['total'] ?? 0;
             } catch (\Exception $e) {
-                if (!isset($result['ozon']['error'])) {
+                if (! isset($result['ozon']['error'])) {
                     $result['ozon'] = ['error' => $e->getMessage()];
                 }
             }
         }
 
         // Convert Ozon totals to UZS and add to result
-        if ($ozonTotalExpenses['total'] > 0 || !isset($result['ozon']['error'])) {
+        if ($ozonTotalExpenses['total'] > 0 || ! isset($result['ozon']['error'])) {
             $ozonTotalExpenses['total_uzs'] = $ozonTotalExpenses['total'] * $rubToUzs;
             $result['ozon'] = $ozonTotalExpenses;
 
@@ -1355,7 +1364,7 @@ class FinanceController extends Controller
     public function marketplaceIncome(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -1379,7 +1388,7 @@ class FinanceController extends Controller
         // ========== UZUM ==========
         try {
             if (class_exists(\App\Models\UzumOrder::class)) {
-                $uzumQuery = fn() => \App\Models\UzumOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $uzumQuery = fn () => \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('ordered_at', '>=', $from)
                     ->whereDate('ordered_at', '<=', $to);
 
@@ -1441,7 +1450,7 @@ class FinanceController extends Controller
         // ========== WILDBERRIES ==========
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbQuery = fn() => \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $wbQuery = fn () => \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('order_date', '>=', $from)
                     ->whereDate('order_date', '<=', $to);
 
@@ -1507,7 +1516,7 @@ class FinanceController extends Controller
         // ========== OZON ==========
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonQuery = fn() => \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ozonQuery = fn () => \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('created_at_ozon', '>=', $from)
                     ->whereDate('created_at_ozon', '<=', $to);
 
@@ -1571,7 +1580,7 @@ class FinanceController extends Controller
         // ========== YANDEX MARKET ==========
         try {
             if (class_exists(\App\Models\YandexMarketOrder::class)) {
-                $ymQuery = fn() => \App\Models\YandexMarketOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ymQuery = fn () => \App\Models\YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('created_at_ym', '>=', $from)
                     ->whereDate('created_at_ym', '<=', $to);
 
@@ -1636,7 +1645,7 @@ class FinanceController extends Controller
         try {
             if (class_exists(\App\Models\Sale::class)) {
                 // Ручные продажи (type = 'manual') за период
-                $saleQuery = fn() => \App\Models\Sale::byCompany($companyId)
+                $saleQuery = fn () => \App\Models\Sale::byCompany($companyId)
                     ->where('type', 'manual')
                     ->whereDate('created_at', '>=', $from)
                     ->whereDate('created_at', '<=', $to);
@@ -1744,7 +1753,7 @@ class FinanceController extends Controller
     public function syncUzumExpenses(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -1811,7 +1820,7 @@ class FinanceController extends Controller
         }
 
         // Check if any cache is stale (older than 4 hours)
-        $hasStale = $cachedExpenses->contains(fn($c) => $c->isStale(4));
+        $hasStale = $cachedExpenses->contains(fn ($c) => $c->isStale(4));
 
         // Prepare result structure
         $result = [
@@ -1847,7 +1856,7 @@ class FinanceController extends Controller
                 // Return empty structure for marketplaces that have no cache data
                 // This ensures UI shows 0 instead of hiding the section
                 $displayKey = ($marketplace === 'ym') ? 'yandex' : $marketplace;
-                if (!isset($result[$displayKey])) {
+                if (! isset($result[$displayKey])) {
                     $result[$displayKey] = [
                         'commission' => 0,
                         'logistics' => 0,
@@ -1865,6 +1874,7 @@ class FinanceController extends Controller
                         'source' => 'cache',
                     ];
                 }
+
                 continue;
             }
 
@@ -1915,12 +1925,6 @@ class FinanceController extends Controller
      * 2. Если связи нет - берём из маркетплейса (UzumFinanceOrder.purchase_price и т.д.)
      *
      * ВАЖНО: purchase_price в ProductVariant хранится в UZS!
-     *
-     * @param int $companyId
-     * @param Carbon $from
-     * @param Carbon $to
-     * @param float $rubToUzs
-     * @return array
      */
     protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
     {
@@ -1937,20 +1941,20 @@ class FinanceController extends Controller
         // ========== 1. UZUM COGS ==========
         try {
             if (class_exists(\App\Models\UzumFinanceOrder::class)) {
-                $uzumOrders = \App\Models\UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $uzumOrders = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereIn('status', ['TO_WITHDRAW', 'COMPLETED', 'PROCESSING'])
                     ->where('status', '!=', 'CANCELED')
-                    ->where(function($q) use ($from, $to) {
-                        $q->where(function($sub) use ($from, $to) {
+                    ->where(function ($q) use ($from, $to) {
+                        $q->where(function ($sub) use ($from, $to) {
                             $sub->whereNotNull('date_issued')
                                 ->whereDate('date_issued', '>=', $from)
                                 ->whereDate('date_issued', '<=', $to);
                         })
-                        ->orWhere(function($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->whereNull('date_issued')
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
                     })
                     ->select('sku_id', 'offer_id', 'barcode', 'amount', 'purchase_price', 'marketplace_account_id')
                     ->get();
@@ -1982,7 +1986,7 @@ class FinanceController extends Controller
                     }
 
                     // 2. Если не нашли - пробуем через barcode
-                    if (!$purchasePrice && $order->barcode) {
+                    if (! $purchasePrice && $order->barcode) {
                         $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
                             ->where('marketplace_barcode', $order->barcode)
                             ->with('variant')
@@ -1994,7 +1998,7 @@ class FinanceController extends Controller
                     }
 
                     // 3. Если связи нет - берём из маркетплейса
-                    if (!$purchasePrice && $order->purchase_price) {
+                    if (! $purchasePrice && $order->purchase_price) {
                         $purchasePrice = (float) $order->purchase_price;
                         $fromInternal = false;
                     }
@@ -2035,7 +2039,7 @@ class FinanceController extends Controller
         // ========== 2. WILDBERRIES COGS ==========
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbOrders = \App\Models\WildberriesOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $wbOrders = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
                     ->where('is_return', false)
@@ -2069,9 +2073,9 @@ class FinanceController extends Controller
                     }
 
                     // 2. Fallback: искать по nm_id через marketplace_product
-                    if (!$purchasePrice && $order->nm_id) {
+                    if (! $purchasePrice && $order->nm_id) {
                         $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                            ->whereHas('marketplaceProduct', function($q) use ($order) {
+                            ->whereHas('marketplaceProduct', function ($q) use ($order) {
                                 $q->where('external_id', $order->nm_id);
                             })
                             ->with('variant')
@@ -2083,7 +2087,7 @@ class FinanceController extends Controller
                     }
 
                     // 3. Fallback: искать по supplier_article (артикул продавца)
-                    if (!$purchasePrice && $order->supplier_article) {
+                    if (! $purchasePrice && $order->supplier_article) {
                         $variant = \App\Models\ProductVariant::where('company_id', $companyId)
                             ->where('sku', $order->supplier_article)
                             ->first();
@@ -2127,7 +2131,7 @@ class FinanceController extends Controller
         // ========== 3. OZON COGS ==========
         try {
             if (class_exists(\App\Models\OzonOrder::class)) {
-                $ozonOrders = \App\Models\OzonOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                $ozonOrders = \App\Models\OzonOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereIn('status', ['delivered', 'completed'])
                     ->whereDate('created_at_ozon', '>=', $from)
                     ->whereDate('created_at_ozon', '<=', $to)
@@ -2159,7 +2163,7 @@ class FinanceController extends Controller
                     }
 
                     // 2. Fallback: искать по sku
-                    if (!$purchasePrice && $order->sku) {
+                    if (! $purchasePrice && $order->sku) {
                         $variant = \App\Models\ProductVariant::where('company_id', $companyId)
                             ->where('sku', $order->sku)
                             ->first();

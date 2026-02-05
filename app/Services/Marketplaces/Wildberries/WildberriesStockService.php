@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesStockService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -11,8 +12,8 @@ use App\Models\WildberriesProduct;
 use App\Models\WildberriesStock;
 use App\Models\WildberriesWarehouse;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for syncing Wildberries stock data.
@@ -36,8 +37,7 @@ class WildberriesStockService
     /**
      * Sync stocks from WB Statistics API
      *
-     * @param MarketplaceAccount $account
-     * @param \DateTimeInterface|null $from Start date for sync (default: yesterday)
+     * @param  \DateTimeInterface|null  $from  Start date for sync (default: yesterday)
      * @return array Sync results
      */
     public function syncStocks(MarketplaceAccount $account, ?\DateTimeInterface $from = null): array
@@ -64,7 +64,7 @@ class WildberriesStockService
             // Response is an array of stock items
             $stockItems = $response;
 
-            if (!is_array($stockItems)) {
+            if (! is_array($stockItems)) {
                 throw new \RuntimeException('Invalid stocks response format');
             }
 
@@ -149,7 +149,7 @@ class WildberriesStockService
         $nmId = $stockData['nmId'] ?? null;
         $barcode = $stockData['barcode'] ?? null;
 
-        if (!$nmId && !$barcode) {
+        if (! $nmId && ! $barcode) {
             throw new \RuntimeException('Stock data missing nmId and barcode');
         }
 
@@ -165,7 +165,7 @@ class WildberriesStockService
             ->first();
 
         // If product doesn't exist, create a minimal record
-        if (!$product) {
+        if (! $product) {
             $product = WildberriesProduct::create([
                 'marketplace_account_id' => $account->id,
                 'nm_id' => $nmId,
@@ -233,7 +233,7 @@ class WildberriesStockService
 
         foreach ($linked as $mp) {
             $nmId = $mp->external_product_id;
-            if (!$nmId || !$wbProducts->has($nmId)) {
+            if (! $nmId || ! $wbProducts->has($nmId)) {
                 continue;
             }
 
@@ -264,9 +264,8 @@ class WildberriesStockService
     /**
      * Push stock updates to WB (FBS only)
      *
-     * @param MarketplaceAccount $account
-     * @param int $warehouseId WB warehouse ID
-     * @param array $stocks Array of ['sku' => '', 'amount' => 0]
+     * @param  int  $warehouseId  WB warehouse ID
+     * @param  array  $stocks  Array of ['sku' => '', 'amount' => 0]
      * @return array API response
      */
     public function pushStocks(MarketplaceAccount $account, int $warehouseId, array $stocks): array
@@ -307,8 +306,7 @@ class WildberriesStockService
     /**
      * Push stocks for all linked products (local -> WB) across FBS warehouses.
      *
-     * @param MarketplaceAccount $account
-     * @param array<int>|null $productIds
+     * @param  array<int>|null  $productIds
      * @return array summary
      */
     public function pushLinkedProducts(MarketplaceAccount $account, ?array $productIds = null): array
@@ -338,7 +336,7 @@ class WildberriesStockService
             ->whereNotNull('product_id')
             ->whereNotNull('external_product_id')
             ->with('product')
-            ->when($productIds, fn($q) => $q->whereIn('product_id', $productIds))
+            ->when($productIds, fn ($q) => $q->whereIn('product_id', $productIds))
             ->get();
 
         $pushed = 0;
@@ -349,13 +347,13 @@ class WildberriesStockService
             $stocks = $this->buildStocksPayload($links);
             foreach ($stocks->chunk(1000) as $chunk) {
                 try {
-                    $this->pushStocks($account, (int)$warehouse->warehouse_id, $chunk->values()->all());
+                    $this->pushStocks($account, (int) $warehouse->warehouse_id, $chunk->values()->all());
                     $pushed += $chunk->count();
-                    $this->logStock($account->id, null, (int)$warehouse->warehouse_id, 'push', 'success', $chunk->values()->all(), null);
+                    $this->logStock($account->id, null, (int) $warehouse->warehouse_id, 'push', 'success', $chunk->values()->all(), null);
                 } catch (\Exception $e) {
                     $errors++;
-                    $errorMessages[] = "Warehouse {$warehouse->warehouse_id}: " . $e->getMessage();
-                    $this->logStock($account->id, null, (int)$warehouse->warehouse_id, 'push', 'error', $chunk->values()->all(), $e->getMessage());
+                    $errorMessages[] = "Warehouse {$warehouse->warehouse_id}: ".$e->getMessage();
+                    $this->logStock($account->id, null, (int) $warehouse->warehouse_id, 'push', 'error', $chunk->values()->all(), $e->getMessage());
                 }
             }
         }
@@ -384,7 +382,7 @@ class WildberriesStockService
                 'sku' => (string) $sku,
                 'amount' => $qty,
             ];
-        })->filter(fn($item) => !empty($item['sku']));
+        })->filter(fn ($item) => ! empty($item['sku']));
     }
 
     protected function logStock(int $accountId, ?int $mpId, ?int $wbWarehouseId, string $direction, string $status, $payload = null, ?string $message = null): void
@@ -412,8 +410,8 @@ class WildberriesStockService
         try {
             Log::info('WB getWarehouses: fetching warehouses from API', [
                 'account_id' => $account->id,
-                'has_marketplace_token' => !empty($account->wb_marketplace_token),
-                'has_api_key' => !empty($account->api_key),
+                'has_marketplace_token' => ! empty($account->wb_marketplace_token),
+                'has_api_key' => ! empty($account->api_key),
             ]);
 
             $warehouses = $this->getHttpClient($account)->get('marketplace', '/api/v3/warehouses');
@@ -431,6 +429,7 @@ class WildberriesStockService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return [];
         }
     }
@@ -439,7 +438,6 @@ class WildberriesStockService
      * Sync FBS warehouses from Marketplace API to database
      * This updates warehouse_id field which is required for stock push operations
      *
-     * @param  MarketplaceAccount  $account
      * @return array Sync results
      */
     public function syncWarehouses(MarketplaceAccount $account): array
@@ -456,9 +454,9 @@ class WildberriesStockService
                 Log::info('Marketplace API returned no warehouses, trying to extract from stock data', [
                     'account_id' => $account->id,
                 ]);
-                
+
                 $result = $this->extractWarehousesFromStocks($account);
-                
+
                 if ($result['found'] > 0) {
                     return [
                         'created' => 0,
@@ -467,10 +465,11 @@ class WildberriesStockService
                         'note' => 'Warehouses extracted from stock data (officeId). This may have limitations for FBS operations.',
                     ];
                 }
-                
+
                 Log::warning('No FBS warehouses returned from WB API', [
                     'account_id' => $account->id,
                 ]);
+
                 return [
                     'created' => 0,
                     'updated' => 0,
@@ -483,8 +482,9 @@ class WildberriesStockService
                     $warehouseId = $warehouseData['id'] ?? null;
                     $name = $warehouseData['name'] ?? 'Unknown';
 
-                    if (!$warehouseId) {
-                        $errors[] = "Warehouse missing id: " . json_encode($warehouseData);
+                    if (! $warehouseId) {
+                        $errors[] = 'Warehouse missing id: '.json_encode($warehouseData);
+
                         continue;
                     }
 
@@ -519,7 +519,7 @@ class WildberriesStockService
                         $created++;
                     }
                 } catch (\Exception $e) {
-                    $errors[] = "Error processing warehouse '{$name}': " . $e->getMessage();
+                    $errors[] = "Error processing warehouse '{$name}': ".$e->getMessage();
                 }
             }
 
@@ -535,7 +535,7 @@ class WildberriesStockService
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
-            $errors[] = 'Sync failed: ' . $e->getMessage();
+            $errors[] = 'Sync failed: '.$e->getMessage();
         }
 
         return [
@@ -552,35 +552,35 @@ class WildberriesStockService
     protected function extractWarehousesFromStocks(MarketplaceAccount $account): array
     {
         $found = 0;
-        
+
         try {
             // Get unique warehouses from stock data
             $stockData = $this->getHttpClient($account)->get('statistics', '/api/v1/supplier/stocks', [
                 'dateFrom' => now()->subDays(7)->format('Y-m-d'),
             ]);
-            
+
             if (empty($stockData)) {
                 return ['found' => 0];
             }
-            
+
             // Group by warehouse and office
             $warehouseMap = [];
             foreach ($stockData as $item) {
                 $whName = $item['warehouseName'] ?? null;
                 $officeId = $item['office'] ?? $item['officeId'] ?? null;
-                
+
                 if ($whName && $officeId) {
                     $warehouseMap[$whName] = $officeId;
                 }
             }
-            
+
             // Update warehouses with officeId as warehouse_id
             foreach ($warehouseMap as $name => $officeId) {
                 $warehouse = WildberriesWarehouse::where('marketplace_account_id', $account->id)
                     ->where('warehouse_name', $name)
                     ->first();
-                    
-                if ($warehouse && !$warehouse->warehouse_id) {
+
+                if ($warehouse && ! $warehouse->warehouse_id) {
                     $warehouse->update([
                         'warehouse_id' => $officeId,
                         'office_id' => $officeId,
@@ -588,23 +588,21 @@ class WildberriesStockService
                     $found++;
                 }
             }
-            
+
             Log::info('Extracted warehouse IDs from stock data', [
                 'account_id' => $account->id,
                 'found' => $found,
             ]);
-            
+
         } catch (\Exception $e) {
             Log::error('Failed to extract warehouses from stock data', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         return ['found' => $found];
     }
-
-
 
     /**
      * Обновить остаток одного товара
@@ -613,12 +611,12 @@ class WildberriesStockService
     public function updateStock(MarketplaceAccount $account, string $sku, int $stock, ?int $warehouseId = null): array
     {
         // Get warehouse_id from account settings if not provided
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $credentials = $account->getAllCredentials();
             $warehouseId = $credentials['warehouse_id'] ?? null;
-            
+
             // Try to get from database (from synced warehouses)
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 $dbWarehouse = WildberriesWarehouse::forAccount($account->id)
                     ->active()
                     ->whereNotNull('warehouse_id')
@@ -627,22 +625,22 @@ class WildberriesStockService
                     })
                     ->orderBy('is_active', 'desc')
                     ->first();
-                
+
                 if ($dbWarehouse) {
                     $warehouseId = $dbWarehouse->warehouse_id;
                 }
             }
-            
+
             // If still no warehouse, try to get from API
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 $warehouses = $this->getWarehouses($account);
-                if (!empty($warehouses)) {
+                if (! empty($warehouses)) {
                     $warehouseId = $warehouses[0]['id'] ?? null;
                 }
             }
         }
 
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             throw new \RuntimeException('Не найден склад для обновления остатков. Убедитесь, что у вас есть активный FBS склад или укажите warehouse_id в настройках аккаунта.');
         }
 
@@ -688,9 +686,9 @@ class WildberriesStockService
     {
         $credentials = $account->getAllCredentials();
         $warehouseId = $credentials['warehouse_id'] ?? null;
-        
+
         // Try to get from database (from synced warehouses)
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $dbWarehouse = WildberriesWarehouse::forAccount($account->id)
                 ->active()
                 ->whereNotNull('warehouse_id')
@@ -699,16 +697,16 @@ class WildberriesStockService
                 })
                 ->orderBy('is_active', 'desc')
                 ->first();
-            
+
             if ($dbWarehouse) {
                 $warehouseId = $dbWarehouse->warehouse_id;
             }
         }
 
         // Try to get from API
-        if (!$warehouseId) {
+        if (! $warehouseId) {
             $warehouses = $this->getWarehouses($account);
-            if (!empty($warehouses)) {
+            if (! empty($warehouses)) {
                 $warehouseId = $warehouses[0]['id'] ?? null;
             }
         }

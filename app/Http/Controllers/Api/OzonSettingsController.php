@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/OzonSettingsController.php
 
 namespace App\Http\Controllers\Api;
@@ -6,8 +7,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonWarehouse;
-use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\OzonClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class OzonSettingsController extends Controller
      */
     public function show(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -37,8 +38,8 @@ class OzonSettingsController extends Controller
                 'is_active' => $account->is_active,
                 // Credentials status (not the actual values for security)
                 'credentials' => [
-                    'client_id' => !empty($account->client_id),
-                    'api_key' => !empty($account->api_key),
+                    'client_id' => ! empty($account->client_id),
+                    'api_key' => ! empty($account->api_key),
                 ],
                 // Stock sync settings from credentials_json
                 'settings' => [
@@ -62,7 +63,7 @@ class OzonSettingsController extends Controller
             'has_api_key' => $request->has('api_key'),
         ]);
 
-        if (!$request->user()->isOwnerOf($account->company_id)) {
+        if (! $request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки.'], 403);
         }
 
@@ -119,8 +120,8 @@ class OzonSettingsController extends Controller
             'account' => [
                 'id' => $account->id,
                 'credentials' => [
-                    'client_id' => !empty($account->client_id),
-                    'api_key' => !empty($account->api_key),
+                    'client_id' => ! empty($account->client_id),
+                    'api_key' => ! empty($account->api_key),
                 ],
                 'settings' => [
                     'stock_sync_mode' => $settings['stock_sync_mode'] ?? 'basic',
@@ -136,7 +137,7 @@ class OzonSettingsController extends Controller
      */
     public function test(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -164,7 +165,7 @@ class OzonSettingsController extends Controller
      */
     public function getWarehouses(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -175,7 +176,7 @@ class OzonSettingsController extends Controller
         try {
             $httpClient = app(MarketplaceHttpClient::class);
             $client = new OzonClient($httpClient);
-            
+
             $warehouses = $client->getWarehouses($account);
 
             // Sync warehouses to local DB
@@ -208,7 +209,7 @@ class OzonSettingsController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при загрузке складов: ' . $e->getMessage(),
+                'message' => 'Ошибка при загрузке складов: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -218,7 +219,7 @@ class OzonSettingsController extends Controller
      */
     public function getWarehouseMapping(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -252,7 +253,7 @@ class OzonSettingsController extends Controller
             'request_data' => $request->all(),
         ]);
 
-        if (!$request->user()->isOwnerOf($account->company_id)) {
+        if (! $request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки.'], 403);
         }
 

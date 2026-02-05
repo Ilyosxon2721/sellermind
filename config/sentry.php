@@ -179,6 +179,4 @@ return [
 
     'before_send' => null,
 
-    
-
 ];

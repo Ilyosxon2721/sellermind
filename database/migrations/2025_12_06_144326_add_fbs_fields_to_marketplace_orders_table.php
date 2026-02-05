@@ -13,17 +13,17 @@ return new class extends Migration
     {
         Schema::table('marketplace_orders', function (Blueprint $table) {
             // Метаданные - добавляем только те, которых нет
-            if (!Schema::hasColumn('marketplace_orders', 'required_meta')) {
+            if (! Schema::hasColumn('marketplace_orders', 'required_meta')) {
                 $table->json('required_meta')->nullable()->comment('Обязательные метаданные из requiredMeta');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'optional_meta')) {
+            if (! Schema::hasColumn('marketplace_orders', 'optional_meta')) {
                 $table->json('optional_meta')->nullable()->comment('Опциональные метаданные из optionalMeta');
             }
             // meta_sgtin, meta_uin, meta_imei, meta_gtin, meta_expiration_date уже существуют
 
             // Статусы и история
             // supplier_status, wb_status_group уже существуют
-            if (!Schema::hasColumn('marketplace_orders', 'status_history')) {
+            if (! Schema::hasColumn('marketplace_orders', 'status_history')) {
                 $table->json('status_history')->nullable()->comment('История изменения статусов');
             }
 
@@ -31,47 +31,47 @@ return new class extends Migration
             // Оставляем как есть, используем существующее поле
 
             // Стикеры
-            if (!Schema::hasColumn('marketplace_orders', 'sticker_path')) {
+            if (! Schema::hasColumn('marketplace_orders', 'sticker_path')) {
                 $table->string('sticker_path')->nullable()->comment('Путь к файлу стикера');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'sticker_generated_at')) {
+            if (! Schema::hasColumn('marketplace_orders', 'sticker_generated_at')) {
                 $table->timestamp('sticker_generated_at')->nullable()->comment('Когда сгенерирован стикер');
             }
 
             // Даты
-            if (!Schema::hasColumn('marketplace_orders', 'cancel_dt')) {
+            if (! Schema::hasColumn('marketplace_orders', 'cancel_dt')) {
                 $table->timestamp('cancel_dt')->nullable()->index()->comment('Дата отмены заказа');
             }
 
             // Адрес доставки
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_address_full')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_address_full')) {
                 $table->text('delivery_address_full')->nullable()->comment('Полный адрес доставки');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_province')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_province')) {
                 $table->string('delivery_province')->nullable()->comment('Область');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_area')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_area')) {
                 $table->string('delivery_area')->nullable()->comment('Район');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_city')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_city')) {
                 $table->string('delivery_city')->nullable()->comment('Город');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_street')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_street')) {
                 $table->string('delivery_street')->nullable()->comment('Улица');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_home')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_home')) {
                 $table->string('delivery_home', 50)->nullable()->comment('Дом');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_flat')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_flat')) {
                 $table->string('delivery_flat', 50)->nullable()->comment('Квартира');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_entrance')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_entrance')) {
                 $table->string('delivery_entrance', 50)->nullable()->comment('Подъезд');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_longitude')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_longitude')) {
                 $table->decimal('delivery_longitude', 10, 7)->nullable()->comment('Долгота');
             }
-            if (!Schema::hasColumn('marketplace_orders', 'delivery_latitude')) {
+            if (! Schema::hasColumn('marketplace_orders', 'delivery_latitude')) {
                 $table->decimal('delivery_latitude', 10, 7)->nullable()->comment('Широта');
             }
         });
@@ -110,7 +110,7 @@ return new class extends Migration
                 }
             }
 
-            if (!empty($columnsToDrop)) {
+            if (! empty($columnsToDrop)) {
                 $table->dropColumn($columnsToDrop);
             }
         });

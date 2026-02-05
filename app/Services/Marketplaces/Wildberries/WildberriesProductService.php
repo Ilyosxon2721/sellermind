@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesProductService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -28,8 +29,7 @@ class WildberriesProductService
     /**
      * Sync all product cards from WB to local database
      *
-     * @param MarketplaceAccount $account
-     * @param array $filters Optional filters (textSearch, withPhoto, etc.)
+     * @param  array  $filters  Optional filters (textSearch, withPhoto, etc.)
      * @return array Summary of sync results
      */
     public function syncProducts(MarketplaceAccount $account, array $filters = []): array
@@ -174,6 +174,7 @@ class WildberriesProductService
                 if ($k === 'withPhoto') {
                     return true;
                 }
+
                 return $value !== null && $value !== '';
             },
             ARRAY_FILTER_USE_BOTH
@@ -190,7 +191,7 @@ class WildberriesProductService
     {
         $nmId = $cardData['nmID'] ?? null;
 
-        if (!$nmId) {
+        if (! $nmId) {
             throw new \RuntimeException('Card data missing nmID');
         }
 
@@ -218,12 +219,12 @@ class WildberriesProductService
         ];
 
         // Process each size/variant
-        if (!empty($cardData['sizes'])) {
+        if (! empty($cardData['sizes'])) {
             foreach ($cardData['sizes'] as $sizeData) {
                 $chrtId = $sizeData['chrtID'] ?? null;
                 $barcode = $sizeData['skus'][0] ?? null;
 
-                if (!$barcode) {
+                if (! $barcode) {
                     continue; // Skip sizes without barcode
                 }
 
@@ -239,10 +240,10 @@ class WildberriesProductService
                     })
                     ->first();
 
-                $isNew = !$product;
+                $isNew = ! $product;
 
-                if (!$product) {
-                    $product = new WildberriesProduct();
+                if (! $product) {
+                    $product = new WildberriesProduct;
                     $product->marketplace_account_id = $account->id;
                 }
 
@@ -270,10 +271,10 @@ class WildberriesProductService
                 ->where('nm_id', $nmId)
                 ->first();
 
-            $isNew = !$product;
+            $isNew = ! $product;
 
-            if (!$product) {
-                $product = new WildberriesProduct();
+            if (! $product) {
+                $product = new WildberriesProduct;
                 $product->marketplace_account_id = $account->id;
             }
 
@@ -303,7 +304,7 @@ class WildberriesProductService
     {
         $photos = [];
 
-        if (!empty($cardData['photos'])) {
+        if (! empty($cardData['photos'])) {
             foreach ($cardData['photos'] as $index => $photo) {
                 $photos[] = [
                     'url' => $photo['big'] ?? $photo['c246x328'] ?? null,
@@ -335,6 +336,7 @@ class WildberriesProductService
                 'nm_id' => $nmId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -342,8 +344,7 @@ class WildberriesProductService
     /**
      * Create a new product card on WB
      *
-     * @param MarketplaceAccount $account
-     * @param array $cardData Card data according to WB API format
+     * @param  array  $cardData  Card data according to WB API format
      * @return array API response
      */
     public function createProductCard(MarketplaceAccount $account, array $cardData): array
@@ -358,8 +359,7 @@ class WildberriesProductService
     /**
      * Update existing product card on WB
      *
-     * @param MarketplaceAccount $account
-     * @param array $cardData Card data with nmID
+     * @param  array  $cardData  Card data with nmID
      * @return array API response
      */
     public function updateProductCard(MarketplaceAccount $account, array $cardData): array
@@ -373,8 +373,7 @@ class WildberriesProductService
     /**
      * Generate barcodes for products
      *
-     * @param MarketplaceAccount $account
-     * @param int $count Number of barcodes to generate (max 1000)
+     * @param  int  $count  Number of barcodes to generate (max 1000)
      * @return array Array of generated barcodes
      */
     public function generateBarcodes(MarketplaceAccount $account, int $count = 1): array
@@ -409,8 +408,7 @@ class WildberriesProductService
     /**
      * Upload media file (photo/video)
      *
-     * @param MarketplaceAccount $account
-     * @param string $filePath Local file path or URL
+     * @param  string  $filePath  Local file path or URL
      * @return array Upload result with media ID
      */
     public function uploadMediaFile(MarketplaceAccount $account, string $filePath): array
@@ -452,8 +450,7 @@ class WildberriesProductService
     /**
      * Upload media files by URLs
      *
-     * @param MarketplaceAccount $account
-     * @param array $urls Array of image/video URLs
+     * @param  array  $urls  Array of image/video URLs
      * @return array Upload results
      */
     public function uploadMediaByUrls(MarketplaceAccount $account, array $urls): array
@@ -491,7 +488,6 @@ class WildberriesProductService
     /**
      * Get all tags (labels)
      *
-     * @param MarketplaceAccount $account
      * @return array Tags list
      */
     public function getTags(MarketplaceAccount $account): array
@@ -518,9 +514,8 @@ class WildberriesProductService
     /**
      * Create tag (label)
      *
-     * @param MarketplaceAccount $account
-     * @param string $name Tag name
-     * @param string|null $color Tag color (hex)
+     * @param  string  $name  Tag name
+     * @param  string|null  $color  Tag color (hex)
      * @return array Created tag
      */
     public function createTag(MarketplaceAccount $account, string $name, ?string $color = null): array
@@ -552,12 +547,6 @@ class WildberriesProductService
 
     /**
      * Update tag
-     *
-     * @param MarketplaceAccount $account
-     * @param int $tagId
-     * @param string $name
-     * @param string|null $color
-     * @return array
      */
     public function updateTag(MarketplaceAccount $account, int $tagId, string $name, ?string $color = null): array
     {
@@ -588,10 +577,6 @@ class WildberriesProductService
 
     /**
      * Delete tag
-     *
-     * @param MarketplaceAccount $account
-     * @param int $tagId
-     * @return bool
      */
     public function deleteTag(MarketplaceAccount $account, int $tagId): bool
     {
@@ -618,10 +603,8 @@ class WildberriesProductService
     /**
      * Link tags to product card
      *
-     * @param MarketplaceAccount $account
-     * @param int $nmId Product ID
-     * @param array $tagIds Array of tag IDs
-     * @return bool
+     * @param  int  $nmId  Product ID
+     * @param  array  $tagIds  Array of tag IDs
      */
     public function linkTagsToProduct(MarketplaceAccount $account, int $nmId, array $tagIds): bool
     {
@@ -655,9 +638,6 @@ class WildberriesProductService
 
     /**
      * Get parent categories
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getParentCategories(MarketplaceAccount $account): array
     {
@@ -682,9 +662,6 @@ class WildberriesProductService
 
     /**
      * Get all subjects (предметы)
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getSubjects(MarketplaceAccount $account): array
     {
@@ -709,10 +686,6 @@ class WildberriesProductService
 
     /**
      * Get subject characteristics
-     *
-     * @param MarketplaceAccount $account
-     * @param int $subjectId
-     * @return array
      */
     public function getSubjectCharacteristics(MarketplaceAccount $account, int $subjectId): array
     {
@@ -811,9 +784,7 @@ class WildberriesProductService
     /**
      * Move cards to trash
      *
-     * @param MarketplaceAccount $account
-     * @param array $nmIds Product IDs to delete
-     * @return array
+     * @param  array  $nmIds  Product IDs to delete
      */
     public function moveCardsToTrash(MarketplaceAccount $account, array $nmIds): array
     {
@@ -841,9 +812,7 @@ class WildberriesProductService
     /**
      * Recover cards from trash
      *
-     * @param MarketplaceAccount $account
-     * @param array $nmIds Product IDs to recover
-     * @return array
+     * @param  array  $nmIds  Product IDs to recover
      */
     public function recoverCardsFromTrash(MarketplaceAccount $account, array $nmIds): array
     {
@@ -870,9 +839,6 @@ class WildberriesProductService
 
     /**
      * Get cards in trash
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getTrashCards(MarketplaceAccount $account): array
     {
@@ -901,9 +867,6 @@ class WildberriesProductService
 
     /**
      * Get card limits
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public function getCardLimits(MarketplaceAccount $account): array
     {

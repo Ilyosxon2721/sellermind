@@ -61,12 +61,14 @@ class OfflineSaleItem extends Model
     {
         $subtotal = $this->quantity * $this->unit_price;
         $discount = $this->discount_amount ?: ($subtotal * ($this->discount_percent / 100));
+
         return $subtotal - $discount;
     }
 
     public function getProfit(): float
     {
         $totalCost = $this->quantity * $this->unit_cost;
+
         return $this->line_total - $totalCost;
     }
 
@@ -75,6 +77,7 @@ class OfflineSaleItem extends Model
         if ($this->line_total <= 0) {
             return 0;
         }
+
         return ($this->getProfit() / $this->line_total) * 100;
     }
 
@@ -84,7 +87,7 @@ class OfflineSaleItem extends Model
 
         static::saving(function ($item) {
             // Auto-calculate line_total if not set
-            if (!$item->line_total) {
+            if (! $item->line_total) {
                 $item->line_total = $item->calculateLineTotal();
             }
         });

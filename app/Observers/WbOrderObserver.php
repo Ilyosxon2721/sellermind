@@ -4,11 +4,11 @@ namespace App\Observers;
 
 use App\Events\MarketplaceOrdersUpdated;
 use App\Events\StockUpdated;
-use App\Models\WbOrder;
 use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
+use App\Models\WbOrder;
 use Illuminate\Support\Facades\Log;
 
 class WbOrderObserver
@@ -89,23 +89,25 @@ class WbOrderObserver
         $nmId = $order->nm_id;
         $article = $order->article;
 
-        if (!$sku && !$nmId && !$article) {
+        if (! $sku && ! $nmId && ! $article) {
             Log::debug('WbOrder has no SKU/nmId/article for stock reduction', [
                 'order_id' => $order->external_order_id,
             ]);
+
             return;
         }
 
         // Try to find linked variant by different identifiers
         $link = $this->findVariantLink($order->marketplace_account_id, $sku, $nmId, $article);
 
-        if (!$link || !$link->variant) {
+        if (! $link || ! $link->variant) {
             Log::info('No linked variant found for WB order', [
                 'order_id' => $order->external_order_id,
                 'sku' => $sku,
                 'nm_id' => $nmId,
                 'article' => $article,
             ]);
+
             return;
         }
 
@@ -150,13 +152,13 @@ class WbOrderObserver
         $nmId = $order->nm_id;
         $article = $order->article;
 
-        if (!$sku && !$nmId && !$article) {
+        if (! $sku && ! $nmId && ! $article) {
             return;
         }
 
         $link = $this->findVariantLink($order->marketplace_account_id, $sku, $nmId, $article);
 
-        if (!$link || !$link->variant) {
+        if (! $link || ! $link->variant) {
             return;
         }
 
@@ -196,11 +198,12 @@ class WbOrderObserver
             // Find warehouse SKU linked to this variant
             $warehouseSku = Sku::where('product_variant_id', $variant->id)->first();
 
-            if (!$warehouseSku) {
+            if (! $warehouseSku) {
                 Log::debug('No warehouse SKU found for variant', [
                     'variant_id' => $variant->id,
                     'sku' => $variant->sku,
                 ]);
+
                 return;
             }
 
@@ -209,15 +212,16 @@ class WbOrderObserver
                 ->where('is_default', true)
                 ->first();
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 $warehouse = Warehouse::where('company_id', $variant->company_id)->first();
             }
 
-            if (!$warehouse) {
+            if (! $warehouse) {
                 Log::warning('No warehouse found for variant company', [
                     'variant_id' => $variant->id,
                     'company_id' => $variant->company_id,
                 ]);
+
                 return;
             }
 
@@ -270,6 +274,7 @@ class WbOrderObserver
             $link = (clone $query)->where('marketplace_barcode', $sku)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by marketplace_barcode', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -279,6 +284,7 @@ class WbOrderObserver
             $link = (clone $query)->where('external_sku_id', $sku)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by external_sku_id', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
 
@@ -286,6 +292,7 @@ class WbOrderObserver
             $link = (clone $query)->where('external_sku', $sku)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by external_sku', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -295,12 +302,14 @@ class WbOrderObserver
             $link = (clone $query)->where('external_offer_id', $nmId)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by external_offer_id', ['nm_id' => $nmId, 'link_id' => $link->id]);
+
                 return $link;
             }
 
             $link = (clone $query)->where('external_sku_id', $nmId)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by external_sku_id (nmId)', ['nm_id' => $nmId, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -310,6 +319,7 @@ class WbOrderObserver
             $link = (clone $query)->where('external_sku', $article)->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by external_sku (article)', ['article' => $article, 'link_id' => $link->id]);
+
                 return $link;
             }
         }
@@ -323,6 +333,7 @@ class WbOrderObserver
                 ->first();
             if ($link) {
                 Log::debug('WbOrderObserver: Found link by variant internal barcode', ['sku' => $sku, 'link_id' => $link->id]);
+
                 return $link;
             }
         }

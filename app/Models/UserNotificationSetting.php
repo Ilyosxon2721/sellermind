@@ -55,15 +55,16 @@ class UserNotificationSetting extends Model
      */
     public function shouldNotifyNow(): bool
     {
-        if (!$this->notify_only_business_hours) {
+        if (! $this->notify_only_business_hours) {
             return true;
         }
 
-        if (!$this->business_hours_start || !$this->business_hours_end) {
+        if (! $this->business_hours_start || ! $this->business_hours_end) {
             return true;
         }
 
         $now = now()->format('H:i:s');
+
         return $now >= $this->business_hours_start && $now <= $this->business_hours_end;
     }
 
@@ -73,6 +74,7 @@ class UserNotificationSetting extends Model
     public function isNotificationEnabled(string $type): bool
     {
         $field = "notify_{$type}";
+
         return $this->{$field} ?? false;
     }
 }

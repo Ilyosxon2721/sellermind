@@ -27,14 +27,14 @@
                         <div>
                             <div class="flex items-center space-x-2">
                                 <h1 class="text-xl font-bold text-gray-900">Wildberries</h1>
-                                <span class="px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 rounded-full">Seller Dashboard</span>
+                                <span class="px-2 py-0.5 text-xs font-medium bg-purple-50 text-blue-700 rounded-full">Seller Dashboard</span>
                             </div>
                             <p class="text-sm text-gray-500 mt-0.5">Управление товарами</p>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button @click="loadProducts" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all">
+                    <button @click="loadProducts" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
@@ -52,7 +52,7 @@
                         </svg>
                     </div>
                     <input type="text" x-model="search" @input="performSearch" 
-                           class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
                            placeholder="Поиск по всем полям (название, артикул, штрихкод, характеристики...)">
                 </div>
                 <div class="flex items-center px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
@@ -66,7 +66,7 @@
             <!-- Loading state -->
             <template x-if="loading">
                 <div class="flex items-center justify-center h-64">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                 </div>
             </template>
 
@@ -115,7 +115,7 @@
                             <!-- Product Info -->
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-start gap-2 mb-1.5">
-                                    <h3 class="flex-1 text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-purple-700 transition-colors" x-text="product.title || 'Без названия'"></h3>
+                                    <h3 class="flex-1 text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition-colors" x-text="product.title || 'Без названия'"></h3>
                                     <!-- Linked Icon Badge -->
                                     <template x-if="product.linked_variant">
                                         <span class="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-medium">
@@ -184,7 +184,7 @@
                                 <div class="flex flex-col gap-1.5 min-w-[140px]">
                                     <template x-if="!product.linked_variant">
                                         <button @click.stop="openLinkModal(product)" 
-                                                class="w-full px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 transition-colors">
+                                                class="w-full px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors">
                                             Привязать вариант
                                         </button>
                                     </template>
@@ -267,7 +267,7 @@
                     <input type="text" 
                            x-model="linkModal.search" 
                            @input.debounce.300ms="searchVariants"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="Поиск по SKU, названию, штрихкоду...">
                 </div>
 
@@ -275,7 +275,7 @@
                 <div class="space-y-2">
                     <template x-if="linkModal.loadingVariants">
                         <div class="text-center py-8">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                         </div>
                     </template>
 
@@ -290,7 +290,7 @@
                     </template>
 
                     <template x-for="variant in linkModal.variants" :key="variant.id">
-                        <div class="border border-gray-200 rounded-lg p-3 hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-colors"
+                        <div class="border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:bg-purple-50 cursor-pointer transition-colors"
                              @click="selectVariant(variant)">
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
@@ -782,23 +782,16 @@ function wbProducts(accountId) {
                 return;
             }
 
-            console.log(`Unlinking product ID: ${product.id}, Variant: ${product.linked_variant.sku}`);
-
             try {
                 const url = `/api/marketplace/variant-links/accounts/${this.accountId}/products/${product.id}/unlink`;
-                console.log('Unlink URL:', url);
-                
                 const res = await fetch(url, {
                     method: 'DELETE',
                     headers: this.getHeaders(),
                     credentials: 'include',
                 });
 
-                console.log('Unlink response status:', res.status);
-
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Unlink success:', data);
                     await this.loadProducts(this.page);
                     this.showNotification('Вариант отвязан', 'success');
                 } else {
@@ -885,24 +878,17 @@ function wbProducts(accountId) {
                 return;
             }
 
-            console.log(`Syncing stock for product ID: ${product.id}, Variant: ${product.linked_variant.sku}`);
-            
             this.syncingStock = product.id;
             try {
                 const url = `/api/marketplace/variant-links/accounts/${this.accountId}/products/${product.id}/sync-stock`;
-                console.log('Stock sync URL:', url);
-                
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: this.getHeaders(),
                     credentials: 'include',
                 });
 
-                console.log('Stock sync response status:', res.status);
-
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('Stock sync success:', data);
                     await this.loadProducts(this.page);
                     this.showNotification('Остатки синхронизированы', 'success');
                 } else {
@@ -929,7 +915,6 @@ function wbProducts(accountId) {
 
         showNotification(message, type = 'info') {
             // TODO: Implement notification system
-            console.log(`[${type}] ${message}`);
             alert(message);
         },
     };
@@ -976,7 +961,7 @@ function wbProducts(accountId) {
         {{-- Loading --}}
         <div x-show="loading" class="px-4">
             <div class="native-card py-12 text-center">
-                <div class="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <div class="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
                 <p class="native-caption">Загрузка...</p>
             </div>
         </div>
@@ -1141,7 +1126,7 @@ function wbProducts(accountId) {
                 <input type="text" class="native-input w-full mb-4" x-model="variantSearch" @input.debounce.300ms="searchVariants()" placeholder="Поиск по SKU, названию...">
 
                 <div x-show="searchingVariants" class="text-center py-8">
-                    <div class="animate-spin w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full mx-auto"></div>
+                    <div class="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
                 </div>
 
                 <div x-show="!searchingVariants" class="space-y-2 max-h-64 overflow-y-auto">

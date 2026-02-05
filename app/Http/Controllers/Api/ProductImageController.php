@@ -15,7 +15,7 @@ class ProductImageController extends Controller
 {
     public function index(Request $request, Product $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -28,7 +28,7 @@ class ProductImageController extends Controller
 
     public function upload(Request $request, Product $product): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -59,7 +59,7 @@ class ProductImageController extends Controller
 
     public function generate(Request $request, Product $product, AIService $aiService): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -101,7 +101,7 @@ class ProductImageController extends Controller
 
     public function setPrimary(Request $request, Product $product, ProductImage $image): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -118,7 +118,7 @@ class ProductImageController extends Controller
 
     public function destroy(Request $request, Product $product, ProductImage $image): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($product->company_id)) {
+        if (! $request->user()->hasCompanyAccess($product->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -155,19 +155,19 @@ class ProductImageController extends Controller
             ]);
 
             $user = $request->user();
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['message' => 'Требуется авторизация. Пожалуйста, перезагрузите страницу.'], 401);
             }
 
             $companyId = $user->company_id;
-            if (!$companyId) {
+            if (! $companyId) {
                 return response()->json(['message' => 'Компания не найдена. Выберите компанию в настройках.'], 403);
             }
 
             // Store in temp folder with company ID prefix
             $path = $request->file('image')->store("products/temp/{$companyId}", 'public');
-            
-            if (!$path) {
+
+            if (! $path) {
                 return response()->json(['message' => 'Не удалось сохранить файл. Проверьте права доступа.'], 500);
             }
 
@@ -182,7 +182,7 @@ class ProductImageController extends Controller
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Ошибка при загрузке: ' . $e->getMessage(),
+                'message' => 'Ошибка при загрузке: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -16,7 +16,9 @@ class ContinueAgentRunJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 300;
+
     public int $backoff = 60;
 
     public function __construct(
@@ -28,8 +30,9 @@ class ContinueAgentRunJob implements ShouldQueue
     {
         $run = AgentTaskRun::with(['task.agent', 'messages'])->find($this->runId);
 
-        if (!$run) {
-            Log::warning("AgentTaskRun not found for continuation", ['run_id' => $this->runId]);
+        if (! $run) {
+            Log::warning('AgentTaskRun not found for continuation', ['run_id' => $this->runId]);
+
             return;
         }
 
@@ -38,13 +41,13 @@ class ContinueAgentRunJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("ContinueAgentRunJob failed", [
+        Log::error('ContinueAgentRunJob failed', [
             'run_id' => $this->runId,
             'error' => $exception->getMessage(),
         ]);
 
         $run = AgentTaskRun::find($this->runId);
-        if ($run && !$run->isFinished()) {
+        if ($run && ! $run->isFinished()) {
             $run->markAsFailed("Continuation failed: {$exception->getMessage()}");
         }
     }

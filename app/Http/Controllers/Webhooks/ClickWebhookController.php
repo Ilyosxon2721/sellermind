@@ -1,40 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ClickWebhookController extends Controller
 {
     /**
-     * Handle Click prepare request
+     * Обработка Click prepare запроса
      */
     public function prepare(Request $request): JsonResponse
     {
         Log::info('Click prepare request', $request->all());
 
-        $clickTransId = $request->input('click_trans_id');
-        $serviceId = $request->input('service_id');
-        $merchantTransId = $request->input('merchant_trans_id');
-        $amount = $request->input('amount');
-        $signTime = $request->input('sign_time');
-        $signString = $request->input('sign_string');
+        $validated = $request->validate([
+            'click_trans_id' => ['required', 'integer'],
+            'service_id' => ['required', 'integer'],
+            'merchant_trans_id' => ['required', 'string'],
+            'amount' => ['required', 'numeric'],
+            'action' => ['required', 'integer'],
+            'sign_time' => ['required', 'string'],
+            'sign_string' => ['required', 'string'],
+        ]);
 
-        // Verify signature
-        if (!$this->verifySignature($request)) {
+        $clickTransId = $validated['click_trans_id'];
+        $merchantTransId = $validated['merchant_trans_id'];
+        $amount = $validated['amount'];
+
+        // Проверка подписи
+        if (! $this->verifySignature($request)) {
             return response()->json([
                 'error' => -1,
                 'error_note' => 'SIGN CHECK FAILED!',
             ]);
         }
 
-        // Parse transaction ID
-        $transactionId = $merchantTransId;
-        $parts = explode('-', $transactionId);
+        // Парсинг идентификатора транзакции
+        $parts = explode('-', $merchantTransId);
 
         if (count($parts) < 2 || $parts[0] !== 'SUB') {
             return response()->json([
@@ -46,14 +54,14 @@ class ClickWebhookController extends Controller
         $subscriptionId = (int) $parts[1];
         $subscription = Subscription::find($subscriptionId);
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'error' => -5,
                 'error_note' => 'Subscription not found',
             ]);
         }
 
-        // Check amount
+        // Проверка суммы
         $expectedAmount = $subscription->plan->price;
         if ((float) $amount !== (float) $expectedAmount) {
             return response()->json([
@@ -62,7 +70,7 @@ class ClickWebhookController extends Controller
             ]);
         }
 
-        // Check if already paid
+        // Проверка — уже оплачено
         if ($subscription->status === 'active') {
             return response()->json([
                 'error' => -4,
@@ -70,7 +78,7 @@ class ClickWebhookController extends Controller
             ]);
         }
 
-        // Success prepare
+        // Успешный prepare
         return response()->json([
             'click_trans_id' => $clickTransId,
             'merchant_trans_id' => $merchantTransId,
@@ -81,24 +89,33 @@ class ClickWebhookController extends Controller
     }
 
     /**
-     * Handle Click complete request
+     * Обработка Click complete запроса
      */
     public function complete(Request $request): JsonResponse
     {
         Log::info('Click complete request', $request->all());
 
-        $clickTransId = $request->input('click_trans_id');
-        $serviceId = $request->input('service_id');
-        $merchantTransId = $request->input('merchant_trans_id');
-        $merchantPrepareId = $request->input('merchant_prepare_id');
-        $amount = $request->input('amount');
-        $action = $request->input('action');
-        $error = $request->input('error');
-        $signTime = $request->input('sign_time');
-        $signString = $request->input('sign_string');
+        $validated = $request->validate([
+            'click_trans_id' => ['required', 'integer'],
+            'service_id' => ['required', 'integer'],
+            'merchant_trans_id' => ['required', 'string'],
+            'merchant_prepare_id' => ['required', 'integer'],
+            'amount' => ['required', 'numeric'],
+            'action' => ['required', 'integer'],
+            'error' => ['required', 'integer'],
+            'sign_time' => ['required', 'string'],
+            'sign_string' => ['required', 'string'],
+        ]);
 
-        // Verify signature
-        if (!$this->verifySignature($request)) {
+        $clickTransId = $validated['click_trans_id'];
+        $merchantTransId = $validated['merchant_trans_id'];
+        $merchantPrepareId = $validated['merchant_prepare_id'];
+        $amount = $validated['amount'];
+        $action = $validated['action'];
+        $error = $validated['error'];
+
+        // Проверка подписи
+        if (! $this->verifySignature($request)) {
             return response()->json([
                 'error' => -1,
                 'error_note' => 'SIGN CHECK FAILED!',
@@ -107,16 +124,15 @@ class ClickWebhookController extends Controller
 
         $subscription = Subscription::find($merchantPrepareId);
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'error' => -5,
                 'error_note' => 'Subscription not found',
             ]);
         }
 
-        // Check if payment was successful
+        // Проверка — платёж отменён
         if ((int) $action === 0) {
-            // Payment cancelled
             return response()->json([
                 'click_trans_id' => $clickTransId,
                 'merchant_trans_id' => $merchantTransId,
@@ -126,8 +142,8 @@ class ClickWebhookController extends Controller
             ]);
         }
 
+        // Проверка — ошибка платежа
         if ((int) $error < 0) {
-            // Payment failed
             return response()->json([
                 'click_trans_id' => $clickTransId,
                 'merchant_trans_id' => $merchantTransId,
@@ -137,12 +153,12 @@ class ClickWebhookController extends Controller
             ]);
         }
 
-        // Payment successful - activate subscription
+        // Платёж успешен — активация подписки
         $subscription->update([
             'status' => 'active',
             'amount_paid' => $amount,
             'starts_at' => now(),
-            'ends_at' => match($subscription->plan->billing_period) {
+            'ends_at' => match ($subscription->plan->billing_period) {
                 'monthly' => now()->addMonth(),
                 'quarterly' => now()->addMonths(3),
                 'yearly' => now()->addYear(),
@@ -170,13 +186,13 @@ class ClickWebhookController extends Controller
         $secretKey = config('payments.click.secret_key');
 
         $signString =
-            $request->input('click_trans_id') .
-            $request->input('service_id') .
-            $secretKey .
-            $request->input('merchant_trans_id') .
-            ($request->input('merchant_prepare_id') ?: '') .
-            $request->input('amount') .
-            $request->input('action') .
+            $request->input('click_trans_id').
+            $request->input('service_id').
+            $secretKey.
+            $request->input('merchant_trans_id').
+            ($request->input('merchant_prepare_id') ?: '').
+            $request->input('amount').
+            $request->input('action').
             $request->input('sign_time');
 
         $signHash = md5($signString);

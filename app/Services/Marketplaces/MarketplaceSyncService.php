@@ -1,21 +1,22 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceSyncService.php
 
 namespace App\Services\Marketplaces;
 
 use App\Events\MarketplaceOrdersUpdated;
 use App\Events\MarketplaceSyncProgress;
+use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
+use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Services\Marketplaces\Wildberries\WildberriesPriceService;
 use App\Services\Marketplaces\Wildberries\WildberriesProductService;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
-use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
-use App\Jobs\SyncWildberriesSupplies;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +47,7 @@ class MarketplaceSyncService
                 $log->markAsSuccess(
                     "WB products synced: {$result['synced']} (created: {$result['created']}, updated: {$result['updated']})"
                 );
+
                 return;
             }
 
@@ -53,7 +55,8 @@ class MarketplaceSyncService
             if ($code === 'uzum' || $account->isUzum()) {
                 $client = $this->registry->getClientForAccount($account);
                 $result = $client->syncCatalog($account);
-                $log->markAsSuccess("Uzum products synced: {$result['synced']} across shops: " . implode(',', $result['shops']));
+                $log->markAsSuccess("Uzum products synced: {$result['synced']} across shops: ".implode(',', $result['shops']));
+
                 return;
             }
 
@@ -63,16 +66,18 @@ class MarketplaceSyncService
             if ($code === 'ozon' || $account->marketplace === 'ozon') {
                 $client = $this->registry->getClientForAccount($account);
                 $result = $client->syncCatalog($account);
-               $log->markAsSuccess("Ozon products synced: {$result['synced']} (created: {$result['created']}, updated: {$result['updated']})");
+                $log->markAsSuccess("Ozon products synced: {$result['synced']} (created: {$result['created']}, updated: {$result['updated']})");
+
                 return;
             }
 
             if ($code === 'ym') {
                 $ymHttpClient = app(\App\Services\Marketplaces\YandexMarket\YandexMarketHttpClient::class);
                 $ymClient = new \App\Services\Marketplaces\YandexMarket\YandexMarketClient($ymHttpClient);
-                
+
                 $result = $ymClient->syncCatalog($account);
                 $log->markAsSuccess("YM products synced: {$result['synced']}");
+
                 return;
             }
 
@@ -86,13 +91,14 @@ class MarketplaceSyncService
 
             if (empty($products)) {
                 $log->markAsSuccess('No products to sync');
+
                 return;
             }
 
             $client = $this->registry->getClientForAccount($account);
             $client->syncProducts($account, $products);
 
-            $log->markAsSuccess("Synced " . count($products) . " products");
+            $log->markAsSuccess('Synced '.count($products).' products');
         } catch (Throwable $e) {
             $log->markAsError($e->getMessage());
             throw $e;
@@ -115,8 +121,9 @@ class MarketplaceSyncService
                 $result = $priceService->syncPrices($account);
 
                 $log->markAsSuccess(
-                    "WB prices synced: {$result['synced']} updated, errors: " . count($result['errors'] ?? [])
+                    "WB prices synced: {$result['synced']} updated, errors: ".count($result['errors'] ?? [])
                 );
+
                 return;
             }
 
@@ -131,6 +138,7 @@ class MarketplaceSyncService
 
             if (empty($products)) {
                 $log->markAsSuccess('No products to update prices');
+
                 return;
             }
 
@@ -147,7 +155,7 @@ class MarketplaceSyncService
                 }
             }
 
-            $log->markAsSuccess("Updated prices for " . count($products) . " products");
+            $log->markAsSuccess('Updated prices for '.count($products).' products');
         } catch (Throwable $e) {
             $log->markAsError($e->getMessage());
             throw $e;
@@ -172,6 +180,7 @@ class MarketplaceSyncService
                 $log->markAsSuccess(
                     "WB stocks synced: {$result['synced']} items, warehouses created: {$result['warehouses_created']}, product updates: {$result['products_updated']}"
                 );
+
                 return;
             }
 
@@ -186,6 +195,7 @@ class MarketplaceSyncService
 
             if (empty($products)) {
                 $log->markAsSuccess('No products to update stocks');
+
                 return;
             }
 
@@ -202,7 +212,7 @@ class MarketplaceSyncService
                 }
             }
 
-            $log->markAsSuccess("Updated stocks for " . count($products) . " products");
+            $log->markAsSuccess('Updated stocks for '.count($products).' products');
         } catch (Throwable $e) {
             $log->markAsError($e->getMessage());
             throw $e;
@@ -291,6 +301,7 @@ class MarketplaceSyncService
                 ));
 
                 $log->markAsSuccess("WB orders synced: {$allOrdersResult['created']} new, {$allOrdersResult['synced']} total, {$syncResult['updated']} updated with details, {$archived} archived");
+
                 return;
             }
 
@@ -314,7 +325,7 @@ class MarketplaceSyncService
                 $account->company_id,
                 $account->id,
                 'progress',
-                'Сохранение ' . count($ordersData) . ' заказов...',
+                'Сохранение '.count($ordersData).' заказов...',
                 50
             ));
 
@@ -369,7 +380,7 @@ class MarketplaceSyncService
                 }
             }
 
-            $log->markAsSuccess("Fetched " . count($ordersData) . " orders (created: {$created}, updated: {$updated})");
+            $log->markAsSuccess('Fetched '.count($ordersData)." orders (created: {$created}, updated: {$updated})");
 
             // Отправляем событие о завершении синхронизации
             broadcast(new MarketplaceSyncProgress(
@@ -388,7 +399,7 @@ class MarketplaceSyncService
                 $account->company_id,
                 $account->id,
                 'error',
-                'Ошибка синхронизации: ' . $e->getMessage(),
+                'Ошибка синхронизации: '.$e->getMessage(),
                 null
             ));
 
@@ -445,7 +456,7 @@ class MarketplaceSyncService
     {
         $externalId = $orderData['external_order_id'] ?? null;
 
-        if (!$externalId) {
+        if (! $externalId) {
             return 'skipped';
         }
 
@@ -453,7 +464,7 @@ class MarketplaceSyncService
             ->where('external_order_id', $externalId)
             ->first();
 
-        $isNew = !$order;
+        $isNew = ! $order;
 
         // Парсим дату с учётом миллисекундных отметок (Uzum присылает ms), TZ Asia/Tashkent
         $orderedAt = null;
@@ -529,7 +540,7 @@ class MarketplaceSyncService
         );
 
         // Process order items
-        if (!empty($orderData['items'])) {
+        if (! empty($orderData['items'])) {
             foreach ($orderData['items'] as $itemData) {
                 $this->upsertOrderItem($order, $itemData);
             }
@@ -579,11 +590,11 @@ class MarketplaceSyncService
      */
     protected function upsertWbOrder(MarketplaceAccount $account, array $orderData): string
     {
-        if (!\Illuminate\Support\Facades\Schema::hasTable('wb_orders')) {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('wb_orders')) {
             return $this->upsertOrder($account, $orderData);
         }
         $externalId = $orderData['external_order_id'] ?? null;
-        if (!$externalId) {
+        if (! $externalId) {
             return 'skipped';
         }
 
@@ -591,7 +602,7 @@ class MarketplaceSyncService
             ->where('external_order_id', $externalId)
             ->first();
 
-        $isNew = !$order;
+        $isNew = ! $order;
 
         $orderedAt = null;
         if (isset($orderData['ordered_at'])) {
@@ -628,7 +639,7 @@ class MarketplaceSyncService
         );
 
         // Items
-        if (!empty($orderData['items'])) {
+        if (! empty($orderData['items'])) {
             foreach ($orderData['items'] as $itemData) {
                 \App\Models\WbOrderItem::updateOrCreate(
                     [
@@ -654,11 +665,11 @@ class MarketplaceSyncService
      */
     protected function upsertUzumOrder(MarketplaceAccount $account, array $orderData): string
     {
-        if (!\Illuminate\Support\Facades\Schema::hasTable('uzum_orders')) {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('uzum_orders')) {
             return $this->upsertOrder($account, $orderData);
         }
         $externalId = $orderData['external_order_id'] ?? null;
-        if (!$externalId) {
+        if (! $externalId) {
             return 'skipped';
         }
 
@@ -666,7 +677,7 @@ class MarketplaceSyncService
             ->where('external_order_id', $externalId)
             ->first();
 
-        $isNew = !$order;
+        $isNew = ! $order;
 
         $orderedAt = null;
         if (isset($orderData['ordered_at'])) {
@@ -720,7 +731,7 @@ class MarketplaceSyncService
             $updateData
         );
 
-        if (!empty($orderData['items'])) {
+        if (! empty($orderData['items'])) {
             foreach ($orderData['items'] as $itemData) {
                 \App\Models\UzumOrderItem::updateOrCreate(
                     [
@@ -746,12 +757,12 @@ class MarketplaceSyncService
      */
     protected function upsertOzonOrder(MarketplaceAccount $account, array $orderData): string
     {
-        if (!\Illuminate\Support\Facades\Schema::hasTable('ozon_orders')) {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('ozon_orders')) {
             return 'skipped';
         }
-        
+
         $orderId = $orderData['external_order_id'] ?? $orderData['order_id'] ?? null;
-        if (!$orderId) {
+        if (! $orderId) {
             return 'skipped';
         }
 
@@ -759,7 +770,7 @@ class MarketplaceSyncService
             ->where('order_id', $orderId)
             ->first();
 
-        $isNew = !$order;
+        $isNew = ! $order;
 
         $createdAtOzon = null;
         if (isset($orderData['created_at_ozon']) || isset($orderData['ordered_at'])) {
@@ -821,11 +832,12 @@ class MarketplaceSyncService
     {
         try {
             $client = $this->registry->getClientForAccount($account);
+
             return $client->testConnection($account);
         } catch (Throwable $e) {
             return [
                 'success' => false,
-                'message' => 'Ошибка: ' . $e->getMessage(),
+                'message' => 'Ошибка: '.$e->getMessage(),
             ];
         }
     }

@@ -77,7 +77,7 @@ class Dialog extends Model
             ->limit($limit)
             ->get()
             ->reverse()
-            ->map(fn($m) => [
+            ->map(fn ($m) => [
                 'role' => $m->sender === 'user' ? 'user' : 'assistant',
                 'content' => $m->content,
             ])

@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesPriceService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -27,10 +28,8 @@ class WildberriesPriceService
     /**
      * Get current prices from WB
      *
-     * @param MarketplaceAccount $account
-     * @param int $limit Max items per request
-     * @param int $offset Offset for pagination
-     * @return array
+     * @param  int  $limit  Max items per request
+     * @param  int  $offset  Offset for pagination
      */
     public function getCurrentPrices(MarketplaceAccount $account, int $limit = 1000, int $offset = 0): array
     {
@@ -116,7 +115,7 @@ class WildberriesPriceService
     {
         $nmId = $priceData['nmID'] ?? null;
 
-        if (!$nmId) {
+        if (! $nmId) {
             return;
         }
 
@@ -124,13 +123,13 @@ class WildberriesPriceService
             ->where('nm_id', $nmId)
             ->first();
 
-        if (!$product) {
+        if (! $product) {
             return;
         }
 
         // Update price fields
         $sizes = $priceData['sizes'] ?? [];
-        if (!empty($sizes)) {
+        if (! empty($sizes)) {
             $firstSize = $sizes[0];
             $product->price = $firstSize['price'] ?? null;
             $product->discount_percent = $firstSize['discountedPercent'] ?? null;
@@ -145,8 +144,7 @@ class WildberriesPriceService
     /**
      * Push price updates to WB
      *
-     * @param MarketplaceAccount $account
-     * @param array $priceUpdates Array of ['nmId' => int, 'price' => int, 'discount' => int]
+     * @param  array  $priceUpdates  Array of ['nmId' => int, 'price' => int, 'discount' => int]
      * @return array Task creation result
      */
     public function pushPrices(MarketplaceAccount $account, array $priceUpdates = []): array
@@ -199,8 +197,7 @@ class WildberriesPriceService
     /**
      * Check status of price update task
      *
-     * @param MarketplaceAccount $account
-     * @param int $taskId Task ID from pushPrices()
+     * @param  int  $taskId  Task ID from pushPrices()
      * @return array Task status
      */
     public function checkPriceTask(MarketplaceAccount $account, int $taskId): array
@@ -233,6 +230,7 @@ class WildberriesPriceService
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -257,7 +255,7 @@ class WildberriesPriceService
 
         foreach ($marketplaceProducts as $mp) {
             $product = $mp->product;
-            if (!$product) {
+            if (! $product) {
                 continue;
             }
 
@@ -271,7 +269,7 @@ class WildberriesPriceService
             if ($lastSyncedPrice === 0 || $localPrice !== $lastSyncedPrice) {
                 // Получаем скидку если есть
                 $discount = 0;
-                if (!empty($product->old_price) && $product->old_price > $localPrice) {
+                if (! empty($product->old_price) && $product->old_price > $localPrice) {
                     $discount = (int) round((1 - $localPrice / $product->old_price) * 100);
                     $discount = min(max($discount, 0), 99); // WB допускает 0-99%
                 }
@@ -303,9 +301,7 @@ class WildberriesPriceService
     /**
      * Set discount for specific products
      *
-     * @param MarketplaceAccount $account
-     * @param array $discountData Array of ['nmId' => int, 'discount' => int]
-     * @return array
+     * @param  array  $discountData  Array of ['nmId' => int, 'discount' => int]
      */
     public function setDiscounts(MarketplaceAccount $account, array $discountData): array
     {
@@ -318,12 +314,11 @@ class WildberriesPriceService
     /**
      * Upload prices for specific sizes
      *
-     * @param MarketplaceAccount $account
-     * @param array $sizePrices Array of size price data
-     * Each item should contain:
-     * - nmID: int
-     * - sizeID: int
-     * - price: int (in rubles)
+     * @param  array  $sizePrices  Array of size price data
+     *                             Each item should contain:
+     *                             - nmID: int
+     *                             - sizeID: int
+     *                             - price: int (in rubles)
      * @return array Upload task result
      */
     public function uploadSizePrices(MarketplaceAccount $account, array $sizePrices): array
@@ -339,7 +334,7 @@ class WildberriesPriceService
             $sizeId = $priceData['sizeID'] ?? $priceData['sizeId'] ?? null;
             $price = $priceData['price'] ?? null;
 
-            if (!$nmId || !$sizeId || $price === null) {
+            if (! $nmId || ! $sizeId || $price === null) {
                 throw new \InvalidArgumentException('Each item must have nmID, sizeID and price');
             }
 
@@ -375,11 +370,10 @@ class WildberriesPriceService
     /**
      * Upload WB Club discounts
      *
-     * @param MarketplaceAccount $account
-     * @param array $clubDiscounts Array of club discount data
-     * Each item should contain:
-     * - nmID: int
-     * - discount: int (discount percentage 0-50)
+     * @param  array  $clubDiscounts  Array of club discount data
+     *                                Each item should contain:
+     *                                - nmID: int
+     *                                - discount: int (discount percentage 0-50)
      * @return array Upload task result
      */
     public function uploadClubDiscounts(MarketplaceAccount $account, array $clubDiscounts): array
@@ -394,7 +388,7 @@ class WildberriesPriceService
             $nmId = $discountData['nmID'] ?? $discountData['nmId'] ?? null;
             $discount = $discountData['discount'] ?? null;
 
-            if (!$nmId || $discount === null) {
+            if (! $nmId || $discount === null) {
                 throw new \InvalidArgumentException('Each item must have nmID and discount');
             }
 
@@ -433,7 +427,6 @@ class WildberriesPriceService
     /**
      * Get pending upload tasks
      *
-     * @param MarketplaceAccount $account
      * @return array Pending tasks
      */
     public function getPendingTasks(MarketplaceAccount $account): array
@@ -460,8 +453,7 @@ class WildberriesPriceService
     /**
      * Get product sizes with prices
      *
-     * @param MarketplaceAccount $account
-     * @param int $nmId Product ID
+     * @param  int  $nmId  Product ID
      * @return array Sizes with prices
      */
     public function getProductSizesWithPrices(MarketplaceAccount $account, int $nmId): array
@@ -492,7 +484,6 @@ class WildberriesPriceService
     /**
      * Get products in quarantine
      *
-     * @param MarketplaceAccount $account
      * @return array Products in quarantine
      */
     public function getQuarantineProducts(MarketplaceAccount $account): array

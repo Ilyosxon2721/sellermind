@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Subscription;
-use App\Notifications\SubscriptionExpiringNotification;
 use App\Notifications\SubscriptionExpiredNotification;
+use App\Notifications\SubscriptionExpiringNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -86,7 +86,7 @@ class CheckExpiringSubscriptions extends Command
         foreach ($subscriptions as $subscription) {
             $company = $subscription->company;
 
-            if (!$company) {
+            if (! $company) {
                 continue;
             }
 
@@ -144,7 +144,7 @@ class CheckExpiringSubscriptions extends Command
 
                 $company = $subscription->company;
 
-                if (!$company) {
+                if (! $company) {
                     return;
                 }
 

@@ -7,7 +7,6 @@ use App\Models\Finance\FinanceDebt;
 use App\Models\Finance\FinanceTransaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class FinanceReportService
 {
@@ -20,11 +19,11 @@ class FinanceReportService
             ->with('category')
             ->get();
 
-        $byCategory = $transactions->groupBy(fn($t) => $t->category?->name ?? 'Без категории')
-            ->map(fn($group) => $group->sum('amount'))
+        $byCategory = $transactions->groupBy(fn ($t) => $t->category?->name ?? 'Без категории')
+            ->map(fn ($group) => $group->sum('amount'))
             ->sortDesc();
 
-        return $byCategory->map(fn($amount, $name) => [
+        return $byCategory->map(fn ($amount, $name) => [
             'category' => $name,
             'amount' => $amount,
         ])->values()->toArray();
@@ -78,15 +77,15 @@ class FinanceReportService
 
         if ($diffDays <= 31) {
             // По дням
-            $grouped = $transactions->groupBy(fn($t) => $t->transaction_date->format('Y-m-d'));
+            $grouped = $transactions->groupBy(fn ($t) => $t->transaction_date->format('Y-m-d'));
             $format = 'd.m';
         } elseif ($diffDays <= 90) {
             // По неделям
-            $grouped = $transactions->groupBy(fn($t) => $t->transaction_date->startOfWeek()->format('Y-m-d'));
+            $grouped = $transactions->groupBy(fn ($t) => $t->transaction_date->startOfWeek()->format('Y-m-d'));
             $format = 'd.m';
         } else {
             // По месяцам
-            $grouped = $transactions->groupBy(fn($t) => $t->transaction_date->format('Y-m'));
+            $grouped = $transactions->groupBy(fn ($t) => $t->transaction_date->format('Y-m'));
             $format = 'M Y';
         }
 
@@ -197,8 +196,9 @@ class FinanceReportService
             if ($t->category?->parent) {
                 return $t->category->parent->name;
             }
+
             return $t->category?->name ?? 'Без категории';
-        })->map(fn($group) => $group->sum('amount'))
+        })->map(fn ($group) => $group->sum('amount'))
             ->sortDesc()
             ->toArray();
     }
@@ -226,9 +226,9 @@ class FinanceReportService
                 continue;
             }
 
-            $children = $rootTransactions->filter(fn($t) => $t->category?->parent_id === $root->id)
-                ->groupBy(fn($t) => $t->category?->name ?? 'Другое')
-                ->map(fn($group) => $group->sum('amount'))
+            $children = $rootTransactions->filter(fn ($t) => $t->category?->parent_id === $root->id)
+                ->groupBy(fn ($t) => $t->category?->name ?? 'Другое')
+                ->map(fn ($group) => $group->sum('amount'))
                 ->toArray();
 
             $tree[] = [

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('wb_orders')) {
             Schema::table('wb_orders', function (Blueprint $table) {
-                if (!Schema::hasColumn('wb_orders', 'supply_id')) {
+                if (! Schema::hasColumn('wb_orders', 'supply_id')) {
                     $table->string('supply_id')->nullable()->after('warehouse_id')->index();
                 }
             });

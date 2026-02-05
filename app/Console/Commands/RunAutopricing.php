@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class RunAutopricing extends Command
 {
     protected $signature = 'autopricing:run {--policy=} {--channel=} {--limit=200}';
+
     protected $description = 'Recalculate autopricing proposals and optionally auto-apply for AUTO_APPLY policies';
 
     public function handle(): int
@@ -41,7 +42,7 @@ class RunAutopricing extends Command
 
         if ($policy->mode === 'AUTO_APPLY') {
             $res = app(AutopricingApplyService::class)->applyApprovedBatch($companyId, $policyId, $channelCode, 'NEW', $limit);
-            $this->info('Auto-applied: ' . json_encode($res));
+            $this->info('Auto-applied: '.json_encode($res));
         }
 
         return Command::SUCCESS;

@@ -14,9 +14,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
+class UpdateWildberriesOrdersStatusJob implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, HandlesMarketplaceRateLimiting;
+    use Dispatchable, HandlesMarketplaceRateLimiting, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Таймаут выполнения job (10 минут для обработки всех заказов)
@@ -49,7 +49,7 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'update-wb-orders-status-' . $this->accountId;
+        return 'update-wb-orders-status-'.$this->accountId;
     }
 
     /**
@@ -78,10 +78,11 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
     {
         $account = $this->getAccount();
 
-        if (!$account) {
+        if (! $account) {
             Log::warning('UpdateWildberriesOrdersStatusJob: Account not found', [
                 'account_id' => $this->accountId,
             ]);
+
             return;
         }
 
@@ -91,13 +92,15 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                 'account_id' => $account->id,
                 'marketplace' => $account->marketplace,
             ]);
+
             return;
         }
 
-        if (!$account->is_active) {
+        if (! $account->is_active) {
             Log::info('UpdateWildberriesOrdersStatusJob: Skipped inactive account', [
                 'account_id' => $account->id,
             ]);
+
             return;
         }
 
@@ -118,6 +121,7 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                 Log::info('UpdateWildberriesOrdersStatusJob: No orders to update', [
                     'account_id' => $account->id,
                 ]);
+
                 return;
             }
 
@@ -148,11 +152,15 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                         $wbStatus = $statusData['wbStatus'] ?? null;
                         $supplierStatus = $statusData['supplierStatus'] ?? null;
 
-                        if (!$orderId) continue;
+                        if (! $orderId) {
+                            continue;
+                        }
 
                         // Найти заказ в БД (конвертируем в строку для сравнения)
                         $order = $orders->firstWhere('external_order_id', (string) $orderId);
-                        if (!$order) continue;
+                        if (! $order) {
+                            continue;
+                        }
 
                         // Сохраняем старый статус ПЕРЕД обновлением
                         $oldStatus = $order->status;
@@ -187,7 +195,7 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
                         $updateData['status_history'] = $statusHistory;
 
                         // Обновляем заказ
-                        if (!empty($updateData)) {
+                        if (! empty($updateData)) {
                             $order->update($updateData);
                             $totalUpdated++;
 
@@ -246,6 +254,7 @@ class UpdateWildberriesOrdersStatusJob implements ShouldQueue, ShouldBeUnique
             if ($this->shouldRetry($e)) {
                 $delay = $this->getRetryAfterSeconds($e) ?? $this->backoff()[$this->attempts() - 1] ?? 60;
                 $this->release($delay);
+
                 return;
             }
 

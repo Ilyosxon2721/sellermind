@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
-use App\Models\Warehouse\StockReservation;
-use App\Models\UzumOrder;
-use App\Models\WbOrder;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\OzonOrder;
+use App\Models\UzumOrder;
+use App\Models\Warehouse\StockReservation;
+use App\Models\WbOrder;
 use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
@@ -16,18 +17,7 @@ use Illuminate\Support\Facades\Log;
 class ReservationController extends Controller
 {
     use ApiResponder;
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(): ?int
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return null;
-        }
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
+    use HasCompanyScope;
 
     public function index(Request $request)
     {
@@ -39,7 +29,7 @@ class ReservationController extends Controller
             'filters' => $request->only(['warehouse_id', 'status', 'reason']),
         ]);
 
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -61,7 +51,7 @@ class ReservationController extends Controller
                     $q->where('source_type', 'manual')->orWhereNull('source_type');
                 });
             } else {
-                $query->where('reason', 'like', '%' . $request->reason . '%');
+                $query->where('reason', 'like', '%'.$request->reason.'%');
             }
         }
 
@@ -101,7 +91,7 @@ class ReservationController extends Controller
             }
 
             // Fallback: use variant name if no product name
-            if (!$data['product_name'] && $variant) {
+            if (! $data['product_name'] && $variant) {
                 $data['product_name'] = $variant->name ?? $variant->sku ?? null;
             }
 
@@ -157,6 +147,7 @@ class ReservationController extends Controller
         if (preg_match('/marketplace\s*order:\s*(\w+)/i', $reason, $matches)) {
             return strtolower($matches[1]);
         }
+
         return null;
     }
 
@@ -173,7 +164,7 @@ class ReservationController extends Controller
 
         $companyId = $this->getCompanyId();
         $userId = Auth::id();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -188,6 +179,7 @@ class ReservationController extends Controller
                 $data['source_id'] ?? null,
                 $userId
             );
+
             return $this->successResponse($reservation);
         } catch (\Throwable $e) {
             return $this->errorResponse($e->getMessage(), 'reserve_failed', null, 422);
@@ -197,26 +189,28 @@ class ReservationController extends Controller
     public function release($id)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $reservation = StockReservation::where('company_id', $companyId)->findOrFail($id);
 
         $res = app(ReservationService::class)->release((int) $id, $companyId);
+
         return $this->successResponse($res);
     }
 
     public function consume($id)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $reservation = StockReservation::where('company_id', $companyId)->findOrFail($id);
 
         $res = app(ReservationService::class)->consume((int) $id, $companyId);
+
         return $this->successResponse($res);
     }
 }

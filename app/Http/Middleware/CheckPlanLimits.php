@@ -19,29 +19,29 @@ class CheckPlanLimits
         try {
             $user = $request->user();
 
-            if (!$user || !$user->company_id) {
+            if (! $user || ! $user->company_id) {
                 return $next($request);
             }
 
             $company = $user->companies()->where('companies.id', $user->company_id)->first();
 
-            if (!$company) {
+            if (! $company) {
                 return $next($request);
             }
 
             $subscription = $company->activeSubscription;
 
-            if (!$subscription) {
+            if (! $subscription) {
                 return $this->limitExceeded($request, 'Нет активной подписки. Пожалуйста, выберите тарифный план.');
             }
 
             // If no specific limit type provided, just check if subscription is active
-            if (!$limitType) {
+            if (! $limitType) {
                 return $next($request);
             }
 
             // Check specific limit
-            $canProceed = match($limitType) {
+            $canProceed = match ($limitType) {
                 'products' => $subscription->canAddProducts($count),
                 'orders' => $subscription->canProcessOrders($count),
                 'ai' => $subscription->canUseAI($count),
@@ -51,7 +51,7 @@ class CheckPlanLimits
                 default => true,
             };
 
-            if (!$canProceed) {
+            if (! $canProceed) {
                 return $this->limitExceeded(
                     $request,
                     $this->getLimitMessage($limitType, $company, $subscription),
@@ -78,10 +78,11 @@ class CheckPlanLimits
      */
     protected function checkMarketplaceAccounts($company, $subscription, int $count): bool
     {
-        if (!$subscription->plan) {
+        if (! $subscription->plan) {
             return true; // Allow if plan not found (graceful degradation)
         }
         $current = $company->marketplaceAccounts()->count();
+
         return ($current + $count) <= ($subscription->plan->max_marketplace_accounts ?? PHP_INT_MAX);
     }
 
@@ -90,10 +91,11 @@ class CheckPlanLimits
      */
     protected function checkUsers($company, $subscription, int $count): bool
     {
-        if (!$subscription->plan) {
+        if (! $subscription->plan) {
             return true; // Allow if plan not found (graceful degradation)
         }
         $current = $company->users()->count();
+
         return ($current + $count) <= ($subscription->plan->max_users ?? PHP_INT_MAX);
     }
 
@@ -102,10 +104,11 @@ class CheckPlanLimits
      */
     protected function checkWarehouses($company, $subscription, int $count): bool
     {
-        if (!$subscription->plan) {
+        if (! $subscription->plan) {
             return true; // Allow if plan not found (graceful degradation)
         }
         $current = $company->warehouses()->count();
+
         return ($current + $count) <= ($subscription->plan->max_warehouses ?? PHP_INT_MAX);
     }
 
@@ -119,7 +122,7 @@ class CheckPlanLimits
         // Получаем информацию об использовании для более информативного сообщения
         $usageInfo = '';
         if ($company && $plan) {
-            $usageInfo = match($limitType) {
+            $usageInfo = match ($limitType) {
                 'marketplace_accounts' => sprintf(
                     ' (используется %d из %d)',
                     $company->marketplaceAccounts()->count(),
@@ -144,7 +147,7 @@ class CheckPlanLimits
             };
         }
 
-        $baseMessage = match($limitType) {
+        $baseMessage = match ($limitType) {
             'products' => 'Достигнут лимит товаров для вашего тарифного плана.',
             'orders' => 'Достигнут месячный лимит заказов для вашего тарифного плана.',
             'ai' => 'Достигнут лимит AI-запросов для вашего тарифного плана.',
@@ -154,7 +157,7 @@ class CheckPlanLimits
             default => 'Достигнут лимит для вашего тарифного плана.',
         };
 
-        return $baseMessage . $usageInfo . ' Обновите план для увеличения лимитов.';
+        return $baseMessage.$usageInfo.' Обновите план для увеличения лимитов.';
     }
 
     /**

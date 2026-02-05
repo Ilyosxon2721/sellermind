@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Warehouse\Sku as WarehouseSku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Модель элемента продажи (товарная позиция)
@@ -117,21 +117,21 @@ class SaleItem extends Model
      */
     public function deductStock(): bool
     {
-        if ($this->stock_deducted || !$this->product_variant_id) {
+        if ($this->stock_deducted || ! $this->product_variant_id) {
             return false;
         }
 
         $variant = $this->productVariant;
-        if (!$variant) {
+        if (! $variant) {
             return false;
         }
 
         // Списываем остатки
-        $result = $variant->decrementStock((int)$this->quantity);
+        $result = $variant->decrementStock((int) $this->quantity);
 
         if ($result) {
             // Create warehouse stock ledger entry
-            $this->createWarehouseStockLedger($variant, -(int)$this->quantity, 'offline_sale');
+            $this->createWarehouseStockLedger($variant, -(int) $this->quantity, 'offline_sale');
 
             $this->update([
                 'stock_deducted' => true,
@@ -154,21 +154,21 @@ class SaleItem extends Model
      */
     public function returnStock(): bool
     {
-        if (!$this->stock_deducted || !$this->product_variant_id) {
+        if (! $this->stock_deducted || ! $this->product_variant_id) {
             return false;
         }
 
         $variant = $this->productVariant;
-        if (!$variant) {
+        if (! $variant) {
             return false;
         }
 
         // Возвращаем остатки
-        $result = $variant->incrementStock((int)$this->quantity);
+        $result = $variant->incrementStock((int) $this->quantity);
 
         if ($result) {
             // Create warehouse stock ledger entry (positive to return stock)
-            $this->createWarehouseStockLedger($variant, (int)$this->quantity, 'offline_sale_return');
+            $this->createWarehouseStockLedger($variant, (int) $this->quantity, 'offline_sale_return');
 
             $this->update([
                 'stock_deducted' => false,
@@ -191,11 +191,12 @@ class SaleItem extends Model
      */
     public function getMargin(): float
     {
-        if (!$this->cost_price) {
+        if (! $this->cost_price) {
             return 0;
         }
 
         $totalCost = $this->cost_price * $this->quantity;
+
         return $this->total - $totalCost;
     }
 
@@ -213,11 +214,9 @@ class SaleItem extends Model
 
     /**
      * Create warehouse stock ledger entry for offline sale
-     * 
-     * @param ProductVariant $variant
-     * @param int $qtyDelta Quantity change (negative for sale, positive for return)
-     * @param string $sourceType 'offline_sale' or 'offline_sale_return'
-     * @return void
+     *
+     * @param  int  $qtyDelta  Quantity change (negative for sale, positive for return)
+     * @param  string  $sourceType  'offline_sale' or 'offline_sale_return'
      */
     protected function createWarehouseStockLedger(
         ProductVariant $variant,
@@ -242,11 +241,12 @@ class SaleItem extends Model
             // Determine warehouse from sale or use default
             $warehouseId = $this->sale->warehouse_id ?? $this->getDefaultWarehouse($this->sale->company_id);
 
-            if (!$warehouseId) {
+            if (! $warehouseId) {
                 \Log::warning('SaleItem: No warehouse found for stock ledger entry', [
                     'sale_item_id' => $this->id,
                     'variant_id' => $variant->id,
                 ]);
+
                 return;
             }
 
@@ -286,9 +286,6 @@ class SaleItem extends Model
 
     /**
      * Get default warehouse for company
-     * 
-     * @param int $companyId
-     * @return int|null
      */
     protected function getDefaultWarehouse(int $companyId): ?int
     {
@@ -316,6 +313,7 @@ class SaleItem extends Model
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -329,7 +327,7 @@ class SaleItem extends Model
         ?float $unitPrice = null,
         float $discountPercent = 0
     ): self {
-        $item = new self();
+        $item = new self;
         $item->product_variant_id = $variant->id;
         $item->sku = $variant->sku;
         $item->product_name = $variant->product->name ?? 'Unknown';

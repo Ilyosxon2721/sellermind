@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Jobs/Marketplace/SyncMarketplacePricesJob.php
 
 namespace App\Jobs\Marketplace;
@@ -16,6 +17,7 @@ class SyncMarketplacePricesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     public function __construct(
@@ -33,7 +35,7 @@ class SyncMarketplacePricesJob implements ShouldQueue
         return [
             'marketplace-sync',
             'prices',
-            'account:' . $this->account->id,
+            'account:'.$this->account->id,
         ];
     }
 }

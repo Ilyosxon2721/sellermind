@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Resources\GenerationTaskResource;
 use App\Jobs\ProcessGenerationTaskJob;
 use App\Models\GenerationTask;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class GenerationTaskController extends Controller
 {
+    use HasPaginatedResponse;
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -20,7 +23,7 @@ class GenerationTaskController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -34,17 +37,14 @@ class GenerationTaskController extends Controller
             $query->where('type', $request->type);
         }
 
+        $perPage = $this->getPerPage($request);
+
         $tasks = $query->orderByDesc('created_at')
-            ->paginate($request->per_page ?? 20);
+            ->paginate($perPage);
 
         return response()->json([
             'tasks' => GenerationTaskResource::collection($tasks),
-            'meta' => [
-                'current_page' => $tasks->currentPage(),
-                'last_page' => $tasks->lastPage(),
-                'per_page' => $tasks->perPage(),
-                'total' => $tasks->total(),
-            ],
+            'meta' => $this->paginationMeta($tasks),
         ]);
     }
 
@@ -56,7 +56,7 @@ class GenerationTaskController extends Controller
             'input_data' => ['required', 'array'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -78,7 +78,7 @@ class GenerationTaskController extends Controller
 
     public function show(Request $request, GenerationTask $task): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($task->company_id)) {
+        if (! $request->user()->hasCompanyAccess($task->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -89,11 +89,11 @@ class GenerationTaskController extends Controller
 
     public function cancel(Request $request, GenerationTask $task): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($task->company_id)) {
+        if (! $request->user()->hasCompanyAccess($task->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$task->isPending()) {
+        if (! $task->isPending()) {
             return response()->json([
                 'message' => 'Можно отменить только задачи со статусом "pending".',
             ], 422);
@@ -108,11 +108,11 @@ class GenerationTaskController extends Controller
 
     public function retry(Request $request, GenerationTask $task): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($task->company_id)) {
+        if (! $request->user()->hasCompanyAccess($task->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$task->isFailed()) {
+        if (! $task->isFailed()) {
             return response()->json([
                 'message' => 'Можно повторить только неудавшиеся задачи.',
             ], 422);

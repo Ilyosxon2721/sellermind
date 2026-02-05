@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use App\Models\VariantMarketplaceLink;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class FixUzumStockSyncLinks extends Command
 {
@@ -52,7 +51,7 @@ class FixUzumStockSyncLinks extends Command
                 ->where('is_active', true)
                 ->where(function ($q) {
                     $q->whereNull('external_sku_id')
-                      ->orWhere('external_sku_id', '');
+                        ->orWhere('external_sku_id', '');
                 })
                 ->with(['variant', 'marketplaceProduct'])
                 ->get();
@@ -65,9 +64,10 @@ class FixUzumStockSyncLinks extends Command
 
                 $mpProduct = $link->marketplaceProduct;
 
-                if (!$mpProduct) {
-                    $this->warn("    Skipped: No MarketplaceProduct found");
+                if (! $mpProduct) {
+                    $this->warn('    Skipped: No MarketplaceProduct found');
                     $totalSkipped++;
+
                     continue;
                 }
 
@@ -84,9 +84,10 @@ class FixUzumStockSyncLinks extends Command
                         }
                         $totalFixed++;
                     } else {
-                        $this->warn("    Skipped: No skuList and no external_offer_id");
+                        $this->warn('    Skipped: No skuList and no external_offer_id');
                         $totalSkipped++;
                     }
+
                     continue;
                 }
 
@@ -109,7 +110,7 @@ class FixUzumStockSyncLinks extends Command
                 }
 
                 // 2. By external_sku (title match)
-                if (!$foundSkuId && $link->external_sku) {
+                if (! $foundSkuId && $link->external_sku) {
                     foreach ($skuList as $sku) {
                         $skuTitle = $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null;
                         if ($skuTitle && stripos($skuTitle, $link->external_sku) !== false) {
@@ -121,7 +122,7 @@ class FixUzumStockSyncLinks extends Command
                 }
 
                 // 3. Use first SKU if only one exists
-                if (!$foundSkuId && count($skuList) === 1) {
+                if (! $foundSkuId && count($skuList) === 1) {
                     $firstSku = $skuList[0];
                     $foundSkuId = isset($firstSku['skuId']) ? (string) $firstSku['skuId'] : null;
                     $foundBarcode = $firstSku['barcode'] ?? null;
@@ -129,25 +130,25 @@ class FixUzumStockSyncLinks extends Command
 
                 if ($foundSkuId) {
                     if ($dryRun) {
-                        $this->info("    [DRY] Would set external_sku_id = {$foundSkuId}" .
-                            ($foundBarcode ? ", marketplace_barcode = {$foundBarcode}" : ""));
+                        $this->info("    [DRY] Would set external_sku_id = {$foundSkuId}".
+                            ($foundBarcode ? ", marketplace_barcode = {$foundBarcode}" : ''));
                     } else {
                         $updateData = ['external_sku_id' => $foundSkuId];
-                        if ($foundBarcode && !$link->marketplace_barcode) {
+                        if ($foundBarcode && ! $link->marketplace_barcode) {
                             $updateData['marketplace_barcode'] = $foundBarcode;
                         }
                         $link->update($updateData);
-                        $this->info("    Fixed: external_sku_id = {$foundSkuId}" .
-                            (isset($updateData['marketplace_barcode']) ? ", marketplace_barcode = {$foundBarcode}" : ""));
+                        $this->info("    Fixed: external_sku_id = {$foundSkuId}".
+                            (isset($updateData['marketplace_barcode']) ? ", marketplace_barcode = {$foundBarcode}" : ''));
                     }
                     $totalFixed++;
                 } else {
-                    $this->warn("    Skipped: Could not determine skuId (multi-SKU product without barcode match)");
-                    $this->line("      Available SKUs in product:");
+                    $this->warn('    Skipped: Could not determine skuId (multi-SKU product without barcode match)');
+                    $this->line('      Available SKUs in product:');
                     foreach ($skuList as $sku) {
-                        $this->line("        - skuId: " . ($sku['skuId'] ?? 'N/A') .
-                            ", barcode: " . ($sku['barcode'] ?? 'N/A') .
-                            ", title: " . ($sku['skuTitle'] ?? $sku['skuFullTitle'] ?? 'N/A'));
+                        $this->line('        - skuId: '.($sku['skuId'] ?? 'N/A').
+                            ', barcode: '.($sku['barcode'] ?? 'N/A').
+                            ', title: '.($sku['skuTitle'] ?? $sku['skuFullTitle'] ?? 'N/A'));
                     }
                     $totalSkipped++;
                 }
@@ -155,7 +156,7 @@ class FixUzumStockSyncLinks extends Command
         }
 
         $this->newLine();
-        $this->info("=== Summary ===");
+        $this->info('=== Summary ===');
         $this->info("Fixed: {$totalFixed}");
         $this->info("Skipped: {$totalSkipped}");
         $this->info("Errors: {$totalErrors}");

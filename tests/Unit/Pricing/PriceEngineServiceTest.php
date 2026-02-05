@@ -11,7 +11,6 @@ use App\Services\Pricing\PriceCostService;
 use App\Services\Pricing\PriceEngineService;
 use App\Services\Pricing\PricingOverridesService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PriceEngineServiceTest extends TestCase
@@ -19,7 +18,9 @@ class PriceEngineServiceTest extends TestCase
     use RefreshDatabase;
 
     protected Company $company;
+
     protected PricingScenario $scenario;
+
     protected Sku $sku;
 
     protected function setUp(): void
@@ -51,14 +52,16 @@ class PriceEngineServiceTest extends TestCase
     protected function engine(): PriceEngineService
     {
         return new PriceEngineService(
-            new class extends PriceCostService {
+            new class extends PriceCostService
+            {
                 public function unitCost(int $companyId, int $skuId, ?string $date = null): array
                 {
                     return ['cost' => 100, 'confidence' => 'HIGH', 'source' => 'test'];
                 }
             },
-            new PricingOverridesService(),
-            new class extends ChannelCostRuleService {
+            new PricingOverridesService,
+            new class extends ChannelCostRuleService
+            {
                 public function costs(string $channelCode, int $companyId): array
                 {
                     return [

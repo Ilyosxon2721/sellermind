@@ -1,38 +1,38 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\DialogAdminController;
+use App\Http\Controllers\Api\AgentTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DialogController;
 use App\Http\Controllers\Api\GenerationTaskController;
+use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
-use App\Http\Controllers\Api\MarketplaceProductController;
-use App\Http\Controllers\Api\MarketplaceSyncController;
-use App\Http\Controllers\Api\MarketplaceOrderController;
-use App\Http\Controllers\Api\ProductController;
-use App\Http\Controllers\Api\ProductBulkController;
-use App\Http\Controllers\Api\ProductDescriptionController;
-use App\Http\Controllers\Api\TelegramController;
-use App\Http\Controllers\Api\PromotionController;
-use App\Http\Controllers\Api\SalesAnalyticsController;
-use App\Http\Controllers\Api\ReviewResponseController;
-use App\Http\Controllers\Api\ProductImageController;
-use App\Http\Controllers\Api\Admin\DialogAdminController;
-use App\Http\Controllers\Api\AgentTaskController;
 use App\Http\Controllers\Api\MarketplaceDashboardController;
 use App\Http\Controllers\Api\MarketplaceInsightsController;
-use App\Http\Controllers\Api\WildberriesSettingsController;
-use App\Http\Controllers\Api\WildberriesPassController;
-use App\Http\Controllers\Api\WildberriesStickerController;
-use App\Http\Controllers\Api\WildberriesFinanceController;
-use App\Http\Controllers\Api\WildberriesAnalyticsController;
-use App\Http\Controllers\Api\WildberriesSupplyController;
-use App\Http\Controllers\Api\WildberriesOrderMetaController;
-use App\Http\Controllers\Api\UzumSettingsController;
-use App\Http\Controllers\Api\WildberriesProductController;
-use App\Http\Controllers\Api\HealthCheckController;
+use App\Http\Controllers\Api\MarketplaceOrderController;
+use App\Http\Controllers\Api\MarketplaceProductController;
+use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\ProductBulkController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductDescriptionController;
+use App\Http\Controllers\Api\ProductImageController;
+use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\ReviewResponseController;
+use App\Http\Controllers\Api\SalesAnalyticsController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\TelegramController;
+use App\Http\Controllers\Api\UzumSettingsController;
+use App\Http\Controllers\Api\WildberriesAnalyticsController;
+use App\Http\Controllers\Api\WildberriesFinanceController;
+use App\Http\Controllers\Api\WildberriesOrderMetaController;
+use App\Http\Controllers\Api\WildberriesPassController;
+use App\Http\Controllers\Api\WildberriesProductController;
+use App\Http\Controllers\Api\WildberriesSettingsController;
+use App\Http\Controllers\Api\WildberriesStickerController;
+use App\Http\Controllers\Api\WildberriesSupplyController;
 use App\Http\Controllers\MarketplaceWebhookController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -62,6 +62,7 @@ Route::prefix('webhooks/marketplaces')->group(function () {
 // RISMENT Integration Link (uses session + sanctum auth)
 Route::middleware(['web', 'auth.any'])->prefix('integration')->group(function () {
     Route::post('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'store']);
+    Route::put('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'update']);
     Route::delete('link', [\App\Http\Controllers\Web\IntegrationLinkController::class, 'destroy']);
 });
 
@@ -116,20 +117,20 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::put('/rate', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'updateRate']);
         Route::post('/convert', [\App\Http\Controllers\Api\CurrencySettingsController::class, 'convert']);
     });
-    
+
     // Counterparties API
     Route::get('counterparties', [\App\Http\Controllers\Api\CounterpartyController::class, 'index']);
     Route::post('counterparties', [\App\Http\Controllers\Api\CounterpartyController::class, 'store']);
     Route::get('counterparties/{id}', [\App\Http\Controllers\Api\CounterpartyController::class, 'show']);
     Route::put('counterparties/{id}', [\App\Http\Controllers\Api\CounterpartyController::class, 'update']);
     Route::delete('counterparties/{id}', [\App\Http\Controllers\Api\CounterpartyController::class, 'destroy']);
-    
+
     // Counterparty contracts
     Route::get('counterparties/{id}/contracts', [\App\Http\Controllers\Api\CounterpartyController::class, 'contracts']);
     Route::post('counterparties/{id}/contracts', [\App\Http\Controllers\Api\CounterpartyController::class, 'storeContract']);
     Route::put('counterparties/{id}/contracts/{contractId}', [\App\Http\Controllers\Api\CounterpartyController::class, 'updateContract']);
     Route::delete('counterparties/{id}/contracts/{contractId}', [\App\Http\Controllers\Api\CounterpartyController::class, 'destroyContract']);
-    
+
     // Inventory API
     Route::get('inventories', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
     Route::post('inventories', [\App\Http\Controllers\Api\InventoryController::class, 'store']);
@@ -140,10 +141,10 @@ Route::middleware(['web', 'auth.any'])->group(function () {
     Route::put('inventories/{id}/items', [\App\Http\Controllers\Api\InventoryController::class, 'updateItems']);
     Route::post('inventories/{id}/complete', [\App\Http\Controllers\Api\InventoryController::class, 'complete']);
     Route::post('inventories/{id}/apply', [\App\Http\Controllers\Api\InventoryController::class, 'apply']);
-    
+
     // Warehouses for inventory
     Route::get('warehouses', [\App\Http\Controllers\Api\InventoryController::class, 'warehouses']);
-    
+
     // Companies list for web-authenticated users (used by sales/create page)
     Route::get('companies', [CompanyController::class, 'index']);
 });
@@ -208,6 +209,8 @@ Route::middleware('auth.any')->group(function () {
         ->name('api.companies.addMember');
     Route::delete('companies/{company}/members/{userId}', [CompanyController::class, 'removeMember'])->name('api.companies.removeMember');
     Route::post('companies/{company}/transfer-ownership', [CompanyController::class, 'transferOwnership'])->name('api.companies.transferOwnership');
+    Route::get('companies/{company}/access-rights', [CompanyController::class, 'getAccessRights'])->name('api.companies.accessRights');
+    Route::post('companies/{company}/access-rights', [CompanyController::class, 'updateAccessRights'])->name('api.companies.updateAccessRights');
 
     // Plans (Public - can view without auth, but included in auth group for consistency)
     Route::get('plans', [PlanController::class, 'index'])->name('api.plans.index');
@@ -399,6 +402,11 @@ Route::middleware('auth.any')->group(function () {
             });
         });
 
+        // Orders by Account ID (для orders-table компонента)
+        Route::get('{accountId}/orders', [MarketplaceOrderController::class, 'index']);
+        Route::get('{accountId}/orders/stats', [MarketplaceOrderController::class, 'stats']);
+        Route::post('{account}/orders/sync', [MarketplaceSyncController::class, 'syncOrders']);
+
         // Marketplace Orders
         Route::get('orders', [MarketplaceOrderController::class, 'index']);
         Route::get('orders/stats', [MarketplaceOrderController::class, 'stats']);
@@ -524,7 +532,7 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/products/{product}', [WildberriesProductController::class, 'update']);
             Route::delete('accounts/{account}/products/{product}', [WildberriesProductController::class, 'destroy']);
             Route::post('accounts/{account}/warehouses/sync', [\App\Http\Controllers\Api\MarketplaceWarehouseController::class, 'sync']);
-            
+
             // Warehouse Mappings
             Route::get('/{account}/warehouse-mappings', [\App\Http\Controllers\Api\WarehouseMappingController::class, 'index']);
             Route::get('/{account}/available-warehouses', [\App\Http\Controllers\Api\WarehouseMappingController::class, 'availableWarehouses']);
@@ -550,7 +558,7 @@ Route::middleware('auth.any')->group(function () {
             Route::post('accounts/{account}/sync-catalog', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncCatalog']);
             Route::post('accounts/{account}/sync-orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'syncOrders']);
             Route::get('accounts/{account}/orders', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'orders']);
-            
+
             // Order actions
             Route::post('accounts/{account}/orders/{orderId}/ready-to-ship', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'readyToShip']);
             Route::get('accounts/{account}/orders/{orderId}/labels', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'downloadLabels']);
@@ -559,18 +567,18 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/orders/{orderId}/details', [\App\Http\Controllers\Api\Marketplace\YandexMarketController::class, 'getOrderDetails']);
         });
 
-        // Ozon Integration  
+        // Ozon Integration
         Route::prefix('ozon')->group(function () {
             // Ozon Settings & Configuration
             Route::get('accounts/{account}/settings', [\App\Http\Controllers\Api\OzonSettingsController::class, 'show']);
             Route::put('accounts/{account}/settings', [\App\Http\Controllers\Api\OzonSettingsController::class, 'update']);
             Route::post('accounts/{account}/test', [\App\Http\Controllers\Api\OzonSettingsController::class, 'test']);
-            
+
             // Warehouse Management
             Route::get('accounts/{account}/warehouses', [\App\Http\Controllers\Api\OzonSettingsController::class, 'getWarehouses']);
             Route::get('accounts/{account}/warehouses/mapping', [\App\Http\Controllers\Api\OzonSettingsController::class, 'getWarehouseMapping']);
             Route::put('accounts/{account}/warehouses/mapping', [\App\Http\Controllers\Api\OzonSettingsController::class, 'saveWarehouseMapping']);
-            
+
             // Ozon Products Management
             Route::get('accounts/{account}/products', [\App\Http\Controllers\Api\OzonProductController::class, 'index']);
             Route::post('accounts/{account}/products', [\App\Http\Controllers\Api\OzonProductController::class, 'store']);
@@ -579,7 +587,7 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/products/{product}', [\App\Http\Controllers\Api\OzonProductController::class, 'show']);
             Route::put('accounts/{account}/products/{product}', [\App\Http\Controllers\Api\OzonProductController::class, 'update']);
             Route::delete('accounts/{account}/products/{product}', [\App\Http\Controllers\Api\OzonProductController::class, 'destroy']);
-            
+
             // Ozon Product Synchronization
             Route::post('accounts/{account}/sync-catalog', [\App\Http\Controllers\Api\OzonProductController::class, 'syncCatalog']);
             Route::post('accounts/{account}/sync-products', [\App\Http\Controllers\Api\MarketplaceSyncController::class, 'syncProducts']);

@@ -3,37 +3,51 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Company;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
 use App\Models\UzumFinanceOrder;
 use App\Models\UzumOrder;
+use App\Models\Warehouse\ChannelOrder;
 use App\Models\WbOrder;
 use App\Models\WildberriesOrder;
 use App\Models\YandexMarketOrder;
-use App\Models\Warehouse\ChannelOrder;
 use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SalesController extends Controller
 {
+    use HasCompanyScope;
+
     protected CurrencyConversionService $currencyService;
 
     public function __construct(CurrencyConversionService $currencyService)
     {
         $this->currencyService = $currencyService;
     }
+
     /**
      * Get all sales from all sources with filters
      *
-     * @param string $date_mode - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
+     * @param  string  $date_mode  - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
      */
     public function index(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $validated = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'marketplace' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'date_mode' => ['nullable', 'string', 'in:order_date,payment_date,delivery_date'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $companyId = $this->getCompanyId();
 
         // Setup currency service for company
         if ($companyId) {
@@ -43,43 +57,43 @@ class SalesController extends Controller
             }
         }
 
-        $dateFrom = $request->get('date_from', now()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
-        $marketplace = $request->get('marketplace');
-        $status = $request->get('status');
-        $search = $request->get('search');
-        $dateMode = $request->get('date_mode', 'order_date'); // order_date | completion_date
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $dateFrom = $validated['date_from'] ?? now()->format('Y-m-d');
+        $dateTo = $validated['date_to'] ?? now()->format('Y-m-d');
+        $marketplace = $validated['marketplace'] ?? null;
+        $status = $validated['status'] ?? null;
+        $search = isset($validated['search']) ? $this->escapeLike($validated['search']) : null;
+        $dateMode = $validated['date_mode'] ?? 'order_date';
+        $perPage = $validated['per_page'] ?? 20;
 
         // Build unified orders collection
         $orders = collect();
 
         // Get Uzum orders
-        if (!$marketplace || $marketplace === 'uzum') {
+        if (! $marketplace || $marketplace === 'uzum') {
             $uzumOrders = $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($uzumOrders);
         }
 
         // Get WB orders (RUB amounts will be converted)
-        if (!$marketplace || $marketplace === 'wb') {
+        if (! $marketplace || $marketplace === 'wb') {
             $wbOrders = $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($wbOrders);
         }
 
         // Get OZON orders
-        if (!$marketplace || $marketplace === 'ozon') {
+        if (! $marketplace || $marketplace === 'ozon') {
             $ozonOrders = $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($ozonOrders);
         }
 
         // Get Yandex Market orders
-        if (!$marketplace || $marketplace === 'ym') {
+        if (! $marketplace || $marketplace === 'ym') {
             $ymOrders = $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
             $orders = $orders->merge($ymOrders);
         }
 
         // Get manual/channel orders
-        if (!$marketplace || $marketplace === 'manual') {
+        if (! $marketplace || $marketplace === 'manual') {
             $manualOrders = $this->getManualOrders($companyId, $dateFrom, $dateTo, $status, $search);
             $orders = $orders->merge($manualOrders);
         }
@@ -91,7 +105,7 @@ class SalesController extends Controller
         $stats = $this->calculateStats($orders);
 
         // Paginate
-        $page = (int) $request->get('page', 1);
+        $page = $validated['page'] ?? 1;
         $total = $orders->count();
         $paginatedOrders = $orders->forPage($page, $perPage)->values();
 
@@ -112,18 +126,18 @@ class SalesController extends Controller
                 'per_page' => $perPage,
                 'total' => $total,
                 'last_page' => max(1, ceil($total / $perPage)),
-            ]
+            ],
         ]);
     }
-    
+
     /**
      * Get single order details
      */
     public function show(Request $request, string $id): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -140,7 +154,7 @@ class SalesController extends Controller
         switch ($marketplace) {
             case 'uzum':
                 $order = UzumOrder::with('account', 'items')
-                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->find($orderId);
                 if ($order) {
                     $order = $this->formatUzumOrderDetails($order);
@@ -150,14 +164,14 @@ class SalesController extends Controller
             case 'wb':
                 // Try WildberriesOrder first (has real data)
                 $order = WildberriesOrder::with('account')
-                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->find($orderId);
                 if ($order) {
                     $order = $this->formatWildberriesOrderDetails($order);
                 } else {
                     // Fallback to WbOrder
                     $order = WbOrder::with('account')
-                        ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                        ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                         ->find($orderId);
                     if ($order) {
                         $order = $this->formatWbOrderDetails($order);
@@ -167,7 +181,7 @@ class SalesController extends Controller
 
             case 'ozon':
                 $order = OzonOrder::with('account', 'items')
-                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->find($orderId);
                 if ($order) {
                     $order = $this->formatOzonOrderDetails($order);
@@ -176,7 +190,7 @@ class SalesController extends Controller
 
             case 'ym':
                 $order = YandexMarketOrder::with('account')
-                    ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
+                    ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->find($orderId);
                 if ($order) {
                     $order = $this->formatYmOrderDetails($order);
@@ -201,7 +215,7 @@ class SalesController extends Controller
                 break;
         }
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['error' => 'Order not found'], 404);
         }
 
@@ -214,7 +228,7 @@ class SalesController extends Controller
     private function formatUzumOrderDetails($order): array
     {
         return [
-            'id' => 'uzum_' . $order->id,
+            'id' => 'uzum_'.$order->id,
             'order_number' => $order->external_order_id,
             'marketplace' => 'uzum',
             'marketplace_label' => 'Uzum Market',
@@ -229,7 +243,7 @@ class SalesController extends Controller
             'currency' => $order->currency ?? 'UZS',
             'created_at' => $order->ordered_at?->toIso8601String(),
             'created_at_formatted' => $order->ordered_at?->format('d.m.Y H:i'),
-            'items' => $order->items?->map(fn($item) => [
+            'items' => $order->items?->map(fn ($item) => [
                 'id' => $item->id,
                 'name' => $item->product_title ?? $item->name,
                 'sku' => $item->sku,
@@ -245,7 +259,7 @@ class SalesController extends Controller
     private function formatWbOrderDetails($order): array
     {
         return [
-            'id' => 'wb_' . $order->id,
+            'id' => 'wb_'.$order->id,
             'order_number' => $order->external_order_id ?? $order->rid,
             'marketplace' => 'wb',
             'marketplace_label' => 'Wildberries',
@@ -277,7 +291,7 @@ class SalesController extends Controller
         $status = $this->normalizeWildberriesStatus($order);
 
         return [
-            'id' => 'wb_' . $order->id,
+            'id' => 'wb_'.$order->id,
             'order_number' => $order->srid ?? $order->order_id,
             'marketplace' => 'wb',
             'marketplace_label' => 'Wildberries',
@@ -322,7 +336,7 @@ class SalesController extends Controller
         $isCancelled = $order->isCancelled();
 
         return [
-            'id' => 'ozon_' . $order->id,
+            'id' => 'ozon_'.$order->id,
             'order_number' => $order->posting_number ?? $order->order_id,
             'marketplace' => 'ozon',
             'marketplace_label' => 'Ozon',
@@ -353,7 +367,7 @@ class SalesController extends Controller
         $isCancelled = $order->isCancelled();
 
         return [
-            'id' => 'ym_' . $order->id,
+            'id' => 'ym_'.$order->id,
             'order_number' => $order->order_id,
             'marketplace' => 'ym',
             'marketplace_label' => 'Yandex Market',
@@ -385,7 +399,7 @@ class SalesController extends Controller
     private function formatManualOrderDetails($order): array
     {
         return [
-            'id' => 'manual_' . $order->id,
+            'id' => 'manual_'.$order->id,
             'order_number' => $order->external_order_id,
             'marketplace' => 'manual',
             'marketplace_label' => 'Ручной заказ',
@@ -406,7 +420,7 @@ class SalesController extends Controller
      */
     private function formatSaleDetails(\App\Models\Sale $sale): array
     {
-        $items = $sale->items->map(fn($item) => [
+        $items = $sale->items->map(fn ($item) => [
             'id' => $item->id,
             'product_name' => $item->product_name,
             'sku' => $item->productVariant?->sku ?? $item->sku,
@@ -421,7 +435,7 @@ class SalesController extends Controller
         ])->toArray();
 
         return [
-            'id' => 'sale_' . $sale->id,
+            'id' => 'sale_'.$sale->id,
             'order_number' => $sale->sale_number,
             'marketplace' => 'manual',
             'marketplace_label' => 'Ручная продажа',
@@ -454,7 +468,9 @@ class SalesController extends Controller
      */
     private function getStatusLabel(?string $status): string
     {
-        if (!$status) return 'Неизвестно';
+        if (! $status) {
+            return 'Неизвестно';
+        }
 
         $labels = [
             // General statuses
@@ -504,9 +520,9 @@ class SalesController extends Controller
             'currency' => 'nullable|string|max:10',
             'notes' => 'nullable|string|max:1000',
         ]);
-        
-        $companyId = $this->getCompanyId($request);
-        
+
+        $companyId = $this->getCompanyId();
+
         // Create manual order in channel_orders table
         $order = ChannelOrder::create([
             'channel_id' => null, // null = manual entry
@@ -522,7 +538,7 @@ class SalesController extends Controller
             ],
             'created_at_channel' => now(),
         ]);
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -533,22 +549,22 @@ class SalesController extends Controller
                 'currency' => $validated['currency'] ?? 'UZS',
                 'status' => 'new',
                 'created_at' => $order->created_at,
-            ]
+            ],
         ], 201);
     }
-    
+
     /**
      * Get Uzum orders from Finance API (all types: FBO/FBS/DBS/EDBS)
      */
     private function getUzumOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 
         // Try UzumFinanceOrder first (contains all order types for analytics)
         try {
-            $hasFinanceOrders = UzumFinanceOrder::whereHas('account', fn($q) => $q->where('company_id', $companyId))->exists();
+            $hasFinanceOrders = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
 
             if ($hasFinanceOrders) {
                 return $this->getUzumFinanceOrders($companyId, $dateFrom, $dateTo, $status, $search);
@@ -559,7 +575,7 @@ class SalesController extends Controller
 
         // Fallback to UzumOrder (FBS only)
         $query = UzumOrder::query()
-            ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
+            ->whereHas('account', fn ($query) => $query->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $dateFrom)
             ->whereDate('ordered_at', '<=', $dateTo);
 
@@ -568,14 +584,14 @@ class SalesController extends Controller
         }
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('external_order_id', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%");
             });
         }
 
-        return $query->get()->map(fn($order) => [
-            'id' => 'uzum_' . $order->id,
+        return $query->get()->map(fn ($order) => [
+            'id' => 'uzum_'.$order->id,
             'order_number' => $order->external_order_id,
             'created_at' => $order->ordered_at?->toIso8601String(),
             'marketplace' => 'uzum',
@@ -606,72 +622,72 @@ class SalesController extends Controller
     private function getUzumFinanceOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
         $query = UzumFinanceOrder::query()
-            ->whereHas('account', fn($q) => $q->where('company_id', $companyId))
-            ->where(function($q) use ($dateFrom, $dateTo) {
+            ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+            ->where(function ($q) use ($dateFrom, $dateTo) {
                 // Продажи (TO_WITHDRAW) - фильтруем по date_issued
-                $q->where(function($sub) use ($dateFrom, $dateTo) {
+                $q->where(function ($sub) use ($dateFrom, $dateTo) {
                     $sub->where('status', 'TO_WITHDRAW')
                         ->whereDate('date_issued', '>=', $dateFrom)
                         ->whereDate('date_issued', '<=', $dateTo);
                 })
                 // Продажи (PROCESSING с date_issued) - фильтруем по date_issued (дата выкупа)
-                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->where('status', 'PROCESSING')
-                        ->whereNotNull('date_issued')
-                        ->whereDate('date_issued', '>=', $dateFrom)
-                        ->whereDate('date_issued', '<=', $dateTo);
-                })
+                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('status', 'PROCESSING')
+                            ->whereNotNull('date_issued')
+                            ->whereDate('date_issued', '>=', $dateFrom)
+                            ->whereDate('date_issued', '<=', $dateTo);
+                    })
                 // Возвраты (CANCELED с date_issued) - по date_issued
-                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->where('status', 'CANCELED')
-                        ->whereNotNull('date_issued')
-                        ->whereDate('date_issued', '>=', $dateFrom)
-                        ->whereDate('date_issued', '<=', $dateTo);
-                })
+                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('status', 'CANCELED')
+                            ->whereNotNull('date_issued')
+                            ->whereDate('date_issued', '>=', $dateFrom)
+                            ->whereDate('date_issued', '<=', $dateTo);
+                    })
                 // В транзите (PROCESSING без date_issued) - по дате заказа
-                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->where('status', 'PROCESSING')
-                        ->whereNull('date_issued')
-                        ->whereDate('order_date', '>=', $dateFrom)
-                        ->whereDate('order_date', '<=', $dateTo);
-                })
+                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('status', 'PROCESSING')
+                            ->whereNull('date_issued')
+                            ->whereDate('order_date', '>=', $dateFrom)
+                            ->whereDate('order_date', '<=', $dateTo);
+                    })
                 // Отмены (CANCELED без date_issued) - по дате заказа
-                ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                    $sub->where('status', 'CANCELED')
-                        ->whereNull('date_issued')
-                        ->whereDate('order_date', '>=', $dateFrom)
-                        ->whereDate('order_date', '<=', $dateTo);
-                });
+                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                        $sub->where('status', 'CANCELED')
+                            ->whereNull('date_issued')
+                            ->whereDate('order_date', '>=', $dateFrom)
+                            ->whereDate('order_date', '<=', $dateTo);
+                    });
             });
 
         if ($status) {
             // Map status filter
-            $query->where(function($q) use ($status) {
+            $query->where(function ($q) use ($status) {
                 switch ($status) {
                     case 'delivered':
                     case 'completed':
                         // Продажа: TO_WITHDRAW или PROCESSING с date_issued
                         $q->where('status', 'TO_WITHDRAW')
-                          ->orWhere(function($sub) {
-                              $sub->where('status', 'PROCESSING')
-                                  ->whereNotNull('date_issued');
-                          });
+                            ->orWhere(function ($sub) {
+                                $sub->where('status', 'PROCESSING')
+                                    ->whereNotNull('date_issued');
+                            });
                         break;
                     case 'transit':
                     case 'processing':
                         // В транзите: PROCESSING без date_issued
                         $q->where('status', 'PROCESSING')
-                          ->whereNull('date_issued');
+                            ->whereNull('date_issued');
                         break;
                     case 'returned':
                         // Возврат: CANCELED с date_issued (был выкуплен, потом вернули)
                         $q->where('status', 'CANCELED')
-                          ->whereNotNull('date_issued');
+                            ->whereNotNull('date_issued');
                         break;
                     case 'cancelled':
                         // Отмена: CANCELED без date_issued (отменили до выкупа)
                         $q->where('status', 'CANCELED')
-                          ->whereNull('date_issued');
+                            ->whereNull('date_issued');
                         break;
                     default:
                         $q->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
@@ -680,13 +696,13 @@ class SalesController extends Controller
         }
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('order_id', 'like', "%{$search}%")
-                  ->orWhere('sku_title', 'like', "%{$search}%");
+                    ->orWhere('sku_title', 'like', "%{$search}%");
             });
         }
 
-        return $query->with('account')->get()->map(function($order) {
+        return $query->with('account')->get()->map(function ($order) {
             // Цены в UzumFinanceOrder хранятся в сумах
             $totalAmount = $order->sell_price * $order->amount;
             $sellerProfit = $order->seller_profit;
@@ -704,9 +720,9 @@ class SalesController extends Controller
 
             // Продажа = TO_WITHDRAW или (PROCESSING + date_issued)
             $isCompleted = $isToWithdraw || ($isProcessing && $hasDateIssued);
-            $isTransit = $isProcessing && !$hasDateIssued;          // В транзите
+            $isTransit = $isProcessing && ! $hasDateIssued;          // В транзите
             $isReturned = $isCanceled && $hasDateIssued;            // Возврат (после выкупа)
-            $isCancelled = $isCanceled && !$hasDateIssued;          // Отмена (до выкупа)
+            $isCancelled = $isCanceled && ! $hasDateIssued;          // Отмена (до выкупа)
 
             // Для возвратов сумма = sell_price * amount_returns
             $displayAmount = $isReturned
@@ -715,17 +731,24 @@ class SalesController extends Controller
 
             // Определяем нормализованный статус
             $normalizedStatus = 'transit';
-            if ($isCompleted) $normalizedStatus = 'delivered';
-            elseif ($isReturned) $normalizedStatus = 'returned';
-            elseif ($isCancelled) $normalizedStatus = 'cancelled';
+            if ($isCompleted) {
+                $normalizedStatus = 'delivered';
+            } elseif ($isReturned) {
+                $normalizedStatus = 'returned';
+            } elseif ($isCancelled) {
+                $normalizedStatus = 'cancelled';
+            }
 
             // Определяем категорию статуса
             $statusCategory = 'transit';
-            if ($isCompleted) $statusCategory = 'completed';
-            elseif ($isReturned || $isCancelled) $statusCategory = 'cancelled';
+            if ($isCompleted) {
+                $statusCategory = 'completed';
+            } elseif ($isReturned || $isCancelled) {
+                $statusCategory = 'cancelled';
+            }
 
             return [
-                'id' => 'uzum_finance_' . $order->id,
+                'id' => 'uzum_finance_'.$order->id,
                 'order_number' => (string) $order->order_id,
                 'created_at' => $order->order_date?->toIso8601String(),
                 'completion_date' => $order->date_issued?->toIso8601String(),
@@ -762,7 +785,9 @@ class SalesController extends Controller
      */
     private function normalizeUzumFinanceStatus(?string $status): string
     {
-        if (!$status) return 'transit';
+        if (! $status) {
+            return 'transit';
+        }
 
         return match (strtoupper($status)) {
             'PROCESSING' => 'transit', // Может быть продажей если есть date_issued
@@ -771,7 +796,7 @@ class SalesController extends Controller
             default => 'transit',
         };
     }
-    
+
     /**
      * Get WB orders
      *
@@ -788,57 +813,57 @@ class SalesController extends Controller
      */
     private function getWbOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 
         try {
             $query = WildberriesOrder::query()
-                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->where(function($q) use ($dateFrom, $dateTo) {
+                ->whereHas('account', fn ($query) => $query->where('company_id', $companyId))
+                ->where(function ($q) use ($dateFrom, $dateTo) {
                     // Продажи (is_realization=true, is_cancel=false) - по last_change_date
-                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                    $q->where(function ($sub) use ($dateFrom, $dateTo) {
                         $sub->where('is_realization', true)
                             ->where('is_cancel', false)
                             ->whereDate('last_change_date', '>=', $dateFrom)
                             ->whereDate('last_change_date', '<=', $dateTo);
                     })
                     // Возвраты (is_realization=true, is_cancel=true) - по last_change_date
-                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('is_realization', true)
-                            ->where('is_cancel', true)
-                            ->whereDate('last_change_date', '>=', $dateFrom)
-                            ->whereDate('last_change_date', '<=', $dateTo);
-                    })
+                        ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                            $sub->where('is_realization', true)
+                                ->where('is_cancel', true)
+                                ->whereDate('last_change_date', '>=', $dateFrom)
+                                ->whereDate('last_change_date', '<=', $dateTo);
+                        })
                     // В транзите (is_realization=false, is_cancel=false) - по order_date
-                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('is_realization', false)
-                            ->where('is_cancel', false)
-                            ->whereDate('order_date', '>=', $dateFrom)
-                            ->whereDate('order_date', '<=', $dateTo);
-                    })
+                        ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                            $sub->where('is_realization', false)
+                                ->where('is_cancel', false)
+                                ->whereDate('order_date', '>=', $dateFrom)
+                                ->whereDate('order_date', '<=', $dateTo);
+                        })
                     // Отмены (is_realization=false, is_cancel=true) - по order_date
-                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('is_realization', false)
-                            ->where('is_cancel', true)
-                            ->whereDate('order_date', '>=', $dateFrom)
-                            ->whereDate('order_date', '<=', $dateTo);
-                    });
+                        ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                            $sub->where('is_realization', false)
+                                ->where('is_cancel', true)
+                                ->whereDate('order_date', '>=', $dateFrom)
+                                ->whereDate('order_date', '<=', $dateTo);
+                        });
                 });
 
             if ($status) {
-                $query->where(function($q) use ($status) {
+                $query->where(function ($q) use ($status) {
                     switch ($status) {
                         case 'delivered':
                         case 'completed':
                             // Продажа: is_realization=true AND is_cancel=false
                             $q->where('is_realization', true)
-                              ->where('is_cancel', false);
+                                ->where('is_cancel', false);
                             break;
                         case 'returned':
                             // Возврат: is_realization=true AND is_cancel=true
                             $q->where('is_realization', true)
-                              ->where('is_cancel', true);
+                                ->where('is_cancel', true);
                             break;
                         case 'cancelled':
                             // Отмена + Возврат для общего фильтра "отменённые"
@@ -848,26 +873,26 @@ class SalesController extends Controller
                         case 'processing':
                             // В транзите: is_realization=false AND is_cancel=false
                             $q->where('is_realization', false)
-                              ->where('is_cancel', false);
+                                ->where('is_cancel', false);
                             break;
                         default:
                             $dbStatuses = $this->mapStatusToDbStatuses($status);
                             $q->whereIn('status', $dbStatuses)
-                              ->orWhereIn('wb_status', $dbStatuses);
+                                ->orWhereIn('wb_status', $dbStatuses);
                     }
                 });
             }
 
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('srid', 'like', "%{$search}%")
-                      ->orWhere('order_id', 'like', "%{$search}%")
-                      ->orWhere('supplier_article', 'like', "%{$search}%")
-                      ->orWhere('barcode', 'like', "%{$search}%");
+                        ->orWhere('order_id', 'like', "%{$search}%")
+                        ->orWhere('supplier_article', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
                 });
             }
 
-            return $query->with('account')->get()->map(function($order) {
+            return $query->with('account')->get()->map(function ($order) {
                 $amountRub = (float) ($order->for_pay ?? $order->finished_price ?? $order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -876,24 +901,31 @@ class SalesController extends Controller
                 // - is_realization=true, is_cancel=true → возврат (returned)
                 // - is_realization=false, is_cancel=true → отмена (cancelled)
                 // - is_realization=false, is_cancel=false → в транзите (transit)
-                $isCompleted = $order->is_realization && !$order->is_cancel;
+                $isCompleted = $order->is_realization && ! $order->is_cancel;
                 $isReturned = $order->is_realization && $order->is_cancel;
-                $isCancelled = !$order->is_realization && $order->is_cancel;
-                $isTransit = !$order->is_realization && !$order->is_cancel;
+                $isCancelled = ! $order->is_realization && $order->is_cancel;
+                $isTransit = ! $order->is_realization && ! $order->is_cancel;
 
                 // Нормализованный статус
                 $normalizedStatus = 'transit';
-                if ($isCompleted) $normalizedStatus = 'completed';
-                elseif ($isReturned) $normalizedStatus = 'returned';
-                elseif ($isCancelled) $normalizedStatus = 'cancelled';
+                if ($isCompleted) {
+                    $normalizedStatus = 'completed';
+                } elseif ($isReturned) {
+                    $normalizedStatus = 'returned';
+                } elseif ($isCancelled) {
+                    $normalizedStatus = 'cancelled';
+                }
 
                 // Категория статуса
                 $statusCategory = 'transit';
-                if ($isCompleted) $statusCategory = 'completed';
-                elseif ($isReturned || $isCancelled) $statusCategory = 'cancelled';
+                if ($isCompleted) {
+                    $statusCategory = 'completed';
+                } elseif ($isReturned || $isCancelled) {
+                    $statusCategory = 'cancelled';
+                }
 
                 return [
-                    'id' => 'wb_' . $order->id,
+                    'id' => 'wb_'.$order->id,
                     'order_number' => (string) ($order->srid ?? $order->order_id ?? $order->id),
                     'created_at' => $order->order_date?->toIso8601String(),
                     'completion_date' => ($isCompleted || $isReturned) ? $order->last_change_date?->toIso8601String() : null,
@@ -958,7 +990,7 @@ class SalesController extends Controller
         // Fallback to status field
         return $this->normalizeStatus($order->status ?? 'new');
     }
-    
+
     /**
      * Get OZON orders
      *
@@ -974,30 +1006,30 @@ class SalesController extends Controller
      */
     private function getOzonOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 
         try {
             $query = OzonOrder::query()
-                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->where(function($q) use ($dateFrom, $dateTo) {
+                ->whereHas('account', fn ($query) => $query->where('company_id', $companyId))
+                ->where(function ($q) use ($dateFrom, $dateTo) {
                     // Проданные товары - фильтруем по дате продажи (stock_sold_at)
-                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                    $q->where(function ($sub) use ($dateFrom, $dateTo) {
                         $sub->whereIn('stock_status', ['sold'])
                             ->whereNotNull('stock_sold_at')
                             ->whereDate('stock_sold_at', '>=', $dateFrom)
                             ->whereDate('stock_sold_at', '<=', $dateTo);
                     })
                     // Остальные - по дате заказа
-                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where(function($inner) {
-                            $inner->whereNull('stock_status')
-                                ->orWhereNotIn('stock_status', ['sold']);
-                        })
-                        ->whereDate('created_at_ozon', '>=', $dateFrom)
-                        ->whereDate('created_at_ozon', '<=', $dateTo);
-                    });
+                        ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                            $sub->where(function ($inner) {
+                                $inner->whereNull('stock_status')
+                                    ->orWhereNotIn('stock_status', ['sold']);
+                            })
+                                ->whereDate('created_at_ozon', '>=', $dateFrom)
+                                ->whereDate('created_at_ozon', '<=', $dateTo);
+                        });
                 });
 
             // Apply status filter using scopes
@@ -1023,13 +1055,13 @@ class SalesController extends Controller
             }
 
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('posting_number', 'like', "%{$search}%")
-                      ->orWhere('order_id', 'like', "%{$search}%");
+                        ->orWhere('order_id', 'like', "%{$search}%");
                 });
             }
 
-            return $query->with('account')->get()->map(function($order) {
+            return $query->with('account')->get()->map(function ($order) {
                 $amountRub = (float) ($order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -1049,7 +1081,7 @@ class SalesController extends Controller
                 }
 
                 return [
-                    'id' => 'ozon_' . $order->id,
+                    'id' => 'ozon_'.$order->id,
                     'order_number' => (string) ($order->posting_number ?? $order->order_id),
                     'created_at' => $order->created_at_ozon?->toIso8601String(),
                     'completion_date' => $order->stock_sold_at?->toIso8601String(),
@@ -1069,7 +1101,8 @@ class SalesController extends Controller
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('OZON orders fetch error: ' . $e->getMessage());
+            \Log::error('OZON orders fetch error: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -1089,30 +1122,30 @@ class SalesController extends Controller
      */
     private function getYandexMarketOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search, string $dateMode = 'order_date'): \Illuminate\Support\Collection
     {
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 
         try {
             $query = YandexMarketOrder::query()
-                ->whereHas('account', fn($query) => $query->where('company_id', $companyId))
-                ->where(function($q) use ($dateFrom, $dateTo) {
+                ->whereHas('account', fn ($query) => $query->where('company_id', $companyId))
+                ->where(function ($q) use ($dateFrom, $dateTo) {
                     // Проданные товары - фильтруем по дате продажи (stock_sold_at)
-                    $q->where(function($sub) use ($dateFrom, $dateTo) {
+                    $q->where(function ($sub) use ($dateFrom, $dateTo) {
                         $sub->whereIn('stock_status', ['sold'])
                             ->whereNotNull('stock_sold_at')
                             ->whereDate('stock_sold_at', '>=', $dateFrom)
                             ->whereDate('stock_sold_at', '<=', $dateTo);
                     })
                     // Остальные - по дате заказа
-                    ->orWhere(function($sub) use ($dateFrom, $dateTo) {
-                        $sub->where(function($inner) {
-                            $inner->whereNull('stock_status')
-                                ->orWhereNotIn('stock_status', ['sold']);
-                        })
-                        ->whereDate('created_at_ym', '>=', $dateFrom)
-                        ->whereDate('created_at_ym', '<=', $dateTo);
-                    });
+                        ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
+                            $sub->where(function ($inner) {
+                                $inner->whereNull('stock_status')
+                                    ->orWhereNotIn('stock_status', ['sold']);
+                            })
+                                ->whereDate('created_at_ym', '>=', $dateFrom)
+                                ->whereDate('created_at_ym', '<=', $dateTo);
+                        });
                 });
 
             // Apply status filter using scopes
@@ -1138,14 +1171,14 @@ class SalesController extends Controller
             }
 
             if ($search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('order_id', 'like', "%{$search}%")
-                      ->orWhere('customer_name', 'like', "%{$search}%")
-                      ->orWhere('customer_phone', 'like', "%{$search}%");
+                        ->orWhere('customer_name', 'like', "%{$search}%")
+                        ->orWhere('customer_phone', 'like', "%{$search}%");
                 });
             }
 
-            return $query->with('account')->get()->map(function($order) {
+            return $query->with('account')->get()->map(function ($order) {
                 $amountRub = (float) ($order->total_price ?? 0);
                 $amountConverted = $this->currencyService->convertFromRub($amountRub);
 
@@ -1165,7 +1198,7 @@ class SalesController extends Controller
                 }
 
                 return [
-                    'id' => 'ym_' . $order->id,
+                    'id' => 'ym_'.$order->id,
                     'order_number' => (string) $order->order_id,
                     'created_at' => $order->created_at_ym?->toIso8601String(),
                     'completion_date' => $order->stock_sold_at?->toIso8601String(),
@@ -1185,7 +1218,8 @@ class SalesController extends Controller
                 ];
             });
         } catch (\Exception $e) {
-            \Log::error('Yandex Market orders fetch error: ' . $e->getMessage());
+            \Log::error('Yandex Market orders fetch error: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -1195,7 +1229,7 @@ class SalesController extends Controller
      */
     private function getManualOrders(?int $companyId, string $dateFrom, string $dateTo, ?string $status, ?string $search): \Illuminate\Support\Collection
     {
-        if (!$companyId) {
+        if (! $companyId) {
             return collect();
         }
 
@@ -1208,9 +1242,9 @@ class SalesController extends Controller
                     ->whereNull('channel_id') // Manual orders have no channel
                     ->whereDate('created_at', '>=', $dateFrom)
                     ->whereDate('created_at', '<=', $dateTo)
-                    ->where(function($q) use ($companyId) {
+                    ->where(function ($q) use ($companyId) {
                         $q->whereJsonContains('payload_json->company_id', $companyId)
-                          ->orWhereJsonContains('payload_json->is_manual', true);
+                            ->orWhereJsonContains('payload_json->is_manual', true);
                     });
 
                 if ($status) {
@@ -1221,8 +1255,8 @@ class SalesController extends Controller
                     $query->where('external_order_id', 'like', "%{$search}%");
                 }
 
-                $channelOrders = $query->get()->map(fn($order) => [
-                    'id' => 'manual_' . $order->id,
+                $channelOrders = $query->get()->map(fn ($order) => [
+                    'id' => 'manual_'.$order->id,
                     'order_number' => (string) $order->external_order_id,
                     'created_at' => ($order->created_at_channel ?? $order->created_at)?->toIso8601String(),
                     'marketplace' => 'manual',
@@ -1239,7 +1273,7 @@ class SalesController extends Controller
                 $result = $result->merge($channelOrders);
             }
         } catch (\Exception $e) {
-            \Log::warning('Channel orders fetch skipped: ' . $e->getMessage());
+            \Log::warning('Channel orders fetch skipped: '.$e->getMessage());
         }
 
         // 2. Get from sales table (manual sales created via /sales/create)
@@ -1256,14 +1290,14 @@ class SalesController extends Controller
                 }
 
                 if ($search) {
-                    $salesQuery->where(function($q) use ($search) {
+                    $salesQuery->where(function ($q) use ($search) {
                         $q->where('sale_number', 'like', "%{$search}%")
-                          ->orWhere('notes', 'like', "%{$search}%");
+                            ->orWhere('notes', 'like', "%{$search}%");
                     });
                 }
 
-                $sales = $salesQuery->with('counterparty')->get()->map(fn($sale) => [
-                    'id' => 'sale_' . $sale->id,
+                $sales = $salesQuery->with('counterparty')->get()->map(fn ($sale) => [
+                    'id' => 'sale_'.$sale->id,
                     'order_number' => $sale->sale_number,
                     'created_at' => $sale->created_at?->toIso8601String(),
                     'marketplace' => 'manual',
@@ -1281,12 +1315,12 @@ class SalesController extends Controller
                 $result = $result->merge($sales);
             }
         } catch (\Exception $e) {
-            \Log::warning('Sales fetch skipped: ' . $e->getMessage());
+            \Log::warning('Sales fetch skipped: '.$e->getMessage());
         }
 
         return $result;
     }
-    
+
     /**
      * Calculate statistics
      *
@@ -1301,21 +1335,18 @@ class SalesController extends Controller
         $totalOrders = $orders->count();
 
         // Фильтруем по категориям статуса
-        $completedOrders = $orders->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
-        $awaitingPickupOrders = $orders->filter(fn($o) =>
-            ($o['is_awaiting_pickup'] ?? false) === true ||
+        $completedOrders = $orders->filter(fn ($o) => ($o['is_revenue'] ?? false) === true);
+        $awaitingPickupOrders = $orders->filter(fn ($o) => ($o['is_awaiting_pickup'] ?? false) === true ||
             ($o['status_category'] ?? '') === 'awaiting_pickup'
         );
-        $transitOrders = $orders->filter(fn($o) =>
-            ($o['is_revenue'] ?? false) === false &&
+        $transitOrders = $orders->filter(fn ($o) => ($o['is_revenue'] ?? false) === false &&
             ($o['is_return'] ?? false) === false &&
             ($o['is_cancelled'] ?? false) === false &&
             ($o['is_awaiting_pickup'] ?? false) === false &&
             ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
-            !in_array($o['status'], ['cancelled', 'canceled', 'returned'])
+            ! in_array($o['status'], ['cancelled', 'canceled', 'returned'])
         );
-        $cancelledOrders = $orders->filter(fn($o) =>
-            in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
+        $cancelledOrders = $orders->filter(fn ($o) => in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
             ($o['is_return'] ?? false) === true ||
             ($o['is_cancelled'] ?? false) === true
         );
@@ -1345,8 +1376,8 @@ class SalesController extends Controller
         // Подтверждённый доход (выкуплено)
         $confirmedRevenue = $salesAmount;
 
-        $marketplaceOrders = $orders->filter(fn($o) => $o['marketplace'] !== 'manual')->count();
-        $manualOrders = $orders->filter(fn($o) => $o['marketplace'] === 'manual')->count();
+        $marketplaceOrders = $orders->filter(fn ($o) => $o['marketplace'] !== 'manual')->count();
+        $manualOrders = $orders->filter(fn ($o) => $o['marketplace'] === 'manual')->count();
 
         $avgOrderValue = $salesCount > 0 ? round($salesAmount / $salesCount) : 0;
 
@@ -1356,24 +1387,21 @@ class SalesController extends Controller
 
         $ordersByMarketplace = $orders->groupBy('marketplace');
 
-        $byMarketplace = collect($allMarketplaces)->map(function($mp) use ($ordersByMarketplace, $labels) {
+        $byMarketplace = collect($allMarketplaces)->map(function ($mp) use ($ordersByMarketplace, $labels) {
             $group = $ordersByMarketplace->get($mp, collect());
 
-            $completed = $group->filter(fn($o) => ($o['is_revenue'] ?? false) === true);
-            $awaitingPickup = $group->filter(fn($o) =>
-                ($o['is_awaiting_pickup'] ?? false) === true ||
+            $completed = $group->filter(fn ($o) => ($o['is_revenue'] ?? false) === true);
+            $awaitingPickup = $group->filter(fn ($o) => ($o['is_awaiting_pickup'] ?? false) === true ||
                 ($o['status_category'] ?? '') === 'awaiting_pickup'
             );
-            $transit = $group->filter(fn($o) =>
-                ($o['is_revenue'] ?? false) === false &&
+            $transit = $group->filter(fn ($o) => ($o['is_revenue'] ?? false) === false &&
                 ($o['is_return'] ?? false) === false &&
                 ($o['is_cancelled'] ?? false) === false &&
                 ($o['is_awaiting_pickup'] ?? false) === false &&
                 ($o['status_category'] ?? '') !== 'awaiting_pickup' &&
-                !in_array($o['status'], ['cancelled', 'canceled', 'returned'])
+                ! in_array($o['status'], ['cancelled', 'canceled', 'returned'])
             );
-            $cancelled = $group->filter(fn($o) =>
-                in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
+            $cancelled = $group->filter(fn ($o) => in_array($o['status'], ['cancelled', 'canceled', 'returned']) ||
                 ($o['is_return'] ?? false) === true ||
                 ($o['is_cancelled'] ?? false) === true
             );
@@ -1430,22 +1458,7 @@ class SalesController extends Controller
             'byMarketplace' => $byMarketplace,
         ];
     }
-    
-    /**
-     * Get company ID from request
-     */
-    private function getCompanyId(Request $request): ?int
-    {
-        $user = auth()->user();
 
-        if (!$user) {
-            return null;
-        }
-
-        // Try direct company_id first, then fallback to companies relationship
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
-    
     /**
      * Map frontend status to DB status
      */
@@ -1470,18 +1483,21 @@ class SalesController extends Controller
     {
         // Keep for backwards compatibility - returns single status
         $statuses = $this->mapStatusToDbStatuses($status);
+
         return $statuses[0] ?? $status;
     }
-    
+
     /**
      * Normalize status for frontend
      */
     private function normalizeStatus(?string $status): string
     {
-        if (!$status) return 'new';
-        
+        if (! $status) {
+            return 'new';
+        }
+
         $status = strtolower($status);
-        
+
         // Map various statuses to standard ones
         if (in_array($status, ['new', 'created', 'pending', 'waiting'])) {
             return 'new';
@@ -1498,7 +1514,7 @@ class SalesController extends Controller
         if (in_array($status, ['cancelled', 'canceled', 'rejected', 'returned', 'returns'])) {
             return 'cancelled';
         }
-        
+
         return 'processing'; // Default to processing instead of new
     }
 
@@ -1507,9 +1523,9 @@ class SalesController extends Controller
      */
     public function syncStatus(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $companyId = $this->getCompanyId();
 
-        if (!$companyId) {
+        if (! $companyId) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -1547,15 +1563,21 @@ class SalesController extends Controller
      */
     public function triggerSync(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId($request);
+        $validated = $request->validate([
+            'full_sync' => ['nullable', 'boolean'],
+            'days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'account_id' => ['nullable', 'integer'],
+        ]);
 
-        if (!$companyId) {
+        $companyId = $this->getCompanyId();
+
+        if (! $companyId) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $fullSync = $request->boolean('full_sync', false);
-        $days = (int) $request->get('days', 90);
-        $accountId = $request->get('account_id');
+        $fullSync = $validated['full_sync'] ?? false;
+        $days = $validated['days'] ?? 90;
+        $accountId = $validated['account_id'] ?? null;
 
         // Получаем аккаунты Uzum для компании
         $query = MarketplaceAccount::where('company_id', $companyId)

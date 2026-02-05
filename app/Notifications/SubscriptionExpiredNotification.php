@@ -4,8 +4,8 @@ namespace App\Notifications;
 
 use App\Models\Subscription;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class SubscriptionExpiredNotification extends Notification
 {
@@ -13,8 +13,7 @@ class SubscriptionExpiredNotification extends Notification
 
     public function __construct(
         public Subscription $subscription
-    ) {
-    }
+    ) {}
 
     /**
      * Get the notification's delivery channels.
@@ -68,16 +67,16 @@ class SubscriptionExpiredNotification extends Notification
         $message .= "Тариф: *{$plan->name}*\n";
         $message .= "Дата окончания: {$this->subscription->ends_at->format('d.m.Y')}\n\n";
         $message .= "❌ Доступ к функциям платформы ограничен.\n\n";
-        $message .= "Продлите подписку, чтобы восстановить полный доступ.";
+        $message .= 'Продлите подписку, чтобы восстановить полный доступ.';
 
         return [
             'text' => $message,
             'parse_mode' => 'Markdown',
             'reply_markup' => [
                 'inline_keyboard' => [[
-                    ['text' => '💳 Продлить подписку', 'url' => url('/plans')]
-                ]]
-            ]
+                    ['text' => '💳 Продлить подписку', 'url' => url('/plans')],
+                ]],
+            ],
         ];
     }
 

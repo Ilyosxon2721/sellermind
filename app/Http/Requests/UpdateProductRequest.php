@@ -83,10 +83,10 @@ class UpdateProductRequest extends FormRequest
             $hasActive = $variants->isEmpty()
                 ? false
                 : $variants->contains(function ($variant): bool {
-                    return !array_key_exists('is_active', (array) $variant) || (bool) $variant['is_active'] === true;
+                    return ! array_key_exists('is_active', (array) $variant) || (bool) $variant['is_active'] === true;
                 });
 
-            if (!$hasActive) {
+            if (! $hasActive) {
                 $validator->errors()->add('variants', 'At least one active variant is required.');
             }
         });

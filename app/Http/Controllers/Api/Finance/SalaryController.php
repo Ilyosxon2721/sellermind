@@ -3,28 +3,23 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Models\Finance\Employee;
-use App\Models\Finance\FinanceSettings;
 use App\Models\Finance\SalaryCalculation;
 use App\Models\Finance\SalaryItem;
 use App\Services\Finance\SalaryCalculationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class SalaryController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected SalaryCalculationService $service)
-    {
-    }
+    public function __construct(protected SalaryCalculationService $service) {}
 
     public function calculations(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -49,7 +44,7 @@ class SalaryController extends Controller
     public function showCalculation($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -63,7 +58,7 @@ class SalaryController extends Controller
     public function calculate(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -89,7 +84,7 @@ class SalaryController extends Controller
     public function updateItem($calculationId, $itemId, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -127,13 +122,13 @@ class SalaryController extends Controller
     public function approveCalculation($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $calculation = SalaryCalculation::byCompany($companyId)->findOrFail($id);
 
-        if (!$calculation->isCalculated()) {
+        if (! $calculation->isCalculated()) {
             return $this->errorResponse('Calculation must be in calculated status', 'invalid_state', null, 422);
         }
 
@@ -145,13 +140,13 @@ class SalaryController extends Controller
     public function payCalculation($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $calculation = SalaryCalculation::byCompany($companyId)->findOrFail($id);
 
-        if (!$calculation->isApproved()) {
+        if (! $calculation->isApproved()) {
             return $this->errorResponse('Calculation must be approved first', 'invalid_state', null, 422);
         }
 
@@ -168,13 +163,13 @@ class SalaryController extends Controller
     public function payItem($calculationId, $itemId, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $calculation = SalaryCalculation::byCompany($companyId)->findOrFail($calculationId);
 
-        if (!$calculation->isApproved()) {
+        if (! $calculation->isApproved()) {
             return $this->errorResponse('Calculation must be approved first', 'invalid_state', null, 422);
         }
 

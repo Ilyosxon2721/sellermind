@@ -4,9 +4,9 @@ namespace App\Jobs;
 
 use App\Models\MarketplaceAccount;
 use App\Models\UzumFinanceOrder;
-use App\Services\Marketplaces\UzumClient;
-use App\Services\Marketplaces\MarketplaceHttpClient;
 use App\Services\Marketplaces\IssueDetectorService;
+use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\UzumClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,7 +30,9 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
     public int $tries = 3;
 
     protected int $accountId;
+
     protected bool $fullSync;
+
     protected int $days;
 
     /**
@@ -52,9 +54,8 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param MarketplaceAccount $account
-     * @param bool $fullSync Полная синхронизация (все данные) или инкрементальная
-     * @param int $days Количество дней для инкрементальной синхронизации
+     * @param  bool  $fullSync  Полная синхронизация (все данные) или инкрементальная
+     * @param  int  $days  Количество дней для инкрементальной синхронизации
      */
     public function __construct(MarketplaceAccount $account, bool $fullSync = false, int $days = 90)
     {
@@ -106,17 +107,19 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
     {
         $account = MarketplaceAccount::find($this->accountId);
 
-        if (!$account || $account->marketplace !== 'uzum') {
+        if (! $account || $account->marketplace !== 'uzum') {
             Log::warning('SyncUzumFinanceOrdersJob skipped: account not found or not Uzum', [
                 'account_id' => $this->accountId,
             ]);
             $this->clearProgress();
+
             return;
         }
 
-        if (!$account->is_active) {
+        if (! $account->is_active) {
             Log::info('SyncUzumFinanceOrdersJob skipped for inactive account', ['account_id' => $account->id]);
             $this->clearProgress();
+
             return;
         }
 
@@ -170,7 +173,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                 'status' => 'failed',
                 'error' => $e->getMessage(),
                 'finished_at' => now()->toIso8601String(),
-                'message' => 'Ошибка: ' . $e->getMessage(),
+                'message' => 'Ошибка: '.$e->getMessage(),
             ]);
 
             Log::error('SyncUzumFinanceOrdersJob failed', [
@@ -188,6 +191,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                     'retry_after' => $delay,
                 ]);
                 $this->release($delay);
+
                 return;
             }
 
@@ -213,6 +217,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
 
         if (empty($shopIds)) {
             Log::warning('SyncUzumFinanceOrdersJob: no shops found', ['account_id' => $account->id]);
+
             return ['created' => 0, 'updated' => 0, 'errors' => 0];
         }
 
@@ -223,7 +228,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
 
         // Определяем дату начала
         $dateFromMs = null;
-        if (!$this->fullSync && $this->days > 0) {
+        if (! $this->fullSync && $this->days > 0) {
             $dateFromMs = now()->subDays($this->days)->startOfDay()->getTimestampMs();
         }
 
@@ -243,7 +248,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
 
         $this->updateProgress([
             'total' => $totalOrders,
-            'message' => "Найдено {$totalOrders} заказов в " . count($shopIds) . " магазинах",
+            'message' => "Найдено {$totalOrders} заказов в ".count($shopIds).' магазинах',
         ]);
 
         $currentShopIndex = 0;
@@ -256,7 +261,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                 'current_shop' => $shopName,
                 'current_shop_index' => $currentShopIndex,
                 'shops_count' => count($shopIds),
-                'message' => "Магазин {$currentShopIndex}/" . count($shopIds) . ": {$shopName} ({$shopTotal} заказов)",
+                'message' => "Магазин {$currentShopIndex}/".count($shopIds).": {$shopName} ({$shopTotal} заказов)",
             ]);
 
             $page = 0;
@@ -275,8 +280,9 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                         try {
                             $data = $client->mapFinanceOrderData($item);
 
-                            if (!$data['uzum_id']) {
+                            if (! $data['uzum_id']) {
                                 $errors++;
+
                                 continue;
                             }
 
@@ -322,7 +328,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                     $page++;
 
                     // Задержка чтобы не превысить rate limit
-                    if (!empty($items)) {
+                    if (! empty($items)) {
                         usleep(200000); // 200ms
                     }
 
@@ -376,6 +382,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
     protected function isRateLimitError(\Throwable $e): bool
     {
         $message = $e->getMessage();
+
         return str_contains($message, '429') ||
                str_contains($message, 'Too Many Requests') ||
                str_contains($message, 'rate limit');

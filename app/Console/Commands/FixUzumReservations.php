@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\UzumOrder;
-use App\Models\Warehouse\StockReservation;
 use App\Models\Warehouse\StockLedger;
+use App\Models\Warehouse\StockReservation;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +37,7 @@ class FixUzumReservations extends Command
 
         if ($uzumAccounts->isEmpty()) {
             $this->error('No active Uzum accounts found');
+
             return 1;
         }
 
@@ -61,6 +62,7 @@ class FixUzumReservations extends Command
 
             if ($orders->isEmpty()) {
                 $this->info('  No orders with reserved status found');
+
                 continue;
             }
 
@@ -126,7 +128,7 @@ class FixUzumReservations extends Command
 
         foreach ($items as $item) {
             $barcode = $item['barcode'] ?? null;
-            if (!$barcode) {
+            if (! $barcode) {
                 continue;
             }
 
@@ -152,13 +154,13 @@ class FixUzumReservations extends Command
                     break;
                 }
             }
-            if (!$matchFound) {
+            if (! $matchFound) {
                 $needsFix = true;
                 break;
             }
         }
 
-        if (!$needsFix && $existingReservations->isNotEmpty()) {
+        if (! $needsFix && $existingReservations->isNotEmpty()) {
             // Reservations look correct
             return ['success' => true, 'action' => 'skipped', 'reason' => 'Already correct'];
         }
@@ -166,23 +168,26 @@ class FixUzumReservations extends Command
         // Если ожидаемых вариантов нет - просто удаляем резервы и помечаем заказ как skipped
         if (empty($expectedVariants)) {
             if ($dryRun) {
-                $this->line("\n  Order {$orderId}: No linked items, would delete " . $existingReservations->count() . " wrong reservations");
+                $this->line("\n  Order {$orderId}: No linked items, would delete ".$existingReservations->count().' wrong reservations');
+
                 return ['success' => true, 'action' => 'dry_run_delete'];
             }
+
             return $this->deleteReservationsOnly($account, $order, $existingReservations);
         }
 
         if ($dryRun) {
             $this->line("\n  Order {$orderId}:");
-            $this->line("    Current reservations:");
+            $this->line('    Current reservations:');
             foreach ($existingReservations as $res) {
                 $variantSku = $res->sku?->productVariant?->sku ?? 'UNKNOWN';
                 $this->line("      - SKU: {$variantSku}, Qty: {$res->qty}");
             }
-            $this->line("    Expected variants:");
+            $this->line('    Expected variants:');
             foreach ($expectedVariants as $barcode => $expected) {
                 $this->line("      - Barcode {$barcode} -> SKU: {$expected['variant_sku']}, Qty: {$expected['quantity']}");
             }
+
             return ['success' => true, 'action' => 'dry_run'];
         }
 
@@ -343,10 +348,11 @@ class FixUzumReservations extends Command
                         return true;
                     }
                 }
+
                 return false;
             });
 
-        if (!$marketplaceProduct) {
+        if (! $marketplaceProduct) {
             return null;
         }
 
@@ -360,7 +366,7 @@ class FixUzumReservations extends Command
             }
         }
 
-        if (!$matchedSkuId) {
+        if (! $matchedSkuId) {
             return null;
         }
 

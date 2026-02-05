@@ -74,7 +74,7 @@ class CheckProductByUrlTool implements AgentToolInterface
         $extractInfo = $arguments['extract_info'] ?? true;
         $scrollFullPage = $arguments['scroll_full_page'] ?? false;
 
-        if (!$url) {
+        if (! $url) {
             return [
                 'success' => false,
                 'error' => 'URL is required',
@@ -82,7 +82,7 @@ class CheckProductByUrlTool implements AgentToolInterface
         }
 
         // Validate URL
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
             return [
                 'success' => false,
                 'error' => 'Invalid URL format',
@@ -94,7 +94,7 @@ class CheckProductByUrlTool implements AgentToolInterface
 
         // Get VPC session
         $session = $this->getSession($sessionId);
-        if (!$session) {
+        if (! $session) {
             return [
                 'success' => false,
                 'error' => 'No active VPC session found. Please create a VPC session first.',
@@ -134,7 +134,7 @@ class CheckProductByUrlTool implements AgentToolInterface
     private function detectMarketplace(string $url): ?string
     {
         $host = parse_url($url, PHP_URL_HOST);
-        if (!$host) {
+        if (! $host) {
             return null;
         }
 

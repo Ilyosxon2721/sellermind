@@ -1,13 +1,16 @@
 <?php
+
+declare(strict_types=1);
+
 // file: app/Http/Controllers/MarketplaceWebhookController.php
 
 namespace App\Http\Controllers;
 
-use App\Models\MarketplaceWebhook;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceWebhook;
 use App\Services\Marketplaces\MarketplaceAutomationService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class MarketplaceWebhookController extends Controller
@@ -17,13 +20,17 @@ class MarketplaceWebhookController extends Controller
     ) {}
 
     /**
-     * Handle incoming webhook from any marketplace
+     * Обработка входящего вебхука от маркетплейса
      */
     public function handle(string $marketplace, Request $request): JsonResponse
     {
-        Log::info("Marketplace webhook received", [
+        $validated = $request->validate([
+            'event_type' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        Log::info('Marketplace webhook received', [
             'marketplace' => $marketplace,
-            'event_type' => $request->input('event_type'),
+            'event_type' => $validated['event_type'] ?? null,
             'ip' => $request->ip(),
         ]);
 
@@ -57,7 +64,7 @@ class MarketplaceWebhookController extends Controller
             ->where('marketplace', $marketplace)
             ->first();
 
-        if (!$account) {
+        if (! $account) {
             return response()->json(['error' => 'Account not found'], 404);
         }
 
@@ -88,7 +95,7 @@ class MarketplaceWebhookController extends Controller
             default => null,
         };
 
-        if (!$shopId) {
+        if (! $shopId) {
             return null;
         }
 
@@ -134,7 +141,7 @@ class MarketplaceWebhookController extends Controller
 
             $webhook->markAsProcessed();
         } catch (\Exception $e) {
-            Log::error("Webhook processing failed", [
+            Log::error('Webhook processing failed', [
                 'webhook_id' => $webhook->id,
                 'error' => $e->getMessage(),
             ]);

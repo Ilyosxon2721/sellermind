@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesSettingsController.php
 
 namespace App\Http\Controllers\Api;
@@ -16,11 +17,11 @@ class WildberriesSettingsController extends Controller
      */
     public function show(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -32,11 +33,11 @@ class WildberriesSettingsController extends Controller
                 'is_active' => $account->is_active,
                 // Token status (not the actual values for security)
                 'tokens' => [
-                    'api_key' => !empty($account->api_key),
-                    'content' => !empty($account->wb_content_token),
-                    'marketplace' => !empty($account->wb_marketplace_token),
-                    'prices' => !empty($account->wb_prices_token),
-                    'statistics' => !empty($account->wb_statistics_token),
+                    'api_key' => ! empty($account->api_key),
+                    'content' => ! empty($account->wb_content_token),
+                    'marketplace' => ! empty($account->wb_marketplace_token),
+                    'prices' => ! empty($account->wb_prices_token),
+                    'statistics' => ! empty($account->wb_statistics_token),
                 ],
                 // Warehouse settings
                 'credentials_json' => [
@@ -65,14 +66,14 @@ class WildberriesSettingsController extends Controller
                 'marketplace' => $request->has(' wb_marketplace_token'),
                 'prices' => $request->has('wb_prices_token'),
                 'statistics' => $request->has('wb_statistics_token'),
-            ]
+            ],
         ]);
 
-        if (!$request->user()->isOwnerOf($account->company_id)) {
+        if (! $request->user()->isOwnerOf($account->company_id)) {
             return response()->json(['message' => 'Только владелец может изменять настройки токенов.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -102,26 +103,26 @@ class WildberriesSettingsController extends Controller
         // Handle warehouse_id and sync_mode update
         if (array_key_exists('warehouse_id', $validated) || array_key_exists('sync_mode', $validated)) {
             $credentialsJson = $account->credentials_json ?? [];
-            
+
             if (array_key_exists('warehouse_id', $validated)) {
                 $credentialsJson['warehouse_id'] = $validated['warehouse_id'];
                 \Log::info('WB Settings: Updating warehouse_id', ['warehouse_id' => $validated['warehouse_id']]);
             }
-            
+
             if (array_key_exists('sync_mode', $validated)) {
                 $credentialsJson['sync_mode'] = $validated['sync_mode'];
                 \Log::info('WB Settings: Updating sync_mode', ['sync_mode' => $validated['sync_mode']]);
             }
-            
+
             if (array_key_exists('source_warehouse_ids', $validated)) {
                 $credentialsJson['source_warehouse_ids'] = $validated['source_warehouse_ids'];
                 \Log::info('WB Settings: Updating source_warehouse_ids', ['ids' => $validated['source_warehouse_ids']]);
             }
-            
+
             $updateData['credentials_json'] = $credentialsJson;
         }
 
-        if (!empty($updateData)) {
+        if (! empty($updateData)) {
             \Log::info('WB Settings: Updating settings', ['fields' => array_keys($updateData)]);
             $account->update($updateData);
             // Reset token validity after update
@@ -138,11 +139,11 @@ class WildberriesSettingsController extends Controller
             'account' => [
                 'id' => $account->id,
                 'tokens' => [
-                    'api_key' => !empty($account->api_key),
-                    'content' => !empty($account->wb_content_token),
-                    'marketplace' => !empty($account->wb_marketplace_token),
-                    'prices' => !empty($account->wb_prices_token),
-                    'statistics' => !empty($account->wb_statistics_token),
+                    'api_key' => ! empty($account->api_key),
+                    'content' => ! empty($account->wb_content_token),
+                    'marketplace' => ! empty($account->wb_marketplace_token),
+                    'prices' => ! empty($account->wb_prices_token),
+                    'statistics' => ! empty($account->wb_statistics_token),
                 ],
                 'credentials_json' => [
                     'warehouse_id' => $account->credentials_json['warehouse_id'] ?? null,
@@ -156,11 +157,11 @@ class WildberriesSettingsController extends Controller
      */
     public function test(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -181,7 +182,7 @@ class WildberriesSettingsController extends Controller
                 'duration_ms' => $duration,
             ];
 
-            if (!$pingResult['success']) {
+            if (! $pingResult['success']) {
                 $allSuccess = false;
             }
         }
@@ -193,7 +194,7 @@ class WildberriesSettingsController extends Controller
             // Check if it's auth error
             $hasAuthError = false;
             foreach ($results as $result) {
-                if (!$result['success'] && isset($result['message']) && str_contains($result['message'], 'auth')) {
+                if (! $result['success'] && isset($result['message']) && str_contains($result['message'], 'auth')) {
                     $hasAuthError = true;
                     break;
                 }
@@ -215,17 +216,17 @@ class WildberriesSettingsController extends Controller
      */
     public function testCategory(Request $request, MarketplaceAccount $account, string $category): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
         $validCategories = ['common', 'content', 'marketplace', 'prices', 'statistics'];
-        if (!in_array($category, $validCategories)) {
-            return response()->json(['message' => 'Неизвестная категория API: ' . $category], 400);
+        if (! in_array($category, $validCategories)) {
+            return response()->json(['message' => 'Неизвестная категория API: '.$category], 400);
         }
 
         $client = new WildberriesHttpClient($account);

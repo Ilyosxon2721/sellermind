@@ -13,14 +13,12 @@ class TaxController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected TaxCalculationService $service)
-    {
-    }
+    public function __construct(protected TaxCalculationService $service) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -47,7 +45,7 @@ class TaxController extends Controller
     public function show($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -61,7 +59,7 @@ class TaxController extends Controller
     public function calculate(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -88,7 +86,7 @@ class TaxController extends Controller
     public function pay($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -117,7 +115,7 @@ class TaxController extends Controller
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -131,7 +129,7 @@ class TaxController extends Controller
             return [
                 'calculated' => $group->sum('calculated_amount'),
                 'paid' => $group->sum('paid_amount'),
-                'outstanding' => $group->sum(fn($t) => $t->amount_outstanding),
+                'outstanding' => $group->sum(fn ($t) => $t->amount_outstanding),
             ];
         });
 
@@ -139,7 +137,7 @@ class TaxController extends Controller
             'year' => $year,
             'total_calculated' => $taxes->sum('calculated_amount'),
             'total_paid' => $taxes->sum('paid_amount'),
-            'total_outstanding' => $taxes->sum(fn($t) => $t->amount_outstanding),
+            'total_outstanding' => $taxes->sum(fn ($t) => $t->amount_outstanding),
             'by_type' => $byType,
         ]);
     }

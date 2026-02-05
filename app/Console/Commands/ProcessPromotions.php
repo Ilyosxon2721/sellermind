@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Company;
 use App\Models\Promotion;
-use App\Models\User;
 use App\Notifications\PromotionExpiringNotification;
 use App\Services\PromotionService;
 use Illuminate\Console\Command;
@@ -34,7 +33,7 @@ class ProcessPromotions extends Command
         $companyId = $this->option('company');
 
         // If no options specified, do both
-        if (!$createAuto && !$notifyExpiring) {
+        if (! $createAuto && ! $notifyExpiring) {
             $createAuto = true;
             $notifyExpiring = true;
         }
@@ -75,7 +74,8 @@ class ProcessPromotions extends Command
                 ->exists();
 
             if ($hasActiveAuto) {
-                $this->line("  ⏭️  Skipping - already has active automatic promotion");
+                $this->line('  ⏭️  Skipping - already has active automatic promotion');
+
                 continue;
             }
 
@@ -87,7 +87,8 @@ class ProcessPromotions extends Command
             ]);
 
             if ($slowMoving->isEmpty()) {
-                $this->line("  ✅ No slow-moving products found");
+                $this->line('  ✅ No slow-moving products found');
+
                 continue;
             }
 
@@ -148,8 +149,9 @@ class ProcessPromotions extends Command
                 ->wherePivot('role', 'owner')
                 ->first();
 
-            if (!$owner) {
+            if (! $owner) {
                 $this->warn("  ⚠️  No owner found for company {$promotion->company->name}");
+
                 continue;
             }
 

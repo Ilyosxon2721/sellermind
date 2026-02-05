@@ -14,8 +14,11 @@ class SalaryCalculation extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_CALCULATED = 'calculated';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_PAID = 'paid';
 
     protected $fillable = [
@@ -65,7 +68,7 @@ class SalaryCalculation extends Model
             10 => 'Октябрь', 11 => 'Ноябрь', 12 => 'Декабрь',
         ];
 
-        return ($months[$this->period_month] ?? '') . ' ' . $this->period_year;
+        return ($months[$this->period_month] ?? '').' '.$this->period_year;
     }
 
     public function isDraft(): bool
@@ -99,7 +102,7 @@ class SalaryCalculation extends Model
 
     public function approve(int $userId): bool
     {
-        if (!$this->isCalculated()) {
+        if (! $this->isCalculated()) {
             return false;
         }
 

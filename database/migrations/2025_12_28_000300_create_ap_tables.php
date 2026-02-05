@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // Suppliers (минимальный, если отсутствует)
-        if (!Schema::hasTable('suppliers')) {
+        if (! Schema::hasTable('suppliers')) {
             Schema::create('suppliers', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -24,7 +24,7 @@ return new class extends Migration
         }
 
         // AP settings (или отдельная таблица)
-        if (!Schema::hasTable('ap_settings')) {
+        if (! Schema::hasTable('ap_settings')) {
             Schema::create('ap_settings', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -35,7 +35,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('supplier_invoices')) {
+        if (! Schema::hasTable('supplier_invoices')) {
             Schema::create('supplier_invoices', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -65,7 +65,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('supplier_invoice_lines')) {
+        if (! Schema::hasTable('supplier_invoice_lines')) {
             Schema::create('supplier_invoice_lines', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('invoice_id');
@@ -81,7 +81,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('supplier_payments')) {
+        if (! Schema::hasTable('supplier_payments')) {
             Schema::create('supplier_payments', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('company_id');
@@ -106,7 +106,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('supplier_payment_allocations')) {
+        if (! Schema::hasTable('supplier_payment_allocations')) {
             Schema::create('supplier_payment_allocations', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('payment_id');

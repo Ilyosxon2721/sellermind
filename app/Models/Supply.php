@@ -44,10 +44,15 @@ class Supply extends Model
      * Статусы поставки
      */
     public const STATUS_DRAFT = 'draft'; // Черновик
+
     public const STATUS_IN_ASSEMBLY = 'in_assembly'; // На сборке
+
     public const STATUS_READY = 'ready'; // Готова к отправке
+
     public const STATUS_SENT = 'sent'; // Отправлена
+
     public const STATUS_DELIVERED = 'delivered'; // Доставлена
+
     public const STATUS_CANCELLED = 'cancelled'; // Отменена
 
     /**
@@ -96,7 +101,7 @@ class Supply extends Model
      */
     public function canEdit(): bool
     {
-        return !in_array($this->status, [self::STATUS_SENT, self::STATUS_DELIVERED]);
+        return ! in_array($this->status, [self::STATUS_SENT, self::STATUS_DELIVERED]);
     }
 
     /**
@@ -104,7 +109,7 @@ class Supply extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_DRAFT => 'Черновик',
             self::STATUS_IN_ASSEMBLY => 'На сборке',
             self::STATUS_READY => 'Готова',
@@ -120,7 +125,7 @@ class Supply extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_DRAFT => 'gray',
             self::STATUS_IN_ASSEMBLY => 'blue',
             self::STATUS_READY => 'green',

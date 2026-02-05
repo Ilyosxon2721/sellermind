@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Web\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\User;
-use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\Warehouse;
 use App\Models\Warehouse\WriteOffReason;
 use Illuminate\Http\Request;
@@ -13,13 +13,15 @@ use Illuminate\View\View;
 
 class WarehouseController extends Controller
 {
+    use HasCompanyScope;
+
     public function balance(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -33,9 +35,9 @@ class WarehouseController extends Controller
     public function dashboard(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -49,10 +51,10 @@ class WarehouseController extends Controller
     public function receipts(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -66,16 +68,16 @@ class WarehouseController extends Controller
     public function createReceipt(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $suppliers = \App\Models\AP\Supplier::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -89,16 +91,17 @@ class WarehouseController extends Controller
     public function warehouses(Request $request): View
     {
         $this->ensureUser($request);
+
         return view('warehouse.warehouses');
     }
 
     public function documents(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -112,15 +115,16 @@ class WarehouseController extends Controller
     public function document(Request $request, int $id): View
     {
         $this->ensureUser($request);
+
         return view('warehouse.document-show', ['documentId' => $id]);
     }
 
     public function reservations(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -134,9 +138,9 @@ class WarehouseController extends Controller
     public function ledger(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -150,23 +154,23 @@ class WarehouseController extends Controller
     public function writeOffs(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         // Get or create write-off reasons for this company
         $reasons = WriteOffReason::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'requires_comment']);
 
         // If no reasons exist, create default ones
-        if ($reasons->isEmpty() && $companyId) {
+        if ($reasons->isEmpty()) {
             $this->seedWriteOffReasons($companyId);
             $reasons = WriteOffReason::query()
                 ->where('company_id', $companyId)
@@ -185,23 +189,23 @@ class WarehouseController extends Controller
     public function createWriteOff(Request $request): View
     {
         $user = $this->ensureUser($request);
-        $companyId = $this->getCompanyId($user);
+        $companyId = $this->getCompanyId();
 
         $warehouses = Warehouse::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get(['id', 'name']);
 
         // Get or create write-off reasons for this company
         $reasons = WriteOffReason::query()
-            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('company_id', $companyId)
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'requires_comment']);
 
         // If no reasons exist, create default ones
-        if ($reasons->isEmpty() && $companyId) {
+        if ($reasons->isEmpty()) {
             $this->seedWriteOffReasons($companyId);
             $reasons = WriteOffReason::query()
                 ->where('company_id', $companyId)
@@ -242,21 +246,10 @@ class WarehouseController extends Controller
         $fallback = User::query()->first();
         if ($fallback) {
             Auth::login($fallback);
+
             return $fallback;
         }
 
         return null;
-    }
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(?User $user): ?int
-    {
-        if (!$user) {
-            return null;
-        }
-
-        return $user->company_id ?? $user->companies()->first()?->id;
     }
 }

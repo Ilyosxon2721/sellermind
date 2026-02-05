@@ -182,7 +182,6 @@ function agentRunPage(runId) {
         async loadRun() {
             try {
                 const response = await window.api.get(`/agent/runs/${this.runId}`);
-                console.log('Run API response:', response.data);
                 this.run = response.data.run;
 
                 // Stop refresh if finished

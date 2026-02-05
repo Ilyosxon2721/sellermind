@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
-use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\MarketplaceHttpClient;
+use App\Services\Marketplaces\OzonClient;
 use App\Services\Stock\OrderStockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +29,7 @@ class OzonSyncOrders extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('Нет активных OZON аккаунтов');
+
             return self::SUCCESS;
         }
 
@@ -56,7 +57,7 @@ class OzonSyncOrders extends Command
     {
         $httpClient = app(MarketplaceHttpClient::class);
         $client = new OzonClient($httpClient);
-        $orderStockService = new OrderStockService();
+        $orderStockService = new OrderStockService;
 
         $this->line('  Начинаем синхронизацию заказов...');
         $startTime = microtime(true);
@@ -94,7 +95,7 @@ class OzonSyncOrders extends Command
                 $postingNumber = $orderData['external_order_id'] ?? $rawPayload['posting_number'] ?? null;
                 $orderId = $rawPayload['order_id'] ?? $rawPayload['order_number'] ?? $postingNumber;
 
-                if (!$postingNumber) {
+                if (! $postingNumber) {
                     throw new \Exception('Missing posting_number in order data');
                 }
 

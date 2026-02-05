@@ -28,6 +28,7 @@ class SyncWildberriesSupplies extends Command
 
         if ($accounts->isEmpty()) {
             $this->warn('No Wildberries accounts found.');
+
             return self::SUCCESS;
         }
 

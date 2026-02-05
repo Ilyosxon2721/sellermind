@@ -1,14 +1,13 @@
 <?php
+
 // file: app/Services/Marketplaces/MarketplaceReconciliationService.php
 
 namespace App\Services\Marketplaces;
 
+use App\Models\MarketplaceOrder;
 use App\Models\MarketplacePayout;
 use App\Models\MarketplacePayoutItem;
-use App\Models\MarketplaceOrder;
-use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceSyncLog;
-use Illuminate\Support\Facades\DB;
 
 class MarketplaceReconciliationService
 {
@@ -143,7 +142,7 @@ class MarketplaceReconciliationService
             'status' => empty($discrepancies) ? 'success' : 'warning',
             'message' => empty($discrepancies)
                 ? "Сверка выплаты #{$payout->id} успешна"
-                : "Сверка выплаты #{$payout->id}: найдено " . count($discrepancies) . " расхождений",
+                : "Сверка выплаты #{$payout->id}: найдено ".count($discrepancies).' расхождений',
             'started_at' => now(),
             'finished_at' => now(),
             'request_payload' => ['payout_id' => $payout->id],

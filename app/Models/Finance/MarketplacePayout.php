@@ -54,7 +54,9 @@ class MarketplacePayout extends Model
 
     // Statuses
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_RECEIVED = 'received';
+
     public const STATUS_RECONCILED = 'reconciled';
 
     // Relationships

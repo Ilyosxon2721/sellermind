@@ -1,7 +1,9 @@
 <!-- Sidebar Component -->
-<div class="bg-white border-r border-gray-200 flex flex-col h-full transition-all duration-300"
+<div class="bg-white flex flex-col h-full transition-all duration-300
+            max-lg:fixed max-lg:inset-y-0 max-lg:z-40"
      :class="[
-         sidebarOpen ? 'open' : '',
+         $store.ui.navPosition === 'right' ? 'right-0 border-l border-gray-200' : 'left-0 border-r border-gray-200',
+         sidebarOpen ? '' : ($store.ui.navPosition === 'right' ? 'max-lg:translate-x-full' : 'max-lg:-translate-x-full'),
          $store.ui.sidebarCollapsed ? 'w-16' : 'w-72'
      ]"
      role="complementary">

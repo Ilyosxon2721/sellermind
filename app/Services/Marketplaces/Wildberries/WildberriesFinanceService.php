@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Services/Marketplaces/Wildberries/WildberriesFinanceService.php
 
 namespace App\Services\Marketplaces\Wildberries;
@@ -33,7 +34,6 @@ class WildberriesFinanceService
     /**
      * Get seller account balance
      *
-     * @param MarketplaceAccount $account
      * @return array Balance information
      */
     public function getBalance(MarketplaceAccount $account): array
@@ -60,11 +60,10 @@ class WildberriesFinanceService
     /**
      * Get detailed sales report by period
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom Start date
-     * @param Carbon|null $dateTo End date (default: now)
-     * @param int $limit Records per page (max 100000, default 1000)
-     * @param int $rrdid Last record ID for pagination
+     * @param  Carbon  $dateFrom  Start date
+     * @param  Carbon|null  $dateTo  End date (default: now)
+     * @param  int  $limit  Records per page (max 100000, default 1000)
+     * @param  int  $rrdid  Last record ID for pagination
      * @return array Report data
      */
     public function getDetailedReport(
@@ -111,9 +110,6 @@ class WildberriesFinanceService
     /**
      * Get full detailed report with pagination
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon|null $dateTo
      * @return array All report records
      */
     public function getFullDetailedReport(
@@ -155,7 +151,6 @@ class WildberriesFinanceService
     /**
      * Get document categories
      *
-     * @param MarketplaceAccount $account
      * @return array Categories list
      */
     public function getDocumentCategories(MarketplaceAccount $account): array
@@ -182,10 +177,9 @@ class WildberriesFinanceService
     /**
      * Get documents list
      *
-     * @param MarketplaceAccount $account
-     * @param string|null $category Document category
-     * @param Carbon|null $dateFrom Start date
-     * @param Carbon|null $dateTo End date
+     * @param  string|null  $category  Document category
+     * @param  Carbon|null  $dateFrom  Start date
+     * @param  Carbon|null  $dateTo  End date
      * @return array Documents list
      */
     public function getDocuments(
@@ -231,9 +225,8 @@ class WildberriesFinanceService
     /**
      * Download document
      *
-     * @param MarketplaceAccount $account
-     * @param string $documentId Document ID
-     * @param bool $save Save to storage
+     * @param  string  $documentId  Document ID
+     * @param  bool  $save  Save to storage
      * @return array ['content' => string, 'file_path' => string|null, 'filename' => string]
      */
     public function downloadDocument(
@@ -281,10 +274,7 @@ class WildberriesFinanceService
     /**
      * Download all documents for period
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
-     * @param bool $save Save to storage
+     * @param  bool  $save  Save to storage
      * @return array List of downloaded documents
      */
     public function downloadAllDocuments(
@@ -299,7 +289,7 @@ class WildberriesFinanceService
         foreach ($documents as $doc) {
             $documentId = $doc['documentId'] ?? $doc['id'] ?? null;
 
-            if (!$documentId) {
+            if (! $documentId) {
                 continue;
             }
 
@@ -322,7 +312,7 @@ class WildberriesFinanceService
         Log::info('WB bulk documents download completed', [
             'account_id' => $account->id,
             'total' => count($documents),
-            'downloaded' => count(array_filter($downloaded, fn($d) => !isset($d['error']))),
+            'downloaded' => count(array_filter($downloaded, fn ($d) => ! isset($d['error']))),
         ]);
 
         return $downloaded;
@@ -335,7 +325,7 @@ class WildberriesFinanceService
      * For Uzbekistan sellers, this is UZS, NOT RUB despite field names like "delivery_rub".
      * The currency is determined from the first record's currency_name field.
      *
-     * @param array $reportData Detailed report data
+     * @param  array  $reportData  Detailed report data
      * @return array Summary statistics with currency info
      */
     public function calculateSummary(array $reportData): array
@@ -354,7 +344,7 @@ class WildberriesFinanceService
         ];
 
         // Detect currency from first record (WB returns currency_name in each record)
-        if (!empty($reportData)) {
+        if (! empty($reportData)) {
             $firstRecord = $reportData[0] ?? null;
             if ($firstRecord && isset($firstRecord['currency_name'])) {
                 $summary['currency'] = $firstRecord['currency_name'];
@@ -411,9 +401,6 @@ class WildberriesFinanceService
      * Get paid storage fees for period
      * GET /api/v1/paid_storage
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
      * @return float Total storage fees in RUB
      */
     public function getPaidStorageFees(
@@ -463,9 +450,6 @@ class WildberriesFinanceService
      * For Uzbekistan sellers, amounts are in UZS, NOT RUB.
      * The currency is detected from the API response (currency_name field).
      *
-     * @param MarketplaceAccount $account
-     * @param Carbon $dateFrom
-     * @param Carbon $dateTo
      * @return array Full expense summary with detected currency
      */
     public function getExpensesSummary(
@@ -517,10 +501,6 @@ class WildberriesFinanceService
     /**
      * Save document to storage
      *
-     * @param MarketplaceAccount $account
-     * @param string $documentId
-     * @param string $content
-     * @param string $filename
      * @return string File path
      */
     protected function saveDocument(

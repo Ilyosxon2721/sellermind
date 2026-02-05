@@ -23,6 +23,7 @@ class PaymentService
             throw new RuntimeException('Payment not in draft');
         }
         $payment->update($data);
+
         return $payment;
     }
 
@@ -41,6 +42,7 @@ class PaymentService
                     'amount_allocated' => $alloc['amount'],
                 ]);
             }
+
             return $payment->fresh('allocations');
         });
     }
@@ -65,7 +67,7 @@ class PaymentService
                 if ($invoice->supplier_id !== $payment->supplier_id) {
                     throw new RuntimeException('Invoice supplier mismatch');
                 }
-                if (!$allowOver && ($alloc->amount_allocated > $invoice->amount_outstanding)) {
+                if (! $allowOver && ($alloc->amount_allocated > $invoice->amount_outstanding)) {
                     throw new RuntimeException('Allocation exceeds outstanding');
                 }
             }
@@ -96,7 +98,7 @@ class PaymentService
             $reversal = SupplierPayment::create([
                 'company_id' => $original->company_id,
                 'supplier_id' => $original->supplier_id,
-                'payment_no' => $original->payment_no . '-REV',
+                'payment_no' => $original->payment_no.'-REV',
                 'status' => SupplierPayment::STATUS_DRAFT,
                 'paid_at' => now(),
                 'currency_code' => $original->currency_code,
@@ -104,7 +106,7 @@ class PaymentService
                 'amount_total' => -1 * $original->amount_total,
                 'method' => $original->method,
                 'reference' => $original->reference,
-                'comment' => 'Reversal of ' . $original->payment_no,
+                'comment' => 'Reversal of '.$original->payment_no,
             ]);
 
             $allocations = $original->allocations->map(function ($alloc) {

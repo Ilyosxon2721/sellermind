@@ -1,12 +1,13 @@
 <?php
+
 // file: app/Models/MarketplaceWarehouse.php
 
 namespace App\Models;
 
+use App\Models\Warehouse\Warehouse;
+use App\Services\Marketplaces\Wildberries\WildberriesStockService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Services\Marketplaces\Wildberries\WildberriesStockService;
-use App\Models\Warehouse\Warehouse;
 
 class MarketplaceWarehouse extends Model
 {
@@ -43,9 +44,6 @@ class MarketplaceWarehouse extends Model
 
     /**
      * Get available WB warehouses for mapping (from Marketplace API)
-     *
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public static function getAvailableWbWarehouses(MarketplaceAccount $account): array
     {
@@ -55,17 +53,18 @@ class MarketplaceWarehouse extends Model
 
         // Check if marketplace token is available
         $marketplaceToken = $account->getWbToken('marketplace');
-        if (!$marketplaceToken) {
+        if (! $marketplaceToken) {
             \Log::warning('WB warehouses: no marketplace token available', [
                 'account_id' => $account->id,
-                'has_api_key' => !empty($account->api_key),
+                'has_api_key' => ! empty($account->api_key),
             ]);
+
             // Try to get from DB cache first
             return self::getWarehousesFromDb($account);
         }
 
         try {
-            $stockService = new WildberriesStockService();
+            $stockService = new WildberriesStockService;
             $warehouses = $stockService->getWarehouses($account);
 
             \Log::info('WB warehouses fetched', [
@@ -84,6 +83,7 @@ class MarketplaceWarehouse extends Model
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
+
             // Fallback to DB cache
             return self::getWarehousesFromDb($account);
         }
@@ -110,7 +110,7 @@ class MarketplaceWarehouse extends Model
         return $dbWarehouses->map(function ($wh) {
             return [
                 'id' => $wh->warehouse_id,
-                'name' => $wh->warehouse_name ?? 'Склад ' . $wh->warehouse_id,
+                'name' => $wh->warehouse_name ?? 'Склад '.$wh->warehouse_id,
                 'deliveryType' => $wh->warehouse_type === 'FBS' ? 1 : ($wh->warehouse_type === 'DBS' ? 2 : 1),
             ];
         })->toArray();
@@ -119,9 +119,6 @@ class MarketplaceWarehouse extends Model
     /**
      * Sync WB warehouses from Marketplace API
      * Creates or updates warehouse mappings with marketplace_warehouse_id
-     * 
-     * @param MarketplaceAccount $account
-     * @return array
      */
     public static function syncFromMarketplace(MarketplaceAccount $account): array
     {
@@ -140,7 +137,7 @@ class MarketplaceWarehouse extends Model
                     $warehouseId = $whData['id'] ?? null;
                     $name = $whData['name'] ?? 'Unknown';
 
-                    if (!$warehouseId) {
+                    if (! $warehouseId) {
                         continue;
                     }
 
@@ -158,11 +155,11 @@ class MarketplaceWarehouse extends Model
 
                     $synced++;
                 } catch (\Exception $e) {
-                    $errors[] = "Error syncing warehouse {$name}: " . $e->getMessage();
+                    $errors[] = "Error syncing warehouse {$name}: ".$e->getMessage();
                 }
             }
         } catch (\Exception $e) {
-            $errors[] = 'Failed to sync warehouses: ' . $e->getMessage();
+            $errors[] = 'Failed to sync warehouses: '.$e->getMessage();
         }
 
         return [
@@ -190,7 +187,7 @@ class MarketplaceWarehouse extends Model
      */
     public static function getMappedWarehouseId(MarketplaceAccount $account, ?int $localWarehouseId): ?int
     {
-        if (!$localWarehouseId) {
+        if (! $localWarehouseId) {
             return null;
         }
 

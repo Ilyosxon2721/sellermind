@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;

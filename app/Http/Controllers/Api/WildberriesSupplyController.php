@@ -1,4 +1,5 @@
 <?php
+
 // file: app/Http/Controllers/Api/WildberriesSupplyController.php
 
 namespace App\Http\Controllers\Api;
@@ -24,11 +25,11 @@ class WildberriesSupplyController extends Controller
      */
     public function index(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -51,7 +52,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить список поставок: ' . $e->getMessage(),
+                'message' => 'Не удалось получить список поставок: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -61,11 +62,11 @@ class WildberriesSupplyController extends Controller
      */
     public function store(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -89,7 +90,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось создать поставку: ' . $e->getMessage(),
+                'message' => 'Не удалось создать поставку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -99,11 +100,11 @@ class WildberriesSupplyController extends Controller
      */
     public function show(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -123,7 +124,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить детали поставки: ' . $e->getMessage(),
+                'message' => 'Не удалось получить детали поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -133,11 +134,11 @@ class WildberriesSupplyController extends Controller
      */
     public function orders(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -158,7 +159,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить заказы поставки: ' . $e->getMessage(),
+                'message' => 'Не удалось получить заказы поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -168,11 +169,11 @@ class WildberriesSupplyController extends Controller
      */
     public function addOrders(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -197,7 +198,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось добавить заказы в поставку: ' . $e->getMessage(),
+                'message' => 'Не удалось добавить заказы в поставку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -207,11 +208,11 @@ class WildberriesSupplyController extends Controller
      */
     public function removeOrder(Request $request, MarketplaceAccount $account, string $supplyId, int $orderId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -232,7 +233,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось удалить заказ из поставки: ' . $e->getMessage(),
+                'message' => 'Не удалось удалить заказ из поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -242,11 +243,11 @@ class WildberriesSupplyController extends Controller
      */
     public function barcode(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -273,7 +274,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить баркод поставки: ' . $e->getMessage(),
+                'message' => 'Не удалось получить баркод поставки: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -283,11 +284,11 @@ class WildberriesSupplyController extends Controller
      */
     public function cancel(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -307,7 +308,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось отменить поставку: ' . $e->getMessage(),
+                'message' => 'Не удалось отменить поставку: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -317,11 +318,11 @@ class WildberriesSupplyController extends Controller
      */
     public function deliver(Request $request, MarketplaceAccount $account, string $supplyId): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -341,7 +342,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось отметить поставку как доставленную: ' . $e->getMessage(),
+                'message' => 'Не удалось отметить поставку как доставленную: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -351,11 +352,11 @@ class WildberriesSupplyController extends Controller
      */
     public function reshipmentOrders(Request $request, MarketplaceAccount $account): JsonResponse
     {
-        if (!$request->user()->hasCompanyAccess($account->company_id)) {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        if (!$account->isWildberries()) {
+        if (! $account->isWildberries()) {
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
@@ -375,7 +376,7 @@ class WildberriesSupplyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось получить заказы для повторной отправки: ' . $e->getMessage(),
+                'message' => 'Не удалось получить заказы для повторной отправки: '.$e->getMessage(),
             ], 500);
         }
     }

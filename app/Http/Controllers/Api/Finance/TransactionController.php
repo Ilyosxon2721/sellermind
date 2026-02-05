@@ -13,14 +13,12 @@ class TransactionController extends Controller
 {
     use ApiResponder;
 
-    public function __construct(protected TransactionService $service)
-    {
-    }
+    public function __construct(protected TransactionService $service) {}
 
     public function index(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -43,9 +41,10 @@ class TransactionController extends Controller
             $query->whereDate('transaction_date', '<=', $to);
         }
         if ($search = $request->get('query')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', '%' . $search . '%')
-                    ->orWhere('reference', 'like', '%' . $search . '%');
+                $q->where('description', 'like', '%'.$search.'%')
+                    ->orWhere('reference', 'like', '%'.$search.'%');
             });
         }
 
@@ -60,7 +59,7 @@ class TransactionController extends Controller
     public function show($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -74,7 +73,7 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -83,19 +82,20 @@ class TransactionController extends Controller
         $data['created_by'] = Auth::id();
 
         $transaction = $this->service->create($data);
+
         return $this->successResponse($transaction->load(['category', 'subcategory', 'counterparty', 'employee']));
     }
 
     public function update($id, Request $request)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $transaction = FinanceTransaction::byCompany($companyId)->findOrFail($id);
 
-        if (!$transaction->isDraft()) {
+        if (! $transaction->isDraft()) {
             return $this->errorResponse('Only draft transactions can be edited', 'invalid_state', null, 422);
         }
 
@@ -108,13 +108,13 @@ class TransactionController extends Controller
     public function destroy($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $transaction = FinanceTransaction::byCompany($companyId)->find($id);
 
-        if (!$transaction) {
+        if (! $transaction) {
             return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
         }
 
@@ -131,17 +131,17 @@ class TransactionController extends Controller
     public function restore($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $transaction = FinanceTransaction::byCompany($companyId)->find($id);
 
-        if (!$transaction) {
+        if (! $transaction) {
             return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
         }
 
-        if (!$transaction->isDeleted()) {
+        if (! $transaction->isDeleted()) {
             return $this->errorResponse('Транзакция не удалена', 'invalid_state', null, 422);
         }
 
@@ -153,17 +153,17 @@ class TransactionController extends Controller
     public function confirm($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $transaction = FinanceTransaction::byCompany($companyId)->find($id);
 
-        if (!$transaction) {
+        if (! $transaction) {
             return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
         }
 
-        if (!$transaction->isDraft()) {
+        if (! $transaction->isDraft()) {
             return $this->errorResponse('Транзакция уже подтверждена или отменена', 'invalid_state', null, 422);
         }
 
@@ -175,13 +175,13 @@ class TransactionController extends Controller
     public function cancel($id)
     {
         $companyId = Auth::user()?->company_id;
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
         $transaction = FinanceTransaction::byCompany($companyId)->find($id);
 
-        if (!$transaction) {
+        if (! $transaction) {
             return $this->errorResponse('Транзакция не найдена', 'not_found', null, 404);
         }
 

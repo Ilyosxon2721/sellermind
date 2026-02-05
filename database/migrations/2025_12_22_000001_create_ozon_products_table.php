@@ -36,7 +36,7 @@ return new class extends Migration
             $table->boolean('visible')->default(true);
             $table->timestamp('last_synced_at')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['marketplace_account_id', 'external_product_id'], 'ozon_products_account_external_unique');
             $table->index(['marketplace_account_id', 'barcode']);
             $table->index(['marketplace_account_id', 'status']);

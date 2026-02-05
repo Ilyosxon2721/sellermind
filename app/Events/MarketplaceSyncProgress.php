@@ -2,8 +2,8 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -13,10 +13,15 @@ class MarketplaceSyncProgress implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $companyId;
+
     public int $marketplaceAccountId;
+
     public string $status; // 'started', 'progress', 'completed', 'error'
+
     public string $message;
+
     public ?int $progress; // 0-100
+
     public ?array $data;
 
     /**

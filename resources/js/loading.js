@@ -87,5 +87,3 @@ if (window.axios) {
         }
     );
 }
-
-console.log('✅ Loading Indicator: Ready');

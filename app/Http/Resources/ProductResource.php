@@ -29,7 +29,7 @@ class ProductResource extends JsonResource
             'updated_at' => $this->updated_at,
             'descriptions' => ProductDescriptionResource::collection($this->whenLoaded('descriptions')),
             'images' => ProductImageResource::collection($this->whenLoaded('images')),
-            'primary_image' => new ProductImageResource($this->whenLoaded('images', fn() => $this->primaryImage())),
+            'primary_image' => new ProductImageResource($this->whenLoaded('images', fn () => $this->primaryImage())),
         ];
     }
 }

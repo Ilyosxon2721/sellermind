@@ -32,8 +32,9 @@ class AutoLinkMarketplaceProducts extends Command
         $companyId = $this->option('company');
         $all = $this->option('all');
 
-        if (!$accountId && !$companyId && !$all) {
+        if (! $accountId && ! $companyId && ! $all) {
             $this->error('Укажите --account=ID, --company=ID или --all');
+
             return self::FAILURE;
         }
 
@@ -50,8 +51,9 @@ class AutoLinkMarketplaceProducts extends Command
 
         if ($accountId) {
             $account = MarketplaceAccount::find($accountId);
-            if (!$account) {
+            if (! $account) {
                 $this->error("Аккаунт #{$accountId} не найден");
+
                 return self::FAILURE;
             }
 
@@ -63,6 +65,7 @@ class AutoLinkMarketplaceProducts extends Command
 
             if ($accounts->isEmpty()) {
                 $this->warn("Нет активных аккаунтов для компании #{$companyId}");
+
                 return self::SUCCESS;
             }
 
@@ -78,6 +81,7 @@ class AutoLinkMarketplaceProducts extends Command
 
             if ($accounts->isEmpty()) {
                 $this->warn('Нет активных аккаунтов');
+
                 return self::SUCCESS;
             }
 

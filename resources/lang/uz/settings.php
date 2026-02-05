@@ -9,7 +9,7 @@ return [
     'integrations' => 'Integratsiyalar',
     'billing' => 'To\'lov',
     'notifications' => 'Bildirishnomalar',
-    
+
     // Profile
     'personal_info' => 'Shaxsiy ma\'lumot',
     'full_name' => 'To\'liq ism',
@@ -20,7 +20,7 @@ return [
     'current_password' => 'Joriy parol',
     'new_password' => 'Yangi parol',
     'confirm_password' => 'Parolni tasdiqlang',
-    
+
     // Company
     'company_info' => 'Kompaniya ma\'lumoti',
     'company_name' => 'Kompaniya nomi',
@@ -28,7 +28,7 @@ return [
     'tax_id' => 'INN',
     'address' => 'Manzil',
     'website' => 'Veb-sayt',
-    
+
     // Users & Permissions
     'team_members' => 'Jamoa a\'zolari',
     'invite_user' => 'Foydalanuvchini taklif qilish',
@@ -37,7 +37,7 @@ return [
     'admin' => 'Administrator',
     'manager' => 'Menejer',
     'employee' => 'Xodim',
-    
+
     // Integrations
     'marketplace_connections' => 'Marketplace ulanishlari',
     'api_keys' => 'API kalitlar',
@@ -46,7 +46,7 @@ return [
     'not_connected' => 'Ulanmagan',
     'connect' => 'Ulash',
     'disconnect' => 'Uzish',
-    
+
     // Notifications
     'email_notifications' => 'Email bildirishnomalar',
     'push_notifications' => 'Push bildirishnomalar',
@@ -54,7 +54,7 @@ return [
     'low_stock_alerts' => 'Past qoldiq ogohlantirishlari',
     'new_orders' => 'Yangi buyurtmalar',
     'daily_report' => 'Kunlik hisobot',
-    
+
     // Messages
     'settings_saved' => 'Sozlamalar saqlandi',
     'password_changed' => 'Parol o\'zgartirildi',

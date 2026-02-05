@@ -60,20 +60,29 @@ class OfflineSale extends Model
 
     // Sale types
     public const TYPE_RETAIL = 'retail';
+
     public const TYPE_WHOLESALE = 'wholesale';
+
     public const TYPE_DIRECT = 'direct';
 
     // Statuses
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_SHIPPED = 'shipped';
+
     public const STATUS_DELIVERED = 'delivered';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_RETURNED = 'returned';
 
     // Payment statuses
     public const PAYMENT_UNPAID = 'unpaid';
+
     public const PAYMENT_PARTIAL = 'partial';
+
     public const PAYMENT_PAID = 'paid';
 
     // ========== Relationships ==========

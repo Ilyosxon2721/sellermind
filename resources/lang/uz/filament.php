@@ -24,7 +24,7 @@ return [
             'label' => 'Kompaniya',
             'plural' => 'Kompaniyalar',
         ],
-        
+
         // Billing group
         'plan' => [
             'label' => 'Tarif',
@@ -34,7 +34,7 @@ return [
             'label' => 'Obuna',
             'plural' => 'Obunalar',
         ],
-        
+
         // Finance group
         'sale' => [
             'label' => 'Savdo',
@@ -44,7 +44,7 @@ return [
             'label' => 'To\'lov',
             'plural' => 'Marketpleys to\'lovlari',
         ],
-        
+
         // Catalog group
         'product' => [
             'label' => 'Mahsulot',
@@ -54,7 +54,7 @@ return [
             'label' => 'Kategoriya',
             'plural' => 'Kategoriyalar',
         ],
-        
+
         // Warehouse group
         'warehouse' => [
             'label' => 'Ombor',
@@ -64,7 +64,7 @@ return [
             'label' => 'Inventarizatsiya',
             'plural' => 'Inventarizatsiya',
         ],
-        
+
         // Marketplaces group
         'marketplace_account' => [
             'label' => 'Marketpleys akkaunti',
@@ -82,7 +82,7 @@ return [
             'label' => 'Avtomatlashtirish qoidasi',
             'plural' => 'Avtomatlashtirish',
         ],
-        
+
         // AI & Content group
         'agent' => [
             'label' => 'Agent',
@@ -100,7 +100,7 @@ return [
             'label' => 'AI logi',
             'plural' => 'AI foydalanish loglari',
         ],
-        
+
         // System group
         'global_option' => [
             'label' => 'Global sozlama',

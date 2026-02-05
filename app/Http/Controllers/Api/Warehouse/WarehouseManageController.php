@@ -3,31 +3,20 @@
 namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Models\Warehouse\Warehouse;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class WarehouseManageController extends Controller
 {
     use ApiResponder;
-
-    /**
-     * Get company ID with fallback to companies relationship
-     */
-    private function getCompanyId(): ?int
-    {
-        $user = request()->user() ?? Auth::user();
-        if (!$user) {
-            return null;
-        }
-        return $user->company_id ?? $user->companies()->first()?->id;
-    }
+    use HasCompanyScope;
 
     public function index()
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -43,7 +32,7 @@ class WarehouseManageController extends Controller
     public function show($id)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -55,7 +44,7 @@ class WarehouseManageController extends Controller
     public function store(Request $request)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -72,7 +61,7 @@ class WarehouseManageController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             Warehouse::where('company_id', $companyId)->update(['is_default' => false]);
         }
 
@@ -96,7 +85,7 @@ class WarehouseManageController extends Controller
     public function update($id, Request $request)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
@@ -114,7 +103,7 @@ class WarehouseManageController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             Warehouse::where('company_id', $companyId)->update(['is_default' => false]);
         }
 
@@ -126,7 +115,7 @@ class WarehouseManageController extends Controller
     public function makeDefault($id)
     {
         $companyId = $this->getCompanyId();
-        if (!$companyId) {
+        if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 

@@ -17,6 +17,7 @@ class ProcessGenerationTaskJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 600; // 10 minutes
 
     public function __construct(
@@ -61,7 +62,7 @@ class ProcessGenerationTaskJob implements ShouldQueue
             $language,
             $this->task->company_id,
             $this->task->user_id,
-            fn($progress) => $this->task->updateProgress($progress)
+            fn ($progress) => $this->task->updateProgress($progress)
         );
 
         return [
@@ -84,7 +85,7 @@ class ProcessGenerationTaskJob implements ShouldQueue
         foreach ($descriptions as $descriptionId) {
             try {
                 $description = \App\Models\ProductDescription::find($descriptionId);
-                if (!$description) {
+                if (! $description) {
                     continue;
                 }
 
@@ -93,7 +94,7 @@ class ProcessGenerationTaskJob implements ShouldQueue
                 $updatePrompt .= "Текущее описание:\n";
                 $updatePrompt .= "Название: {$description->title}\n";
                 $updatePrompt .= "Описание: {$description->full_description}\n\n";
-                $updatePrompt .= "Верни обновлённые данные в JSON формате: {\"title\": \"...\", \"full_description\": \"...\"}";
+                $updatePrompt .= 'Верни обновлённые данные в JSON формате: {"title": "...", "full_description": "..."}';
 
                 $response = $aiService->generateChatResponse(
                     [],
@@ -150,7 +151,7 @@ class ProcessGenerationTaskJob implements ShouldQueue
         foreach ($products as $productData) {
             try {
                 $product = \App\Models\Product::find($productData['id']);
-                if (!$product) {
+                if (! $product) {
                     continue;
                 }
 

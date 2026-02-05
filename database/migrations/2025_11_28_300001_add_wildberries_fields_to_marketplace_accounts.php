@@ -1,4 +1,5 @@
 <?php
+
 // file: database/migrations/2025_11_28_300001_add_wildberries_fields_to_marketplace_accounts.php
 
 use Illuminate\Database\Migrations\Migration;
