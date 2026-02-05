@@ -50,10 +50,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('health', [HealthCheckController::class, 'index']);
 Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
 
-Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
-});
+// Auth routes (login, register) moved to routes/web.php for proper session cookie handling
+// POST /api/auth/login and POST /api/auth/register are now defined in web.php
 
 // Marketplace webhooks (public, no auth required)
 Route::prefix('webhooks/marketplaces')->group(function () {
