@@ -89,6 +89,13 @@ Route::get('/api/health', function () {
     return response()->json(['status' => 'ok'], 200);
 });
 
+// Auth API routes (in web.php for proper session cookie handling)
+// These MUST be in web.php, not api.php, for session cookies to work correctly
+Route::prefix('api/auth')->group(function () {
+    Route::post('register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
+    Route::post('login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+});
+
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
     Route::get('/home', function () {
