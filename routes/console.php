@@ -169,6 +169,24 @@ Schedule::command('uzum:sync-expenses --days=365')
     })
     ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
 
+// Yandex Market: Синхронизация заказов каждые 15 минут
+Schedule::command('ym:sync-orders --days=7')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('Yandex Market orders sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
+
+// Yandex Market: Push остатков каждый час
+Schedule::command('ym:push-stocks')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Yandex Market stocks push failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
+
 // Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
 // Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
 Schedule::command('marketplace:sync-expenses --period=30days')
