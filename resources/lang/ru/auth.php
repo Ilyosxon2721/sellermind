@@ -45,4 +45,5 @@ return [
     // Common
     'or' => 'или',
     'continue_with' => 'Продолжить с',
+    'coming_soon' => 'Скоро',
 ];
