@@ -96,8 +96,12 @@ Alpine.store('auth', {
         return result;
     },
 
-    async loadCompanies() {
+    async loadCompanies(retryCount = 0) {
+        const maxRetries = 3;
+        const retryDelay = 500; // ms
+
         try {
+            console.log('Loading companies...', retryCount > 0 ? `(retry ${retryCount})` : '');
             this.companies = await companies.list();
 
             // Auto-select company: prefer user's company_id, then persisted, then first
@@ -127,6 +131,16 @@ Alpine.store('auth', {
             }
         } catch (e) {
             console.error('Failed to load companies:', e);
+
+            // Retry на 401 — сессия могла не успеть синхронизироваться
+            if (e.response?.status === 401 && retryCount < maxRetries) {
+                console.log(`Retrying loadCompanies in ${retryDelay}ms...`);
+                await new Promise(r => setTimeout(r, retryDelay * (retryCount + 1)));
+                return this.loadCompanies(retryCount + 1);
+            }
+
+            // Не выбрасываем ошибку — позволяем редиректу на dashboard произойти
+            // Companies загрузятся после page reload
         }
     },
 
