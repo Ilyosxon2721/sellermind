@@ -45,4 +45,5 @@ return [
     // Common
     'or' => 'yoki',
     'continue_with' => 'Davom etish',
+    'coming_soon' => 'Tez kunda',
 ];

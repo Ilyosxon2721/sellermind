@@ -142,6 +142,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('auth.password') }}</label>
                         <div class="relative">
                             <input :type="showPassword ? 'text' : 'password'" x-model="password" required autocomplete="current-password"
+                                   minlength="8"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-12 text-gray-900"
                                    placeholder="••••••••">
                             <button type="button" @click="showPassword = !showPassword" 
@@ -162,7 +163,7 @@
                             <input type="checkbox" x-model="rememberMe" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             <span class="ml-2 text-sm text-gray-600">{{ __('auth.remember_me') }}</span>
                         </label>
-                        <a href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">{{ __('auth.forgot_password') }}</a>
+                        <span class="text-sm text-gray-400 cursor-not-allowed" title="{{ __('auth.coming_soon') }}">{{ __('auth.forgot_password') }}</span>
                     </div>
                     
                     <button type="submit" :disabled="loading"
@@ -239,6 +240,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('auth.password') }}</label>
                     <div class="relative">
                         <input :type="showPassword ? 'text' : 'password'" x-model="password" required autocomplete="current-password"
+                               minlength="8"
                                class="native-input w-full pr-12"
                                placeholder="••••••••">
                         <button type="button" @click="showPassword = !showPassword"
@@ -259,7 +261,7 @@
                         <input type="checkbox" x-model="rememberMe" class="w-4 h-4 text-blue-600 border-gray-300 rounded">
                         <span class="ml-2 text-sm text-gray-600">{{ __('auth.remember_me') }}</span>
                     </label>
-                    <a href="#" class="text-sm text-blue-600 font-medium">{{ __('auth.forgot_password') }}</a>
+                    <span class="text-sm text-gray-400 cursor-not-allowed">{{ __('auth.forgot_password') }}</span>
                 </div>
 
                 <button type="submit" :disabled="loading"
