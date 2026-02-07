@@ -132,9 +132,23 @@ class OrderStockService
 
         // 3. Отмена заказа
         if ($isCancelledStatus) {
-            // Если был резерв, статус не установлен или skipped - отменяем резерв и возвращаем остаток
-            if (in_array($currentStockStatus, ['reserved', 'none', 'skipped'])) {
+            // Если был резерв - отменяем резерв и возвращаем остаток
+            if ($currentStockStatus === 'reserved') {
                 return $this->releaseReserve($account, $order, $items, $marketplace);
+            }
+            // Если резерв НЕ был создан (none/skipped) — просто помечаем как released
+            // БЕЗ движения остатков, т.к. списания не было
+            if (in_array($currentStockStatus, ['none', 'skipped'])) {
+                $order->update([
+                    'stock_status' => 'released',
+                    'stock_released_at' => now(),
+                ]);
+                Log::info('OrderStockService: Cancelled order without reservation, no stock adjustment needed', [
+                    'order_id' => $order->id,
+                    'previous_stock_status' => $currentStockStatus,
+                ]);
+
+                return ['success' => true, 'action' => 'released_no_stock', 'message' => 'Order cancelled, no stock was reserved'];
             }
             // Если уже продан - ничего не делаем (возврат вручную)
             if ($currentStockStatus === 'sold') {
