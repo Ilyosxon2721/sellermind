@@ -231,12 +231,13 @@ class UzumSyncExpenses extends Command
         }
 
         // API returns milliseconds
+        $appTz = config('app.timezone');
         if (is_numeric($timestamp) && $timestamp > 1000000000000) {
-            return Carbon::createFromTimestampMs($timestamp);
+            return Carbon::createFromTimestampMs($timestamp, $appTz);
         }
 
         if (is_numeric($timestamp)) {
-            return Carbon::createFromTimestamp($timestamp);
+            return Carbon::createFromTimestamp($timestamp, $appTz);
         }
 
         try {

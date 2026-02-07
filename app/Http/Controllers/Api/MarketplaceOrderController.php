@@ -1047,9 +1047,10 @@ class MarketplaceOrderController extends Controller
             }
             $num = (int) $str;
             try {
+                $appTz = config('app.timezone');
                 return $num > 1e12
-                    ? \Carbon\Carbon::createFromTimestampMs($num)
-                    : \Carbon\Carbon::createFromTimestamp($num);
+                    ? \Carbon\Carbon::createFromTimestampMs($num, $appTz)
+                    : \Carbon\Carbon::createFromTimestamp($num, $appTz);
             } catch (\Throwable $e) {
                 return null;
             }

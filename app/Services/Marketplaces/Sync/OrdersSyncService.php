@@ -363,9 +363,10 @@ class OrdersSyncService
                         $ts = substr($ts, 0, 13);
                     }
                     $num = (int) $ts;
+                    $appTz = config('app.timezone');
                     $orderedAt = $num > 1e12
-                        ? Carbon::createFromTimestampMs($num)
-                        : Carbon::createFromTimestamp($num);
+                        ? Carbon::createFromTimestampMs($num, $appTz)
+                        : Carbon::createFromTimestamp($num, $appTz);
                 } else {
                     $orderedAt = Carbon::parse($orderData['ordered_at']);
                 }
