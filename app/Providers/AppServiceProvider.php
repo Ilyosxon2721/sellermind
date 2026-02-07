@@ -46,6 +46,21 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Rate limiter для вебхуков маркетплейсов
+        RateLimiter::for('webhooks', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        // Rate limiter для аутентификации (защита от брутфорса)
+        RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        // Rate limiter для health check эндпоинтов
+        RateLimiter::for('health', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
+
         // Register observers
         ProductVariant::observe(ProductVariantObserver::class);
         UzumOrder::observe(UzumOrderObserver::class);

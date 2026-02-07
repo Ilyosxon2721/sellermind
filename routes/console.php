@@ -60,7 +60,7 @@ Schedule::command('wb:sync-products all')
 Schedule::call(function () {
     $wbAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'wb')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($wbAccounts as $account) {
         \App\Jobs\SyncNewWildberriesOrdersJob::dispatch($account);
@@ -76,7 +76,7 @@ Schedule::call(function () {
 Schedule::call(function () {
     $wbAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'wb')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($wbAccounts as $account) {
         \App\Jobs\UpdateWildberriesOrdersStatusJob::dispatch($account);
@@ -119,7 +119,7 @@ Schedule::command('ozon:sync-orders')
 Schedule::call(function () {
     $uzumAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'uzum')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($uzumAccounts as $account) {
         \Illuminate\Support\Facades\Artisan::call('uzum:pull-products', ['accountId' => $account->id]);
@@ -208,9 +208,7 @@ Schedule::command('marketplace:sync-expenses --period=30days')
 
 // Smart Promotions: Создание автоматических промо для неликвида (каждый понедельник)
 Schedule::call(function () {
-    $companies = \App\Models\Company::where('is_active', true)->get();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::where('is_active', true)->cursor() as $company) {
         \App\Jobs\ProcessAutoPromotionsJob::dispatch($company->id, [
             'min_days_no_sale' => 30,
             'min_stock' => 5,
@@ -230,9 +228,7 @@ Schedule::call(function () {
 
 // Smart Promotions: Уведомления об истекающих акциях (каждый день)
 Schedule::call(function () {
-    $companies = \App\Models\Company::where('is_active', true)->get();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::where('is_active', true)->cursor() as $company) {
         \App\Jobs\SendPromotionExpiringNotificationsJob::dispatch($company->id, 3);
     }
 })->daily()
@@ -248,9 +244,7 @@ Schedule::call(function () {
 // Sales Analytics: Обновление кэша аналитики (каждый час)
 Schedule::call(function () {
     // Предварительный расчет аналитики для всех компаний
-    $companies = \App\Models\Company::all();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::cursor() as $company) {
         try {
             $analyticsService = app(\App\Services\SalesAnalyticsService::class);
 

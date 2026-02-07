@@ -47,14 +47,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public routes - Health Check
-Route::get('health', [HealthCheckController::class, 'index']);
-Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
+Route::middleware('throttle:health')->group(function () {
+    Route::get('health', [HealthCheckController::class, 'index']);
+    Route::get('health/detailed', [HealthCheckController::class, 'detailed'])->middleware('auth.any');
+});
 
 // Auth routes (login, register) moved to routes/web.php for proper session cookie handling
 // POST /api/auth/login and POST /api/auth/register are now defined in web.php
 
 // Marketplace webhooks (public, no auth required)
-Route::prefix('webhooks/marketplaces')->group(function () {
+Route::prefix('webhooks/marketplaces')->middleware('throttle:webhooks')->group(function () {
     Route::post('{marketplace}', [MarketplaceWebhookController::class, 'handle']);
     Route::post('{marketplace}/{accountId}', [MarketplaceWebhookController::class, 'handleForAccount']);
 });

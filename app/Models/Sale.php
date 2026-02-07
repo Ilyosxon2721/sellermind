@@ -73,7 +73,8 @@ class Sale extends Model
         'metadata' => 'array',
     ];
 
-    protected $appends = ['status_label', 'type_label'];
+    // Убрано из $appends — вычисляется в контроллере/API Resource при необходимости
+    // protected $appends = ['status_label', 'type_label'];
 
     /**
      * Relationships
