@@ -17,13 +17,15 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
+    // ВНИМАНИЕ: В production обязательно задайте CORS_ALLOWED_ORIGINS в .env
+    // Значение '*' оставлено только для обратной совместимости
     'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', '*')),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-XSRF-TOKEN', 'X-Socket-Id'],
 
     'exposed_headers' => [
         'X-Total-Count',

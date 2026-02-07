@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymeWebhookController extends Controller
@@ -95,7 +96,30 @@ class PaymeWebhookController extends Controller
             return $this->error(-31050, 'Subscription not found', $id);
         }
 
-        // Store transaction reference
+        // Валидация суммы (Payme использует тийин, 1 UZS = 100 тийин)
+        $expectedAmount = $subscription->plan->price * 100;
+        if ((int) $amount !== (int) $expectedAmount) {
+            return $this->error(-31001, 'Incorrect amount', $id);
+        }
+
+        // Проверка что подписка не уже активна
+        if ($subscription->status === 'active' && $subscription->ends_at && $subscription->ends_at->isFuture()) {
+            return $this->error(-31051, 'Subscription already active', $id);
+        }
+
+        // Idempotency: если транзакция уже создана с этим transId — вернуть success
+        if ($subscription->payment_reference === $transId && $subscription->payment_method === 'payme') {
+            return response()->json([
+                'result' => [
+                    'create_time' => $subscription->updated_at->timestamp * 1000,
+                    'transaction' => (string) $subscription->id,
+                    'state' => 1,
+                ],
+                'id' => $id,
+            ]);
+        }
+
+        // Сохранение ссылки на транзакцию
         $subscription->update([
             'payment_method' => 'payme',
             'payment_reference' => $transId,
@@ -118,7 +142,6 @@ class PaymeWebhookController extends Controller
     {
         $transId = $params['id'] ?? null;
 
-        // Find subscription by payment reference
         $subscription = Subscription::where('payment_reference', $transId)
             ->where('payment_method', 'payme')
             ->first();
@@ -127,29 +150,52 @@ class PaymeWebhookController extends Controller
             return $this->error(-31003, 'Transaction not found', $id);
         }
 
-        // Activate subscription
-        $amount = $subscription->plan->price;
+        // Idempotency: если уже выполнена — вернуть success
+        if ($subscription->status === 'active') {
+            return response()->json([
+                'result' => [
+                    'transaction' => (string) $subscription->id,
+                    'perform_time' => $subscription->starts_at ? $subscription->starts_at->timestamp * 1000 : now()->timestamp * 1000,
+                    'state' => 2,
+                ],
+                'id' => $id,
+            ]);
+        }
 
-        $subscription->update([
-            'status' => 'active',
-            'amount_paid' => $amount,
-            'starts_at' => now(),
-            'ends_at' => match ($subscription->plan->billing_period) {
-                'monthly' => now()->addMonth(),
-                'quarterly' => now()->addMonths(3),
-                'yearly' => now()->addYear(),
-                default => now()->addMonth(),
-            },
-            'usage_reset_at' => now(),
-        ]);
+        // Активация подписки в транзакции с блокировкой
+        DB::transaction(function () use ($subscription) {
+            $subscription = Subscription::where('id', $subscription->id)->lockForUpdate()->first();
+
+            // Повторная проверка после блокировки
+            if ($subscription->status === 'active') {
+                return;
+            }
+
+            $amount = $subscription->plan->price;
+
+            $subscription->update([
+                'status' => 'active',
+                'amount_paid' => $amount,
+                'starts_at' => now(),
+                'ends_at' => match ($subscription->plan->billing_period) {
+                    'monthly' => now()->addMonth(),
+                    'quarterly' => now()->addMonths(3),
+                    'yearly' => now()->addYear(),
+                    default => now()->addMonth(),
+                },
+                'usage_reset_at' => now(),
+            ]);
+        });
+
+        $subscription->refresh();
 
         Log::info("Subscription {$subscription->id} activated via Payme payment");
 
         return response()->json([
             'result' => [
                 'transaction' => (string) $subscription->id,
-                'perform_time' => now()->timestamp * 1000,
-                'state' => 2, // Completed
+                'perform_time' => $subscription->starts_at ? $subscription->starts_at->timestamp * 1000 : now()->timestamp * 1000,
+                'state' => 2,
             ],
             'id' => $id,
         ]);
@@ -171,15 +217,19 @@ class PaymeWebhookController extends Controller
             return $this->error(-31003, 'Transaction not found', $id);
         }
 
-        // Reset subscription to pending if it was activated
-        if ($subscription->status === 'active') {
-            $subscription->update([
-                'status' => 'pending',
-                'amount_paid' => 0,
-                'starts_at' => null,
-                'ends_at' => null,
-            ]);
-        }
+        // Отмена подписки в транзакции с блокировкой
+        DB::transaction(function () use ($subscription) {
+            $subscription = Subscription::where('id', $subscription->id)->lockForUpdate()->first();
+
+            if ($subscription->status === 'active') {
+                $subscription->update([
+                    'status' => 'cancelled',
+                    'amount_paid' => 0,
+                    'starts_at' => null,
+                    'ends_at' => null,
+                ]);
+            }
+        });
 
         Log::info("Subscription {$subscription->id} payment cancelled via Payme (reason: {$reason})");
 

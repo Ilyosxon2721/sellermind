@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ClickWebhookController extends Controller
@@ -63,7 +64,7 @@ class ClickWebhookController extends Controller
 
         // Проверка суммы
         $expectedAmount = $subscription->plan->price;
-        if ((float) $amount !== (float) $expectedAmount) {
+        if (bccomp((string) $amount, (string) $expectedAmount, 2) !== 0) {
             return response()->json([
                 'error' => -2,
                 'error_note' => 'Incorrect parameter amount',
@@ -153,19 +154,28 @@ class ClickWebhookController extends Controller
             ]);
         }
 
-        // Платёж успешен — активация подписки
-        $subscription->update([
-            'status' => 'active',
-            'amount_paid' => $amount,
-            'starts_at' => now(),
-            'ends_at' => match ($subscription->plan->billing_period) {
-                'monthly' => now()->addMonth(),
-                'quarterly' => now()->addMonths(3),
-                'yearly' => now()->addYear(),
-                default => now()->addMonth(),
-            },
-            'usage_reset_at' => now(),
-        ]);
+        // Платёж успешен — активация подписки в транзакции
+        DB::transaction(function () use ($subscription, $amount) {
+            $subscription->lockForUpdate();
+
+            // Проверка что ещё не активирована (idempotency)
+            if ($subscription->status === 'active') {
+                return;
+            }
+
+            $subscription->update([
+                'status' => 'active',
+                'amount_paid' => $amount,
+                'starts_at' => now(),
+                'ends_at' => match ($subscription->plan->billing_period) {
+                    'monthly' => now()->addMonth(),
+                    'quarterly' => now()->addMonths(3),
+                    'yearly' => now()->addYear(),
+                    default => now()->addMonth(),
+                },
+                'usage_reset_at' => now(),
+            ]);
+        });
 
         Log::info("Subscription {$subscription->id} activated via Click payment");
 
@@ -190,7 +200,7 @@ class ClickWebhookController extends Controller
             $request->input('service_id').
             $secretKey.
             $request->input('merchant_trans_id').
-            ($request->input('merchant_prepare_id') ?: '').
+            (string) ($request->input('merchant_prepare_id') ?? '').
             $request->input('amount').
             $request->input('action').
             $request->input('sign_time');

@@ -49,16 +49,14 @@ class WildberriesProductController extends Controller
         if ($request->filled('search')) {
             $search = $this->escapeLike((string) $request->string('search'));
             $query->where(function ($q) use ($search) {
-                // Search in basic fields
+                // Поиск по индексированным колонкам (title, vendor_code, supplier_article, nm_id, barcode)
+                // Поиск по raw_data убран — CAST(raw_data AS CHAR) вызывает full table scan
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('vendor_code', 'like', "%{$search}%")
                     ->orWhere('supplier_article', 'like', "%{$search}%")
                     ->orWhere('nm_id', $search)
                     ->orWhere('barcode', 'like', "%{$search}%")
-
-                    // Search in raw_data JSON field (characteristics, sizes, barcodes, brand, description)
-                    // Using CAST to text for partial matching in JSON content
-                    ->orWhere(\DB::raw('CAST(raw_data AS CHAR)'), 'like', "%{$search}%");
+                    ->orWhere('brand', 'like', "%{$search}%");
             });
         }
 
