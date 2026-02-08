@@ -1662,7 +1662,7 @@ class UzumClient implements MarketplaceClientInterface
         // Uzum returns timestamps in milliseconds
         $seconds = $timestamp > 9999999999 ? $timestamp / 1000 : $timestamp;
 
-        return \Carbon\Carbon::createFromTimestamp((int) $seconds);
+        return \Carbon\Carbon::createFromTimestamp((int) $seconds, config('app.timezone'));
     }
 
     // ========== Finance Expenses API ==========

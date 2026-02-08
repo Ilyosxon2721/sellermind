@@ -199,6 +199,21 @@ class OrderStockService
         DB::beginTransaction();
 
         try {
+            // Перечитываем заказ с блокировкой строки для защиты от гонки
+            // (несколько cron-задач могут обрабатывать один заказ одновременно)
+            $freshOrder = $order->newQuery()->lockForUpdate()->find($order->id);
+            if (! $freshOrder || ($freshOrder->stock_status ?? 'none') !== 'none') {
+                DB::rollBack();
+                Log::info('OrderStockService: Order already processed by another process, skipping', [
+                    'order_id' => $order->id,
+                    'stock_status' => $freshOrder->stock_status ?? 'unknown',
+                ]);
+
+                return ['success' => true, 'action' => 'none', 'message' => 'Already processed by another process'];
+            }
+            // Используем свежую модель далее
+            $order = $freshOrder;
+
             foreach ($items as $item) {
                 $quantity = $this->getItemQuantity($item);
                 if ($quantity <= 0) {
@@ -361,6 +376,19 @@ class OrderStockService
         DB::beginTransaction();
 
         try {
+            // Перечитываем заказ с блокировкой для защиты от гонки
+            $freshOrder = $order->newQuery()->lockForUpdate()->find($order->id);
+            if (! $freshOrder || $freshOrder->stock_status === 'released') {
+                DB::rollBack();
+                Log::info('OrderStockService: Order already released by another process, skipping', [
+                    'order_id' => $order->id,
+                    'stock_status' => $freshOrder->stock_status ?? 'unknown',
+                ]);
+
+                return ['success' => true, 'action' => 'none', 'message' => 'Already released by another process'];
+            }
+            $order = $freshOrder;
+
             // Сначала проверяем есть ли активные резервы в базе
             $activeReservations = StockReservation::where('source_type', 'marketplace_order')
                 ->where('source_id', $order->id)

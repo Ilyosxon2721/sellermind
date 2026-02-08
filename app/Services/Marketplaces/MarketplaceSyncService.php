@@ -691,9 +691,10 @@ class MarketplaceSyncService
                     }
                     $num = (int) $ts;
                     // Если больше 1e12, это timestamp в миллисекундах
+                    $appTz = config('app.timezone');
                     $orderedAt = $num > 1e12
-                        ? \Carbon\Carbon::createFromTimestampMs($num)
-                        : \Carbon\Carbon::createFromTimestamp($num);
+                        ? \Carbon\Carbon::createFromTimestampMs($num, $appTz)
+                        : \Carbon\Carbon::createFromTimestamp($num, $appTz);
                 } else {
                     $orderedAt = \Carbon\Carbon::parse($orderData['ordered_at']);
                 }
