@@ -257,7 +257,7 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.data || json.data || [];
-                    const pag = json.data?.pagination || json.meta || {};
+                    const pag = json.data?.meta || json.data?.pagination || {};
                     this.cursor.page = pag.current_page || 1;
                     this.cursor.lastPage = pag.last_page || 1;
                     this.cursor.total = pag.total || 0;

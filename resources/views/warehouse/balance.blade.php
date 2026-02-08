@@ -300,12 +300,13 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.items || [];
-                    if (json.data?.pagination) {
+                    const pag = json.data?.meta || json.data?.pagination;
+                    if (pag) {
                         this.pagination = {
-                            total: json.data.pagination.total || 0,
-                            per_page: json.data.pagination.per_page || 30,
-                            current_page: json.data.pagination.current_page || 1,
-                            last_page: json.data.pagination.last_page || 1
+                            total: pag.total || 0,
+                            per_page: pag.per_page || 30,
+                            current_page: pag.current_page || 1,
+                            last_page: pag.last_page || 1
                         };
                     }
                 } catch (e) {

@@ -558,41 +558,9 @@ class WildberriesOrderService
             ->where('external_order_id', $orderId)
             ->first();
 
-        // Обрабатываем изменение остатков
-        if ($order) {
-            $newStatus = $order->status;
-
-            // Обрабатываем только если статус изменился или это новый заказ
-            if ($created || $oldStatus !== $newStatus) {
-                try {
-                    // Получаем позиции заказа
-                    $items = $this->orderStockService->getOrderItems($order, 'wb');
-
-                    // Обрабатываем изменение статуса
-                    $stockResult = $this->orderStockService->processOrderStatusChange(
-                        $account,
-                        $order,
-                        $oldStatus,
-                        $newStatus,
-                        $items
-                    );
-
-                    Log::info('WB order stock processed', [
-                        'order_id' => $order->id,
-                        'external_order_id' => $orderId,
-                        'old_status' => $oldStatus,
-                        'new_status' => $newStatus,
-                        'stock_result' => $stockResult,
-                    ]);
-                } catch (\Throwable $e) {
-                    // Не прерываем синхронизацию из-за ошибки остатков
-                    Log::error('WB order stock processing failed', [
-                        'order_id' => $order->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
+        // НЕ обрабатываем остатки здесь — persistWbOrder() уже вызывает
+        // processOrderStockChange() внутри себя (строка 329-330 OrdersSyncService).
+        // Повторный вызов приводил к двойному списанию остатков.
 
         return ['order' => $order, 'created' => $created];
     }
