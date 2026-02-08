@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Log;
  * Сервис обработки остатков при заказах с маркетплейсов
  *
  * Логика:
- * - NEW/IN_ASSEMBLY → резервирование (decrementStock)
- * - IN_DELIVERY → перевод резерва в продажу (только статус)
- * - CANCELLED (до отправки) → отмена резерва (incrementStock)
+ * - NEW/IN_ASSEMBLY → резервирование (ProductVariant decrement + StockReservation, БЕЗ ledger)
+ * - IN_DELIVERY → продажа: ledger -qty + reservation→CONSUMED
+ * - CANCELLED (до отправки) → отмена: reservation→CANCELLED + ProductVariant increment
  * - RETURNED → создание записи для ручной обработки
  */
 class OrderStockService
@@ -178,9 +178,14 @@ class OrderStockService
 
     /**
      * Зарезервировать товар (новый заказ)
-     * ВАЖНО: При резервировании СРАЗУ списываем со склада (ledger entry) чтобы:
-     * 1. Остатки на маркетплейсах обновились и не было overselling
-     * 2. Создаём stock_reservation для отслеживания (чтобы при отмене вернуть товар)
+     *
+     * При резервировании:
+     * 1. Декрементируем ProductVariant.stock_default (для синхронизации остатков с маркетплейсами)
+     * 2. Создаём StockReservation для отслеживания (available = on_hand - reserved)
+     *
+     * ВАЖНО: НЕ создаём StockLedger запись при резерве! Ledger entry создаётся
+     * только при фактической продаже (convertReserveToSold), чтобы избежать
+     * двойного списания (ledger -1 + reservation -1 = -2 вместо -1).
      */
     protected function reserveStock(
         MarketplaceAccount $account,
@@ -237,21 +242,15 @@ class OrderStockService
                 $stockBefore = $variant->stock_default;
 
                 // Decrease stock in ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
-                // Observer would create stock_adjustment ledger entry, but we create our own below
+                // Это нужно для синхронизации остатков с маркетплейсами (overselling prevention)
                 $variant->decrementStockQuietly($quantity);
                 $stockAfter = $variant->stock_default;
 
-                // Create warehouse stock ledger entry (actual deduction)
-                $warehouseSku = $this->createWarehouseStockLedger(
-                    $account,
-                    $order,
-                    $variant,
-                    -$quantity, // Negative for stock out
-                    'marketplace_order_reserve',
-                    $marketplace
-                );
+                // Получаем warehouse SKU для создания резерва (без ledger entry!)
+                // Ledger entry создаётся позже в convertReserveToSold() при фактической отправке
+                $warehouseSku = $this->getOrCreateWarehouseSku($account, $variant);
 
-                // Create stock reservation for tracking (to return stock if cancelled)
+                // Create stock reservation for tracking (available = on_hand - reserved)
                 if ($warehouseSku) {
                     $this->createStockReservation(
                         $account,
@@ -329,12 +328,52 @@ class OrderStockService
 
     /**
      * Перевести резерв в продажу
-     * ВАЖНО: Остаток уже был списан при резервировании!
-     * Здесь только обновляем статус резерва в CONSUMED.
+     *
+     * Создаём отрицательную запись в StockLedger (фактическое списание со склада).
+     * При резервировании ledger НЕ создаётся — только StockReservation.
+     *
+     * Обратная совместимость: если заказ был зарезервирован по СТАРОЙ логике
+     * (с ledger entry 'marketplace_order_reserve'), повторный ledger НЕ создаётся.
      */
     protected function convertReserveToSold(Model $order): array
     {
-        // Stock was already deducted on reserve, just update reservation status
+        // Получаем активные резервы ДО consumed
+        $reservations = StockReservation::where('source_type', 'marketplace_order')
+            ->where('source_id', $order->id)
+            ->where('status', StockReservation::STATUS_ACTIVE)
+            ->get();
+
+        // Создаём ledger entries для фактического списания
+        foreach ($reservations as $reservation) {
+            // Проверяем нет ли уже ledger entry от старой логики (backward compat)
+            $hasOldLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                ->where('source_id', $order->id)
+                ->where('sku_id', $reservation->sku_id)
+                ->exists();
+
+            if (! $hasOldLedger) {
+                // Новая логика: создаём ledger entry при фактической продаже
+                StockLedger::create([
+                    'company_id' => $reservation->company_id,
+                    'occurred_at' => now(),
+                    'warehouse_id' => $reservation->warehouse_id,
+                    'sku_id' => $reservation->sku_id,
+                    'qty_delta' => -$reservation->qty,
+                    'cost_delta' => 0,
+                    'currency_code' => 'UZS',
+                    'source_type' => 'marketplace_order_sold',
+                    'source_id' => $order->id,
+                ]);
+
+                Log::info('OrderStockService: Ledger entry created on sold', [
+                    'order_id' => $order->id,
+                    'sku_id' => $reservation->sku_id,
+                    'qty' => -$reservation->qty,
+                ]);
+            }
+        }
+
+        // Переводим резервы в CONSUMED
         $this->consumeStockReservations($order);
 
         $order->update([
@@ -342,8 +381,9 @@ class OrderStockService
             'stock_sold_at' => now(),
         ]);
 
-        Log::info('OrderStockService: Reserve converted to sold (stock was already deducted)', [
+        Log::info('OrderStockService: Reserve converted to sold', [
             'order_id' => $order->id,
+            'reservations_count' => $reservations->count(),
         ]);
 
         return [
@@ -355,8 +395,12 @@ class OrderStockService
 
     /**
      * Отменить резерв (при отмене заказа до отправки)
-     * ВАЖНО: Поскольку при резервировании мы СОЗДАЛИ ledger entry (списание),
-     * при отмене нужно ВЕРНУТЬ товар обратно (положительный ledger entry).
+     *
+     * Новая логика: при резерве ledger НЕ создаётся, поэтому при отмене
+     * достаточно отменить StockReservation и вернуть ProductVariant.stock_default.
+     *
+     * Обратная совместимость: если заказ был зарезервирован по СТАРОЙ логике
+     * (с ledger entry 'marketplace_order_reserve'), создаём обратный +qty ledger.
      */
     protected function releaseReserve(
         MarketplaceAccount $account,
@@ -418,24 +462,33 @@ class OrderStockService
                         $variant->incrementStockQuietly($qty);
                         $stockAfter = $variant->stock_default;
 
-                        // Создаём запись в журнале
-                        StockLedger::create([
-                            'company_id' => $account->company_id,
-                            'occurred_at' => now(),
-                            'warehouse_id' => $reservation->warehouse_id,
-                            'sku_id' => $reservation->sku_id,
-                            'qty_delta' => $qty,
-                            'cost_delta' => 0,
-                            'currency_code' => 'UZS',
-                            'source_type' => 'marketplace_order_cancel',
-                            'source_id' => $order->id,
-                        ]);
+                        // Обратная совместимость: создаём положительный ledger entry
+                        // ТОЛЬКО если при резерве был создан отрицательный (старая логика)
+                        $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                            ->where('source_id', $order->id)
+                            ->where('sku_id', $reservation->sku_id)
+                            ->exists();
+
+                        if ($hasOldReserveLedger) {
+                            StockLedger::create([
+                                'company_id' => $account->company_id,
+                                'occurred_at' => now(),
+                                'warehouse_id' => $reservation->warehouse_id,
+                                'sku_id' => $reservation->sku_id,
+                                'qty_delta' => $qty,
+                                'cost_delta' => 0,
+                                'currency_code' => 'UZS',
+                                'source_type' => 'marketplace_order_cancel',
+                                'source_id' => $order->id,
+                            ]);
+                        }
 
                         Log::info('OrderStockService: Stock returned from reservation', [
                             'variant_id' => $variant->id,
                             'quantity' => $qty,
                             'stock_before' => $stockBefore,
                             'stock_after' => $stockAfter,
+                            'ledger_reversed' => $hasOldReserveLedger,
                         ]);
 
                         // Синхронизируем с другими маркетплейсами
@@ -466,15 +519,26 @@ class OrderStockService
                     $variant->incrementStockQuietly($quantity);
                     $stockAfter = $variant->stock_default;
 
-                    // Create warehouse stock ledger entry (positive to return stock)
-                    $this->createWarehouseStockLedger(
-                        $account,
-                        $order,
-                        $variant,
-                        $quantity, // Positive for stock return
-                        'marketplace_order_cancel',
-                        $marketplace
-                    );
+                    // Обратная совместимость: создаём положительный ledger entry
+                    // ТОЛЬКО если при резерве был создан отрицательный (старая логика)
+                    $warehouseSku = $this->getOrCreateWarehouseSku($account, $variant);
+                    if ($warehouseSku) {
+                        $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                            ->where('source_id', $order->id)
+                            ->where('sku_id', $warehouseSku->id)
+                            ->exists();
+
+                        if ($hasOldReserveLedger) {
+                            $this->createWarehouseStockLedger(
+                                $account,
+                                $order,
+                                $variant,
+                                $quantity, // Positive for stock return
+                                'marketplace_order_cancel',
+                                $marketplace
+                            );
+                        }
+                    }
 
                     // Логируем операцию
                     $this->logStockOperation(
