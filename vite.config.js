@@ -11,7 +11,11 @@ export default defineConfig({
                 'resources/css/pwa-native.css',
                 'resources/js/pwa-detector.js',
                 'resources/js/app.js',
-                'resources/js/pwa.js'
+                'resources/js/pwa.js',
+                'resources/js/pwa/auth.js',
+                'resources/js/pwa/haptic.js',
+                'resources/js/pwa/cache.js',
+                'resources/js/pwa/offline.js'
             ],
             refresh: true,
         }),

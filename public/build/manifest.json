@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-CR-GRqU_.css",
+    "file": "assets/app-dSIDPmKq.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-BWo7F4oS.css",
+    "file": "assets/pwa-native-BoTSsjhg.css",
     "src": "resources/css/pwa-native.css",
     "isEntry": true,
     "name": "pwa-native",
@@ -32,7 +32,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DRgtQCwx.js",
+    "file": "assets/app-BbswoOL0.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -55,5 +55,29 @@
     "dynamicImports": [
       "node_modules/workbox-window/build/workbox-window.prod.es5.mjs"
     ]
+  },
+  "resources/js/pwa/auth.js": {
+    "file": "assets/auth-BR4MnXFQ.js",
+    "name": "auth",
+    "src": "resources/js/pwa/auth.js",
+    "isEntry": true
+  },
+  "resources/js/pwa/cache.js": {
+    "file": "assets/cache-Darw7aRS.js",
+    "name": "cache",
+    "src": "resources/js/pwa/cache.js",
+    "isEntry": true
+  },
+  "resources/js/pwa/haptic.js": {
+    "file": "assets/haptic-CfNrweLE.js",
+    "name": "haptic",
+    "src": "resources/js/pwa/haptic.js",
+    "isEntry": true
+  },
+  "resources/js/pwa/offline.js": {
+    "file": "assets/offline-BrF8q5bc.js",
+    "name": "offline",
+    "src": "resources/js/pwa/offline.js",
+    "isEntry": true
   }
 }

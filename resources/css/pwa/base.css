@@ -1,0 +1,40 @@
+/* =============================================
+   SellerMind PWA - Base Styles
+   ============================================= */
+
+/* Apply only in PWA mode */
+.pwa-mode {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+}
+
+.pwa-mode body {
+    background: var(--sm-bg-primary);
+    color: var(--sm-text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    padding-top: calc(var(--sm-header-height) + var(--sm-safe-top));
+    padding-bottom: calc(var(--sm-tabbar-height) + var(--sm-safe-bottom));
+    min-height: 100vh;
+}
+
+/* Allow text selection in inputs */
+.pwa-mode input,
+.pwa-mode textarea,
+.pwa-mode [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* Remove default margins in PWA */
+.pwa-mode .container {
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* Main content area */
+.pwa-mode .sm-main {
+    padding: var(--sm-space-lg);
+}

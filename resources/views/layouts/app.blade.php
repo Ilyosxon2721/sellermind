@@ -80,7 +80,7 @@
     </script>
 
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js', 'resources/js/pwa/auth.js', 'resources/js/pwa/haptic.js', 'resources/js/pwa/cache.js', 'resources/js/pwa/offline.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
@@ -120,6 +120,11 @@
     </script>
 </head>
 <body class="bg-gray-50">
+    <!-- PIN Screen (PWA only) -->
+    @auth
+    <x-pwa.pin-screen />
+    @endauth
+
     <!-- Splash Screen (PWA only) -->
     <x-splash-screen />
 
@@ -149,6 +154,11 @@
 
     <!-- Global Action Sheet -->
     <x-global-action-sheet />
+
+    <!-- PWA More Menu (triggered from tabbar) -->
+    @auth
+    <x-pwa.more-menu />
+    @endauth
 
     <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
     @vite('resources/js/pwa.js')

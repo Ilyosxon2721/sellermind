@@ -1,0 +1,63 @@
+/* =============================================
+   SellerMind PWA Design System - Variables
+   ============================================= */
+
+:root {
+    /* === Primary Colors === */
+    --sm-primary: #007AFF;
+    --sm-primary-light: #E5F1FF;
+    --sm-primary-dark: #0056B3;
+
+    /* === Background === */
+    --sm-bg-primary: #F2F2F7;
+    --sm-bg-secondary: #FFFFFF;
+    --sm-bg-tertiary: #E5E5EA;
+
+    /* === Text === */
+    --sm-text-primary: #1C1C1E;
+    --sm-text-secondary: #8E8E93;
+    --sm-text-tertiary: #C7C7CC;
+
+    /* === Status Colors === */
+    --sm-success: #34C759;
+    --sm-warning: #FF9500;
+    --sm-error: #FF3B30;
+    --sm-info: #5856D6;
+
+    /* === Marketplace Colors === */
+    --sm-uzum: #7B3FF2;
+    --sm-wb: #CB11AB;
+    --sm-ozon: #005BFF;
+    --sm-ym: #FFCC00;
+
+    /* === Spacing === */
+    --sm-space-xs: 4px;
+    --sm-space-sm: 8px;
+    --sm-space-md: 12px;
+    --sm-space-lg: 16px;
+    --sm-space-xl: 24px;
+    --sm-space-2xl: 32px;
+
+    /* === Border Radius === */
+    --sm-radius-sm: 8px;
+    --sm-radius-md: 12px;
+    --sm-radius-lg: 16px;
+    --sm-radius-xl: 20px;
+    --sm-radius-full: 9999px;
+
+    /* === Shadows === */
+    --sm-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --sm-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --sm-shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --sm-shadow-card: 0 2px 8px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.08);
+
+    /* === Safe Areas === */
+    --sm-safe-top: env(safe-area-inset-top, 0px);
+    --sm-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --sm-safe-left: env(safe-area-inset-left, 0px);
+    --sm-safe-right: env(safe-area-inset-right, 0px);
+
+    /* === Header/TabBar Heights === */
+    --sm-header-height: 44px;
+    --sm-tabbar-height: 56px;
+}

@@ -5,6 +5,13 @@
  * Browser mode (.browser-mode) keeps regular web styles
  */
 
+/* === PWA Design System v2.0 === */
+@import './pwa/variables.css';
+@import './pwa/base.css';
+@import './pwa/components.css';
+@import './pwa/skeleton.css';
+@import './pwa/pages.css';
+
 /* ============================================
    PWA MODE ONLY STYLES
    ============================================ */
