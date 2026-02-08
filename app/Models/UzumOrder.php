@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -58,5 +59,24 @@ class UzumOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(UzumOrderItem::class);
+    }
+
+    /**
+     * Получить корректную дату заказа из оригинального timestamp API
+     *
+     * MySQL хранит datetime без timezone. Старые записи хранят UTC вместо local time
+     * из-за бага в Carbon::createFromTimestampMs() без параметра timezone.
+     * Этот метод вычисляет правильную дату из raw_payload (оригинальный API ответ).
+     */
+    public function resolvedOrderedAt(): ?Carbon
+    {
+        $payload = $this->raw_payload ?? [];
+        $dateCreated = $payload['dateCreated'] ?? null;
+
+        if (is_numeric($dateCreated)) {
+            return Carbon::createFromTimestampMs((int) $dateCreated, config('app.timezone'));
+        }
+
+        return $this->ordered_at;
     }
 }
