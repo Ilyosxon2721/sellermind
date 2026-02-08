@@ -241,8 +241,8 @@ class SalesController extends Controller
             'delivery_address' => $order->delivery_address,
             'total_amount' => (float) $order->total_amount,
             'currency' => $order->currency ?? 'UZS',
-            'created_at' => $order->ordered_at?->toIso8601String(),
-            'created_at_formatted' => $order->ordered_at?->format('d.m.Y H:i'),
+            'created_at' => $order->resolvedOrderedAt()?->toIso8601String(),
+            'created_at_formatted' => $order->resolvedOrderedAt()?->format('d.m.Y H:i'),
             'items' => $order->items?->map(fn ($item) => [
                 'id' => $item->id,
                 'name' => $item->product_title ?? $item->name,
@@ -593,7 +593,7 @@ class SalesController extends Controller
         return $query->get()->map(fn ($order) => [
             'id' => 'uzum_'.$order->id,
             'order_number' => $order->external_order_id,
-            'created_at' => $order->ordered_at?->toIso8601String(),
+            'created_at' => $order->resolvedOrderedAt()?->toIso8601String(),
             'marketplace' => 'uzum',
             'customer_name' => $order->customer_name,
             'total_amount' => (float) $order->total_amount,

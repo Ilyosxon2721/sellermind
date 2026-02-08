@@ -107,7 +107,7 @@ class ReservationController extends Controller
                 $order = $this->getMarketplaceOrder($reservation->reason, $reservation->source_id);
                 if ($order) {
                     $data['order_number'] = $order->external_order_id ?? $order->order_id ?? null;
-                    $data['order_date'] = $order->ordered_at ?? $order->created_at;
+                    $data['order_date'] = $this->resolveOrderDate($order);
                     $data['order_status'] = $order->uzum_status ?? $order->wb_status ?? $order->ozon_status ?? $order->status ?? null;
                     $data['order_status_normalized'] = $order->status_normalized ?? $order->status ?? null;
                     $data['marketplace'] = $this->extractMarketplace($reservation->reason);
@@ -149,6 +149,23 @@ class ReservationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Вычислить корректную дату заказа из raw_payload (оригинальный timestamp API)
+     *
+     * MySQL хранит datetime без timezone. Старые записи Uzum хранят UTC вместо local time
+     * из-за бага в Carbon::createFromTimestampMs() без параметра timezone.
+     * Для Uzum заказов используем resolvedOrderedAt() из модели.
+     */
+    private function resolveOrderDate($order)
+    {
+        // UzumOrder имеет метод resolvedOrderedAt() который вычисляет из raw_payload
+        if (method_exists($order, 'resolvedOrderedAt')) {
+            return $order->resolvedOrderedAt();
+        }
+
+        return $order->ordered_at ?? $order->created_at;
     }
 
     public function reserve(Request $request)
