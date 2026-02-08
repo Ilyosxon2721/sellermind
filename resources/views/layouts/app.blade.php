@@ -123,6 +123,11 @@
     <!-- Splash Screen (PWA only) -->
     <x-splash-screen />
 
+    <!-- PIN Screen (PWA only, shows if PIN is set) -->
+    @auth
+    <x-pin-screen />
+    @endauth
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         <!-- Hamburger Menu & Sidebar Overlay (Mobile Only) -->
         <x-hamburger-menu />
