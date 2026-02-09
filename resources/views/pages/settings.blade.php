@@ -155,14 +155,49 @@
 
         {{-- Security Section --}}
         <div class="px-4 pb-3">
-            <p class="native-caption px-4 mb-2">БЕЗОПАСНОСТЬ</p>
+            <p class="native-caption px-4 mb-2">{{ __('app.settings.security_section') }}</p>
             <div class="native-list">
                 <div class="native-list-item native-list-item-chevron"
                      @click="showPasswordSheet = true"
                      onclick="if(window.haptic) window.haptic.light()">
                     <div class="flex-1">
-                        <p class="native-body font-semibold">Изменить пароль</p>
-                        <p class="native-caption mt-1">Обновите ваш пароль</p>
+                        <p class="native-body font-semibold">{{ __('app.settings.change_password') }}</p>
+                        <p class="native-caption mt-1">{{ __('app.settings.change_password_desc') }}</p>
+                    </div>
+                </div>
+
+                {{-- PIN Code --}}
+                <div class="native-list-item"
+                     @click="togglePin()"
+                     onclick="if(window.haptic) window.haptic.light()">
+                    <div class="flex-1">
+                        <p class="native-body font-semibold">{{ __('app.settings.pin_code') }}</p>
+                        <p class="native-caption mt-1" x-text="hasPinSet ? '{{ __('app.settings.pin_enabled') }}' : '{{ __('app.settings.pin_disabled') }}'"></p>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-12 h-7 rounded-full transition-colors duration-200"
+                             :class="hasPinSet ? 'bg-green-500' : 'bg-gray-300'">
+                            <div class="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-200 mt-0.5"
+                                 :class="hasPinSet ? 'translate-x-5.5 ml-0.5' : 'translate-x-0.5'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Biometric (Face ID / Touch ID) --}}
+                <div class="native-list-item"
+                     x-show="hasPinSet && biometricAvailable"
+                     @click="toggleBiometric()"
+                     onclick="if(window.haptic) window.haptic.light()">
+                    <div class="flex-1">
+                        <p class="native-body font-semibold">Face ID / Touch ID</p>
+                        <p class="native-caption mt-1" x-text="biometricEnabled ? '{{ __('app.settings.biometric_enabled') }}' : '{{ __('app.settings.biometric_disabled') }}'"></p>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-12 h-7 rounded-full transition-colors duration-200"
+                             :class="biometricEnabled ? 'bg-green-500' : 'bg-gray-300'">
+                            <div class="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-200 mt-0.5"
+                                 :class="biometricEnabled ? 'translate-x-5.5 ml-0.5' : 'translate-x-0.5'"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -351,10 +386,65 @@ function settingsPage() {
             eur_rate: 13800,
         },
         savingCurrency: false,
+        // PIN & Biometric
+        hasPinSet: false,
+        biometricAvailable: false,
+        biometricEnabled: false,
 
-        init() {
+        async init() {
             this.loadProfile();
             this.loadCurrencyRates();
+            this.checkPinStatus();
+            this.biometricAvailable = await this.checkBiometric();
+        },
+
+        checkPinStatus() {
+            this.hasPinSet = !!localStorage.getItem('sm_pin_hash');
+            this.biometricEnabled = localStorage.getItem('sm_biometric_enabled') === 'true';
+        },
+
+        async checkBiometric() {
+            if (!window.PublicKeyCredential) return false;
+            try {
+                return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            } catch {
+                return false;
+            }
+        },
+
+        togglePin() {
+            if (this.hasPinSet) {
+                // Disable PIN
+                if (confirm('{{ __('app.settings.pin_disable_confirm') }}')) {
+                    localStorage.removeItem('sm_pin_hash');
+                    localStorage.removeItem('sm_biometric_enabled');
+                    this.hasPinSet = false;
+                    this.biometricEnabled = false;
+                    if (window.toast) {
+                        window.toast.success('{{ __('app.settings.pin_disabled_msg') }}');
+                    }
+                }
+            } else {
+                // Enable PIN - trigger setup
+                window.dispatchEvent(new CustomEvent('sm-pin-setup'));
+                // Listen for PIN set event
+                window.addEventListener('sm-pin-set', () => {
+                    this.hasPinSet = true;
+                    if (window.toast) {
+                        window.toast.success('{{ __('app.settings.pin_enabled_msg') }}');
+                    }
+                }, { once: true });
+            }
+        },
+
+        toggleBiometric() {
+            if (this.biometricEnabled) {
+                localStorage.removeItem('sm_biometric_enabled');
+                this.biometricEnabled = false;
+            } else {
+                localStorage.setItem('sm_biometric_enabled', 'true');
+                this.biometricEnabled = true;
+            }
         },
 
         async loadProfile() {
