@@ -89,6 +89,10 @@
                             <span class="text-xs text-red-500">•</span>
                             <span class="text-sm">{{ __('warehouse.write_off') }}</span>
                         </a>
+                        <a href="/warehouse/inventory" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/inventory*') ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs text-purple-500">&bull;</span>
+                            <span class="text-sm">Инвентаризация</span>
+                        </a>
                         <a href="/warehouse/ledger" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/ledger*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.warehouse_ledger') }}</span>

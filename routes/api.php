@@ -245,13 +245,19 @@ Route::middleware('auth.any')->group(function () {
     // Uses web middleware for session-based auth from product edit page
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
 
-    Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
-    Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
-    Route::post('products/{product}/publish', [ProductController::class, 'publish']);
-    Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+    Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
-    // Product Bulk Operations
-    Route::prefix('products/bulk')->group(function () {
+    // Запись/изменение/удаление — только owner компании
+    Route::middleware('company.owner')->group(function () {
+        Route::put('products/{product}', [ProductController::class, 'update']);
+        Route::delete('products/{product}', [ProductController::class, 'destroy']);
+        Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
+        Route::post('products/{product}/publish', [ProductController::class, 'publish']);
+        Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+    });
+
+    // Product Bulk Operations — только owner
+    Route::prefix('products/bulk')->middleware('company.owner')->group(function () {
         Route::post('export', [ProductBulkController::class, 'export']);
         Route::post('import/preview', [ProductBulkController::class, 'previewImport']);
         Route::post('import/apply', [ProductBulkController::class, 'applyImport']);
@@ -620,10 +626,14 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('inventory')->group(function () {
             Route::get('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'index']);
             Route::get('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'show']);
-            Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
-            Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
-            Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
-            Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
+
+            // Создание/изменение/проводка документов — только owner
+            Route::middleware('company.owner')->group(function () {
+                Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
+                Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
+                Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
+                Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
+            });
         });
 
         Route::post('channels/orders/import', [\App\Http\Controllers\Api\Warehouse\ChannelImportController::class, 'import']);

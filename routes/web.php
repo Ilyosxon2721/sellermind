@@ -138,11 +138,15 @@ Route::middleware('auth.any')->group(function () {
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
-        Route::post('/', [ProductWebController::class, 'store'])->name('store');
         Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
-        Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
-        Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
-        Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+
+        // POST/PUT/DELETE — только owner компании
+        Route::middleware('company.owner')->group(function () {
+            Route::post('/', [ProductWebController::class, 'store'])->name('store');
+            Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
+            Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
+            Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+        });
     });
 
     Route::prefix('warehouse')->name('warehouse.')->group(function () {
@@ -169,6 +173,10 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
+
+        // Inventory (инвентаризация)
+        Route::get('/inventory', [WarehouseController::class, 'inventoryList'])->name('inventory');
+        Route::get('/inventory/create', [WarehouseController::class, 'createInventory'])->name('inventory.create');
 
         // Web-based API routes for warehouse CRUD (uses session auth)
         Route::middleware('auth')->group(function () {
