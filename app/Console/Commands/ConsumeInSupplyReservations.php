@@ -66,6 +66,27 @@ class ConsumeInSupplyReservations extends Command
                 $this->info("  Резерв #{$reservation->id}: заказ #{$order->id} статус '{$status}' → СПИСАНИЕ");
 
                 if (! $dryRun) {
+                    // Проверяем, был ли создан ledger старым flow (при резервировании)
+                    $hasOldLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                        ->where('source_id', $order->id)
+                        ->where('sku_id', $reservation->sku_id)
+                        ->exists();
+
+                    if (! $hasOldLedger) {
+                        // Новый flow: создаём ledger запись при продаже
+                        StockLedger::create([
+                            'company_id' => $reservation->company_id,
+                            'occurred_at' => now(),
+                            'warehouse_id' => $reservation->warehouse_id,
+                            'sku_id' => $reservation->sku_id,
+                            'qty_delta' => -$reservation->qty,
+                            'cost_delta' => 0,
+                            'currency_code' => 'UZS',
+                            'source_type' => 'marketplace_order_sold',
+                            'source_id' => $order->id,
+                        ]);
+                    }
+
                     $reservation->update(['status' => StockReservation::STATUS_CONSUMED]);
 
                     if ($order->stock_status !== 'sold') {
@@ -95,21 +116,45 @@ class ConsumeInSupplyReservations extends Command
                         $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
 
                         // Возвращаем остаток (quietly to avoid Observer creating duplicate ledger entry)
+                        // Возвращаем только фактически списанное (если stock был 0 — списания не было)
                         if ($variant) {
-                            $variant->incrementStockQuietly($qty);
+                            $actualDecrement = null;
+                            try {
+                                $log = DB::table('order_stock_logs')
+                                    ->where('order_id', $order->id)
+                                    ->where('product_variant_id', $variant->id)
+                                    ->where('action', 'reserve')
+                                    ->first();
+                                if ($log) {
+                                    $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+                                }
+                            } catch (\Throwable $e) {
+                                // fallback на полное qty
+                            }
+                            $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+                            if ($incrementQty > 0) {
+                                $variant->incrementStockQuietly($incrementQty);
+                            }
 
-                            // Запись в журнал склада
-                            StockLedger::create([
-                                'company_id' => $reservation->company_id,
-                                'occurred_at' => now(),
-                                'warehouse_id' => $reservation->warehouse_id,
-                                'sku_id' => $reservation->sku_id,
-                                'qty_delta' => $qty,
-                                'cost_delta' => 0,
-                                'currency_code' => 'UZS',
-                                'source_type' => 'marketplace_order_cancel',
-                                'source_id' => $order->id,
-                            ]);
+                            // Запись в журнал склада только если старый flow создал ledger при резервировании
+                            $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                                ->where('source_id', $order->id)
+                                ->where('sku_id', $reservation->sku_id)
+                                ->exists();
+
+                            if ($hasOldReserveLedger) {
+                                StockLedger::create([
+                                    'company_id' => $reservation->company_id,
+                                    'occurred_at' => now(),
+                                    'warehouse_id' => $reservation->warehouse_id,
+                                    'sku_id' => $reservation->sku_id,
+                                    'qty_delta' => $qty,
+                                    'cost_delta' => 0,
+                                    'currency_code' => 'UZS',
+                                    'source_type' => 'marketplace_order_cancel',
+                                    'source_id' => $order->id,
+                                ]);
+                            }
 
                             $this->line("    Возвращено {$qty} шт для {$variant->sku} (остаток: {$variant->fresh()->stock_default})");
                         }

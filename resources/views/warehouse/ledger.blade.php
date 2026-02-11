@@ -207,7 +207,9 @@
             formatSourceType(row) {
                 if (row.document?.type) return row.document.type;
                 const labels = {
+                    'marketplace_order': 'Резерв (заказ)',
                     'marketplace_order_reserve': 'Резерв',
+                    'marketplace_order_sold': 'Продажа (маркетплейс)',
                     'marketplace_order_cancel': 'Отмена резерва',
                     'WB_ORDER': 'WB заказ',
                     'WB_ORDER_CANCEL': 'WB отмена',
@@ -222,6 +224,12 @@
                     'stock_adjustment': 'Корректировка',
                     'COST_ADJUSTMENT': 'Корр. себестоимости',
                     'INITIAL_SYNC': 'Начальная синхр.',
+                    'reservation_fix_reversal': 'Корр. резерва',
+                    'reservation_fix_delete': 'Удаление резерва',
+                    'reservation_cleanup_reversal': 'Очистка резерва',
+                    'risment_stock_sync': 'Синхр. Risment',
+                    'risment_stock_adjust': 'Корр. Risment',
+                    'risment_stock_update': 'Обновл. Risment',
                 };
                 return labels[row.source_type] || row.source_type || '—';
             },
