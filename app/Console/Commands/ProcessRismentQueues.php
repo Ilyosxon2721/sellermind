@@ -194,7 +194,7 @@ class ProcessRismentQueues extends Command
     protected function handleProductEvent(string $event, array $data, int $companyId, array $message = [], ?IntegrationLink $link = null): void
     {
         match ($event) {
-            'product.created' => $this->onProductCreated($data, $companyId, $message, $link),
+            'product.created', 'product.sync_product' => $this->onProductCreated($data, $companyId, $message, $link),
             'product.updated' => $this->onProductUpdated($data, $companyId, $message, $link),
             'product.deleted' => $this->onProductDeleted($data, $companyId, $message),
             default => Log::info("ProcessRisment: Unhandled product event: {$event}"),
@@ -250,12 +250,38 @@ class ProcessRismentQueues extends Command
             // Найти или создать категорию
             $categoryId = $this->resolveCategory($data, $companyId);
 
-            $product = Product::updateOrCreate(
-                [
+            // ШАГ 1: Ищем по risment_product_id (точное совпадение)
+            $product = Product::where('company_id', $companyId)
+                ->where('risment_product_id', $rismentId)
+                ->first();
+
+            // ШАГ 2: Если не нашли — ищем по артикулу (товар мог быть создан вручную)
+            if (!$product && !empty($article) && $article !== "RISMENT-{$rismentId}") {
+                $product = Product::where('company_id', $companyId)
+                    ->where('article', $article)
+                    ->whereNull('risment_product_id')
+                    ->first();
+            }
+
+            if ($product) {
+                // Обновляем найденный товар, привязываем risment_product_id
+                $product->update([
+                    'risment_product_id' => $rismentId,
+                    'name' => $productName,
+                    'article' => $article,
+                    'brand_name' => $data['brand'] ?? $data['brand_name'] ?? $product->brand_name,
+                    'description_full' => $data['description'] ?? $product->description_full,
+                    'description_short' => $data['short_description'] ?? $product->description_short,
+                    'category_id' => $categoryId ?? $product->category_id,
+                    'is_active' => $data['is_active'] ?? true,
+                    'is_archived' => false,
+                ]);
+                $wasRecentlyCreated = false;
+            } else {
+                // Создаём новый товар
+                $product = Product::create([
                     'company_id' => $companyId,
                     'risment_product_id' => $rismentId,
-                ],
-                [
                     'name' => $productName,
                     'article' => $article,
                     'brand_name' => $data['brand'] ?? $data['brand_name'] ?? null,
@@ -264,10 +290,9 @@ class ProcessRismentQueues extends Command
                     'category_id' => $categoryId,
                     'is_active' => $data['is_active'] ?? true,
                     'is_archived' => false,
-                ]
-            );
-
-            $wasRecentlyCreated = $product->wasRecentlyCreated;
+                ]);
+                $wasRecentlyCreated = true;
+            }
 
             // Обработка вариантов
             $variants = $data['variants'] ?? [];
@@ -287,6 +312,7 @@ class ProcessRismentQueues extends Command
 
             foreach ($variants as $i => $variantData) {
                 $sku = $variantData['sku']
+                    ?? $variantData['sku_code']
                     ?? $variantData['article']
                     ?? "{$article}-V" . ($i + 1);
 
@@ -297,7 +323,7 @@ class ProcessRismentQueues extends Command
                     ],
                     [
                         'company_id' => $companyId,
-                        'name' => $variantData['name'] ?? $variantData['title'] ?? null,
+                        'name' => $variantData['name'] ?? $variantData['variant_name'] ?? $variantData['title'] ?? null,
                         'barcode' => $variantData['barcode'] ?? null,
                         'price_default' => $variantData['price']
                             ?? $variantData['sell_price']
@@ -307,9 +333,9 @@ class ProcessRismentQueues extends Command
                             ?? $variantData['cost_price']
                             ?? null,
                         'weight_g' => $variantData['weight'] ?? $variantData['weight_g'] ?? null,
-                        'length_mm' => $variantData['length'] ?? $variantData['length_mm'] ?? null,
-                        'width_mm' => $variantData['width'] ?? $variantData['width_mm'] ?? null,
-                        'height_mm' => $variantData['height'] ?? $variantData['height_mm'] ?? null,
+                        'length_mm' => $variantData['length'] ?? $variantData['length_mm'] ?? $variantData['dims_l'] ?? null,
+                        'width_mm' => $variantData['width'] ?? $variantData['width_mm'] ?? $variantData['dims_w'] ?? null,
+                        'height_mm' => $variantData['height'] ?? $variantData['height_mm'] ?? $variantData['dims_h'] ?? null,
                         'risment_variant_id' => $variantData['risment_variant_id']
                             ?? $variantData['variant_id']
                             ?? null,
@@ -362,6 +388,9 @@ class ProcessRismentQueues extends Command
 
             $this->info("  {$action} product #{$product->id} \"{$productName}\" (risment:{$rismentId}), variants: " . count($variants));
 
+            // Отправить подтверждение успеха в RISMENT
+            $this->sendProductConfirmation($message, $product, 'success');
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('ProcessRisment: product.created failed', [
@@ -371,6 +400,10 @@ class ProcessRismentQueues extends Command
                 'trace' => mb_substr($e->getTraceAsString(), 0, 500),
             ]);
             $this->error("  Failed to create product risment:{$rismentId}: {$e->getMessage()}");
+
+            // Отправить ошибку в RISMENT с понятным описанием
+            $humanError = $this->translateError($e->getMessage());
+            $this->sendProductConfirmation($message, null, 'error', $humanError);
         }
     }
 
@@ -392,6 +425,7 @@ class ProcessRismentQueues extends Command
             return;
         }
 
+        try {
         // Полный маппинг полей товара
         $fields = [];
         if (isset($data['title'])) $fields['name'] = $data['title'];
@@ -425,9 +459,10 @@ class ProcessRismentQueues extends Command
                         ->first();
                 }
 
-                if (!$existingVariant && !empty($variantData['sku'])) {
+                $variantSku = $variantData['sku'] ?? $variantData['sku_code'] ?? null;
+                if (!$existingVariant && !empty($variantSku)) {
                     $existingVariant = $product->variants()
-                        ->where('sku', $variantData['sku'])
+                        ->where('sku', $variantSku)
                         ->first();
                 }
 
@@ -438,8 +473,10 @@ class ProcessRismentQueues extends Command
                 if ($existingVariant) {
                     $variantFields = [];
                     if (isset($variantData['name'])) $variantFields['name'] = $variantData['name'];
+                    if (isset($variantData['variant_name'])) $variantFields['name'] = $variantData['variant_name'];
                     if (isset($variantData['title'])) $variantFields['name'] = $variantData['title'];
                     if (isset($variantData['sku'])) $variantFields['sku'] = $variantData['sku'];
+                    if (isset($variantData['sku_code'])) $variantFields['sku'] = $variantData['sku_code'];
                     if (isset($variantData['barcode'])) $variantFields['barcode'] = $variantData['barcode'];
                     if (isset($variantData['price'])) $variantFields['price_default'] = $variantData['price'];
                     if (isset($variantData['sell_price'])) $variantFields['price_default'] = $variantData['sell_price'];
@@ -453,6 +490,9 @@ class ProcessRismentQueues extends Command
                     if (isset($variantData['width_mm'])) $variantFields['width_mm'] = $variantData['width_mm'];
                     if (isset($variantData['height'])) $variantFields['height_mm'] = $variantData['height'];
                     if (isset($variantData['height_mm'])) $variantFields['height_mm'] = $variantData['height_mm'];
+                    if (isset($variantData['dims_l'])) $variantFields['length_mm'] = $variantData['dims_l'];
+                    if (isset($variantData['dims_w'])) $variantFields['width_mm'] = $variantData['dims_w'];
+                    if (isset($variantData['dims_h'])) $variantFields['height_mm'] = $variantData['dims_h'];
                     if (isset($variantData['risment_variant_id'])) $variantFields['risment_variant_id'] = $variantData['risment_variant_id'];
                     if (isset($variantData['variant_id'])) $variantFields['risment_variant_id'] = $variantData['variant_id'];
                     if (array_key_exists('is_active', $variantData)) $variantFields['is_active'] = (bool) $variantData['is_active'];
@@ -463,19 +503,19 @@ class ProcessRismentQueues extends Command
                     }
                 } else {
                     // Вариант не найден — создаём новый через onProductCreated логику
-                    $sku = $variantData['sku'] ?? $variantData['article'] ?? "{$product->article}-V" . ($i + 1);
+                    $sku = $variantData['sku'] ?? $variantData['sku_code'] ?? $variantData['article'] ?? "{$product->article}-V" . ($i + 1);
                     $variant = ProductVariant::create([
                         'company_id' => $companyId,
                         'product_id' => $product->id,
-                        'name' => $variantData['name'] ?? $variantData['title'] ?? null,
+                        'name' => $variantData['name'] ?? $variantData['variant_name'] ?? $variantData['title'] ?? null,
                         'sku' => $sku,
                         'barcode' => $variantData['barcode'] ?? null,
                         'price_default' => $variantData['price'] ?? $variantData['sell_price'] ?? 0,
                         'purchase_price' => $variantData['purchase_price'] ?? $variantData['cost_price'] ?? null,
                         'weight_g' => $variantData['weight'] ?? $variantData['weight_g'] ?? null,
-                        'length_mm' => $variantData['length'] ?? $variantData['length_mm'] ?? null,
-                        'width_mm' => $variantData['width'] ?? $variantData['width_mm'] ?? null,
-                        'height_mm' => $variantData['height'] ?? $variantData['height_mm'] ?? null,
+                        'length_mm' => $variantData['length'] ?? $variantData['length_mm'] ?? $variantData['dims_l'] ?? null,
+                        'width_mm' => $variantData['width'] ?? $variantData['width_mm'] ?? $variantData['dims_w'] ?? null,
+                        'height_mm' => $variantData['height'] ?? $variantData['height_mm'] ?? $variantData['dims_h'] ?? null,
                         'risment_variant_id' => $variantData['risment_variant_id'] ?? $variantData['variant_id'] ?? null,
                         'is_active' => $variantData['is_active'] ?? true,
                     ]);
@@ -530,6 +570,22 @@ class ProcessRismentQueues extends Command
         ]);
 
         $this->info("  Updated product #{$product->id} (risment:{$rismentId})");
+
+        // Отправить подтверждение успеха в RISMENT
+        $this->sendProductConfirmation($message, $product, 'success');
+
+        } catch (\Exception $e) {
+            Log::error('ProcessRisment: product.updated failed', [
+                'risment_id' => $rismentId,
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
+            $this->error("  Failed to update product risment:{$rismentId}: {$e->getMessage()}");
+
+            // Отправить ошибку в RISMENT
+            $humanError = $this->translateError($e->getMessage());
+            $this->sendProductConfirmation($message, null, 'error', $humanError);
+        }
     }
 
     protected function onProductDeleted(array $data, int $companyId, array $message = []): void
@@ -1036,6 +1092,126 @@ class ProcessRismentQueues extends Command
             $this->info("  Deactivated marketplace account #{$account->id}");
         } else {
             $this->warn("  Marketplace account with risment_credential_id={$rismentCredentialId} not found");
+        }
+    }
+
+    // ========== Подтверждения и ошибки (RISMENT sync) ==========
+
+    /**
+     * Перевод технических ошибок на понятный русский язык
+     */
+    protected function translateError(string $error): string
+    {
+        // Дубликат артикула
+        if (str_contains($error, 'Duplicate entry') && str_contains($error, 'article')) {
+            return 'Товар с таким артикулом уже существует в SellerMind. '
+                 . 'Измените артикул в RISMENT или удалите дубликат в SellerMind.';
+        }
+
+        // Дубликат SKU
+        if (str_contains($error, 'Duplicate entry') && str_contains($error, 'sku')) {
+            return 'Вариант с таким SKU уже используется другим товаром в SellerMind. '
+                 . 'Проверьте уникальность SKU-кодов.';
+        }
+
+        // Дубликат штрих-кода
+        if (str_contains($error, 'Duplicate entry') && str_contains($error, 'barcode')) {
+            return 'Штрих-код уже используется другим товаром в SellerMind.';
+        }
+
+        // Общий дубликат
+        if (str_contains($error, 'Duplicate entry')) {
+            return 'Запись с такими данными уже существует в SellerMind. Проверьте уникальность полей.';
+        }
+
+        // Ошибка категории
+        if (str_contains($error, 'category')) {
+            return 'Ошибка привязки категории товара. Проверьте настройки категорий.';
+        }
+
+        // Превышена длина поля
+        if (str_contains($error, 'Data too long') || str_contains($error, 'too long')) {
+            return 'Одно из полей товара слишком длинное. Сократите название или описание.';
+        }
+
+        // Обязательное поле не заполнено
+        if (str_contains($error, 'cannot be null')) {
+            return 'Не заполнено обязательное поле товара. Проверьте все поля и попробуйте снова.';
+        }
+
+        // Ошибка подключения к Redis
+        if (str_contains($error, 'Connection refused') || str_contains($error, 'Redis')) {
+            return 'Временная ошибка связи между системами. Попробуйте позже.';
+        }
+
+        // Общая ошибка базы данных
+        if (str_contains($error, 'SQLSTATE')) {
+            return 'Ошибка сохранения данных в SellerMind. Обратитесь в поддержку.';
+        }
+
+        // Таймаут
+        if (str_contains($error, 'timeout') || str_contains($error, 'Timeout')) {
+            return 'Превышено время ожидания. Попробуйте повторить синхронизацию позже.';
+        }
+
+        return 'Ошибка синхронизации: ' . mb_substr($error, 0, 200);
+    }
+
+    /**
+     * Отправить подтверждение обработки товара в RISMENT через Redis
+     */
+    protected function sendProductConfirmation(array $originalMessage, ?Product $product, string $status, ?string $error = null): void
+    {
+        $data = $originalMessage['data'] ?? [];
+        $rismentProductId = $data['risment_product_id']
+            ?? $originalMessage['risment_product_id']
+            ?? $data['product_id']
+            ?? $data['id']
+            ?? null;
+        $linkToken = $originalMessage['link_token'] ?? null;
+
+        if (!$rismentProductId || !$linkToken) {
+            Log::warning('ProcessRisment: Cannot send product confirmation — missing risment_product_id or link_token', [
+                'has_risment_product_id' => (bool) $rismentProductId,
+                'has_link_token' => (bool) $linkToken,
+            ]);
+            return;
+        }
+
+        $confirmation = [
+            'event' => $status === 'success' ? 'product.synced' : 'product.sync_error',
+            'link_token' => $linkToken,
+            'data' => [
+                'risment_product_id' => (int) $rismentProductId,
+                'status' => $status,
+            ],
+        ];
+
+        if ($status === 'success' && $product) {
+            $confirmation['data']['sellermind_product_id'] = $product->id;
+        }
+
+        if ($status === 'error' && $error) {
+            $confirmation['data']['error'] = $error;
+        }
+
+        try {
+            Redis::connection('integration')->rpush(
+                'risment:product_confirm',
+                json_encode($confirmation, JSON_UNESCAPED_UNICODE)
+            );
+
+            Log::info('ProcessRisment: Product confirmation sent', [
+                'event' => $confirmation['event'],
+                'risment_product_id' => $rismentProductId,
+                'status' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('ProcessRisment: Failed to send product confirmation to RISMENT', [
+                'risment_product_id' => $rismentProductId,
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }
