@@ -250,13 +250,30 @@ class ReleaseCancelledOrderReservations extends Command
                 $releasedCount++;
 
                 // 2. Return stock to ProductVariant (quietly — без Observer, чтобы не дублировать ledger)
+                // Возвращаем только фактически списанное (если stock был 0 — списания не было)
                 if ($variant) {
                     $stockBefore = $variant->stock_default;
-                    $variant->incrementStockQuietly($qty);
+                    $actualDecrement = null;
+                    try {
+                        $log = DB::table('order_stock_logs')
+                            ->where('order_id', $order->id)
+                            ->where('product_variant_id', $variant->id)
+                            ->where('action', 'reserve')
+                            ->first();
+                        if ($log) {
+                            $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+                        }
+                    } catch (\Throwable $e) {
+                        // fallback на полное qty
+                    }
+                    $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+                    if ($incrementQty > 0) {
+                        $variant->incrementStockQuietly($incrementQty);
+                    }
                     $stockAfter = $variant->fresh()->stock_default;
-                    $stockReturnedCount += $qty;
+                    $stockReturnedCount += $incrementQty;
 
-                    $this->line("    Released: {$variant->sku}, qty: +{$qty} (was: {$stockBefore}, now: {$stockAfter})");
+                    $this->line("    Released: {$variant->sku}, qty: +{$incrementQty} (was: {$stockBefore}, now: {$stockAfter})");
 
                     // Обратная совместимость: создаём положительный ledger ТОЛЬКО если
                     // при резерве был создан отрицательный (старая логика)
@@ -325,12 +342,29 @@ class ReleaseCancelledOrderReservations extends Command
         }
 
         // Return stock (quietly — без Observer, чтобы не дублировать ledger)
+        // Возвращаем только фактически списанное (если stock был 0 — списания не было)
         $stockBefore = $variant->stock_default;
-        $variant->incrementStockQuietly($qty);
+        $actualDecrement = null;
+        try {
+            $log = DB::table('order_stock_logs')
+                ->where('order_id', $order->id)
+                ->where('product_variant_id', $variant->id)
+                ->where('action', 'reserve')
+                ->first();
+            if ($log) {
+                $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+            }
+        } catch (\Throwable $e) {
+            // fallback на полное qty
+        }
+        $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+        if ($incrementQty > 0) {
+            $variant->incrementStockQuietly($incrementQty);
+        }
         $stockAfter = $variant->fresh()->stock_default;
-        $stockReturnedCount += $qty;
+        $stockReturnedCount += $incrementQty;
 
-        $this->line("    Returned stock: {$variant->sku}, qty: +{$qty} (was: {$stockBefore}, now: {$stockAfter})");
+        $this->line("    Returned stock: {$variant->sku}, qty: +{$incrementQty} (was: {$stockBefore}, now: {$stockAfter})");
 
         // Обратная совместимость: создаём положительный ledger ТОЛЬКО если
         // при резерве был создан отрицательный (старая логика)

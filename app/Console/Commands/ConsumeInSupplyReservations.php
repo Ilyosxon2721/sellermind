@@ -116,8 +116,25 @@ class ConsumeInSupplyReservations extends Command
                         $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
 
                         // Возвращаем остаток (quietly to avoid Observer creating duplicate ledger entry)
+                        // Возвращаем только фактически списанное (если stock был 0 — списания не было)
                         if ($variant) {
-                            $variant->incrementStockQuietly($qty);
+                            $actualDecrement = null;
+                            try {
+                                $log = DB::table('order_stock_logs')
+                                    ->where('order_id', $order->id)
+                                    ->where('product_variant_id', $variant->id)
+                                    ->where('action', 'reserve')
+                                    ->first();
+                                if ($log) {
+                                    $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+                                }
+                            } catch (\Throwable $e) {
+                                // fallback на полное qty
+                            }
+                            $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+                            if ($incrementQty > 0) {
+                                $variant->incrementStockQuietly($incrementQty);
+                            }
 
                             // Запись в журнал склада только если старый flow создал ledger при резервировании
                             $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')

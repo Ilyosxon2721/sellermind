@@ -458,8 +458,15 @@ class OrderStockService
                     if ($variant) {
                         $stockBefore = $variant->stock_default;
 
+                        // Определяем фактическое кол-во списанного при резерве
+                        // (если stock был 0, decrementStockQuietly не списал ничего)
+                        $actualDecrement = $this->getActualStockDecrement($order->id, $variant->id);
+                        $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+
                         // Возвращаем остатки (quietly to avoid Observer creating duplicate ledger entry)
-                        $variant->incrementStockQuietly($qty);
+                        if ($incrementQty > 0) {
+                            $variant->incrementStockQuietly($incrementQty);
+                        }
                         $stockAfter = $variant->stock_default;
 
                         // Обратная совместимость: создаём положительный ledger entry
@@ -515,8 +522,14 @@ class OrderStockService
 
                     $stockBefore = $variant->stock_default;
 
+                    // Определяем фактическое кол-во списанного при резерве
+                    $actualDecrement = $this->getActualStockDecrement($order->id, $variant->id);
+                    $incrementQty = $actualDecrement !== null ? $actualDecrement : $quantity;
+
                     // Return stock to ProductVariant (quietly to avoid Observer creating duplicate ledger entry)
-                    $variant->incrementStockQuietly($quantity);
+                    if ($incrementQty > 0) {
+                        $variant->incrementStockQuietly($incrementQty);
+                    }
                     $stockAfter = $variant->stock_default;
 
                     // Обратная совместимость: создаём положительный ledger entry
@@ -1223,6 +1236,38 @@ class OrderStockService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Получить фактическое количество списанного товара из лога
+     *
+     * При резервировании decrementStockQuietly использует max(0, stock - qty),
+     * поэтому если stock был 0, фактическое списание = 0.
+     * При отмене нужно вернуть только то, что реально было списано.
+     *
+     * @return int|null null если лог не найден (fallback на полное qty)
+     */
+    protected function getActualStockDecrement(int $orderId, int $variantId): ?int
+    {
+        try {
+            $log = DB::table('order_stock_logs')
+                ->where('order_id', $orderId)
+                ->where('product_variant_id', $variantId)
+                ->where('action', 'reserve')
+                ->first();
+
+            if ($log) {
+                return max(0, (int) $log->stock_before - (int) $log->stock_after);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('OrderStockService: Failed to get actual stock decrement', [
+                'order_id' => $orderId,
+                'variant_id' => $variantId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null; // Лог не найден, caller использует fallback
     }
 
     /**
