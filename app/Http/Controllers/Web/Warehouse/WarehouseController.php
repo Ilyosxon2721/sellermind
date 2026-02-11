@@ -221,6 +221,40 @@ class WarehouseController extends Controller
         ]);
     }
 
+    public function inventoryList(Request $request): View
+    {
+        $this->ensureUser($request);
+        $companyId = $this->getCompanyId();
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('warehouse.inventory', [
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $warehouses->first()?->id,
+        ]);
+    }
+
+    public function createInventory(Request $request): View
+    {
+        $this->ensureUser($request);
+        $companyId = $this->getCompanyId();
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('warehouse.inventory-create', [
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $warehouses->first()?->id,
+        ]);
+    }
+
     private function seedWriteOffReasons(int $companyId): void
     {
         $defaultReasons = WriteOffReason::getDefaultReasons();
