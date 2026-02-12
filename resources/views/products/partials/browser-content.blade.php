@@ -137,9 +137,20 @@
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">{{ optional($product->updated_at)->format('d.m.Y H:i') }}</td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ route('web.products.edit', $product) }}" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
-                                Редактировать
-                            </a>
+                            <div class="flex items-center justify-end space-x-2">
+                                <a href="{{ route('web.products.edit', $product) }}" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
+                                    Редактировать
+                                </a>
+                                <form method="POST" action="{{ route('web.products.destroy', $product) }}"
+                                      onsubmit="return confirm('Удалить товар «{{ addslashes($product->name) }}»?')"
+                                      class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg text-sm transition-colors">
+                                        Удалить
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
