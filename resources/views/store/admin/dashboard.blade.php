@@ -102,6 +102,13 @@
                                           x-text="s.is_published ? 'Опубликован' : 'Черновик'"></span>
                                 </div>
 
+                                {{-- Кнопка открытия витрины --}}
+                                <a :href="'/store/' + s.slug" target="_blank"
+                                   class="flex items-center justify-center space-x-2 w-full px-4 py-2.5 mb-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all text-sm font-medium shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    <span>Открыть магазин</span>
+                                </a>
+
                                 {{-- Ссылки на разделы --}}
                                 <div class="grid grid-cols-3 gap-2">
                                     <a :href="'/my-store/' + s.id + '/theme'"
