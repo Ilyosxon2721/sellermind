@@ -29,8 +29,14 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Обновить</span>
                     </button>
-                    <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center space-x-2" 
-                            @click="postDoc()" 
+                    <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center space-x-2"
+                            @click="saveCosts()"
+                            x-show="doc && doc.type === 'IN' && doc.status === 'DRAFT' && hasCostChanges">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        <span>Сохранить себестоимость</span>
+                    </button>
+                    <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center space-x-2"
+                            @click="postDoc()"
                             x-show="doc && doc.status === 'DRAFT'">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span>Провести</span>
@@ -104,11 +110,21 @@
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                        <template x-for="line in lines" :key="line.id">
+                        <template x-for="(line, idx) in lines" :key="line.id">
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="line.sku?.sku_code || line.sku_id"></td>
                                 <td class="px-6 py-4 text-sm text-right" x-text="parseInt(line.qty)"></td>
-                                <td class="px-6 py-4 text-sm text-right text-gray-600" x-text="line.unit_cost ?? '—'"></td>
+                                <td class="px-6 py-4 text-sm text-right text-gray-600">
+                                    <template x-if="canEditCost">
+                                        <input type="number" step="0.01" min="0"
+                                               class="w-28 text-right border border-gray-300 rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                               :value="line.unit_cost ?? ''"
+                                               @input="updateCost(idx, $event.target.value)">
+                                    </template>
+                                    <template x-if="!canEditCost">
+                                        <span x-text="line.unit_cost ?? '—'"></span>
+                                    </template>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-right font-medium" x-text="line.total_cost ?? '—'"></td>
                             </tr>
                         </template>
@@ -165,7 +181,44 @@
             ledger: [],
             error: '',
             loading: true,
+            hasCostChanges: false,
+            costEdits: {},
             toast: { show: false, message: '', type: 'success' },
+
+            get canEditCost() {
+                return this.doc && this.doc.type === 'IN' && this.doc.status === 'DRAFT';
+            },
+
+            updateCost(idx, value) {
+                const line = this.lines[idx];
+                if (!line) return;
+                const cost = parseFloat(value) || 0;
+                this.costEdits[line.id] = cost;
+                this.lines[idx].unit_cost = cost > 0 ? cost.toFixed(2) : null;
+                this.lines[idx].total_cost = cost > 0 ? (cost * parseFloat(line.qty)).toFixed(2) : null;
+                this.hasCostChanges = true;
+            },
+
+            async saveCosts() {
+                const entries = Object.entries(this.costEdits);
+                if (!entries.length) return;
+                try {
+                    const payload = { lines: entries.map(([lineId, cost]) => ({ id: parseInt(lineId), unit_cost: cost })) };
+                    const resp = await fetch(`/api/marketplace/inventory/documents/${id}/lines/costs`, {
+                        method: 'PATCH',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+                    const json = await resp.json();
+                    if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка сохранения');
+                    this.costEdits = {};
+                    this.hasCostChanges = false;
+                    this.showToast('Себестоимость сохранена', 'success');
+                    this.load();
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка', 'error');
+                }
+            },
 
             showToast(message, type = 'success') {
                 this.toast = { show: true, message, type };
@@ -235,6 +288,9 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
         </button>
+        <button x-show="doc && doc.type === 'IN' && doc.status === 'DRAFT' && hasCostChanges" @click="saveCosts()" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
+            Сохранить
+        </button>
         <button x-show="doc && doc.status === 'DRAFT'" @click="postDoc()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
             Провести
         </button>
@@ -287,14 +343,25 @@
                     <span class="native-caption" x-text="`${lines.length} позиций`"></span>
                 </div>
                 <div class="space-y-2">
-                    <template x-for="line in lines" :key="line.id">
+                    <template x-for="(line, idx) in lines" :key="line.id">
                         <div class="p-3 bg-gray-50 rounded-xl">
                             <div class="flex items-center justify-between">
                                 <p class="native-body font-semibold" x-text="line.sku?.sku_code || line.sku_id"></p>
                                 <p class="native-body" x-text="parseInt(line.qty)"></p>
                             </div>
                             <div class="flex items-center justify-between mt-1">
-                                <p class="native-caption" x-text="line.unit_cost ? `Цена: ${line.unit_cost}` : ''"></p>
+                                <template x-if="canEditCost">
+                                    <div class="flex items-center space-x-2 w-full">
+                                        <span class="native-caption">Цена:</span>
+                                        <input type="number" step="0.01" min="0"
+                                               class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm"
+                                               :value="line.unit_cost ?? ''"
+                                               @input="updateCost(idx, $event.target.value)">
+                                    </div>
+                                </template>
+                                <template x-if="!canEditCost">
+                                    <p class="native-caption" x-text="line.unit_cost ? `Цена: ${line.unit_cost}` : ''"></p>
+                                </template>
                                 <p class="native-caption font-medium" x-text="line.total_cost ? `Сумма: ${line.total_cost}` : ''"></p>
                             </div>
                         </div>

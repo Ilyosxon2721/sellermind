@@ -632,6 +632,7 @@ Route::middleware('auth.any')->group(function () {
                 Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
                 Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
                 Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
+                Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
                 Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
             });
         });
