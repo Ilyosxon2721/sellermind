@@ -170,6 +170,52 @@ class DocumentController extends Controller
         }
     }
 
+    /**
+     * Обновить себестоимость строк оприходования (только DRAFT + IN)
+     */
+    public function updateLineCosts($id, Request $request)
+    {
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
+
+        if ($doc->type !== 'IN') {
+            return $this->errorResponse('Редактирование себестоимости доступно только для оприходования', 'invalid_type', null, 422);
+        }
+
+        if ($doc->status !== InventoryDocument::STATUS_DRAFT) {
+            return $this->errorResponse('Редактирование доступно только для черновиков', 'invalid_state', null, 422);
+        }
+
+        $data = $request->validate([
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.id' => ['required', 'integer'],
+            'lines.*.unit_cost' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($doc, $data) {
+            foreach ($data['lines'] as $lineData) {
+                $line = InventoryDocumentLine::where('document_id', $doc->id)
+                    ->where('id', $lineData['id'])
+                    ->first();
+
+                if ($line) {
+                    $line->update([
+                        'unit_cost' => $lineData['unit_cost'],
+                        'total_cost' => round($lineData['unit_cost'] * (float) $line->qty, 2),
+                    ]);
+                }
+            }
+        });
+
+        return $this->successResponse(
+            $doc->fresh(['lines.sku', 'lines.unit', 'warehouse'])
+        );
+    }
+
     public function reverse($id)
     {
         $companyId = $this->getCompanyId();
