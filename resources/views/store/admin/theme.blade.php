@@ -333,7 +333,7 @@ function themeEditor(storeId) {
         async loadTheme() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/theme`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/theme`);
                 const data = res.data.data ?? res.data;
                 if (data) {
                     this.theme = { ...this.theme, ...data };
@@ -353,7 +353,7 @@ function themeEditor(storeId) {
         async saveTheme() {
             this.saving = true;
             try {
-                await window.api.put(`/api/store/stores/${this.storeId}/theme`, this.theme);
+                await window.api.put(`/store/stores/${this.storeId}/theme`, this.theme);
                 window.toast?.success('Тема сохранена');
             } catch (e) {
                 const msg = e.response?.data?.message || 'Ошибка при сохранении темы';

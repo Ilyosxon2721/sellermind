@@ -161,7 +161,7 @@ function paymentManager(storeId) {
         async loadMethods() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/payment-methods`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/payment-methods`);
                 this.methods = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить способы оплаты');
@@ -192,10 +192,10 @@ function paymentManager(storeId) {
             this.saving = true;
             try {
                 if (this.editingId) {
-                    await window.api.put(`/api/store/stores/${this.storeId}/payment-methods/${this.editingId}`, this.form);
+                    await window.api.put(`/store/stores/${this.storeId}/payment-methods/${this.editingId}`, this.form);
                     window.toast?.success('Способ оплаты обновлен');
                 } else {
-                    await window.api.post(`/api/store/stores/${this.storeId}/payment-methods`, this.form);
+                    await window.api.post(`/store/stores/${this.storeId}/payment-methods`, this.form);
                     window.toast?.success('Способ оплаты создан');
                 }
                 this.showModal = false;
@@ -210,7 +210,7 @@ function paymentManager(storeId) {
         async deleteMethod(id) {
             if (!confirm('Удалить способ оплаты?')) return;
             try {
-                await window.api.delete(`/api/store/stores/${this.storeId}/payment-methods/${id}`);
+                await window.api.delete(`/store/stores/${this.storeId}/payment-methods/${id}`);
                 this.methods = this.methods.filter(m => m.id !== id);
                 window.toast?.success('Способ оплаты удален');
             } catch (e) {

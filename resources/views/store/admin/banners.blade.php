@@ -227,7 +227,7 @@ function bannersManager(storeId) {
         async loadBanners() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/banners`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/banners`);
                 this.banners = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить баннеры');
@@ -267,10 +267,10 @@ function bannersManager(storeId) {
             this.saving = true;
             try {
                 if (this.editingId) {
-                    await window.api.put(`/api/store/stores/${this.storeId}/banners/${this.editingId}`, this.form);
+                    await window.api.put(`/store/stores/${this.storeId}/banners/${this.editingId}`, this.form);
                     window.toast?.success('Баннер обновлен');
                 } else {
-                    await window.api.post(`/api/store/stores/${this.storeId}/banners`, this.form);
+                    await window.api.post(`/store/stores/${this.storeId}/banners`, this.form);
                     window.toast?.success('Баннер создан');
                 }
                 this.showModal = false;
@@ -285,7 +285,7 @@ function bannersManager(storeId) {
         async deleteBanner(id) {
             if (!confirm('Удалить баннер?')) return;
             try {
-                await window.api.delete(`/api/store/stores/${this.storeId}/banners/${id}`);
+                await window.api.delete(`/store/stores/${this.storeId}/banners/${id}`);
                 this.banners = this.banners.filter(b => b.id !== id);
                 window.toast?.success('Баннер удален');
             } catch (e) {
@@ -313,7 +313,7 @@ function bannersManager(storeId) {
             // Сохраняем порядок
             const order = this.banners.map((b, i) => ({ id: b.id, sort_order: i }));
             try {
-                await window.api.post(`/api/store/stores/${this.storeId}/banners/reorder`, { order });
+                await window.api.post(`/store/stores/${this.storeId}/banners/reorder`, { order });
                 window.toast?.success('Порядок сохранен');
             } catch (e) {
                 window.toast?.error('Не удалось сохранить порядок');

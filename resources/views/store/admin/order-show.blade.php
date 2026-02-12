@@ -217,7 +217,7 @@ function orderDetail(storeId, orderId) {
         async loadOrder() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/orders/${this.orderId}`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/orders/${this.orderId}`);
                 this.order = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить заказ');
@@ -229,7 +229,7 @@ function orderDetail(storeId, orderId) {
         async saveOrder() {
             this.saving = true;
             try {
-                await window.api.put(`/api/store/stores/${this.storeId}/orders/${this.orderId}`, {
+                await window.api.put(`/store/stores/${this.storeId}/orders/${this.orderId}`, {
                     status: this.order.status,
                     admin_note: this.order.admin_note,
                 });

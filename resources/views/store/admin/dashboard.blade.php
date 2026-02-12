@@ -269,7 +269,7 @@ function storesDashboard() {
         async loadStores() {
             this.loading = true;
             try {
-                const res = await window.api.get('/api/store/stores');
+                const res = await window.api.get('/store/stores');
                 this.stores = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить магазины');
@@ -285,7 +285,7 @@ function storesDashboard() {
             }
             this.saving = true;
             try {
-                await window.api.post('/api/store/stores', this.form);
+                await window.api.post('/store/stores', this.form);
                 window.toast?.success('Магазин создан');
                 this.showCreateModal = false;
                 this.form = { name: '', description: '', phone: '', email: '' };
@@ -300,7 +300,7 @@ function storesDashboard() {
 
         async togglePublished(store) {
             try {
-                await window.api.put(`/api/store/stores/${store.id}`, {
+                await window.api.put(`/store/stores/${store.id}`, {
                     is_published: !store.is_published,
                 });
                 store.is_published = !store.is_published;
@@ -319,7 +319,7 @@ function storesDashboard() {
             if (!this.deleteTarget) return;
             this.saving = true;
             try {
-                await window.api.delete(`/api/store/stores/${this.deleteTarget.id}`);
+                await window.api.delete(`/store/stores/${this.deleteTarget.id}`);
                 window.toast?.success('Магазин удален');
                 this.showDeleteModal = false;
                 this.deleteTarget = null;

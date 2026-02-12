@@ -176,7 +176,7 @@ function pagesManager(storeId) {
         async loadPages() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/pages`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/pages`);
                 this.pages = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить страницы');
@@ -210,10 +210,10 @@ function pagesManager(storeId) {
             this.saving = true;
             try {
                 if (this.editingId) {
-                    await window.api.put(`/api/store/stores/${this.storeId}/pages/${this.editingId}`, this.form);
+                    await window.api.put(`/store/stores/${this.storeId}/pages/${this.editingId}`, this.form);
                     window.toast?.success('Страница обновлена');
                 } else {
-                    await window.api.post(`/api/store/stores/${this.storeId}/pages`, this.form);
+                    await window.api.post(`/store/stores/${this.storeId}/pages`, this.form);
                     window.toast?.success('Страница создана');
                 }
                 this.showModal = false;
@@ -228,7 +228,7 @@ function pagesManager(storeId) {
         async deletePage(id) {
             if (!confirm('Удалить страницу?')) return;
             try {
-                await window.api.delete(`/api/store/stores/${this.storeId}/pages/${id}`);
+                await window.api.delete(`/store/stores/${this.storeId}/pages/${id}`);
                 this.pages = this.pages.filter(p => p.id !== id);
                 window.toast?.success('Страница удалена');
             } catch (e) {

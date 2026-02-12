@@ -340,7 +340,7 @@ function catalogManager(storeId) {
         async loadProducts() {
             this.loading = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/products`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/products`);
                 this.products = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить товары');
@@ -352,7 +352,7 @@ function catalogManager(storeId) {
         async loadCategories() {
             this.loadingCategories = true;
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/categories`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/categories`);
                 this.categories = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить категории');
@@ -365,7 +365,7 @@ function catalogManager(storeId) {
             if (!this.productSearch.trim()) { this.searchResults = []; return; }
             this.searchLoading = true;
             try {
-                const res = await window.api.get(`/api/products?search=${encodeURIComponent(this.productSearch)}&per_page=20`);
+                const res = await window.api.get(`/products?search=${encodeURIComponent(this.productSearch)}&per_page=20`);
                 this.searchResults = res.data.data ?? res.data;
             } catch (e) {
                 window.toast?.error('Ошибка поиска');
@@ -377,7 +377,7 @@ function catalogManager(storeId) {
         async addProducts() {
             this.saving = true;
             try {
-                await window.api.post(`/api/store/stores/${this.storeId}/products`, { product_ids: this.selectedProducts });
+                await window.api.post(`/store/stores/${this.storeId}/products`, { product_ids: this.selectedProducts });
                 window.toast?.success('Товары добавлены');
                 this.showAddProductsModal = false;
                 this.selectedProducts = [];
@@ -393,7 +393,7 @@ function catalogManager(storeId) {
 
         async updateProduct(productId, data) {
             try {
-                await window.api.put(`/api/store/stores/${this.storeId}/products/${productId}`, data);
+                await window.api.put(`/store/stores/${this.storeId}/products/${productId}`, data);
                 window.toast?.success('Товар обновлен');
             } catch (e) {
                 window.toast?.error('Ошибка обновления');
@@ -404,7 +404,7 @@ function catalogManager(storeId) {
             const data = {};
             data[field] = !product[field];
             try {
-                await window.api.put(`/api/store/stores/${this.storeId}/products/${product.id}`, data);
+                await window.api.put(`/store/stores/${this.storeId}/products/${product.id}`, data);
                 product[field] = !product[field];
             } catch (e) {
                 window.toast?.error('Ошибка обновления');
@@ -414,7 +414,7 @@ function catalogManager(storeId) {
         async removeProduct(productId) {
             if (!confirm('Убрать товар из магазина?')) return;
             try {
-                await window.api.delete(`/api/store/stores/${this.storeId}/products/${productId}`);
+                await window.api.delete(`/store/stores/${this.storeId}/products/${productId}`);
                 this.products = this.products.filter(p => p.id !== productId);
                 window.toast?.success('Товар убран');
             } catch (e) {
@@ -425,7 +425,7 @@ function catalogManager(storeId) {
         async syncAll() {
             this.syncing = true;
             try {
-                await window.api.post(`/api/store/stores/${this.storeId}/products/sync`);
+                await window.api.post(`/store/stores/${this.storeId}/products/sync`);
                 window.toast?.success('Синхронизация запущена');
                 await this.loadProducts();
             } catch (e) {
@@ -454,10 +454,10 @@ function catalogManager(storeId) {
             this.saving = true;
             try {
                 if (this.editingCategoryId) {
-                    await window.api.put(`/api/store/stores/${this.storeId}/categories/${this.editingCategoryId}`, this.categoryForm);
+                    await window.api.put(`/store/stores/${this.storeId}/categories/${this.editingCategoryId}`, this.categoryForm);
                     window.toast?.success('Категория обновлена');
                 } else {
-                    await window.api.post(`/api/store/stores/${this.storeId}/categories`, this.categoryForm);
+                    await window.api.post(`/store/stores/${this.storeId}/categories`, this.categoryForm);
                     window.toast?.success('Категория создана');
                 }
                 this.showCategoryModal = false;
@@ -472,7 +472,7 @@ function catalogManager(storeId) {
         async removeCategory(categoryId) {
             if (!confirm('Удалить категорию?')) return;
             try {
-                await window.api.delete(`/api/store/stores/${this.storeId}/categories/${categoryId}`);
+                await window.api.delete(`/store/stores/${this.storeId}/categories/${categoryId}`);
                 this.categories = this.categories.filter(c => c.id !== categoryId);
                 window.toast?.success('Категория удалена');
             } catch (e) {

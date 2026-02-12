@@ -218,7 +218,7 @@ function storeAnalytics(storeId) {
                 if (this.dateFrom) params.append('from', this.dateFrom);
                 if (this.dateTo) params.append('to', this.dateTo);
 
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/analytics?${params}`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/analytics?${params}`);
                 this.data = res.data.data ?? res.data;
 
                 this.$nextTick(() => this.initChart());

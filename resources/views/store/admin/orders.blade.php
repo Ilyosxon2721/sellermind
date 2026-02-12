@@ -197,7 +197,7 @@ function orderManager(storeId) {
 
         async loadStats() {
             try {
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/orders/stats`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/orders/stats`);
                 this.stats = res.data.data ?? res.data;
             } catch (e) { /* ignore */ }
         },
@@ -210,7 +210,7 @@ function orderManager(storeId) {
                 if (this.filterStatus) params.append('status', this.filterStatus);
                 if (this.searchQuery) params.append('search', this.searchQuery);
 
-                const res = await window.api.get(`/api/store/stores/${this.storeId}/orders?${params}`);
+                const res = await window.api.get(`/store/stores/${this.storeId}/orders?${params}`);
                 const data = res.data;
                 this.orders = data.data ?? data;
                 this.totalPages = data.meta?.last_page ?? data.last_page ?? 1;
