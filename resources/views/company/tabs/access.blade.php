@@ -209,8 +209,10 @@ function accessTab() {
         },
 
         canManageAccess() {
-            const selectedCompany = this.companies.find(c => c.id === this.selectedCompanyId);
-            return selectedCompany && selectedCompany.pivot && selectedCompany.pivot.role === 'owner';
+            const selectedCompany = this.companies.find(c => String(c.id) === String(this.selectedCompanyId));
+            if (!selectedCompany) return false;
+            // CompanyResource возвращает role напрямую, а не через pivot
+            return selectedCompany.role === 'owner' || (selectedCompany.pivot && selectedCompany.pivot.role === 'owner');
         }
     };
 }
