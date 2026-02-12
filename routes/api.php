@@ -627,12 +627,13 @@ Route::middleware('auth.any')->group(function () {
             Route::get('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'index']);
             Route::get('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'show']);
 
-            // Создание/изменение/проводка документов — только owner
+            // Создание/изменение/проводка документов — доступно авторизованным сотрудникам
+            Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
+            Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
+            Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
+            Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
+            // Отмена проводки — только owner
             Route::middleware('company.owner')->group(function () {
-                Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
-                Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
-                Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
-                Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
                 Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
             });
         });
