@@ -637,7 +637,71 @@ Route::middleware('auth.any')->group(function () {
         ->name('payment.callback.payme');
     Route::get('/payment/renew/{subscription}', [\App\Http\Controllers\PaymentController::class, 'renew'])
         ->name('payment.renew');
+    // Store Builder — Admin pages
+    Route::prefix('my-store')->name('store.')->group(function () {
+        Route::get('/', function () {
+            return view('store.admin.dashboard');
+        })->name('dashboard');
+
+        Route::get('/{storeId}/theme', function ($storeId) {
+            return view('store.admin.theme', ['storeId' => $storeId]);
+        })->name('theme');
+
+        Route::get('/{storeId}/catalog', function ($storeId) {
+            return view('store.admin.catalog', ['storeId' => $storeId]);
+        })->name('catalog');
+
+        Route::get('/{storeId}/delivery', function ($storeId) {
+            return view('store.admin.delivery', ['storeId' => $storeId]);
+        })->name('delivery');
+
+        Route::get('/{storeId}/payment', function ($storeId) {
+            return view('store.admin.payment', ['storeId' => $storeId]);
+        })->name('payment');
+
+        Route::get('/{storeId}/orders', function ($storeId) {
+            return view('store.admin.orders', ['storeId' => $storeId]);
+        })->name('orders');
+
+        Route::get('/{storeId}/orders/{orderId}', function ($storeId, $orderId) {
+            return view('store.admin.order-show', ['storeId' => $storeId, 'orderId' => $orderId]);
+        })->name('orders.show');
+
+        Route::get('/{storeId}/pages', function ($storeId) {
+            return view('store.admin.pages', ['storeId' => $storeId]);
+        })->name('pages');
+
+        Route::get('/{storeId}/analytics', function ($storeId) {
+            return view('store.admin.analytics', ['storeId' => $storeId]);
+        })->name('analytics');
+
+        Route::get('/{storeId}/banners', function ($storeId) {
+            return view('store.admin.banners', ['storeId' => $storeId]);
+        })->name('banners');
+    });
 }); // End of auth middleware group
+
+// Storefront — Public pages (no auth)
+Route::prefix('store/{slug}')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Storefront\StorefrontController::class, 'home'])->name('storefront.home');
+    Route::get('/catalog', [\App\Http\Controllers\Storefront\CatalogController::class, 'index'])->name('storefront.catalog');
+    Route::get('/product/{productId}', [\App\Http\Controllers\Storefront\CatalogController::class, 'show'])->name('storefront.product');
+    Route::get('/cart', [\App\Http\Controllers\Storefront\CartController::class, 'index'])->name('storefront.cart');
+    Route::get('/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'index'])->name('storefront.checkout');
+    Route::get('/order/{orderNumber}', [\App\Http\Controllers\Storefront\CheckoutController::class, 'orderStatus'])->name('storefront.order');
+    Route::get('/page/{pageSlug}', [\App\Http\Controllers\Storefront\StorefrontController::class, 'page'])->name('storefront.page');
+    Route::get('/payment/success', [\App\Http\Controllers\Storefront\PaymentController::class, 'success'])->name('storefront.payment.success');
+    Route::get('/payment/fail', [\App\Http\Controllers\Storefront\PaymentController::class, 'fail'])->name('storefront.payment.fail');
+
+    // Storefront API (cart, checkout, payment — JSON endpoints)
+    Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
+    Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
+    Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
+    Route::delete('/api/cart/remove', [\App\Http\Controllers\Storefront\CartController::class, 'remove']);
+    Route::delete('/api/cart/clear', [\App\Http\Controllers\Storefront\CartController::class, 'clear']);
+    Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
+    Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+});
 
 // Payment webhooks (public, no CSRF)
 Route::post('/webhooks/click/prepare', [\App\Http\Controllers\Webhooks\ClickWebhookController::class, 'prepare'])

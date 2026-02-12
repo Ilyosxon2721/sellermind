@@ -822,6 +822,71 @@ Route::middleware('auth.any')->group(function () {
         Route::get('dialogs/hidden/{dialog}', [DialogAdminController::class, 'showHiddenDialog']);
         Route::get('dialogs/stats', [DialogAdminController::class, 'stats']);
     });
+
+    // Store Builder — Admin API
+    Route::prefix('store')->group(function () {
+        // Stores CRUD
+        Route::get('stores', [\App\Http\Controllers\Store\StoreAdminController::class, 'index']);
+        Route::post('stores', [\App\Http\Controllers\Store\StoreAdminController::class, 'store']);
+        Route::get('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'show']);
+        Route::put('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'update']);
+        Route::delete('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'destroy']);
+
+        // Theme
+        Route::get('stores/{storeId}/theme', [\App\Http\Controllers\Store\StoreThemeController::class, 'show']);
+        Route::put('stores/{storeId}/theme', [\App\Http\Controllers\Store\StoreThemeController::class, 'update']);
+
+        // Banners
+        Route::get('stores/{storeId}/banners', [\App\Http\Controllers\Store\StoreBannerController::class, 'index']);
+        Route::post('stores/{storeId}/banners', [\App\Http\Controllers\Store\StoreBannerController::class, 'store']);
+        Route::put('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'update']);
+        Route::delete('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'destroy']);
+        Route::post('stores/{storeId}/banners/reorder', [\App\Http\Controllers\Store\StoreBannerController::class, 'reorder']);
+
+        // Catalog — Products
+        Route::get('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productIndex']);
+        Route::post('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productStore']);
+        Route::put('stores/{storeId}/products/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productUpdate']);
+        Route::delete('stores/{storeId}/products/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productDestroy']);
+        Route::post('stores/{storeId}/products/sync', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productSync']);
+
+        // Catalog — Categories
+        Route::get('stores/{storeId}/categories', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryIndex']);
+        Route::post('stores/{storeId}/categories', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryStore']);
+        Route::put('stores/{storeId}/categories/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryUpdate']);
+        Route::delete('stores/{storeId}/categories/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryDestroy']);
+
+        // Delivery Methods
+        Route::get('stores/{storeId}/delivery-methods', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'index']);
+        Route::post('stores/{storeId}/delivery-methods', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'store']);
+        Route::get('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'show']);
+        Route::put('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'update']);
+        Route::delete('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'destroy']);
+        Route::post('stores/{storeId}/delivery-methods/reorder', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'reorder']);
+
+        // Payment Methods
+        Route::get('stores/{storeId}/payment-methods', [\App\Http\Controllers\Store\StorePaymentController::class, 'index']);
+        Route::post('stores/{storeId}/payment-methods', [\App\Http\Controllers\Store\StorePaymentController::class, 'store']);
+        Route::get('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'show']);
+        Route::put('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'update']);
+        Route::delete('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'destroy']);
+
+        // Orders
+        Route::get('stores/{storeId}/orders', [\App\Http\Controllers\Store\StoreOrderController::class, 'index']);
+        Route::get('stores/{storeId}/orders/stats', [\App\Http\Controllers\Store\StoreOrderController::class, 'stats']);
+        Route::get('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'show']);
+        Route::put('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'update']);
+
+        // Pages
+        Route::get('stores/{storeId}/pages', [\App\Http\Controllers\Store\StorePageController::class, 'index']);
+        Route::post('stores/{storeId}/pages', [\App\Http\Controllers\Store\StorePageController::class, 'store']);
+        Route::get('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'show']);
+        Route::put('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'update']);
+        Route::delete('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'destroy']);
+
+        // Analytics
+        Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
+    });
 });
 
 /*
