@@ -36,7 +36,7 @@ final class CheckoutController extends Controller
         ]);
 
         $cart = $this->getCart($store);
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.checkout", compact('store', 'cart'));
     }
@@ -194,8 +194,24 @@ final class CheckoutController extends Controller
         // Трекинг аналитики — fire-and-forget
         $this->trackOrderCompleted($store, $total);
 
+        // Сохраняем ID заказа в сессию для страниц оплаты
+        session()->put("store_{$store->id}_last_order_id", $order->id);
+
         // Очищаем корзину
         session()->forget("store_cart_{$store->id}");
+
+        // Интеграция с SellerMind: Sale + остатки + уведомления
+        // Вызов ВНЕ DB::transaction — ошибка НЕ откатывает заказ покупателя
+        try {
+            $storeOrderService = app(\App\Services\Store\StoreOrderService::class);
+            $storeOrderService->syncOrderToSale($order);
+            $storeOrderService->notifyStoreOwner($order);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('StoreOrder integration failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $this->successResponse(
             $order->load('items'),
@@ -217,9 +233,9 @@ final class CheckoutController extends Controller
             ->with(['items', 'deliveryMethod', 'paymentMethod'])
             ->firstOrFail();
 
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
-        return view("storefront.themes.{$template}.order-status", compact('store', 'order'));
+        return view("storefront.themes.{$template}.order", compact('store', 'order'));
     }
 
     // ==================

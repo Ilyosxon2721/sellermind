@@ -104,19 +104,12 @@ class PaymentController extends Controller
         ]);
 
         // Build Payme payment URL
-        $amount = $plan->price * 100; // Payme expects amount in tiyin (1 UZS = 100 tiyin)
+        // Формат по документации: https://checkout.paycom.uz/{base64(params)}
+        $amount = (int) ($plan->price * 100); // тийин (1 UZS = 100 тийин)
         $returnUrl = route('payment.callback.payme', ['subscription' => $subscription->id]);
 
-        // Encode account parameter
-        $account = base64_encode(json_encode([
-            'subscription_id' => $subscription->id,
-        ]));
-
-        $paymeUrl = 'https://checkout.paycom.uz/'.urlencode($merchantId).'?'.http_build_query([
-            'amount' => $amount,
-            'account' => $account,
-            'return_url' => $returnUrl,
-        ]);
+        $params = "m={$merchantId};ac.subscription_id={$subscription->id};a={$amount};c={$returnUrl}";
+        $paymeUrl = 'https://checkout.paycom.uz/'.base64_encode($params);
 
         return redirect($paymeUrl);
     }

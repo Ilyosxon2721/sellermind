@@ -88,6 +88,19 @@ final class StoreOrderController extends Controller
 
         $order->update($data);
 
+        // При отмене заказа — отменяем Sale и возвращаем остатки
+        if (isset($data['status']) && $data['status'] === 'cancelled' && $order->sellermind_order_id) {
+            try {
+                app(\App\Services\Store\StoreOrderService::class)->cancelOrderSale($order);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to cancel Sale for StoreOrder', [
+                    'order_id' => $order->id,
+                    'sale_id' => $order->sellermind_order_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->successResponse(
             $order->fresh(['items', 'deliveryMethod', 'paymentMethod'])
         );
