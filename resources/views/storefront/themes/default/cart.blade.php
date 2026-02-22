@@ -1,4 +1,4 @@
-@extends('storefront.layouts.app')
+﻿@extends('storefront.layouts.app')
 
 @section('content')
 @php
@@ -40,10 +40,10 @@
         <div x-show="!loading && items.length > 0" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {{-- Список товаров --}}
             <div class="lg:col-span-2 space-y-4">
-                <template x-for="item in items" :key="item.id">
+                <template x-for="item in items" :key="item.product_id">
                     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm flex gap-4">
                         {{-- Изображение --}}
-                        <a :href="`/store/{{ $store->slug }}/product/${item.store_product_id}`" class="shrink-0">
+                        <a :href="`/store/{{ $store->slug }}/product/${item.product_id}`" class="shrink-0">
                             <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gray-100 overflow-hidden">
                                 <img
                                     x-show="item.image"
@@ -62,9 +62,9 @@
                         {{-- Информация --}}
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-3">
-                                <a :href="`/store/{{ $store->slug }}/product/${item.store_product_id}`" class="text-sm sm:text-base font-medium text-gray-900 hover:text-gray-600 transition-colors line-clamp-2" x-text="item.name"></a>
+                                <a :href="`/store/{{ $store->slug }}/product/${item.product_id}`" class="text-sm sm:text-base font-medium text-gray-900 hover:text-gray-600 transition-colors line-clamp-2" x-text="item.name"></a>
                                 <button
-                                    @click="removeItem(item.id)"
+                                    @click="removeItem(item.product_id)"
                                     class="shrink-0 p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                                     title="Удалить"
                                 >
@@ -80,7 +80,7 @@
                                 {{-- Количество --}}
                                 <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                                     <button
-                                        @click="updateQuantity(item.id, item.quantity - 1)"
+                                        @click="updateQuantity(item.product_id, item.quantity - 1)"
                                         :disabled="item.quantity <= 1"
                                         class="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-30"
                                     >
@@ -90,7 +90,7 @@
                                     </button>
                                     <span class="w-10 h-9 flex items-center justify-center text-sm font-medium border-x border-gray-200" x-text="item.quantity"></span>
                                     <button
-                                        @click="updateQuantity(item.id, item.quantity + 1)"
+                                        @click="updateQuantity(item.product_id, item.quantity + 1)"
                                         class="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +216,8 @@
                         },
                     });
                     if (response.ok) {
-                        const data = await response.json();
+                        const json = await response.json();
+                        const data = json.data || json;
                         this.items = data.items || [];
                         this.subtotal = data.subtotal || 0;
                         this.discount = data.discount || 0;
@@ -238,16 +239,17 @@
                 try {
                     const slug = '{{ $store->slug }}';
                     const response = await fetch(`/store/${slug}/api/cart/update`, {
-                        method: 'POST',
+                        method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         },
-                        body: JSON.stringify({ item_id: itemId, quantity }),
+                        body: JSON.stringify({ product_id: itemId, quantity }),
                     });
                     if (response.ok) {
-                        const data = await response.json();
+                        const json = await response.json();
+                        const data = json.data || json;
                         this.items = data.items || [];
                         this.subtotal = data.subtotal || 0;
                         this.discount = data.discount || 0;
@@ -265,16 +267,17 @@
                 try {
                     const slug = '{{ $store->slug }}';
                     const response = await fetch(`/store/${slug}/api/cart/remove`, {
-                        method: 'POST',
+                        method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         },
-                        body: JSON.stringify({ item_id: itemId }),
+                        body: JSON.stringify({ product_id: itemId }),
                     });
                     if (response.ok) {
-                        const data = await response.json();
+                        const json = await response.json();
+                        const data = json.data || json;
                         this.items = data.items || [];
                         this.subtotal = data.subtotal || 0;
                         this.discount = data.discount || 0;
@@ -306,8 +309,9 @@
                         },
                         body: JSON.stringify({ code: this.promocode }),
                     });
-                    const data = await response.json();
+                    const json = await response.json();
                     if (response.ok) {
+                        const data = json.data || json;
                         this.promoApplied = true;
                         this.discount = data.discount || 0;
                         this.total = data.total || 0;
@@ -315,7 +319,7 @@
                             detail: { message: 'Промокод применен', type: 'success' }
                         }));
                     } else {
-                        this.promoError = data.message || 'Недействительный промокод';
+                        this.promoError = json.errors?.[0]?.message || json.message || 'Недействительный промокод';
                     }
                 } catch (e) {
                     this.promoError = 'Ошибка соединения';

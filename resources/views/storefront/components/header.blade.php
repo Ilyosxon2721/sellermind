@@ -59,7 +59,7 @@
                 {{-- Логотип --}}
                 <a href="/store/{{ $store->slug }}" class="mb-3">
                     @if($store->logo)
-                        <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-12 object-contain">
+                        <img src="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-12 object-contain">
                     @else
                         <span class="text-2xl font-bold" style="color: var(--header-text);">{{ $store->name }}</span>
                     @endif
@@ -114,7 +114,7 @@
             <div class="flex items-center justify-between py-3">
                 <a href="/store/{{ $store->slug }}">
                     @if($store->logo)
-                        <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-8 object-contain">
+                        <img src="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-8 object-contain">
                     @else
                         <span class="text-lg font-bold" style="color: var(--header-text);">{{ $store->name }}</span>
                     @endif
@@ -157,7 +157,7 @@
                 {{-- Логотип --}}
                 <a href="/store/{{ $store->slug }}" class="shrink-0">
                     @if($store->logo)
-                        <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-10 object-contain">
+                        <img src="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-10 object-contain">
                     @else
                         <span class="text-xl font-bold" style="color: var(--header-text);">{{ $store->name }}</span>
                     @endif

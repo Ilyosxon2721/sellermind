@@ -38,7 +38,7 @@ final class StorefrontController extends Controller
 
         $this->trackVisit($store);
 
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.home", compact('store'));
     }
@@ -58,7 +58,7 @@ final class StorefrontController extends Controller
 
         $this->trackPageView($store);
 
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.page", compact('store', 'page'));
     }

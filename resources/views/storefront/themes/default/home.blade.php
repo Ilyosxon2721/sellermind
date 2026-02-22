@@ -1,4 +1,4 @@
-@extends('storefront.layouts.app')
+﻿@extends('storefront.layouts.app')
 
 @section('content')
 @php
@@ -11,7 +11,7 @@
     <section class="relative overflow-hidden" style="background: var(--primary);">
         @if($theme->hero_image)
             <div class="absolute inset-0">
-                <img src="{{ asset('storage/' . $theme->hero_image) }}" alt="" class="w-full h-full object-cover">
+                <img src="{{ Str::startsWith($theme->hero_image, 'http') ? $theme->hero_image : asset('storage/' . $theme->hero_image) }}" alt="" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-black/40"></div>
             </div>
         @endif
@@ -69,10 +69,10 @@
                         <div class="relative aspect-3/1 sm:aspect-4/1">
                             <picture>
                                 @if($banner->image_mobile)
-                                    <source media="(max-width: 639px)" srcset="{{ asset('storage/' . $banner->image_mobile) }}">
+                                    <source media="(max-width: 639px)" srcset="{{ Str::startsWith($banner->image_mobile, 'http') ? $banner->image_mobile : asset('storage/' . $banner->image_mobile) }}">
                                 @endif
                                 <img
-                                    src="{{ asset('storage/' . $banner->image) }}"
+                                    src="{{ Str::startsWith($banner->image, 'http') ? $banner->image : asset('storage/' . $banner->image) }}"
                                     alt="{{ $banner->title }}"
                                     class="w-full h-full object-cover"
                                 >
@@ -215,7 +215,7 @@
                             <div class="relative aspect-square bg-gray-100 overflow-hidden">
                                 @if($mainImage)
                                     <img
-                                        src="{{ asset('storage/' . $mainImage->file_path) }}"
+                                        src="{{ $mainImage->url }}"
                                         alt="{{ $displayName }}"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         loading="lazy"
@@ -325,7 +325,7 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         },
                         body: JSON.stringify({
-                            store_product_id: storeProductId,
+                            product_id: storeProductId,
                             quantity: 1,
                         }),
                     });

@@ -148,7 +148,7 @@
                         <div class="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
                             @if($item->product?->mainImage)
                                 <img
-                                    src="{{ asset('storage/' . $item->product->mainImage->file_path) }}"
+                                    src="{{ $item->product->mainImage->url }}"
                                     alt="{{ $item->name }}"
                                     class="w-full h-full object-cover"
                                 >

@@ -97,9 +97,13 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.warehouse_ledger') }}</span>
                         </a>
-                        <a href="/products" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                        <a href="/products" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products') && !request()->is('products/categories*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.products') }}</span>
+                        </a>
+                        <a href="/products/categories" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products/categories*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Категории</span>
                         </a>
                     </div>
                 </div>

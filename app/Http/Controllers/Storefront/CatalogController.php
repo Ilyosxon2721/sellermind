@@ -34,7 +34,7 @@ final class CatalogController extends Controller
             ->with(['product.mainImage', 'product.variants']);
 
         // Фильтр по категории
-        if ($categoryId = $request->input('category_id')) {
+        if ($categoryId = $request->input('category')) {
             $query->whereHas('product', function ($q) use ($categoryId) {
                 $q->where('category_id', (int) $categoryId);
             });
@@ -52,12 +52,35 @@ final class CatalogController extends Controller
             });
         }
 
+        // Фильтр по цене
+        if ($priceMin = $request->input('price_min')) {
+            $query->where(function ($q) use ($priceMin) {
+                $q->where('custom_price', '>=', (float) $priceMin)
+                    ->orWhereHas('product', function ($pq) use ($priceMin) {
+                        $pq->where('price', '>=', (float) $priceMin);
+                    });
+            });
+        }
+
+        if ($priceMax = $request->input('price_max')) {
+            $query->where(function ($q) use ($priceMax) {
+                $q->where('custom_price', '<=', (float) $priceMax)
+                    ->orWhere(function ($q2) use ($priceMax) {
+                        $q2->whereNull('custom_price')
+                            ->whereHas('product', function ($pq) use ($priceMax) {
+                                $pq->where('price', '<=', (float) $priceMax);
+                            });
+                    });
+            });
+        }
+
         // Сортировка
         $sort = $request->input('sort', 'position');
         $query = match ($sort) {
             'price_asc' => $query->orderByRaw('COALESCE(custom_price, 0) ASC')->orderBy('position'),
             'price_desc' => $query->orderByRaw('COALESCE(custom_price, 0) DESC')->orderBy('position'),
             'newest' => $query->orderByDesc('created_at'),
+            'popular' => $query->orderByDesc('is_featured')->orderBy('position'),
             default => $query->orderBy('position'),
         };
 
@@ -67,7 +90,7 @@ final class CatalogController extends Controller
 
         $this->trackPageView($store);
 
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.catalog", compact(
             'store',
@@ -98,7 +121,7 @@ final class CatalogController extends Controller
 
         $this->trackPageView($store);
 
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.product", compact('store', 'storeProduct'));
     }

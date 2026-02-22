@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Store\Store;
 use App\Models\Store\StoreAnalytics;
 use App\Models\Store\StoreProduct;
+use App\Models\Store\StorePromocode;
 use App\Support\ApiResponder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -29,7 +30,7 @@ final class CartController extends Controller
     {
         $store = $this->getPublishedStore($slug);
         $cart = $this->getCart($store);
-        $template = $store->theme->template ?? 'default';
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.cart", compact('store', 'cart'));
     }
@@ -46,6 +47,8 @@ final class CartController extends Controller
 
         return $this->successResponse([
             'items' => array_values($cart),
+            'subtotal' => $this->calculateTotal($cart),
+            'discount' => 0,
             'total' => $this->calculateTotal($cart),
             'count' => $this->calculateCount($cart),
         ]);
@@ -105,6 +108,8 @@ final class CartController extends Controller
 
         return $this->successResponse([
             'items' => array_values($cart),
+            'subtotal' => $this->calculateTotal($cart),
+            'discount' => 0,
             'total' => $this->calculateTotal($cart),
             'count' => $this->calculateCount($cart),
         ]);
@@ -142,6 +147,8 @@ final class CartController extends Controller
 
         return $this->successResponse([
             'items' => array_values($cart),
+            'subtotal' => $this->calculateTotal($cart),
+            'discount' => 0,
             'total' => $this->calculateTotal($cart),
             'count' => $this->calculateCount($cart),
         ]);
@@ -178,6 +185,8 @@ final class CartController extends Controller
 
         return $this->successResponse([
             'items' => array_values($cart),
+            'subtotal' => $this->calculateTotal($cart),
+            'discount' => 0,
             'total' => $this->calculateTotal($cart),
             'count' => $this->calculateCount($cart),
         ]);
@@ -198,6 +207,92 @@ final class CartController extends Controller
             'items' => [],
             'total' => 0,
             'count' => 0,
+        ]);
+    }
+
+    /**
+     * Применить промокод к корзине
+     *
+     * POST /store/{slug}/api/cart/promocode
+     */
+    public function applyPromocode(string $slug, Request $request): JsonResponse
+    {
+        $store = $this->getPublishedStore($slug);
+
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $promocode = StorePromocode::where('store_id', $store->id)
+            ->where('code', $data['code'])
+            ->first();
+
+        if (! $promocode || ! $promocode->isValid()) {
+            return $this->errorResponse(
+                'Промокод недействителен или истёк',
+                'invalid_promocode',
+                'code',
+                422
+            );
+        }
+
+        $cart = $this->getCart($store);
+        $subtotal = $this->calculateTotal($cart);
+
+        $discount = $promocode->calculateDiscount($subtotal);
+
+        if ($discount <= 0) {
+            return $this->errorResponse(
+                "Минимальная сумма заказа для этого промокода: {$promocode->min_order_amount}",
+                'min_order_amount',
+                'code',
+                422
+            );
+        }
+
+        // Сохраняем промокод в сессию
+        session()->put("store_promocode_{$store->id}", [
+            'code' => $promocode->code,
+            'id' => $promocode->id,
+            'type' => $promocode->type,
+            'value' => (float) $promocode->value,
+        ]);
+
+        return $this->successResponse([
+            'items' => array_values($cart),
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total' => round($subtotal - $discount, 2),
+            'count' => $this->calculateCount($cart),
+            'promocode' => [
+                'code' => $promocode->code,
+                'discount' => $discount,
+                'type' => $promocode->type,
+                'value' => (float) $promocode->value,
+            ],
+        ]);
+    }
+
+    /**
+     * Убрать промокод из корзины
+     *
+     * DELETE /store/{slug}/api/cart/promocode
+     */
+    public function removePromocode(string $slug): JsonResponse
+    {
+        $store = $this->getPublishedStore($slug);
+
+        session()->forget("store_promocode_{$store->id}");
+
+        $cart = $this->getCart($store);
+
+        return $this->successResponse([
+            'items' => array_values($cart),
+            'subtotal' => $this->calculateTotal($cart),
+            'discount' => 0,
+            'total' => $this->calculateTotal($cart),
+            'count' => $this->calculateCount($cart),
+            'promocode' => null,
         ]);
     }
 

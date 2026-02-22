@@ -369,7 +369,8 @@
                         },
                     });
                     if (response.ok) {
-                        this.cart = await response.json();
+                        const json = await response.json();
+                        this.cart = json.data || json;
                         if (!this.cart.items || this.cart.items.length === 0) {
                             window.location.href = `/store/{{ $store->slug }}/cart`;
                             return;
@@ -458,15 +459,47 @@
 
                     if (response.ok) {
                         window.dispatchEvent(new CustomEvent('cart-updated'));
-                        window.location.href = data.redirect || `/store/${slug}/order/${data.order_number}`;
+                        const orderData = data.data || data;
+                        // Инициируем оплату если есть order ID
+                        if (orderData.id) {
+                            try {
+                                const payRes = await fetch(`/store/${slug}/api/payment/${orderData.id}/initiate`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                                    },
+                                });
+                                const payJson = await payRes.json();
+                                const payData = payJson.data || payJson;
+                                if (payData.payment_url) {
+                                    window.location.href = payData.payment_url;
+                                    return;
+                                }
+                            } catch (e) {
+                                console.warn('Payment initiation failed, redirecting to order page', e);
+                            }
+                        }
+                        window.location.href = `/store/${slug}/order/${orderData.order_number}`;
                     } else if (response.status === 422) {
                         this.errors = {};
-                        if (data.errors) {
+                        if (data.errors && Array.isArray(data.errors)) {
+                            // ApiResponder format: [{code, message, field}]
+                            for (const err of data.errors) {
+                                if (err.field) {
+                                    this.errors[err.field] = err.message;
+                                }
+                            }
+                            this.generalError = data.errors[0]?.message || '';
+                        } else if (data.errors && typeof data.errors === 'object') {
+                            // Laravel validation format: {field: [messages]}
                             for (const [key, messages] of Object.entries(data.errors)) {
                                 this.errors[key] = Array.isArray(messages) ? messages[0] : messages;
                             }
+                            this.generalError = data.message || '';
+                        } else {
+                            this.generalError = data.message || data.errors?.[0]?.message || 'Ошибка оформления заказа';
                         }
-                        this.generalError = data.message || '';
                     } else {
                         this.generalError = data.message || 'Произошла ошибка при оформлении заказа';
                     }

@@ -1,4 +1,4 @@
-@extends('storefront.layouts.app')
+﻿@extends('storefront.layouts.app')
 
 @section('content')
 @php
@@ -37,7 +37,7 @@
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0"
                             x-transition:enter-end="opacity-100"
-                            src="{{ asset('storage/' . $image->file_path) }}"
+                            src="{{ $image->url }}"
                             alt="{{ $image->alt_text ?? $displayName }}"
                             class="absolute inset-0 w-full h-full object-contain"
                         >
@@ -61,7 +61,7 @@
                             :class="activeImage === {{ $index }} ? 'border-(--primary) ring-2 ring-(--primary)/20' : 'border-gray-200 hover:border-gray-300'"
                         >
                             <img
-                                src="{{ asset('storage/' . $image->file_path) }}"
+                                src="{{ $image->url }}"
                                 alt="{{ $image->alt_text ?? $displayName }}"
                                 class="w-full h-full object-cover"
                             >
@@ -233,7 +233,7 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         },
                         body: JSON.stringify({
-                            store_product_id: {{ $storeProduct->id }},
+                            product_id: {{ $storeProduct->id }},
                             quantity: this.quantity,
                         }),
                     });

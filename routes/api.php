@@ -76,6 +76,16 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::get('/sizes', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'sizes']);
         Route::get('/colors', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'colors']);
     });
+    // Product Categories
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ProductCategoryController::class, 'index']);
+        Route::get('/flat', [\App\Http\Controllers\Api\ProductCategoryController::class, 'flat']);
+        Route::middleware('company.owner')->group(function () {
+            Route::post('/', [\App\Http\Controllers\Api\ProductCategoryController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'destroy']);
+        });
+    });
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
     Route::get('sales/sync-status', [\App\Http\Controllers\Api\SalesController::class, 'syncStatus']);

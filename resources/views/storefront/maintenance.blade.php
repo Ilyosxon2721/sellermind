@@ -22,7 +22,7 @@
         {{-- Логотип или название --}}
         @if(isset($store) && $store->logo)
             <img
-                src="{{ asset('storage/' . $store->logo) }}"
+                src="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}"
                 alt="{{ $store->name }}"
                 class="h-14 mx-auto mb-8 object-contain"
             >

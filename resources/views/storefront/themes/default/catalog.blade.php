@@ -1,4 +1,4 @@
-@extends('storefront.layouts.app')
+﻿@extends('storefront.layouts.app')
 
 @section('content')
 @php
@@ -268,7 +268,7 @@
                                 <div class="relative aspect-square bg-gray-100 overflow-hidden">
                                     @if($mainImage)
                                         <img
-                                            src="{{ asset('storage/' . $mainImage->file_path) }}"
+                                            src="{{ $mainImage->url }}"
                                             alt="{{ $displayName }}"
                                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             loading="lazy"
@@ -368,7 +368,7 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                         },
                         body: JSON.stringify({
-                            store_product_id: storeProductId,
+                            product_id: storeProductId,
                             quantity: 1,
                         }),
                     });

@@ -50,6 +50,16 @@ class StoreTheme extends Model
         'products_per_page' => 'integer',
     ];
 
+    /**
+     * Возвращает валидный шаблон с fallback на 'default'
+     */
+    public function resolvedTemplate(): string
+    {
+        $tpl = $this->template ?: 'default';
+
+        return is_dir(resource_path("views/storefront/themes/{$tpl}")) ? $tpl : 'default';
+    }
+
     // ==================
     // Relationships
     // ==================

@@ -149,7 +149,7 @@
             {{-- ==================== КАТЕГОРИИ ==================== --}}
             <div x-show="activeTab === 'categories'" x-transition>
                 <div class="flex items-center justify-between mb-4">
-                    <button @click="showCategoryModal = true; categoryForm = { name: '', custom_name: '', is_visible: true, show_in_menu: true }; editingCategoryId = null"
+                    <button @click="showCategoryModal = true; categoryForm = { name: '', custom_name: '', is_visible: true, show_in_menu: true, category_id: null }; editingCategoryId = null"
                             class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 flex items-center space-x-2 text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Добавить категорию</span>
@@ -185,8 +185,11 @@
                                     </template>
                                     <template x-for="cat in categories" :key="cat.id">
                                         <tr class="hover:bg-gray-50 transition-colors">
-                                            <td class="px-6 py-3 text-sm text-gray-900 font-medium" x-text="cat.name"></td>
-                                            <td class="px-6 py-3 text-sm text-gray-600" x-text="cat.custom_name || '—'"></td>
+                                            <td class="px-6 py-3">
+                                                <div class="text-sm text-gray-900 font-medium" x-text="cat.custom_name || cat.name"></div>
+                                                <div x-show="cat.category_id" class="text-xs text-gray-400 mt-0.5" x-text="cat.category?.name || ''"></div>
+                                            </td>
+                                            <td class="px-6 py-3 text-sm text-gray-600" x-text="cat.custom_name && cat.name !== cat.custom_name ? cat.name : '—'"></td>
                                             <td class="px-6 py-3 text-center">
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                                                       :class="cat.is_visible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
@@ -281,12 +284,24 @@
                             </button>
                         </div>
                         <div class="space-y-4">
+                            <div x-show="!editingCategoryId">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Из каталога компании</label>
+                                <select x-model="categoryForm.category_id"
+                                        @change="if (categoryForm.category_id) { const cat = productCategories.find(c => c.id == categoryForm.category_id); if (cat && !categoryForm.name) categoryForm.name = cat.name; }"
+                                        class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option :value="null">Без привязки (свободная категория)</option>
+                                    <template x-for="pc in productCategories" :key="pc.id">
+                                        <option :value="pc.id" x-text="pc.full_path"></option>
+                                    </template>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-400">Привяжите к существующей категории или создайте свободную</p>
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
                                 <input type="text" x-model="categoryForm.name" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Свое название</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Свое название для витрины</label>
                                 <input type="text" x-model="categoryForm.custom_name" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Альтернативное название для витрины">
                             </div>
                             <div class="flex items-center space-x-6">
@@ -331,10 +346,12 @@ function catalogManager(storeId) {
         searchLoading: false,
         selectedProducts: [],
         editingCategoryId: null,
-        categoryForm: { name: '', custom_name: '', is_visible: true, show_in_menu: true },
+        categoryForm: { name: '', custom_name: '', is_visible: true, show_in_menu: true, category_id: null },
+        productCategories: [],
 
         init() {
             this.loadProducts();
+            this.loadProductCategories();
         },
 
         async loadProducts() {
@@ -358,6 +375,20 @@ function catalogManager(storeId) {
                 window.toast?.error('Не удалось загрузить категории');
             } finally {
                 this.loadingCategories = false;
+            }
+        },
+
+        async loadProductCategories() {
+            try {
+                const res = await fetch('/api/categories/flat', {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    this.productCategories = json.data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load product categories', e);
             }
         },
 
@@ -442,6 +473,7 @@ function catalogManager(storeId) {
                 custom_name: cat.custom_name || '',
                 is_visible: cat.is_visible,
                 show_in_menu: cat.show_in_menu,
+                category_id: cat.category_id || null,
             };
             this.showCategoryModal = true;
         },

@@ -183,8 +183,8 @@ final class StoreCatalogController extends Controller
         $store = $this->findStore($storeId);
 
         $data = $request->validate([
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
-            'custom_name' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:product_categories,id'],
+            'custom_name' => ['required_without:category_id', 'string', 'max:255'],
             'custom_description' => ['nullable', 'string'],
             'custom_image' => ['nullable', 'string', 'max:500'],
             'position' => ['nullable', 'integer', 'min:0'],

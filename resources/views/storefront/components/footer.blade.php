@@ -15,7 +15,7 @@
             <div>
                 <div class="mb-4">
                     @if($store->logo)
-                        <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-8 object-contain brightness-0 invert opacity-90">
+                        <img src="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-8 object-contain brightness-0 invert opacity-90">
                     @else
                         <h3 class="text-lg font-bold">{{ $store->name }}</h3>
                     @endif

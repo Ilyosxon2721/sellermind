@@ -135,6 +135,8 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.reviews');
     })->name('reviews');
 
+    Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
+
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
@@ -699,6 +701,8 @@ Route::prefix('store/{slug}')->group(function () {
     Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
     Route::delete('/api/cart/remove', [\App\Http\Controllers\Storefront\CartController::class, 'remove']);
     Route::delete('/api/cart/clear', [\App\Http\Controllers\Storefront\CartController::class, 'clear']);
+    Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
+    Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
     Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
     Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
 });

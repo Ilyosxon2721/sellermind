@@ -12,7 +12,8 @@
     </template>
 
     <div class="flex-1 flex flex-col overflow-hidden"
-         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }"
+         x-data="themeEditor({{ $storeId ?? 'null' }})">
         <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
@@ -41,7 +42,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6" x-data="themeEditor({{ $storeId ?? 'null' }})">
+        <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
             {{-- Загрузка --}}
             <template x-if="loading">
                 <div class="flex items-center justify-center py-20">
@@ -334,15 +335,43 @@ function themeEditor(storeId) {
             this.loading = true;
             try {
                 const res = await window.api.get(`/store/stores/${this.storeId}/theme`);
-                const data = res.data.data ?? res.data;
-                if (data) {
-                    this.theme = { ...this.theme, ...data };
-                    if (data.colors) this.theme.colors = { ...this.theme.colors, ...data.colors };
-                    if (data.header) this.theme.header = { ...this.theme.header, ...data.header };
-                    if (data.hero) this.theme.hero = { ...this.theme.hero, ...data.hero };
-                    if (data.footer) this.theme.footer = { ...this.theme.footer, ...data.footer };
+                const d = res.data.data ?? res.data;
+                if (d) {
+                    this.theme.template = d.template || 'default';
+                    this.theme.colors = {
+                        primary: d.primary_color || '#2563eb',
+                        secondary: d.secondary_color || '#4f46e5',
+                        accent: d.accent_color || '#f59e0b',
+                        background: d.background_color || '#ffffff',
+                        text: d.text_color || '#111827',
+                    };
+                    this.theme.heading_font = d.heading_font || 'Inter';
+                    this.theme.body_font = d.body_font || 'Inter';
+                    this.theme.header = {
+                        style: d.header_style || 'default',
+                        show_search: d.show_search ?? true,
+                        show_cart: d.show_cart ?? true,
+                        show_phone: d.show_phone ?? true,
+                    };
+                    this.theme.hero = {
+                        enabled: d.hero_enabled ?? true,
+                        title: d.hero_title || '',
+                        subtitle: d.hero_subtitle || '',
+                        image: d.hero_image || '',
+                        button_text: d.hero_button_text || '',
+                        button_url: d.hero_button_url || '',
+                    };
+                    this.theme.footer = {
+                        style: d.footer_style || 'default',
+                        text: d.footer_text || '',
+                        bg_color: d.footer_bg_color || '#1f2937',
+                        text_color: d.footer_text_color || '#ffffff',
+                    };
+                    this.theme.products_per_page = String(d.products_per_page || 12);
+                    this.theme.product_card_style = d.product_card_style || 'default';
+                    this.theme.custom_css = d.custom_css || '';
+                    this.storeUrl = d.store_url || '#';
                 }
-                this.storeUrl = data?.store_url || `/s/${this.storeId}`;
             } catch (e) {
                 window.toast?.error('Не удалось загрузить тему');
             } finally {
@@ -353,7 +382,34 @@ function themeEditor(storeId) {
         async saveTheme() {
             this.saving = true;
             try {
-                await window.api.put(`/store/stores/${this.storeId}/theme`, this.theme);
+                const payload = {
+                    template: this.theme.template,
+                    primary_color: this.theme.colors.primary,
+                    secondary_color: this.theme.colors.secondary,
+                    accent_color: this.theme.colors.accent,
+                    background_color: this.theme.colors.background,
+                    text_color: this.theme.colors.text,
+                    heading_font: this.theme.heading_font,
+                    body_font: this.theme.body_font,
+                    header_style: this.theme.header.style,
+                    show_search: this.theme.header.show_search,
+                    show_cart: this.theme.header.show_cart,
+                    show_phone: this.theme.header.show_phone,
+                    hero_enabled: this.theme.hero.enabled,
+                    hero_title: this.theme.hero.title,
+                    hero_subtitle: this.theme.hero.subtitle,
+                    hero_image: this.theme.hero.image,
+                    hero_button_text: this.theme.hero.button_text,
+                    hero_button_url: this.theme.hero.button_url,
+                    products_per_page: parseInt(this.theme.products_per_page) || 12,
+                    product_card_style: this.theme.product_card_style,
+                    footer_style: this.theme.footer.style,
+                    footer_bg_color: this.theme.footer.bg_color,
+                    footer_text_color: this.theme.footer.text_color,
+                    footer_text: this.theme.footer.text,
+                    custom_css: this.theme.custom_css,
+                };
+                await window.api.put(`/store/stores/${this.storeId}/theme`, payload);
                 window.toast?.success('Тема сохранена');
             } catch (e) {
                 const msg = e.response?.data?.message || 'Ошибка при сохранении темы';

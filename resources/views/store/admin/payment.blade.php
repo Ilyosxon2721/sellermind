@@ -79,6 +79,25 @@
                                           x-text="m.is_active ? 'Активен' : 'Выключен'"></span>
                                 </div>
                                 <p class="text-sm text-gray-500 mb-4 line-clamp-2" x-text="m.description || 'Нет описания'"></p>
+
+                                {{-- Статус реквизитов --}}
+                                <template x-if="m.type === 'click' || m.type === 'payme'">
+                                    <div class="mb-3">
+                                        <template x-if="m.settings && (m.settings.merchant_id || m.settings.service_id)">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                                Реквизиты настроены
+                                            </span>
+                                        </template>
+                                        <template x-if="!m.settings || (!m.settings.merchant_id && !m.settings.service_id)">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                                Глобальные реквизиты
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <div class="flex items-center justify-end space-x-2 pt-3 border-t border-gray-100">
                                     <button @click="editMethod(m)" class="px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium">
                                         Редактировать
@@ -115,6 +134,7 @@
                                     <option value="card">Банковская карта</option>
                                     <option value="click">Click</option>
                                     <option value="payme">Payme</option>
+                                    <option value="transfer">Банковский перевод</option>
                                 </select>
                             </div>
                             <div>
@@ -125,6 +145,106 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
                                 <textarea x-model="form.description" rows="3" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Описание для покупателей"></textarea>
                             </div>
+
+                            {{-- Click реквизиты --}}
+                            <template x-if="form.type === 'click'">
+                                <div class="space-y-3 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span class="text-sm font-medium text-indigo-700">Реквизиты Click</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Merchant ID</label>
+                                        <input type="text" x-model="form.settings.merchant_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Merchant ID из кабинета Click">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Service ID</label>
+                                        <input type="text" x-model="form.settings.service_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Service ID из кабинета Click">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Secret Key</label>
+                                        <input type="password" x-model="form.settings.secret_key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Secret Key из кабинета Click">
+                                    </div>
+                                    <div class="text-xs text-gray-500 bg-white p-3 rounded-lg border border-gray-200">
+                                        <p class="font-medium text-gray-700 mb-1">Webhook URL для Click:</p>
+                                        <code class="text-indigo-600 break-all select-all">{{ url('/webhooks/click/prepare') }}</code>
+                                        <br>
+                                        <code class="text-indigo-600 break-all select-all">{{ url('/webhooks/click/complete') }}</code>
+                                        <p class="mt-2 text-gray-400">Укажите эти URL в кабинете merchant.click.uz</p>
+                                    </div>
+                                    <div class="text-xs text-gray-500 bg-white p-3 rounded-lg border border-gray-200">
+                                        <p class="font-medium text-gray-700 mb-2">Где взять реквизиты Click:</p>
+                                        <ol class="list-decimal list-inside space-y-1 text-gray-500">
+                                            <li>Зарегистрируйтесь на <a href="https://merchant.click.uz" target="_blank" class="text-indigo-600 underline hover:text-indigo-800">merchant.click.uz</a></li>
+                                            <li>Создайте новый магазин (кнопка «Добавить»)</li>
+                                            <li><strong class="text-gray-700">Merchant ID</strong> — отображается в списке магазинов (колонка ID)</li>
+                                            <li><strong class="text-gray-700">Service ID</strong> — создайте услугу внутри магазина, ID появится в списке услуг</li>
+                                            <li><strong class="text-gray-700">Secret Key</strong> — в настройках магазина → секция «Настройки подключения»</li>
+                                            <li>В настройках укажите Prepare URL и Complete URL (см. выше)</li>
+                                        </ol>
+                                    </div>
+                                    <p class="text-xs text-gray-400">Если не заполнено — используются глобальные реквизиты платформы</p>
+                                </div>
+                            </template>
+
+                            {{-- Payme реквизиты --}}
+                            <template x-if="form.type === 'payme'">
+                                <div class="space-y-3 p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span class="text-sm font-medium text-cyan-700">Реквизиты Payme</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Merchant ID</label>
+                                        <input type="text" x-model="form.settings.merchant_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Merchant ID из кабинета Payme">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Secret Key</label>
+                                        <input type="password" x-model="form.settings.secret_key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="Secret Key из кабинета Payme">
+                                    </div>
+                                    <div class="text-xs text-gray-500 bg-white p-3 rounded-lg border border-gray-200">
+                                        <p class="font-medium text-gray-700 mb-1">Webhook URL для Payme:</p>
+                                        <code class="text-cyan-600 break-all select-all">{{ url('/webhooks/payme') }}</code>
+                                        <p class="mt-2 text-gray-400">Укажите этот URL в кабинете merchant.paycom.uz</p>
+                                        <p class="text-gray-400">Поле account: <code class="text-cyan-600">order_id</code> (integer)</p>
+                                    </div>
+                                    <div class="text-xs text-gray-500 bg-white p-3 rounded-lg border border-gray-200">
+                                        <p class="font-medium text-gray-700 mb-2">Где взять реквизиты Payme:</p>
+                                        <ol class="list-decimal list-inside space-y-1 text-gray-500">
+                                            <li>Зарегистрируйтесь на <a href="https://merchant.paycom.uz" target="_blank" class="text-cyan-600 underline hover:text-cyan-800">merchant.paycom.uz</a></li>
+                                            <li>Создайте кассу (Касса → Создать)</li>
+                                            <li><strong class="text-gray-700">Merchant ID</strong> — отображается в разделе «Кассы» (столбец ID кассы)</li>
+                                            <li><strong class="text-gray-700">Secret Key</strong> — в настройках кассы, секция «Ключи». Для теста используйте тестовый ключ, для боевого режима — боевой</li>
+                                            <li>В настройках кассы укажите Endpoint URL (см. выше)</li>
+                                            <li>Добавьте поле account: имя — <code class="text-cyan-600">order_id</code>, тип — <code class="text-cyan-600">integer</code></li>
+                                        </ol>
+                                    </div>
+                                    <p class="text-xs text-gray-400">Если не заполнено — используются глобальные реквизиты платформы</p>
+                                </div>
+                            </template>
+
+                            {{-- Банковский перевод --}}
+                            <template x-if="form.type === 'transfer'">
+                                <div class="space-y-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                        <span class="text-sm font-medium text-amber-700">Реквизиты для перевода</span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Номер карты / счёта</label>
+                                        <input type="text" x-model="form.settings.account_number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500" placeholder="8600 **** **** ****">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Имя получателя</label>
+                                        <input type="text" x-model="form.settings.account_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500" placeholder="ФИО получателя">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Банк</label>
+                                        <input type="text" x-model="form.settings.bank_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500" placeholder="Название банка">
+                                    </div>
+                                </div>
+                            </template>
+
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" x-model="form.is_active" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                 <span class="text-sm text-gray-700">Активен</span>
@@ -152,7 +272,7 @@ function paymentManager(storeId) {
         methods: [],
         showModal: false,
         editingId: null,
-        form: { type: 'cash', name: '', description: '', is_active: true },
+        form: { type: 'cash', name: '', description: '', is_active: true, settings: {} },
 
         init() {
             this.loadMethods();
@@ -172,7 +292,7 @@ function paymentManager(storeId) {
 
         openModal() {
             this.editingId = null;
-            this.form = { type: 'cash', name: '', description: '', is_active: true };
+            this.form = { type: 'cash', name: '', description: '', is_active: true, settings: {} };
             this.showModal = true;
         },
 
@@ -183,6 +303,7 @@ function paymentManager(storeId) {
                 name: m.name,
                 description: m.description || '',
                 is_active: m.is_active,
+                settings: m.settings ? { ...m.settings } : {},
             };
             this.showModal = true;
         },
@@ -190,12 +311,25 @@ function paymentManager(storeId) {
         async saveMethod() {
             if (!this.form.name.trim()) { window.toast?.error('Укажите название'); return; }
             this.saving = true;
+
+            // Очищаем пустые значения в settings
+            const payload = { ...this.form };
+            if (payload.settings) {
+                const cleaned = {};
+                for (const [key, val] of Object.entries(payload.settings)) {
+                    if (val && String(val).trim()) {
+                        cleaned[key] = String(val).trim();
+                    }
+                }
+                payload.settings = Object.keys(cleaned).length > 0 ? cleaned : null;
+            }
+
             try {
                 if (this.editingId) {
-                    await window.api.put(`/store/stores/${this.storeId}/payment-methods/${this.editingId}`, this.form);
+                    await window.api.put(`/store/stores/${this.storeId}/payment-methods/${this.editingId}`, payload);
                     window.toast?.success('Способ оплаты обновлен');
                 } else {
-                    await window.api.post(`/store/stores/${this.storeId}/payment-methods`, this.form);
+                    await window.api.post(`/store/stores/${this.storeId}/payment-methods`, payload);
                     window.toast?.success('Способ оплаты создан');
                 }
                 this.showModal = false;
@@ -219,7 +353,7 @@ function paymentManager(storeId) {
         },
 
         typeLabel(type) {
-            const map = { cash: 'Наличные', card: 'Карта', click: 'Click', payme: 'Payme' };
+            const map = { cash: 'Наличные', card: 'Карта', click: 'Click', payme: 'Payme', transfer: 'Перевод' };
             return map[type] || type;
         },
 
@@ -240,6 +374,10 @@ function paymentManager(storeId) {
                 payme: {
                     bgClass: 'bg-cyan-100', iconClass: 'text-cyan-600', badgeClass: 'bg-cyan-100 text-cyan-700',
                     path: 'M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z'
+                },
+                transfer: {
+                    bgClass: 'bg-amber-100', iconClass: 'text-amber-600', badgeClass: 'bg-amber-100 text-amber-700',
+                    path: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
                 },
             };
             return icons[type] || icons.cash;
