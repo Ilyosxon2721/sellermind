@@ -14,6 +14,8 @@ class UserNotificationSetting extends Model
         'user_id',
         'notify_low_stock',
         'notify_new_order',
+        'notify_marketplace_order',
+        'notify_offline_sale',
         'notify_order_cancelled',
         'notify_price_changes',
         'notify_bulk_operations',
@@ -31,6 +33,8 @@ class UserNotificationSetting extends Model
     protected $casts = [
         'notify_low_stock' => 'boolean',
         'notify_new_order' => 'boolean',
+        'notify_marketplace_order' => 'boolean',
+        'notify_offline_sale' => 'boolean',
         'notify_order_cancelled' => 'boolean',
         'notify_price_changes' => 'boolean',
         'notify_bulk_operations' => 'boolean',

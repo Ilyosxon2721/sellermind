@@ -9,10 +9,12 @@ use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
 use App\Models\YandexMarketOrder;
+use App\Observers\Traits\NotifiesMarketplaceOrder;
 use Illuminate\Support\Facades\Log;
 
 class YandexMarketOrderObserver
 {
+    use NotifiesMarketplaceOrder;
     /**
      * Handle the YandexMarketOrder "created" event.
      *
@@ -22,6 +24,13 @@ class YandexMarketOrderObserver
     public function created(YandexMarketOrder $order): void
     {
         $this->safeBroadcast($order);
+        $this->notifyNewMarketplaceOrder(
+            order: $order,
+            marketplace: 'yandex_market',
+            orderNumber: (string) ($order->order_id ?? $order->id),
+            totalAmount: (float) ($order->total_price ?? 0),
+            currency: $order->currency ?? 'RUB',
+        );
     }
 
     /**
