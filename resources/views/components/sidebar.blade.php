@@ -231,16 +231,50 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.accounts_payable') }}</span>
         </a>
 
-        {{-- Pricing --}}
-        <a href="/pricing"
-           class="flex items-center rounded-lg transition {{ request()->is('pricing*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
-           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
-           :title="$store.ui.sidebarCollapsed ? '{{ __('admin.pricing') }}' : ''">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-            </svg>
-            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.pricing') }}</span>
-        </a>
+        {{-- Pricing Section --}}
+        <div x-data="{open: {{ request()->is('pricing*') ? 'true' : 'false' }}}">
+            <template x-if="!$store.ui.sidebarCollapsed">
+                <div>
+                    <button type="button"
+                            class="flex items-center justify-between w-full px-3 py-2 rounded-lg transition text-gray-700 hover:bg-gray-100"
+                            @click="open = !open"
+                            :aria-expanded="open.toString()">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                            </svg>
+                            <span class="font-medium">{{ __('admin.pricing') }}</span>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-500 transform transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <div class="ml-6 space-y-1" x-show="open" x-cloak x-transition>
+                        <a href="/pricing" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('pricing') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">{{ __('admin.pricing') }}</span>
+                        </a>
+                        <a href="/pricing/autopricing" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('pricing/autopricing*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Автопрайсинг</span>
+                        </a>
+                        <a href="/pricing/calculator" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('pricing/calculator*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Калькулятор цен</span>
+                        </a>
+                    </div>
+                </div>
+            </template>
+            <template x-if="$store.ui.sidebarCollapsed">
+                <a href="/pricing"
+                   class="flex items-center justify-center p-2.5 rounded-lg transition {{ request()->is('pricing*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   title="{{ __('admin.pricing') }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                </a>
+            </template>
+        </div>
 
         {{-- Store Builder --}}
         <a href="/my-store"

@@ -704,6 +704,15 @@ Route::middleware('auth.any')->group(function () {
             Route::post('publish-jobs/{id}/run', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'run']);
             Route::get('publish-jobs', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'index']);
             Route::get('publish-jobs/{id}/export.csv', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'exportCsv']);
+
+            // Pricing Calculator (калькулятор ценообразования)
+            Route::prefix('calculator')->group(function () {
+                Route::post('calculate', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculate']);
+                Route::post('calculate-for-margin', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculateForMargin']);
+                Route::post('compare', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'compare']);
+                Route::get('categories/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'categories']);
+                Route::get('commissions/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'commissions']);
+            });
         });
 
         // Autopricing
