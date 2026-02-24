@@ -27,6 +27,9 @@ final class PricingCalculationResult
     /** Комиссия маркетплейса (в абсолютном значении) */
     public float $commission = 0;
 
+    /** Процент комиссии маркетплейса */
+    public float $commissionPercent = 0;
+
     /** Стоимость логистики */
     public float $logistics = 0;
 
@@ -54,6 +57,9 @@ final class PricingCalculationResult
     /** Рекомендованная цена (с учётом целевой маржи) */
     public ?float $recommendedPrice = null;
 
+    /** Разница между рекомендованной и текущей ценой */
+    public ?float $priceDiff = null;
+
     /**
      * Преобразовать результат в массив для API-ответа
      *
@@ -65,11 +71,17 @@ final class PricingCalculationResult
             'marketplace' => $this->marketplace,
             'fulfillment_type' => $this->fulfillmentType,
             'price' => round($this->price, 2),
+            'cost_price' => round($this->totalCost, 2),
             'total_cost' => round($this->totalCost, 2),
             'commission' => round($this->commission, 2),
+            'commission_amount' => round($this->commission, 2),
+            'commission_percent' => round($this->commissionPercent, 2),
             'logistics' => round($this->logistics, 2),
+            'logistics_cost' => round($this->logistics, 2),
             'acquiring' => round($this->acquiring, 2),
+            'acquiring_cost' => round($this->acquiring, 2),
             'storage' => round($this->storage, 2),
+            'storage_cost' => round($this->storage, 2),
             'total_expenses' => round($this->totalExpenses, 2),
             'margin_amount' => round($this->marginAmount, 2),
             'margin_percent' => round($this->marginPercent, 2),
@@ -77,6 +89,9 @@ final class PricingCalculationResult
             'min_price' => round($this->minPrice, 2),
             'recommended_price' => $this->recommendedPrice !== null
                 ? round($this->recommendedPrice, 2)
+                : null,
+            'price_diff' => $this->priceDiff !== null
+                ? round($this->priceDiff, 2)
                 : null,
             'is_profitable' => $this->isProfitable(),
             'margin_color' => $this->getMarginColor(),

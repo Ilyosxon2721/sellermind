@@ -125,6 +125,9 @@ class DatabaseSeeder extends Seeder
             'is_default' => true,
         ]);
 
+        // Marketplace commissions, logistics, acquiring reference data
+        $this->call(MarketplaceCommissionSeeder::class);
+
         // Store Builder demo data
         $this->call(StoreSeeder::class);
 

@@ -58,6 +58,7 @@ final class PricingCalculatorService
         $result->totalCost = $this->getTotalCost($pricing);
 
         // 2. Комиссия маркетплейса
+        $result->commissionPercent = $this->getCommissionRate($marketplace, $categoryId, $fulfillmentType);
         $result->commission = $this->calculateCommission(
             $marketplace,
             $categoryId,

@@ -53,6 +53,11 @@ final class CalculatorController extends Controller
         $result = $this->calculator->calculate($pricing, (float) $price);
         $result->recommendedPrice = $recommendedPrice;
 
+        // Разница с текущей ценой
+        if (! empty($validated['price']) && $recommendedPrice > 0) {
+            $result->priceDiff = $recommendedPrice - (float) $validated['price'];
+        }
+
         return $this->successResponse($result->toArray());
     }
 

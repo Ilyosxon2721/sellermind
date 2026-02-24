@@ -108,6 +108,13 @@
                                     <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400" x-text="currency"></span>
                                 </div>
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Хранение (в месяц)</label>
+                                <div class="relative">
+                                    <input type="number" step="0.01" min="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-12" x-model="storage_cost" placeholder="0.00">
+                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400" x-text="currency"></span>
+                                </div>
+                            </div>
                         </div>
                         {{-- Summary --}}
                         <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
@@ -271,10 +278,6 @@
                                     <span class="text-sm text-gray-600">Эквайринг</span>
                                     <span class="text-sm font-medium text-red-600" x-text="result ? '-' + fmt(result.acquiring_cost) + ' ' + currency : ''"></span>
                                 </div>
-                                <div class="flex items-center justify-between py-1.5" x-show="result && result.other_fees">
-                                    <span class="text-sm text-gray-600">Прочие сборы</span>
-                                    <span class="text-sm font-medium text-red-600" x-text="result ? '-' + fmt(result.other_fees) + ' ' + currency : ''"></span>
-                                </div>
 
                                 {{-- Total expenses --}}
                                 <div class="border-t border-gray-200 pt-3 mt-3 flex items-center justify-between">
@@ -366,15 +369,15 @@
                                         <div class="grid grid-cols-3 gap-2 text-sm">
                                             <div>
                                                 <span class="text-xs text-gray-400 block">Рек. цена</span>
-                                                <span class="font-bold text-gray-900" x-text="fmt(item.recommended_price)"></span>
+                                                <span class="font-bold text-gray-900" x-text="fmt(item.recommended_price || 0)"></span>
                                             </div>
                                             <div>
                                                 <span class="text-xs text-gray-400 block">Прибыль</span>
-                                                <span class="font-medium" :class="item.margin_amount >= 0 ? 'text-green-600' : 'text-red-600'" x-text="fmt(item.margin_amount)"></span>
+                                                <span class="font-medium" :class="(item.margin_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'" x-text="fmt(item.margin_amount || 0)"></span>
                                             </div>
                                             <div>
                                                 <span class="text-xs text-gray-400 block">Комиссия</span>
-                                                <span class="font-medium text-gray-600" x-text="item.commission_percent ? item.commission_percent + '%' : '—'"></span>
+                                                <span class="font-medium text-gray-600" x-text="item.commission_percent != null ? item.commission_percent + '%' : '—'"></span>
                                             </div>
                                         </div>
                                     </div>
@@ -452,6 +455,10 @@
                 <div>
                     <label class="native-caption block mb-1">Прочие расходы</label>
                     <input type="number" step="0.01" min="0" class="native-input w-full" x-model="other_costs" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="native-caption block mb-1">Хранение (в месяц)</label>
+                    <input type="number" step="0.01" min="0" class="native-input w-full" x-model="storage_cost" placeholder="0.00">
                 </div>
                 <div class="flex justify-between pt-2 border-t">
                     <span class="native-caption">Итого:</span>
@@ -603,6 +610,7 @@
             packaging_cost: '',
             delivery_to_warehouse: '',
             other_costs: '',
+            storage_cost: '',
             length_cm: '',
             width_cm: '',
             height_cm: '',
@@ -693,6 +701,7 @@
                     const data = await res.json();
                     if (data.success !== false) {
                         this.result = data.data;
+                        this.showToast('Расчёт выполнен', 'success');
                     } else {
                         this.showToast(data.message || 'Ошибка расчёта', 'error');
                     }
@@ -745,6 +754,7 @@
                 if (this.packaging_cost) p.packaging_cost = parseFloat(this.packaging_cost);
                 if (this.delivery_to_warehouse) p.delivery_to_warehouse = parseFloat(this.delivery_to_warehouse);
                 if (this.other_costs) p.other_costs = parseFloat(this.other_costs);
+                if (this.storage_cost) p.storage_cost = parseFloat(this.storage_cost);
                 if (this.length_cm) p.length_cm = parseFloat(this.length_cm);
                 if (this.width_cm) p.width_cm = parseFloat(this.width_cm);
                 if (this.height_cm) p.height_cm = parseFloat(this.height_cm);
@@ -757,6 +767,7 @@
                 this.packaging_cost = '';
                 this.delivery_to_warehouse = '';
                 this.other_costs = '';
+                this.storage_cost = '';
                 this.length_cm = '';
                 this.width_cm = '';
                 this.height_cm = '';
