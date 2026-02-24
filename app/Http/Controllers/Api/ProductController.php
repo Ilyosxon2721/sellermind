@@ -29,7 +29,12 @@ class ProductController extends Controller
         $query = Product::query()
             ->forCompany($companyId)
             ->withCount('variants as count_variants')
-            ->with(['channelSettings.channel:id,code,name']);
+            ->with([
+                'channelSettings.channel:id,code,name',
+                'variants:id,product_id,purchase_price,price_default',
+                'variants.channelVariantSettings:id,product_variant_id,channel_id,price,status',
+                'variants.channelVariantSettings.channel:id,code',
+            ]);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
@@ -71,13 +76,32 @@ class ProductController extends Controller
                 ];
             }
 
+            $firstVariant = $product->variants->first();
+
+            // Собираем цены по маркетплейсам из channelVariantSettings первого варианта
+            $marketplacePrices = [];
+            if ($firstVariant) {
+                foreach ($firstVariant->channelVariantSettings as $cvs) {
+                    $code = $cvs->channel?->code;
+                    if ($code) {
+                        $marketplacePrices[$code] = [
+                            'price' => $cvs->price,
+                            'status' => $cvs->status,
+                        ];
+                    }
+                }
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'article' => $product->article,
                 'category_id' => $product->category_id,
                 'count_variants' => $product->count_variants,
+                'purchase_price' => $firstVariant?->purchase_price,
+                'price_default' => $firstVariant?->price_default,
                 'channels' => $channels,
+                'marketplace_prices' => $marketplacePrices,
             ];
         });
 
