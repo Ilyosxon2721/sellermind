@@ -699,7 +699,7 @@
                         body: JSON.stringify(body)
                     });
                     const data = await res.json();
-                    if (data.success !== false) {
+                    if (res.ok && data.data) {
                         this.result = data.data;
                         this.showToast('Расчёт выполнен', 'success');
                     } else {
@@ -731,8 +731,9 @@
                         body: JSON.stringify(body)
                     });
                     const data = await res.json();
-                    if (data.success !== false) {
+                    if (res.ok && data.data) {
                         this.comparison = data.data;
+                        this.showToast('Сравнение готово', 'success');
                     } else {
                         this.showToast(data.message || 'Ошибка сравнения', 'error');
                     }
