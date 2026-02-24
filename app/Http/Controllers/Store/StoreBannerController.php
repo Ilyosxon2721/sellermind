@@ -11,6 +11,7 @@ use App\Models\Store\StoreBanner;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Управление баннерами магазина
@@ -45,6 +46,8 @@ final class StoreBannerController extends Controller
             'image_mobile' => ['nullable', 'string', 'max:500'],
             'title' => ['nullable', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:500'],
+            'text_color' => ['nullable', 'string', 'max:7'],
+            'display_mode' => ['nullable', 'string', 'in:overlay,split,image_only,text_below'],
             'url' => ['nullable', 'string', 'max:500'],
             'button_text' => ['nullable', 'string', 'max:100'],
             'position' => ['nullable', 'integer', 'min:0'],
@@ -78,6 +81,8 @@ final class StoreBannerController extends Controller
             'image_mobile' => ['nullable', 'string', 'max:500'],
             'title' => ['nullable', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:500'],
+            'text_color' => ['nullable', 'string', 'max:7'],
+            'display_mode' => ['nullable', 'string', 'in:overlay,split,image_only,text_below'],
             'url' => ['nullable', 'string', 'max:500'],
             'button_text' => ['nullable', 'string', 'max:100'],
             'position' => ['nullable', 'integer', 'min:0'],
@@ -128,6 +133,28 @@ final class StoreBannerController extends Controller
             ->get();
 
         return $this->successResponse($banners);
+    }
+
+    /**
+     * Загрузить изображение для баннера
+     */
+    public function uploadImage(int $storeId, Request $request): JsonResponse
+    {
+        $store = $this->findStore($storeId);
+
+        $request->validate([
+            'image' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $path = $request->file('image')->store(
+            "banners/{$store->id}",
+            'public'
+        );
+
+        return $this->successResponse([
+            'url' => Storage::disk('public')->url($path),
+            'path' => $path,
+        ]);
     }
 
     /**

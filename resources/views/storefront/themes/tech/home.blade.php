@@ -93,7 +93,7 @@
                     @if($banner->url)
                         <a href="{{ $banner->url }}" class="block">
                     @endif
-                        <div class="relative aspect-3/1 sm:aspect-4/1">
+                        <div class="relative aspect-[3/1] sm:aspect-[4/1]">
                             <picture>
                                 @if($banner->image_mobile)
                                     <source media="(max-width: 639px)" srcset="{{ Str::startsWith($banner->image_mobile, 'http') ? $banner->image_mobile : asset('storage/' . $banner->image_mobile) }}">

@@ -852,6 +852,7 @@ Route::middleware('auth.any')->group(function () {
         Route::put('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'update']);
         Route::delete('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'destroy']);
         Route::post('stores/{storeId}/banners/reorder', [\App\Http\Controllers\Store\StoreBannerController::class, 'reorder']);
+        Route::post('stores/{storeId}/banners/upload-image', [\App\Http\Controllers\Store\StoreBannerController::class, 'uploadImage']);
 
         // Catalog — Products
         Route::get('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productIndex']);

@@ -18,6 +18,8 @@ class StoreBanner extends Model
         'store_id',
         'title',
         'subtitle',
+        'text_color',
+        'display_mode',
         'image',
         'image_mobile',
         'url',

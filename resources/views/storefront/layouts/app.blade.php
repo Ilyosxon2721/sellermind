@@ -15,7 +15,7 @@
         <link rel="icon" href="{{ asset('storage/' . $store->favicon) }}" type="image/x-icon">
     @endif
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
