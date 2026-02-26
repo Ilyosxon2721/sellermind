@@ -4,6 +4,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -37,6 +38,8 @@ class MarketplaceSyncLog extends Model
         'request_payload',
         'response_payload',
     ];
+
+    protected $appends = ['duration', 'status_label', 'type_label'];
 
     protected function casts(): array
     {
@@ -94,32 +97,76 @@ class MarketplaceSyncLog extends Model
     }
 
     /**
-     * Get type label
+     * Длительность синхронизации в секундах
      */
-    public function getTypeLabel(): string
+    protected function duration(): Attribute
     {
-        return match ($this->type) {
-            self::TYPE_PRODUCTS => 'Товары',
-            self::TYPE_PRICES => 'Цены',
-            self::TYPE_STOCKS => 'Остатки',
-            self::TYPE_ORDERS => 'Заказы',
-            self::TYPE_REPORTS => 'Отчёты',
-            default => $this->type,
-        };
+        return Attribute::make(
+            get: function () {
+                if (! $this->started_at || ! $this->finished_at) {
+                    return null;
+                }
+
+                return max(0, $this->finished_at->timestamp - $this->started_at->timestamp);
+            }
+        );
     }
 
     /**
-     * Get status label
+     * Обратная совместимость: прямой вызов getDuration()
+     */
+    public function getDuration(): ?int
+    {
+        return $this->duration;
+    }
+
+    /**
+     * Метка статуса
+     */
+    protected function statusLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => match ($this->status) {
+                self::STATUS_PENDING => 'Ожидает',
+                self::STATUS_RUNNING => 'Выполняется',
+                self::STATUS_SUCCESS => 'Успешно',
+                self::STATUS_ERROR => 'Ошибка',
+                default => $this->status,
+            }
+        );
+    }
+
+    /**
+     * Обратная совместимость: прямой вызов getStatusLabel()
      */
     public function getStatusLabel(): string
     {
-        return match ($this->status) {
-            self::STATUS_PENDING => 'Ожидает',
-            self::STATUS_RUNNING => 'Выполняется',
-            self::STATUS_SUCCESS => 'Успешно',
-            self::STATUS_ERROR => 'Ошибка',
-            default => $this->status,
-        };
+        return $this->status_label ?? $this->status;
+    }
+
+    /**
+     * Метка типа
+     */
+    protected function typeLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => match ($this->type) {
+                self::TYPE_PRODUCTS => 'Товары',
+                self::TYPE_PRICES => 'Цены',
+                self::TYPE_STOCKS => 'Остатки',
+                self::TYPE_ORDERS => 'Заказы',
+                self::TYPE_REPORTS => 'Отчёты',
+                default => $this->type,
+            }
+        );
+    }
+
+    /**
+     * Обратная совместимость: прямой вызов getTypeLabel()
+     */
+    public function getTypeLabel(): string
+    {
+        return $this->type_label ?? $this->type;
     }
 
     /**
@@ -134,18 +181,5 @@ class MarketplaceSyncLog extends Model
             self::STATUS_ERROR => 'red',
             default => 'gray',
         };
-    }
-
-    /**
-     * Get duration in seconds
-     */
-    public function getDuration(): ?int
-    {
-        if (! $this->started_at || ! $this->finished_at) {
-            return null;
-        }
-
-        // Используем прямое вычитание timestamp для корректного расчета длительности
-        return max(0, $this->finished_at->timestamp - $this->started_at->timestamp);
     }
 }
