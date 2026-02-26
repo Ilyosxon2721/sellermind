@@ -24,11 +24,11 @@
 - [x] #019 **[BUG]** Пустые catch блоки скрывают ошибки в финансовом модуле — ✅ 2026-02-01 (commit: 215a017)
 
 - [ ] #002 **[BUG]** Telegram уведомления не отправляются
-  - **Проблема:** Система уведомлений не работает
+  - **Проблема:** TELEGRAM_BOT_TOKEN не задан в .env
   - **Где:** `app/Notifications/`, `app/Services/TelegramService.php`
   - **Решение:** Проверить конфигурацию бота, очереди, webhook
 
-- [ ] #055 **[BUG]** API /marketplace/sync-logs/json возвращает 404 "Route not found"
+- [x] #055 **[BUG]** API /marketplace/sync-logs/json возвращает 404 "Route not found"
   - **Где:** routes/web.php или routes/api.php
   - **Решение:** Добавить роут для получения логов синхронизации
 
@@ -61,7 +61,7 @@
 - [x] #021 **[REFACTOR]** Унифицировать шаблоны заказов маркетплейсов ✅ `d1a32b2`
   - Создан компонент orders-table.blade.php (850 строк)
 
-- [ ] #058 **[BUG]** Отрицательное время синхронизации (-262s, -397s)
+- [x] #058 **[BUG]** Отрицательное время синхронизации (-262s, -397s)
   - **Проблема:** duration = started_at - finished_at (неправильный порядок)
   - **Где:** Модель SyncLog или blade шаблон
   - **Решение:** Исправить на finished_at - started_at

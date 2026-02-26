@@ -13,7 +13,16 @@ class TelegramService
 
     public function __construct()
     {
-        $this->token = config('telegram.bot_token');
+        $this->token = (string) config('telegram.bot_token', '');
+
+        if (empty($this->token)) {
+            Log::warning('TelegramService: TELEGRAM_BOT_TOKEN не настроен. Уведомления в Telegram отключены.');
+        }
+    }
+
+    public function isConfigured(): bool
+    {
+        return ! empty($this->token);
     }
 
     public function sendMessage(int|string $chatId, string $text, array $options = []): array
@@ -86,6 +95,10 @@ class TelegramService
 
     public function downloadFile(string $filePath): ?string
     {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
         $url = "https://api.telegram.org/file/bot{$this->token}/{$filePath}";
         $response = Http::get($url);
 
@@ -122,6 +135,10 @@ class TelegramService
 
     private function request(string $method, array $params = []): array
     {
+        if (empty($this->token)) {
+            return [];
+        }
+
         $url = "{$this->baseUrl}{$this->token}/{$method}";
 
         $response = Http::post($url, $params);
