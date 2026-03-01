@@ -325,3 +325,17 @@ Schedule::command('marketplace:auto-link --all')
         \Log::error('Marketplace auto-link failed');
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
+
+
+// Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
+Schedule::command('stock:check-low')
+    ->dailyAt('08:00')
+    ->name('check-low-stock')
+    ->withoutOverlapping(15)
+    ->onSuccess(function () {
+        \Log::info('Low stock check completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Low stock check failed');
+    })
+    ->appendOutputTo(storage_path('logs/low-stock.log'));
