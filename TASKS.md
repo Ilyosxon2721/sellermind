@@ -101,15 +101,15 @@
 - [x] #052 **[STYLE]** Yandex секция — белый фон ✅ `4da5065`
 - [x] #054 **[STYLE]** Расширить колонку статусов поставок ✅ `4da5065`
 
-- [ ] #003 **[FEATURE]** Добавить фильтрацию товаров по маркетплейсу
+- [x] #003 **[FEATURE]** Добавить фильтрацию товаров по маркетплейсу
   - **Где:** `/products`
   - **Решение:** Dropdown с выбором маркетплейса, query scope в Product модели
 
-- [ ] #004 **[FEATURE]** Экспорт товаров в Excel
+- [x] #004 **[FEATURE]** Экспорт товаров в Excel
   - **Где:** `GET /api/products/export`
   - **Решение:** XLSX через Laravel Excel или PhpSpreadsheet
 
-- [ ] #005 **[FEATURE]** Импорт товаров из Excel
+- [x] #005 **[FEATURE]** Импорт товаров из Excel
   - **Где:** `POST /api/products/import`
   - **Решение:** Валидация + Drag & drop UI
 
@@ -141,7 +141,7 @@
   - **Где:** `phpunit.xml`, тесты PriceEngine, AP, Replenishment, Warehouse
   - **Решение:** Включить `pdo_sqlite` расширение в php.ini или настроить тесты на MySQL
 
-- [ ] #034 **[TEST]** Установить и настроить PHPStan
+- [x] #034 **[TEST]** Установить и настроить PHPStan
   - **Проблема:** PHPStan не установлен — статический анализ не проводится
   - **Решение:** `composer require --dev phpstan/phpstan larastan/larastan`, настроить phpstan.neon, запустить level 0
 
@@ -153,7 +153,7 @@
   - **Проблема:** Долго грузится при большом количестве данных
   - **Решение:** Кэширование, пагинация, lazy loading графиков
 
-- [ ] #007 **[IMPROVE]** Добавить поиск по товарам
+- [x] #007 **[IMPROVE]** Добавить поиск по товарам
   - **Решение:** Full-text search или LIKE query с debounce UI
 
 - [ ] #008 **[FEATURE]** История изменения цен

@@ -1,0 +1,29 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+
+    level: 0
+
+    tmpDir: storage/framework/phpstan
+
+    parallel:
+        maximumNumberOfProcesses: 1
+
+    phpVersion: 80200
+
+    excludePaths:
+        - app/Filament/*
+        - app/Services/Vpc/*
+        - app/Http/Controllers/VpcSessionController.php
+        - app/Http/Controllers/VpcControlApiController.php
+
+    ignoreErrors:
+        - '#Unsafe usage of new static#'
+        - '#Called .env. outside of the config directory#'
+        - '#Class App\Models\MarketplaceOrder not found#'
+        - '#Class App\Models\MarketplaceOrderItem not found#'
+        - '#Class App\Models\Finance\CashMovement not found#'
+        - '#Class App\Models\Warehouse not found#'
