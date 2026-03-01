@@ -26,7 +26,7 @@ class TokenController extends Controller
 
         // Check user has access to this company
         $user = $request->user();
-        if (!$user->companies()->where('companies.id', $validated['company_id'])->exists()) {
+        if (! $user->companies()->where('companies.id', $validated['company_id'])->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied to this company.',
@@ -77,7 +77,7 @@ class TokenController extends Controller
         $user = $request->user();
         $companyId = $request->integer('company_id');
 
-        if (!$user->companies()->where('companies.id', $companyId)->exists()) {
+        if (! $user->companies()->where('companies.id', $companyId)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied to this company.',
@@ -87,7 +87,7 @@ class TokenController extends Controller
         $tokens = RismentApiToken::where('company_id', $companyId)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn($t) => [
+            ->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,
                 'scopes' => $t->scopes,
@@ -116,7 +116,7 @@ class TokenController extends Controller
         $user = $request->user();
         $companyId = $request->integer('company_id');
 
-        if (!$user->companies()->where('companies.id', $companyId)->exists()) {
+        if (! $user->companies()->where('companies.id', $companyId)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied to this company.',

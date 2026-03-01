@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class UzumOrderObserver
 {
     use NotifiesMarketplaceOrder;
+
     /**
      * Handle the UzumOrder "created" event.
      *

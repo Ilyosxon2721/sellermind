@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class WbOrderObserver
 {
     use NotifiesMarketplaceOrder;
+
     /**
      * Handle the WbOrder "created" event.
      *

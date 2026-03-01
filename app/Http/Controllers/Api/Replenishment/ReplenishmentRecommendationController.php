@@ -35,8 +35,9 @@ class ReplenishmentRecommendationController extends Controller
             $results = $this->service->calculateAll($companyId, $warehouseId);
         } catch (\Throwable $e) {
             report($e);
+
             return $this->errorResponse(
-                'Ошибка расчёта рекомендаций: ' . $e->getMessage(),
+                'Ошибка расчёта рекомендаций: '.$e->getMessage(),
                 'calculation_error',
                 null,
                 500
@@ -98,15 +99,16 @@ class ReplenishmentRecommendationController extends Controller
             $results = $this->service->calculateAll($companyId, $data['warehouse_id']);
         } catch (\Throwable $e) {
             report($e);
+
             return $this->errorResponse(
-                'Ошибка расчёта: ' . $e->getMessage(),
+                'Ошибка расчёта: '.$e->getMessage(),
                 'calculation_error',
                 null,
                 500
             );
         }
 
-        if (!empty($data['sku_ids'])) {
+        if (! empty($data['sku_ids'])) {
             $ids = $data['sku_ids'];
             $results = $results->whereIn('sku_id', $ids);
         }

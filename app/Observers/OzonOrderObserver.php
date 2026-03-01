@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class OzonOrderObserver
 {
     use NotifiesMarketplaceOrder;
+
     /**
      * Handle the OzonOrder "created" event.
      *

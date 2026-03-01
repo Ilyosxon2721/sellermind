@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Web\Products;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
-use App\Models\Finance\FinanceSettings;
 use App\Models\Channel;
+use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;

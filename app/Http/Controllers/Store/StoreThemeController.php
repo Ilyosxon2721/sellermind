@@ -28,7 +28,7 @@ final class StoreThemeController extends Controller
         $store = Store::where('company_id', $companyId)->findOrFail($storeId);
 
         $data = $store->theme?->toArray() ?? [];
-        $data['store_url'] = '/store/' . $store->slug;
+        $data['store_url'] = '/store/'.$store->slug;
 
         return $this->successResponse($data);
     }

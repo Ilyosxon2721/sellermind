@@ -145,7 +145,7 @@
   - **Проблема:** PHPStan не установлен — статический анализ не проводится
   - **Решение:** `composer require --dev phpstan/phpstan larastan/larastan`, настроить phpstan.neon, запустить level 0
 
-- [ ] #035 **[STYLE]** Запустить Pint для исправления code style
+- [x] #035 **[STYLE]** Запустить Pint для исправления code style
   - **Проблема:** Сотни файлов с нарушениями PSR-12: line endings, unused imports, trailing commas, spacing
   - **Решение:** `vendor/bin/pint` (автоматическое исправление)
 
@@ -174,12 +174,12 @@
   - **Где:** CounterpartyController, InventoryController, SalesManagementController, DialogController и др.
   - **Решение:** Создать FormRequest для каждого контроллера, принимающего пользовательский ввод
 
-- [ ] #038 **[BUG]** XSS через неэкранированный вывод в Blade
+- [x] #038 **[BUG]** XSS через неэкранированный вывод в Blade
   - **Проблема:** 6 мест с `{!! !!}` — потенциальная XSS уязвимость
   - **Где:** `welcome.blade.php:619,630,641,652`, `empty-state.blade.php:38`, `marketplace/index.blade.php:156`
   - **Решение:** Заменить `{!! !!}` на `{{ }}` где возможно, или добавить санитизацию
 
-- [ ] #039 **[CLEANUP]** Дублирующийся route "/" в web.php
+- [x] #039 **[CLEANUP]** Дублирующийся route "/" в web.php
   - **Проблема:** Маршрут `/` определён дважды — первое определение мёртвый код
   - **Где:** `routes/web.php:53-59` и `62-79`
   - **Решение:** Удалить первое определение

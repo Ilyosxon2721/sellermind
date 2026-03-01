@@ -76,6 +76,6 @@ class ProductImage extends Model
         }
 
         // Относительный путь — добавить /storage/
-        return '/storage/' . ltrim($this->file_path, '/');
+        return '/storage/'.ltrim($this->file_path, '/');
     }
 }

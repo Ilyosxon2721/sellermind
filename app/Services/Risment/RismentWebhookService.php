@@ -19,7 +19,7 @@ class RismentWebhookService
             ->get();
 
         foreach ($endpoints as $endpoint) {
-            if (!$endpoint->listensTo($event)) {
+            if (! $endpoint->listensTo($event)) {
                 continue;
             }
 
@@ -56,7 +56,7 @@ class RismentWebhookService
     {
         $log = RismentWebhookLog::with('endpoint')->find($logId);
 
-        if (!$log || !$log->endpoint || !$log->endpoint->is_active) {
+        if (! $log || ! $log->endpoint || ! $log->endpoint->is_active) {
             return false;
         }
 
@@ -84,11 +84,13 @@ class RismentWebhookService
 
             if ($response->successful()) {
                 $log->update(['delivered_at' => now()]);
+
                 return true;
             }
 
             // Schedule retry with exponential backoff
             $this->scheduleRetry($log);
+
             return false;
 
         } catch (\Exception $e) {
@@ -105,6 +107,7 @@ class RismentWebhookService
             ]);
 
             $this->scheduleRetry($log);
+
             return false;
         }
     }

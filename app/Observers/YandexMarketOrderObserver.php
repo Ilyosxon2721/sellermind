@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class YandexMarketOrderObserver
 {
     use NotifiesMarketplaceOrder;
+
     /**
      * Handle the YandexMarketOrder "created" event.
      *
