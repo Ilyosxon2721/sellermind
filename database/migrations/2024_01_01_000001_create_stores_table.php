@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::disableForeignKeyConstraints();
         Schema::create('stores', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
@@ -57,6 +58,7 @@ return new class extends Migration
             $table->index('slug');
             $table->index('custom_domain');
         });
+        Schema::enableForeignKeyConstraints();
     }
 
     /**
