@@ -55,19 +55,6 @@ class WildberriesProductService
                 $cards = $response['cards'] ?? [];
                 $cursor = $response['cursor'] ?? null;
 
-                // Debug log: payload + short response preview to inspect in console/logs
-                \Log::info('WB products sync batch', [
-                    'account_id' => $account->id,
-                    'payload' => $payload,
-                    'response_cursor' => $cursor,
-                    'cards_preview' => array_slice(array_map(fn ($c) => [
-                        'nmID' => $c['nmID'] ?? null,
-                        'vendorCode' => $c['vendorCode'] ?? null,
-                        'title' => $c['title'] ?? null,
-                    ], $cards), 0, 5),
-                    'batch_count' => count($cards),
-                ]);
-
                 // Process each card
                 foreach ($cards as $cardData) {
                     try {

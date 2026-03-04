@@ -186,15 +186,6 @@ class ProductWebController extends Controller
     {
         $user = $request->user();
 
-        // Debug: Log incoming variants count
-        $variantsJson = $request->input('variants');
-        $variants = json_decode($variantsJson, true) ?? [];
-        \Log::info('Product store request', [
-            'variants_json_length' => strlen($variantsJson ?? ''),
-            'variants_count' => count($variants),
-            'request_size' => strlen(serialize($request->all())),
-        ]);
-
         // Check if user has a company
         if (! $user?->company_id) {
             return back()
@@ -222,19 +213,6 @@ class ProductWebController extends Controller
         $this->authorizeCompany($request, $product);
 
         $dto = $this->buildDto($request, $product);
-
-        // Debug logging
-        \Log::info('Product update request', [
-            'product_id' => $product->id,
-            'options_count' => count($dto['options'] ?? []),
-            'variants_count' => count($dto['variants'] ?? []),
-            'options' => $dto['options'] ?? [],
-            'variants' => array_map(fn ($v) => [
-                'id' => $v['id'] ?? null,
-                'sku' => $v['sku'] ?? null,
-                'option_value_ids' => $v['option_value_ids'] ?? [],
-            ], $dto['variants'] ?? []),
-        ]);
 
         $product = $this->productService->updateProductFromDto($product, $dto);
 

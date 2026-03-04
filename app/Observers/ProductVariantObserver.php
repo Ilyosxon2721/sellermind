@@ -46,16 +46,6 @@ class ProductVariantObserver
                 $this->syncToWarehouseSku($variant);
             }
 
-            // Debug: log all changes
-            Log::debug('ProductVariantObserver::updated called', [
-                'variant_id' => $variant->id,
-                'sku' => $variant->sku,
-                'changes' => $variant->getChanges(),
-                'wasChanged_stock_default' => $variant->wasChanged('stock_default'),
-                'original_stock' => $variant->getOriginal('stock_default'),
-                'current_stock' => $variant->stock_default,
-            ]);
-
             // Use wasChanged() to see if 'stock_default' was part of the update.
             if ($variant->wasChanged('stock_default')) {
                 // getOriginal() provides the value before the update.
