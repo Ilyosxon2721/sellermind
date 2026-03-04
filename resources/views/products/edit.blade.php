@@ -329,7 +329,14 @@
                 }, []);
                 this.variants = combos.map((c, idx) => ({option_values_summary: c.summary, sku: `VAR-${idx + 1}`, is_active: true, option_value_ids: c.ids.filter(Boolean)}));
             },
-            addProductAttribute() { this.attributes.product.push({attribute_id: null, value_string: ''}); },
+            maxProductAttributes: 5,
+            addProductAttribute() {
+                if (this.attributes.product.length >= this.maxProductAttributes) {
+                    alert('Максимум ' + this.maxProductAttributes + ' индивидуальных характеристик');
+                    return;
+                }
+                this.attributes.product.push({attribute_id: null, value_string: ''});
+            },
             addVariantAttribute() { this.attributes.variants.push({product_variant_id: null, attribute_id: null, value_string: ''}); },
 
             // Image management
@@ -986,7 +993,13 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-                            <div class="flex items-center justify-between"><h3 class="font-medium text-gray-800">Характеристики товара</h3><button type="button" class="text-sm text-indigo-600" @click="addProductAttribute">+ Атрибут</button></div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-medium text-gray-800">Характеристики товара</h3>
+                                    <span class="text-xs text-gray-500" x-text="attributes.product.length + ' / ' + maxProductAttributes"></span>
+                                </div>
+                                <button type="button" class="text-sm" :class="attributes.product.length >= maxProductAttributes ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 hover:text-indigo-800'" @click="addProductAttribute" :disabled="attributes.product.length >= maxProductAttributes">+ Атрибут</button>
+                            </div>
                             <template x-for="(attr, idx) in attributes.product" :key="idx">
                                 <div class="flex items-center gap-2">
                                     <select class="flex-1 border rounded-lg px-2 py-1.5 text-sm" x-model="attr.attribute_id"><option value="">Выберите</option><template x-for="def in attributeDefs" :key="def.id"><option :value="def.id" x-text="def.name"></option></template></select>
