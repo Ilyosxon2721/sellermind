@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Pricing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Pricing\CalculatorRequest;
 use App\Models\Pricing\MarketplaceCategory;
 use App\Models\Pricing\MarketplaceCommission;
 use App\Models\Pricing\ProductPricing;
 use App\Services\Pricing\PricingCalculatorService;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 final class CalculatorController extends Controller
 {
@@ -24,24 +24,9 @@ final class CalculatorController extends Controller
     /**
      * Рассчитать расходы и маржу
      */
-    public function calculate(Request $request): JsonResponse
+    public function calculate(CalculatorRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'marketplace' => 'required|string|in:wildberries,ozon,yandex,uzum',
-            'fulfillment_type' => 'required|string|in:fbo,fbs,dbs,express',
-            'category_id' => 'nullable|integer|exists:marketplace_categories,id',
-            'cost_price' => 'required|numeric|min:0',
-            'packaging_cost' => 'nullable|numeric|min:0',
-            'delivery_to_warehouse' => 'nullable|numeric|min:0',
-            'other_costs' => 'nullable|numeric|min:0',
-            'length_cm' => 'nullable|numeric|min:0',
-            'width_cm' => 'nullable|numeric|min:0',
-            'height_cm' => 'nullable|numeric|min:0',
-            'weight_kg' => 'nullable|numeric|min:0',
-            'storage_cost' => 'nullable|numeric|min:0',
-            'price' => 'nullable|numeric|min:0',
-            'target_margin_percent' => 'nullable|numeric|min:0|max:99',
-        ]);
+        $validated = $request->validated();
 
         $pricing = new ProductPricing($validated);
         $pricing->marketplace_category_id = $validated['category_id'] ?? null;
@@ -64,23 +49,9 @@ final class CalculatorController extends Controller
     /**
      * Обратный расчёт: цена для целевой маржи
      */
-    public function calculateForMargin(Request $request): JsonResponse
+    public function calculateForMargin(CalculatorRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'marketplace' => 'required|string|in:wildberries,ozon,yandex,uzum',
-            'fulfillment_type' => 'required|string|in:fbo,fbs,dbs,express',
-            'category_id' => 'nullable|integer|exists:marketplace_categories,id',
-            'cost_price' => 'required|numeric|min:0',
-            'packaging_cost' => 'nullable|numeric|min:0',
-            'delivery_to_warehouse' => 'nullable|numeric|min:0',
-            'other_costs' => 'nullable|numeric|min:0',
-            'length_cm' => 'nullable|numeric|min:0',
-            'width_cm' => 'nullable|numeric|min:0',
-            'height_cm' => 'nullable|numeric|min:0',
-            'weight_kg' => 'nullable|numeric|min:0',
-            'storage_cost' => 'nullable|numeric|min:0',
-            'target_margin_percent' => 'required|numeric|min:0|max:99',
-        ]);
+        $validated = $request->validated();
 
         $pricing = new ProductPricing($validated);
         $pricing->marketplace_category_id = $validated['category_id'] ?? null;
@@ -101,22 +72,9 @@ final class CalculatorController extends Controller
     /**
      * Сравнить прибыльность на разных маркетплейсах
      */
-    public function compare(Request $request): JsonResponse
+    public function compare(CalculatorRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'cost_price' => 'required|numeric|min:0',
-            'packaging_cost' => 'nullable|numeric|min:0',
-            'delivery_to_warehouse' => 'nullable|numeric|min:0',
-            'other_costs' => 'nullable|numeric|min:0',
-            'length_cm' => 'nullable|numeric|min:0',
-            'width_cm' => 'nullable|numeric|min:0',
-            'height_cm' => 'nullable|numeric|min:0',
-            'weight_kg' => 'nullable|numeric|min:0',
-            'storage_cost' => 'nullable|numeric|min:0',
-            'target_margin_percent' => 'nullable|numeric|min:0|max:99',
-            'marketplaces' => 'nullable|array',
-            'marketplaces.*' => 'string|in:wildberries,ozon,yandex,uzum',
-        ]);
+        $validated = $request->validated();
 
         $pricing = new ProductPricing($validated);
         $pricing->target_margin_percent = $validated['target_margin_percent'] ?? 30;

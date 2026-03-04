@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\TransactionRequest;
 use App\Models\Finance\FinanceTransaction;
 use App\Services\Finance\TransactionService;
 use App\Support\ApiResponder;
@@ -70,14 +73,14 @@ class TransactionController extends Controller
         return $this->successResponse($transaction);
     }
 
-    public function store(Request $request)
+    public function store(TransactionRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['company_id'] = $companyId;
         $data['created_by'] = Auth::id();
 
@@ -86,7 +89,7 @@ class TransactionController extends Controller
         return $this->successResponse($transaction->load(['category', 'subcategory', 'counterparty', 'employee']));
     }
 
-    public function update($id, Request $request)
+    public function update($id, TransactionRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -99,7 +102,7 @@ class TransactionController extends Controller
             return $this->errorResponse('Only draft transactions can be edited', 'invalid_state', null, 422);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $transaction = $this->service->update($transaction, $data);
 
         return $this->successResponse($transaction->load(['category', 'subcategory', 'counterparty', 'employee']));
@@ -192,24 +195,5 @@ class TransactionController extends Controller
         $transaction->cancel();
 
         return $this->successResponse($transaction->fresh(['category', 'subcategory', 'counterparty', 'employee']));
-    }
-
-    protected function validateData(Request $request): array
-    {
-        return $request->validate([
-            'type' => ['required', 'in:income,expense'],
-            'category_id' => ['nullable', 'integer'],
-            'subcategory_id' => ['nullable', 'integer'],
-            'counterparty_id' => ['nullable', 'integer'],
-            'employee_id' => ['nullable', 'integer'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'currency_code' => ['nullable', 'string', 'max:8'],
-            'exchange_rate' => ['nullable', 'numeric', 'min:0'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'transaction_date' => ['required', 'date'],
-            'reference' => ['nullable', 'string', 'max:64'],
-            'tags' => ['nullable', 'array'],
-            'metadata' => ['nullable', 'array'],
-        ]);
     }
 }

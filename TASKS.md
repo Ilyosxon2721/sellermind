@@ -169,7 +169,7 @@
   - **Где:** VpcManager.php, VpcCommandClient.php, WildberriesClient.php, UzumClient.php, console.php, access.blade.php, pwa-top-navbar.blade.php
   - **Решение:** Удалить мёртвый код или пометить модуль как экспериментальный
 
-- [ ] #037 **[REFACTOR]** Создать FormRequest классы для контроллеров без валидации
+- [x] #037 **[REFACTOR]** Создать FormRequest классы для контроллеров без валидации
   - **Проблема:** Только 4 FormRequest класса на 80+ контроллеров
   - **Где:** CounterpartyController, InventoryController, SalesManagementController, DialogController и др.
   - **Решение:** Создать FormRequest для каждого контроллера, принимающего пользовательский ввод
