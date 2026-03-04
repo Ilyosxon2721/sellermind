@@ -28,9 +28,9 @@
   - **Где:** `app/Notifications/`, `app/Services/TelegramService.php`
   - **Решение:** Проверить конфигурацию бота, очереди, webhook
 
-- [ ] #055 **[BUG]** API /marketplace/sync-logs/json возвращает 404 "Route not found"
-  - **Где:** routes/web.php или routes/api.php
-  - **Решение:** Добавить роут для получения логов синхронизации
+- [x] #055 **[BUG]** API /marketplace/sync-logs/json возвращает 404 "Route not found" — ✅ 2026-03-04
+  - **Причина:** Валидация статуса в контроллере разрешала только success,error,partial, но UI отправлял pending,running
+  - **Решение:** Исправлена валидация в MarketplaceSyncLogController::index() и ::json() — теперь pending,running,success,error
 
 - [x] #056 **[BUG]** Кнопка "Синхронизировать" на странице аккаунта вызывает неверный endpoint — ✅ УЖЕ ИСПРАВЛЕНО
   - **Где:** resources/views/pages/marketplace/show.blade.php, orders-table.blade.php
@@ -61,10 +61,9 @@
 - [x] #021 **[REFACTOR]** Унифицировать шаблоны заказов маркетплейсов ✅ `d1a32b2`
   - Создан компонент orders-table.blade.php (850 строк)
 
-- [ ] #058 **[BUG]** Отрицательное время синхронизации (-262s, -397s)
+- [x] #058 **[BUG]** Отрицательное время синхронизации (-262s, -397s) — ✅ УЖЕ ИСПРАВЛЕНО
   - **Проблема:** duration = started_at - finished_at (неправильный порядок)
-  - **Где:** Модель SyncLog или blade шаблон
-  - **Решение:** Исправить на finished_at - started_at
+  - **Решение:** В MarketplaceSyncLog::getDuration() используется max(0, finished_at - started_at) — уже исправлено
 
 - [x] #059 **[UX]** Нет feedback при нажатии кнопок синхронизации — ✅ УЖЕ ИСПРАВЛЕНО
   - **Проблема:** Нет spinner, нет toast, пользователь не понимает нажалась ли кнопка

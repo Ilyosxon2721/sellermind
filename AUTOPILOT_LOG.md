@@ -40,3 +40,11 @@
 2026-02-01 | STOP  | Session ended (1 task)
 ========================================
 
+========================================
+2026-03-04 | START | New session
+2026-03-04 | TASK  | Started #055 - API /marketplace/sync-logs/json возвращает 404
+2026-03-04 | EDIT  | app/Http/Controllers/MarketplaceSyncLogController.php — исправлена валидация status: 'in:success,error,partial' → 'in:pending,running,success,error'
+2026-03-04 | NOTE  | #058 (отрицательное время) уже исправлено в MarketplaceSyncLog::getDuration() — max(0, finished_at - started_at)
+2026-03-04 | DONE  | Task #055 completed
+========================================
+

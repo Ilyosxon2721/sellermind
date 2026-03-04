@@ -89,6 +89,13 @@ class UpdateProductRequest extends FormRequest
             if (! $hasActive) {
                 $validator->errors()->add('variants', 'At least one active variant is required.');
             }
+
+            // Лимит индивидуальных характеристик товара (без product_variant_id)
+            $attributes = collect($this->input('attributes', []));
+            $productAttributes = $attributes->filter(fn($attr) => empty($attr['product_variant_id']));
+            if ($productAttributes->count() > 5) {
+                $validator->errors()->add('attributes', 'Максимум 5 индивидуальных характеристик товара.');
+            }
         });
     }
 }
