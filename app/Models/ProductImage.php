@@ -55,4 +55,27 @@ class ProductImage extends Model
     {
         return $query->where('company_id', $companyId);
     }
+
+    /**
+     * URL изображения — обрабатывает разные форматы file_path
+     */
+    public function getUrlAttribute(): ?string
+    {
+        if (empty($this->file_path)) {
+            return null;
+        }
+
+        // Внешние URL (picsum, CDN и т.д.)
+        if (str_starts_with($this->file_path, 'http://') || str_starts_with($this->file_path, 'https://')) {
+            return $this->file_path;
+        }
+
+        // Уже содержит /storage/ — это публичный путь
+        if (str_starts_with($this->file_path, '/storage/')) {
+            return $this->file_path;
+        }
+
+        // Относительный путь — добавить /storage/
+        return '/storage/' . ltrim($this->file_path, '/');
+    }
 }

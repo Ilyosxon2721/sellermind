@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Products;
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
 use App\Models\Finance\FinanceSettings;
+use App\Models\Channel;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -32,9 +33,11 @@ class ProductWebController extends Controller
             return view('products.index', [
                 'products' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'categories' => collect(),
+                'channels' => collect(),
                 'filters' => [
                     'search' => '',
                     'category_id' => null,
+                    'channel_id' => null,
                     'is_archived' => false,
                 ],
             ]);
@@ -42,6 +45,7 @@ class ProductWebController extends Controller
         $filters = [
             'search' => $request->string('search')->trim()->toString(),
             'category_id' => $request->input('category_id'),
+            'channel_id' => $request->input('channel_id'),
             'is_archived' => $request->boolean('is_archived', false),
         ];
 
@@ -62,6 +66,12 @@ class ProductWebController extends Controller
             $query->where('category_id', $filters['category_id']);
         }
 
+        if ($filters['channel_id']) {
+            $query->whereHas('channelSettings', function ($q) use ($filters) {
+                $q->where('channel_id', $filters['channel_id']);
+            });
+        }
+
         if (! $filters['is_archived']) {
             $query->where('is_archived', false);
         }
@@ -73,9 +83,12 @@ class ProductWebController extends Controller
             ->orderBy('name')
             ->get();
 
+        $channels = Channel::orderBy('name')->get();
+
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
+            'channels' => $channels,
             'filters' => $filters,
         ]);
     }

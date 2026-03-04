@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Webhooks;
 
 use App\Http\Controllers\Controller;
+use App\Models\Store\StoreOrder;
 use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,48 +45,17 @@ class ClickWebhookController extends Controller
 
         // Парсинг идентификатора транзакции
         $parts = explode('-', $merchantTransId);
+        $type = $parts[0] ?? '';
 
-        if (count($parts) < 2 || $parts[0] !== 'SUB') {
-            return response()->json([
-                'error' => -5,
-                'error_note' => 'Transaction not found',
-            ]);
+        if ($type === 'SUB') {
+            return $this->prepareSubscription($parts, $clickTransId, $merchantTransId, $amount);
+        } elseif ($type === 'ORDER') {
+            return $this->prepareOrder($parts, $clickTransId, $merchantTransId, $amount);
         }
 
-        $subscriptionId = (int) $parts[1];
-        $subscription = Subscription::find($subscriptionId);
-
-        if (! $subscription) {
-            return response()->json([
-                'error' => -5,
-                'error_note' => 'Subscription not found',
-            ]);
-        }
-
-        // Проверка суммы
-        $expectedAmount = $subscription->plan->price;
-        if (bccomp((string) $amount, (string) $expectedAmount, 2) !== 0) {
-            return response()->json([
-                'error' => -2,
-                'error_note' => 'Incorrect parameter amount',
-            ]);
-        }
-
-        // Проверка — уже оплачено
-        if ($subscription->status === 'active') {
-            return response()->json([
-                'error' => -4,
-                'error_note' => 'Already paid',
-            ]);
-        }
-
-        // Успешный prepare
         return response()->json([
-            'click_trans_id' => $clickTransId,
-            'merchant_trans_id' => $merchantTransId,
-            'merchant_prepare_id' => $subscription->id,
-            'error' => 0,
-            'error_note' => 'Success',
+            'error' => -5,
+            'error_note' => 'Transaction not found',
         ]);
     }
 
@@ -123,6 +93,92 @@ class ClickWebhookController extends Controller
             ]);
         }
 
+        // Парсинг типа транзакции
+        $parts = explode('-', $merchantTransId);
+        $type = $parts[0] ?? '';
+
+        if ($type === 'ORDER') {
+            return $this->completeOrder($clickTransId, $merchantTransId, $merchantPrepareId, $amount, $action, $error);
+        }
+
+        // Подписка (SUB) — существующая логика
+        return $this->completeSubscription($clickTransId, $merchantTransId, $merchantPrepareId, $amount, $action, $error);
+    }
+
+    /**
+     * Подготовка платежа для подписки
+     */
+    private function prepareSubscription(array $parts, int $clickTransId, string $merchantTransId, $amount): JsonResponse
+    {
+        if (count($parts) < 2) {
+            return response()->json(['error' => -5, 'error_note' => 'Transaction not found']);
+        }
+
+        $subscriptionId = (int) $parts[1];
+        $subscription = Subscription::find($subscriptionId);
+
+        if (! $subscription) {
+            return response()->json(['error' => -5, 'error_note' => 'Subscription not found']);
+        }
+
+        $expectedAmount = $subscription->plan->price;
+        if (bccomp((string) $amount, (string) $expectedAmount, 2) !== 0) {
+            return response()->json(['error' => -2, 'error_note' => 'Incorrect parameter amount']);
+        }
+
+        if ($subscription->status === 'active') {
+            return response()->json(['error' => -4, 'error_note' => 'Already paid']);
+        }
+
+        return response()->json([
+            'click_trans_id' => $clickTransId,
+            'merchant_trans_id' => $merchantTransId,
+            'merchant_prepare_id' => $subscription->id,
+            'error' => 0,
+            'error_note' => 'Success',
+        ]);
+    }
+
+    /**
+     * Подготовка платежа для заказа магазина
+     */
+    private function prepareOrder(array $parts, int $clickTransId, string $merchantTransId, $amount): JsonResponse
+    {
+        if (count($parts) < 2) {
+            return response()->json(['error' => -5, 'error_note' => 'Transaction not found']);
+        }
+
+        $orderId = (int) $parts[1];
+        $order = StoreOrder::find($orderId);
+
+        if (! $order) {
+            return response()->json(['error' => -5, 'error_note' => 'Order not found']);
+        }
+
+        // Проверка суммы
+        if (bccomp((string) $amount, (string) $order->total, 2) !== 0) {
+            return response()->json(['error' => -2, 'error_note' => 'Incorrect parameter amount']);
+        }
+
+        // Уже оплачен
+        if ($order->payment_status === StoreOrder::PAYMENT_PAID) {
+            return response()->json(['error' => -4, 'error_note' => 'Already paid']);
+        }
+
+        return response()->json([
+            'click_trans_id' => $clickTransId,
+            'merchant_trans_id' => $merchantTransId,
+            'merchant_prepare_id' => $order->id,
+            'error' => 0,
+            'error_note' => 'Success',
+        ]);
+    }
+
+    /**
+     * Завершение платежа для подписки
+     */
+    private function completeSubscription(int $clickTransId, string $merchantTransId, int $merchantPrepareId, $amount, int $action, int $error): JsonResponse
+    {
         $subscription = Subscription::find($merchantPrepareId);
 
         if (! $subscription) {
@@ -133,7 +189,7 @@ class ClickWebhookController extends Controller
         }
 
         // Проверка — платёж отменён
-        if ((int) $action === 0) {
+        if ($action === 0) {
             return response()->json([
                 'click_trans_id' => $clickTransId,
                 'merchant_trans_id' => $merchantTransId,
@@ -144,7 +200,7 @@ class ClickWebhookController extends Controller
         }
 
         // Проверка — ошибка платежа
-        if ((int) $error < 0) {
+        if ($error < 0) {
             return response()->json([
                 'click_trans_id' => $clickTransId,
                 'merchant_trans_id' => $merchantTransId,
@@ -156,7 +212,7 @@ class ClickWebhookController extends Controller
 
         // Платёж успешен — активация подписки в транзакции
         DB::transaction(function () use ($subscription, $amount) {
-            $subscription->lockForUpdate();
+            $subscription = Subscription::where('id', $subscription->id)->lockForUpdate()->first();
 
             // Проверка что ещё не активирована (idempotency)
             if ($subscription->status === 'active') {
@@ -183,6 +239,77 @@ class ClickWebhookController extends Controller
             'click_trans_id' => $clickTransId,
             'merchant_trans_id' => $merchantTransId,
             'merchant_confirm_id' => $subscription->id,
+            'error' => 0,
+            'error_note' => 'Success',
+        ]);
+    }
+
+    /**
+     * Завершение платежа для заказа магазина
+     */
+    private function completeOrder(int $clickTransId, string $merchantTransId, int $merchantPrepareId, $amount, int $action, int $error): JsonResponse
+    {
+        $order = StoreOrder::find($merchantPrepareId);
+
+        if (! $order) {
+            return response()->json([
+                'error' => -5,
+                'error_note' => 'Order not found',
+            ]);
+        }
+
+        // Платёж отменён
+        if ($action === 0) {
+            return response()->json([
+                'click_trans_id' => $clickTransId,
+                'merchant_trans_id' => $merchantTransId,
+                'merchant_confirm_id' => $order->id,
+                'error' => -9,
+                'error_note' => 'Transaction cancelled',
+            ]);
+        }
+
+        // Ошибка платежа
+        if ($error < 0) {
+            return response()->json([
+                'click_trans_id' => $clickTransId,
+                'merchant_trans_id' => $merchantTransId,
+                'merchant_confirm_id' => $order->id,
+                'error' => $error,
+                'error_note' => 'Payment failed',
+            ]);
+        }
+
+        // Успешная оплата — обновляем статус в транзакции
+        DB::transaction(function () use ($order) {
+            $order = StoreOrder::where('id', $order->id)->lockForUpdate()->first();
+
+            // Idempotency
+            if ($order->payment_status === StoreOrder::PAYMENT_PAID) {
+                return;
+            }
+
+            $order->update([
+                'payment_status' => StoreOrder::PAYMENT_PAID,
+            ]);
+        });
+
+        // Завершаем Sale в SellerMind при успешной оплате
+        try {
+            app(\App\Services\Store\StoreOrderService::class)->completeOrderSale($order);
+        } catch (\Throwable $e) {
+            Log::error('Failed to complete Sale after Click payment', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        Log::info("StoreOrder {$order->id} paid via Click payment");
+
+        return response()->json([
+            'click_trans_id' => $clickTransId,
+            'merchant_trans_id' => $merchantTransId,
+            'merchant_confirm_id' => $order->id,
             'error' => 0,
             'error_note' => 'Success',
         ]);

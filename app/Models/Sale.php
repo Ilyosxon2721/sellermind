@@ -185,6 +185,7 @@ class Sale extends Model
             'marketplace' => 'С маркетплейса',
             'manual' => 'Ручная',
             'pos' => 'POS',
+            'store' => 'Интернет-магазин',
             default => $this->type,
         };
     }
@@ -202,6 +203,7 @@ class Sale extends Model
             'manual' => 'MAN',
             'pos' => 'POS',
             'marketplace' => 'MP',
+            'store' => 'STORE',
             default => 'SALE',
         };
 

@@ -125,6 +125,9 @@ class DatabaseSeeder extends Seeder
             'is_default' => true,
         ]);
 
+        // Store Builder demo data
+        $this->call(StoreSeeder::class);
+
         // Autopricing demo policy + rules
         $policyId = \App\Models\Autopricing\AutopricingPolicy::create([
             'company_id' => $company->id,

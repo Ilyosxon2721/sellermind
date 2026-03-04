@@ -31,6 +31,7 @@ class ProductBulkController extends Controller
             'product_ids' => ['nullable', 'array'],
             'product_ids.*' => ['integer', 'exists:products,id'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'channel_id' => ['nullable', 'integer', 'exists:channels,id'],
             'include_archived' => ['nullable', 'boolean'],
         ]);
 
@@ -48,6 +49,13 @@ class ProductBulkController extends Controller
         // Filter by category
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
+        }
+
+        // Filter by marketplace channel
+        if ($request->filled('channel_id')) {
+            $query->whereHas('channelSettings', function ($q) use ($request) {
+                $q->where('channel_id', $request->channel_id);
+            });
         }
 
         // Include/exclude archived

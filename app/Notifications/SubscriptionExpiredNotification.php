@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\TelegramChannel;
 use App\Models\Subscription;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,7 +25,7 @@ class SubscriptionExpiredNotification extends Notification
 
         // Add Telegram if connected
         if ($notifiable->telegram_id && $notifiable->telegram_notifications_enabled) {
-            $channels[] = 'telegram';
+            $channels[] = TelegramChannel::class;
         }
 
         // Add email
@@ -71,11 +72,13 @@ class SubscriptionExpiredNotification extends Notification
 
         return [
             'text' => $message,
-            'parse_mode' => 'Markdown',
-            'reply_markup' => [
-                'inline_keyboard' => [[
-                    ['text' => '💳 Продлить подписку', 'url' => url('/plans')],
-                ]],
+            'options' => [
+                'parse_mode' => 'Markdown',
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [[
+                        ['text' => 'Продлить подписку', 'url' => url('/plans')],
+                    ]],
+                ]),
             ],
         ];
     }
