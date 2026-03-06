@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Events\StockUpdated;
+use App\Models\PriceHistory;
 use App\Models\ProductVariant;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
@@ -46,7 +47,16 @@ class ProductVariantObserver
                 $this->syncToWarehouseSku($variant);
             }
 
-            // Use wasChanged() to see if 'stock_default' was part of the update.
+            // Записать изменение цены в историю
+            if ($variant->wasChanged('price_default')) {
+                $oldPrice = (float) ($variant->getOriginal('price_default') ?? 0);
+                $newPrice = (float) ($variant->price_default ?? 0);
+                if ($oldPrice !== $newPrice) {
+                    PriceHistory::record($variant, $newPrice, $oldPrice > 0 ? $oldPrice : null);
+                }
+            }
+
+                        // Use wasChanged() to see if 'stock_default' was part of the update.
             if ($variant->wasChanged('stock_default')) {
                 // getOriginal() provides the value before the update.
                 $oldStock = (int) ($variant->getOriginal('stock_default') ?? 0);

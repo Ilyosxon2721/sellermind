@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\PriceHistory;
 use App\Models\Product;
 use App\Services\Products\ProductPublishService;
 use App\Services\Products\ProductService;
@@ -202,6 +203,34 @@ class ProductController extends Controller
             'product_id' => $product->id,
             'channels' => $result,
         ], 202);
+    }
+
+    /**
+     * История изменений цен для товара
+     */
+    public function priceHistory(Request $request, Product $product): JsonResponse
+    {
+        $this->authorizeCompany($request, $product);
+
+        $variantId = $request->query('variant_id');
+        $channel   = $request->query('channel', 'default');
+        $days      = (int) $request->query('days', 90);
+
+        $query = PriceHistory::where('product_id', $product->id)
+            ->where('channel', $channel)
+            ->where('changed_at', '>=', now()->subDays($days))
+            ->orderBy('changed_at');
+
+        if ($variantId) {
+            $query->where('product_variant_id', (int) $variantId);
+        }
+
+        $history = $query->get(['product_variant_id', 'price', 'old_price', 'changed_at', 'changed_by']);
+
+        return response()->json([
+            'data'   => $history,
+            'period' => $days,
+        ]);
     }
 
     protected function authorizeCompany(Request $request, Product $product): void

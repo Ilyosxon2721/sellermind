@@ -264,6 +264,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
         Route::post('products/{product}/publish', [ProductController::class, 'publish']);
         Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+        Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
     });
 
     // Product Bulk Operations — только owner

@@ -1190,7 +1190,43 @@
                         </div>
                     </div>
 
-                    {{-- Цены по каналам - временно скрыто (функционал в разработке) --}}
+                    {{-- История изменения цен --}}
+                    @if($product->id)
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+                         x-data="priceHistoryChart('{{ $product->id }}')"
+                         x-init="init()">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">История цен</h2>
+                            <div class="flex gap-2">
+                                <select x-model="days" @change="load()"
+                                        class="text-sm border border-gray-200 rounded-lg px-2 py-1 text-gray-700">
+                                    <option value="30">30 дней</option>
+                                    <option value="90" selected>90 дней</option>
+                                    <option value="180">180 дней</option>
+                                    <option value="365">Год</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div x-show="loading" class="flex justify-center items-center h-40 text-gray-400">
+                            <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                        </div>
+
+                        <div x-show="!loading && empty" class="flex flex-col items-center justify-center h-40 text-gray-400">
+                            <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <p class="text-sm">Нет данных об изменениях цен</p>
+                            <p class="text-xs mt-1 opacity-70">История появится после первого изменения цены</p>
+                        </div>
+
+                        <canvas id="priceHistoryChart" x-show="!loading && !empty" height="120"></canvas>
+                    </div>
+                    @endif
+                                        {{-- Цены по каналам - временно скрыто (функционал в разработке) --}}
                 </section>
 
 
@@ -1363,4 +1399,106 @@
         </form>
     </main>
 </div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+function priceHistoryChart(productId) {
+    return {
+        productId: productId,
+        days: 90,
+        loading: false,
+        empty: true,
+        chart: null,
+
+        init() {
+            this.load();
+        },
+
+        async load() {
+            this.loading = true;
+            this.empty = false;
+
+            try {
+                const params = new URLSearchParams({ days: this.days, channel: 'default' });
+                const res = await fetch(`/api/products/${this.productId}/price-history?${params}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const json = await res.json();
+                const data = json.data || [];
+
+                if (!data.length) {
+                    this.empty = true;
+                    if (this.chart) { this.chart.destroy(); this.chart = null; }
+                    return;
+                }
+
+                this.empty = false;
+                this.$nextTick(() => this.renderChart(data));
+            } catch (e) {
+                this.empty = true;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        renderChart(data) {
+            const canvas = document.getElementById('priceHistoryChart');
+            if (!canvas) return;
+
+            const labels = data.map(d => {
+                const dt = new Date(d.changed_at);
+                return dt.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+            });
+            const prices = data.map(d => parseFloat(d.price));
+
+            if (this.chart) this.chart.destroy();
+
+            this.chart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Цена',
+                        data: prices,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79,70,229,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4f46e5',
+                        fill: true,
+                        tension: 0.3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const d = data[ctx.dataIndex];
+                                    let label = `Цена: ${Number(ctx.parsed.y).toLocaleString('ru-RU')}`;
+                                    if (d.old_price) label += ` (было: ${Number(d.old_price).toLocaleString('ru-RU')})`;
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: v => Number(v).toLocaleString('ru-RU')
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    };
+}
+</script>
+@endpush
 @endsection
