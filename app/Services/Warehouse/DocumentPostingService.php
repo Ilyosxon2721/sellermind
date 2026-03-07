@@ -168,8 +168,8 @@ class DocumentPostingService
         if ($isReversal && $line->qty >= 0) {
             throw new RuntimeException('Reversal line qty must be negative');
         }
-        if (! $line->sku || ! $line->sku->is_active) {
-            throw new RuntimeException('SKU inactive or missing');
+        if (! $line->sku) {
+            throw new RuntimeException('SKU not found');
         }
     }
 
