@@ -41,6 +41,18 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span>Провести</span>
                     </button>
+                    <button class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-colors flex items-center space-x-2"
+                            @click="deleteDoc()"
+                            x-show="doc && doc.status === 'DRAFT'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Удалить</span>
+                    </button>
+                    <button class="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-xl transition-colors flex items-center space-x-2"
+                            @click="reverseDoc()"
+                            x-show="doc && doc.status === 'POSTED'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                        <span>Сторнировать</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -273,6 +285,40 @@
                 }
             },
 
+            async deleteDoc() {
+                if (!confirm('Удалить черновик "' + this.doc.doc_no + '"? Это действие нельзя отменить.')) return;
+                try {
+                    const resp = await fetch(`/api/marketplace/inventory/documents/${id}`, {
+                        method: 'DELETE',
+                        headers: this.getAuthHeaders()
+                    });
+                    const json = await resp.json();
+                    if (resp.ok) {
+                        this.showToast('Документ удалён', 'success');
+                        setTimeout(() => { window.location.href = '/warehouse/documents'; }, 800);
+                    } else {
+                        this.showToast(json.error || json.message || 'Не удалось удалить', 'error');
+                    }
+                } catch(e) { this.showToast(e.message, 'error'); }
+            },
+
+            async reverseDoc() {
+                if (!confirm('Сторнировать документ "' + this.doc.doc_no + '"? Будет создана обратная проводка.')) return;
+                try {
+                    const resp = await fetch(`/api/marketplace/inventory/documents/${id}/reverse`, {
+                        method: 'POST',
+                        headers: this.getAuthHeaders()
+                    });
+                    const json = await resp.json();
+                    if (resp.ok) {
+                        this.showToast('Сторно создано успешно!', 'success');
+                        this.load();
+                    } else {
+                        this.showToast(json.error || json.message || 'Не удалось сторнировать', 'error');
+                    }
+                } catch(e) { this.showToast(e.message, 'error'); }
+            },
+
             init() {
                 this.load();
             }
@@ -293,6 +339,12 @@
         </button>
         <button x-show="doc && doc.status === 'DRAFT'" @click="postDoc()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
             Провести
+        </button>
+        <button x-show="doc && doc.status === 'DRAFT'" @click="deleteDoc()" class="native-header-btn text-red-600" onclick="if(window.haptic) window.haptic.light()">
+            Удалить
+        </button>
+        <button x-show="doc && doc.status === 'POSTED'" @click="reverseDoc()" class="native-header-btn text-orange-600" onclick="if(window.haptic) window.haptic.light()">
+            Сторно
         </button>
     </x-pwa-header>
 
