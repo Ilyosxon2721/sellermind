@@ -342,6 +342,38 @@
                 return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             },
 
+
+            async deleteDoc(doc) {
+                if (!confirm('Удалить черновик "' + doc.doc_no + '"? Это действие нельзя отменить.')) return;
+                try {
+                    const res = await fetch('/api/marketplace/inventory/documents/' + doc.id, {
+                        method: 'DELETE', headers: this.getAuthHeaders()
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.items = this.items.filter(d => d.id !== doc.id);
+                        this.showToast('Документ удалён');
+                    } else {
+                        alert('Ошибка: ' + (data.error || data.message || 'Не удалось удалить'));
+                    }
+                } catch(e) { alert('Ошибка: ' + e.message); }
+            },
+
+            async reverseDoc(doc) {
+                if (!confirm('Сторнировать документ "' + doc.doc_no + '"? Будет создана обратная проводка.')) return;
+                try {
+                    const res = await fetch('/api/marketplace/inventory/documents/' + doc.id + '/reverse', {
+                        method: 'POST', headers: this.getAuthHeaders()
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.showToast('Сторно создано успешно!');
+                        await this.load();
+                    } else {
+                        alert('Ошибка: ' + (data.error || data.message || 'Не удалось сторнировать'));
+                    }
+                } catch(e) { alert('Ошибка: ' + e.message); }
+            },
             async load() {
                 this.error = '';
                 this.loading = true;
