@@ -63,8 +63,17 @@ class DocumentPostingService
                         }
                         break;
                     case InventoryDocument::TYPE_REVERSAL:
-                        // already inverted when created; just write ledger
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $totalCostBase, $userId);
+                        // Определяем направление на основе типа исходного документа
+                        $original = $document->reversed_document_id
+                            ? InventoryDocument::find($document->reversed_document_id)
+                            : null;
+                        $outTypes = [InventoryDocument::TYPE_OUT, InventoryDocument::TYPE_WRITE_OFF];
+                        $isOutReversal = $original && in_array($original->type, $outTypes);
+                        // OUT/WRITE_OFF: возвращаем товар → положительный delta
+                        // IN: убираем товар → отрицательный delta
+                        $qtyDelta = $isOutReversal ? -$line->qty : $line->qty;
+                        $costDelta = $isOutReversal ? $totalCostBase : -$totalCostBase;
+                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $qtyDelta, $costDelta, $userId);
                         break;
                     default:
                         throw new RuntimeException('Unsupported document type');
