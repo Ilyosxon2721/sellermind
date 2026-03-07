@@ -32,7 +32,7 @@ class DocumentPostingService
 
             $ledgerCreated = [];
             foreach ($document->lines as $line) {
-                $this->validateLine($line);
+                $this->validateLine($line, $document->type);
 
                 // Calculate total cost in base currency (UZS)
                 $totalCostBase = $this->calculateTotalCostBase($line, $financeSettings);
@@ -159,10 +159,14 @@ class DocumentPostingService
         ]);
     }
 
-    protected function validateLine(InventoryDocumentLine $line): void
+    protected function validateLine(InventoryDocumentLine $line, string $docType = ''): void
     {
-        if ($line->qty <= 0) {
+        $isReversal = $docType === InventoryDocument::TYPE_REVERSAL;
+        if (! $isReversal && $line->qty <= 0) {
             throw new RuntimeException('Line qty must be greater than 0');
+        }
+        if ($isReversal && $line->qty >= 0) {
+            throw new RuntimeException('Reversal line qty must be negative');
         }
         if (! $line->sku || ! $line->sku->is_active) {
             throw new RuntimeException('SKU inactive or missing');
