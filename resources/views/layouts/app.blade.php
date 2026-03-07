@@ -120,11 +120,6 @@
     </script>
 </head>
 <body class="bg-gray-50">
-    <!-- PIN Screen (PWA only) -->
-    @auth
-    <x-pwa.pin-screen />
-    @endauth
-
     <!-- Splash Screen (PWA only) -->
     <x-splash-screen />
 
