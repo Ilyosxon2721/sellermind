@@ -616,7 +616,8 @@
                     <div class="space-y-6">
                         <div class="flex items-start gap-6">
                             <div class="flex-shrink-0 w-24 text-right">
-                                <div class="text-sm font-semibold text-blue-600">{!! __('landing.automation_10min') !!}</div>
+                                <div class="text-sm font-semibold text-blue-600">{{-- intentional: translation contains <br> tag, not user input --}}
+                                {!! __('landing.automation_10min') !!}</div>
                             </div>
                             <div class="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full mt-2"></div>
                             <div class="flex-1">

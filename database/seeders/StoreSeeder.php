@@ -24,6 +24,7 @@ class StoreSeeder extends Seeder
 
         if (! $company) {
             $this->command->error('Demo company not found. Run DatabaseSeeder first.');
+
             return;
         }
 
@@ -46,7 +47,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Категории: ' . count($categoryModels));
+        $this->command->info('✓ Категории: '.count($categoryModels));
 
         // =====================
         // 2. Товары
@@ -131,7 +132,7 @@ class StoreSeeder extends Seeder
             $productModels[] = ['product' => $product, 'price' => $pd['price']];
         }
 
-        $this->command->info('✓ Товары: ' . count($productModels));
+        $this->command->info('✓ Товары: '.count($productModels));
 
         // =====================
         // 3. Магазин
@@ -176,12 +177,12 @@ class StoreSeeder extends Seeder
                 'hero_button_text' => 'Перейти в каталог',
                 'hero_button_url' => '/catalog',
                 'hero_image' => 'https://picsum.photos/seed/hero-home/1920/800',
-                'footer_text' => '© ' . date('Y') . ' HomeStyle. Все права защищены.',
+                'footer_text' => '© '.date('Y').' HomeStyle. Все права защищены.',
                 'products_per_page' => 12,
             ]);
         }
 
-        $this->command->info('✓ Магазин: ' . $store->name . ' (/store/' . $store->slug . ')');
+        $this->command->info('✓ Магазин: '.$store->name.' (/store/'.$store->slug.')');
 
         // =====================
         // 4. Категории магазина
@@ -199,7 +200,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Категории магазина: ' . count($categoryModels));
+        $this->command->info('✓ Категории магазина: '.count($categoryModels));
 
         // =====================
         // 5. Товары магазина
@@ -216,7 +217,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Товары магазина: ' . count($productModels));
+        $this->command->info('✓ Товары магазина: '.count($productModels));
 
         // =====================
         // 6. Баннеры
@@ -258,7 +259,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Баннеры: ' . count($banners));
+        $this->command->info('✓ Баннеры: '.count($banners));
 
         // =====================
         // 7. Способы доставки
@@ -313,7 +314,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Способы доставки: ' . count($deliveryMethods));
+        $this->command->info('✓ Способы доставки: '.count($deliveryMethods));
 
         // =====================
         // 8. Способы оплаты
@@ -352,7 +353,7 @@ class StoreSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Способы оплаты: ' . count($paymentMethods));
+        $this->command->info('✓ Способы оплаты: '.count($paymentMethods));
 
         // =====================
         // 9. Статические страницы
@@ -469,7 +470,7 @@ Instagram: @homestyle_uz</p>
             );
         }
 
-        $this->command->info('✓ Страницы: ' . count($pages));
+        $this->command->info('✓ Страницы: '.count($pages));
 
         // =====================
         // 10. Промокоды
@@ -520,13 +521,13 @@ Instagram: @homestyle_uz</p>
             );
         }
 
-        $this->command->info('✓ Промокоды: ' . count($promocodes));
+        $this->command->info('✓ Промокоды: '.count($promocodes));
 
         // =====================
         // Итог
         // =====================
         $this->command->newLine();
-        $this->command->info('🏪 Магазин готов: /store/' . $store->slug);
+        $this->command->info('🏪 Магазин готов: /store/'.$store->slug);
         $this->command->info('📋 Админка: /my-store');
         $this->command->info('🎫 Промокоды: WELCOME10, HOME20, VIP30');
     }

@@ -161,7 +161,7 @@
     .mp-add-ym:hover { border-color: var(--ym-primary); background: rgba(255, 204, 0, 0.1); }
 </style>
 <script>
-    window.marketplaceCredentialFields = {!! json_encode(config('marketplaces.credential_fields')) !!};
+    window.marketplaceCredentialFields = @json(config('marketplaces.credential_fields'));
 </script>
 
 {{-- BROWSER MODE --}}

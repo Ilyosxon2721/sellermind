@@ -187,7 +187,7 @@ class StockController extends Controller
             $query->where('occurred_at', '>=', $request->from);
         }
         if ($request->to) {
-            $query->where('occurred_at', '<=', $request->to . ' 23:59:59');
+            $query->where('occurred_at', '<=', $request->to.' 23:59:59');
         }
 
         if ($request->query('query')) {

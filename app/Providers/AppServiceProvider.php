@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Events\StockUpdated;
 use App\Listeners\SyncStockToMarketplaces;
+use App\Models\OfflineSale;
 use App\Models\OzonOrder;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
+use App\Observers\OfflineSaleObserver;
 use App\Observers\OzonOrderObserver;
 use App\Observers\ProductVariantObserver;
 use App\Observers\RismentOrderObserver;
@@ -67,6 +69,9 @@ class AppServiceProvider extends ServiceProvider
         WbOrder::observe(WbOrderObserver::class);
         OzonOrder::observe(OzonOrderObserver::class);
         YandexMarketOrder::observe(YandexMarketOrderObserver::class);
+
+        // Offline sales observer (notifications)
+        OfflineSale::observe(OfflineSaleObserver::class);
 
         // RISMENT integration observer (FBS orders → Redis queue)
         WbOrder::observe(RismentOrderObserver::class);

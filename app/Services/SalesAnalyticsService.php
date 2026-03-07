@@ -1,14 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\MarketplaceAccount;
-use App\Models\UzumOrder;
 use App\Models\WildberriesOrder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-class SalesAnalyticsService
+final class SalesAnalyticsService
 {
     /**
      * Статусы отменённых заказов (исключаются из расчёта выручки)
@@ -16,30 +17,33 @@ class SalesAnalyticsService
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
-     * Get sales overview for a period.
+     * Получить общую сводку продаж за период.
+     * $accountIds запрашивается один раз и передаётся во все вспомогательные методы.
      */
     public function getOverview(int $companyId, string $period = '30days'): array
     {
         $dateRange = $this->getDateRange($period);
 
-        // Total sales (excluding cancelled)
-        $totalSales = $this->getTotalSales($companyId, $dateRange);
+        // Один запрос для получения ID аккаунтов (используется во всех helper-методах)
+        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
-        // Total revenue (excluding cancelled)
-        $totalRevenue = $this->getTotalRevenue($companyId, $dateRange);
+        // Суммарные продажи (кол-во товаров, исключая отменённые)
+        $totalSales = $this->getTotalSales($accountIds, $dateRange);
 
-        // Total orders (excluding cancelled)
-        $totalOrders = $this->getTotalOrders($companyId, $dateRange);
+        // Выручка + кол-во заказов в одном запросе (текущий период)
+        $revenueAndOrders = $this->getRevenueAndOrders($accountIds, $dateRange);
+        $totalRevenue = $revenueAndOrders['revenue'];
+        $totalOrders = $revenueAndOrders['orders'];
 
-        // Cancelled orders separately
-        $cancelledStats = $this->getCancelledStats($companyId, $dateRange);
+        // Отменённые заказы
+        $cancelledStats = $this->getCancelledStats($accountIds, $dateRange);
 
-        // Average order value
+        // Средний чек
         $avgOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
 
-        // Previous period comparison
+        // Сравнение с предыдущим периодом (только выручка)
         $prevDateRange = $this->getPreviousDateRange($period);
-        $prevRevenue = $this->getTotalRevenue($companyId, $prevDateRange);
+        $prevRevenue = $this->getRevenueAndOrders($accountIds, $prevDateRange)['revenue'];
         $revenueGrowth = $prevRevenue > 0 ? (($totalRevenue - $prevRevenue) / $prevRevenue) * 100 : 0;
 
         return [
@@ -57,7 +61,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get sales by day for chart.
+     * Получить продажи по дням для графика.
      */
     public function getSalesByDay(int $companyId, string $period = '30days'): array
     {
@@ -85,7 +89,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get top selling products.
+     * Получить топ продаваемых товаров.
      */
     public function getTopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
@@ -126,7 +130,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get worst selling products (flop).
+     * Получить аутсайдеров продаж (flop).
      */
     public function getFlopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
@@ -171,7 +175,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get sales by category.
+     * Получить продажи по категориям.
      */
     public function getSalesByCategory(int $companyId, string $period = '30days'): Collection
     {
@@ -203,7 +207,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get sales by marketplace.
+     * Получить продажи по маркетплейсам.
      */
     public function getSalesByMarketplace(int $companyId, string $period = '30days'): Collection
     {
@@ -236,7 +240,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get product performance metrics.
+     * Получить метрики производительности товара.
      */
     public function getProductPerformance(int $productId, string $period = '30days'): array
     {
@@ -294,7 +298,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get date range based on period.
+     * Получить диапазон дат по периоду.
      */
     protected function getDateRange(string $period): array
     {
@@ -313,7 +317,7 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get previous period date range for comparison.
+     * Получить диапазон дат предыдущего периода для сравнения.
      */
     protected function getPreviousDateRange(string $period): array
     {
@@ -327,26 +331,26 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get total sales count (excluding cancelled orders).
+     * Получить суммарное количество проданных товаров (исключая отменённые).
+     * Использует SQL-агрегат вместо загрузки объектов в память (устраняет N+1).
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $accountIds
      */
-    protected function getTotalSales(int $companyId, array $dateRange): int
+    protected function getTotalSales(Collection $accountIds, array $dateRange): int
     {
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
         if ($accountIds->isEmpty()) {
             return 0;
         }
 
-        // Uzum items
-        $uzumSales = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->with('items')
-            ->get()
-            ->flatMap(fn ($o) => $o->items)
-            ->sum('quantity');
+        // Uzum: SQL JOIN вместо ->with(items)->get()->flatMap() — устраняет N+1
+        $uzumSales = DB::table('uzum_order_items')
+            ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+            ->sum('uzum_order_items.quantity');
 
-        // WB items (WildberriesOrder - each row is one item)
+        // WB: каждая строка — один товар
         $wbSales = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
             ->where('is_cancel', false)
@@ -357,79 +361,70 @@ class SalesAnalyticsService
     }
 
     /**
-     * Get total revenue (excluding cancelled orders).
+     * Получить выручку и количество заказов за период одним запросом.
+     * Объединяет бывшие getTotalRevenue() и getTotalOrders() для минимизации запросов.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $accountIds
+     * @return array{revenue: float, orders: int}
      */
-    protected function getTotalRevenue(int $companyId, array $dateRange): float
+    protected function getRevenueAndOrders(Collection $accountIds, array $dateRange): array
     {
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
         if ($accountIds->isEmpty()) {
-            return 0.0;
+            return ['revenue' => 0.0, 'orders' => 0];
         }
 
-        // Uzum revenue
-        $uzumRevenue = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+        // Uzum: выручка и количество заказов одним запросом
+        $uzumRow = DB::table('uzum_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->sum('total_amount');
+            ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
+            ->first();
 
-        // WB revenue (using WildberriesOrder)
-        $wbRevenue = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+        // WB: выручка и количество заказов одним запросом
+        $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
             ->where('is_cancel', false)
             ->where('is_return', false)
-            ->sum('for_pay');
+            ->selectRaw('SUM(for_pay) as revenue, COUNT(*) as orders')
+            ->first();
 
-        return (float) ($uzumRevenue + $wbRevenue);
+        return [
+            'revenue' => (float) (($uzumRow->revenue ?? 0) + ($wbRow->revenue ?? 0)),
+            'orders' => (int) (($uzumRow->orders ?? 0) + ($wbRow->orders ?? 0)),
+        ];
     }
 
     /**
-     * Get total orders count (excluding cancelled).
+     * Получить статистику отменённых заказов.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $accountIds
+     * @return array{count: int, amount: float}
      */
-    protected function getTotalOrders(int $companyId, array $dateRange): int
+    protected function getCancelledStats(Collection $accountIds, array $dateRange): array
     {
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
-        if ($accountIds->isEmpty()) {
-            return 0;
-        }
-
-        $uzumCount = UzumOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->count();
-
-        $wbCount = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where('is_cancel', false)
-            ->where('is_return', false)
-            ->count();
-
-        return $uzumCount + $wbCount;
-    }
-
-    /**
-     * Get cancelled orders stats.
-     */
-    protected function getCancelledStats(int $companyId, array $dateRange): array
-    {
-        $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
         if ($accountIds->isEmpty()) {
             return ['count' => 0, 'amount' => 0.0];
         }
 
-        $uzumCancelled = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+        // Uzum: отменённые заказы — count + sum одним запросом
+        $uzumRow = DB::table('uzum_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status_normalized', self::CANCELLED_STATUSES);
+            ->whereIn('status_normalized', self::CANCELLED_STATUSES)
+            ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+            ->first();
 
-        $wbCancelled = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+        // WB: отменённые / возвраты — count + sum одним запросом
+        $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true));
+            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+            ->selectRaw('COUNT(*) as cnt, SUM(for_pay) as amount')
+            ->first();
 
         return [
-            'count' => $uzumCancelled->count() + $wbCancelled->count(),
-            'amount' => (float) ($uzumCancelled->sum('total_amount') + $wbCancelled->sum('for_pay')),
+            'count' => (int) (($uzumRow->cnt ?? 0) + ($wbRow->cnt ?? 0)),
+            'amount' => (float) (($uzumRow->amount ?? 0) + ($wbRow->amount ?? 0)),
         ];
     }
 }

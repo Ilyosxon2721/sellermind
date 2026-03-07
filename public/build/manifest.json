@@ -1,6 +1,6 @@
 {
-  "_alpine-w3y3or6b.js": {
-    "file": "assets/alpine-w3y3or6b.js",
+  "_alpine-B58kCZLe.js": {
+    "file": "assets/alpine-B58kCZLe.js",
     "name": "alpine"
   },
   "_vendor-Dos3PyFQ.js": {
@@ -38,7 +38,7 @@
     "isEntry": true,
     "imports": [
       "_vendor-Dos3PyFQ.js",
-      "_alpine-w3y3or6b.js"
+      "_alpine-B58kCZLe.js"
     ]
   },
   "resources/js/pwa-detector.js": {

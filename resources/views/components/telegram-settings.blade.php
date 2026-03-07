@@ -175,6 +175,34 @@
                 </label>
             </div>
 
+            <!-- Marketplace Orders -->
+            <div class="p-4">
+                <label class="flex items-start cursor-pointer">
+                    <input type="checkbox"
+                           x-model="settings.notify_marketplace_order"
+                           @change="updateSettings()"
+                           class="mt-1 mr-3 w-5 h-5 text-indigo-600 rounded">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900">Заказы с маркетплейсов</p>
+                        <p class="text-sm text-gray-600">Уведомления о новых заказах WB, Ozon, Uzum, Яндекс Маркет</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Offline Sales -->
+            <div class="p-4">
+                <label class="flex items-start cursor-pointer">
+                    <input type="checkbox"
+                           x-model="settings.notify_offline_sale"
+                           @change="updateSettings()"
+                           class="mt-1 mr-3 w-5 h-5 text-indigo-600 rounded">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900">Офлайн-продажи</p>
+                        <p class="text-sm text-gray-600">Уведомления о подтверждённых офлайн-продажах</p>
+                    </div>
+                </label>
+            </div>
+
             <!-- Bulk Operations -->
             <div class="p-4">
                 <label class="flex items-start cursor-pointer">
@@ -265,6 +293,8 @@ function telegramSettings() {
         settings: {
             notify_low_stock: true,
             notify_new_order: true,
+            notify_marketplace_order: true,
+            notify_offline_sale: true,
             notify_order_cancelled: true,
             notify_price_changes: false,
             notify_bulk_operations: true,

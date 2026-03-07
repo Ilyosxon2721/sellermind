@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\SalaryRequest;
 use App\Models\Finance\SalaryCalculation;
 use App\Models\Finance\SalaryItem;
 use App\Services\Finance\SalaryCalculationService;
@@ -55,17 +56,14 @@ class SalaryController extends Controller
         return $this->successResponse($calculation);
     }
 
-    public function calculate(Request $request)
+    public function calculate(SalaryRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-        ]);
+        $data = $request->validated();
 
         // Проверяем существование
         $existing = SalaryCalculation::byCompany($companyId)
@@ -81,7 +79,7 @@ class SalaryController extends Controller
         return $this->successResponse($calculation->load(['items.employee']));
     }
 
-    public function updateItem($calculationId, $itemId, Request $request)
+    public function updateItem($calculationId, $itemId, SalaryRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -97,12 +95,7 @@ class SalaryController extends Controller
         $item = SalaryItem::where('salary_calculation_id', $calculation->id)
             ->findOrFail($itemId);
 
-        $data = $request->validate([
-            'bonuses' => ['nullable', 'numeric', 'min:0'],
-            'overtime' => ['nullable', 'numeric', 'min:0'],
-            'other_deductions' => ['nullable', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $item->update($data);
 

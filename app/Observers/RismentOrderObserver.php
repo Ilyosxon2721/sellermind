@@ -6,9 +6,8 @@ use App\Jobs\Risment\SendOrderToRisment;
 use App\Jobs\Risment\SendReturnToRisment;
 use App\Models\IntegrationLink;
 use App\Models\MarketplaceAccount;
-use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\OzonOrder;
+use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
@@ -27,12 +26,12 @@ class RismentOrderObserver
      */
     public function created(Model $order): void
     {
-        if (!$this->isFbs($order)) {
+        if (! $this->isFbs($order)) {
             return;
         }
 
         $companyId = $this->getCompanyId($order);
-        if (!$companyId || !IntegrationLink::rismentForCompany($companyId)) {
+        if (! $companyId || ! IntegrationLink::rismentForCompany($companyId)) {
             return;
         }
 
@@ -40,7 +39,7 @@ class RismentOrderObserver
         $items = $this->extractItems($order, $marketplace, $companyId);
 
         // Фильтрация: отправлять только заказы с товарами из RISMENT
-        $rismentItems = array_filter($items, fn($item) => !empty($item['risment_product_id']));
+        $rismentItems = array_filter($items, fn ($item) => ! empty($item['risment_product_id']));
         if (empty($rismentItems)) {
             return;
         }
@@ -77,22 +76,22 @@ class RismentOrderObserver
             || $order->wasChanged('status')
             || $order->wasChanged('wb_status');
 
-        if (!$statusChanged) {
+        if (! $statusChanged) {
             return;
         }
 
-        if (!$this->isFbs($order)) {
+        if (! $this->isFbs($order)) {
             return;
         }
 
         $companyId = $this->getCompanyId($order);
-        if (!$companyId || !IntegrationLink::rismentForCompany($companyId)) {
+        if (! $companyId || ! IntegrationLink::rismentForCompany($companyId)) {
             return;
         }
 
         // Проверяем наличие RISMENT-товаров в заказе
         $marketplace = $this->getMarketplaceCode($order);
-        if (!$this->hasRismentProducts($order, $marketplace, $companyId)) {
+        if (! $this->hasRismentProducts($order, $marketplace, $companyId)) {
             return;
         }
 
@@ -107,6 +106,7 @@ class RismentOrderObserver
                 'status' => $newStatus,
                 'cancelled_at' => now()->toIso8601String(),
             ]);
+
             return;
         }
 
@@ -127,23 +127,27 @@ class RismentOrderObserver
     {
         if ($order instanceof WbOrder) {
             $deliveryType = strtolower($order->wb_delivery_type ?? '');
+
             return $deliveryType === 'fbs' || $deliveryType === '';
             // WB: empty delivery_type often means FBS (seller ships)
         }
 
         if ($order instanceof UzumOrder) {
             $deliveryType = strtolower($order->delivery_type ?? '');
+
             return str_contains($deliveryType, 'fbs') || $deliveryType === 'seller_delivery';
         }
 
         if ($order instanceof OzonOrder) {
             $deliveryMethod = strtolower($order->delivery_method ?? '');
+
             return str_contains($deliveryMethod, 'fbs')
                 || str_contains($deliveryMethod, 'seller');
         }
 
         if ($order instanceof YandexMarketOrder) {
             $deliveryType = strtolower($order->delivery_type ?? '');
+
             return str_contains($deliveryType, 'fbs')
                 || str_contains($deliveryType, 'delivery_by_seller');
         }
@@ -156,7 +160,9 @@ class RismentOrderObserver
     protected function getCompanyId(Model $order): ?int
     {
         $accountId = $order->marketplace_account_id ?? null;
-        if (!$accountId) return null;
+        if (! $accountId) {
+            return null;
+        }
 
         return MarketplaceAccount::where('id', $accountId)->value('company_id');
     }
@@ -180,15 +186,25 @@ class RismentOrderObserver
         if ($order instanceof YandexMarketOrder) {
             return $order->order_id ?? (string) $order->id;
         }
+
         return $order->external_order_id ?? (string) $order->id;
     }
 
     protected function getDeliveryType(Model $order): ?string
     {
-        if ($order instanceof WbOrder) return $order->wb_delivery_type;
-        if ($order instanceof UzumOrder) return $order->delivery_type;
-        if ($order instanceof OzonOrder) return $order->delivery_method;
-        if ($order instanceof YandexMarketOrder) return $order->delivery_type;
+        if ($order instanceof WbOrder) {
+            return $order->wb_delivery_type;
+        }
+        if ($order instanceof UzumOrder) {
+            return $order->delivery_type;
+        }
+        if ($order instanceof OzonOrder) {
+            return $order->delivery_method;
+        }
+        if ($order instanceof YandexMarketOrder) {
+            return $order->delivery_type;
+        }
+
         return null;
     }
 
@@ -210,7 +226,7 @@ class RismentOrderObserver
         // Ozon: items stored in products JSON column
         elseif ($marketplace === 'ozon' && $order instanceof OzonOrder) {
             $products = $order->products ?? [];
-            $items = collect($products)->map(fn($p) => [
+            $items = collect($products)->map(fn ($p) => [
                 'sku' => $p['offer_id'] ?? null,
                 'quantity' => $p['quantity'] ?? 1,
                 'price' => $p['price'] ?? null,
@@ -219,7 +235,7 @@ class RismentOrderObserver
 
         // Uzum: items relationship
         elseif ($marketplace === 'uzum' && $order instanceof UzumOrder && method_exists($order, 'items')) {
-            $items = $order->items->map(fn($i) => [
+            $items = $order->items->map(fn ($i) => [
                 'sku' => $i->sku ?? null,
                 'quantity' => $i->quantity ?? 1,
                 'price' => $i->price ?? null,
@@ -229,7 +245,7 @@ class RismentOrderObserver
         // YM: items stored in order_data JSON column
         elseif ($marketplace === 'ym' && $order instanceof YandexMarketOrder) {
             $orderItems = $order->order_data['items'] ?? [];
-            $items = collect($orderItems)->map(fn($i) => [
+            $items = collect($orderItems)->map(fn ($i) => [
                 'sku' => $i['offerId'] ?? null,
                 'quantity' => $i['count'] ?? 1,
                 'price' => $i['price'] ?? null,
@@ -238,7 +254,7 @@ class RismentOrderObserver
 
         // Обогатить items данными из RISMENT (risment_product_id, risment_variant_id)
         if ($companyId) {
-            $items = array_map(fn($item) => $this->enrichItemWithRisment($item, $companyId), $items);
+            $items = array_map(fn ($item) => $this->enrichItemWithRisment($item, $companyId), $items);
         }
 
         return $items;
@@ -250,9 +266,10 @@ class RismentOrderObserver
     protected function enrichItemWithRisment(array $item, int $companyId): array
     {
         $sku = $item['sku'] ?? null;
-        if (!$sku) {
+        if (! $sku) {
             $item['risment_product_id'] = null;
             $item['risment_variant_id'] = null;
+
             return $item;
         }
 
@@ -280,7 +297,8 @@ class RismentOrderObserver
     protected function hasRismentProducts(Model $order, string $marketplace, int $companyId): bool
     {
         $items = $this->extractItems($order, $marketplace, $companyId);
-        return collect($items)->contains(fn($item) => !empty($item['risment_product_id']));
+
+        return collect($items)->contains(fn ($item) => ! empty($item['risment_product_id']));
     }
 
     protected function isCancelled(?string $status): bool

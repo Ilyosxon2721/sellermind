@@ -17,10 +17,10 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 bg-clip-text text-transparent">Цены (Price Engine)</h1>
-                    <p class="text-sm text-gray-500">Сценарии, расчёт и публикация цен</p>
+                    <p class="text-sm text-gray-500">Управление ценами, себестоимостью и маржинальностью</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors flex items-center space-x-2" @click="loadCalculations()">
+                    <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors flex items-center space-x-2" @click="currentPage = 1; loadProducts()">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Обновить</span>
                     </button>
@@ -29,51 +29,42 @@
         </header>
 
         <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-            <!-- Controls -->
+            {{-- Filters: Scenario + Search --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Рассчитать цены</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Параметры</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Сценарий</label>
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="scenarioId">
+                            <option value="">-- Выберите --</option>
                             <template x-for="sc in scenarios" :key="sc.id">
                                 <option :value="sc.id" x-text="sc.name"></option>
                             </template>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Канал</label>
-                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="channelCode">
-                            <option value="UZUM">Uzum</option>
-                            <option value="WB">Wildberries</option>
-                            <option value="OZON">Ozon</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">SKU IDs</label>
-                        <input type="text" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="101, 102, 103" x-model="skuInput">
-                    </div>
-                    <div class="flex items-end space-x-2">
-                        <button class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium" @click="calculate()">
-                            Рассчитать
-                        </button>
-                        <button class="relative px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 opacity-50 cursor-not-allowed" disabled title="В разработке">
-                            Опубликовать
-                            <span class="ml-1 text-xs font-normal opacity-75">(в разработке)</span>
-                        </button>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Поиск</label>
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <input type="text"
+                                   class="w-full border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                   placeholder="Название или артикул..."
+                                   x-model="search"
+                                   @input.debounce.400ms="currentPage = 1; loadProducts()">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Stats -->
+            {{-- Stats --}}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     </div>
                     <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="calculations.length">0</div>
-                        <div class="text-sm text-gray-500">Расчётов</div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="productsMeta.total || 0">0</div>
+                        <div class="text-sm text-gray-500">Товаров</div>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
@@ -87,67 +78,117 @@
                 </div>
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                     </div>
                     <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="calculations.filter(c => c.confidence > 0.8).length">0</div>
-                        <div class="text-sm text-gray-500">Высокая уверенность</div>
+                        <div class="text-2xl font-bold text-gray-900" x-text="calculations.length">0</div>
+                        <div class="text-sm text-gray-500">Расчётов</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Table -->
+            {{-- Products Table --}}
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Товар</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Артикул</th>
                             <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Себестоимость</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Min</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Рекомендуемая</th>
-                            <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Уверенность</th>
+                            <template x-for="mp in marketplaces" :key="mp.code">
+                                <th class="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full" :class="mp.dot"></span>
+                                        <span x-text="mp.name"></span>
+                                    </div>
+                                </th>
+                            </template>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
+                        {{-- Loading --}}
                         <template x-if="loading">
-                            <tr><td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                                <div class="flex items-center justify-center space-x-2">
-                                    <svg class="animate-spin w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
-                                    <span>Загрузка...</span>
-                                </div>
-                            </td></tr>
-                        </template>
-                        <template x-if="!loading && calculations.length === 0">
-                            <tr><td colspan="5" class="px-6 py-12 text-center">
-                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                </div>
-                                <div class="text-gray-500">Нет расчётов</div>
-                                <div class="text-sm text-gray-400 mt-1">Укажите параметры и нажмите «Рассчитать»</div>
-                            </td></tr>
-                        </template>
-                        <template x-for="row in calculations" :key="row.sku_id">
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-semibold text-indigo-600" x-text="row.sku_id"></td>
-                                <td class="px-6 py-4 text-sm text-right text-gray-700" x-text="format(row.unit_cost)"></td>
-                                <td class="px-6 py-4 text-sm text-right text-gray-700" x-text="format(row.min_price)"></td>
-                                <td class="px-6 py-4 text-sm text-right font-bold text-indigo-600" x-text="format(row.recommended_price)"></td>
-                                <td class="px-6 py-4 text-right">
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium"
-                                          :class="row.confidence > 0.8 ? 'bg-green-100 text-green-700' : row.confidence > 0.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
-                                          x-text="(row.confidence * 100).toFixed(0) + '%'"></span>
+                            <tr>
+                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <svg class="animate-spin w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                        <span>Загрузка...</span>
+                                    </div>
                                 </td>
+                            </tr>
+                        </template>
+                        {{-- Empty --}}
+                        <template x-if="!loading && products.length === 0">
+                            <tr>
+                                <td colspan="7" class="px-6 py-12 text-center">
+                                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    </div>
+                                    <div class="text-gray-500">Товары не найдены</div>
+                                    <div class="text-sm text-gray-400 mt-1">Попробуйте изменить параметры поиска</div>
+                                </td>
+                            </tr>
+                        </template>
+                        {{-- Rows --}}
+                        <template x-for="product in products" :key="product.id">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-semibold text-gray-900" x-text="product.name"></div>
+                                    <div class="text-xs text-gray-400 mt-0.5" x-show="product.count_variants > 0">
+                                        <span x-text="product.count_variants"></span> <span x-text="variantLabel(product.count_variants)"></span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600" x-text="product.article || '\u2014'"></td>
+                                <td class="px-6 py-4 text-sm text-right text-gray-700" x-text="format(product.purchase_price)"></td>
+                                <template x-for="mp in marketplaces" :key="mp.code">
+                                    <td class="px-4 py-4 text-center">
+                                        <template x-if="hasMp(product, mp.code)">
+                                            <div>
+                                                <div class="text-sm font-semibold text-gray-900" x-text="mpPrice(product, mp.code)"></div>
+                                                <div class="text-xs mt-0.5" :class="mpMarginClass(product, mp.code)" x-text="mpMarginText(product, mp.code)"></div>
+                                            </div>
+                                        </template>
+                                        <template x-if="!hasMp(product, mp.code)">
+                                            <span class="text-gray-300 text-lg leading-none">&times;</span>
+                                        </template>
+                                    </td>
+                                </template>
                             </tr>
                         </template>
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Pagination --}}
+                <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between" x-show="productsMeta.last_page > 1">
+                    <div class="text-sm text-gray-500">
+                        <span x-text="productsMeta.from || 0"></span>&ndash;<span x-text="productsMeta.to || 0"></span>
+                        из <span x-text="productsMeta.total || 0"></span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="px-4 py-2 text-sm font-medium rounded-xl transition-colors"
+                                :class="currentPage <= 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+                                :disabled="currentPage <= 1"
+                                @click="if(currentPage > 1) { currentPage--; loadProducts(); }">
+                            Назад
+                        </button>
+                        <span class="text-sm text-gray-600">
+                            <span x-text="currentPage"></span> / <span x-text="productsMeta.last_page || 1"></span>
+                        </span>
+                        <button class="px-4 py-2 text-sm font-medium rounded-xl transition-colors"
+                                :class="currentPage >= (productsMeta.last_page || 1) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+                                :disabled="currentPage >= (productsMeta.last_page || 1)"
+                                @click="if(currentPage < productsMeta.last_page) { currentPage++; loadProducts(); }">
+                            Далее
+                        </button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Toast -->
+    {{-- Toast --}}
     <div x-show="toast.show" x-transition class="fixed bottom-6 right-6 z-50">
         <div class="px-6 py-4 rounded-2xl shadow-xl" :class="toast.type === 'success' ? 'bg-indigo-600 text-white' : 'bg-red-600 text-white'">
             <span x-text="toast.message"></span>
@@ -158,20 +199,36 @@
 <script>
     function pricingPage() {
         return {
+            // Products
+            products: [],
+            productsMeta: {},
+            currentPage: 1,
+            search: '',
+            loading: false,
+
+            // Scenarios (kept for future pricing calculations)
             scenarios: [],
             scenarioId: '',
-            channelCode: 'UZUM',
-            skuInput: '',
             calculations: [],
-            loading: false,
+
             toast: { show: false, message: '', type: 'success' },
+
+            // Marketplace definitions
+            marketplaces: [
+                { code: 'WB',   name: 'WB',   color: 'text-purple-600', dot: 'bg-purple-500' },
+                { code: 'OZON', name: 'Ozon',  color: 'text-blue-600',   dot: 'bg-blue-500' },
+                { code: 'UZUM', name: 'Uzum',  color: 'text-emerald-600', dot: 'bg-emerald-500' },
+                { code: 'YM',   name: 'YM',    color: 'text-yellow-600', dot: 'bg-yellow-500' }
+            ],
 
             showToast(message, type = 'success') {
                 this.toast = { show: true, message, type };
                 setTimeout(() => { this.toast.show = false; }, 4000);
             },
 
-            format(v) { return v !== null && v !== undefined ? Number(v).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'; },
+            format(v) {
+                return v !== null && v !== undefined ? Number(v).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '\u2014';
+            },
 
             getAuthHeaders() {
                 const token = localStorage.getItem('_x_auth_token');
@@ -183,85 +240,103 @@
                 };
             },
 
+            /**
+             * Проверка наличия маркетплейса у товара
+             */
+            hasMp(product, code) {
+                return !!(product.marketplace_prices && product.marketplace_prices[code]);
+            },
+
+            /**
+             * Цена на маркетплейсе (форматированная)
+             */
+            mpPrice(product, code) {
+                if (!this.hasMp(product, code)) return null;
+                return this.format(product.marketplace_prices[code].price);
+            },
+
+            /**
+             * Маржа на маркетплейсе (числовое значение в %)
+             */
+            mpMarginValue(product, code) {
+                if (!this.hasMp(product, code)) return null;
+                const price = Number(product.marketplace_prices[code].price);
+                const cost = Number(product.purchase_price);
+                if (!price || price === 0 || cost == null) return null;
+                return ((price - cost) / price * 100);
+            },
+
+            /**
+             * Маржа на маркетплейсе (текст)
+             */
+            mpMarginText(product, code) {
+                const m = this.mpMarginValue(product, code);
+                if (m === null) return '\u2014';
+                return m.toFixed(1) + '%';
+            },
+
+            /**
+             * CSS-класс маржи на маркетплейсе
+             */
+            mpMarginClass(product, code) {
+                const m = this.mpMarginValue(product, code);
+                if (m === null) return 'text-gray-400';
+                if (m >= 20) return 'font-semibold text-green-600';
+                if (m >= 0) return 'font-semibold text-amber-600';
+                return 'font-semibold text-red-600';
+            },
+
+            /**
+             * Склонение слова "вариант"
+             */
+            variantLabel(n) {
+                const abs = Math.abs(n) % 100;
+                const last = abs % 10;
+                if (abs > 10 && abs < 20) return 'вариантов';
+                if (last === 1) return 'вариант';
+                if (last >= 2 && last <= 4) return 'варианта';
+                return 'вариантов';
+            },
+
+            /**
+             * Загрузка товаров из API
+             */
+            async loadProducts() {
+                this.loading = true;
+                try {
+                    const params = new URLSearchParams({ per_page: 15, page: this.currentPage });
+                    if (this.search) params.append('search', this.search);
+                    const res = await fetch('/api/products?' + params.toString(), { headers: this.getAuthHeaders() });
+                    const json = await res.json();
+                    this.products = json.data || [];
+                    this.productsMeta = json.meta || {};
+                } catch (e) {
+                    this.showToast(e.message || 'Ошибка загрузки товаров', 'error');
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            /**
+             * Загрузка сценариев (для будущего расчёта)
+             */
             async loadScenarios() {
-                const resp = await fetch('/api/marketplace/pricing/scenarios', { headers: this.getAuthHeaders() });
-                const json = await resp.json();
-                if (resp.ok && !json.errors) {
-                    this.scenarios = json.data || [];
-                    if (!this.scenarioId && this.scenarios.length) {
-                        this.scenarioId = this.scenarios[0].id;
-                    }
-                }
-            },
-
-            async calculate() {
-                if (!this.scenarioId || !this.channelCode || !this.skuInput) {
-                    this.showToast('Укажите сценарий, канал и SKU', 'error');
-                    return;
-                }
-                const sku_ids = this.skuInput.split(',').map(s => parseInt(s.trim())).filter(Boolean);
-                this.loading = true;
                 try {
-                    const resp = await fetch('/api/marketplace/pricing/calculate', {
-                        method: 'POST',
-                        headers: this.getAuthHeaders(),
-                        body: JSON.stringify({ scenario_id: this.scenarioId, channel_code: this.channelCode, sku_ids })
-                    });
+                    const resp = await fetch('/api/marketplace/pricing/scenarios', { headers: this.getAuthHeaders() });
                     const json = await resp.json();
-                    if (resp.ok && !json.errors) {
-                        this.calculations = json.data || [];
-                        this.showToast(`Рассчитано: ${this.calculations.length} позиций`, 'success');
-                    } else {
-                        this.showToast(json.errors?.[0]?.message || 'Ошибка расчёта', 'error');
+                    if (resp.ok) {
+                        this.scenarios = json.data || [];
+                        if (!this.scenarioId && this.scenarios.length) {
+                            this.scenarioId = this.scenarios[0].id;
+                        }
                     }
                 } catch (e) {
-                    this.showToast(e.message || 'Ошибка', 'error');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async loadCalculations() {
-                if (!this.scenarioId) return;
-                this.loading = true;
-                const params = new URLSearchParams();
-                if (this.scenarioId) params.append('scenario_id', this.scenarioId);
-                if (this.channelCode) params.append('channel_code', this.channelCode);
-                try {
-                    const resp = await fetch('/api/marketplace/pricing/calculations?' + params.toString(), { headers: this.getAuthHeaders() });
-                    const json = await resp.json();
-                    if (resp.ok && !json.errors) this.calculations = json.data || [];
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async createPublishJob() {
-                if (!this.scenarioId || !this.channelCode || !this.calculations.length) {
-                    this.showToast('Нечего публиковать', 'error');
-                    return;
-                }
-                const sku_ids = this.calculations.map(c => c.sku_id);
-                try {
-                    const resp = await fetch('/api/marketplace/pricing/publish-jobs', {
-                        method: 'POST',
-                        headers: this.getAuthHeaders(),
-                        body: JSON.stringify({ scenario_id: this.scenarioId, channel_code: this.channelCode, sku_ids })
-                    });
-                    const json = await resp.json();
-                    if (resp.ok && !json.errors) {
-                        this.showToast('Job создан. ID: ' + json.data.id, 'success');
-                    } else {
-                        this.showToast(json.errors?.[0]?.message || 'Ошибка создания job', 'error');
-                    }
-                } catch (e) {
-                    this.showToast(e.message || 'Ошибка', 'error');
+                    // Сценарии могут быть недоступны — не показываем ошибку
                 }
             },
 
             async init() {
-                await this.loadScenarios();
-                await this.loadCalculations();
+                await Promise.all([this.loadProducts(), this.loadScenarios()]);
             }
         }
     }
@@ -270,56 +345,51 @@
 {{-- PWA MODE --}}
 <div class="pwa-only min-h-screen" x-data="pricingPage()" style="background: #f2f2f7;">
     <x-pwa-header title="Цены" :backUrl="'/'">
-        <button @click="loadCalculations()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+        <button @click="currentPage = 1; loadProducts()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
         </button>
     </x-pwa-header>
 
-    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="loadCalculations">
+    <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;" x-pull-to-refresh="currentPage = 1; loadProducts()">
 
-        {{-- Controls --}}
+        {{-- Search --}}
         <div class="px-4 py-4">
-            <div class="native-card space-y-3">
-                <p class="native-body font-semibold">Рассчитать цены</p>
-                <div>
-                    <label class="native-caption">Сценарий</label>
-                    <select class="native-input mt-1" x-model="scenarioId">
-                        <template x-for="sc in scenarios" :key="sc.id">
-                            <option :value="sc.id" x-text="sc.name"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label class="native-caption">Канал</label>
-                    <select class="native-input mt-1" x-model="channelCode">
-                        <option value="UZUM">Uzum</option>
-                        <option value="WB">Wildberries</option>
-                        <option value="OZON">Ozon</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="native-caption">SKU IDs</label>
-                    <input type="text" class="native-input mt-1" placeholder="101, 102, 103" x-model="skuInput">
-                </div>
-                <button class="native-btn w-full" @click="calculate()">Рассчитать</button>
+            <div class="native-card">
+                <label class="native-caption">Поиск</label>
+                <input type="text" class="native-input mt-1" placeholder="Название или артикул..."
+                       x-model="search"
+                       @input.debounce.400ms="currentPage = 1; loadProducts()">
+            </div>
+        </div>
+
+        {{-- Filters: Scenario --}}
+        <div class="px-4 pb-4">
+            <div class="native-card">
+                <label class="native-caption">Сценарий</label>
+                <select class="native-input mt-1" x-model="scenarioId">
+                    <option value="">-- Выберите --</option>
+                    <template x-for="sc in scenarios" :key="sc.id">
+                        <option :value="sc.id" x-text="sc.name"></option>
+                    </template>
+                </select>
             </div>
         </div>
 
         {{-- Stats --}}
         <div class="px-4 grid grid-cols-3 gap-2 mb-4">
             <div class="native-card text-center py-3">
-                <p class="text-xl font-bold text-gray-900" x-text="calculations.length">0</p>
-                <p class="native-caption">Расчётов</p>
+                <p class="text-xl font-bold text-gray-900" x-text="productsMeta.total || 0">0</p>
+                <p class="native-caption">Товаров</p>
             </div>
             <div class="native-card text-center py-3">
                 <p class="text-xl font-bold text-gray-900" x-text="scenarios.length">0</p>
                 <p class="native-caption">Сценариев</p>
             </div>
             <div class="native-card text-center py-3">
-                <p class="text-xl font-bold text-green-600" x-text="calculations.filter(c => c.confidence > 0.8).length">0</p>
-                <p class="native-caption">Высокая</p>
+                <p class="text-xl font-bold text-purple-600" x-text="calculations.length">0</p>
+                <p class="native-caption">Расчётов</p>
             </div>
         </div>
 
@@ -329,39 +399,78 @@
         </div>
 
         {{-- Empty --}}
-        <div x-show="!loading && calculations.length === 0" class="px-4">
+        <div x-show="!loading && products.length === 0" class="px-4">
             <div class="native-card text-center py-12">
-                <p class="native-body font-semibold mb-2">Нет расчётов</p>
-                <p class="native-caption">Укажите параметры</p>
+                <p class="native-body font-semibold mb-2">Товары не найдены</p>
+                <p class="native-caption">Попробуйте изменить параметры поиска</p>
             </div>
         </div>
 
-        {{-- Calculations List --}}
-        <div x-show="!loading && calculations.length > 0" class="px-4 space-y-2 pb-4">
-            <template x-for="row in calculations" :key="row.sku_id">
+        {{-- Products List --}}
+        <div x-show="!loading && products.length > 0" class="px-4 space-y-2 pb-4">
+            <template x-for="product in products" :key="product.id">
                 <div class="native-card">
-                    <div class="flex items-start justify-between mb-2">
-                        <p class="native-body font-semibold text-indigo-600" x-text="'SKU: ' + row.sku_id"></p>
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium"
-                              :class="row.confidence > 0.8 ? 'bg-green-100 text-green-700' : row.confidence > 0.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
-                              x-text="(row.confidence * 100).toFixed(0) + '%'"></span>
+                    {{-- Product header --}}
+                    <div class="mb-3">
+                        <p class="native-body font-semibold truncate" x-text="product.name"></p>
+                        <div class="flex items-center gap-3 mt-0.5">
+                            <p class="native-caption" x-text="product.article || '\u2014'"></p>
+                            <p class="native-caption" x-show="product.count_variants > 0">
+                                <span x-text="product.count_variants"></span> <span x-text="variantLabel(product.count_variants)"></span>
+                            </p>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                            <span class="native-caption">Себест.</span>
-                            <p class="font-medium" x-text="format(row.unit_cost)"></p>
-                        </div>
-                        <div>
-                            <span class="native-caption">Min</span>
-                            <p class="font-medium" x-text="format(row.min_price)"></p>
-                        </div>
-                        <div>
-                            <span class="native-caption">Рекоменд.</span>
-                            <p class="font-bold text-indigo-600" x-text="format(row.recommended_price)"></p>
-                        </div>
+
+                    {{-- Cost price --}}
+                    <div class="mb-3 pb-3 border-b border-gray-100">
+                        <span class="native-caption">Себестоимость:</span>
+                        <span class="text-sm font-medium text-gray-700 ml-1" x-text="format(product.purchase_price)"></span>
+                    </div>
+
+                    {{-- Marketplace prices grid --}}
+                    <div class="grid grid-cols-4 gap-2">
+                        <template x-for="mp in marketplaces" :key="mp.code">
+                            <div class="text-center rounded-lg py-2 px-1"
+                                 :class="hasMp(product, mp.code) ? 'bg-gray-50' : 'bg-gray-50/50'">
+                                <div class="flex items-center justify-center gap-1 mb-1">
+                                    <span class="w-1.5 h-1.5 rounded-full" :class="mp.dot"></span>
+                                    <span class="text-[10px] font-semibold text-gray-500 uppercase" x-text="mp.name"></span>
+                                </div>
+                                <template x-if="hasMp(product, mp.code)">
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-900" x-text="mpPrice(product, mp.code)"></p>
+                                        <p class="text-[10px] mt-0.5" :class="mpMarginClass(product, mp.code)" x-text="mpMarginText(product, mp.code)"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!hasMp(product, mp.code)">
+                                    <div>
+                                        <span class="text-gray-300 text-sm leading-none">&times;</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </template>
+
+            {{-- Pagination --}}
+            <div class="flex items-center justify-between pt-2" x-show="productsMeta.last_page > 1">
+                <button class="native-card px-4 py-2 text-sm font-medium"
+                        :class="currentPage <= 1 ? 'text-gray-400' : 'text-blue-600'"
+                        :disabled="currentPage <= 1"
+                        @click="if(currentPage > 1) { currentPage--; loadProducts(); }">
+                    Назад
+                </button>
+                <span class="text-sm text-gray-500">
+                    <span x-text="currentPage"></span> / <span x-text="productsMeta.last_page || 1"></span>
+                </span>
+                <button class="native-card px-4 py-2 text-sm font-medium"
+                        :class="currentPage >= (productsMeta.last_page || 1) ? 'text-gray-400' : 'text-blue-600'"
+                        :disabled="currentPage >= (productsMeta.last_page || 1)"
+                        @click="if(currentPage < productsMeta.last_page) { currentPage++; loadProducts(); }">
+                    Далее
+                </button>
+            </div>
         </div>
     </main>
 </div>

@@ -981,10 +981,6 @@ class UzumClient implements MarketplaceClientInterface
         // GET /v1/products/{id}
 
         try {
-            // $response = $this->http->get($account, "/v1/products/{$externalId}");
-            //
-            // return $response['data'] ?? null;
-
             return null;
         } catch (\Exception $e) {
             return null;

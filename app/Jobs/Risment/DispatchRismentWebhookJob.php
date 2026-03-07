@@ -14,6 +14,7 @@ class DispatchRismentWebhookJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1; // retries handled by the service itself
+
     public int $timeout = 30;
 
     public function __construct(

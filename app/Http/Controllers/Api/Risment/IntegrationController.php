@@ -4,17 +4,17 @@ namespace App\Http\Controllers\Api\Risment;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\MarketplaceAccount;
+use App\Models\OfflineSale;
+use App\Models\OzonOrder;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\UzumOrder;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
 use App\Models\WbOrder;
-use App\Models\UzumOrder;
-use App\Models\OzonOrder;
 use App\Models\YandexMarketOrder;
-use App\Models\OfflineSale;
-use App\Models\MarketplaceAccount;
 use App\Services\Risment\RismentWebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -170,34 +170,72 @@ class IntegrationController extends Controller
         try {
             // Update product-level fields
             $productFields = [];
-            if (isset($validated['name'])) $productFields['name'] = $validated['name'];
-            if (isset($validated['article'])) $productFields['article'] = $validated['article'];
-            if (isset($validated['brand_name'])) $productFields['brand_name'] = $validated['brand_name'];
-            if (isset($validated['description'])) $productFields['description_short'] = $validated['description'];
-            if (isset($validated['country_of_origin'])) $productFields['country_of_origin'] = $validated['country_of_origin'];
-            if (isset($validated['weight_g'])) $productFields['package_weight_g'] = $validated['weight_g'];
-            if (isset($validated['length_mm'])) $productFields['package_length_mm'] = $validated['length_mm'];
-            if (isset($validated['width_mm'])) $productFields['package_width_mm'] = $validated['width_mm'];
-            if (isset($validated['height_mm'])) $productFields['package_height_mm'] = $validated['height_mm'];
-            if (isset($validated['is_active'])) $productFields['is_active'] = $validated['is_active'];
+            if (isset($validated['name'])) {
+                $productFields['name'] = $validated['name'];
+            }
+            if (isset($validated['article'])) {
+                $productFields['article'] = $validated['article'];
+            }
+            if (isset($validated['brand_name'])) {
+                $productFields['brand_name'] = $validated['brand_name'];
+            }
+            if (isset($validated['description'])) {
+                $productFields['description_short'] = $validated['description'];
+            }
+            if (isset($validated['country_of_origin'])) {
+                $productFields['country_of_origin'] = $validated['country_of_origin'];
+            }
+            if (isset($validated['weight_g'])) {
+                $productFields['package_weight_g'] = $validated['weight_g'];
+            }
+            if (isset($validated['length_mm'])) {
+                $productFields['package_length_mm'] = $validated['length_mm'];
+            }
+            if (isset($validated['width_mm'])) {
+                $productFields['package_width_mm'] = $validated['width_mm'];
+            }
+            if (isset($validated['height_mm'])) {
+                $productFields['package_height_mm'] = $validated['height_mm'];
+            }
+            if (isset($validated['is_active'])) {
+                $productFields['is_active'] = $validated['is_active'];
+            }
 
-            if (!empty($productFields)) {
+            if (! empty($productFields)) {
                 $variant->product->update($productFields);
             }
 
             // Update variant-level fields
             $variantFields = [];
-            if (isset($validated['sku'])) $variantFields['sku'] = $validated['sku'];
-            if (isset($validated['barcode'])) $variantFields['barcode'] = $validated['barcode'];
-            if (isset($validated['price'])) $variantFields['price_default'] = $validated['price'];
-            if (isset($validated['purchase_price'])) $variantFields['purchase_price'] = $validated['purchase_price'];
-            if (isset($validated['weight_g'])) $variantFields['weight_g'] = $validated['weight_g'];
-            if (isset($validated['length_mm'])) $variantFields['length_mm'] = $validated['length_mm'];
-            if (isset($validated['width_mm'])) $variantFields['width_mm'] = $validated['width_mm'];
-            if (isset($validated['height_mm'])) $variantFields['height_mm'] = $validated['height_mm'];
-            if (isset($validated['is_active'])) $variantFields['is_active'] = $validated['is_active'];
+            if (isset($validated['sku'])) {
+                $variantFields['sku'] = $validated['sku'];
+            }
+            if (isset($validated['barcode'])) {
+                $variantFields['barcode'] = $validated['barcode'];
+            }
+            if (isset($validated['price'])) {
+                $variantFields['price_default'] = $validated['price'];
+            }
+            if (isset($validated['purchase_price'])) {
+                $variantFields['purchase_price'] = $validated['purchase_price'];
+            }
+            if (isset($validated['weight_g'])) {
+                $variantFields['weight_g'] = $validated['weight_g'];
+            }
+            if (isset($validated['length_mm'])) {
+                $variantFields['length_mm'] = $validated['length_mm'];
+            }
+            if (isset($validated['width_mm'])) {
+                $variantFields['width_mm'] = $validated['width_mm'];
+            }
+            if (isset($validated['height_mm'])) {
+                $variantFields['height_mm'] = $validated['height_mm'];
+            }
+            if (isset($validated['is_active'])) {
+                $variantFields['is_active'] = $validated['is_active'];
+            }
 
-            if (!empty($variantFields)) {
+            if (! empty($variantFields)) {
                 $variant->update($variantFields);
             }
 
@@ -269,12 +307,13 @@ class IntegrationController extends Controller
                     ->where('company_id', $company->id)
                     ->first();
 
-                if (!$variant) {
+                if (! $variant) {
                     $errors[] = [
                         'index' => $index,
                         'variant_id' => $item['variant_id'],
                         'error' => 'Variant not found',
                     ];
+
                     continue;
                 }
 
@@ -282,17 +321,18 @@ class IntegrationController extends Controller
                     ->where('company_id', $company->id)
                     ->first();
 
-                if (!$warehouse) {
+                if (! $warehouse) {
                     $errors[] = [
                         'index' => $index,
                         'warehouse_id' => $item['warehouse_id'],
                         'error' => 'Warehouse not found',
                     ];
+
                     continue;
                 }
 
                 $sku = Sku::where('product_variant_id', $variant->id)->first();
-                if (!$sku) {
+                if (! $sku) {
                     $sku = Sku::create([
                         'product_id' => $variant->product_id,
                         'product_variant_id' => $variant->id,
@@ -352,7 +392,7 @@ class IntegrationController extends Controller
             }
         }
 
-        if (!empty($results)) {
+        if (! empty($results)) {
             $this->webhookService->dispatch($company->id, 'stock.updated', [
                 'items' => $results,
                 'updated_at' => now()->toIso8601String(),
@@ -409,54 +449,54 @@ class IntegrationController extends Controller
                 $query->where('ordered_at', '>=', $dateFrom);
             }
             if ($dateTo) {
-                $query->where('ordered_at', '<=', $dateTo . ' 23:59:59');
+                $query->where('ordered_at', '<=', $dateTo.' 23:59:59');
             }
 
             return $query;
         };
 
         // Wildberries orders
-        if ((!$marketplaceFilter || $marketplaceFilter === 'wb') && isset($accountIds['wb'])) {
+        if ((! $marketplaceFilter || $marketplaceFilter === 'wb') && isset($accountIds['wb'])) {
             $wbOrders = $buildQuery(WbOrder::class, 'wb', $accountIds['wb'])
                 ->orderByDesc('ordered_at')
                 ->limit(200)
                 ->get()
-                ->map(fn($o) => $this->formatOrder($o, 'wb'));
+                ->map(fn ($o) => $this->formatOrder($o, 'wb'));
             $orders = $orders->merge($wbOrders);
         }
 
         // Uzum orders
-        if ((!$marketplaceFilter || $marketplaceFilter === 'uzum') && isset($accountIds['uzum'])) {
+        if ((! $marketplaceFilter || $marketplaceFilter === 'uzum') && isset($accountIds['uzum'])) {
             $uzumOrders = $buildQuery(UzumOrder::class, 'uzum', $accountIds['uzum'])
                 ->orderByDesc('ordered_at')
                 ->limit(200)
                 ->get()
-                ->map(fn($o) => $this->formatOrder($o, 'uzum'));
+                ->map(fn ($o) => $this->formatOrder($o, 'uzum'));
             $orders = $orders->merge($uzumOrders);
         }
 
         // Ozon orders
-        if ((!$marketplaceFilter || $marketplaceFilter === 'ozon') && isset($accountIds['ozon'])) {
+        if ((! $marketplaceFilter || $marketplaceFilter === 'ozon') && isset($accountIds['ozon'])) {
             $ozonOrders = $buildQuery(OzonOrder::class, 'ozon', $accountIds['ozon'])
                 ->orderByDesc('ordered_at')
                 ->limit(200)
                 ->get()
-                ->map(fn($o) => $this->formatOrder($o, 'ozon'));
+                ->map(fn ($o) => $this->formatOrder($o, 'ozon'));
             $orders = $orders->merge($ozonOrders);
         }
 
         // Yandex Market orders
-        if ((!$marketplaceFilter || $marketplaceFilter === 'ym') && isset($accountIds['ym'])) {
+        if ((! $marketplaceFilter || $marketplaceFilter === 'ym') && isset($accountIds['ym'])) {
             $ymOrders = $buildQuery(YandexMarketOrder::class, 'ym', $accountIds['ym'])
                 ->orderByDesc('ordered_at')
                 ->limit(200)
                 ->get()
-                ->map(fn($o) => $this->formatOrder($o, 'ym'));
+                ->map(fn ($o) => $this->formatOrder($o, 'ym'));
             $orders = $orders->merge($ymOrders);
         }
 
         // Offline sales (fulfillment-type)
-        if (!$marketplaceFilter || $marketplaceFilter === 'offline') {
+        if (! $marketplaceFilter || $marketplaceFilter === 'offline') {
             $offlineQuery = OfflineSale::where('company_id', $company->id);
             if ($statusFilter) {
                 $offlineQuery->where('status', $statusFilter);
@@ -472,7 +512,7 @@ class IntegrationController extends Controller
                 ->orderByDesc('sale_date')
                 ->limit(200)
                 ->get()
-                ->map(fn($o) => $this->formatOfflineOrder($o));
+                ->map(fn ($o) => $this->formatOfflineOrder($o));
             $orders = $orders->merge($offlineOrders);
         }
 
@@ -516,7 +556,7 @@ class IntegrationController extends Controller
         try {
             $order = $this->findOrder($company, $marketplace, $id);
 
-            if (!$order) {
+            if (! $order) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Order not found',
@@ -635,7 +675,7 @@ class IntegrationController extends Controller
             'customer_phone' => $order->customer_phone,
             'ordered_at' => $order->sale_date,
             'delivered_at' => $order->delivered_date,
-            'items' => $order->items->map(fn($item) => [
+            'items' => $order->items->map(fn ($item) => [
                 'variant_id' => $item->product_variant_id,
                 'product_name' => $item->productVariant?->product?->name,
                 'sku' => $item->productVariant?->sku,

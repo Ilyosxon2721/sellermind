@@ -30,7 +30,7 @@ class WebhookController extends Controller
         $validated = $request->validate([
             'url' => 'required|url|max:500',
             'events' => 'required|array|min:1',
-            'events.*' => 'string|in:' . implode(',', self::ALLOWED_EVENTS),
+            'events.*' => 'string|in:'.implode(',', self::ALLOWED_EVENTS),
         ]);
 
         $secret = Str::random(32);
@@ -54,7 +54,7 @@ class WebhookController extends Controller
                 'created_at' => $endpoint->created_at,
             ],
             'message' => 'Save the secret securely. It will not be shown again. '
-                . 'Use it to verify webhook signatures via X-Risment-Signature header (HMAC-SHA256).',
+                .'Use it to verify webhook signatures via X-Risment-Signature header (HMAC-SHA256).',
         ], 201);
     }
 
@@ -69,7 +69,7 @@ class WebhookController extends Controller
         $endpoints = RismentWebhookEndpoint::where('company_id', $company->id)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn($e) => [
+            ->map(fn ($e) => [
                 'id' => $e->id,
                 'url' => $e->url,
                 'events' => $e->events,
@@ -133,7 +133,7 @@ class WebhookController extends Controller
                     'Content-Type' => 'application/json',
                     'X-Risment-Signature' => $signature,
                     'X-Risment-Event' => 'test',
-                    'X-Risment-Delivery' => 'test-' . Str::random(8),
+                    'X-Risment-Delivery' => 'test-'.Str::random(8),
                 ])
                 ->post($endpoint->url, $testPayload);
 

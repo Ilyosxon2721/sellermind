@@ -229,5 +229,7 @@
         // Expose install function globally
         window.installPWA = installPWA;
     </script>
+    {{-- Chart.js для страниц с графиками --}}
+    @stack('scripts')
 </body>
 </html>

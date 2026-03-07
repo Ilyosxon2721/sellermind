@@ -190,3 +190,6 @@ com.sellermind.scheduler.plist
 /public/WB_TOKENS_QUICK_GUIDE.md
 /public/WB-SETTINGS-FIXED.md
 /public/README.md
+
+# PHPStan cache
+/storage/framework/phpstan/

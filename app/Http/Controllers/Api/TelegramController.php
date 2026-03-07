@@ -71,6 +71,8 @@ class TelegramController extends Controller
             'telegram_notifications_enabled' => 'sometimes|boolean',
             'notify_low_stock' => 'sometimes|boolean',
             'notify_new_order' => 'sometimes|boolean',
+            'notify_marketplace_order' => 'sometimes|boolean',
+            'notify_offline_sale' => 'sometimes|boolean',
             'notify_order_cancelled' => 'sometimes|boolean',
             'notify_price_changes' => 'sometimes|boolean',
             'notify_bulk_operations' => 'sometimes|boolean',
@@ -124,6 +126,8 @@ class TelegramController extends Controller
             return response()->json([
                 'notify_low_stock' => true,
                 'notify_new_order' => true,
+                'notify_marketplace_order' => true,
+                'notify_offline_sale' => true,
                 'notify_order_cancelled' => true,
                 'notify_price_changes' => false,
                 'notify_bulk_operations' => true,

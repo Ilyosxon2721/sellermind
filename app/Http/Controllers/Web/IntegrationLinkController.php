@@ -40,7 +40,7 @@ class IntegrationLinkController extends Controller
         $user = $request->user();
         $company = $user->companies()->first();
 
-        if (!$company) {
+        if (! $company) {
             return response()->json([
                 'success' => false,
                 'message' => 'No company found. Please create a company first.',
@@ -87,7 +87,7 @@ class IntegrationLinkController extends Controller
         $user = $request->user();
         $company = $user->companies()->first();
 
-        if (!$company) {
+        if (! $company) {
             return response()->json([
                 'success' => false,
                 'message' => 'No company found.',
@@ -99,7 +99,7 @@ class IntegrationLinkController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$link) {
+        if (! $link) {
             return response()->json([
                 'success' => false,
                 'message' => 'No active RISMENT integration found.',

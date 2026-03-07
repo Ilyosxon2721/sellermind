@@ -69,14 +69,14 @@
                              @dragend="dragEnd()">
                             {{-- Превью баннера --}}
                             <div class="relative aspect-[16/9] bg-gray-100 overflow-hidden">
-                                <img x-show="b.image" :src="b.image" :alt="b.title" class="w-full h-full object-cover">
+                                <img x-show="b.image" :src="resolveImage(b.image)" :alt="b.title" class="w-full h-full object-cover">
                                 <div x-show="!b.image" class="w-full h-full flex items-center justify-center">
                                     <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 </div>
                                 {{-- Оверлей с текстом --}}
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-4">
-                                    <h3 class="text-white font-semibold text-sm" x-text="b.title || 'Без заголовка'"></h3>
-                                    <p x-show="b.subtitle" class="text-white/80 text-xs mt-1" x-text="b.subtitle"></p>
+                                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pt-10 pb-3">
+                                    <h3 class="font-semibold text-sm drop-shadow-md" :style="'color:' + (b.text_color || '#ffffff')" x-text="b.title || 'Без заголовка'"></h3>
+                                    <p x-show="b.subtitle" class="text-xs mt-1 drop-shadow-md" :style="'color:' + (b.text_color || '#ffffff') + '; opacity: 0.85'" x-text="b.subtitle"></p>
                                 </div>
                                 {{-- Позиция --}}
                                 <div class="absolute top-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded-lg font-medium cursor-grab"
@@ -142,12 +142,104 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">URL изображения *</label>
-                                <input type="url" x-model="form.image" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="https://example.com/banner.jpg">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Изображение *</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="url" x-model="form.image" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="URL или загрузите файл">
+                                    <label class="relative cursor-pointer shrink-0">
+                                        <input type="file" accept="image/*" class="hidden" x-on:change="uploadFile('image', $event)" :disabled="uploading">
+                                        <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium text-sm" :class="uploading && 'opacity-50 pointer-events-none'">
+                                            <template x-if="!uploading">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            </template>
+                                            <template x-if="uploading">
+                                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            </template>
+                                            <span x-text="uploading ? 'Загрузка...' : 'Загрузить'"></span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">1920x640px (3:1). JPG, PNG, WebP. Max 5 MB</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">URL мобильного изображения</label>
-                                <input type="url" x-model="form.image_mobile" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="https://example.com/banner-mobile.jpg">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Мобильное изображение</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="url" x-model="form.image_mobile" class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="URL или загрузите файл">
+                                    <label class="relative cursor-pointer shrink-0">
+                                        <input type="file" accept="image/*" class="hidden" x-on:change="uploadFile('image_mobile', $event)" :disabled="uploadingMobile">
+                                        <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium text-sm" :class="uploadingMobile && 'opacity-50 pointer-events-none'">
+                                            <template x-if="!uploadingMobile">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            </template>
+                                            <template x-if="uploadingMobile">
+                                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            </template>
+                                            <span x-text="uploadingMobile ? 'Загрузка...' : 'Загрузить'"></span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">640x640px (1:1). JPG, PNG, WebP. Max 5 MB</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Цвет текста</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="color" x-model="form.text_color" class="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                                    <div class="flex gap-2">
+                                        <button type="button" @click="form.text_color = '#ffffff'" class="w-8 h-8 rounded-full border-2 bg-white" :class="form.text_color === '#ffffff' ? 'border-blue-500' : 'border-gray-300'" title="Белый"></button>
+                                        <button type="button" @click="form.text_color = '#000000'" class="w-8 h-8 rounded-full border-2 bg-black" :class="form.text_color === '#000000' ? 'border-blue-500' : 'border-gray-300'" title="Чёрный"></button>
+                                        <button type="button" @click="form.text_color = '#fbbf24'" class="w-8 h-8 rounded-full border-2 bg-yellow-400" :class="form.text_color === '#fbbf24' ? 'border-blue-500' : 'border-gray-300'" title="Жёлтый"></button>
+                                        <button type="button" @click="form.text_color = '#ef4444'" class="w-8 h-8 rounded-full border-2 bg-red-500" :class="form.text_color === '#ef4444' ? 'border-blue-500' : 'border-gray-300'" title="Красный"></button>
+                                    </div>
+                                    <span class="text-xs text-gray-500" x-text="form.text_color"></span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Вариант отображения</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <button type="button" @click="form.display_mode = 'overlay'"
+                                            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center"
+                                            :class="form.display_mode === 'overlay' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <div class="w-full aspect-[3/2] bg-gray-200 rounded-lg relative overflow-hidden">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-gray-800/70 to-transparent"></div>
+                                            <div class="absolute bottom-1 left-1.5 right-1.5">
+                                                <div class="h-1.5 bg-white/90 rounded w-3/4 mb-0.5"></div>
+                                                <div class="h-1 bg-white/60 rounded w-1/2"></div>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-medium" :class="form.display_mode === 'overlay' ? 'text-blue-700' : 'text-gray-600'">Overlay</span>
+                                    </button>
+                                    <button type="button" @click="form.display_mode = 'split'"
+                                            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center"
+                                            :class="form.display_mode === 'split' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <div class="w-full aspect-[3/2] bg-gray-100 rounded-lg relative overflow-hidden flex">
+                                            <div class="w-1/2 bg-gray-200"></div>
+                                            <div class="w-1/2 flex flex-col justify-center px-1.5">
+                                                <div class="h-1.5 bg-gray-400 rounded w-3/4 mb-0.5"></div>
+                                                <div class="h-1 bg-gray-300 rounded w-1/2"></div>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-medium" :class="form.display_mode === 'split' ? 'text-blue-700' : 'text-gray-600'">Split</span>
+                                    </button>
+                                    <button type="button" @click="form.display_mode = 'image_only'"
+                                            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center"
+                                            :class="form.display_mode === 'image_only' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <div class="w-full aspect-[3/2] bg-gray-200 rounded-lg relative overflow-hidden">
+                                            <svg class="absolute inset-0 m-auto w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        </div>
+                                        <span class="text-xs font-medium" :class="form.display_mode === 'image_only' ? 'text-blue-700' : 'text-gray-600'">Изображение</span>
+                                    </button>
+                                    <button type="button" @click="form.display_mode = 'text_below'"
+                                            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center"
+                                            :class="form.display_mode === 'text_below' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                        <div class="w-full aspect-[3/2] rounded-lg relative overflow-hidden flex flex-col">
+                                            <div class="flex-1 bg-gray-200"></div>
+                                            <div class="bg-gray-100 px-1.5 py-1">
+                                                <div class="h-1.5 bg-gray-400 rounded w-3/4 mb-0.5"></div>
+                                                <div class="h-1 bg-gray-300 rounded w-1/2"></div>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-medium" :class="form.display_mode === 'text_below' ? 'text-blue-700' : 'text-gray-600'">Текст снизу</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -187,8 +279,12 @@
                             {{-- Превью --}}
                             <div x-show="form.image" class="border border-gray-200 rounded-xl overflow-hidden">
                                 <p class="text-xs text-gray-500 px-3 py-2 bg-gray-50 border-b border-gray-200">Превью</p>
-                                <div class="aspect-[16/9] bg-gray-100">
-                                    <img :src="form.image" class="w-full h-full object-cover" @error="$el.style.display='none'">
+                                <div class="relative aspect-[16/9] bg-gray-100">
+                                    <img :src="resolveImage(form.image)" class="w-full h-full object-cover" x-on:error="$el.style.display='none'">
+                                    <div x-show="form.title || form.subtitle" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pt-8 pb-3">
+                                        <h3 x-show="form.title" class="font-semibold text-sm drop-shadow-md" :style="'color:' + form.text_color" x-text="form.title"></h3>
+                                        <p x-show="form.subtitle" class="text-xs mt-1 drop-shadow-md" :style="'color:' + form.text_color + '; opacity: 0.85'" x-text="form.subtitle"></p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -211,12 +307,14 @@ function bannersManager(storeId) {
         storeId,
         loading: true,
         saving: false,
+        uploading: false,
+        uploadingMobile: false,
         banners: [],
         showModal: false,
         editingId: null,
         draggedIndex: null,
         form: {
-            title: '', subtitle: '', image: '', image_mobile: '', url: '', button_text: '',
+            title: '', subtitle: '', text_color: '#ffffff', display_mode: 'overlay', image: '', image_mobile: '', url: '', button_text: '',
             position: 'hero', is_active: true, start_date: '', end_date: '',
         },
 
@@ -250,6 +348,8 @@ function bannersManager(storeId) {
             this.form = {
                 title: b.title || '',
                 subtitle: b.subtitle || '',
+                text_color: b.text_color || '#ffffff',
+                display_mode: b.display_mode || 'overlay',
                 image: b.image || '',
                 image_mobile: b.image_mobile || '',
                 url: b.url || '',
@@ -262,8 +362,40 @@ function bannersManager(storeId) {
             this.showModal = true;
         },
 
+        async uploadFile(field, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const loadingKey = field === 'image' ? 'uploading' : 'uploadingMobile';
+            this[loadingKey] = true;
+            const formData = new FormData();
+            formData.append('image', file);
+            try {
+                const res = await fetch(`/api/store/stores/${this.storeId}/banners/upload-image`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.form[field] = data.data.path;
+                    window.toast?.success('Изображение загружено');
+                } else {
+                    window.toast?.error(data.message || 'Ошибка загрузки');
+                }
+            } catch (e) {
+                window.toast?.error('Ошибка загрузки файла');
+            } finally {
+                this[loadingKey] = false;
+                event.target.value = '';
+            }
+        },
+
         async saveBanner() {
-            if (!this.form.image.trim()) { window.toast?.error('Укажите URL изображения'); return; }
+            if (!this.form.image.trim()) { window.toast?.error('Укажите изображение'); return; }
             this.saving = true;
             try {
                 if (this.editingId) {
@@ -328,6 +460,12 @@ function bannersManager(storeId) {
         positionLabel(position) {
             const map = { hero: 'Слайдер', top: 'Верх', middle: 'Середина', bottom: 'Низ', sidebar: 'Сайдбар' };
             return map[position] || position;
+        },
+
+        resolveImage(src) {
+            if (!src) return '';
+            if (src.startsWith('http://') || src.startsWith('https://')) return src;
+            return '/storage/' + src;
         },
 
         formatDate(dateStr) {

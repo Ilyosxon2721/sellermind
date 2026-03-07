@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\EmployeeRequest;
 use App\Models\Finance\Employee;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
@@ -81,14 +82,14 @@ class EmployeeController extends Controller
         return $this->successResponse($employee);
     }
 
-    public function store(Request $request)
+    public function store(EmployeeRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['company_id'] = $companyId;
 
         $employee = Employee::create($data);
@@ -96,7 +97,7 @@ class EmployeeController extends Controller
         return $this->successResponse($employee);
     }
 
-    public function update($id, Request $request)
+    public function update($id, EmployeeRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -105,7 +106,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::byCompany($companyId)->findOrFail($id);
 
-        $data = $this->validateData($request, $employee->id);
+        $data = $request->validated();
         $employee->update($data);
 
         return $this->successResponse($employee->fresh());
@@ -405,28 +406,5 @@ class EmployeeController extends Controller
         }
 
         return $category->id;
-    }
-
-    protected function validateData(Request $request, ?int $employeeId = null): array
-    {
-        return $request->validate([
-            'user_id' => ['nullable', 'integer'],
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'position' => ['nullable', 'string', 'max:255'],
-            'department' => ['nullable', 'string', 'max:255'],
-            'hire_date' => ['nullable', 'date'],
-            'termination_date' => ['nullable', 'date'],
-            'salary_type' => ['nullable', 'in:fixed,hourly,commission'],
-            'base_salary' => ['nullable', 'numeric', 'min:0'],
-            'currency_code' => ['nullable', 'string', 'max:8'],
-            'bank_name' => ['nullable', 'string', 'max:255'],
-            'bank_account' => ['nullable', 'string', 'max:255'],
-            'inn' => ['nullable', 'string', 'max:20'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
     }
 }

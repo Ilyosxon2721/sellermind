@@ -13,7 +13,7 @@ class AuthenticateRisment
     {
         $bearer = $request->bearerToken();
 
-        if (!$bearer) {
+        if (! $bearer) {
             return response()->json([
                 'success' => false,
                 'message' => 'API token required. Pass Bearer token in Authorization header.',
@@ -26,14 +26,14 @@ class AuthenticateRisment
             ->where('is_active', true)
             ->first();
 
-        if (!$apiToken || !$apiToken->isValid()) {
+        if (! $apiToken || ! $apiToken->isValid()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid or expired API token.',
             ], 401);
         }
 
-        if ($scope && !$apiToken->hasScope($scope)) {
+        if ($scope && ! $apiToken->hasScope($scope)) {
             return response()->json([
                 'success' => false,
                 'message' => "Token does not have required scope: {$scope}",
@@ -45,7 +45,7 @@ class AuthenticateRisment
         $request->attributes->set('risment_token', $apiToken);
 
         // Update last_used_at (throttled to once per minute)
-        if (!$apiToken->last_used_at || $apiToken->last_used_at->diffInMinutes(now()) >= 1) {
+        if (! $apiToken->last_used_at || $apiToken->last_used_at->diffInMinutes(now()) >= 1) {
             $apiToken->markUsed();
         }
 

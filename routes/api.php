@@ -264,6 +264,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
         Route::post('products/{product}/publish', [ProductController::class, 'publish']);
         Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+        Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
     });
 
     // Product Bulk Operations — только owner
@@ -704,6 +705,15 @@ Route::middleware('auth.any')->group(function () {
             Route::post('publish-jobs/{id}/run', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'run']);
             Route::get('publish-jobs', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'index']);
             Route::get('publish-jobs/{id}/export.csv', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'exportCsv']);
+
+            // Pricing Calculator (калькулятор ценообразования)
+            Route::prefix('calculator')->group(function () {
+                Route::post('calculate', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculate']);
+                Route::post('calculate-for-margin', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculateForMargin']);
+                Route::post('compare', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'compare']);
+                Route::get('categories/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'categories']);
+                Route::get('commissions/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'commissions']);
+            });
         });
 
         // Autopricing
@@ -852,6 +862,7 @@ Route::middleware('auth.any')->group(function () {
         Route::put('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'update']);
         Route::delete('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'destroy']);
         Route::post('stores/{storeId}/banners/reorder', [\App\Http\Controllers\Store\StoreBannerController::class, 'reorder']);
+        Route::post('stores/{storeId}/banners/upload-image', [\App\Http\Controllers\Store\StoreBannerController::class, 'uploadImage']);
 
         // Catalog — Products
         Route::get('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productIndex']);

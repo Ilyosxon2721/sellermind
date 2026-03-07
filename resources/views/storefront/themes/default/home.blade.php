@@ -63,43 +63,114 @@
                     x-transition:leave-end="opacity-0 -translate-x-8"
                     class="relative"
                 >
-                    @if($banner->url)
-                        <a href="{{ $banner->url }}" class="block">
-                    @endif
-                        <div class="relative aspect-3/1 sm:aspect-4/1">
-                            <picture>
-                                @if($banner->image_mobile)
-                                    <source media="(max-width: 639px)" srcset="{{ Str::startsWith($banner->image_mobile, 'http') ? $banner->image_mobile : asset('storage/' . $banner->image_mobile) }}">
-                                @endif
-                                <img
-                                    src="{{ Str::startsWith($banner->image, 'http') ? $banner->image : asset('storage/' . $banner->image) }}"
-                                    alt="{{ $banner->title }}"
-                                    class="w-full h-full object-cover"
-                                >
-                            </picture>
-                            @if($banner->title || $banner->subtitle)
-                                <div class="absolute inset-0 bg-linear-to-r from-black/50 to-transparent flex items-center">
-                                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-                                        <div class="max-w-lg">
-                                            @if($banner->title)
-                                                <h2 class="text-xl sm:text-3xl font-bold text-white">{{ $banner->title }}</h2>
-                                            @endif
-                                            @if($banner->subtitle)
-                                                <p class="mt-2 text-sm sm:text-base text-white/80">{{ $banner->subtitle }}</p>
-                                            @endif
-                                            @if($banner->button_text)
-                                                <span class="mt-4 inline-block btn-primary px-6 py-2.5 rounded-xl text-sm font-medium">
-                                                    {{ $banner->button_text }}
-                                                </span>
-                                            @endif
+                    @php
+                        $bannerImg = Str::startsWith($banner->image, 'http') ? $banner->image : asset('storage/' . $banner->image);
+                        $bannerImgMobile = $banner->image_mobile ? (Str::startsWith($banner->image_mobile, 'http') ? $banner->image_mobile : asset('storage/' . $banner->image_mobile)) : null;
+                        $textColor = $banner->text_color ?? '#ffffff';
+                        $mode = $banner->display_mode ?? 'overlay';
+                    @endphp
+
+                    @if($banner->url)<a href="{{ $banner->url }}" class="block">@endif
+
+                    @switch($mode)
+                        {{-- OVERLAY: текст поверх изображения --}}
+                        @case('overlay')
+                        @default
+                            <div class="relative aspect-[3/1] sm:aspect-[4/1]">
+                                <picture>
+                                    @if($bannerImgMobile)
+                                        <source media="(max-width: 639px)" srcset="{{ $bannerImgMobile }}">
+                                    @endif
+                                    <img src="{{ $bannerImg }}" alt="{{ $banner->title }}" class="w-full h-full object-cover">
+                                </picture>
+                                @if($banner->title || $banner->subtitle)
+                                    <div class="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-center">
+                                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                                            <div class="max-w-lg">
+                                                @if($banner->title)
+                                                    <h2 class="text-xl sm:text-3xl font-bold drop-shadow-md" style="color: {{ $textColor }}">{{ $banner->title }}</h2>
+                                                @endif
+                                                @if($banner->subtitle)
+                                                    <p class="mt-2 text-sm sm:text-base drop-shadow-md" style="color: {{ $textColor }}; opacity: 0.85">{{ $banner->subtitle }}</p>
+                                                @endif
+                                                @if($banner->button_text)
+                                                    <span class="mt-4 inline-block btn-primary px-6 py-2.5 rounded-xl text-sm font-medium">{{ $banner->button_text }}</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
+                                @endif
+                            </div>
+                            @break
+
+                        {{-- SPLIT: изображение + текст 50/50 --}}
+                        @case('split')
+                            <div class="flex flex-col sm:flex-row" style="min-height: 200px">
+                                <div class="w-full sm:w-1/2 aspect-video sm:aspect-auto">
+                                    <picture>
+                                        @if($bannerImgMobile)
+                                            <source media="(max-width: 639px)" srcset="{{ $bannerImgMobile }}">
+                                        @endif
+                                        <img src="{{ $bannerImg }}" alt="{{ $banner->title }}" class="w-full h-full object-cover">
+                                    </picture>
                                 </div>
-                            @endif
-                        </div>
-                    @if($banner->url)
-                        </a>
-                    @endif
+                                <div class="w-full sm:w-1/2 flex items-center p-6 sm:p-10 bg-gray-50">
+                                    <div>
+                                        @if($banner->title)
+                                            <h2 class="text-xl sm:text-3xl font-bold" style="color: {{ $textColor === '#ffffff' ? '#111827' : $textColor }}">{{ $banner->title }}</h2>
+                                        @endif
+                                        @if($banner->subtitle)
+                                            <p class="mt-2 text-sm sm:text-base text-gray-600">{{ $banner->subtitle }}</p>
+                                        @endif
+                                        @if($banner->button_text)
+                                            <span class="mt-4 inline-block btn-primary px-6 py-2.5 rounded-xl text-sm font-medium">{{ $banner->button_text }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            @break
+
+                        {{-- IMAGE_ONLY: только изображение --}}
+                        @case('image_only')
+                            <div class="relative aspect-[3/1] sm:aspect-[4/1]">
+                                <picture>
+                                    @if($bannerImgMobile)
+                                        <source media="(max-width: 639px)" srcset="{{ $bannerImgMobile }}">
+                                    @endif
+                                    <img src="{{ $bannerImg }}" alt="{{ $banner->title }}" class="w-full h-full object-cover">
+                                </picture>
+                            </div>
+                            @break
+
+                        {{-- TEXT_BELOW: изображение сверху, текст снизу --}}
+                        @case('text_below')
+                            <div>
+                                <div class="aspect-[3/1] sm:aspect-[4/1]">
+                                    <picture>
+                                        @if($bannerImgMobile)
+                                            <source media="(max-width: 639px)" srcset="{{ $bannerImgMobile }}">
+                                        @endif
+                                        <img src="{{ $bannerImg }}" alt="{{ $banner->title }}" class="w-full h-full object-cover">
+                                    </picture>
+                                </div>
+                                @if($banner->title || $banner->subtitle)
+                                    <div class="py-4 sm:py-6 px-4 sm:px-8 text-center bg-white">
+                                        @if($banner->title)
+                                            <h2 class="text-lg sm:text-2xl font-bold" style="color: {{ $textColor === '#ffffff' ? '#111827' : $textColor }}">{{ $banner->title }}</h2>
+                                        @endif
+                                        @if($banner->subtitle)
+                                            <p class="mt-1 text-sm sm:text-base text-gray-600">{{ $banner->subtitle }}</p>
+                                        @endif
+                                        @if($banner->button_text)
+                                            <span class="mt-3 inline-block btn-primary px-6 py-2.5 rounded-xl text-sm font-medium">{{ $banner->button_text }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                            @break
+                    @endswitch
+
+                    @if($banner->url)</a>@endif
                 </div>
             @endforeach
         </div>

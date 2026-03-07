@@ -9,10 +9,13 @@ use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
 use App\Models\WbOrder;
+use App\Observers\Traits\NotifiesMarketplaceOrder;
 use Illuminate\Support\Facades\Log;
 
 class WbOrderObserver
 {
+    use NotifiesMarketplaceOrder;
+
     /**
      * Handle the WbOrder "created" event.
      *
@@ -22,6 +25,13 @@ class WbOrderObserver
     public function created(WbOrder $wbOrder): void
     {
         $this->safeBroadcast($wbOrder);
+        $this->notifyNewMarketplaceOrder(
+            order: $wbOrder,
+            marketplace: 'wildberries',
+            orderNumber: $wbOrder->external_order_id ?? (string) $wbOrder->id,
+            totalAmount: (float) ($wbOrder->total_amount ?? 0),
+            currency: $wbOrder->currency_code ?? 'RUB',
+        );
     }
 
     /**
