@@ -54,6 +54,18 @@ return [
             'change_password' => 'Изменить пароль',
             'update_password' => 'Обновите ваш пароль',
         ],
+        // PIN settings
+        'security_section' => 'БЕЗОПАСНОСТЬ',
+        'change_password' => 'Изменить пароль',
+        'change_password_desc' => 'Обновите ваш пароль',
+        'pin_code' => 'PIN-код',
+        'pin_enabled' => 'Включен',
+        'pin_disabled' => 'Не установлен',
+        'pin_disable_confirm' => 'Отключить PIN-код?',
+        'pin_disabled_msg' => 'PIN-код отключен',
+        'pin_enabled_msg' => 'PIN-код установлен',
+        'biometric_enabled' => 'Включено',
+        'biometric_disabled' => 'Отключено',
         'currency' => [
             'title' => 'Курсы валют',
             'description' => 'Установите текущие курсы валют для расчёта себестоимости и отчётов. Эти курсы используются во всех разделах системы.',

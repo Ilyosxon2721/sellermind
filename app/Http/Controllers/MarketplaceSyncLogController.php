@@ -22,7 +22,7 @@ class MarketplaceSyncLogController extends Controller
         $validated = $request->validate([
             'marketplace' => ['nullable', 'string', 'max:50'],
             'account_id' => ['nullable', 'integer'],
-            'status' => ['nullable', 'string', 'in:success,error,partial'],
+            'status' => ['nullable', 'string', 'in:pending,running,success,error'],
             'type' => ['nullable', 'string', 'max:50'],
         ]);
 
@@ -114,7 +114,7 @@ class MarketplaceSyncLogController extends Controller
         $validated = $request->validate([
             'marketplace' => ['nullable', 'string', 'max:50'],
             'account_id' => ['nullable', 'integer'],
-            'status' => ['nullable', 'string', 'in:success,error,partial'],
+            'status' => ['nullable', 'string', 'in:pending,running,success,error'],
             'type' => ['nullable', 'string', 'max:50'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],

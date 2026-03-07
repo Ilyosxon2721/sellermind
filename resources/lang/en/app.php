@@ -30,6 +30,18 @@ return [
             'change_password' => 'Change Password',
             'update_password' => 'Update your password',
         ],
+        // PIN settings
+        'security_section' => 'SECURITY',
+        'change_password' => 'Change Password',
+        'change_password_desc' => 'Update your password',
+        'pin_code' => 'PIN Code',
+        'pin_enabled' => 'Enabled',
+        'pin_disabled' => 'Not set',
+        'pin_disable_confirm' => 'Disable PIN code?',
+        'pin_disabled_msg' => 'PIN code disabled',
+        'pin_enabled_msg' => 'PIN code set',
+        'biometric_enabled' => 'Enabled',
+        'biometric_disabled' => 'Disabled',
         'currency' => [
             'title' => 'Currency Rates',
             'description' => 'Set current exchange rates for cost calculations and reports. These rates are used across all sections of the system.',
