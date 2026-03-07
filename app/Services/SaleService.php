@@ -170,10 +170,16 @@ class SaleService
                 throw new \Exception('Failed to confirm sale');
             }
 
+            // Создаём долг контрагента при подтверждении ручной продажи
+            if ($sale->counterparty_id && $sale->total_amount > 0) {
+                $this->createDebtFromSale($sale);
+            }
+
             Log::info('Sale confirmed and stock deducted', [
                 'sale_id' => $sale->id,
                 'sale_number' => $sale->sale_number,
                 'stock_reserved' => $reserveStock,
+                'debt_created' => (bool) $sale->counterparty_id,
             ]);
 
             return $sale->fresh(['items']);
