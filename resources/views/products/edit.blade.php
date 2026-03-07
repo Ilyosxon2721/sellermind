@@ -55,6 +55,10 @@
             newColorValue: '',
             newColorHex: '#6366f1',
 
+            // Кастомные группы характеристик (например: Капюшон, Материал)
+            customGroups: [],
+            newGroupName: '',
+
             // Initialize selected sizes/colors from existing variants on load
             init() {
                 this.initSelectedFromVariants();
@@ -218,101 +222,96 @@
             // Generate variants from selected sizes and colors
             generateVariantsFromSelection() {
                 const article = this.product.article || 'SKU';
-                const sizes = this.selectedSizes;
-                const colors = this.selectedColors;
-
-                // Combine global and custom options for lookups
                 const allSizes = [...this.globalSizes, ...this.customSizes];
                 const allColors = [...this.globalColors, ...this.customColors];
 
+                // Build dimension axes: each axis is array of {code, label, skuPart}
+                const axes = [];
+
+                if (this.selectedSizes.length > 0) {
+                    axes.push(this.selectedSizes.map(code => {
+                        const obj = allSizes.find(s => s.code === code);
+                        return {code, label: 'Размер: ' + (obj ? obj.value : code), skuPart: code.toUpperCase()};
+                    }));
+                }
+
+                if (this.selectedColors.length > 0) {
+                    axes.push(this.selectedColors.map(code => {
+                        const obj = allColors.find(c => c.code === code);
+                        return {code, label: 'Цвет: ' + (obj ? obj.value : code), skuPart: code.toUpperCase()};
+                    }));
+                }
+
+                // Add custom groups axes (only groups with at least one selected value)
+                for (const group of this.customGroups) {
+                    const selected = group.values.filter(v => v.selected);
+                    if (selected.length > 0) {
+                        axes.push(selected.map(v => ({
+                            code: v.code,
+                            label: group.name + ': ' + v.value,
+                            skuPart: v.code.toUpperCase()
+                        })));
+                    }
+                }
+
+                // Cartesian product helper
+                const cartesian = (arrs) => arrs.reduce(
+                    (acc, arr) => acc.flatMap(combo => arr.map(item => [...combo, item])),
+                    [[]]
+                );
+
                 this.variants = [];
 
-                // Case 1: Both sizes and colors selected
-                if (sizes.length > 0 && colors.length > 0) {
-                    for (const sizeCode of sizes) {
-                        const sizeObj = allSizes.find(s => s.code === sizeCode);
-                        const sizeValue = sizeObj ? sizeObj.value : sizeCode;
-
-                        for (const colorCode of colors) {
-                            const colorObj = allColors.find(c => c.code === colorCode);
-                            const colorValue = colorObj ? colorObj.value : colorCode;
-
-                            const sku = `${article}-${sizeCode.toUpperCase()}-${colorCode.toUpperCase()}`;
-                            this.variants.push({
-                                sku: sku,
-                                option_values_summary: `Размер: ${sizeValue}, Цвет: ${colorValue}`,
-                                barcode: '',
-                                weight_g: null,
-                                length_mm: null,
-                                width_mm: null,
-                                height_mm: null,
-                                is_active: true,
-                                size_code: sizeCode,
-                                color_code: colorCode
-                            });
-                        }
-                    }
-                }
-                // Case 2: Only sizes selected (no colors)
-                else if (sizes.length > 0) {
-                    for (const sizeCode of sizes) {
-                        const sizeObj = allSizes.find(s => s.code === sizeCode);
-                        const sizeValue = sizeObj ? sizeObj.value : sizeCode;
-
-                        const sku = `${article}-${sizeCode.toUpperCase()}`;
-                        this.variants.push({
-                            sku: sku,
-                            option_values_summary: `Размер: ${sizeValue}`,
-                            barcode: '',
-                            weight_g: null,
-                            length_mm: null,
-                            width_mm: null,
-                            height_mm: null,
-                            is_active: true,
-                            size_code: sizeCode,
-                            color_code: null
-                        });
-                    }
-                }
-                // Case 3: Only colors selected (no sizes)
-                else if (colors.length > 0) {
-                    for (const colorCode of colors) {
-                        const colorObj = allColors.find(c => c.code === colorCode);
-                        const colorValue = colorObj ? colorObj.value : colorCode;
-
-                        const sku = `${article}-${colorCode.toUpperCase()}`;
-                        this.variants.push({
-                            sku: sku,
-                            option_values_summary: `Цвет: ${colorValue}`,
-                            barcode: '',
-                            weight_g: null,
-                            length_mm: null,
-                            width_mm: null,
-                            height_mm: null,
-                            is_active: true,
-                            size_code: null,
-                            color_code: colorCode
-                        });
-                    }
-                }
-                // Case 4: No sizes and no colors - create single variant
-                else {
+                if (axes.length === 0) {
                     this.variants.push({
-                        sku: article,
-                        option_values_summary: '',
-                        barcode: '',
-                        weight_g: null,
-                        length_mm: null,
-                        width_mm: null,
-                        height_mm: null,
-                        is_active: true,
-                        size_code: null,
-                        color_code: null
+                        sku: article, option_values_summary: '', barcode: '',
+                        weight_g: null, length_mm: null, width_mm: null, height_mm: null,
+                        is_active: true, size_code: null, color_code: null
                     });
+                } else {
+                    for (const combo of cartesian(axes)) {
+                        const skuSuffix = combo.map(c => c.skuPart).join('-');
+                        const summary = combo.map(c => c.label).join(', ');
+                        const sizeItem = combo.find(c => c.label.startsWith('Размер:'));
+                        const colorItem = combo.find(c => c.label.startsWith('Цвет:'));
+                        this.variants.push({
+                            sku: article + '-' + skuSuffix,
+                            option_values_summary: summary,
+                            barcode: '',
+                            weight_g: null, length_mm: null, width_mm: null, height_mm: null,
+                            is_active: true,
+                            size_code: sizeItem ? sizeItem.code : null,
+                            color_code: colorItem ? colorItem.code : null
+                        });
+                    }
                 }
 
-                // Auto-advance to step 3 to show variants table
                 this.step = 3;
+            },
+
+            addCustomGroup() {
+                const name = this.newGroupName.trim();
+                if (!name) return;
+                this.customGroups.push({ name, values: [], newValue: '' });
+                this.newGroupName = '';
+            },
+
+            addCustomGroupValue(groupIdx) {
+                const group = this.customGroups[groupIdx];
+                const val = (group.newValue || '').trim();
+                if (!val) return;
+                const code = val.toLowerCase().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').substring(0, 30);
+                if (group.values.some(v => v.value === val)) return;
+                group.values.push({ value: val, code: code, selected: true });
+                group.newValue = '';
+            },
+
+            removeCustomGroupValue(groupIdx, valIdx) {
+                this.customGroups[groupIdx].values.splice(valIdx, 1);
+            },
+
+            removeCustomGroup(groupIdx) {
+                this.customGroups.splice(groupIdx, 1);
             },
 
             // Legacy generate from options (keeping for backwards compatibility)
@@ -878,21 +877,78 @@
                             </div>
                         </div>
 
-                        <!-- Generate Button -->
+                        <!-- Custom Attribute Groups (Капюшон, Материал, etc.) -->
+                        <div class="space-y-4 border-t border-gray-100 pt-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-medium text-gray-800">Дополнительные характеристики</h3>
+                                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">например: Капюшон, Материал</span>
+                            </div>
+
+                            <!-- Existing custom groups -->
+                            <template x-for="(group, gIdx) in customGroups" :key="gIdx">
+                                <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-gray-700" x-text="group.name"></h4>
+                                        <button type="button" @click="removeCustomGroup(gIdx)"
+                                                class="text-xs text-red-500 hover:text-red-700">Удалить группу</button>
+                                    </div>
+                                    <!-- Values -->
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="(val, vIdx) in group.values" :key="vIdx">
+                                            <label class="cursor-pointer">
+                                                <input type="checkbox" x-model="val.selected" class="peer hidden">
+                                                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition-all
+                                                             peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
+                                                             bg-white text-gray-700 border-gray-300 hover:border-indigo-300">
+                                                    <span x-text="val.value"></span>
+                                                    <button type="button" @click.prevent="removeCustomGroupValue(gIdx, vIdx)"
+                                                            class="ml-1 opacity-60 hover:opacity-100">&times;</button>
+                                                </span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                    <!-- Add value input -->
+                                    <div class="flex gap-2">
+                                        <input type="text"
+                                               x-model="group.newValue"
+                                               @keydown.enter.prevent="addCustomGroupValue(gIdx)"
+                                               class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                                               :placeholder="'Добавить значение для ' + group.name">
+                                        <button type="button" @click="addCustomGroupValue(gIdx)"
+                                                class="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition">
+                                            + Добавить
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Add new group -->
+                            <div class="flex gap-2">
+                                <input type="text"
+                                       x-model="newGroupName"
+                                       @keydown.enter.prevent="addCustomGroup"
+                                       class="flex-1 border border-dashed border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 bg-white"
+                                       placeholder="Название характеристики (например: Капюшон)">
+                                <button type="button" @click="addCustomGroup"
+                                        class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm hover:bg-indigo-100 transition font-medium">
+                                    + Добавить группу
+                                </button>
+                            </div>
+                        </div>
+
+                                                <!-- Generate Button -->
                         <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                             <div class="text-sm text-gray-600">
-                                <span x-show="selectedSizes.length > 0 && selectedColors.length > 0">
-                                    Будет создано <span class="font-semibold text-indigo-600" x-text="selectedSizes.length * selectedColors.length"></span> вариантов
-                                </span>
-                                <span x-show="selectedSizes.length > 0 && selectedColors.length === 0">
-                                    Будет создано <span class="font-semibold text-indigo-600" x-text="selectedSizes.length"></span> вариантов (только размеры)
-                                </span>
-                                <span x-show="selectedSizes.length === 0 && selectedColors.length > 0">
-                                    Будет создано <span class="font-semibold text-indigo-600" x-text="selectedColors.length"></span> вариантов (только цвета)
-                                </span>
-                                <span x-show="selectedSizes.length === 0 && selectedColors.length === 0" class="text-gray-500">
-                                    Будет создан 1 вариант (простой товар без размеров и цветов)
-                                </span>
+                                <span class="font-semibold text-indigo-600" x-text="
+                                    (() => {
+                                        let total = Math.max(1, selectedSizes.length) * Math.max(1, selectedColors.length);
+                                        for (const g of customGroups) {
+                                            const sel = g.values.filter(v => v.selected).length;
+                                            if (sel > 0) total *= sel;
+                                        }
+                                        return total + ' вариантов';
+                                    })()
+                                "></span>
                             </div>
                             <button type="button"
                                     class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-500/25 font-medium"

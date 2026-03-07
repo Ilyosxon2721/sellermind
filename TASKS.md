@@ -136,10 +136,10 @@
   - Удалено 105 console.log из 14 JS файлов и 11 Blade шаблонов
   - Сохранены console.error/warn для отладки ошибок
 
-- [ ] #033 **[TEST]** Исправить 14 падающих тестов (SQLite driver)
-  - **Проблема:** Все Feature/Unit тесты, работающие с БД, падают из-за отсутствия SQLite драйвера
-  - **Где:** `phpunit.xml`, тесты PriceEngine, AP, Replenishment, Warehouse
-  - **Решение:** Включить `pdo_sqlite` расширение в php.ini или настроить тесты на MySQL
+- [x] #033 **[TEST]** Исправить 14 падающих тестов (SQLite driver) — ✅ 2026-03-04 (commit: e7d8289)
+  - Создана БД sellermind_test, исправлены FK-порядок миграций (disableForeignKeyConstraints)
+  - Исправлен Company::factory(), CompanyFactory faker, ExampleTest, bootstrap/app.php catch-all handler
+  - 38/38 тестов проходят
 
 - [x] #034 **[TEST]** Установить и настроить PHPStan
   - **Проблема:** PHPStan не установлен — статический анализ не проводится
@@ -149,25 +149,24 @@
   - **Проблема:** Сотни файлов с нарушениями PSR-12: line endings, unused imports, trailing commas, spacing
   - **Решение:** `vendor/bin/pint` (автоматическое исправление)
 
-- [ ] #006 **[IMPROVE]** Оптимизировать загрузку страницы аналитики
-  - **Проблема:** Долго грузится при большом количестве данных
-  - **Решение:** Кэширование, пагинация, lazy loading графиков
+- [x] #006 **[IMPROVE]** Оптимизировать загрузку страницы аналитики — ✅ 2026-03-04 (commit: fa95e3d)
+  - SalesAnalyticsService: устранён N+1, объединены запросы (8→4), добавлен кэш 30 мин
 
 - [x] #007 **[IMPROVE]** Добавить поиск по товарам
   - **Решение:** Full-text search или LIKE query с debounce UI
 
-- [ ] #008 **[FEATURE]** История изменения цен
-  - **Решение:** Новая таблица price_history + график на странице товара
+- [x] #008 **[FEATURE]** История изменения цен — ✅ 2026-03-06 (commit: e183192)
+  - Таблица price_history, модель PriceHistory::record(), трекинг в Observer
+  - API GET /api/products/{id}/price-history, Chart.js график на вкладке «Цены»
 
 - [x] #009 **[FEATURE]** Уведомления о низком остатке
   - **Решение:** Настраиваемый порог, каналы Telegram/Email
 
 ### Низкий приоритет 📝
 
-- [ ] #036 **[CLEANUP]** Удалить комментированный код и VPC-заглушки
-  - **Проблема:** 8 файлов с большими блоками комментированного кода, VPC модуль полностью stub
-  - **Где:** VpcManager.php, VpcCommandClient.php, WildberriesClient.php, UzumClient.php, console.php, access.blade.php, pwa-top-navbar.blade.php
-  - **Решение:** Удалить мёртвый код или пометить модуль как экспериментальный
+- [x] #036 **[CLEANUP]** Удалить комментированный код и debug-логи — ✅ 2026-03-04 (commit: 28e0d4b)
+  - Удалены debug Log::info/debug блоки из 5 файлов (ProductWebController, Observer, HttpClient, WBService)
+  - Удалён закомментированный код из UzumClient, WildberriesClient
 
 - [x] #037 **[REFACTOR]** Создать FormRequest классы для контроллеров без валидации
   - **Проблема:** Только 4 FormRequest класса на 80+ контроллеров

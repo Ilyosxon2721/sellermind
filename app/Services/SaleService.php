@@ -444,6 +444,7 @@ class SaleService
             ->where('company_id', $companyId)
             ->where('is_active', true)
             ->where('is_deleted', false)
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
             ->when($search, function ($q, $search) {
                 $q->where(function ($query) use ($search) {
                     $query->where('sku', 'like', "%{$search}%")
