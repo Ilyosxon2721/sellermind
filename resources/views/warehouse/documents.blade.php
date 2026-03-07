@@ -172,7 +172,19 @@
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="doc.warehouse?.name || doc.warehouse_id"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(doc.created_at)"></td>
                                 <td class="px-6 py-4 text-right">
-                                    <a :href="`/warehouse/documents/${doc.id}`" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">Открыть</a>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a :href="`/warehouse/documents/${doc.id}`" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">Открыть</a>
+                                        <button x-show="doc.status === 'DRAFT'"
+                                                @click.stop="deleteDoc(doc)"
+                                                class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm transition-colors">
+                                            Удалить
+                                        </button>
+                                        <button x-show="doc.status === 'POSTED'"
+                                                @click.stop="reverseDoc(doc)"
+                                                class="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg text-sm transition-colors">
+                                            Сторно
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>

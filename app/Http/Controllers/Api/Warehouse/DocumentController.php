@@ -216,6 +216,37 @@ class DocumentController extends Controller
         );
     }
 
+
+    /**
+     * Удалить черновой документ
+     * Только для статуса DRAFT — проведённые документы нельзя удалять, только сторнировать
+     */
+    public function destroy($id)
+    {
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
+
+        if ($doc->status !== InventoryDocument::STATUS_DRAFT) {
+            return $this->errorResponse(
+                'Удалить можно только черновые документы. Проведённый документ можно сторнировать.',
+                'invalid_state',
+                null,
+                422
+            );
+        }
+
+        DB::transaction(function () use ($doc) {
+            $doc->lines()->delete();
+            $doc->delete();
+        });
+
+        return $this->successResponse(null, 'Документ удалён');
+    }
+
     public function reverse($id)
     {
         $companyId = $this->getCompanyId();

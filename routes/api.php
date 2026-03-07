@@ -643,7 +643,9 @@ Route::middleware('auth.any')->group(function () {
             Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
             Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
             Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
-            // Отмена проводки — только owner
+            // Удаление черновика — только owner
+            Route::delete('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'destroy']);
+            // Сторнирование проведённого документа — только owner
             Route::middleware('company.owner')->group(function () {
                 Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
             });
