@@ -67,13 +67,21 @@ class DocumentPostingService
                         $original = $document->reversed_document_id
                             ? InventoryDocument::find($document->reversed_document_id)
                             : null;
-                        $outTypes = [InventoryDocument::TYPE_OUT, InventoryDocument::TYPE_WRITE_OFF];
-                        $isOutReversal = $original && in_array($original->type, $outTypes);
-                        // OUT/WRITE_OFF: возвращаем товар → положительный delta
-                        // IN: убираем товар → отрицательный delta
-                        $qtyDelta = $isOutReversal ? -$line->qty : $line->qty;
-                        $costDelta = $isOutReversal ? $totalCostBase : -$totalCostBase;
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $qtyDelta, $costDelta, $userId);
+                        if ($original && $original->type === InventoryDocument::TYPE_MOVE) {
+                            // Сторно перемещения: две записи в обратном направлении
+                            // Original: -qty из source, +qty в dest
+                            // Reversal: +qty в source, -qty из dest
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, 0, $userId, $document->warehouse_id, $line->location_id);
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, 0, $userId, $document->warehouse_to_id, $line->location_to_id);
+                        } else {
+                            $outTypes = [InventoryDocument::TYPE_OUT, InventoryDocument::TYPE_WRITE_OFF];
+                            $isOutReversal = $original && in_array($original->type, $outTypes);
+                            // OUT/WRITE_OFF: возвращаем товар → положительный delta
+                            // IN: убираем товар → отрицательный delta
+                            $qtyDelta = $isOutReversal ? -$line->qty : $line->qty;
+                            $costDelta = $isOutReversal ? $totalCostBase : -$totalCostBase;
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, $qtyDelta, $costDelta, $userId);
+                        }
                         break;
                     default:
                         throw new RuntimeException('Unsupported document type');
