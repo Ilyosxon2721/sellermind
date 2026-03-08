@@ -554,16 +554,20 @@ function pinScreen() {
                 const hash = await this.hashPin(this.pin);
                 localStorage.setItem('sm_pin_hash', hash);
 
-                // Ask about biometric if available
-                if (this.biometricAvailable) {
+                // Check biometric support and offer to enable
+                const biometricSupported = await this.checkBiometricSupport();
+                if (biometricSupported) {
                     const enableBiometric = confirm('{{ __('pwa.pin.enable_biometric') }}');
                     if (enableBiometric) {
-                        localStorage.setItem('sm_biometric_enabled', 'true');
+                        const registered = await this.registerBiometric();
+                        if (!registered) {
+                            console.log('Biometric registration failed');
+                        }
                     }
                 }
 
                 this.success();
-                // Dispatch event for other components
+                this.biometricAvailable = await this.checkBiometric();
                 window.dispatchEvent(new CustomEvent('sm-pin-set'));
             } else {
                 this.showError('{{ __('pwa.pin.mismatch') }}');
@@ -595,9 +599,10 @@ function pinScreen() {
         forgotPin() {
             const confirmed = confirm('{{ __('pwa.pin.forgot_confirm') }}');
             if (confirmed) {
-                // Clear PIN data
+                // Clear all PIN and biometric data
                 localStorage.removeItem('sm_pin_hash');
                 localStorage.removeItem('sm_biometric_enabled');
+                localStorage.removeItem('sm_biometric_credential_id');
 
                 // Redirect to login
                 window.location.href = '/login';
@@ -631,31 +636,102 @@ function pinScreen() {
         async checkBiometric() {
             if (!window.PublicKeyCredential) return false;
             try {
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                const hasCredential = localStorage.getItem('sm_biometric_credential_id');
+                return available && (hasCredential || this.isSettingPin);
+            } catch {
+                return false;
+            }
+        },
+
+        async checkBiometricSupport() {
+            if (!window.PublicKeyCredential) return false;
+            try {
                 return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
             } catch {
                 return false;
             }
         },
 
-        async useBiometric() {
+        async registerBiometric() {
             try {
-                // Use Web Authentication API for biometric
-                const credential = await navigator.credentials.get({
+                const challenge = new Uint8Array(32);
+                crypto.getRandomValues(challenge);
+
+                const userId = new TextEncoder().encode(
+                    localStorage.getItem('sm_user_id') || 'sellermind_user_' + Date.now()
+                );
+
+                const credential = await navigator.credentials.create({
                     publicKey: {
-                        challenge: new Uint8Array(32),
+                        challenge: challenge,
+                        rp: {
+                            name: 'SellerMind',
+                            id: window.location.hostname
+                        },
+                        user: {
+                            id: userId,
+                            name: 'SellerMind User',
+                            displayName: 'SellerMind'
+                        },
+                        pubKeyCredParams: [
+                            { alg: -7, type: 'public-key' },
+                            { alg: -257, type: 'public-key' }
+                        ],
+                        authenticatorSelection: {
+                            authenticatorAttachment: 'platform',
+                            userVerification: 'required',
+                            residentKey: 'preferred'
+                        },
                         timeout: 60000,
-                        userVerification: 'required',
-                        rpId: window.location.hostname,
-                        allowCredentials: []
+                        attestation: 'none'
                     }
                 });
 
                 if (credential) {
+                    const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                    localStorage.setItem('sm_biometric_credential_id', credentialId);
+                    localStorage.setItem('sm_biometric_enabled', 'true');
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                console.error('Biometric registration failed:', e);
+                return false;
+            }
+        },
+
+        async useBiometric() {
+            try {
+                const credentialIdBase64 = localStorage.getItem('sm_biometric_credential_id');
+                if (!credentialIdBase64) {
+                    console.log('No biometric credential stored');
+                    return;
+                }
+
+                const credentialIdArray = Uint8Array.from(atob(credentialIdBase64), c => c.charCodeAt(0));
+                const challenge = new Uint8Array(32);
+                crypto.getRandomValues(challenge);
+
+                const assertion = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: challenge,
+                        timeout: 60000,
+                        userVerification: 'required',
+                        rpId: window.location.hostname,
+                        allowCredentials: [{
+                            id: credentialIdArray,
+                            type: 'public-key',
+                            transports: ['internal']
+                        }]
+                    }
+                });
+
+                if (assertion) {
                     this.success();
                 }
             } catch (e) {
-                console.log('Biometric cancelled or failed:', e.message);
-                // User cancelled or biometric failed - they can use PIN
+                console.log('Biometric auth cancelled or failed:', e.message);
             }
         },
 
