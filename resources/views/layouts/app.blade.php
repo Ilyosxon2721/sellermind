@@ -165,6 +165,11 @@
     <x-pwa.more-menu />
     @endauth
 
+    <!-- PWA Tab Bar (standalone PWA mode only) -->
+    @auth
+    <x-pwa-tab-bar />
+    @endauth
+
     <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
     @vite('resources/js/pwa.js')
 

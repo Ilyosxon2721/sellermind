@@ -84,17 +84,24 @@
             </button>
         </div>
 
-        {{-- Forgot PIN Link --}}
-        <button type="button"
-                class="sm-pin-forgot"
-                x-show="!isSettingPin"
-                @click="forgotPin()">
-            {{ __('pwa.pin.forgot') }}
-        </button>
+        {{-- Action Links --}}
+        <div class="sm-pin-actions" x-show="!isSettingPin">
+            <button type="button"
+                    class="sm-pin-action-btn"
+                    @click="forgotPin()">
+                {{ __('pwa.pin.forgot') }}
+            </button>
+            <span class="sm-pin-action-divider">•</span>
+            <button type="button"
+                    class="sm-pin-action-btn"
+                    @click="logout()">
+                Выйти
+            </button>
+        </div>
 
         {{-- Cancel Setup --}}
         <button type="button"
-                class="sm-pin-forgot"
+                class="sm-pin-action-btn"
                 x-show="isSettingPin"
                 @click="cancelSetup()">
             {{ __('pwa.pin.cancel') }}
@@ -168,6 +175,7 @@
 /* Logo */
 .sm-pin-logo {
     margin-bottom: 24px;
+    animation: fadeInScale 0.3s ease-out forwards;
 }
 
 .sm-pin-logo-icon {
@@ -183,6 +191,17 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* Title & Subtitle */
 .sm-pin-title {
     font-size: 26px;
@@ -191,21 +210,38 @@
     margin: 0 0 8px 0;
     text-align: center;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    animation: fadeInUp 0.3s ease-out 0.1s forwards;
+    opacity: 0;
 }
 
 .sm-pin-subtitle {
     font-size: 15px;
     color: rgba(255, 255, 255, 0.9);
     margin: 0 0 32px 0;
+    animation: fadeInUp 0.3s ease-out 0.15s forwards;
+    opacity: 0;
     text-align: center;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* PIN Dots */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .sm-pin-dots {
     display: flex;
     gap: 18px;
     margin-bottom: 12px;
+    animation: fadeInUp 0.3s ease-out 0.2s forwards;
+    opacity: 0;
 }
 
 .sm-pin-dot {
@@ -255,6 +291,19 @@
     width: 100%;
     max-width: 280px;
     margin-bottom: 24px;
+    animation: keypadSlideUp 0.4s ease-out 0.25s forwards;
+    opacity: 0;
+}
+
+@keyframes keypadSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .sm-pin-key {
@@ -300,22 +349,34 @@
     justify-self: center;
 }
 
-/* Forgot PIN Link */
-.sm-pin-forgot {
+/* Action Links */
+.sm-pin-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sm-pin-action-divider {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+}
+
+.sm-pin-action-btn {
     color: rgba(255, 255, 255, 0.9);
     font-size: 15px;
     font-weight: 500;
     background: none;
     border: none;
-    padding: 12px 24px;
+    padding: 12px 16px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     border-radius: 8px;
     transition: all 0.15s ease;
 }
 
-.sm-pin-forgot:active {
+.sm-pin-action-btn:active {
     background: rgba(255, 255, 255, 0.1);
+    transform: scale(0.98);
 }
 
 /* ============================================
@@ -438,6 +499,10 @@ function pinScreen() {
         biometricAvailable: false,
         attempts: 0,
         maxAttempts: 5,
+        sessionTimeout: 15 * 60 * 1000, // 15 minutes
+        backgroundTimeout: 5 * 60 * 1000, // 5 minutes in background
+        activityTimer: null,
+        backgroundTime: null,
 
         async init() {
             // Only run in PWA mode
@@ -453,13 +518,20 @@ function pinScreen() {
             const hasPinSet = localStorage.getItem('sm_pin_hash');
 
             if (hasPinSet) {
-                // Show PIN screen
-                this.showPinScreen = true;
-                this.lockBody(true);
+                // Check if session is still valid
+                if (this.isSessionValid()) {
+                    // Session valid, no need for PIN
+                    this.showPinScreen = false;
+                    this.startActivityTracking();
+                } else {
+                    // Session expired or not started - show PIN screen
+                    this.showPinScreen = true;
+                    this.lockBody(true);
 
-                // Try biometric first if enabled
-                if (this.biometricAvailable && localStorage.getItem('sm_biometric_enabled') === 'true') {
-                    setTimeout(() => this.useBiometric(), 600);
+                    // Try biometric first if enabled
+                    if (this.biometricAvailable && localStorage.getItem('sm_biometric_enabled') === 'true') {
+                        setTimeout(() => this.useBiometric(), 600);
+                    }
                 }
             }
 
@@ -471,6 +543,78 @@ function pinScreen() {
             // Watch for changes
             this.$watch('showPinScreen', (show) => {
                 this.lockBody(show);
+            });
+
+            // Handle app visibility (background/foreground)
+            this.setupVisibilityHandler();
+        },
+
+        // Session management
+        isSessionValid() {
+            const session = sessionStorage.getItem('sm_pin_session');
+            const lastActivity = localStorage.getItem('sm_last_activity');
+
+            if (!session) return false;
+
+            // Check if session hasn't expired
+            if (lastActivity) {
+                const elapsed = Date.now() - parseInt(lastActivity);
+                if (elapsed > this.sessionTimeout) {
+                    this.clearSession();
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        startSession() {
+            sessionStorage.setItem('sm_pin_session', 'active');
+            this.updateActivity();
+            this.startActivityTracking();
+        },
+
+        clearSession() {
+            sessionStorage.removeItem('sm_pin_session');
+            localStorage.removeItem('sm_last_activity');
+        },
+
+        updateActivity() {
+            localStorage.setItem('sm_last_activity', Date.now().toString());
+        },
+
+        startActivityTracking() {
+            // Update activity on user interactions
+            const updateOnActivity = () => this.updateActivity();
+
+            ['click', 'touchstart', 'keydown', 'scroll'].forEach(event => {
+                document.addEventListener(event, updateOnActivity, { passive: true });
+            });
+        },
+
+        setupVisibilityHandler() {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // App going to background - save timestamp
+                    this.backgroundTime = Date.now();
+                } else {
+                    // App coming to foreground - check if we need PIN
+                    if (this.backgroundTime && localStorage.getItem('sm_pin_hash')) {
+                        const elapsed = Date.now() - this.backgroundTime;
+                        if (elapsed > this.backgroundTimeout) {
+                            // Been in background too long - require PIN
+                            this.clearSession();
+                            this.showPinScreen = true;
+                            this.lockBody(true);
+
+                            // Try biometric
+                            if (this.biometricAvailable && localStorage.getItem('sm_biometric_enabled') === 'true') {
+                                setTimeout(() => this.useBiometric(), 600);
+                            }
+                        }
+                    }
+                    this.backgroundTime = null;
+                }
             });
         },
 
@@ -588,6 +732,7 @@ function pinScreen() {
 
         success() {
             this.haptic([10, 50, 10]);
+            this.startSession(); // Start new session after successful unlock
             this.showPinScreen = false;
             this.isSettingPin = false;
             this.pin = '';
@@ -599,13 +744,37 @@ function pinScreen() {
         forgotPin() {
             const confirmed = confirm('{{ __('pwa.pin.forgot_confirm') }}');
             if (confirmed) {
-                // Clear all PIN and biometric data
+                // Clear all PIN, biometric, and session data
                 localStorage.removeItem('sm_pin_hash');
                 localStorage.removeItem('sm_biometric_enabled');
                 localStorage.removeItem('sm_biometric_credential_id');
+                this.clearSession();
 
                 // Redirect to login
                 window.location.href = '/login';
+            }
+        },
+
+        logout() {
+            const confirmed = confirm('Выйти из аккаунта?');
+            if (confirmed) {
+                // Clear all local data
+                localStorage.removeItem('sm_pin_hash');
+                localStorage.removeItem('sm_biometric_enabled');
+                localStorage.removeItem('sm_biometric_credential_id');
+                localStorage.removeItem('sm_user_id');
+                this.clearSession();
+
+                // POST to logout endpoint
+                fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'Accept': 'application/json'
+                    }
+                }).finally(() => {
+                    window.location.href = '/login';
+                });
             }
         },
 
