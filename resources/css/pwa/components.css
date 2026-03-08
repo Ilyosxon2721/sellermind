@@ -538,3 +538,51 @@
 .sm-toast-success { background: var(--sm-success, #34C759); }
 .sm-toast-warning { background: var(--sm-warning, #FF9500); }
 .sm-toast-error { background: var(--sm-error, #FF3B30); }
+
+/* === HEADER AVATAR === */
+.pwa-mode .sm-header-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--sm-primary), #5856D6);
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s, opacity 0.15s;
+}
+
+.pwa-mode .sm-header-avatar:active {
+    opacity: 0.7;
+    transform: scale(0.95);
+}
+
+/* === PAGE CONTENT === */
+.pwa-mode .sm-page-content {
+    padding-top: calc(var(--sm-header-height) + var(--sm-safe-top));
+    padding-bottom: calc(var(--sm-tabbar-height) + var(--sm-safe-bottom));
+    padding-left: var(--sm-safe-left);
+    padding-right: var(--sm-safe-right);
+    min-height: 100vh;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+
+/* === ACTIVE SCALE === */
+.pwa-mode .active\:scale-98:active {
+    transform: scale(0.98);
+}
+
+/* === SECTION TITLE === */
+.pwa-mode .sm-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sm-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: var(--sm-space-sm);
+}
