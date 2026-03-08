@@ -1353,22 +1353,22 @@ class SalesController extends Controller
 
         // Продажи (ДОХОД) - только завершённые
         $salesCount = $completedOrders->count();
-        $salesAmount = $completedOrders->sum('total_amount');
+        $salesAmount = $this->sumToUzs($completedOrders);
 
         // В транзите (ещё не доход)
         $transitCount = $transitOrders->count();
-        $transitAmount = $transitOrders->sum('total_amount');
+        $transitAmount = $this->sumToUzs($transitOrders);
 
         // В ПВЗ (ожидает выкупа)
         $awaitingPickupCount = $awaitingPickupOrders->count();
-        $awaitingPickupAmount = $awaitingPickupOrders->sum('total_amount');
+        $awaitingPickupAmount = $this->sumToUzs($awaitingPickupOrders);
 
         // Отменённые
         $cancelledCount = $cancelledOrders->count();
-        $cancelledAmount = $cancelledOrders->sum('total_amount');
+        $cancelledAmount = $this->sumToUzs($cancelledOrders);
 
         // Общие суммы для обратной совместимости
-        $totalAmount = $orders->sum('total_amount');
+        $totalAmount = $this->sumToUzs($orders);
         $totalRevenue = $salesAmount; // Теперь доход = только завершённые
 
         // Потенциальный доход (в пути + в ПВЗ)
@@ -1412,18 +1412,18 @@ class SalesController extends Controller
                 'count' => $group->count(),
                 // Продажи (доход)
                 'salesCount' => $completed->count(),
-                'salesAmount' => $completed->sum('total_amount'),
+                'salesAmount' => $this->sumToUzs($completed),
                 // В транзите
                 'transitCount' => $transit->count(),
-                'transitAmount' => $transit->sum('total_amount'),
+                'transitAmount' => $this->sumToUzs($transit),
                 // В ПВЗ
                 'awaitingPickupCount' => $awaitingPickup->count(),
-                'awaitingPickupAmount' => $awaitingPickup->sum('total_amount'),
+                'awaitingPickupAmount' => $this->sumToUzs($awaitingPickup),
                 // Отменённые
                 'cancelledCount' => $cancelled->count(),
-                'cancelledAmount' => $cancelled->sum('total_amount'),
+                'cancelledAmount' => $this->sumToUzs($cancelled),
                 // Для обратной совместимости
-                'amount' => $completed->sum('total_amount'),
+                'amount' => $this->sumToUzs($completed),
             ];
         })->values()->toArray();
 
@@ -1616,5 +1616,20 @@ class SalesController extends Controller
                 : 'Синхронизация уже выполняется',
             'dispatched' => $dispatched,
         ]);
+    }
+
+    /**
+     * Суммировать total_amount с конвертацией в UZS
+     */
+    private function sumToUzs(iterable $orders): float
+    {
+        $total = 0.0;
+        foreach ($orders as $order) {
+            $amount = (float) ($order['total_amount'] ?? 0);
+            $currency = $order['currency'] ?? 'UZS';
+            $total += $this->currencyService->convert($amount, $currency, 'UZS');
+        }
+
+        return $total;
     }
 }
