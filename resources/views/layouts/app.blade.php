@@ -32,9 +32,14 @@
     <link rel="manifest" href="/build/manifest.json">
 
     <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">
     <link rel="apple-touch-icon" sizes="152x152" href="/images/icons/icon-152x152.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-192x192.png">
     <link rel="apple-touch-icon" sizes="167x167" href="/images/icons/icon-192x192.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-72x72.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/icon-72x72.png">
 
     <!-- Resource Hints for Performance -->
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
