@@ -172,7 +172,19 @@
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="doc.warehouse?.name || doc.warehouse_id"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="formatDate(doc.created_at)"></td>
                                 <td class="px-6 py-4 text-right">
-                                    <a :href="`/warehouse/documents/${doc.id}`" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">Открыть</a>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a :href="`/warehouse/documents/${doc.id}`" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">Открыть</a>
+                                        <button x-show="doc.status === 'DRAFT'"
+                                                @click.stop="deleteDoc(doc)"
+                                                class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm transition-colors">
+                                            Удалить
+                                        </button>
+                                        <button x-show="doc.status === 'POSTED'"
+                                                @click.stop="reverseDoc(doc)"
+                                                class="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg text-sm transition-colors">
+                                            Сторно
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -330,6 +342,38 @@
                 return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             },
 
+
+            async deleteDoc(doc) {
+                if (!confirm('Удалить черновик "' + doc.doc_no + '"? Это действие нельзя отменить.')) return;
+                try {
+                    const res = await fetch('/api/marketplace/inventory/documents/' + doc.id, {
+                        method: 'DELETE', headers: this.getAuthHeaders()
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.items = this.items.filter(d => d.id !== doc.id);
+                        this.showToast('Документ удалён');
+                    } else {
+                        alert('Ошибка: ' + (data.error || data.message || 'Не удалось удалить'));
+                    }
+                } catch(e) { alert('Ошибка: ' + e.message); }
+            },
+
+            async reverseDoc(doc) {
+                if (!confirm('Сторнировать документ "' + doc.doc_no + '"? Будет создана обратная проводка.')) return;
+                try {
+                    const res = await fetch('/api/marketplace/inventory/documents/' + doc.id + '/reverse', {
+                        method: 'POST', headers: this.getAuthHeaders()
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.showToast('Сторно создано успешно!');
+                        await this.load();
+                    } else {
+                        alert('Ошибка: ' + (data.error || data.message || 'Не удалось сторнировать'));
+                    }
+                } catch(e) { alert('Ошибка: ' + e.message); }
+            },
             async load() {
                 this.error = '';
                 this.loading = true;

@@ -4,7 +4,7 @@
         <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
         <a href="{{ route('web.products.index') }}" class="text-sm text-gray-500 hover:text-gray-700">Сбросить</a>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Поиск</label>
             <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
@@ -19,6 +19,17 @@
                 @foreach($categories as $category)
                     <option value="{{ $category->id }}" @selected(($filters['category_id'] ?? null) == $category->id)>
                         {{ $category->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Маркетплейс</label>
+            <select name="channel_id" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" @change="$refs.filterForm.submit()">
+                <option value="">Все маркетплейсы</option>
+                @foreach($channels as $channel)
+                    <option value="{{ $channel->id }}" @selected(($filters['channel_id'] ?? null) == $channel->id)>
+                        {{ $channel->name }}
                     </option>
                 @endforeach
             </select>
@@ -137,9 +148,20 @@
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">{{ optional($product->updated_at)->format('d.m.Y H:i') }}</td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ route('web.products.edit', $product) }}" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
-                                Редактировать
-                            </a>
+                            <div class="flex items-center justify-end space-x-2">
+                                <a href="{{ route('web.products.edit', $product) }}" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors">
+                                    Редактировать
+                                </a>
+                                <form method="POST" action="{{ route('web.products.destroy', $product) }}"
+                                      onsubmit="return confirm('Удалить товар «{{ addslashes($product->name) }}»?')"
+                                      class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg text-sm transition-colors">
+                                        Удалить
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

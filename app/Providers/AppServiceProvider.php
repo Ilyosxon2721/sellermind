@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Events\StockUpdated;
 use App\Listeners\SyncStockToMarketplaces;
+use App\Models\OfflineSale;
 use App\Models\OzonOrder;
 use App\Models\ProductVariant;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
+use App\Observers\OfflineSaleObserver;
 use App\Observers\OzonOrderObserver;
 use App\Observers\ProductVariantObserver;
 use App\Observers\RismentOrderObserver;
@@ -46,12 +48,30 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Rate limiter для вебхуков маркетплейсов
+        RateLimiter::for('webhooks', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        // Rate limiter для аутентификации (защита от брутфорса)
+        RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        // Rate limiter для health check эндпоинтов
+        RateLimiter::for('health', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
+
         // Register observers
         ProductVariant::observe(ProductVariantObserver::class);
         UzumOrder::observe(UzumOrderObserver::class);
         WbOrder::observe(WbOrderObserver::class);
         OzonOrder::observe(OzonOrderObserver::class);
         YandexMarketOrder::observe(YandexMarketOrderObserver::class);
+
+        // Offline sales observer (notifications)
+        OfflineSale::observe(OfflineSaleObserver::class);
 
         // RISMENT integration observer (FBS orders → Redis queue)
         WbOrder::observe(RismentOrderObserver::class);

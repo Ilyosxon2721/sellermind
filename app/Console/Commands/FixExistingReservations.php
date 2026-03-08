@@ -77,7 +77,7 @@ class FixExistingReservations extends Command
                 foreach ($orderReservations as $reservation) {
                     // Возвращаем остатки через sku
                     if ($reservation->sku && $reservation->sku->productVariant) {
-                        $reservation->sku->productVariant->incrementStock($reservation->qty);
+                        $reservation->sku->productVariant->incrementStockQuietly($reservation->qty);
                     }
                     $reservation->delete();
                     $deleted++;

@@ -1,0 +1,134 @@
+/* =============================================
+   SellerMind PWA - Skeleton Loading
+   ============================================= */
+
+/* Shimmer Animation */
+@keyframes sm-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.pwa-mode .sm-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: sm-shimmer 1.5s infinite;
+}
+
+/* Skeleton Card */
+.pwa-mode .sm-skeleton-card {
+    background: var(--sm-bg-secondary);
+    border-radius: var(--sm-radius-lg);
+    padding: var(--sm-space-lg);
+    display: flex;
+    gap: var(--sm-space-md);
+}
+
+.pwa-mode .sm-skeleton-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--sm-radius-md);
+    flex-shrink: 0;
+}
+
+.pwa-mode .sm-skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-space-sm);
+}
+
+.pwa-mode .sm-skeleton-line {
+    height: 14px;
+    border-radius: 4px;
+}
+
+/* Skeleton Metric */
+.pwa-mode .sm-skeleton-metric {
+    background: var(--sm-bg-secondary);
+    border-radius: var(--sm-radius-lg);
+    padding: var(--sm-space-lg);
+}
+
+.pwa-mode .sm-skeleton-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--sm-radius-md);
+    margin-bottom: var(--sm-space-md);
+}
+
+.pwa-mode .sm-skeleton-value {
+    height: 24px;
+    width: 60%;
+    border-radius: 4px;
+    margin-bottom: var(--sm-space-xs);
+}
+
+.pwa-mode .sm-skeleton-label {
+    height: 12px;
+    width: 40%;
+    border-radius: 4px;
+}
+
+/* Skeleton List */
+.pwa-mode .sm-skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-space-md);
+}
+
+.pwa-mode .sm-skeleton-list-item {
+    background: var(--sm-bg-secondary);
+    border-radius: var(--sm-radius-lg);
+    padding: var(--sm-space-lg);
+    height: 80px;
+}
+
+/* Pull to Refresh */
+.pwa-mode .sm-refresh-indicator {
+    position: fixed;
+    top: calc(var(--sm-header-height) + var(--sm-safe-top) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--sm-bg-secondary);
+    border-radius: 20px;
+    padding: 8px 16px;
+    box-shadow: var(--sm-shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--sm-text-secondary);
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 50;
+}
+
+.pwa-mode .sm-refresh-indicator.visible {
+    opacity: 1;
+}
+
+.pwa-mode .sm-refresh-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--sm-bg-tertiary);
+    border-top-color: var(--sm-primary);
+    border-radius: 50%;
+    animation: sm-spin 0.8s linear infinite;
+}
+
+@keyframes sm-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Cache Indicator */
+.pwa-mode .sm-cache-badge {
+    position: fixed;
+    top: calc(var(--sm-header-height) + var(--sm-safe-top) + 10px);
+    right: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 50;
+}

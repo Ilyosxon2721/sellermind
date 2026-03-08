@@ -60,7 +60,7 @@ Schedule::command('wb:sync-products all')
 Schedule::call(function () {
     $wbAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'wb')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($wbAccounts as $account) {
         \App\Jobs\SyncNewWildberriesOrdersJob::dispatch($account);
@@ -76,7 +76,7 @@ Schedule::call(function () {
 Schedule::call(function () {
     $wbAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'wb')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($wbAccounts as $account) {
         \App\Jobs\UpdateWildberriesOrdersStatusJob::dispatch($account);
@@ -119,7 +119,7 @@ Schedule::command('ozon:sync-orders')
 Schedule::call(function () {
     $uzumAccounts = \App\Models\MarketplaceAccount::where('marketplace', 'uzum')
         ->where('is_active', true)
-        ->get();
+        ->cursor();
 
     foreach ($uzumAccounts as $account) {
         \Illuminate\Support\Facades\Artisan::call('uzum:pull-products', ['accountId' => $account->id]);
@@ -169,6 +169,24 @@ Schedule::command('uzum:sync-expenses --days=365')
     })
     ->appendOutputTo(storage_path('logs/uzum-finance-sync.log'));
 
+// Yandex Market: Синхронизация заказов каждые 15 минут
+Schedule::command('ym:sync-orders --days=7')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('Yandex Market orders sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
+
+// Yandex Market: Push остатков каждый час
+Schedule::command('ym:push-stocks')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->onFailure(function () {
+        \Log::error('Yandex Market stocks push failed');
+    })
+    ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
+
 // Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
 // Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
 Schedule::command('marketplace:sync-expenses --period=30days')
@@ -190,9 +208,7 @@ Schedule::command('marketplace:sync-expenses --period=30days')
 
 // Smart Promotions: Создание автоматических промо для неликвида (каждый понедельник)
 Schedule::call(function () {
-    $companies = \App\Models\Company::where('is_active', true)->get();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::where('is_active', true)->cursor() as $company) {
         \App\Jobs\ProcessAutoPromotionsJob::dispatch($company->id, [
             'min_days_no_sale' => 30,
             'min_stock' => 5,
@@ -212,9 +228,7 @@ Schedule::call(function () {
 
 // Smart Promotions: Уведомления об истекающих акциях (каждый день)
 Schedule::call(function () {
-    $companies = \App\Models\Company::where('is_active', true)->get();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::where('is_active', true)->cursor() as $company) {
         \App\Jobs\SendPromotionExpiringNotificationsJob::dispatch($company->id, 3);
     }
 })->daily()
@@ -230,9 +244,7 @@ Schedule::call(function () {
 // Sales Analytics: Обновление кэша аналитики (каждый час)
 Schedule::call(function () {
     // Предварительный расчет аналитики для всех компаний
-    $companies = \App\Models\Company::all();
-
-    foreach ($companies as $company) {
+    foreach (\App\Models\Company::cursor() as $company) {
         try {
             $analyticsService = app(\App\Services\SalesAnalyticsService::class);
 
@@ -313,3 +325,17 @@ Schedule::command('marketplace:auto-link --all')
         \Log::error('Marketplace auto-link failed');
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
+
+
+// Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
+Schedule::command('stock:check-low')
+    ->dailyAt('08:00')
+    ->name('check-low-stock')
+    ->withoutOverlapping(15)
+    ->onSuccess(function () {
+        \Log::info('Low stock check completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Low stock check failed');
+    })
+    ->appendOutputTo(storage_path('logs/low-stock.log'));

@@ -211,7 +211,7 @@ class FixUzumReservations extends Command
 
                 // Reverse the stock deduction (add back)
                 if ($variant) {
-                    $variant->incrementStock($qty);
+                    $variant->incrementStockQuietly($qty);
 
                     // Create reversal ledger entry
                     StockLedger::create([
@@ -284,7 +284,7 @@ class FixUzumReservations extends Command
 
                 // Return stock
                 if ($variant) {
-                    $variant->incrementStock($qty);
+                    $variant->incrementStockQuietly($qty);
 
                     StockLedger::create([
                         'company_id' => $account->company_id,

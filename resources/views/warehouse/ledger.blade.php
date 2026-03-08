@@ -201,13 +201,15 @@
 
             formatDate(val) {
                 if (!val) return '—';
-                return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return new Date(val).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' });
             },
 
             formatSourceType(row) {
                 if (row.document?.type) return row.document.type;
                 const labels = {
+                    'marketplace_order': 'Резерв (заказ)',
                     'marketplace_order_reserve': 'Резерв',
+                    'marketplace_order_sold': 'Продажа (маркетплейс)',
                     'marketplace_order_cancel': 'Отмена резерва',
                     'WB_ORDER': 'WB заказ',
                     'WB_ORDER_CANCEL': 'WB отмена',
@@ -222,6 +224,12 @@
                     'stock_adjustment': 'Корректировка',
                     'COST_ADJUSTMENT': 'Корр. себестоимости',
                     'INITIAL_SYNC': 'Начальная синхр.',
+                    'reservation_fix_reversal': 'Корр. резерва',
+                    'reservation_fix_delete': 'Удаление резерва',
+                    'reservation_cleanup_reversal': 'Очистка резерва',
+                    'risment_stock_sync': 'Синхр. Risment',
+                    'risment_stock_adjust': 'Корр. Risment',
+                    'risment_stock_update': 'Обновл. Risment',
                 };
                 return labels[row.source_type] || row.source_type || '—';
             },
@@ -257,7 +265,7 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.data || json.data || [];
-                    const pag = json.data?.pagination || json.meta || {};
+                    const pag = json.data?.meta || json.data?.pagination || {};
                     this.cursor.page = pag.current_page || 1;
                     this.cursor.lastPage = pag.last_page || 1;
                     this.cursor.total = pag.total || 0;

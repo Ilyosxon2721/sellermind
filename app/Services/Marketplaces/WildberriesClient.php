@@ -950,17 +950,6 @@ class WildberriesClient implements MarketplaceClientInterface
         // GET /content/v2/get/cards/list with filter by nmId
 
         try {
-            // $response = $this->http->post($account, '/content/v2/get/cards/list', [
-            //     'settings' => [
-            //         'filter' => [
-            //             'withPhoto' => -1,
-            //             'nmID' => [(int) $externalId],
-            //         ],
-            //     ],
-            // ]);
-            //
-            // return $response['cards'][0] ?? null;
-
             return null;
         } catch (\Exception $e) {
             return null;

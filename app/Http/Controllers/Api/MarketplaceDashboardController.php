@@ -86,37 +86,46 @@ class MarketplaceDashboardController extends Controller
         $weekAgo = now()->subDays(7)->startOfDay();
         $monthAgo = now()->subDays(30)->startOfDay();
 
-        // Uzum orders
-        $uzumTodayAll = UzumOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $today);
-        $uzumWeekAll = UzumOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $weekAgo);
-        $uzumMonthAll = UzumOrder::whereIn('marketplace_account_id', $accountIds)->where('ordered_at', '>=', $monthAgo);
+        // Uzum — один агрегирующий запрос вместо 6 clone-запросов
+        $uzumStats = UzumOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('ordered_at', '>=', $monthAgo)
+            ->selectRaw("
+                SUM(CASE WHEN ordered_at >= ? THEN 1 ELSE 0 END) as today_total,
+                SUM(CASE WHEN ordered_at >= ? AND status_normalized NOT IN ('cancelled','canceled','CANCELED','PENDING_CANCELLATION') THEN 1 ELSE 0 END) as today_active,
+                SUM(CASE WHEN ordered_at >= ? THEN 1 ELSE 0 END) as week_total,
+                SUM(CASE WHEN ordered_at >= ? AND status_normalized NOT IN ('cancelled','canceled','CANCELED','PENDING_CANCELLATION') THEN 1 ELSE 0 END) as week_active,
+                COUNT(*) as month_total,
+                SUM(CASE WHEN status_normalized NOT IN ('cancelled','canceled','CANCELED','PENDING_CANCELLATION') THEN 1 ELSE 0 END) as month_active
+            ", [$today, $today, $weekAgo, $weekAgo])
+            ->first();
 
-        // WB orders (using WildberriesOrder)
-        $wbTodayAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $today);
-        $wbWeekAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $weekAgo);
-        $wbMonthAll = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)->where('order_date', '>=', $monthAgo);
+        // WB — один агрегирующий запрос вместо 6 clone-запросов
+        $wbStats = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+            ->where('order_date', '>=', $monthAgo)
+            ->selectRaw('
+                SUM(CASE WHEN order_date >= ? THEN 1 ELSE 0 END) as today_total,
+                SUM(CASE WHEN order_date >= ? AND is_cancel = 0 AND is_return = 0 THEN 1 ELSE 0 END) as today_active,
+                SUM(CASE WHEN order_date >= ? THEN 1 ELSE 0 END) as week_total,
+                SUM(CASE WHEN order_date >= ? AND is_cancel = 0 AND is_return = 0 THEN 1 ELSE 0 END) as week_active,
+                COUNT(*) as month_total,
+                SUM(CASE WHEN is_cancel = 0 AND is_return = 0 THEN 1 ELSE 0 END) as month_active
+            ', [$today, $today, $weekAgo, $weekAgo])
+            ->first();
 
-        // Not cancelled counts
-        $todayCount = (clone $uzumTodayAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbTodayAll)->where('is_cancel', false)->where('is_return', false)->count();
+        // Активные заказы (не отменённые)
+        $todayCount = ($uzumStats->today_active ?? 0) + ($wbStats->today_active ?? 0);
+        $weekCount = ($uzumStats->week_active ?? 0) + ($wbStats->week_active ?? 0);
+        $monthCount = ($uzumStats->month_active ?? 0) + ($wbStats->month_active ?? 0);
 
-        $weekCount = (clone $uzumWeekAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbWeekAll)->where('is_cancel', false)->where('is_return', false)->count();
+        // Отменённые заказы = total - active
+        $cancelledToday = (($uzumStats->today_total ?? 0) - ($uzumStats->today_active ?? 0))
+            + (($wbStats->today_total ?? 0) - ($wbStats->today_active ?? 0));
+        $cancelledWeek = (($uzumStats->week_total ?? 0) - ($uzumStats->week_active ?? 0))
+            + (($wbStats->week_total ?? 0) - ($wbStats->week_active ?? 0));
+        $cancelledMonth = (($uzumStats->month_total ?? 0) - ($uzumStats->month_active ?? 0))
+            + (($wbStats->month_total ?? 0) - ($wbStats->month_active ?? 0));
 
-        $monthCount = (clone $uzumMonthAll)->whereNotIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbMonthAll)->where('is_cancel', false)->where('is_return', false)->count();
-
-        // Cancelled counts
-        $cancelledToday = (clone $uzumTodayAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbTodayAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
-
-        $cancelledWeek = (clone $uzumWeekAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbWeekAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
-
-        $cancelledMonth = (clone $uzumMonthAll)->whereIn('status_normalized', self::CANCELLED_STATUSES)->count()
-            + (clone $wbMonthAll)->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))->count();
-
-        // By status (for month)
+        // By status (for month) — Uzum
         $uzumByStatus = UzumOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('ordered_at', '>=', $monthAgo)
             ->select('status_normalized', DB::raw('count(*) as count'))
@@ -124,15 +133,21 @@ class MarketplaceDashboardController extends Controller
             ->pluck('count', 'status_normalized')
             ->toArray();
 
-        // WB orders by status - calculate from flags
-        $wbByStatus = [];
-        $wbMonthOrders = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+        // WB orders by status — SQL-агрегация вместо загрузки всех заказов в память
+        $wbByStatusRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
             ->where('order_date', '>=', $monthAgo)
-            ->get();
-        foreach ($wbMonthOrders as $order) {
-            $status = $order->is_cancel || $order->is_return ? 'cancelled' : ($order->is_realization ? 'completed' : 'processing');
-            $wbByStatus[$status] = ($wbByStatus[$status] ?? 0) + 1;
-        }
+            ->selectRaw('
+                SUM(CASE WHEN is_cancel = 1 OR is_return = 1 THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN is_cancel = 0 AND is_return = 0 AND is_realization = 1 THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN is_cancel = 0 AND is_return = 0 AND is_realization = 0 THEN 1 ELSE 0 END) as processing
+            ')
+            ->first();
+
+        $wbByStatus = array_filter([
+            'cancelled' => (int) ($wbByStatusRow->cancelled ?? 0),
+            'completed' => (int) ($wbByStatusRow->completed ?? 0),
+            'processing' => (int) ($wbByStatusRow->processing ?? 0),
+        ]);
 
         // Merge status counts
         $byStatus = [];

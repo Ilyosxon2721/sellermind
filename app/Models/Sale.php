@@ -73,7 +73,8 @@ class Sale extends Model
         'metadata' => 'array',
     ];
 
-    protected $appends = ['status_label', 'type_label'];
+    // Убрано из $appends — вычисляется в контроллере/API Resource при необходимости
+    // protected $appends = ['status_label', 'type_label'];
 
     /**
      * Relationships
@@ -184,6 +185,7 @@ class Sale extends Model
             'marketplace' => 'С маркетплейса',
             'manual' => 'Ручная',
             'pos' => 'POS',
+            'store' => 'Интернет-магазин',
             default => $this->type,
         };
     }
@@ -201,6 +203,7 @@ class Sale extends Model
             'manual' => 'MAN',
             'pos' => 'POS',
             'marketplace' => 'MP',
+            'store' => 'STORE',
             default => 'SALE',
         };
 

@@ -42,7 +42,7 @@ class RismentWebhookLog extends Model
 
     public function needsRetry(): bool
     {
-        return !$this->isDelivered()
+        return ! $this->isDelivered()
             && $this->attempts < 5
             && ($this->next_retry_at === null || $this->next_retry_at->isPast());
     }

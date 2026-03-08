@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Warehouse\WarehouseMappingRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceWarehouse;
 use App\Models\Warehouse\Warehouse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class WarehouseMappingController extends Controller
 {
@@ -18,6 +18,11 @@ class WarehouseMappingController extends Controller
      */
     public function index(MarketplaceAccount $account)
     {
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
+        }
+
         $mappings = MarketplaceWarehouse::where('marketplace_account_id', $account->id)
             ->with('localWarehouse')
             ->orderBy('name')
@@ -35,6 +40,11 @@ class WarehouseMappingController extends Controller
      */
     public function availableWarehouses(MarketplaceAccount $account)
     {
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
+        }
+
         $warehouses = MarketplaceWarehouse::getAvailableWbWarehouses($account);
 
         return response()->json([
@@ -49,6 +59,11 @@ class WarehouseMappingController extends Controller
      */
     public function syncWarehouses(MarketplaceAccount $account)
     {
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
+        }
+
         $result = MarketplaceWarehouse::syncFromMarketplace($account);
 
         return response()->json([
@@ -64,23 +79,14 @@ class WarehouseMappingController extends Controller
      *
      * POST /api/marketplace/{account}/warehouse-mappings
      */
-    public function store(Request $request, MarketplaceAccount $account)
+    public function store(WarehouseMappingRequest $request, MarketplaceAccount $account)
     {
-        $validator = Validator::make($request->all(), [
-            'marketplace_warehouse_id' => 'required|integer',
-            'local_warehouse_id' => 'nullable|integer|exists:warehouses,id',
-            'name' => 'nullable|string|max:255',
-            'type' => 'nullable|string|max:20',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
         }
 
-        $data = $validator->validated();
+        $data = $request->validated();
 
         // Валидация: local_warehouse_id должен быть уникальным в рамках аккаунта
         if (! empty($data['local_warehouse_id'])) {
@@ -120,8 +126,13 @@ class WarehouseMappingController extends Controller
      *
      * PUT /api/marketplace/{account}/warehouse-mappings/{mapping}
      */
-    public function update(Request $request, MarketplaceAccount $account, MarketplaceWarehouse $mapping)
+    public function update(WarehouseMappingRequest $request, MarketplaceAccount $account, MarketplaceWarehouse $mapping)
     {
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
+        }
+
         // Ensure the mapping belongs to this account
         if ($mapping->marketplace_account_id !== $account->id) {
             return response()->json([
@@ -130,19 +141,7 @@ class WarehouseMappingController extends Controller
             ], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'local_warehouse_id' => 'nullable|integer|exists:warehouses,id',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $mapping->update($validator->validated());
+        $mapping->update($request->validated());
 
         return response()->json([
             'success' => true,
@@ -158,6 +157,11 @@ class WarehouseMappingController extends Controller
      */
     public function destroy(MarketplaceAccount $account, MarketplaceWarehouse $mapping)
     {
+        // Проверка доступа к аккаунту маркетплейса
+        if (! request()->user()->hasCompanyAccess($account->company_id)) {
+            abort(403, 'Access denied');
+        }
+
         // Ensure the mapping belongs to this account
         if ($mapping->marketplace_account_id !== $account->id) {
             return response()->json([

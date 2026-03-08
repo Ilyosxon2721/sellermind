@@ -81,7 +81,7 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
         // Рассчитываем оставшееся время
         if (isset($progress['started_at']) && isset($progress['processed']) && isset($progress['total']) && $progress['processed'] > 0) {
             $startedAt = \Carbon\Carbon::parse($progress['started_at']);
-            $elapsed = now()->diffInSeconds($startedAt);
+            $elapsed = max(0, now()->timestamp - $startedAt->timestamp);
             $rate = $progress['processed'] / max($elapsed, 1); // items per second
             $remaining = $progress['total'] - $progress['processed'];
             $progress['estimated_seconds_remaining'] = $rate > 0 ? (int) ceil($remaining / $rate) : null;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\CashAccountRequest;
 use App\Models\Finance\CashAccount;
 use App\Models\Finance\CashTransaction;
 use App\Models\Finance\MarketplacePayout;
@@ -39,27 +40,14 @@ class CashAccountController extends Controller
     /**
      * Создать новый счёт
      */
-    public function store(Request $request)
+    public function store(CashAccountRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:cash,bank,card,ewallet,marketplace,other'],
-            'currency_code' => ['nullable', 'string', 'max:8'],
-            'initial_balance' => ['nullable', 'numeric', 'min:0'],
-            'bank_name' => ['nullable', 'string', 'max:255'],
-            'account_number' => ['nullable', 'string', 'max:50'],
-            'bik' => ['nullable', 'string', 'max:50'],
-            'card_number' => ['nullable', 'string', 'max:4'],
-            'marketplace_account_id' => ['nullable', 'exists:marketplace_accounts,id'],
-            'marketplace' => ['nullable', 'string', 'max:32'],
-            'is_default' => ['nullable', 'boolean'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $data['company_id'] = $companyId;
         $data['balance'] = $data['initial_balance'] ?? 0;
@@ -95,7 +83,7 @@ class CashAccountController extends Controller
     /**
      * Обновить счёт
      */
-    public function update(Request $request, int $id)
+    public function update(CashAccountRequest $request, int $id)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -104,18 +92,7 @@ class CashAccountController extends Controller
 
         $account = CashAccount::byCompany($companyId)->findOrFail($id);
 
-        $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'type' => ['sometimes', 'in:cash,bank,card,ewallet,marketplace,other'],
-            'currency_code' => ['nullable', 'string', 'max:8'],
-            'bank_name' => ['nullable', 'string', 'max:255'],
-            'account_number' => ['nullable', 'string', 'max:50'],
-            'bik' => ['nullable', 'string', 'max:50'],
-            'card_number' => ['nullable', 'string', 'max:4'],
-            'is_default' => ['nullable', 'boolean'],
-            'is_active' => ['nullable', 'boolean'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         if (! empty($data['is_default'])) {
             CashAccount::byCompany($companyId)->where('id', '!=', $id)->update(['is_default' => false]);

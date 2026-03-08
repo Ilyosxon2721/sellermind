@@ -341,7 +341,7 @@
                                         <span x-show="order.is_revenue" class="ml-1 text-xs text-green-600" title="Доход учтён">✓</span>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <span class="font-semibold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price)"></span>
+                                        <span class="font-semibold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price, order.currency || 'UZS')"></span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600" x-text="formatDate(order.created_at || order.ordered_at)"></td>
                                     <td class="px-6 py-4 text-right" @click.stop>
@@ -537,7 +537,7 @@
                             <p class="native-caption mt-1" x-text="formatDate(order.created_at)"></p>
                         </div>
                         <div class="text-right">
-                            <p class="native-body font-bold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price)"></p>
+                            <p class="native-body font-bold" :class="order.is_revenue ? 'text-green-600' : 'text-gray-500'" x-text="formatMoney(order.total_amount || order.total_price, order.currency || 'UZS')"></p>
                             <span x-show="order.is_revenue" class="text-xs text-green-600">Доход ✓</span>
                             <svg class="w-5 h-5 text-gray-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -999,9 +999,16 @@ function salesPage() {
             return names[status] || status;
         },
 
-        formatMoney(value) {
+        formatMoney(value, currency = 'UZS') {
             if (!value && value !== 0) return '0 сум';
-            return new Intl.NumberFormat('ru-RU').format(value) + ' сум';
+            const symbols = { 'UZS': 'сум', 'RUB': '₽', 'USD': '$', 'EUR': '€' };
+            const symbol = symbols[currency] || currency;
+            const formatted = new Intl.NumberFormat('ru-RU').format(
+                currency === 'UZS' ? Math.round(value) : value
+            );
+            return currency === 'USD' || currency === 'EUR'
+                ? symbol + ' ' + formatted
+                : formatted + ' ' + symbol;
         },
 
         formatDate(dateString) {
@@ -1011,7 +1018,8 @@ function salesPage() {
                 day: 'numeric',
                 month: 'short',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Tashkent'
             });
         },
 

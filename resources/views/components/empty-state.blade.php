@@ -35,6 +35,7 @@ $iconSize = $compact ? 'w-16 h-16' : 'w-24 h-24';
 <div {{ $attributes->merge(['class' => "flex flex-col items-center justify-center text-center {$sizeClasses} px-6"]) }}>
     {{-- Icon --}}
     <div class="mb-6 {{ $iconSize }} text-gray-300 dark:text-gray-600">
+        {{-- intentional: $selectedIcon is selected from hardcoded $icons PHP array, not user input --}}
         {!! $selectedIcon !!}
     </div>
 

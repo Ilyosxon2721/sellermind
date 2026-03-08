@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
             'setlocale' => \App\Http\Middleware\SetLocale::class,
             'risment.auth' => \App\Http\Middleware\AuthenticateRisment::class,
+            'company.owner' => \App\Http\Middleware\EnsureCompanyOwner::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -88,29 +89,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => 'Доступ запрещён',
                     'error' => 'forbidden',
                 ], 403);
-            }
-        });
-
-        // Handle general exceptions for API routes (prevent 500 errors with stack traces)
-        $exceptions->render(function (\Throwable $e, $request) {
-            if ($request->expectsJson() || $request->is('api/*')) {
-                // Log the error for debugging
-                \Log::error('API Exception', [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'url' => $request->fullUrl(),
-                ]);
-
-                // Don't expose internal errors in production
-                $message = config('app.debug')
-                    ? $e->getMessage()
-                    : 'Произошла внутренняя ошибка. Пожалуйста, попробуйте позже.';
-
-                return response()->json([
-                    'message' => $message,
-                    'error' => 'server_error',
-                ], 500);
             }
         });
     })->create();

@@ -981,10 +981,6 @@ class UzumClient implements MarketplaceClientInterface
         // GET /v1/products/{id}
 
         try {
-            // $response = $this->http->get($account, "/v1/products/{$externalId}");
-            //
-            // return $response['data'] ?? null;
-
             return null;
         } catch (\Exception $e) {
             return null;
@@ -1662,7 +1658,7 @@ class UzumClient implements MarketplaceClientInterface
         // Uzum returns timestamps in milliseconds
         $seconds = $timestamp > 9999999999 ? $timestamp / 1000 : $timestamp;
 
-        return \Carbon\Carbon::createFromTimestamp((int) $seconds);
+        return \Carbon\Carbon::createFromTimestamp((int) $seconds, config('app.timezone'));
     }
 
     // ========== Finance Expenses API ==========

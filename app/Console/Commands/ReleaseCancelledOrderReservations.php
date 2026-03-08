@@ -249,17 +249,42 @@ class ReleaseCancelledOrderReservations extends Command
                 $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
                 $releasedCount++;
 
-                // 2. Return stock to ProductVariant
+                // 2. Return stock to ProductVariant (quietly — без Observer, чтобы не дублировать ledger)
+                // Возвращаем только фактически списанное (если stock был 0 — списания не было)
                 if ($variant) {
                     $stockBefore = $variant->stock_default;
-                    $variant->incrementStock($qty);
+                    $actualDecrement = null;
+                    try {
+                        $log = DB::table('order_stock_logs')
+                            ->where('order_id', $order->id)
+                            ->where('product_variant_id', $variant->id)
+                            ->where('action', 'reserve')
+                            ->first();
+                        if ($log) {
+                            $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+                        }
+                    } catch (\Throwable $e) {
+                        // fallback на полное qty
+                    }
+                    $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+                    if ($incrementQty > 0) {
+                        $variant->incrementStockQuietly($incrementQty);
+                    }
                     $stockAfter = $variant->fresh()->stock_default;
-                    $stockReturnedCount += $qty;
+                    $stockReturnedCount += $incrementQty;
 
-                    $this->line("    Released: {$variant->sku}, qty: +{$qty} (was: {$stockBefore}, now: {$stockAfter})");
+                    $this->line("    Released: {$variant->sku}, qty: +{$incrementQty} (was: {$stockBefore}, now: {$stockAfter})");
 
-                    // 3. Create positive ledger entry
-                    $this->createLedgerEntry($account, $order, $reservation, $qty, $marketplace);
+                    // Обратная совместимость: создаём положительный ledger ТОЛЬКО если
+                    // при резерве был создан отрицательный (старая логика)
+                    $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                        ->where('source_id', $order->id)
+                        ->where('sku_id', $reservation->sku_id)
+                        ->exists();
+
+                    if ($hasOldReserveLedger) {
+                        $this->createLedgerEntry($account, $order, $reservation, $qty, $marketplace);
+                    }
 
                     // Track for sync
                     if (! in_array($variant->id, $syncedVariants)) {
@@ -316,16 +341,47 @@ class ReleaseCancelledOrderReservations extends Command
             return;
         }
 
-        // Return stock
+        // Return stock (quietly — без Observer, чтобы не дублировать ledger)
+        // Возвращаем только фактически списанное (если stock был 0 — списания не было)
         $stockBefore = $variant->stock_default;
-        $variant->incrementStock($qty);
+        $actualDecrement = null;
+        try {
+            $log = DB::table('order_stock_logs')
+                ->where('order_id', $order->id)
+                ->where('product_variant_id', $variant->id)
+                ->where('action', 'reserve')
+                ->first();
+            if ($log) {
+                $actualDecrement = max(0, (int) $log->stock_before - (int) $log->stock_after);
+            }
+        } catch (\Throwable $e) {
+            // fallback на полное qty
+        }
+        $incrementQty = $actualDecrement !== null ? $actualDecrement : $qty;
+        if ($incrementQty > 0) {
+            $variant->incrementStockQuietly($incrementQty);
+        }
         $stockAfter = $variant->fresh()->stock_default;
-        $stockReturnedCount += $qty;
+        $stockReturnedCount += $incrementQty;
 
-        $this->line("    Returned stock: {$variant->sku}, qty: +{$qty} (was: {$stockBefore}, now: {$stockAfter})");
+        $this->line("    Returned stock: {$variant->sku}, qty: +{$incrementQty} (was: {$stockBefore}, now: {$stockAfter})");
 
-        // Create ledger entry
-        $this->createLedgerEntryForVariant($account, $order, $variant, $qty, $marketplace);
+        // Обратная совместимость: создаём положительный ledger ТОЛЬКО если
+        // при резерве был создан отрицательный (старая логика)
+        $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $variant->id)
+            ->where('company_id', $account->company_id)
+            ->first();
+
+        if ($warehouseSku) {
+            $hasOldReserveLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                ->where('source_id', $order->id)
+                ->where('sku_id', $warehouseSku->id)
+                ->exists();
+
+            if ($hasOldReserveLedger) {
+                $this->createLedgerEntryForVariant($account, $order, $variant, $qty, $marketplace);
+            }
+        }
 
         // Track and sync
         if (! in_array($variant->id, $syncedVariants)) {

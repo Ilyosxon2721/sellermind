@@ -32,7 +32,7 @@ class DocumentPostingService
 
             $ledgerCreated = [];
             foreach ($document->lines as $line) {
-                $this->validateLine($line);
+                $this->validateLine($line, $document->type);
 
                 // Calculate total cost in base currency (UZS)
                 $totalCostBase = $this->calculateTotalCostBase($line, $financeSettings);
@@ -63,8 +63,25 @@ class DocumentPostingService
                         }
                         break;
                     case InventoryDocument::TYPE_REVERSAL:
-                        // already inverted when created; just write ledger
-                        $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, $totalCostBase, $userId);
+                        // Определяем направление на основе типа исходного документа
+                        $original = $document->reversed_document_id
+                            ? InventoryDocument::find($document->reversed_document_id)
+                            : null;
+                        if ($original && $original->type === InventoryDocument::TYPE_MOVE) {
+                            // Сторно перемещения: две записи в обратном направлении
+                            // Original: -qty из source, +qty в dest
+                            // Reversal: +qty в source, -qty из dest
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, -$line->qty, 0, $userId, $document->warehouse_id, $line->location_id);
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, $line->qty, 0, $userId, $document->warehouse_to_id, $line->location_to_id);
+                        } else {
+                            $outTypes = [InventoryDocument::TYPE_OUT, InventoryDocument::TYPE_WRITE_OFF];
+                            $isOutReversal = $original && in_array($original->type, $outTypes);
+                            // OUT/WRITE_OFF: возвращаем товар → положительный delta
+                            // IN: убираем товар → отрицательный delta
+                            $qtyDelta = $isOutReversal ? -$line->qty : $line->qty;
+                            $costDelta = $isOutReversal ? $totalCostBase : -$totalCostBase;
+                            $ledgerCreated[] = $this->ledgerEntry($document, $line, $qtyDelta, $costDelta, $userId);
+                        }
                         break;
                     default:
                         throw new RuntimeException('Unsupported document type');
@@ -159,13 +176,17 @@ class DocumentPostingService
         ]);
     }
 
-    protected function validateLine(InventoryDocumentLine $line): void
+    protected function validateLine(InventoryDocumentLine $line, string $docType = ''): void
     {
-        if ($line->qty <= 0) {
+        $isReversal = $docType === InventoryDocument::TYPE_REVERSAL;
+        if (! $isReversal && $line->qty <= 0) {
             throw new RuntimeException('Line qty must be greater than 0');
         }
-        if (! $line->sku || ! $line->sku->is_active) {
-            throw new RuntimeException('SKU inactive or missing');
+        if ($isReversal && $line->qty >= 0) {
+            throw new RuntimeException('Reversal line qty must be negative');
+        }
+        if (! $line->sku) {
+            throw new RuntimeException('SKU not found');
         }
     }
 

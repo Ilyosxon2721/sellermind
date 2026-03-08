@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\PriceHistory;
 use App\Models\Product;
 use App\Services\Products\ProductPublishService;
 use App\Services\Products\ProductService;
@@ -29,7 +30,12 @@ class ProductController extends Controller
         $query = Product::query()
             ->forCompany($companyId)
             ->withCount('variants as count_variants')
-            ->with(['channelSettings.channel:id,code,name']);
+            ->with([
+                'channelSettings.channel:id,code,name',
+                'variants:id,product_id,purchase_price,price_default',
+                'variants.channelVariantSettings:id,product_variant_id,channel_id,price,status',
+                'variants.channelVariantSettings.channel:id,code',
+            ]);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
@@ -71,13 +77,32 @@ class ProductController extends Controller
                 ];
             }
 
+            $firstVariant = $product->variants->first();
+
+            // Собираем цены по маркетплейсам из channelVariantSettings первого варианта
+            $marketplacePrices = [];
+            if ($firstVariant) {
+                foreach ($firstVariant->channelVariantSettings as $cvs) {
+                    $code = $cvs->channel?->code;
+                    if ($code) {
+                        $marketplacePrices[$code] = [
+                            'price' => $cvs->price,
+                            'status' => $cvs->status,
+                        ];
+                    }
+                }
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'article' => $product->article,
                 'category_id' => $product->category_id,
                 'count_variants' => $product->count_variants,
+                'purchase_price' => $firstVariant?->purchase_price,
+                'price_default' => $firstVariant?->price_default,
                 'channels' => $channels,
+                'marketplace_prices' => $marketplacePrices,
             ];
         });
 
@@ -178,6 +203,34 @@ class ProductController extends Controller
             'product_id' => $product->id,
             'channels' => $result,
         ], 202);
+    }
+
+    /**
+     * История изменений цен для товара
+     */
+    public function priceHistory(Request $request, Product $product): JsonResponse
+    {
+        $this->authorizeCompany($request, $product);
+
+        $variantId = $request->query('variant_id');
+        $channel   = $request->query('channel', 'default');
+        $days      = (int) $request->query('days', 90);
+
+        $query = PriceHistory::where('product_id', $product->id)
+            ->where('channel', $channel)
+            ->where('changed_at', '>=', now()->subDays($days))
+            ->orderBy('changed_at');
+
+        if ($variantId) {
+            $query->where('product_variant_id', (int) $variantId);
+        }
+
+        $history = $query->get(['product_variant_id', 'price', 'old_price', 'changed_at', 'changed_by']);
+
+        return response()->json([
+            'data'   => $history,
+            'period' => $days,
+        ]);
     }
 
     protected function authorizeCompany(Request $request, Product $product): void

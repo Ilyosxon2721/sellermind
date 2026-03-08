@@ -65,6 +65,7 @@ class MarketplaceOrderController extends Controller
 
         if ($account && $account->marketplace === 'ozon') {
             $orders = $this->loadOzonOrders($request, $account);
+
             return response()->json([
                 'orders' => $orders,
                 'meta' => ['total' => count($orders)],
@@ -89,7 +90,7 @@ class MarketplaceOrderController extends Controller
             'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
         ]);
 
-        if (!$request->user()->hasCompanyAccess($request->company_id)) {
+        if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
@@ -634,6 +635,7 @@ class MarketplaceOrderController extends Controller
 
         if ($account && $account->marketplace === 'ozon') {
             $stats = $this->statsOzon($request, $account);
+
             return response()->json($stats);
         }
 
@@ -1047,9 +1049,11 @@ class MarketplaceOrderController extends Controller
             }
             $num = (int) $str;
             try {
+                $appTz = config('app.timezone');
+
                 return $num > 1e12
-                    ? \Carbon\Carbon::createFromTimestampMs($num)
-                    : \Carbon\Carbon::createFromTimestamp($num);
+                    ? \Carbon\Carbon::createFromTimestampMs($num, $appTz)
+                    : \Carbon\Carbon::createFromTimestamp($num, $appTz);
             } catch (\Throwable $e) {
                 return null;
             }
@@ -1390,8 +1394,8 @@ class MarketplaceOrderController extends Controller
         }
 
         $byStatus = \App\Models\OzonOrder::where('marketplace_account_id', $account->id)
-            ->when($request->from, fn($q) => $q->where('created_at_ozon', '>=', Carbon::parse($request->from)->startOfDay()))
-            ->when($request->to, fn($q) => $q->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay()))
+            ->when($request->from, fn ($q) => $q->where('created_at_ozon', '>=', Carbon::parse($request->from)->startOfDay()))
+            ->when($request->to, fn ($q) => $q->where('created_at_ozon', '<=', Carbon::parse($request->to)->endOfDay()))
             ->selectRaw('status, count(*) as cnt')
             ->groupBy('status')
             ->pluck('cnt', 'status');

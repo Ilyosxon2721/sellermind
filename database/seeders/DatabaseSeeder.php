@@ -125,6 +125,12 @@ class DatabaseSeeder extends Seeder
             'is_default' => true,
         ]);
 
+        // Marketplace commissions, logistics, acquiring reference data
+        $this->call(MarketplaceCommissionSeeder::class);
+
+        // Store Builder demo data
+        $this->call(StoreSeeder::class);
+
         // Autopricing demo policy + rules
         $policyId = \App\Models\Autopricing\AutopricingPolicy::create([
             'company_id' => $company->id,

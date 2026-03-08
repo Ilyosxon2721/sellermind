@@ -334,14 +334,14 @@
             formatDate(dateStr) {
                 if (!dateStr) return '—';
                 const date = new Date(dateStr);
-                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Tashkent' });
             },
 
             formatDateTime(dateStr) {
                 if (!dateStr) return '—';
                 const date = new Date(dateStr);
-                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
-                       date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Tashkent' }) + ' ' +
+                       date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' });
             },
 
             showToast(message, type = 'success') {

@@ -89,7 +89,7 @@ Route::get('/api/health', function () {
 
 // Auth API routes (in web.php for proper session cookie handling)
 // These MUST be in web.php, not api.php, for session cookies to work correctly
-Route::prefix('api/auth')->group(function () {
+Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
     Route::post('register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
     Route::post('login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
 });
@@ -135,14 +135,20 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.reviews');
     })->name('reviews');
 
+    Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
+
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
-        Route::post('/', [ProductWebController::class, 'store'])->name('store');
         Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
-        Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
-        Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
-        Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+
+        // POST/PUT/DELETE — только owner компании
+        Route::middleware('company.owner')->group(function () {
+            Route::post('/', [ProductWebController::class, 'store'])->name('store');
+            Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
+            Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
+            Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+        });
     });
 
     Route::prefix('warehouse')->name('warehouse.')->group(function () {
@@ -169,6 +175,10 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
+
+        // Inventory (инвентаризация)
+        Route::get('/inventory', [WarehouseController::class, 'inventoryList'])->name('inventory');
+        Route::get('/inventory/create', [WarehouseController::class, 'createInventory'])->name('inventory.create');
 
         // Web-based API routes for warehouse CRUD (uses session auth)
         Route::middleware('auth')->group(function () {
@@ -296,6 +306,10 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/pricing/autopricing', function () {
         return view('pricing.autopricing');
     })->name('pricing.autopricing');
+
+    Route::get('/pricing/calculator', function () {
+        return view('pricing.calculator');
+    })->name('pricing.calculator');
 
     // Subscription Plans (Public - can be accessed without auth)
     Route::get('/plans', function () {
@@ -629,7 +643,73 @@ Route::middleware('auth.any')->group(function () {
         ->name('payment.callback.payme');
     Route::get('/payment/renew/{subscription}', [\App\Http\Controllers\PaymentController::class, 'renew'])
         ->name('payment.renew');
+    // Store Builder — Admin pages
+    Route::prefix('my-store')->name('store.')->group(function () {
+        Route::get('/', function () {
+            return view('store.admin.dashboard');
+        })->name('dashboard');
+
+        Route::get('/{storeId}/theme', function ($storeId) {
+            return view('store.admin.theme', ['storeId' => $storeId]);
+        })->name('theme');
+
+        Route::get('/{storeId}/catalog', function ($storeId) {
+            return view('store.admin.catalog', ['storeId' => $storeId]);
+        })->name('catalog');
+
+        Route::get('/{storeId}/delivery', function ($storeId) {
+            return view('store.admin.delivery', ['storeId' => $storeId]);
+        })->name('delivery');
+
+        Route::get('/{storeId}/payment', function ($storeId) {
+            return view('store.admin.payment', ['storeId' => $storeId]);
+        })->name('payment');
+
+        Route::get('/{storeId}/orders', function ($storeId) {
+            return view('store.admin.orders', ['storeId' => $storeId]);
+        })->name('orders');
+
+        Route::get('/{storeId}/orders/{orderId}', function ($storeId, $orderId) {
+            return view('store.admin.order-show', ['storeId' => $storeId, 'orderId' => $orderId]);
+        })->name('orders.show');
+
+        Route::get('/{storeId}/pages', function ($storeId) {
+            return view('store.admin.pages', ['storeId' => $storeId]);
+        })->name('pages');
+
+        Route::get('/{storeId}/analytics', function ($storeId) {
+            return view('store.admin.analytics', ['storeId' => $storeId]);
+        })->name('analytics');
+
+        Route::get('/{storeId}/banners', function ($storeId) {
+            return view('store.admin.banners', ['storeId' => $storeId]);
+        })->name('banners');
+    });
 }); // End of auth middleware group
+
+// Storefront — Public pages (no auth)
+Route::prefix('store/{slug}')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Storefront\StorefrontController::class, 'home'])->name('storefront.home');
+    Route::get('/catalog', [\App\Http\Controllers\Storefront\CatalogController::class, 'index'])->name('storefront.catalog');
+    Route::get('/product/{productId}', [\App\Http\Controllers\Storefront\CatalogController::class, 'show'])->name('storefront.product');
+    Route::get('/cart', [\App\Http\Controllers\Storefront\CartController::class, 'index'])->name('storefront.cart');
+    Route::get('/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'index'])->name('storefront.checkout');
+    Route::get('/order/{orderNumber}', [\App\Http\Controllers\Storefront\CheckoutController::class, 'orderStatus'])->name('storefront.order');
+    Route::get('/page/{pageSlug}', [\App\Http\Controllers\Storefront\StorefrontController::class, 'page'])->name('storefront.page');
+    Route::get('/payment/success', [\App\Http\Controllers\Storefront\PaymentController::class, 'success'])->name('storefront.payment.success');
+    Route::get('/payment/fail', [\App\Http\Controllers\Storefront\PaymentController::class, 'fail'])->name('storefront.payment.fail');
+
+    // Storefront API (cart, checkout, payment — JSON endpoints)
+    Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
+    Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
+    Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
+    Route::delete('/api/cart/remove', [\App\Http\Controllers\Storefront\CartController::class, 'remove']);
+    Route::delete('/api/cart/clear', [\App\Http\Controllers\Storefront\CartController::class, 'clear']);
+    Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
+    Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
+    Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
+    Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+});
 
 // Payment webhooks (public, no CSRF)
 Route::post('/webhooks/click/prepare', [\App\Http\Controllers\Webhooks\ClickWebhookController::class, 'prepare'])

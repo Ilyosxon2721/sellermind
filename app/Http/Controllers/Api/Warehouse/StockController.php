@@ -187,7 +187,7 @@ class StockController extends Controller
             $query->where('occurred_at', '>=', $request->from);
         }
         if ($request->to) {
-            $query->where('occurred_at', '<=', $request->to . ' 23:59:59');
+            $query->where('occurred_at', '<=', $request->to.' 23:59:59');
         }
 
         if ($request->query('query')) {
@@ -250,6 +250,8 @@ class StockController extends Controller
                     break;
                 case 'marketplace_order_reserve':
                 case 'marketplace_order_cancel':
+                case 'marketplace_order_sold':
+                case 'marketplace_order':
                     $unifiedIds[] = $item->source_id;
                     break;
                 case 'offline_sale':
@@ -366,6 +368,8 @@ class StockController extends Controller
 
                 case 'marketplace_order_reserve':
                 case 'marketplace_order_cancel':
+                case 'marketplace_order_sold':
+                case 'marketplace_order':
                     // Try each marketplace model (unified source_type)
                     if ($order = $wbOrders->get($item->source_id)) {
                         $marketplace = 'wb';

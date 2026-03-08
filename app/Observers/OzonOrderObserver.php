@@ -9,10 +9,13 @@ use App\Models\VariantMarketplaceLink;
 use App\Models\Warehouse\Sku;
 use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\Warehouse;
+use App\Observers\Traits\NotifiesMarketplaceOrder;
 use Illuminate\Support\Facades\Log;
 
 class OzonOrderObserver
 {
+    use NotifiesMarketplaceOrder;
+
     /**
      * Handle the OzonOrder "created" event.
      *
@@ -22,6 +25,13 @@ class OzonOrderObserver
     public function created(OzonOrder $ozonOrder): void
     {
         $this->safeBroadcast($ozonOrder);
+        $this->notifyNewMarketplaceOrder(
+            order: $ozonOrder,
+            marketplace: 'ozon',
+            orderNumber: $ozonOrder->posting_number ?? (string) $ozonOrder->order_id,
+            totalAmount: (float) ($ozonOrder->total_price ?? 0),
+            currency: $ozonOrder->currency ?? 'RUB',
+        );
     }
 
     /**

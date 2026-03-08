@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -7,6 +9,7 @@ use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Services\SalesAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SalesAnalyticsController extends Controller
 {
@@ -17,7 +20,8 @@ class SalesAnalyticsController extends Controller
     ) {}
 
     /**
-     * Get sales overview.
+     * Получить сводку продаж за период.
+     * Результат кэшируется на 30 минут (планировщик обновляет кэш каждый час).
      */
     public function overview(Request $request): JsonResponse
     {
@@ -28,7 +32,10 @@ class SalesAnalyticsController extends Controller
         $companyId = $this->getCompanyId();
         $period = $validated['period'] ?? '30days';
 
-        $overview = $this->analyticsService->getOverview($companyId, $period);
+        $cacheKey = "sales_analytics_{$companyId}_{$period}";
+        $overview = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
+            return $this->analyticsService->getOverview($companyId, $period);
+        });
 
         return response()->json($overview);
     }
@@ -139,7 +146,8 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get comprehensive analytics dashboard data.
+     * Получить полный дашборд аналитики.
+     * Каждый блок кэшируется независимо на 30 минут.
      */
     public function dashboard(Request $request): JsonResponse
     {
@@ -149,13 +157,34 @@ class SalesAnalyticsController extends Controller
 
         $companyId = $this->getCompanyId();
         $period = $validated['period'] ?? '30days';
+        $ttl = now()->addMinutes(30);
 
         $data = [
-            'overview' => $this->analyticsService->getOverview($companyId, $period),
-            'sales_by_day' => $this->analyticsService->getSalesByDay($companyId, $period),
-            'top_products' => $this->analyticsService->getTopProducts($companyId, $period, 5),
-            'sales_by_category' => $this->analyticsService->getSalesByCategory($companyId, $period),
-            'sales_by_marketplace' => $this->analyticsService->getSalesByMarketplace($companyId, $period),
+            'overview' => Cache::remember(
+                "sales_analytics_{$companyId}_{$period}",
+                $ttl,
+                fn () => $this->analyticsService->getOverview($companyId, $period)
+            ),
+            'sales_by_day' => Cache::remember(
+                "sales_by_day_{$companyId}_{$period}",
+                $ttl,
+                fn () => $this->analyticsService->getSalesByDay($companyId, $period)
+            ),
+            'top_products' => Cache::remember(
+                "top_products_{$companyId}_{$period}",
+                $ttl,
+                fn () => $this->analyticsService->getTopProducts($companyId, $period, 5)
+            ),
+            'sales_by_category' => Cache::remember(
+                "sales_by_category_{$companyId}_{$period}",
+                $ttl,
+                fn () => $this->analyticsService->getSalesByCategory($companyId, $period)
+            ),
+            'sales_by_marketplace' => Cache::remember(
+                "sales_by_marketplace_{$companyId}_{$period}",
+                $ttl,
+                fn () => $this->analyticsService->getSalesByMarketplace($companyId, $period)
+            ),
         ];
 
         return response()->json($data);

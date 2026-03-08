@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Products;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
+use App\Models\Channel;
 use App\Models\Finance\FinanceSettings;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -32,9 +33,11 @@ class ProductWebController extends Controller
             return view('products.index', [
                 'products' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'categories' => collect(),
+                'channels' => collect(),
                 'filters' => [
                     'search' => '',
                     'category_id' => null,
+                    'channel_id' => null,
                     'is_archived' => false,
                 ],
             ]);
@@ -42,6 +45,7 @@ class ProductWebController extends Controller
         $filters = [
             'search' => $request->string('search')->trim()->toString(),
             'category_id' => $request->input('category_id'),
+            'channel_id' => $request->input('channel_id'),
             'is_archived' => $request->boolean('is_archived', false),
         ];
 
@@ -62,6 +66,12 @@ class ProductWebController extends Controller
             $query->where('category_id', $filters['category_id']);
         }
 
+        if ($filters['channel_id']) {
+            $query->whereHas('channelSettings', function ($q) use ($filters) {
+                $q->where('channel_id', $filters['channel_id']);
+            });
+        }
+
         if (! $filters['is_archived']) {
             $query->where('is_archived', false);
         }
@@ -73,9 +83,12 @@ class ProductWebController extends Controller
             ->orderBy('name')
             ->get();
 
+        $channels = Channel::orderBy('name')->get();
+
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
+            'channels' => $channels,
             'filters' => $filters,
         ]);
     }
@@ -173,15 +186,6 @@ class ProductWebController extends Controller
     {
         $user = $request->user();
 
-        // Debug: Log incoming variants count
-        $variantsJson = $request->input('variants');
-        $variants = json_decode($variantsJson, true) ?? [];
-        \Log::info('Product store request', [
-            'variants_json_length' => strlen($variantsJson ?? ''),
-            'variants_count' => count($variants),
-            'request_size' => strlen(serialize($request->all())),
-        ]);
-
         // Check if user has a company
         if (! $user?->company_id) {
             return back()
@@ -209,19 +213,6 @@ class ProductWebController extends Controller
         $this->authorizeCompany($request, $product);
 
         $dto = $this->buildDto($request, $product);
-
-        // Debug logging
-        \Log::info('Product update request', [
-            'product_id' => $product->id,
-            'options_count' => count($dto['options'] ?? []),
-            'variants_count' => count($dto['variants'] ?? []),
-            'options' => $dto['options'] ?? [],
-            'variants' => array_map(fn ($v) => [
-                'id' => $v['id'] ?? null,
-                'sku' => $v['sku'] ?? null,
-                'option_value_ids' => $v['option_value_ids'] ?? [],
-            ], $dto['variants'] ?? []),
-        ]);
 
         $product = $this->productService->updateProductFromDto($product, $dto);
 

@@ -47,14 +47,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public routes - Health Check
-Route::get('health', [HealthCheckController::class, 'index']);
-Route::get('health/detailed', [HealthCheckController::class, 'detailed']);
+Route::middleware('throttle:health')->group(function () {
+    Route::get('health', [HealthCheckController::class, 'index']);
+    Route::get('health/detailed', [HealthCheckController::class, 'detailed'])->middleware('auth.any');
+});
 
 // Auth routes (login, register) moved to routes/web.php for proper session cookie handling
 // POST /api/auth/login and POST /api/auth/register are now defined in web.php
 
 // Marketplace webhooks (public, no auth required)
-Route::prefix('webhooks/marketplaces')->group(function () {
+Route::prefix('webhooks/marketplaces')->middleware('throttle:webhooks')->group(function () {
     Route::post('{marketplace}', [MarketplaceWebhookController::class, 'handle']);
     Route::post('{marketplace}/{accountId}', [MarketplaceWebhookController::class, 'handleForAccount']);
 });
@@ -73,6 +75,16 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::post('/', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'store']);
         Route::get('/sizes', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'sizes']);
         Route::get('/colors', [\App\Http\Controllers\Api\GlobalOptionValueController::class, 'colors']);
+    });
+    // Product Categories
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ProductCategoryController::class, 'index']);
+        Route::get('/flat', [\App\Http\Controllers\Api\ProductCategoryController::class, 'flat']);
+        Route::middleware('company.owner')->group(function () {
+            Route::post('/', [\App\Http\Controllers\Api\ProductCategoryController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\ProductCategoryController::class, 'destroy']);
+        });
     });
     // Sales display/viewing (marketplace + manual combined)
     Route::get('sales', [\App\Http\Controllers\Api\SalesController::class, 'index']);
@@ -243,13 +255,20 @@ Route::middleware('auth.any')->group(function () {
     // Uses web middleware for session-based auth from product edit page
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
 
-    Route::apiResource('products', ProductController::class)->only(['index', 'show', 'update', 'destroy']);
-    Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
-    Route::post('products/{product}/publish', [ProductController::class, 'publish']);
-    Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+    Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
-    // Product Bulk Operations
-    Route::prefix('products/bulk')->group(function () {
+    // Запись/изменение/удаление — только owner компании
+    Route::middleware('company.owner')->group(function () {
+        Route::put('products/{product}', [ProductController::class, 'update']);
+        Route::delete('products/{product}', [ProductController::class, 'destroy']);
+        Route::post('products', [ProductController::class, 'store'])->middleware('plan.limits:products,1');
+        Route::post('products/{product}/publish', [ProductController::class, 'publish']);
+        Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
+        Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
+    });
+
+    // Product Bulk Operations — только owner
+    Route::prefix('products/bulk')->middleware('company.owner')->group(function () {
         Route::post('export', [ProductBulkController::class, 'export']);
         Route::post('import/preview', [ProductBulkController::class, 'previewImport']);
         Route::post('import/apply', [ProductBulkController::class, 'applyImport']);
@@ -618,10 +637,18 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('inventory')->group(function () {
             Route::get('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'index']);
             Route::get('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'show']);
+
+            // Создание/изменение/проводка документов — доступно авторизованным сотрудникам
             Route::post('documents', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'store']);
             Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
             Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
-            Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
+            Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
+            // Удаление черновика — только owner
+            Route::delete('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'destroy']);
+            // Сторнирование проведённого документа — только owner
+            Route::middleware('company.owner')->group(function () {
+                Route::post('documents/{id}/reverse', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'reverse']);
+            });
         });
 
         Route::post('channels/orders/import', [\App\Http\Controllers\Api\Warehouse\ChannelImportController::class, 'import']);
@@ -680,6 +707,15 @@ Route::middleware('auth.any')->group(function () {
             Route::post('publish-jobs/{id}/run', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'run']);
             Route::get('publish-jobs', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'index']);
             Route::get('publish-jobs/{id}/export.csv', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'exportCsv']);
+
+            // Pricing Calculator (калькулятор ценообразования)
+            Route::prefix('calculator')->group(function () {
+                Route::post('calculate', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculate']);
+                Route::post('calculate-for-margin', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculateForMargin']);
+                Route::post('compare', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'compare']);
+                Route::get('categories/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'categories']);
+                Route::get('commissions/{marketplace}', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'commissions']);
+            });
         });
 
         // Autopricing
@@ -807,6 +843,72 @@ Route::middleware('auth.any')->group(function () {
         Route::get('dialogs/hidden', [DialogAdminController::class, 'hiddenDialogs']);
         Route::get('dialogs/hidden/{dialog}', [DialogAdminController::class, 'showHiddenDialog']);
         Route::get('dialogs/stats', [DialogAdminController::class, 'stats']);
+    });
+
+    // Store Builder — Admin API
+    Route::prefix('store')->group(function () {
+        // Stores CRUD
+        Route::get('stores', [\App\Http\Controllers\Store\StoreAdminController::class, 'index']);
+        Route::post('stores', [\App\Http\Controllers\Store\StoreAdminController::class, 'store']);
+        Route::get('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'show']);
+        Route::put('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'update']);
+        Route::delete('stores/{id}', [\App\Http\Controllers\Store\StoreAdminController::class, 'destroy']);
+
+        // Theme
+        Route::get('stores/{storeId}/theme', [\App\Http\Controllers\Store\StoreThemeController::class, 'show']);
+        Route::put('stores/{storeId}/theme', [\App\Http\Controllers\Store\StoreThemeController::class, 'update']);
+
+        // Banners
+        Route::get('stores/{storeId}/banners', [\App\Http\Controllers\Store\StoreBannerController::class, 'index']);
+        Route::post('stores/{storeId}/banners', [\App\Http\Controllers\Store\StoreBannerController::class, 'store']);
+        Route::put('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'update']);
+        Route::delete('stores/{storeId}/banners/{bannerId}', [\App\Http\Controllers\Store\StoreBannerController::class, 'destroy']);
+        Route::post('stores/{storeId}/banners/reorder', [\App\Http\Controllers\Store\StoreBannerController::class, 'reorder']);
+        Route::post('stores/{storeId}/banners/upload-image', [\App\Http\Controllers\Store\StoreBannerController::class, 'uploadImage']);
+
+        // Catalog — Products
+        Route::get('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productIndex']);
+        Route::post('stores/{storeId}/products', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productStore']);
+        Route::put('stores/{storeId}/products/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productUpdate']);
+        Route::delete('stores/{storeId}/products/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productDestroy']);
+        Route::post('stores/{storeId}/products/sync', [\App\Http\Controllers\Store\StoreCatalogController::class, 'productSync']);
+
+        // Catalog — Categories
+        Route::get('stores/{storeId}/categories', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryIndex']);
+        Route::post('stores/{storeId}/categories', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryStore']);
+        Route::put('stores/{storeId}/categories/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryUpdate']);
+        Route::delete('stores/{storeId}/categories/{id}', [\App\Http\Controllers\Store\StoreCatalogController::class, 'categoryDestroy']);
+
+        // Delivery Methods
+        Route::get('stores/{storeId}/delivery-methods', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'index']);
+        Route::post('stores/{storeId}/delivery-methods', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'store']);
+        Route::get('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'show']);
+        Route::put('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'update']);
+        Route::delete('stores/{storeId}/delivery-methods/{id}', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'destroy']);
+        Route::post('stores/{storeId}/delivery-methods/reorder', [\App\Http\Controllers\Store\StoreDeliveryController::class, 'reorder']);
+
+        // Payment Methods
+        Route::get('stores/{storeId}/payment-methods', [\App\Http\Controllers\Store\StorePaymentController::class, 'index']);
+        Route::post('stores/{storeId}/payment-methods', [\App\Http\Controllers\Store\StorePaymentController::class, 'store']);
+        Route::get('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'show']);
+        Route::put('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'update']);
+        Route::delete('stores/{storeId}/payment-methods/{id}', [\App\Http\Controllers\Store\StorePaymentController::class, 'destroy']);
+
+        // Orders
+        Route::get('stores/{storeId}/orders', [\App\Http\Controllers\Store\StoreOrderController::class, 'index']);
+        Route::get('stores/{storeId}/orders/stats', [\App\Http\Controllers\Store\StoreOrderController::class, 'stats']);
+        Route::get('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'show']);
+        Route::put('stores/{storeId}/orders/{orderId}', [\App\Http\Controllers\Store\StoreOrderController::class, 'update']);
+
+        // Pages
+        Route::get('stores/{storeId}/pages', [\App\Http\Controllers\Store\StorePageController::class, 'index']);
+        Route::post('stores/{storeId}/pages', [\App\Http\Controllers\Store\StorePageController::class, 'store']);
+        Route::get('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'show']);
+        Route::put('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'update']);
+        Route::delete('stores/{storeId}/pages/{id}', [\App\Http\Controllers\Store\StorePageController::class, 'destroy']);
+
+        // Analytics
+        Route::get('stores/{storeId}/analytics', [\App\Http\Controllers\Store\StoreAnalyticsController::class, 'index']);
     });
 });
 

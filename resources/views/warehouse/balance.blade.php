@@ -134,7 +134,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right font-medium text-gray-700" x-text="formatMoney(row.total_cost || 0)"></td>
                                 <td class="px-6 py-4 text-center">
-                                    <a :href="'/products/' + row.product_id"
+                                    <a :href="'/products/' + row.product_id + '/edit'"
                                        x-show="row.product_id"
                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 transition-colors"
                                        title="Карточка товара">
@@ -300,12 +300,13 @@
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
                     this.items = json.data?.items || [];
-                    if (json.data?.pagination) {
+                    const pag = json.data?.meta || json.data?.pagination;
+                    if (pag) {
                         this.pagination = {
-                            total: json.data.pagination.total || 0,
-                            per_page: json.data.pagination.per_page || 30,
-                            current_page: json.data.pagination.current_page || 1,
-                            last_page: json.data.pagination.last_page || 1
+                            total: pag.total || 0,
+                            per_page: pag.per_page || 30,
+                            current_page: pag.current_page || 1,
+                            last_page: pag.last_page || 1
                         };
                     }
                 } catch (e) {
@@ -401,7 +402,7 @@
         {{-- Items List --}}
         <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
             <template x-for="row in items" :key="row.sku_id">
-                <a :href="row.product_id ? '/products/' + row.product_id : '#'" class="native-card block">
+                <a :href="row.product_id ? '/products/' + row.product_id + '/edit' : '#'" class="native-card block">
                     <div class="flex items-start justify-between mb-2">
                         <p class="native-body font-semibold text-blue-600" x-text="row.sku_code"></p>
                         <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium" x-text="parseInt(row.available) + ' шт'"></span>

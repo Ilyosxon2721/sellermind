@@ -115,10 +115,10 @@ class UzumSyncOrders extends Command
                         'total_amount' => $orderData['total_amount'] ?? 0,
                         'currency' => $orderData['currency'] ?? 'UZS',
                         'ordered_at' => isset($orderData['ordered_at']) && is_numeric($orderData['ordered_at'])
-                            ? \Carbon\Carbon::createFromTimestampMs($orderData['ordered_at'])
+                            ? \Carbon\Carbon::createFromTimestampMs($orderData['ordered_at'], config('app.timezone'))
                             : ($orderData['ordered_at'] ?? now()),
                         'delivered_at' => isset($orderData['delivered_at']) && is_numeric($orderData['delivered_at'])
-                            ? \Carbon\Carbon::createFromTimestampMs($orderData['delivered_at'])
+                            ? \Carbon\Carbon::createFromTimestampMs($orderData['delivered_at'], config('app.timezone'))
                             : ($orderData['delivered_at'] ?? null),
                         'delivery_address_full' => $orderData['customer']['address'] ?? null,
                         'delivery_city' => $orderData['customer']['city'] ?? null,

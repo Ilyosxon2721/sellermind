@@ -137,13 +137,41 @@ class ConsumeReservedSoldOrders extends Command
             }
 
             try {
-                // Consume reservations
+                // Получить активные резервы ДО потребления, чтобы создать записи в журнале
+                $activeReservationRecords = StockReservation::where('source_type', 'marketplace_order')
+                    ->where('source_id', $order->id)
+                    ->where('status', StockReservation::STATUS_ACTIVE)
+                    ->get();
+
+                // Создать записи в журнале остатков для каждого резерва (если старый flow не создал)
+                foreach ($activeReservationRecords as $reservation) {
+                    $hasOldLedger = \App\Models\Warehouse\StockLedger::where('source_type', 'marketplace_order_reserve')
+                        ->where('source_id', $order->id)
+                        ->where('sku_id', $reservation->sku_id)
+                        ->exists();
+
+                    if (! $hasOldLedger) {
+                        \App\Models\Warehouse\StockLedger::create([
+                            'company_id' => $reservation->company_id,
+                            'occurred_at' => now(),
+                            'warehouse_id' => $reservation->warehouse_id,
+                            'sku_id' => $reservation->sku_id,
+                            'qty_delta' => -$reservation->qty,
+                            'cost_delta' => 0,
+                            'currency_code' => 'UZS',
+                            'source_type' => 'marketplace_order_sold',
+                            'source_id' => $order->id,
+                        ]);
+                    }
+                }
+
+                // Потребить резервы
                 $updated = StockReservation::where('source_type', 'marketplace_order')
                     ->where('source_id', $order->id)
                     ->where('status', StockReservation::STATUS_ACTIVE)
                     ->update(['status' => StockReservation::STATUS_CONSUMED]);
 
-                // Update order stock_status to sold
+                // Обновить статус заказа на sold
                 $order->update([
                     'stock_status' => 'sold',
                     'stock_sold_at' => now(),
