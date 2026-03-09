@@ -51,7 +51,7 @@ class SmPush {
         }
 
         try {
-            const response = await fetch('/api/push/vapid-key', {
+            const response = await fetch('/api/push/vapid-public-key', {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
