@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Marketplaces\YandexMarket;
 
 use App\Events\StockUpdated;
@@ -14,15 +16,19 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Клиент для интеграции с Yandex Market Partner API
+ *
+ * Поддерживаемые API:
+ * - Campaigns API (кампании)
+ * - Offer Mapping API (товары)
+ * - Prices API (цены)
+ * - Stocks API (остатки)
+ * - Orders API (заказы)
  */
-class YandexMarketClient implements MarketplaceClientInterface
+final class YandexMarketClient implements MarketplaceClientInterface
 {
-    protected YandexMarketHttpClient $http;
-
-    public function __construct(YandexMarketHttpClient $http)
-    {
-        $this->http = $http;
-    }
+    public function __construct(
+        private readonly YandexMarketHttpClient $http,
+    ) {}
 
     public function getMarketplaceCode(): string
     {
@@ -30,20 +36,24 @@ class YandexMarketClient implements MarketplaceClientInterface
     }
 
     /**
-     * Проверка подключения к API
+     * Быстрая проверка доступности API (health-check)
+     *
+     * Использует endpoint кампаний - валидирует OAuth токен.
+     *
+     * @return array{success: bool, message: string, response_time_ms: int|null, data?: array}
      */
     public function ping(MarketplaceAccount $account): array
     {
-        $start = microtime(true);
+        $startTime = microtime(true);
 
         try {
-            // Получаем информацию о кампаниях
+            // GET /campaigns - легковесный endpoint для проверки
             $response = $this->http->get($account, '/campaigns');
-            $duration = round((microtime(true) - $start) * 1000);
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             $campaigns = $response['campaigns'] ?? [];
 
-            // Также получим список бизнесов
+            // Также получим список бизнесов для полной картины
             $businesses = $this->getBusinesses($account);
             $configuredBusinessId = $this->http->getBusinessId($account);
 
@@ -51,30 +61,36 @@ class YandexMarketClient implements MarketplaceClientInterface
                 'success' => true,
                 'message' => 'Yandex Market API доступен',
                 'response_time_ms' => $duration,
-                'campaigns_count' => count($campaigns),
-                'campaigns' => array_map(fn ($c) => [
-                    'id' => $c['id'] ?? null,
-                    'name' => $c['domain'] ?? $c['clientId'] ?? 'Campaign',
-                ], array_slice($campaigns, 0, 5)),
-                'businesses_count' => count($businesses),
-                'businesses' => array_map(fn ($b) => [
-                    'id' => $b['id'] ?? null,
-                    'name' => $b['name'] ?? 'Business',
-                ], array_slice($businesses, 0, 5)),
-                'configured_business_id' => $configuredBusinessId,
-                'business_id_valid' => $configuredBusinessId && in_array($configuredBusinessId, array_column($businesses, 'id')),
+                'data' => [
+                    'campaigns_count' => count($campaigns),
+                    'campaigns' => array_map(fn ($c) => [
+                        'id' => $c['id'] ?? null,
+                        'name' => $c['domain'] ?? $c['clientId'] ?? 'Campaign',
+                    ], array_slice($campaigns, 0, 5)),
+                    'businesses_count' => count($businesses),
+                    'businesses' => array_map(fn ($b) => [
+                        'id' => $b['id'] ?? null,
+                        'name' => $b['name'] ?? 'Business',
+                    ], array_slice($businesses, 0, 5)),
+                    'configured_business_id' => $configuredBusinessId,
+                    'business_id_valid' => $configuredBusinessId && in_array($configuredBusinessId, array_column($businesses, 'id')),
+                ],
             ];
         } catch (\Exception $e) {
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
+
             return [
                 'success' => false,
-                'message' => 'Ошибка подключения: '.$e->getMessage(),
-                'response_time_ms' => round((microtime(true) - $start) * 1000),
+                'message' => 'Ошибка: '.$e->getMessage(),
+                'response_time_ms' => $duration,
             ];
         }
     }
 
     /**
-     * Тест подключения (алиас для ping)
+     * Полная проверка подключения к API маркетплейса
+     *
+     * @return array{success: bool, message: string, data?: array}
      */
     public function testConnection(MarketplaceAccount $account): array
     {

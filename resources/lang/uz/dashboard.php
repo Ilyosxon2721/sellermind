@@ -32,6 +32,13 @@ return [
     'supplies' => 'Yetkazib berish',
     'ai_tasks' => 'AI vazifalari',
 
+    // Quick actions
+    'quick_actions' => 'Tezkor harakatlar',
+    'refreshing' => 'Yangilanmoqda...',
+    'connect_marketplace' => 'Marketpleysni ulash',
+    'no_alerts' => 'Ogohlantirishlar yo\'q',
+    'all_good' => 'Hammasi yaxshi!',
+
     // Orders table
     'recent_orders' => 'So\'nggi buyurtmalar',
     'all_orders' => 'Barcha buyurtmalar',

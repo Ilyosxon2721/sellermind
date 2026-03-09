@@ -32,6 +32,13 @@ return [
     'supplies' => 'Supplies',
     'ai_tasks' => 'AI tasks',
 
+    // Quick actions
+    'quick_actions' => 'Quick Actions',
+    'refreshing' => 'Refreshing...',
+    'connect_marketplace' => 'Connect marketplace',
+    'no_alerts' => 'No alerts',
+    'all_good' => 'Everything is fine!',
+
     // Orders table
     'recent_orders' => 'Recent orders',
     'all_orders' => 'All orders',

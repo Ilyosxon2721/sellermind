@@ -1,6 +1,6 @@
 <?php
 
-// file: app/Services/Marketplaces/UzumClient.php
+declare(strict_types=1);
 
 namespace App\Services\Marketplaces;
 
@@ -10,17 +10,21 @@ use DateTimeInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class UzumClient implements MarketplaceClientInterface
+/**
+ * Клиент для интеграции с Uzum Market Seller API
+ *
+ * Поддерживаемые API:
+ * - Product API v1 (товары, каталог)
+ * - Shops API v1 (магазины)
+ * - Orders API v2 (заказы)
+ * - Finance API v1 (финансы)
+ */
+final class UzumClient implements MarketplaceClientInterface
 {
-    protected MarketplaceHttpClient $http;
-
-    protected IssueDetectorService $issueDetector;
-
-    public function __construct(MarketplaceHttpClient $http, IssueDetectorService $issueDetector)
-    {
-        $this->http = $http;
-        $this->issueDetector = $issueDetector;
-    }
+    public function __construct(
+        private readonly MarketplaceHttpClient $http,
+        private readonly IssueDetectorService $issueDetector,
+    ) {}
 
     public function getMarketplaceCode(): string
     {
@@ -439,21 +443,26 @@ class UzumClient implements MarketplaceClientInterface
     }
 
     /**
-     * Ping API to check connectivity (health-check)
-     * Uses seller info endpoint - lightweight and validates API key
+     * Быстрая проверка доступности API (health-check)
+     *
+     * Использует endpoint магазинов - легковесный и валидирует API ключ.
+     *
+     * @return array{success: bool, message: string, response_time_ms: int|null, data?: array}
      */
     public function ping(MarketplaceAccount $account): array
     {
-        // Always try /v1/shops first - it's the most reliable endpoint
+        $startTime = microtime(true);
+        $lastError = null;
+
+        // GET /v1/shops - легковесный endpoint для проверки
         $paths = ['/v1/shops'];
 
         foreach ($paths as $path) {
-            $start = microtime(true);
             try {
                 $response = $this->request($account, 'GET', $path);
-                $duration = round((microtime(true) - $start) * 1000);
+                $duration = (int) round((microtime(true) - $startTime) * 1000);
 
-                \Log::info('Uzum ping success', [
+                Log::info('Uzum ping success', [
                     'account_id' => $account->id,
                     'path' => $path,
                     'duration_ms' => $duration,
@@ -465,12 +474,11 @@ class UzumClient implements MarketplaceClientInterface
                     'message' => 'Uzum Market API доступен',
                     'response_time_ms' => $duration,
                     'data' => $response,
-                    'endpoint' => $path,
                 ];
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
 
-                \Log::warning('Uzum ping failed', [
+                Log::warning('Uzum ping failed', [
                     'account_id' => $account->id,
                     'path' => $path,
                     'error' => $lastError,
@@ -480,10 +488,12 @@ class UzumClient implements MarketplaceClientInterface
             }
         }
 
+        $duration = (int) round((microtime(true) - $startTime) * 1000);
+
         return [
             'success' => false,
-            'message' => 'Ошибка пинга Uzum: '.($lastError ?? 'endpoint not found'),
-            'response_time_ms' => null,
+            'message' => 'Ошибка: '.($lastError ?? 'endpoint not found'),
+            'response_time_ms' => $duration,
         ];
     }
 
