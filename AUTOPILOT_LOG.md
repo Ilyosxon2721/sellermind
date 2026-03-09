@@ -60,4 +60,9 @@
 2026-03-09 | TEST  | PASSED (20 tests, 44 assertions)
 2026-03-09 | COMMIT| test(analytics): добавить тесты для SalesAnalyticsService (#013) (1acc3de)
 2026-03-09 | DONE  | Task #013 completed
+2026-03-09 | TASK  | Started #014 - Унифицировать стили кнопок
+2026-03-09 | EDIT  | resources/css/pwa-native.css — добавлено определение .native-btn-primary
+2026-03-09 | NOTE  | Используется в 30+ местах, ранее не было явного CSS определения
+2026-03-09 | COMMIT| style(buttons): унифицировать стили кнопок native-btn-primary (#014) (6b20a35)
+2026-03-09 | DONE  | Task #014 completed
 
