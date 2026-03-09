@@ -16,7 +16,8 @@ export default defineConfig({
                 'resources/js/pwa/haptic.js',
                 'resources/js/pwa/cache.js',
                 'resources/js/pwa/offline.js',
-                'resources/js/pwa/background-sync.js'
+                'resources/js/pwa/background-sync.js',
+                'resources/js/pwa/sw-background-sync.js'
             ],
             refresh: true,
         }),
