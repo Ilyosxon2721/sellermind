@@ -20,7 +20,7 @@ class CheckLowStockCommand extends Command
     public function handle(): int
     {
         $companyId = $this->option('company');
-        $isDryRun  = $this->option('dry-run');
+        $isDryRun = $this->option('dry-run');
 
         $query = Company::query()
             ->with(['users.notificationSettings'])
@@ -55,7 +55,7 @@ class CheckLowStockCommand extends Command
 
                 foreach ($variants as $variant) {
                     if ($isDryRun) {
-                        $this->line('[DRY-RUN] ' . $variant->product->name . ' | SKU: ' . $variant->sku . ' | Остаток: ' . $variant->stock_default . ' <= ' . $threshold);
+                        $this->line('[DRY-RUN] '.$variant->product->name.' | SKU: '.$variant->sku.' | Остаток: '.$variant->stock_default.' <= '.$threshold);
                     } else {
                         $user->notify(new LowStockNotification($variant, $variant->stock_default));
                     }
@@ -66,8 +66,8 @@ class CheckLowStockCommand extends Command
 
         $this->info(
             $isDryRun
-                ? '[DRY-RUN] Найдено ' . $total . ' вариантов с низким остатком'
-                : 'Отправлено ' . $total . ' уведомлений о низком остатке'
+                ? '[DRY-RUN] Найдено '.$total.' вариантов с низким остатком'
+                : 'Отправлено '.$total.' уведомлений о низком остатке'
         );
 
         return self::SUCCESS;

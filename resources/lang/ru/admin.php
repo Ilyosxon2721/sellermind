@@ -22,6 +22,11 @@ return [
     'pricing' => 'Цены',
     'debts' => 'Деньги',
     'company_profile' => 'Профиль компании',
+    'analytics' => 'Аналитика',
+    'chat' => 'Чат',
+    'reviews' => 'Отзывы',
+    'promotions' => 'Акции',
+    'supplies' => 'Поставки',
 
     // Warehouse submenu
     'warehouse_section' => 'Склад',

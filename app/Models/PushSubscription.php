@@ -44,7 +44,7 @@ final class PushSubscription extends Model
     {
         parent::boot();
 
-        static::saving(function (self $subscription): void {
+        self::saving(function (self $subscription): void {
             $subscription->endpoint_hash = hash('sha256', $subscription->endpoint);
         });
     }

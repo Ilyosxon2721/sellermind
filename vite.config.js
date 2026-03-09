@@ -25,7 +25,10 @@ export default defineConfig({
         }),
         tailwindcss(),
         VitePWA({
-            registerType: 'autoUpdate',
+            // Use custom service worker from public/sw.js
+            // VitePWA only generates manifest, SW registration is in pwa.js
+            registerType: 'prompt',
+            injectRegister: false, // We register SW manually in pwa.js
             includeAssets: ['favicon.svg', 'robots.txt'],
             manifest: {
                 name: 'SellerMind - Управление продажами на маркетплейсах',

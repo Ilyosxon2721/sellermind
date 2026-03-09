@@ -36,8 +36,8 @@ final class PriceHistory extends Model
     protected function casts(): array
     {
         return [
-            'price'      => 'decimal:2',
-            'old_price'  => 'decimal:2',
+            'price' => 'decimal:2',
+            'old_price' => 'decimal:2',
             'changed_at' => 'datetime',
         ];
     }
@@ -63,14 +63,14 @@ final class PriceHistory extends Model
         ?int $changedBy = null
     ): self {
         return self::create([
-            'company_id'         => $variant->company_id,
-            'product_id'         => $variant->product_id,
+            'company_id' => $variant->company_id,
+            'product_id' => $variant->product_id,
             'product_variant_id' => $variant->id,
-            'channel'            => $channel,
-            'price'              => $newPrice,
-            'old_price'          => $oldPrice,
-            'changed_by'         => $changedBy ?? auth()->id(),
-            'changed_at'         => now(),
+            'channel' => $channel,
+            'price' => $newPrice,
+            'old_price' => $oldPrice,
+            'changed_by' => $changedBy ?? auth()->id(),
+            'changed_at' => now(),
         ]);
     }
 }

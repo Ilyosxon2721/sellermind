@@ -787,6 +787,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);
         Route::post('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'addPayment']);
         Route::post('debts/{id}/write-off', [\App\Http\Controllers\Api\Finance\DebtController::class, 'writeOff']);
+        Route::patch('debts/{id}/amount-currency', [\App\Http\Controllers\Api\Finance\DebtController::class, 'updateAmountCurrency']);
 
         // Employees
         Route::get('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'index']);

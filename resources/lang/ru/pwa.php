@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'quick_actions' => [
+        'sync' => 'Синхр.',
+        'prices' => 'Цены',
+        'reviews' => 'Отзывы',
+        'tasks' => 'Задачи',
+    ],
     'pin' => [
         'enter_title' => 'Введите PIN-код',
         'enter_subtitle' => 'Для входа в приложение',

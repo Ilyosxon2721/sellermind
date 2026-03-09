@@ -514,25 +514,47 @@
 
     {{-- PWA MODE - Native App Layout --}}
     <div class="pwa-only min-h-screen" style="background: #f2f2f7;">
-        {{-- PWA Native Header: Avatar | Title | Settings --}}
+        {{-- PWA Native Header: SellerMind | Notifications | Settings --}}
         <header class="sm-header">
             {{-- Left: Profile Avatar --}}
             <a href="/settings" class="sm-header-avatar" onclick="if(window.haptic) window.haptic.light()">
                 <span x-text="$store.auth.user?.name?.charAt(0) || 'U'"></span>
             </a>
 
-            {{-- Center: Title --}}
-            <h1 class="sm-header-title">{{ __('dashboard.title') }}</h1>
+            {{-- Center: Title + Company Selector --}}
+            <div class="flex flex-col items-center">
+                <h1 class="sm-header-title">SellerMind</h1>
+                <button @click="$store.auth.showCompanySelector = true; if(window.haptic) window.haptic.light()"
+                        class="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                    <span x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
 
-            {{-- Right: Settings Icon --}}
-            <button @click="window.location.href='/settings'"
-                    class="sm-header-action"
-                    onclick="if(window.haptic) window.haptic.light()">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-            </button>
+            {{-- Right: Notifications + Settings --}}
+            <div class="flex items-center gap-2">
+                {{-- Notifications Bell --}}
+                <button @click="showNotificationsSheet = true; if(window.haptic) window.haptic.light()"
+                        class="sm-header-action relative">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span x-show="alerts.total_count > 0"
+                          class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+                          x-text="alerts.total_count > 99 ? '99+' : alerts.total_count"></span>
+                </button>
+                {{-- Settings --}}
+                <button @click="window.location.href='/settings'"
+                        class="sm-header-action"
+                        onclick="if(window.haptic) window.haptic.light()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </button>
+            </div>
         </header>
 
         {{-- Pull-to-Refresh Indicator --}}
@@ -547,205 +569,339 @@
               @refresh-end="refreshing = false">
 
             {{-- Loading State with Skeleton --}}
-            <div x-show="loading" x-cloak class="px-4 py-4 space-y-4">
-                {{-- Skeleton Metrics Grid --}}
-                <div class="sm-metrics">
+            <div x-show="loading" x-cloak class="px-4 py-4 space-y-3">
+                {{-- Skeleton: Revenue Full Width --}}
+                <div class="bg-white rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 bg-gray-200 rounded-xl sm-shimmer"></div>
+                            <div class="h-4 w-20 bg-gray-200 rounded sm-shimmer"></div>
+                        </div>
+                        <div class="h-6 w-16 bg-gray-200 rounded-full sm-shimmer"></div>
+                    </div>
+                    <div class="h-8 w-40 bg-gray-200 rounded sm-shimmer"></div>
+                </div>
+
+                {{-- Skeleton: 2x2 Metrics Grid --}}
+                <div class="grid grid-cols-2 gap-3">
                     <template x-for="i in 4" :key="i">
-                        <div class="sm-skeleton-metric">
-                            <div class="sm-skeleton-icon sm-shimmer"></div>
-                            <div class="sm-skeleton-label sm-shimmer"></div>
-                            <div class="sm-skeleton-value sm-shimmer"></div>
+                        <div class="bg-white rounded-2xl p-4 shadow-sm">
+                            <div class="w-10 h-10 bg-gray-200 rounded-xl sm-shimmer mb-3"></div>
+                            <div class="h-6 w-16 bg-gray-200 rounded sm-shimmer mb-2"></div>
+                            <div class="h-4 w-20 bg-gray-200 rounded sm-shimmer"></div>
                         </div>
                     </template>
                 </div>
 
-                {{-- Skeleton Quick Actions --}}
-                <div class="grid grid-cols-4 gap-2">
-                    <template x-for="i in 4" :key="i">
-                        <div class="sm-skeleton-metric" style="padding: 12px;">
-                            <div class="sm-skeleton-icon sm-shimmer mx-auto" style="width: 32px; height: 32px;"></div>
-                            <div class="sm-skeleton-label sm-shimmer mx-auto mt-2" style="width: 60%;"></div>
-                        </div>
-                    </template>
-                </div>
-
-                {{-- Skeleton Orders List --}}
-                <div class="sm-skeleton-list">
-                    <template x-for="i in 3" :key="i">
-                        <div class="sm-skeleton-card">
-                            <div class="sm-skeleton-avatar sm-shimmer"></div>
-                            <div class="sm-skeleton-content">
-                                <div class="sm-skeleton-line sm-shimmer" style="width: 70%;"></div>
-                                <div class="sm-skeleton-line sm-shimmer" style="width: 50%;"></div>
-                                <div class="sm-skeleton-line sm-shimmer" style="width: 40%;"></div>
+                {{-- Skeleton: Chart --}}
+                <div class="bg-white rounded-2xl p-4 shadow-sm">
+                    <div class="h-4 w-40 bg-gray-200 rounded sm-shimmer mb-4"></div>
+                    <div class="space-y-3">
+                        <template x-for="i in 3" :key="i">
+                            <div>
+                                <div class="h-2 bg-gray-200 rounded-full sm-shimmer" :style="'width:' + (100 - i*20) + '%'"></div>
+                                <div class="flex justify-between mt-1">
+                                    <div class="h-3 w-12 bg-gray-200 rounded sm-shimmer"></div>
+                                    <div class="h-3 w-8 bg-gray-200 rounded sm-shimmer"></div>
+                                </div>
                             </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Skeleton: Quick Actions --}}
+                <div class="grid grid-cols-4 gap-3">
+                    <template x-for="i in 4" :key="i">
+                        <div class="bg-white rounded-2xl p-3 shadow-sm flex flex-col items-center">
+                            <div class="w-12 h-12 bg-gray-200 rounded-2xl sm-shimmer mb-2"></div>
+                            <div class="h-3 w-10 bg-gray-200 rounded sm-shimmer"></div>
                         </div>
                     </template>
+                </div>
+
+                {{-- Skeleton: Notifications --}}
+                <div class="bg-white rounded-2xl p-4 shadow-sm">
+                    <div class="h-4 w-32 bg-gray-200 rounded sm-shimmer mb-4"></div>
+                    <div class="space-y-3">
+                        <template x-for="i in 3" :key="i">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-gray-200 rounded-xl sm-shimmer"></div>
+                                <div class="flex-1">
+                                    <div class="h-4 w-3/4 bg-gray-200 rounded sm-shimmer mb-2"></div>
+                                    <div class="h-3 w-1/2 bg-gray-200 rounded sm-shimmer"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
             {{-- Content --}}
-            <div x-show="!loading" x-cloak>
-                {{-- Period Selector Badge --}}
-                <div class="px-4 pt-4 pb-2">
-                    <button @click="showPeriodSheet = true; if(window.haptic) window.haptic.light()"
-                            class="inline-flex items-center space-x-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 active:scale-95 transition-transform">
-                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        <span class="text-sm font-medium text-gray-900" x-text="periodLabel"></span>
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                </div>
+            <div x-show="!loading" x-cloak class="px-4 py-4 space-y-3">
 
-                {{-- Alerts Banner (PWA) --}}
-                <div x-show="alerts.total_count > 0" class="px-4 pb-2">
-                    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3" @click="showAlertsModal = true">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-amber-800" x-text="alerts.total_count + ' оповещений'"></p>
-                            </div>
-                            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Metrics Grid --}}
-                <div class="px-4 pb-3">
-                    <div class="sm-metrics">
-                        {{-- Revenue Card --}}
-                        <div class="sm-metric-card">
-                            <div class="sm-metric-icon blue">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {{-- SECTION 1: Revenue Widget (Full Width) --}}
+                <div class="bg-white rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
-                            <p class="sm-metric-value" x-text="formatMoney(stats.revenue)">0 сум</p>
-                            <p class="sm-metric-label">{{ __('dashboard.revenue') }}</p>
+                            <div>
+                                <button @click="showPeriodSheet = true; if(window.haptic) window.haptic.light()"
+                                        class="flex items-center gap-1 text-sm text-gray-500">
+                                    <span x-text="periodLabel"></span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-
-                        {{-- Orders Today Card --}}
-                        <div class="sm-metric-card">
-                            <div class="sm-metric-icon green">
-                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                </svg>
-                            </div>
-                            <p class="sm-metric-value" x-text="stats.today_orders">0</p>
-                            <p class="sm-metric-label">{{ __('dashboard.orders_today') }}</p>
+                        {{-- Trend Badge --}}
+                        <div x-show="stats.revenue_trend !== undefined && stats.revenue_trend !== null"
+                             class="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
+                             :class="stats.revenue_trend >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'">
+                            <svg x-show="stats.revenue_trend >= 0" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                            </svg>
+                            <svg x-show="stats.revenue_trend < 0" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                            <span x-text="Math.abs(stats.revenue_trend || 0) + '%'"></span>
                         </div>
-
-                        {{-- Products Card --}}
-                        <a href="/products" class="sm-metric-card" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="sm-metric-icon purple">
-                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                            </div>
-                            <p class="sm-metric-value" x-text="stats.products_count">0</p>
-                            <p class="sm-metric-label">{{ __('dashboard.products') }}</p>
-                        </a>
-
-                        {{-- Warehouse Card --}}
-                        <a href="/warehouse" class="sm-metric-card" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="sm-metric-icon orange">
-                                <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                </svg>
-                            </div>
-                            <p class="sm-metric-value" x-text="formatMoney(warehouse.total_value)">0 сум</p>
-                            <p class="sm-metric-label">{{ __('dashboard.warehouse') }}</p>
-                        </a>
                     </div>
+                    <p class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.revenue)">0 сум</p>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <span x-text="stats.orders_count || 0"></span> {{ __('dashboard.orders') }}
+                    </p>
                 </div>
 
-                {{-- Quick Actions Grid --}}
-                <div class="px-4 pb-4">
-                    <p class="sm-section-title mb-3">{{ __('dashboard.quick_actions') }}</p>
-                    <div class="grid grid-cols-4 gap-4">
-                        {{-- Marketplaces --}}
-                        <a href="/marketplaces" class="sm-quick-action" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-orange-500/30 relative">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                {{-- SECTION 2: Stats Grid (2x2) --}}
+                <div class="grid grid-cols-2 gap-3">
+                    {{-- Orders Widget --}}
+                    <div class="bg-white rounded-2xl p-4 shadow-sm">
+                        <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                            </svg>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900" x-text="stats.today_orders || 0">0</p>
+                        <p class="text-sm text-gray-500">{{ __('dashboard.orders_today') }}</p>
+                    </div>
+
+                    {{-- Reviews Widget --}}
+                    <a href="/reviews" class="bg-white rounded-2xl p-4 shadow-sm block active:scale-98 transition-transform" onclick="if(window.haptic) window.haptic.light()">
+                        <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <p class="text-xl font-bold text-gray-900" x-text="reviews.average_rating || '—'">—</p>
+                            <p class="text-sm text-gray-500">(<span x-text="reviews.pending_response || 0"></span> {{ __('dashboard.new') }})</p>
+                        </div>
+                        <p class="text-sm text-gray-500">{{ __('dashboard.reviews') }}</p>
+                    </a>
+
+                    {{-- Stock Widget --}}
+                    <a href="/inventory" class="bg-white rounded-2xl p-4 shadow-sm block active:scale-98 transition-transform" onclick="if(window.haptic) window.haptic.light()">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900" x-text="(warehouse.total_items || 0).toLocaleString('ru-RU')">0</p>
+                        <p class="text-sm text-gray-500">{{ __('dashboard.stock') }}</p>
+                    </a>
+
+                    {{-- Delivery Widget --}}
+                    <a href="/supplies" class="bg-white rounded-2xl p-4 shadow-sm block active:scale-98 transition-transform" onclick="if(window.haptic) window.haptic.light()">
+                        <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>
+                            </svg>
+                        </div>
+                        <p class="text-xl font-bold text-gray-900" x-text="supplies.active_count || 0">0</p>
+                        <p class="text-sm text-gray-500">{{ __('dashboard.in_transit') }}</p>
+                    </a>
+                </div>
+
+                {{-- SECTION 3: Marketplace Sales Chart --}}
+                <div x-data="{
+                    chartData: [],
+                    initChart() {
+                        if (marketplace && marketplace.accounts) {
+                            const colors = {
+                                'wb': '#a855f7',
+                                'ozon': '#3b82f6',
+                                'uzum': '#7c3aed',
+                                'ym': '#facc15'
+                            };
+                            const labels = {
+                                'wb': 'Wildberries',
+                                'ozon': 'Ozon',
+                                'uzum': 'Uzum',
+                                'ym': 'Yandex Market'
+                            };
+                            this.chartData = marketplace.accounts.map(a => ({
+                                label: labels[a.marketplace] || a.name,
+                                value: a.sales_total || 0,
+                                color: colors[a.marketplace] || '#6b7280'
+                            }));
+                        }
+                    }
+                }" x-init="$watch('marketplace', () => initChart()); initChart()">
+                    <x-pwa.chart-mini
+                        type="bar"
+                        :data="[]"
+                        :height="100"
+                        title="{{ __('dashboard.sales_by_marketplace') }}"
+                        x-bind:data="chartData"
+                    />
+                </div>
+
+                {{-- SECTION 4: Quick Actions --}}
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 pl-1">{{ __('dashboard.quick_actions') }}</p>
+                    <div class="grid grid-cols-4 gap-3">
+                        {{-- Sync --}}
+                        <a href="/marketplaces/sync" class="bg-white rounded-2xl p-3 shadow-sm flex flex-col items-center active:scale-95 transition-transform" onclick="if(window.haptic) window.haptic.light()">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-blue-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                 </svg>
-                                <span x-show="stats.marketplace_accounts > 0"
-                                      class="absolute -top-1.5 -right-1.5 bg-white text-orange-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow"
-                                      x-text="stats.marketplace_accounts"></span>
                             </div>
-                            <span class="text-xs text-gray-600 font-semibold text-center">{{ __('dashboard.mp') }}</span>
+                            <span class="text-xs text-gray-600 font-medium text-center">{{ __('dashboard.sync') }}</span>
+                        </a>
+
+                        {{-- Prices --}}
+                        <a href="/products/prices" class="bg-white rounded-2xl p-3 shadow-sm flex flex-col items-center active:scale-95 transition-transform" onclick="if(window.haptic) window.haptic.light()">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-green-500/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-gray-600 font-medium text-center">{{ __('dashboard.prices') }}</span>
                         </a>
 
                         {{-- Reviews --}}
-                        <a href="/reviews" class="sm-quick-action" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-yellow-500/30 relative">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <a href="/reviews" class="bg-white rounded-2xl p-3 shadow-sm flex flex-col items-center active:scale-95 transition-transform relative" onclick="if(window.haptic) window.haptic.light()">
+                            <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-yellow-500/30 relative">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
                                 </svg>
                                 <span x-show="reviews.pending_response > 0"
-                                      class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow"
+                                      class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
                                       x-text="reviews.pending_response"></span>
                             </div>
-                            <span class="text-xs text-gray-600 font-semibold text-center">{{ __('dashboard.reviews') }}</span>
+                            <span class="text-xs text-gray-600 font-medium text-center">{{ __('dashboard.review') }}</span>
                         </a>
 
-                        {{-- Warehouse/Supplies --}}
-                        <a href="/warehouse" class="sm-quick-action" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="w-16 h-16 bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-indigo-500/30 relative">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                                <span x-show="supplies.active_count > 0"
-                                      class="absolute -top-1.5 -right-1.5 bg-white text-indigo-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow"
-                                      x-text="supplies.active_count"></span>
-                            </div>
-                            <span class="text-xs text-gray-600 font-semibold text-center">{{ __('dashboard.warehouse') }}</span>
-                        </a>
-
-                        {{-- AI Assistant --}}
-                        <a href="/chat" class="sm-quick-action" onclick="if(window.haptic) window.haptic.light()">
-                            <div class="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-pink-500/30 relative">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {{-- AI Chat --}}
+                        <a href="/chat" class="bg-white rounded-2xl p-3 shadow-sm flex flex-col items-center active:scale-95 transition-transform relative" onclick="if(window.haptic) window.haptic.light()">
+                            <div class="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-500 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-pink-500/30 relative">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                                 </svg>
                                 <span x-show="ai.running_tasks > 0"
-                                      class="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow animate-pulse"
+                                      class="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse"
                                       x-text="ai.running_tasks"></span>
                             </div>
-                            <span class="text-xs text-gray-600 font-semibold text-center">AI</span>
+                            <span class="text-xs text-gray-600 font-medium text-center">AI</span>
                         </a>
                     </div>
                 </div>
 
-                {{-- Recent Orders Section --}}
-                <div class="px-4 pt-3 pb-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="sm-section-title">{{ __('dashboard.recent_orders') }}</p>
-                        <a href="/sales" class="text-sm font-medium text-blue-600 flex items-center">
+                {{-- SECTION 5: Notifications --}}
+                <div x-show="notifications.length > 0 || alerts.items?.length > 0">
+                    <div class="flex items-center justify-between mb-3 pl-1">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('dashboard.notifications') }}</p>
+                        <span x-show="alerts.total_count > 0"
+                              class="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+                              x-text="alerts.total_count"></span>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100">
+                        <template x-for="(alert, index) in (alerts.items || []).slice(0, 3)" :key="'alert-' + index">
+                            <a :href="alert.action_url || '#'"
+                               class="flex items-start gap-3 p-4 active:bg-gray-50 transition-colors"
+                               onclick="if(window.haptic) window.haptic.light()">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                     :class="{
+                                         'bg-red-100': alert.severity === 'error',
+                                         'bg-amber-100': alert.severity === 'warning',
+                                         'bg-blue-100': alert.severity === 'info',
+                                         'bg-purple-100': alert.type === 'order',
+                                         'bg-yellow-100': alert.type === 'review'
+                                     }">
+                                    <template x-if="alert.type === 'low_stock' || alert.type === 'stock'">
+                                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="alert.type === 'review'">
+                                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="alert.type === 'order' || alert.type === 'orders'">
+                                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="alert.type === 'promo' || alert.type === 'promotion'">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="!['low_stock', 'stock', 'review', 'order', 'orders', 'promo', 'promotion'].includes(alert.type)">
+                                        <svg class="w-5 h-5" :class="{
+                                            'text-red-600': alert.severity === 'error',
+                                            'text-amber-600': alert.severity === 'warning',
+                                            'text-blue-600': alert.severity === 'info'
+                                        }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </template>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate" x-text="alert.title"></p>
+                                    <p class="text-xs text-gray-500 line-clamp-1" x-text="alert.message"></p>
+                                </div>
+                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </template>
+                    </div>
+                    {{-- View All Link --}}
+                    <button x-show="alerts.total_count > 3"
+                            @click="showAlertsModal = true; if(window.haptic) window.haptic.light()"
+                            class="w-full mt-2 py-2 text-sm text-blue-600 font-medium text-center">
+                        {{ __('dashboard.view_all') }} (<span x-text="alerts.total_count"></span>)
+                    </button>
+                </div>
+
+                {{-- SECTION 6: Recent Orders --}}
+                <div class="pt-2">
+                    <div class="flex items-center justify-between mb-3 pl-1">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('dashboard.recent_orders') }}</p>
+                        <a href="/sales" class="text-xs font-medium text-blue-600 flex items-center gap-1" onclick="if(window.haptic) window.haptic.light()">
                             {{ __('dashboard.all') }}
-                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </a>
                     </div>
 
                     {{-- Orders List --}}
-                    <div class="sm-list" x-show="recentOrders.length > 0">
+                    <div x-show="recentOrders.length > 0" class="bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100">
                         <template x-for="order in recentOrders.slice(0, 5)" :key="order.id">
                             <a :href="'/sales?id=' + order.id"
-                               class="sm-list-item"
+                               class="flex items-center gap-3 p-4 active:bg-gray-50 transition-colors"
                                onclick="if(window.haptic) window.haptic.light()">
                                 {{-- Marketplace Icon --}}
-                                <div class="sm-list-icon"
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                                      :class="{
                                          'bg-purple-100': order.marketplace === 'wb',
                                          'bg-blue-100': order.marketplace === 'uzum',
@@ -761,29 +917,28 @@
                                           }"
                                           x-text="({'wb':'WB','uzum':'UZ','ozon':'OZ','ym':'YM'})[order.marketplace] || 'MP'"></span>
                                 </div>
-
-                                {{-- Content --}}
-                                <div class="sm-list-content">
+                                {{-- Order Info --}}
+                                <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2">
-                                        <span class="sm-list-title" x-text="'#' + order.order_number"></span>
-                                        <span class="sm-badge"
+                                        <span class="text-sm font-medium text-gray-900" x-text="'#' + order.order_number"></span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium"
                                               :class="{
-                                                  'sm-badge-new': order.status === 'new',
-                                                  'sm-badge-processing': order.status === 'in_assembly' || order.status === 'in_delivery',
-                                                  'sm-badge-success': order.status === 'completed',
-                                                  'sm-badge-error': order.status === 'cancelled'
+                                                  'bg-blue-100 text-blue-700': order.status === 'new',
+                                                  'bg-yellow-100 text-yellow-700': order.status === 'in_assembly',
+                                                  'bg-indigo-100 text-indigo-700': order.status === 'in_delivery',
+                                                  'bg-green-100 text-green-700': order.status === 'completed',
+                                                  'bg-red-100 text-red-700': order.status === 'cancelled'
                                               }"
                                               x-text="order.status_label || order.status"></span>
                                     </div>
-                                    <div class="sm-list-subtitle flex items-center gap-2">
-                                        <span x-text="formatMoney(order.amount)" class="font-semibold text-gray-900"></span>
-                                        <span class="text-gray-400">|</span>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        <span x-text="formatMoney(order.amount)" class="font-medium text-gray-700"></span>
+                                        <span class="mx-1">|</span>
                                         <span x-text="order.date"></span>
-                                    </div>
+                                    </p>
                                 </div>
-
                                 {{-- Chevron --}}
-                                <svg class="sm-list-chevron w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
                             </a>
@@ -791,7 +946,7 @@
                     </div>
 
                     {{-- Empty State --}}
-                    <div x-show="!loading && recentOrders.length === 0" x-cloak class="sm-card text-center py-12">
+                    <div x-show="recentOrders.length === 0" class="bg-white rounded-2xl shadow-sm p-8 text-center">
                         <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
@@ -799,11 +954,14 @@
                         </div>
                         <p class="text-sm font-medium text-gray-900 mb-1">{{ __('dashboard.no_orders_yet') }}</p>
                         <p class="text-xs text-gray-500 mb-4">{{ __('dashboard.orders_will_appear') }}</p>
-                        <a href="/marketplaces" class="sm-btn sm-btn-primary inline-flex">
+                        <a href="/marketplaces" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl active:scale-95 transition-transform" onclick="if(window.haptic) window.haptic.light()">
                             {{ __('dashboard.connect_marketplace') }}
                         </a>
                     </div>
                 </div>
+
+                {{-- Bottom spacer for tab bar --}}
+                <div class="h-4"></div>
             </div>
         </main>
 
@@ -823,41 +981,44 @@
                 <div class="sm-bottom-sheet-handle"></div>
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('dashboard.select_period') }}</h3>
 
-                <div class="sm-list">
+                <div class="space-y-2">
                     <button @click="period = 'today'; loadData(); showPeriodSheet = false; if(window.haptic) window.haptic.selection()"
-                            class="sm-list-item w-full text-left">
-                        <div class="sm-list-icon bg-blue-100">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="w-full flex items-center gap-3 p-4 rounded-xl transition-colors"
+                            :class="period === 'today' ? 'bg-blue-50' : 'bg-gray-50 active:bg-gray-100'">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="period === 'today' ? 'bg-blue-100' : 'bg-gray-200'">
+                            <svg class="w-5 h-5" :class="period === 'today' ? 'text-blue-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
                             </svg>
                         </div>
-                        <span class="sm-list-title flex-1">{{ __('dashboard.today') }}</span>
+                        <span class="flex-1 text-left font-medium" :class="period === 'today' ? 'text-blue-700' : 'text-gray-900'">{{ __('dashboard.today') }}</span>
                         <svg x-show="period === 'today'" class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                     </button>
 
                     <button @click="period = 'week'; loadData(); showPeriodSheet = false; if(window.haptic) window.haptic.selection()"
-                            class="sm-list-item w-full text-left">
-                        <div class="sm-list-icon bg-green-100">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="w-full flex items-center gap-3 p-4 rounded-xl transition-colors"
+                            :class="period === 'week' ? 'bg-blue-50' : 'bg-gray-50 active:bg-gray-100'">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="period === 'week' ? 'bg-blue-100' : 'bg-gray-200'">
+                            <svg class="w-5 h-5" :class="period === 'week' ? 'text-blue-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                             </svg>
                         </div>
-                        <span class="sm-list-title flex-1">{{ __('dashboard.7_days') }}</span>
+                        <span class="flex-1 text-left font-medium" :class="period === 'week' ? 'text-blue-700' : 'text-gray-900'">{{ __('dashboard.7_days') }}</span>
                         <svg x-show="period === 'week'" class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                     </button>
 
                     <button @click="period = 'month'; loadData(); showPeriodSheet = false; if(window.haptic) window.haptic.selection()"
-                            class="sm-list-item w-full text-left">
-                        <div class="sm-list-icon bg-purple-100">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="w-full flex items-center gap-3 p-4 rounded-xl transition-colors"
+                            :class="period === 'month' ? 'bg-blue-50' : 'bg-gray-50 active:bg-gray-100'">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="period === 'month' ? 'bg-blue-100' : 'bg-gray-200'">
+                            <svg class="w-5 h-5" :class="period === 'month' ? 'text-blue-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                             </svg>
                         </div>
-                        <span class="sm-list-title flex-1">{{ __('dashboard.30_days') }}</span>
+                        <span class="flex-1 text-left font-medium" :class="period === 'month' ? 'text-blue-700' : 'text-gray-900'">{{ __('dashboard.30_days') }}</span>
                         <svg x-show="period === 'month'" class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
@@ -865,16 +1026,16 @@
                 </div>
 
                 <button @click="showPeriodSheet = false; if(window.haptic) window.haptic.light()"
-                        class="sm-btn sm-btn-secondary sm-btn-block mt-4">
+                        class="w-full mt-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl active:bg-gray-200 transition-colors">
                     {{ __('dashboard.cancel') }}
                 </button>
             </div>
         </div>
 
-        {{-- Alerts Bottom Sheet --}}
+        {{-- Notifications Bottom Sheet --}}
         <div class="sm-bottom-sheet"
-             :class="{ 'visible': showAlertsModal }"
-             x-show="showAlertsModal"
+             :class="{ 'visible': showNotificationsSheet }"
+             x-show="showNotificationsSheet"
              x-cloak
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
@@ -882,84 +1043,79 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0">
-            <div class="sm-bottom-sheet-backdrop" @click="showAlertsModal = false"></div>
-            <div class="sm-bottom-sheet-content" style="max-height: 70vh; overflow-y: auto;">
+            <div class="sm-bottom-sheet-backdrop" @click="showNotificationsSheet = false"></div>
+            <div class="sm-bottom-sheet-content" style="max-height: 80vh; overflow-y: auto;">
                 <div class="sm-bottom-sheet-handle"></div>
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('dashboard.alerts') }}</h3>
-                    <span class="sm-badge sm-badge-error" x-text="alerts.total_count"></span>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('dashboard.notifications') }}</h3>
+                    <span x-show="alerts.total_count > 0"
+                          class="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5"
+                          x-text="alerts.total_count"></span>
                 </div>
 
-                {{-- Alerts List --}}
-                <div class="space-y-3">
-                    <template x-for="alert in alerts.items" :key="alert.type + '_' + (alert.sku_id || alert.review_id || alert.supply_id || Math.random())">
+                {{-- Notifications List --}}
+                <div class="space-y-2">
+                    <template x-for="(alert, index) in alerts.items" :key="'notif-' + index">
                         <a :href="alert.action_url || '#'"
                            @click="if(window.haptic) window.haptic.light()"
-                           class="block p-4 rounded-xl border transition-all active:scale-98"
+                           class="flex items-start gap-3 p-4 rounded-xl border transition-all active:scale-98"
                            :class="{
                                'bg-red-50 border-red-200': alert.severity === 'error',
                                'bg-amber-50 border-amber-200': alert.severity === 'warning',
                                'bg-blue-50 border-blue-200': alert.severity === 'info'
                            }">
-                            <div class="flex items-start gap-3">
-                                {{-- Alert Icon --}}
-                                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                                     :class="{
-                                         'bg-red-100': alert.severity === 'error',
-                                         'bg-amber-100': alert.severity === 'warning',
-                                         'bg-blue-100': alert.severity === 'info'
-                                     }">
-                                    <template x-if="alert.type === 'low_stock'">
-                                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'review'">
-                                        <svg class="w-5 h-5" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'supply'">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'orders'">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'subscription'">
-                                        <svg class="w-5 h-5" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </template>
-                                </div>
-
-                                {{-- Alert Content --}}
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold" :class="{
-                                        'text-red-800': alert.severity === 'error',
-                                        'text-amber-800': alert.severity === 'warning',
-                                        'text-blue-800': alert.severity === 'info'
-                                    }" x-text="alert.title"></p>
-                                    <p class="text-xs mt-0.5" :class="{
-                                        'text-red-600': alert.severity === 'error',
-                                        'text-amber-600': alert.severity === 'warning',
-                                        'text-blue-600': alert.severity === 'info'
-                                    }" x-text="alert.message"></p>
-                                </div>
-
-                                {{-- Chevron --}}
-                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                 :class="{
+                                     'bg-red-100': alert.severity === 'error',
+                                     'bg-amber-100': alert.severity === 'warning',
+                                     'bg-blue-100': alert.severity === 'info'
+                                 }">
+                                <template x-if="alert.type === 'low_stock'">
+                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    </svg>
+                                </template>
+                                <template x-if="alert.type === 'review'">
+                                    <svg class="w-5 h-5" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                    </svg>
+                                </template>
+                                <template x-if="alert.type === 'supply'">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                    </svg>
+                                </template>
+                                <template x-if="alert.type === 'orders'">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    </svg>
+                                </template>
+                                <template x-if="alert.type === 'subscription'">
+                                    <svg class="w-5 h-5" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </template>
                             </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold" :class="{
+                                    'text-red-800': alert.severity === 'error',
+                                    'text-amber-800': alert.severity === 'warning',
+                                    'text-blue-800': alert.severity === 'info'
+                                }" x-text="alert.title"></p>
+                                <p class="text-xs mt-0.5" :class="{
+                                    'text-red-600': alert.severity === 'error',
+                                    'text-amber-600': alert.severity === 'warning',
+                                    'text-blue-600': alert.severity === 'info'
+                                }" x-text="alert.message"></p>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
                         </a>
                     </template>
 
                     {{-- Empty State --}}
-                    <div x-show="!alerts.items || alerts.items.length === 0" class="text-center py-8">
+                    <div x-show="!alerts.items || alerts.items.length === 0" class="text-center py-12">
                         <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                             <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -970,11 +1126,26 @@
                     </div>
                 </div>
 
-                <button @click="showAlertsModal = false; if(window.haptic) window.haptic.light()"
-                        class="sm-btn sm-btn-secondary sm-btn-block mt-4">
+                <button @click="showNotificationsSheet = false; if(window.haptic) window.haptic.light()"
+                        class="w-full mt-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl active:bg-gray-200 transition-colors">
                     {{ __('dashboard.close') }}
                 </button>
             </div>
+        </div>
+
+        {{-- Alerts Bottom Sheet (redirects to notifications sheet) --}}
+        <div class="sm-bottom-sheet"
+             :class="{ 'visible': showAlertsModal }"
+             x-show="showAlertsModal"
+             x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             x-init="$watch('showAlertsModal', v => { if(v) { showAlertsModal = false; showNotificationsSheet = true; } })">
+            <div class="sm-bottom-sheet-backdrop" @click="showAlertsModal = false"></div>
         </div>
     </div>
 </div>
@@ -987,6 +1158,8 @@ function dashboardPage() {
         period: 'week',
         showPeriodSheet: false,
         showAlertsModal: false,
+        showNotificationsSheet: false,
+        notifications: [],
         stats: {
             revenue: 0,
             orders_count: 0,

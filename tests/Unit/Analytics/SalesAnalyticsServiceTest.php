@@ -21,7 +21,7 @@ class SalesAnalyticsServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new SalesAnalyticsService();
+        $this->service = new SalesAnalyticsService;
     }
 
     // ==========================================

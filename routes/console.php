@@ -326,7 +326,6 @@ Schedule::command('marketplace:auto-link --all')
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
 
-
 // Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
 Schedule::command('stock:check-low')
     ->dailyAt('08:00')

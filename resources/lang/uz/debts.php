@@ -107,4 +107,14 @@ return [
     'cash_income' => 'Kassaga kirim',
     'cash_expense' => 'Kassadan chiqim',
     'no_cash_accounts' => 'Mavjud hisoblar yo\'q',
+
+    // Summa va valyutani tuzatish
+    'edit_amount_currency' => 'Tuzatish',
+    'edit_amount_currency_title' => 'Summa va valyutani tuzatish',
+    'new_amount' => 'Yangi summa',
+    'new_currency' => 'Valyuta',
+    'correction_reason' => 'Tuzatish sababi',
+    'correction_reason_placeholder' => 'Masalan: kiritish xatosi, shartlar o\'zgarishi...',
+    'amount_updated' => 'Summa va valyuta yangilandi',
+    'min_amount_warning' => 'Minimal summa: :amount (allaqachon to\'langan)',
 ];

@@ -206,6 +206,75 @@ class DebtController extends Controller
         return $this->successResponse($debt->fresh(['counterparty', 'counterpartyEntity', 'employee', 'payments']));
     }
 
+    /**
+     * Корректировка суммы и валюты долга
+     * Доступна даже для частично оплаченных долгов
+     */
+    public function updateAmountCurrency($id, Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $debt = FinanceDebt::byCompany($companyId)->findOrFail($id);
+
+        // Нельзя редактировать полностью оплаченные или списанные долги
+        if ($debt->isPaid()) {
+            return $this->errorResponse('Невозможно изменить полностью оплаченный долг', 'invalid_state', null, 422);
+        }
+
+        if ($debt->isWrittenOff()) {
+            return $this->errorResponse('Невозможно изменить списанный долг', 'invalid_state', null, 422);
+        }
+
+        $data = $request->validate([
+            'original_amount' => ['required', 'numeric', 'min:0.01'],
+            'currency_code' => ['required', 'string', 'max:8'],
+            'correction_reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Новая сумма не может быть меньше уже оплаченной
+        if ($data['original_amount'] < $debt->amount_paid) {
+            return $this->errorResponse(
+                'Новая сумма не может быть меньше уже оплаченной суммы ('.number_format($debt->amount_paid, 0, '.', ' ').')',
+                'validation_error',
+                null,
+                422
+            );
+        }
+
+        // Пересчитываем остаток
+        $newOutstanding = $data['original_amount'] - $debt->amount_paid;
+
+        // Обновляем статус если нужно
+        $newStatus = $debt->status;
+        if ($newOutstanding <= 0) {
+            $newStatus = FinanceDebt::STATUS_PAID;
+        } elseif ($debt->amount_paid > 0) {
+            $newStatus = FinanceDebt::STATUS_PARTIALLY_PAID;
+        } else {
+            $newStatus = FinanceDebt::STATUS_ACTIVE;
+        }
+
+        // Сохраняем причину корректировки в notes
+        $notes = $debt->notes;
+        if (! empty($data['correction_reason'])) {
+            $correctionNote = '[Корректировка '.now()->format('d.m.Y H:i').']: '.$data['correction_reason'];
+            $notes = $notes ? $notes."\n".$correctionNote : $correctionNote;
+        }
+
+        $debt->update([
+            'original_amount' => $data['original_amount'],
+            'amount_outstanding' => $newOutstanding,
+            'currency_code' => $data['currency_code'],
+            'status' => $newStatus,
+            'notes' => $notes,
+        ]);
+
+        return $this->successResponse($debt->fresh(['counterparty', 'counterpartyEntity', 'employee', 'payments']));
+    }
+
     public function summary(Request $request)
     {
         $companyId = Auth::user()?->company_id;
