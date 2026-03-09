@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('user_id')
                 ->constrained()
                 ->onDelete('cascade');
-            $table->text('endpoint')->unique();
+            $table->string('endpoint', 500)->unique();
             $table->string('public_key', 255);
             $table->string('auth_token', 255);
             $table->string('content_encoding', 50)->nullable();
