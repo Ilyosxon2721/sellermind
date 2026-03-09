@@ -437,6 +437,97 @@ class StockController extends Controller
     }
 
     /**
+     * Получить сводку по стоимости товаров на складе
+     *
+     * Возвращает:
+     * - Общую стоимость товаров на складе (по сумме)
+     * - Общее количество товаров
+     * - Разбивку по складам пользователя
+     */
+    public function summary(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => ['nullable', 'integer'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        // Получаем все склады компании
+        $warehousesQuery = \App\Models\Warehouse\Warehouse::byCompany($companyId);
+        if ($request->warehouse_id) {
+            $warehousesQuery->where('id', $request->warehouse_id);
+        }
+        $warehouses = $warehousesQuery->get();
+
+        if ($warehouses->isEmpty()) {
+            return $this->successResponse([
+                'total_quantity' => 0,
+                'total_cost' => 0,
+                'warehouses' => [],
+            ]);
+        }
+
+        $service = app(StockBalanceService::class);
+        $warehouseStats = [];
+        $totalQuantity = 0;
+        $totalCost = 0;
+
+        foreach ($warehouses as $warehouse) {
+            // Получаем все SKU на складе с положительным остатком
+            $ledgerData = \App\Models\Warehouse\StockLedger::query()
+                ->where('company_id', $companyId)
+                ->where('warehouse_id', $warehouse->id)
+                ->selectRaw('sku_id, SUM(qty_delta) as qty, SUM(cost_delta) as cost')
+                ->groupBy('sku_id')
+                ->having('qty', '>', 0)
+                ->get();
+
+            $warehouseQty = 0;
+            $warehouseCost = 0;
+            $skuCount = 0;
+
+            foreach ($ledgerData as $data) {
+                $qty = (float) $data->qty;
+                $cost = (float) $data->cost;
+
+                // Если себестоимость в ledger равна 0, пробуем взять из ProductVariant
+                if ($cost <= 0 && $qty > 0) {
+                    $sku = \App\Models\Warehouse\Sku::find($data->sku_id);
+                    if ($sku && $sku->productVariant?->purchase_price > 0) {
+                        $cost = $qty * (float) $sku->productVariant->purchase_price;
+                    }
+                }
+
+                $warehouseQty += $qty;
+                $warehouseCost += max(0, $cost);
+                $skuCount++;
+            }
+
+            $warehouseStats[] = [
+                'id' => $warehouse->id,
+                'name' => $warehouse->name,
+                'code' => $warehouse->code,
+                'is_default' => (bool) $warehouse->is_default,
+                'quantity' => $warehouseQty,
+                'cost' => round($warehouseCost, 2),
+                'sku_count' => $skuCount,
+            ];
+
+            $totalQuantity += $warehouseQty;
+            $totalCost += $warehouseCost;
+        }
+
+        return $this->successResponse([
+            'total_quantity' => $totalQuantity,
+            'total_cost' => round($totalCost, 2),
+            'warehouses' => $warehouseStats,
+        ]);
+    }
+
+    /**
      * Update cost for a SKU
      * Creates an adjustment entry in stock_ledger to correct the cost
      */

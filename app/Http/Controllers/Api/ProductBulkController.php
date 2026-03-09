@@ -94,8 +94,8 @@ class ProductBulkController extends Controller
                     $variant->sku,
                     $variant->barcode ?? '',
                     $variant->purchase_price ?? 0,
-                    $variant->retail_price ?? 0,
-                    $variant->old_price ?? 0,
+                    $variant->price_default ?? 0,
+                    $variant->old_price_default ?? 0,
                     $variant->stock_default ?? 0,
                     $variant->is_active ? 'Yes' : 'No',
                     $this->formatVariantOptions($variant),
@@ -197,15 +197,15 @@ class ProductBulkController extends Controller
                     'new' => (float) $newPurchasePrice,
                 ];
             }
-            if ($newRetailPrice !== null && $newRetailPrice !== '' && $variant->retail_price != $newRetailPrice) {
-                $changes['retail_price'] = [
-                    'old' => $variant->retail_price,
+            if ($newRetailPrice !== null && $newRetailPrice !== '' && $variant->price_default != $newRetailPrice) {
+                $changes['price_default'] = [
+                    'old' => $variant->price_default,
                     'new' => (float) $newRetailPrice,
                 ];
             }
-            if ($newOldPrice !== null && $newOldPrice !== '' && $variant->old_price != $newOldPrice) {
-                $changes['old_price'] = [
-                    'old' => $variant->old_price,
+            if ($newOldPrice !== null && $newOldPrice !== '' && $variant->old_price_default != $newOldPrice) {
+                $changes['old_price_default'] = [
+                    'old' => $variant->old_price_default,
                     'new' => (float) $newOldPrice,
                 ];
             }
@@ -337,14 +337,22 @@ class ProductBulkController extends Controller
                     $data = $request->data;
                     $updateData = [];
 
+                    if (isset($data['price_default'])) {
+                        $updateData['price_default'] = (float) $data['price_default'];
+                    }
+                    // Для обратной совместимости с фронтендом
                     if (isset($data['retail_price'])) {
-                        $updateData['retail_price'] = (float) $data['retail_price'];
+                        $updateData['price_default'] = (float) $data['retail_price'];
                     }
                     if (isset($data['purchase_price'])) {
                         $updateData['purchase_price'] = (float) $data['purchase_price'];
                     }
+                    if (isset($data['old_price_default'])) {
+                        $updateData['old_price_default'] = (float) $data['old_price_default'];
+                    }
+                    // Для обратной совместимости
                     if (isset($data['old_price'])) {
-                        $updateData['old_price'] = (float) $data['old_price'];
+                        $updateData['old_price_default'] = (float) $data['old_price'];
                     }
 
                     if (! empty($updateData)) {

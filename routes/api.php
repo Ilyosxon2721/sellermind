@@ -636,6 +636,7 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('stock')->group(function () {
             Route::get('balance', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'balance']);
             Route::get('ledger', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'ledger']);
+            Route::get('summary', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'summary']);
             Route::post('update-cost', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'updateCost']);
 
             Route::get('reservations', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'index']);
@@ -758,6 +759,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'settings']);
         Route::put('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateSettings']);
         Route::get('reports', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'reports']);
+
+        // Currencies and exchange rates
+        Route::get('currencies', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'currencies']);
+        Route::put('currencies/rates', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateRates']);
 
         // Transactions
         Route::get('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'index']);

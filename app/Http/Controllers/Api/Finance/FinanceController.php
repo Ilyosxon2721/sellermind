@@ -2275,4 +2275,111 @@ class FinanceController extends Controller
 
         return $result;
     }
+
+    /**
+     * Получить список доступных валют и текущих курсов
+     *
+     * Возвращает:
+     * - Базовую валюту
+     * - Список поддерживаемых валют с текущими курсами
+     * - Возможность обновить курсы
+     */
+    public function currencies(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+
+        // Список поддерживаемых валют
+        $currencies = [
+            [
+                'code' => 'UZS',
+                'name' => 'Узбекский сум',
+                'symbol' => 'сўм',
+                'rate' => 1.0,
+                'is_base' => $financeSettings->base_currency_code === 'UZS',
+            ],
+            [
+                'code' => 'USD',
+                'name' => 'Доллар США',
+                'symbol' => '$',
+                'rate' => $financeSettings->usd_rate ?? 12700,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'RUB',
+                'name' => 'Российский рубль',
+                'symbol' => '₽',
+                'rate' => $financeSettings->rub_rate ?? 140,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'EUR',
+                'name' => 'Евро',
+                'symbol' => '€',
+                'rate' => $financeSettings->eur_rate ?? 13800,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'KZT',
+                'name' => 'Казахстанский тенге',
+                'symbol' => '₸',
+                'rate' => 27, // Примерный курс KZT к UZS
+                'is_base' => false,
+            ],
+        ];
+
+        return $this->successResponse([
+            'base_currency' => $financeSettings->base_currency_code ?? 'UZS',
+            'currencies' => $currencies,
+            'rates_updated_at' => $financeSettings->rates_updated_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Обновить курсы валют для компании
+     */
+    public function updateRates(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $data = $request->validate([
+            'usd_rate' => ['nullable', 'numeric', 'min:0.01'],
+            'rub_rate' => ['nullable', 'numeric', 'min:0.01'],
+            'eur_rate' => ['nullable', 'numeric', 'min:0.01'],
+        ]);
+
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+
+        $updateData = ['rates_updated_at' => now()];
+
+        if (isset($data['usd_rate'])) {
+            $updateData['usd_rate'] = $data['usd_rate'];
+        }
+        if (isset($data['rub_rate'])) {
+            $updateData['rub_rate'] = $data['rub_rate'];
+        }
+        if (isset($data['eur_rate'])) {
+            $updateData['eur_rate'] = $data['eur_rate'];
+        }
+
+        $financeSettings->update($updateData);
+
+        Log::info('Currency rates updated', [
+            'company_id' => $companyId,
+            'user_id' => Auth::id(),
+            'rates' => $updateData,
+        ]);
+
+        return $this->successResponse([
+            'message' => 'Курсы валют обновлены',
+            'settings' => $financeSettings->fresh(),
+        ]);
+    }
 }
