@@ -412,7 +412,7 @@
 <div class="browser-only flex items-center justify-center min-h-screen bg-gray-50">
     <div class="text-center p-8">
         <p class="text-gray-600 mb-4">Эта страница оптимизирована для PWA.</p>
-        <a href="{{ route('analytics.index') }}" class="btn btn-primary">
+        <a href="{{ route('analytics') }}" class="btn btn-primary">
             Перейти к веб-версии аналитики
         </a>
     </div>

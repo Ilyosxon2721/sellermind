@@ -121,6 +121,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    // Profile page (PWA-optimized)
+    Route::get('/profile', function () {
+        return view('pages.profile-pwa');
+    })->name('profile');
+
     // Integrations
     Route::get('/integrations', [\App\Http\Controllers\Web\IntegrationController::class, 'index'])
         ->name('integrations.index');
@@ -139,6 +144,38 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/analytics', function () {
         return view('pages.analytics');
     })->name('analytics');
+
+    // PWA-optimized analytics page
+    Route::get('/analytics/pwa', function () {
+        return view('pages.analytics-pwa');
+    })->name('analytics.pwa');
+
+    // Analytics sub-pages
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/revenue', function () {
+            return view('pages.analytics');
+        })->name('revenue');
+
+        Route::get('/products', function () {
+            return view('pages.analytics');
+        })->name('products');
+
+        Route::get('/abc', function () {
+            return view('pages.analytics');
+        })->name('abc');
+
+        Route::get('/pnl', function () {
+            return view('pages.analytics');
+        })->name('pnl');
+
+        Route::get('/stock', function () {
+            return view('pages.analytics');
+        })->name('stock');
+
+        Route::get('/funnel', function () {
+            return view('pages.analytics');
+        })->name('funnel');
+    });
 
     Route::get('/reviews', function () {
         return view('pages.reviews');
