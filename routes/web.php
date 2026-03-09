@@ -109,6 +109,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.dashboard');
     })->name('dashboard');
 
+    // Flutter-style Dashboard for PWA
+    Route::get('/dashboard-flutter', function () {
+        return view('pages.dashboard-flutter');
+    })->name('dashboard.flutter');
+
     Route::get('/chat', function () {
         return view('pages.chat');
     })->name('chat');
