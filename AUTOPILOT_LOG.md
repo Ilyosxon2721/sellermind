@@ -48,3 +48,16 @@
 2026-03-04 | DONE  | Task #055 completed
 ========================================
 
+========================================
+2026-03-09 | START | New session
+2026-03-09 | TASK  | Started #012 - Добавить тесты для PromotionService
+2026-03-09 | EDIT  | tests/Unit/Promotions/PromotionServiceTest.php — 34 unit-теста
+2026-03-09 | TEST  | PASSED (34 tests, 38 assertions)
+2026-03-09 | COMMIT| test(promotions): добавить тесты для PromotionService (#012) (ee42567)
+2026-03-09 | DONE  | Task #012 completed
+2026-03-09 | TASK  | Started #013 - Добавить тесты для AnalyticsService
+2026-03-09 | EDIT  | tests/Unit/Analytics/SalesAnalyticsServiceTest.php — 20 unit-тестов
+2026-03-09 | TEST  | PASSED (20 tests, 44 assertions)
+2026-03-09 | COMMIT| test(analytics): добавить тесты для SalesAnalyticsService (#013) (1acc3de)
+2026-03-09 | DONE  | Task #013 completed
+

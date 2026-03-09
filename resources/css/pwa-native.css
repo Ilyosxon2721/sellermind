@@ -165,6 +165,16 @@
     color: #007AFF;
 }
 
+/* Явное определение primary для консистентности с secondary/destructive */
+.native-btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.native-btn-primary:hover {
+    background: #1d4ed8;
+}
+
 .native-btn-destructive {
     background: #dc2626;
     color: white;
@@ -217,6 +227,16 @@
     background: transparent;
     color: #1976d2;
     box-shadow: none;
+}
+
+/* Primary button style (унифицированный синий) */
+.pwa-mode .native-btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.pwa-mode.pwa-android .native-btn-primary {
+    background: #1976d2;
 }
 
 /* Destructive button */
