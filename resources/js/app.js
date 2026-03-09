@@ -4,6 +4,7 @@ import './haptic'; // Haptic feedback system
 import './loading'; // Global loading indicator
 import './pull-to-refresh'; // Pull-to-refresh gesture
 import './page-transitions'; // Native page transitions
+import './pwa/navigation'; // Stack navigation for PWA
 import './action-sheet'; // Native action sheets
 import './toast'; // Toast notifications
 import './empty-state'; // Empty states
