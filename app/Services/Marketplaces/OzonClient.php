@@ -1,20 +1,27 @@
 <?php
 
-// file: app/Services/Marketplaces/OzonClient.php
+declare(strict_types=1);
 
 namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
 use DateTimeInterface;
 
-class OzonClient implements MarketplaceClientInterface
+/**
+ * Клиент для интеграции с Ozon Seller API
+ *
+ * Поддерживаемые API:
+ * - Product API v2/v3 (товары)
+ * - Prices API v4 (цены)
+ * - Stocks API v2 (остатки)
+ * - Orders API v3 (заказы/FBO/FBS)
+ * - Finance API v3 (финансы)
+ */
+final class OzonClient implements MarketplaceClientInterface
 {
-    protected MarketplaceHttpClient $http;
-
-    public function __construct(MarketplaceHttpClient $http)
-    {
-        $this->http = $http;
-    }
+    public function __construct(
+        private readonly MarketplaceHttpClient $http,
+    ) {}
 
     public function getMarketplaceCode(): string
     {
@@ -22,26 +29,34 @@ class OzonClient implements MarketplaceClientInterface
     }
 
     /**
-     * Ping API to check connectivity (health-check)
-     * Uses warehouse list endpoint - lightweight and validates credentials
+     * Быстрая проверка доступности API (health-check)
+     *
+     * Использует endpoint складов - легковесный и валидирует Client-Id/Api-Key.
+     *
+     * @return array{success: bool, message: string, response_time_ms: int|null, data?: array}
      */
     public function ping(MarketplaceAccount $account): array
     {
+        $startTime = microtime(true);
+
         try {
-            // Use warehouse list - lightweight endpoint that validates Client-Id and Api-Key
+            // POST /v1/warehouse/list - легковесный endpoint
             $response = $this->http->post($account, '/v1/warehouse/list', []);
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             return [
                 'success' => true,
                 'message' => 'Ozon API доступен',
-                'response_time_ms' => null,
+                'response_time_ms' => $duration,
                 'data' => $response,
             ];
         } catch (\Exception $e) {
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
-                'response_time_ms' => null,
+                'response_time_ms' => $duration,
             ];
         }
     }

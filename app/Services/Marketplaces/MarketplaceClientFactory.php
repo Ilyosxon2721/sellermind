@@ -1,6 +1,6 @@
 <?php
 
-// file: app/Services/Marketplaces/MarketplaceClientFactory.php
+declare(strict_types=1);
 
 namespace App\Services\Marketplaces;
 
@@ -8,27 +8,23 @@ use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
 use InvalidArgumentException;
 
-class MarketplaceClientFactory
+/**
+ * Фабрика для получения клиента маркетплейса
+ *
+ * Поддерживаемые маркетплейсы:
+ * - wb (Wildberries)
+ * - ozon (Ozon)
+ * - uzum (Uzum Market)
+ * - ym (Yandex Market)
+ */
+final class MarketplaceClientFactory
 {
-    protected WildberriesClient $wildberriesClient;
-
-    protected OzonClient $ozonClient;
-
-    protected UzumClient $uzumClient;
-
-    protected YandexMarketClient $yandexMarketClient;
-
     public function __construct(
-        WildberriesClient $wildberriesClient,
-        OzonClient $ozonClient,
-        UzumClient $uzumClient,
-        YandexMarketClient $yandexMarketClient
-    ) {
-        $this->wildberriesClient = $wildberriesClient;
-        $this->ozonClient = $ozonClient;
-        $this->uzumClient = $uzumClient;
-        $this->yandexMarketClient = $yandexMarketClient;
-    }
+        private readonly WildberriesClient $wildberriesClient,
+        private readonly OzonClient $ozonClient,
+        private readonly UzumClient $uzumClient,
+        private readonly YandexMarketClient $yandexMarketClient,
+    ) {}
 
     /**
      * Get marketplace client for account

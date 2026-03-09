@@ -1,6 +1,6 @@
 <?php
 
-// file: app/Services/Marketplaces/WildberriesClient.php
+declare(strict_types=1);
 
 namespace App\Services\Marketplaces;
 
@@ -8,14 +8,20 @@ use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use DateTimeInterface;
 
-class WildberriesClient implements MarketplaceClientInterface
+/**
+ * Клиент для интеграции с Wildberries API
+ *
+ * Поддерживаемые API:
+ * - Content API v2 (карточки товаров)
+ * - Prices API v1 (цены)
+ * - Stocks API v3 (остатки)
+ * - Orders API v3 (заказы, поставки)
+ */
+final class WildberriesClient implements MarketplaceClientInterface
 {
-    protected MarketplaceHttpClient $http;
-
-    public function __construct(MarketplaceHttpClient $http)
-    {
-        $this->http = $http;
-    }
+    public function __construct(
+        private readonly MarketplaceHttpClient $http,
+    ) {}
 
     public function getMarketplaceCode(): string
     {
@@ -23,27 +29,34 @@ class WildberriesClient implements MarketplaceClientInterface
     }
 
     /**
-     * Ping API to check connectivity (health-check)
-     * Uses a lightweight endpoint to verify credentials are valid
+     * Быстрая проверка доступности API (health-check)
+     *
+     * Использует endpoint складов - легковесный и валидирует API ключ.
+     *
+     * @return array{success: bool, message: string, response_time_ms: int|null, data?: array}
      */
     public function ping(MarketplaceAccount $account): array
     {
+        $startTime = microtime(true);
+
         try {
-            // Use warehouses endpoint - lightweight and validates API key
-            // WB API v3: GET /api/v3/warehouses
+            // WB API v3: GET /api/v3/warehouses - легковесный endpoint
             $response = $this->http->get($account, '/api/v3/warehouses');
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
 
             return [
                 'success' => true,
                 'message' => 'Wildberries API доступен',
-                'response_time_ms' => null,
+                'response_time_ms' => $duration,
                 'data' => $response,
             ];
         } catch (\Exception $e) {
+            $duration = (int) round((microtime(true) - $startTime) * 1000);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
-                'response_time_ms' => null,
+                'response_time_ms' => $duration,
             ];
         }
     }
