@@ -35,7 +35,7 @@
 }
 
 .pwa-mode .sm-header-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--sm-text-primary);
 }
@@ -173,18 +173,18 @@
 .pwa-mode .sm-metric-card {
     background: var(--sm-bg-secondary);
     border-radius: var(--sm-radius-lg);
-    padding: var(--sm-space-lg);
+    padding: var(--sm-space-lg) var(--sm-space-lg) var(--sm-space-md);
 }
 
 .pwa-mode .sm-metric-icon {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--sm-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: var(--sm-space-md);
-    font-size: 20px;
+    font-size: 22px;
 }
 
 .pwa-mode .sm-metric-icon.blue { background: #E5F1FF; }
@@ -194,9 +194,10 @@
 .pwa-mode .sm-metric-icon.purple { background: #F3E8FF; }
 
 .pwa-mode .sm-metric-value {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--sm-text-primary);
+    line-height: 1.2;
 }
 
 .pwa-mode .sm-metric-label {
@@ -544,12 +545,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, var(--sm-primary), #5856D6);
     border-radius: 50%;
     color: white;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     text-decoration: none;
     -webkit-tap-highlight-color: transparent;

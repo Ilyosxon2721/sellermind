@@ -32,6 +32,13 @@ return [
     'supplies' => 'Поставки',
     'ai_tasks' => 'AI задач',
 
+    // Quick actions
+    'quick_actions' => 'Быстрые действия',
+    'refreshing' => 'Обновление...',
+    'connect_marketplace' => 'Подключить маркетплейс',
+    'no_alerts' => 'Нет оповещений',
+    'all_good' => 'Всё в порядке!',
+
     // Orders table
     'recent_orders' => 'Последние заказы',
     'all_orders' => 'Все заказы',

@@ -21,7 +21,7 @@
             @click="haptic()"
         >
             <span class="sm-pwa-tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                     <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
                     <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.432z" />
                 </svg>
@@ -37,7 +37,7 @@
             @click="haptic()"
         >
             <span class="sm-pwa-tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                     <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
                     <path fill-rule="evenodd" d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
                 </svg>
@@ -74,7 +74,7 @@
             @click="haptic()"
         >
             <span class="sm-pwa-tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                     <path fill-rule="evenodd" d="M2.25 13.5a8.25 8.25 0 018.25-8.25.75.75 0 01.75.75v6.75H18a.75.75 0 01.75.75 8.25 8.25 0 01-16.5 0z" clip-rule="evenodd" />
                     <path fill-rule="evenodd" d="M12.75 3a.75.75 0 01.75-.75 8.25 8.25 0 018.25 8.25.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V3z" clip-rule="evenodd" />
                 </svg>
@@ -90,7 +90,7 @@
             @click="haptic()"
         >
             <span class="sm-pwa-tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                     <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
                 </svg>
             </span>
@@ -249,12 +249,12 @@
         display: flex;
         align-items: flex-start;
         justify-content: space-around;
-        height: 56px;
-        padding-top: 6px;
-        background: rgba(255, 255, 255, 0.92);
+        height: 83px;
+        padding-top: 10px;
+        background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+        border-top: 0.5px solid rgba(0, 0, 0, 0.08);
     }
 
     /* Individual Tab */
@@ -263,7 +263,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 4px 12px;
+        padding: 6px 16px;
         text-decoration: none;
         position: relative;
         transition: transform 0.1s ease;
@@ -275,9 +275,9 @@
     }
 
     .sm-pwa-tab-icon {
-        width: 24px;
-        height: 24px;
-        margin-bottom: 2px;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 4px;
         color: #8E8E93;
         transition: color 0.15s ease;
     }
@@ -292,15 +292,15 @@
     }
 
     .sm-pwa-tab-label {
-        font-size: 10px;
-        font-weight: 400;
+        font-size: 11px;
+        font-weight: 500;
         color: #8E8E93;
         transition: color 0.15s ease;
     }
 
     .sm-pwa-tab.active .sm-pwa-tab-label {
         color: #007AFF;
-        font-weight: 500;
+        font-weight: 600;
     }
 
     /* Center FAB Button */
@@ -313,21 +313,21 @@
         background: none;
         border: none;
         cursor: pointer;
-        margin-top: -16px;
+        margin-top: -20px;
         -webkit-tap-highlight-color: transparent;
         position: relative;
     }
 
     .sm-pwa-tab-fab-inner {
-        width: 52px;
-        height: 52px;
+        width: 58px;
+        height: 58px;
         border-radius: 50%;
         background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+        box-shadow: 0 4px 20px rgba(0, 122, 255, 0.45);
         transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
@@ -540,7 +540,7 @@
     /* iOS specific adjustments */
     @supports (-webkit-touch-callout: none) {
         .sm-pwa-tabbar {
-            padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+            padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
         }
     }
 </style>

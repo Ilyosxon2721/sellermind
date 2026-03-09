@@ -58,6 +58,6 @@
     --sm-safe-right: env(safe-area-inset-right, 0px);
 
     /* === Header/TabBar Heights === */
-    --sm-header-height: 44px;
-    --sm-tabbar-height: 56px;
+    --sm-header-height: 52px;
+    --sm-tabbar-height: 83px;
 }
