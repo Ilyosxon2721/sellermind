@@ -8,7 +8,7 @@
  * - Images: Stale While Revalidate
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 
 const CACHE_NAMES = {
     shell: `shell-${CACHE_VERSION}`,
@@ -570,7 +570,7 @@ self.addEventListener('push', (event) => {
         body: 'Новое уведомление',
         icon: '/images/icons/icon-192x192.png',
         badge: '/images/icons/badge-72x72.png',
-        url: '/dashboard'
+        url: '/dashboard-flutter'
     };
 
     if (event.data) {
@@ -587,7 +587,7 @@ self.addEventListener('push', (event) => {
         badge: data.badge || '/images/icons/badge-72x72.png',
         vibrate: [100, 50, 100],
         data: {
-            url: data.url || '/dashboard',
+            url: data.url || '/dashboard-flutter',
             dateOfArrival: Date.now()
         },
         actions: data.actions || [
@@ -613,7 +613,7 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    const urlToOpen = event.notification.data?.url || '/dashboard';
+    const urlToOpen = event.notification.data?.url || '/dashboard-flutter';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
