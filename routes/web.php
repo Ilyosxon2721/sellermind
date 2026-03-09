@@ -197,6 +197,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.reviews');
     })->name('reviews');
 
+    Route::get('/reviews-pwa', function () {
+        return view('pages.reviews-pwa');
+    })->name('reviews.pwa');
+
     Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
 
     Route::prefix('products')->name('web.products.')->group(function () {
