@@ -186,10 +186,6 @@
             color: #ef4444;
         }
 
-        .status-value.online {
-            color: #10b981;
-        }
-
         .buttons {
             display: flex;
             flex-wrap: wrap;
@@ -361,7 +357,7 @@
         </div>
 
         <div class="buttons">
-            <button class="btn btn-primary" id="retry-btn">
+            <button class="btn btn-primary" onclick="retryConnection()">
                 <span class="spinner"></span>
                 <span class="btn-text">
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,14 +386,14 @@
     <script>
         // Проверка соединения
         function updateConnectionStatus() {
-            var statusEl = document.getElementById('connection-status');
+            const statusEl = document.getElementById('connection-status');
             if (navigator.onLine) {
-                statusEl.textContent = 'Восстановлено';
+                statusEl.textContent = 'Есть';
                 statusEl.classList.remove('offline');
                 statusEl.classList.add('online');
                 // Перенаправляем на предыдущую страницу или дашборд
-                setTimeout(function() {
-                    var returnUrl = sessionStorage.getItem('sm_return_url') || '/dashboard';
+                setTimeout(() => {
+                    const returnUrl = sessionStorage.getItem('sm_return_url') || '/dashboard';
                     window.location.href = returnUrl;
                 }, 1000);
             } else {
@@ -407,77 +403,45 @@
             }
         }
 
-        // Получение количества ожидающих действий из IndexedDB
-        function updatePendingCount() {
-            var countEl = document.getElementById('pending-count');
-
-            // Попытка получить данные из IndexedDB
-            var request = indexedDB.open('sm-sync-queue', 2);
-            request.onsuccess = function(event) {
-                var db = event.target.result;
-                if (db.objectStoreNames.contains('pending-actions')) {
-                    var tx = db.transaction('pending-actions', 'readonly');
-                    var store = tx.objectStore('pending-actions');
-                    var countReq = store.count();
-                    countReq.onsuccess = function() {
-                        countEl.textContent = countReq.result;
-                    };
+        // Получение количества ожидающих действий
+        async function updatePendingCount() {
+            const countEl = document.getElementById('pending-count');
+            try {
+                if (window.SmBackgroundSync) {
+                    const count = await window.SmBackgroundSync.getPendingCount();
+                    countEl.textContent = count;
                 }
-                db.close();
-            };
-            request.onerror = function() {
-                countEl.textContent = '-';
-            };
+            } catch (e) {
+                countEl.textContent = '—';
+            }
         }
 
         // Повторная попытка подключения
-        document.getElementById('retry-btn').addEventListener('click', function() {
-            var btn = this;
+        function retryConnection() {
+            const btn = event.target.closest('.btn');
             btn.classList.add('loading');
 
             // Пробуем загрузить страницу
-            fetch('/api/health', { method: 'HEAD', cache: 'no-store' })
-                .then(function() {
+            fetch('/api/health', { method: 'HEAD' })
+                .then(() => {
                     window.location.reload();
                 })
-                .catch(function() {
+                .catch(() => {
                     btn.classList.remove('loading');
                     updateConnectionStatus();
                 });
-        });
+        }
 
         // Слушаем изменения соединения
         window.addEventListener('online', updateConnectionStatus);
         window.addEventListener('offline', updateConnectionStatus);
 
-        // Автоматическая проверка каждые 5 секунд (до 12 раз = 1 минута)
-        var retryCount = 0;
-        var maxRetries = 12;
-
-        function checkConnection() {
-            if (retryCount >= maxRetries || navigator.onLine) {
-                return;
-            }
-
-            fetch('/api/health', { method: 'HEAD', cache: 'no-store' })
-                .then(function() {
-                    window.location.reload();
-                })
-                .catch(function() {
-                    retryCount++;
-                    setTimeout(checkConnection, 5000);
-                });
-        }
-
         // Инициализация
         updateConnectionStatus();
         updatePendingCount();
 
-        // Начинаем проверку через 5 секунд
-        setTimeout(checkConnection, 5000);
-
-        // Сохраняем URL для возврата
-        if (document.referrer && document.referrer.indexOf('/offline') === -1) {
+        // Сохраняем текущий URL для возврата
+        if (document.referrer && !document.referrer.includes('/offline')) {
             sessionStorage.setItem('sm_return_url', document.referrer);
         }
     </script>

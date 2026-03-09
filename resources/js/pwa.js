@@ -1,36 +1,99 @@
-// PWA Service Worker Registration (vite-plugin-pwa)
-import { registerSW } from 'virtual:pwa-register';
+// PWA Service Worker Registration
+// Custom SW with advanced caching strategies
 
-const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-        // New version available - show update prompt
-        const shouldUpdate = confirm(
-            '🔄 Доступна новая версия SellerMind.\n\n' +
-            'Рекомендуется обновить для получения новых функций и исправлений.\n\n' +
-            'Обновить сейчас?'
-        );
+let swRegistration = null;
 
-        if (shouldUpdate) {
-            updateSW(true);
-        }
-    },
-    onOfflineReady() {
-        // Optional: Show toast notification
-        showToast('success', 'Приложение готово к работе офлайн');
-    },
-    onRegistered(registration) {
-        // Check for updates periodically (every hour)
-        if (registration) {
-            setInterval(() => {
-                registration.update();
-            }, 60 * 60 * 1000);
-        }
-    },
-    onRegisterError(error) {
-        console.warn('⚠️ PWA: Service Worker registration failed:', error);
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+        console.warn('PWA: Service Worker not supported');
+        return;
     }
-});
+
+    try {
+        // Register custom service worker
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none'
+        });
+
+        swRegistration = registration;
+        console.log('PWA: Service Worker registered', registration.scope);
+
+        // Check for updates on registration
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            console.log('PWA: New Service Worker installing');
+
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available
+                    showUpdatePrompt();
+                }
+            });
+        });
+
+        // Check for updates periodically (every hour)
+        setInterval(() => {
+            registration.update();
+        }, 60 * 60 * 1000);
+
+        // Handle controller change (new SW activated)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('PWA: Controller changed, reloading...');
+        });
+
+        // Listen for messages from SW
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            console.log('PWA: Message from SW:', event.data);
+
+            if (event.data.type === 'SYNC_SUCCESS') {
+                showToast('success', 'Синхронизировано: ' + (event.data.description || event.data.action));
+            }
+        });
+
+        // Initial offline ready notification
+        if (registration.active) {
+            showToast('success', 'Приложение готово к работе офлайн');
+        }
+
+    } catch (error) {
+        console.error('PWA: Service Worker registration failed:', error);
+    }
+}
+
+function showUpdatePrompt() {
+    const shouldUpdate = confirm(
+        'Доступна новая версия SellerMind.\n\n' +
+        'Рекомендуется обновить для получения новых функций и исправлений.\n\n' +
+        'Обновить сейчас?'
+    );
+
+    if (shouldUpdate) {
+        updateServiceWorker();
+    }
+}
+
+async function updateServiceWorker() {
+    if (!swRegistration || !swRegistration.waiting) {
+        window.location.reload();
+        return;
+    }
+
+    // Tell waiting SW to skip waiting
+    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+    // Wait a bit and reload
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
+}
+
+// Register on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', registerServiceWorker);
+} else {
+    registerServiceWorker();
+}
 
 // Helper function to show toast notifications
 function showToast(type, message) {
@@ -62,10 +125,47 @@ function showToast(type, message) {
     }, 3000);
 }
 
-// Expose updateSW globally for manual updates
-window.updatePWA = () => {
-    updateSW(true);
+// Expose updatePWA globally for manual updates
+window.updatePWA = updateServiceWorker;
+
+// Get current SW version
+window.getPWAVersion = async () => {
+    if (!swRegistration || !swRegistration.active) {
+        return null;
+    }
+
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (event) => {
+            resolve(event.data.version);
+        };
+        swRegistration.active.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+
+        // Timeout fallback
+        setTimeout(() => resolve(null), 1000);
+    });
 };
+
+// Clear all SW caches
+window.clearPWACache = async () => {
+    if (!swRegistration || !swRegistration.active) {
+        return false;
+    }
+
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (event) => {
+            resolve(event.data.success);
+        };
+        swRegistration.active.postMessage({ type: 'CLEAR_CACHE' }, [channel.port2]);
+
+        // Timeout fallback
+        setTimeout(() => resolve(false), 3000);
+    });
+};
+
+// Export registration for other modules
+window.getSWRegistration = () => swRegistration;
 
 // Detect and mark PWA standalone mode
 function detectPWAMode() {

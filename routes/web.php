@@ -87,6 +87,11 @@ Route::get('/api/health', function () {
     return response()->json(['status' => 'ok'], 200);
 });
 
+// Offline page for PWA
+Route::get('/offline', function () {
+    return view('offline');
+})->name('offline');
+
 // Auth API routes (in web.php for proper session cookie handling)
 // These MUST be in web.php, not api.php, for session cookies to work correctly
 Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
