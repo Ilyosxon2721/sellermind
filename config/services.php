@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Web Push Notifications (VAPID)
+    |--------------------------------------------------------------------------
+    |
+    | Настройки VAPID ключей для Web Push уведомлений PWA.
+    | Генерация ключей: php artisan vapid:generate
+    |
+    */
+    'vapid' => [
+        'subject' => env('VAPID_SUBJECT', 'mailto:support@sellermind.uz'),
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+    ],
+
 ];

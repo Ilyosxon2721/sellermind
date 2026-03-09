@@ -775,24 +775,38 @@ function settingsPagePwa() {
         },
 
         async togglePushNotifications() {
+            // Проверка поддержки Push API
+            if (!window.SmPush || !window.SmPush.isSupported()) {
+                if (window.toast) window.toast.error('Push-уведомления не поддерживаются в этом браузере');
+                return;
+            }
+
             if (this.pushEnabled) {
-                localStorage.removeItem('sm_push_enabled');
-                this.pushEnabled = false;
-                if (window.toast) window.toast.info('Push-уведомления отключены');
+                // Отписка от push уведомлений
+                try {
+                    await window.SmPush.unsubscribe();
+                    this.pushEnabled = false;
+                    if (window.toast) window.toast.info('Push-уведомления отключены');
+                } catch (error) {
+                    console.error('Push unsubscribe error:', error);
+                    // Fallback: очистить локальный флаг
+                    localStorage.removeItem('sm_push_enabled');
+                    this.pushEnabled = false;
+                    if (window.toast) window.toast.info('Push-уведомления отключены');
+                }
             } else {
-                if (Notification.permission === 'default') {
-                    const permission = await Notification.requestPermission();
-                    if (permission === 'granted') {
-                        localStorage.setItem('sm_push_enabled', 'true');
-                        this.pushEnabled = true;
-                        if (window.toast) window.toast.success('Push-уведомления включены');
-                    }
-                } else if (Notification.permission === 'granted') {
-                    localStorage.setItem('sm_push_enabled', 'true');
+                // Подписка на push уведомления
+                try {
+                    await window.SmPush.subscribe();
                     this.pushEnabled = true;
                     if (window.toast) window.toast.success('Push-уведомления включены');
-                } else {
-                    if (window.toast) window.toast.error('Уведомления заблокированы в настройках браузера');
+                } catch (error) {
+                    console.error('Push subscribe error:', error);
+                    if (Notification.permission === 'denied') {
+                        if (window.toast) window.toast.error('Уведомления заблокированы в настройках браузера');
+                    } else {
+                        if (window.toast) window.toast.error('Не удалось включить push-уведомления');
+                    }
                 }
             }
         },

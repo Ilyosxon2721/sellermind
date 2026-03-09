@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 2532" width="1170" height="2532">
+  <!-- Background -->
+  <rect fill="#2563eb" width="1170" height="2532"/>
+
+  <!-- SellerMind Logo -->
+  <g transform="translate(585, 1266)">
+    <!-- Hexagon shape -->
+    <path
+      fill="white"
+      d="M0 -150 L130 -75 L130 75 L0 150 L-130 75 L-130 -75 Z"
+      opacity="0.15"
+      transform="scale(1.8)"
+    />
+
+    <!-- Inner hexagon -->
+    <path
+      fill="white"
+      d="M0 -150 L130 -75 L130 75 L0 150 L-130 75 L-130 -75 Z"
+      transform="scale(1.2)"
+    />
+
+    <!-- S letter stylized -->
+    <path
+      fill="#2563eb"
+      d="M-40 -80
+         Q-40 -100 -20 -100
+         L40 -100
+         Q60 -100 60 -80
+         L60 -60
+         Q60 -40 40 -40
+         L-20 -40
+         Q-40 -40 -40 -20
+         L-40 20
+         Q-40 40 -20 40
+         L40 40
+         Q60 40 60 60
+         L60 80
+         Q60 100 40 100
+         L-40 100
+         Q-60 100 -60 80
+         L-60 60
+         L-30 60
+         L-30 70
+         Q-30 80 -20 80
+         L30 80
+         Q40 80 40 70
+         L40 50
+         Q40 40 30 40
+         L-30 40
+         Q-60 40 -60 10
+         L-60 -10
+         Q-60 -40 -30 -40
+         L30 -40
+         Q40 -40 40 -50
+         L40 -70
+         Q40 -80 30 -80
+         L-20 -80
+         Q-30 -80 -30 -70
+         L-30 -60
+         L-60 -60
+         L-60 -80
+         Q-60 -100 -40 -100
+         Z"
+      transform="scale(0.8)"
+    />
+
+    <!-- Company name -->
+    <text
+      fill="white"
+      font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+      font-size="48"
+      font-weight="700"
+      text-anchor="middle"
+      y="280"
+    >SellerMind</text>
+
+    <!-- Tagline -->
+    <text
+      fill="white"
+      font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+      font-size="24"
+      font-weight="400"
+      text-anchor="middle"
+      opacity="0.8"
+      y="320"
+    >AI-powered marketplace management</text>
+  </g>
+</svg>

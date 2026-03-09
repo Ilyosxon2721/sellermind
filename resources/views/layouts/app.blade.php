@@ -37,6 +37,36 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-192x192.png">
     <link rel="apple-touch-icon" sizes="167x167" href="/images/icons/icon-192x192.png">
 
+    <!-- iOS Splash Screens -->
+    <!-- iPhone SE, iPod touch -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone 8, 7, 6s, 6 -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone 8 Plus, 7 Plus, 6s Plus, 6 Plus -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone X, XS, 11 Pro, 12 mini, 13 mini -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone XR, 11 -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPhone XS Max, 11 Pro Max -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone 12, 12 Pro, 13, 13 Pro, 14 -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone 12 Pro Max, 13 Pro Max, 14 Plus -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone 14 Pro -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPhone 14 Pro Max, 15 Plus, 15 Pro Max -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
+    <!-- iPad Mini, Air -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPad Pro 10.5" -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1668x2224.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPad Pro 11" -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)">
+    <!-- iPad Pro 12.9" -->
+    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)">
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-72x72.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/icon-72x72.png">
@@ -85,7 +115,7 @@
     </script>
 
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js', 'resources/js/pwa/auth.js', 'resources/js/pwa/haptic.js', 'resources/js/pwa/cache.js', 'resources/js/pwa/offline.js'])
+    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js', 'resources/js/pwa/auth.js', 'resources/js/pwa/haptic.js', 'resources/js/pwa/cache.js', 'resources/js/pwa/offline.js', 'resources/js/pwa/background-sync.js', 'resources/js/pwa/badge.js', 'resources/js/pwa/push.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
