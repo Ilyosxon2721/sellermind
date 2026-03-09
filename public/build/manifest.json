@@ -14,7 +14,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-ChOehpHm.css",
+    "file": "assets/app-IUQ1wNlw.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -62,6 +62,12 @@
     "src": "resources/js/pwa/auth.js",
     "isEntry": true
   },
+  "resources/js/pwa/background-sync.js": {
+    "file": "assets/background-sync-qJ0lfHrO.js",
+    "name": "background-sync",
+    "src": "resources/js/pwa/background-sync.js",
+    "isEntry": true
+  },
   "resources/js/pwa/cache.js": {
     "file": "assets/cache-Darw7aRS.js",
     "name": "cache",
@@ -75,9 +81,15 @@
     "isEntry": true
   },
   "resources/js/pwa/offline.js": {
-    "file": "assets/offline-BrF8q5bc.js",
+    "file": "assets/offline-DNt7BfSJ.js",
     "name": "offline",
     "src": "resources/js/pwa/offline.js",
+    "isEntry": true
+  },
+  "resources/js/pwa/sw-background-sync.js": {
+    "file": "assets/sw-background-sync-DjFT_WmH.js",
+    "name": "sw-background-sync",
+    "src": "resources/js/pwa/sw-background-sync.js",
     "isEntry": true
   }
 }
