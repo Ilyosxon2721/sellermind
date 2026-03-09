@@ -273,6 +273,183 @@ class SmOffline {
             await window.SmBackgroundSync.processQueue();
         }
     }
+
+    /**
+     * Выполнить действие с Optimistic UI
+     * @param {Object} options - Опции
+     * @param {Function} options.optimisticUpdate - Функция для немедленного обновления UI
+     * @param {Function} options.rollback - Функция для отката изменений при ошибке
+     * @param {string} options.url - URL для запроса
+     * @param {Object} options.body - Тело запроса
+     * @param {string} options.method - HTTP метод
+     * @param {string} options.type - Тип действия
+     * @param {string} options.description - Описание
+     * @returns {Promise<Object>}
+     */
+    async optimisticMutate(options) {
+        const {
+            optimisticUpdate,
+            rollback,
+            url,
+            body,
+            method = 'POST',
+            type = 'action',
+            description = 'Действие'
+        } = options;
+
+        // Сразу обновляем UI (optimistic update)
+        if (optimisticUpdate) {
+            optimisticUpdate();
+        }
+
+        try {
+            const result = await this.mutate(url, {
+                body,
+                method,
+                type,
+                description,
+                queueIfOffline: true
+            });
+
+            // Если поставлено в очередь, сохраняем rollback
+            if (result.queued && rollback) {
+                this.pendingUIUpdates.set(result.actionId, rollback);
+            }
+
+            return result;
+        } catch (error) {
+            // При ошибке откатываем UI
+            if (rollback) {
+                rollback();
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Обновление цены с optimistic UI
+     */
+    async updatePrice(productId, newPrice, oldPrice, uiCallback) {
+        return this.optimisticMutate({
+            url: '/api/products/' + productId + '/price',
+            method: 'PATCH',
+            body: { price: newPrice },
+            type: 'price-update',
+            description: 'Обновление цены',
+            optimisticUpdate: () => uiCallback?.(newPrice),
+            rollback: () => uiCallback?.(oldPrice)
+        });
+    }
+
+    /**
+     * Обновление остатка с optimistic UI
+     */
+    async updateStock(productId, newStock, oldStock, uiCallback) {
+        return this.optimisticMutate({
+            url: '/api/products/' + productId + '/stock',
+            method: 'PATCH',
+            body: { stock: newStock },
+            type: 'stock-update',
+            description: 'Обновление остатка',
+            optimisticUpdate: () => uiCallback?.(newStock),
+            rollback: () => uiCallback?.(oldStock)
+        });
+    }
+
+    /**
+     * Массовое обновление с очередью
+     */
+    async bulkUpdate(items, updateFn, options = {}) {
+        const results = [];
+        const {
+            type = 'bulk-update',
+            description = 'Массовое обновление'
+        } = options;
+
+        for (const item of items) {
+            try {
+                const result = await this.mutate(item.url, {
+                    body: item.body,
+                    method: item.method || 'PATCH',
+                    type,
+                    description: description + ' #' + item.id,
+                    queueIfOffline: true
+                });
+                results.push({ id: item.id, success: true, ...result });
+            } catch (e) {
+                results.push({ id: item.id, success: false, error: e.message });
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Проверить есть ли ожидающие действия
+     */
+    async hasPendingActions() {
+        const count = await this.getPendingCount();
+        return count > 0;
+    }
+
+    /**
+     * Получить детали ожидающих действий
+     */
+    async getPendingDetails() {
+        if (window.SmBackgroundSync) {
+            return await window.SmBackgroundSync.getPendingActions();
+        }
+        return [];
+    }
+
+    /**
+     * Отменить ожидающее действие
+     */
+    async cancelPendingAction(actionId) {
+        if (window.SmBackgroundSync) {
+            await window.SmBackgroundSync.removeAction(actionId);
+
+            // Откатываем UI если есть
+            const rollback = this.pendingUIUpdates.get(actionId);
+            if (rollback) {
+                rollback();
+                this.pendingUIUpdates.delete(actionId);
+            }
+        }
+    }
 }
 
 window.SmOffline = new SmOffline();
+
+// Добавляем стили для toast если их нет
+if (!document.querySelector('#sm-offline-styles')) {
+    const style = document.createElement('style');
+    style.id = 'sm-offline-styles';
+    style.textContent = `
+        .sm-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-width: 90%;
+            text-align: center;
+        }
+        .sm-toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .sm-toast-success { background: #10b981; }
+        .sm-toast-warning { background: #f59e0b; }
+        .sm-toast-error { background: #ef4444; }
+        .sm-toast-info { background: #3b82f6; }
+    `;
+    document.head.appendChild(style);
+}

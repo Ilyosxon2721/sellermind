@@ -174,6 +174,22 @@ export default defineConfig({
                                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                             }
                         }
+                    },
+                    // Кэширование API маршрутов приложения
+                    {
+                        urlPattern: /\/api\/(dashboard|products|orders|analytics)/i,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'sm-api-cache',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 60 * 30 // 30 минут
+                            },
+                            networkTimeoutSeconds: 5,
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
                     }
                 ],
                 // Background Sync для отложенных POST/PUT/DELETE запросов
@@ -183,7 +199,9 @@ export default defineConfig({
                 // для более гибкого контроля и UI уведомлений
                 // Skip API routes from precaching
                 navigateFallback: null,
-                cleanupOutdatedCaches: true
+                cleanupOutdatedCaches: true,
+                // Дополнительные файлы для precache
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
             },
             devOptions: {
                 enabled: false, // Disable in development
