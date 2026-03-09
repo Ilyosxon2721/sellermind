@@ -68,6 +68,12 @@
     "src": "resources/js/pwa/background-sync.js",
     "isEntry": true
   },
+  "resources/js/pwa/badge.js": {
+    "file": "assets/badge-3iqfzH-r.js",
+    "name": "badge",
+    "src": "resources/js/pwa/badge.js",
+    "isEntry": true
+  },
   "resources/js/pwa/cache.js": {
     "file": "assets/cache-Darw7aRS.js",
     "name": "cache",
@@ -84,6 +90,12 @@
     "file": "assets/offline-DNt7BfSJ.js",
     "name": "offline",
     "src": "resources/js/pwa/offline.js",
+    "isEntry": true
+  },
+  "resources/js/pwa/push.js": {
+    "file": "assets/push-Dl9khbHi.js",
+    "name": "push",
+    "src": "resources/js/pwa/push.js",
     "isEntry": true
   },
   "resources/js/pwa/sw-background-sync.js": {
