@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\SalesAnalyticsController;
 use App\Http\Controllers\Api\SubscriptionController;
@@ -60,6 +61,9 @@ Route::prefix('webhooks/marketplaces')->middleware('throttle:webhooks')->group(f
     Route::post('{marketplace}', [MarketplaceWebhookController::class, 'handle']);
     Route::post('{marketplace}/{accountId}', [MarketplaceWebhookController::class, 'handleForAccount']);
 });
+
+// Web Push VAPID public key (no auth required for PWA subscription)
+Route::get('push/vapid-public-key', [PushSubscriptionController::class, 'getVapidPublicKey']);
 
 // RISMENT Integration Link (uses session + sanctum auth)
 Route::middleware(['web', 'auth.any'])->prefix('integration')->group(function () {
@@ -196,6 +200,12 @@ Route::middleware('auth.any')->group(function () {
         Route::post('disconnect', [TelegramController::class, 'disconnect']);
         Route::get('notification-settings', [TelegramController::class, 'getSettings']);
         Route::put('notification-settings', [TelegramController::class, 'updateSettings']);
+    });
+
+    // Web Push Notifications (подписка/отписка требуют авторизации)
+    Route::prefix('push')->group(function () {
+        Route::post('subscribe', [PushSubscriptionController::class, 'subscribe']);
+        Route::post('unsubscribe', [PushSubscriptionController::class, 'unsubscribe']);
     });
 
     // Polling API (для real-time обновлений без WebSocket)

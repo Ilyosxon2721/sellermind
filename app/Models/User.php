@@ -145,4 +145,20 @@ class User extends Authenticatable
     {
         return $this->telegram_id;
     }
+
+    /**
+     * Подписки пользователя на Web Push уведомления
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
+     * Проверить, есть ли у пользователя активные push подписки
+     */
+    public function hasPushSubscriptions(): bool
+    {
+        return $this->pushSubscriptions()->exists();
+    }
 }

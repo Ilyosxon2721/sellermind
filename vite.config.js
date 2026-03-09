@@ -15,7 +15,9 @@ export default defineConfig({
                 'resources/js/pwa/auth.js',
                 'resources/js/pwa/haptic.js',
                 'resources/js/pwa/cache.js',
-                'resources/js/pwa/offline.js'
+                'resources/js/pwa/offline.js',
+                'resources/js/pwa/background-sync.js',
+                'resources/js/pwa/sw-background-sync.js'
             ],
             refresh: true,
         }),
@@ -89,7 +91,53 @@ export default defineConfig({
                         purpose: 'maskable'
                     }
                 ],
-                categories: ['business', 'productivity']
+                categories: ['business', 'productivity'],
+                shortcuts: [
+                    {
+                        name: "Дашборд",
+                        short_name: "Дашборд",
+                        description: "Главная панель управления",
+                        url: "/dashboard",
+                        icons: [{ src: "/images/icons/icon-96x96.png", sizes: "96x96" }]
+                    },
+                    {
+                        name: "Товары",
+                        short_name: "Товары",
+                        description: "Управление товарами",
+                        url: "/marketplace/products",
+                        icons: [{ src: "/images/icons/icon-96x96.png", sizes: "96x96" }]
+                    },
+                    {
+                        name: "Заказы",
+                        short_name: "Заказы",
+                        description: "Просмотр заказов",
+                        url: "/marketplace/orders",
+                        icons: [{ src: "/images/icons/icon-96x96.png", sizes: "96x96" }]
+                    },
+                    {
+                        name: "Аналитика",
+                        short_name: "Аналитика",
+                        description: "Аналитика продаж",
+                        url: "/analytics",
+                        icons: [{ src: "/images/icons/icon-96x96.png", sizes: "96x96" }]
+                    }
+                ],
+                screenshots: [
+                    {
+                        src: "/images/screenshots/dashboard-wide.png",
+                        sizes: "1280x720",
+                        type: "image/png",
+                        form_factor: "wide",
+                        label: "Дашборд SellerMind"
+                    },
+                    {
+                        src: "/images/screenshots/dashboard-narrow.png",
+                        sizes: "750x1334",
+                        type: "image/png",
+                        form_factor: "narrow",
+                        label: "Мобильный дашборд"
+                    }
+                ]
             },
             workbox: {
                 // Network First strategy for API calls
@@ -127,11 +175,34 @@ export default defineConfig({
                                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
                             }
                         }
+                    },
+                    // Кэширование API маршрутов приложения
+                    {
+                        urlPattern: /\/api\/(dashboard|products|orders|analytics)/i,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'sm-api-cache',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 60 * 30 // 30 минут
+                            },
+                            networkTimeoutSeconds: 5,
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
                     }
                 ],
+                // Background Sync для отложенных POST/PUT/DELETE запросов
+                // Примечание: workbox-background-sync работает внутри Service Worker
+                // и автоматически перехватывает неудачные запросы
+                // Наша реализация SmBackgroundSync работает на уровне приложения
+                // для более гибкого контроля и UI уведомлений
                 // Skip API routes from precaching
                 navigateFallback: null,
-                cleanupOutdatedCaches: true
+                cleanupOutdatedCaches: true,
+                // Дополнительные файлы для precache
+                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
             },
             devOptions: {
                 enabled: false, // Disable in development
