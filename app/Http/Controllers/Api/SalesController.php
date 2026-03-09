@@ -365,6 +365,9 @@ class SalesController extends Controller
     {
         $isCompleted = $order->isSold();
         $isCancelled = $order->isCancelled();
+        $originalCurrency = $this->normalizeYmCurrency($order->currency);
+        $originalAmount = (float) ($order->total_price ?? 0);
+        $amountConverted = $this->currencyService->convertToDisplay($originalAmount, $originalCurrency);
 
         return [
             'id' => 'ym_'.$order->id,
@@ -384,8 +387,10 @@ class SalesController extends Controller
             'customer_phone' => $order->customer_phone,
             'delivery_type' => $order->delivery_type,
             'delivery_service' => $order->delivery_service,
-            'total_amount' => (float) ($order->total_price ?? 0),
-            'currency' => 'RUB',
+            'total_amount' => $amountConverted,
+            'total_amount_original' => $originalAmount,
+            'original_currency' => $originalCurrency,
+            'currency' => $this->currencyService->getDisplayCurrency(),
             'created_at' => $order->created_at_ym?->toIso8601String(),
             'created_at_formatted' => $order->created_at_ym?->format('d.m.Y H:i'),
             'stock_sold_at' => $order->stock_sold_at?->toIso8601String(),
@@ -1179,8 +1184,12 @@ class SalesController extends Controller
             }
 
             return $query->with('account')->get()->map(function ($order) {
-                $amountRub = (float) ($order->total_price ?? 0);
-                $amountConverted = $this->currencyService->convertFromRub($amountRub);
+                $originalAmount = (float) ($order->total_price ?? 0);
+                // Нормализуем валюту: RUR -> RUB, по умолчанию UZS если пусто
+                $originalCurrency = $this->normalizeYmCurrency($order->currency);
+
+                // Конвертируем в отображаемую валюту с учётом исходной валюты заказа
+                $amountConverted = $this->currencyService->convertToDisplay($originalAmount, $originalCurrency);
 
                 // Определяем категорию статуса через методы модели
                 $isCompleted = $order->isSold();
@@ -1206,8 +1215,8 @@ class SalesController extends Controller
                     'account_name' => $order->account?->name ?? $order->account?->getDisplayName() ?? 'Yandex Market',
                     'customer_name' => $order->customer_name,
                     'total_amount' => $amountConverted,
-                    'total_amount_rub' => $amountRub,
-                    'original_currency' => 'RUB',
+                    'total_amount_original' => $originalAmount,
+                    'original_currency' => $originalCurrency,
                     'currency' => $this->currencyService->getDisplayCurrency(),
                     'status' => $order->getNormalizedStatus(),
                     'status_category' => $statusCategory,

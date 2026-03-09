@@ -97,10 +97,10 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                     $updateData['purchase_price'] = $newPurchasePrice;
                 }
                 if ($newRetailPrice !== null) {
-                    $updateData['retail_price'] = $newRetailPrice;
+                    $updateData['price_default'] = $newRetailPrice;
                 }
                 if ($newOldPrice !== null) {
-                    $updateData['old_price'] = $newOldPrice;
+                    $updateData['old_price_default'] = $newOldPrice;
                 }
                 if ($newStock !== null) {
                     $updateData['stock_default'] = $newStock;

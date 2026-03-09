@@ -97,13 +97,19 @@ class DocumentController extends Controller
             'lines.*.qty' => ['required', 'numeric', 'min:0.001'],
             'lines.*.unit_id' => ['required', 'integer'],
             'lines.*.unit_cost' => ['nullable', 'numeric'],
+            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
+            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
             'lines.*.counted_qty' => ['nullable', 'numeric'],
             'lines.*.location_id' => ['nullable', 'integer'],
             'lines.*.location_to_id' => ['nullable', 'integer'],
         ])['lines'];
 
-        DB::transaction(function () use ($doc, $lines) {
+        DB::transaction(function () use ($doc, $lines, $companyId) {
             $doc->lines()->delete();
+
+            // Получаем настройки финансов для расчета базовой стоимости
+            $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
             foreach ($lines as $line) {
                 // Ensure unit exists (auto-create default if missing)
                 $unitId = $line['unit_id'];
@@ -112,13 +118,32 @@ class DocumentController extends Controller
                     $unitId = $unit->id;
                 }
 
+                $unitCost = $line['unit_cost'] ?? null;
+                $qty = (float) $line['qty'];
+                $totalCost = isset($unitCost) ? $unitCost * $qty : null;
+                $currencyCode = $line['currency_code'] ?? 'UZS';
+                $exchangeRate = $line['exchange_rate'] ?? null;
+
+                // Рассчитываем стоимость в базовой валюте
+                $totalCostBase = null;
+                if ($totalCost !== null) {
+                    if ($exchangeRate && $exchangeRate > 0) {
+                        $totalCostBase = $totalCost * $exchangeRate;
+                    } else {
+                        $totalCostBase = $financeSettings->convertToBase($totalCost, $currencyCode);
+                    }
+                }
+
                 InventoryDocumentLine::create([
                     'document_id' => $doc->id,
                     'sku_id' => $line['sku_id'],
-                    'qty' => $line['qty'],
+                    'qty' => $qty,
                     'unit_id' => $unitId,
-                    'unit_cost' => $line['unit_cost'] ?? null,
-                    'total_cost' => isset($line['unit_cost']) ? $line['unit_cost'] * $line['qty'] : null,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $totalCost,
+                    'currency_code' => $currencyCode,
+                    'exchange_rate' => $exchangeRate,
+                    'total_cost_base' => $totalCostBase,
                     'location_id' => $line['location_id'] ?? null,
                     'location_to_id' => $line['location_to_id'] ?? null,
                     'counted_qty' => $line['counted_qty'] ?? null,
@@ -194,18 +219,37 @@ class DocumentController extends Controller
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.id' => ['required', 'integer'],
             'lines.*.unit_cost' => ['required', 'numeric', 'min:0'],
+            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
+            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
         ]);
 
-        DB::transaction(function () use ($doc, $data) {
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
+        DB::transaction(function () use ($doc, $data, $financeSettings) {
             foreach ($data['lines'] as $lineData) {
                 $line = InventoryDocumentLine::where('document_id', $doc->id)
                     ->where('id', $lineData['id'])
                     ->first();
 
                 if ($line) {
+                    $totalCost = round($lineData['unit_cost'] * (float) $line->qty, 2);
+                    $currencyCode = $lineData['currency_code'] ?? $line->currency_code ?? 'UZS';
+                    $exchangeRate = $lineData['exchange_rate'] ?? $line->exchange_rate;
+
+                    // Рассчитываем стоимость в базовой валюте
+                    $totalCostBase = $totalCost;
+                    if ($exchangeRate && $exchangeRate > 0) {
+                        $totalCostBase = $totalCost * $exchangeRate;
+                    } else {
+                        $totalCostBase = $financeSettings->convertToBase($totalCost, $currencyCode);
+                    }
+
                     $line->update([
                         'unit_cost' => $lineData['unit_cost'],
-                        'total_cost' => round($lineData['unit_cost'] * (float) $line->qty, 2),
+                        'total_cost' => $totalCost,
+                        'currency_code' => $currencyCode,
+                        'exchange_rate' => $exchangeRate,
+                        'total_cost_base' => $totalCostBase,
                     ]);
                 }
             }
@@ -215,7 +259,6 @@ class DocumentController extends Controller
             $doc->fresh(['lines.sku', 'lines.unit', 'warehouse'])
         );
     }
-
 
     /**
      * Удалить черновой документ
