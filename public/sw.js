@@ -8,7 +8,7 @@
  * - Images: Stale While Revalidate
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 
 const CACHE_NAMES = {
     shell: `shell-${CACHE_VERSION}`,
@@ -20,12 +20,13 @@ const CACHE_NAMES = {
 // App Shell URLs - Cache First
 const SHELL_URLS = [
     '/',
-    '/dashboard',
+    '/dashboard-flutter',
     '/marketplace/products',
     '/marketplace/orders',
-    '/chat',
-    '/analytics',
-    '/profile',
+    '/chat-pwa',
+    '/analytics/pwa',
+    '/products-pwa',
+    '/profile-pwa',
     '/offline',
     '/offline.html'  // Static fallback
 ];

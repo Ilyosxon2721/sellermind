@@ -495,7 +495,7 @@
                         </svg>
                         {{ __('admin.warehouse_ledger') }}
                     </a>
-                    <a href="/products" @click="moreMenuOpen = false"
+                    <a :href="isPWA ? '/products-pwa' : '/products'" @click="moreMenuOpen = false"
                        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
                        :class="currentPath.startsWith('/products') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'">
                         <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -624,9 +624,9 @@
              style="height: 56px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
 
             {{-- Home --}}
-            <a href="/home"
+            <a :href="isPWA ? '/dashboard-flutter' : '/home'"
                class="flex flex-1 flex-col items-center justify-center py-1 no-underline transition-colors duration-150"
-               :class="isActive('/home') ? 'text-blue-600' : 'text-gray-400'"
+               :class="isActive('/home') || isActive('/dashboard-flutter') ? 'text-blue-600' : 'text-gray-400'"
                style="-webkit-tap-highlight-color: transparent;">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -725,8 +725,8 @@ function dockNav() {
         },
 
         isActive(path) {
-            if (path === '/home' || path === '/dashboard') {
-                return this.currentPath === '/home' || this.currentPath === '/dashboard' || this.currentPath === '/';
+            if (path === '/home' || path === '/dashboard' || path === '/dashboard-flutter') {
+                return this.currentPath === '/home' || this.currentPath === '/dashboard' || this.currentPath === '/dashboard-flutter' || this.currentPath === '/';
             }
             if (path === '/marketplace/sync-logs') {
                 return this.currentPath.startsWith('/marketplace/sync-logs');

@@ -62,8 +62,8 @@ Route::get('/', function (Illuminate\Http\Request $request) {
     // PWA App Mode: Act like a native app
     if ($isPWA) {
         if (auth()->check()) {
-            // Authenticated → Dashboard
-            return redirect('/dashboard');
+            // Authenticated → Dashboard (Flutter PWA версия)
+            return redirect('/dashboard-flutter');
         } else {
             // Not authenticated → Login (skip landing)
             return redirect('/login');
@@ -101,7 +101,14 @@ Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
-    Route::get('/home', function () {
+    Route::get('/home', function (Illuminate\Http\Request $request) {
+        $isPWA = $request->cookie('pwa_installed') === 'true'
+            || $request->header('X-Requested-With') === 'com.sellermind.pwa';
+
+        if ($isPWA) {
+            return redirect('/dashboard-flutter');
+        }
+
         return redirect()->route('dashboard');
     });
 

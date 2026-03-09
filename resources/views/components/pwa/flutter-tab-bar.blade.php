@@ -17,7 +17,7 @@
     <div class="flex h-16 items-center justify-around relative">
         {{-- Tab: Главная --}}
         <a
-            href="/dashboard"
+            href="/dashboard-flutter"
             class="flex flex-col items-center justify-center w-16 py-2 transition-colors"
             :class="activeTab === 'home' ? 'text-blue-600' : 'text-gray-400'"
             @click="handleTap('home')"
@@ -35,7 +35,7 @@
 
         {{-- Tab: Товары --}}
         <a
-            href="/products"
+            href="/products-pwa"
             class="flex flex-col items-center justify-center w-16 py-2 transition-colors"
             :class="activeTab === 'products' ? 'text-blue-600' : 'text-gray-400'"
             @click="handleTap('products')"
@@ -71,7 +71,7 @@
 
         {{-- Tab: Аналитика --}}
         <a
-            href="/analytics"
+            href="/analytics/pwa"
             class="flex flex-col items-center justify-center w-16 py-2 transition-colors"
             :class="activeTab === 'analytics' ? 'text-blue-600' : 'text-gray-400'"
             @click="handleTap('analytics')"
@@ -89,7 +89,7 @@
 
         {{-- Tab: Профиль --}}
         <a
-            href="/settings"
+            href="/profile-pwa"
             class="flex flex-col items-center justify-center w-16 py-2 transition-colors"
             :class="activeTab === 'profile' ? 'text-blue-600' : 'text-gray-400'"
             @click="handleTap('profile')"
@@ -190,7 +190,7 @@
                     </button>
 
                     {{-- AI Chat --}}
-                    <a href="/chat" class="flex flex-col items-center p-4 rounded-2xl bg-indigo-50 hover:bg-indigo-100 transition-colors" @click="showAddMenu = false">
+                    <a href="/chat-pwa" class="flex flex-col items-center p-4 rounded-2xl bg-indigo-50 hover:bg-indigo-100 transition-colors" @click="showAddMenu = false">
                         <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mb-2">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
@@ -223,6 +223,7 @@ function flutterTabBar() {
             if (path.startsWith('/products')) return 'products';
             if (path.startsWith('/analytics')) return 'analytics';
             if (path.startsWith('/profile') || path.startsWith('/settings')) return 'profile';
+            if (path.startsWith('/chat')) return 'chat';
             return 'home';
         },
 
