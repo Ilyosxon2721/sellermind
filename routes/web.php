@@ -137,6 +137,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    Route::get('/settings-pwa', function () {
+        return view('pages.settings-pwa');
+    })->name('settings.pwa');
+
     // Profile page (PWA-optimized)
     Route::get('/profile', function () {
         return view('pages.profile-pwa');
