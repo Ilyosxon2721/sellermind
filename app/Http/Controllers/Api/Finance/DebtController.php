@@ -237,7 +237,7 @@ class DebtController extends Controller
         // Новая сумма не может быть меньше уже оплаченной
         if ($data['original_amount'] < $debt->amount_paid) {
             return $this->errorResponse(
-                'Новая сумма не может быть меньше уже оплаченной суммы (' . number_format($debt->amount_paid, 0, '.', ' ') . ')',
+                'Новая сумма не может быть меньше уже оплаченной суммы ('.number_format($debt->amount_paid, 0, '.', ' ').')',
                 'validation_error',
                 null,
                 422
@@ -260,8 +260,8 @@ class DebtController extends Controller
         // Сохраняем причину корректировки в notes
         $notes = $debt->notes;
         if (! empty($data['correction_reason'])) {
-            $correctionNote = '[Корректировка ' . now()->format('d.m.Y H:i') . ']: ' . $data['correction_reason'];
-            $notes = $notes ? $notes . "\n" . $correctionNote : $correctionNote;
+            $correctionNote = '[Корректировка '.now()->format('d.m.Y H:i').']: '.$data['correction_reason'];
+            $notes = $notes ? $notes."\n".$correctionNote : $correctionNote;
         }
 
         $debt->update([

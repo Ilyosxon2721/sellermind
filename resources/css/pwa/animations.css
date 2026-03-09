@@ -1,0 +1,782 @@
+/* ============================================
+   PWA ANIMATIONS
+   SellerMind - Native-like mobile animations
+   ============================================ */
+
+/* ============================================
+   1. PAGE TRANSITIONS
+   ============================================ */
+
+/* Push (new page from right) */
+.page-enter {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.page-enter-active {
+    transform: translateX(0);
+    opacity: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pop (current page to right) */
+.page-leave {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.page-leave-active {
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Slide from left (back navigation) */
+.page-back-enter {
+    transform: translateX(-30%);
+    opacity: 0;
+}
+
+.page-back-enter-active {
+    transform: translateX(0);
+    opacity: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-back-leave {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.page-back-leave-active {
+    transform: translateX(30%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   2. BOTTOM SHEET
+   ============================================ */
+
+.sheet-enter {
+    transform: translateY(100%);
+}
+
+.sheet-enter-active {
+    transform: translateY(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sheet-leave {
+    transform: translateY(0);
+}
+
+.sheet-leave-active {
+    transform: translateY(100%);
+    transition: transform 0.2s ease-in;
+}
+
+/* Sheet backdrop */
+.sheet-backdrop-enter {
+    opacity: 0;
+}
+
+.sheet-backdrop-enter-active {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.sheet-backdrop-leave {
+    opacity: 1;
+}
+
+.sheet-backdrop-leave-active {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* ============================================
+   3. FADE ANIMATIONS
+   ============================================ */
+
+/* Fade In */
+.sm-fade-in {
+    animation: sm-fade-in 0.3s ease forwards;
+}
+
+@keyframes sm-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Fade Out */
+.sm-fade-out {
+    animation: sm-fade-out 0.3s ease forwards;
+}
+
+@keyframes sm-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Fade In Up */
+.sm-fade-in-up {
+    animation: sm-fade-in-up 0.3s ease forwards;
+}
+
+@keyframes sm-fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fade In Down */
+.sm-fade-in-down {
+    animation: sm-fade-in-down 0.3s ease forwards;
+}
+
+@keyframes sm-fade-in-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fade In Scale */
+.sm-fade-in-scale {
+    animation: sm-fade-in-scale 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sm-fade-in-scale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Fade Out Scale */
+.sm-fade-out-scale {
+    animation: sm-fade-out-scale 0.2s ease forwards;
+}
+
+@keyframes sm-fade-out-scale {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+/* ============================================
+   4. SKELETON SHIMMER
+   ============================================ */
+
+.sm-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: sm-shimmer 1.5s infinite;
+}
+
+@keyframes sm-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Dark mode shimmer */
+.dark .sm-shimmer {
+    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+    background-size: 200% 100%;
+}
+
+/* Skeleton with pulse */
+.sm-skeleton-pulse {
+    animation: sm-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes sm-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ============================================
+   5. PULL TO REFRESH
+   ============================================ */
+
+/* Spinner rotation */
+.sm-ptr-spinner {
+    animation: sm-ptr-spin 0.8s linear infinite;
+}
+
+@keyframes sm-ptr-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pull indicator arrow */
+.sm-ptr-indicator {
+    transition: transform 0.2s ease;
+}
+
+.sm-ptr-indicator.pulling {
+    transform: rotate(180deg);
+}
+
+/* Pull to refresh container */
+.sm-ptr-container {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sm-ptr-container.refreshing {
+    transform: translateY(60px);
+}
+
+/* Refresh bounce animation */
+.sm-ptr-bounce {
+    animation: sm-ptr-bounce 0.5s ease;
+}
+
+@keyframes sm-ptr-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* ============================================
+   6. TYPING INDICATOR DOTS
+   ============================================ */
+
+.sm-typing-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #9ca3af;
+    animation: sm-typing 1.4s infinite ease-in-out both;
+}
+
+.sm-typing-dot:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.sm-typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.sm-typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes sm-typing {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Typing indicator container */
+.sm-typing-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background-color: #f3f4f6;
+    border-radius: 18px;
+}
+
+/* ============================================
+   7. BUTTON PRESS
+   ============================================ */
+
+/* Scale down on active */
+.sm-btn-press {
+    transition: transform 0.1s ease;
+}
+
+.sm-btn-press:active {
+    transform: scale(0.95);
+}
+
+/* Button with ripple effect */
+.sm-btn-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.sm-btn-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+}
+
+.sm-btn-ripple:active::after {
+    width: 200%;
+    height: 200%;
+    opacity: 1;
+    transition: width 0.3s ease, height 0.3s ease, opacity 0.3s ease;
+}
+
+/* Ripple animation class (for Alpine.js) */
+.sm-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0);
+    animation: sm-ripple-effect 0.6s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes sm-ripple-effect {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ============================================
+   8. TAB BAR INDICATOR
+   ============================================ */
+
+.sm-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    height: 3px;
+    background-color: #2563eb;
+    border-radius: 3px 3px 0 0;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab item with active scale */
+.sm-tab-item {
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.sm-tab-item:active {
+    transform: scale(0.95);
+}
+
+.sm-tab-item.active {
+    color: #2563eb;
+}
+
+/* Bottom nav indicator dot */
+.sm-nav-indicator-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: #2563eb;
+    transform: scale(0);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sm-tab-item.active .sm-nav-indicator-dot {
+    transform: scale(1);
+}
+
+/* ============================================
+   9. COUNTER ANIMATION
+   ============================================ */
+
+/* Number count up container */
+.sm-counter {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Counter with flip effect */
+.sm-counter-flip {
+    display: inline-flex;
+    overflow: hidden;
+}
+
+.sm-counter-digit {
+    animation: sm-counter-slide 0.3s ease forwards;
+}
+
+@keyframes sm-counter-slide {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Counter with scale effect */
+.sm-counter-scale {
+    animation: sm-counter-pop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes sm-counter-pop {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Counter value change highlight */
+.sm-counter-highlight {
+    animation: sm-counter-highlight 0.5s ease;
+}
+
+@keyframes sm-counter-highlight {
+    0% {
+        background-color: transparent;
+    }
+    30% {
+        background-color: rgba(34, 197, 94, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* ============================================
+   10. ADDITIONAL UTILITY ANIMATIONS
+   ============================================ */
+
+/* Slide In Left */
+.sm-slide-in-left {
+    animation: sm-slide-in-left 0.3s ease forwards;
+}
+
+@keyframes sm-slide-in-left {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Slide In Right */
+.sm-slide-in-right {
+    animation: sm-slide-in-right 0.3s ease forwards;
+}
+
+@keyframes sm-slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Bounce */
+.sm-bounce {
+    animation: sm-bounce 0.5s ease;
+}
+
+@keyframes sm-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-20px);
+    }
+    60% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Shake (for errors) */
+.sm-shake {
+    animation: sm-shake 0.5s ease;
+}
+
+@keyframes sm-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20%, 60% {
+        transform: translateX(-10px);
+    }
+    40%, 80% {
+        transform: translateX(10px);
+    }
+}
+
+/* Heartbeat (for notifications) */
+.sm-heartbeat {
+    animation: sm-heartbeat 1s ease infinite;
+}
+
+@keyframes sm-heartbeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    14% {
+        transform: scale(1.1);
+    }
+    28% {
+        transform: scale(1);
+    }
+    42% {
+        transform: scale(1.1);
+    }
+    70% {
+        transform: scale(1);
+    }
+}
+
+/* Spin */
+.sm-spin {
+    animation: sm-spin 1s linear infinite;
+}
+
+@keyframes sm-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Ping (notification badge) */
+.sm-ping {
+    animation: sm-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes sm-ping {
+    75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* Toast notification */
+.sm-toast-enter {
+    animation: sm-toast-enter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sm-toast-enter {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.sm-toast-leave {
+    animation: sm-toast-leave 0.2s ease forwards;
+}
+
+@keyframes sm-toast-leave {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+/* Modal animations */
+.sm-modal-enter {
+    animation: sm-modal-enter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sm-modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.sm-modal-leave {
+    animation: sm-modal-leave 0.2s ease forwards;
+}
+
+@keyframes sm-modal-leave {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+/* Checkbox check animation */
+.sm-check {
+    animation: sm-check 0.3s ease forwards;
+}
+
+@keyframes sm-check {
+    0% {
+        stroke-dashoffset: 16;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* Progress bar fill */
+.sm-progress-fill {
+    animation: sm-progress-fill 1s ease forwards;
+}
+
+@keyframes sm-progress-fill {
+    from {
+        width: 0%;
+    }
+}
+
+/* Stagger children animation helper */
+.sm-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.sm-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.sm-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.sm-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.sm-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.sm-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.sm-stagger > *:nth-child(7) { animation-delay: 300ms; }
+.sm-stagger > *:nth-child(8) { animation-delay: 350ms; }
+.sm-stagger > *:nth-child(9) { animation-delay: 400ms; }
+.sm-stagger > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ============================================
+   11. REDUCED MOTION SUPPORT
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* Disable specific animations */
+    .sm-shimmer,
+    .sm-typing-dot,
+    .sm-spin,
+    .sm-ping,
+    .sm-heartbeat,
+    .sm-bounce {
+        animation: none !important;
+    }
+
+    /* Keep opacity visible for skeleton */
+    .sm-shimmer {
+        background: #e5e7eb !important;
+    }
+}
+
+/* ============================================
+   12. ANIMATION UTILITIES
+   ============================================ */
+
+/* Animation duration modifiers */
+.sm-duration-75 { animation-duration: 75ms !important; }
+.sm-duration-100 { animation-duration: 100ms !important; }
+.sm-duration-150 { animation-duration: 150ms !important; }
+.sm-duration-200 { animation-duration: 200ms !important; }
+.sm-duration-300 { animation-duration: 300ms !important; }
+.sm-duration-500 { animation-duration: 500ms !important; }
+.sm-duration-700 { animation-duration: 700ms !important; }
+.sm-duration-1000 { animation-duration: 1000ms !important; }
+
+/* Animation delay modifiers */
+.sm-delay-75 { animation-delay: 75ms; }
+.sm-delay-100 { animation-delay: 100ms; }
+.sm-delay-150 { animation-delay: 150ms; }
+.sm-delay-200 { animation-delay: 200ms; }
+.sm-delay-300 { animation-delay: 300ms; }
+.sm-delay-500 { animation-delay: 500ms; }
+.sm-delay-700 { animation-delay: 700ms; }
+.sm-delay-1000 { animation-delay: 1000ms; }
+
+/* Animation timing functions */
+.sm-ease-linear { animation-timing-function: linear; }
+.sm-ease-in { animation-timing-function: ease-in; }
+.sm-ease-out { animation-timing-function: ease-out; }
+.sm-ease-in-out { animation-timing-function: ease-in-out; }
+.sm-ease-bounce { animation-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+.sm-ease-smooth { animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Animation fill modes */
+.sm-fill-none { animation-fill-mode: none; }
+.sm-fill-forwards { animation-fill-mode: forwards; }
+.sm-fill-backwards { animation-fill-mode: backwards; }
+.sm-fill-both { animation-fill-mode: both; }
+
+/* Animation iteration */
+.sm-infinite { animation-iteration-count: infinite; }
+.sm-once { animation-iteration-count: 1; }
+
+/* Pause/play animation */
+.sm-paused { animation-play-state: paused; }
+.sm-running { animation-play-state: running; }

@@ -22,7 +22,7 @@ class PromotionServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new PromotionService();
+        $this->service = new PromotionService;
     }
 
     // ==========================================

@@ -56,7 +56,7 @@ class ProductVariantObserver
                 }
             }
 
-                        // Use wasChanged() to see if 'stock_default' was part of the update.
+            // Use wasChanged() to see if 'stock_default' was part of the update.
             if ($variant->wasChanged('stock_default')) {
                 // getOriginal() provides the value before the update.
                 $oldStock = (int) ($variant->getOriginal('stock_default') ?? 0);

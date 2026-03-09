@@ -213,8 +213,8 @@ class ProductController extends Controller
         $this->authorizeCompany($request, $product);
 
         $variantId = $request->query('variant_id');
-        $channel   = $request->query('channel', 'default');
-        $days      = (int) $request->query('days', 90);
+        $channel = $request->query('channel', 'default');
+        $days = (int) $request->query('days', 90);
 
         $query = PriceHistory::where('product_id', $product->id)
             ->where('channel', $channel)
@@ -228,7 +228,7 @@ class ProductController extends Controller
         $history = $query->get(['product_variant_id', 'price', 'old_price', 'changed_at', 'changed_by']);
 
         return response()->json([
-            'data'   => $history,
+            'data' => $history,
             'period' => $days,
         ]);
     }

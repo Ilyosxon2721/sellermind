@@ -117,6 +117,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.chat-pwa');
     })->name('chat.pwa');
 
+    Route::get('/products-pwa', function () {
+        return view('pages.products-pwa');
+    })->name('products.pwa');
+
     Route::get('/settings', function () {
         return view('pages.settings');
     })->name('settings');

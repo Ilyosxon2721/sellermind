@@ -5,6 +5,9 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* PWA Styles */
+@import './pwa/animations.css';
+
 /* ============================================
    SELLERMIND DESIGN SYSTEM
    ============================================ */

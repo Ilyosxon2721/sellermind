@@ -110,7 +110,7 @@ class SalesManagementController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:marketplace,manual,pos',
             'source' => 'nullable|in:uzum,wb,ozon,ym,manual,pos',
-            'warehouse_id'     => 'nullable|integer|exists:warehouses,id',
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
             'counterparty_id' => 'nullable|exists:counterparties,id',
             'currency' => 'nullable|in:UZS,USD,RUB',
             'notes' => 'nullable|string|max:1000',
@@ -171,7 +171,7 @@ class SalesManagementController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'warehouse_id'     => 'nullable|integer|exists:warehouses,id',
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
             'counterparty_id' => 'nullable|exists:counterparties,id',
             'notes' => 'nullable|string|max:1000',
         ]);
