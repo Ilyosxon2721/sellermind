@@ -391,6 +391,15 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.marketplace.index');
     })->name('marketplace.index');
 
+    // PWA-optimized marketplace pages
+    Route::get('/marketplace-pwa', function () {
+        return view('pages.marketplace.index-pwa');
+    })->name('marketplace.pwa');
+
+    Route::get('/marketplace-pwa/{accountId}', function ($accountId) {
+        return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
+    })->name('marketplace.show.pwa');
+
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
         ->name('marketplace.sync-logs');
