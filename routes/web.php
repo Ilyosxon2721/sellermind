@@ -121,6 +121,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.dashboard-flutter');
     })->name('dashboard.flutter');
 
+    // PWA-optimized dashboard
+    Route::get('/dashboard-pwa', function () {
+        return view('pages.dashboard-pwa');
+    })->name('dashboard.pwa');
+
     Route::get('/chat', function () {
         return view('pages.chat');
     })->name('chat');
@@ -160,6 +165,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/promotions', function () {
         return view('pages.promotions');
     })->name('promotions');
+
+    // PWA-optimized promotions
+    Route::get('/promotions-pwa', function () {
+        return view('pages.promotions-pwa');
+    })->name('promotions.pwa');
 
     Route::get('/analytics', function () {
         return view('pages.analytics');
@@ -290,6 +300,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/tasks', function () {
         return view('pages.tasks');
     })->name('tasks');
+
+    // PWA-optimized tasks
+    Route::get('/tasks-pwa', function () {
+        return view('pages.tasks-pwa');
+    })->name('tasks.pwa');
 
     // Agent Mode
     Route::get('/agent', function () {
