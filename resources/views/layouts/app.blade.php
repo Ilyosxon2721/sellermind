@@ -203,67 +203,11 @@
     <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
     @vite('resources/js/pwa.js')
 
-    <!-- PWA Install Prompt -->
-    <script>
-        let deferredPrompt;
-        let pwaInstallButton = null;
+    <!-- PWA Install Banner -->
+    <x-pwa-install-banner />
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent default install prompt
-            e.preventDefault();
-            deferredPrompt = e;
-
-            // Show custom install button
-            showInstallPromotion();
-        });
-
-        function showInstallPromotion() {
-            // Create install button if not exists
-            if (!pwaInstallButton && deferredPrompt) {
-                pwaInstallButton = document.createElement('button');
-                pwaInstallButton.innerHTML = `
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                    </svg>
-                    Установить приложение
-                `;
-                pwaInstallButton.className = 'fixed bottom-4 right-4 z-50 px-4 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center font-medium';
-                pwaInstallButton.onclick = installPWA;
-                document.body.appendChild(pwaInstallButton);
-
-                // Auto-hide after 10 seconds
-                setTimeout(() => {
-                    if (pwaInstallButton) {
-                        pwaInstallButton.style.opacity = '0';
-                        setTimeout(() => pwaInstallButton?.remove(), 300);
-                    }
-                }, 10000);
-            }
-        }
-
-        async function installPWA() {
-            if (!deferredPrompt) return;
-
-            // Show install prompt
-            deferredPrompt.prompt();
-
-            // Wait for user response
-            const { outcome } = await deferredPrompt.userChoice;
-            // Clear the prompt
-            deferredPrompt = null;
-            pwaInstallButton?.remove();
-            pwaInstallButton = null;
-        }
-
-        // Track if app was installed
-        window.addEventListener('appinstalled', () => {
-            deferredPrompt = null;
-            pwaInstallButton?.remove();
-        });
-
-        // Expose install function globally
-        window.installPWA = installPWA;
-    </script>
+    <!-- PWA Update Banner -->
+    <x-pwa-update-banner />
     {{-- Chart.js для страниц с графиками --}}
     @stack('scripts')
 </body>

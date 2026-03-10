@@ -371,6 +371,12 @@
     <x-pwa.more-menu />
     @endauth
 
+    {{-- PWA Install Banner (shows in browser mode) --}}
+    <x-pwa-install-banner />
+
+    {{-- PWA Update Banner (shows when update available) --}}
+    <x-pwa-update-banner />
+
     {{-- PWA Auto-registration --}}
     @vite('resources/js/pwa.js')
 
