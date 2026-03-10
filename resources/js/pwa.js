@@ -24,10 +24,17 @@ async function registerServiceWorker() {
             const newWorker = registration.installing;
             console.log('PWA: New Service Worker installing');
 
-            newWorker.addEventListener('statechange', () => {
+            newWorker.addEventListener('statechange', async () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Get version from new SW if possible
+                    let version = null;
+                    try {
+                        version = await window.getPWAVersion();
+                    } catch (e) {
+                        // Version not available
+                    }
                     // New version available
-                    showUpdatePrompt();
+                    showUpdatePrompt(version);
                 }
             });
         });
@@ -61,16 +68,11 @@ async function registerServiceWorker() {
     }
 }
 
-function showUpdatePrompt() {
-    const shouldUpdate = confirm(
-        'Доступна новая версия SellerMind.\n\n' +
-        'Рекомендуется обновить для получения новых функций и исправлений.\n\n' +
-        'Обновить сейчас?'
-    );
-
-    if (shouldUpdate) {
-        updateServiceWorker();
-    }
+function showUpdatePrompt(version) {
+    // Dispatch event for the new PWA update banner component
+    window.dispatchEvent(new CustomEvent('pwa:update-available', {
+        detail: { version: version || null }
+    }));
 }
 
 async function updateServiceWorker() {
