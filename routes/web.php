@@ -62,8 +62,8 @@ Route::get('/', function (Illuminate\Http\Request $request) {
     // PWA App Mode: Act like a native app
     if ($isPWA) {
         if (auth()->check()) {
-            // Authenticated → Dashboard
-            return redirect('/dashboard');
+            // Authenticated → Dashboard (Flutter PWA версия)
+            return redirect('/dashboard-flutter');
         } else {
             // Not authenticated → Login (skip landing)
             return redirect('/login');
@@ -101,7 +101,14 @@ Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
-    Route::get('/home', function () {
+    Route::get('/home', function (Illuminate\Http\Request $request) {
+        $isPWA = $request->cookie('pwa_installed') === 'true'
+            || $request->header('X-Requested-With') === 'com.sellermind.pwa';
+
+        if ($isPWA) {
+            return redirect('/dashboard-flutter');
+        }
+
         return redirect()->route('dashboard');
     });
 
@@ -113,6 +120,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/dashboard-flutter', function () {
         return view('pages.dashboard-flutter');
     })->name('dashboard.flutter');
+
+    // PWA-optimized dashboard
+    Route::get('/dashboard-pwa', function () {
+        return view('pages.dashboard-pwa');
+    })->name('dashboard.pwa');
 
     Route::get('/chat', function () {
         return view('pages.chat');
@@ -129,6 +141,10 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/settings', function () {
         return view('pages.settings');
     })->name('settings');
+
+    Route::get('/settings-pwa', function () {
+        return view('pages.settings-pwa');
+    })->name('settings.pwa');
 
     // Profile page (PWA-optimized)
     Route::get('/profile', function () {
@@ -149,6 +165,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/promotions', function () {
         return view('pages.promotions');
     })->name('promotions');
+
+    // PWA-optimized promotions
+    Route::get('/promotions-pwa', function () {
+        return view('pages.promotions-pwa');
+    })->name('promotions.pwa');
 
     Route::get('/analytics', function () {
         return view('pages.analytics');
@@ -189,6 +210,10 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/reviews', function () {
         return view('pages.reviews');
     })->name('reviews');
+
+    Route::get('/reviews-pwa', function () {
+        return view('pages.reviews-pwa');
+    })->name('reviews.pwa');
 
     Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
 
@@ -275,6 +300,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/tasks', function () {
         return view('pages.tasks');
     })->name('tasks');
+
+    // PWA-optimized tasks
+    Route::get('/tasks-pwa', function () {
+        return view('pages.tasks-pwa');
+    })->name('tasks.pwa');
 
     // Agent Mode
     Route::get('/agent', function () {
@@ -375,6 +405,15 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/marketplace', function () {
         return view('pages.marketplace.index');
     })->name('marketplace.index');
+
+    // PWA-optimized marketplace pages
+    Route::get('/marketplace-pwa', function () {
+        return view('pages.marketplace.index-pwa');
+    })->name('marketplace.pwa');
+
+    Route::get('/marketplace-pwa/{accountId}', function ($accountId) {
+        return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
+    })->name('marketplace.show.pwa');
 
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])

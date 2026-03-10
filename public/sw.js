@@ -8,7 +8,7 @@
  * - Images: Stale While Revalidate
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v4';
 
 const CACHE_NAMES = {
     shell: `shell-${CACHE_VERSION}`,
@@ -20,12 +20,13 @@ const CACHE_NAMES = {
 // App Shell URLs - Cache First
 const SHELL_URLS = [
     '/',
-    '/dashboard',
+    '/dashboard-flutter',
     '/marketplace/products',
     '/marketplace/orders',
-    '/chat',
-    '/analytics',
-    '/profile',
+    '/chat-pwa',
+    '/analytics/pwa',
+    '/products-pwa',
+    '/profile-pwa',
     '/offline',
     '/offline.html'  // Static fallback
 ];
@@ -569,7 +570,7 @@ self.addEventListener('push', (event) => {
         body: 'Новое уведомление',
         icon: '/images/icons/icon-192x192.png',
         badge: '/images/icons/badge-72x72.png',
-        url: '/dashboard'
+        url: '/dashboard-flutter'
     };
 
     if (event.data) {
@@ -586,7 +587,7 @@ self.addEventListener('push', (event) => {
         badge: data.badge || '/images/icons/badge-72x72.png',
         vibrate: [100, 50, 100],
         data: {
-            url: data.url || '/dashboard',
+            url: data.url || '/dashboard-flutter',
             dateOfArrival: Date.now()
         },
         actions: data.actions || [
@@ -612,7 +613,7 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    const urlToOpen = event.notification.data?.url || '/dashboard';
+    const urlToOpen = event.notification.data?.url || '/dashboard-flutter';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })

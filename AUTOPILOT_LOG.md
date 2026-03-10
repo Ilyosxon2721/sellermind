@@ -65,4 +65,21 @@
 2026-03-09 | NOTE  | Используется в 30+ местах, ранее не было явного CSS определения
 2026-03-09 | COMMIT| style(buttons): унифицировать стили кнопок native-btn-primary (#014) (6b20a35)
 2026-03-09 | DONE  | Task #014 completed
+2026-03-09 | STOP  | Session ended (3 tasks)
+========================================
+
+========================================
+2026-03-10 | START | New session
+2026-03-10 | TASK  | Добавить PWA маршруты для marketplace
+2026-03-10 | EDIT  | routes/web.php — добавлены маршруты /marketplace-pwa и /marketplace-pwa/{accountId}
+2026-03-10 | NEW   | resources/views/pages/marketplace/show-pwa.blade.php — PWA дашборд аккаунта
+2026-03-10 | COMMIT| feat(marketplace): добавить PWA страницы для маркетплейсов (d37822f)
+2026-03-10 | DONE  | PWA marketplace completed
+2026-03-10 | TASK  | Добавить недостающие PWA страницы
+2026-03-10 | NEW   | resources/views/pages/dashboard-pwa.blade.php — PWA главная страница
+2026-03-10 | NEW   | resources/views/pages/promotions-pwa.blade.php — PWA акции
+2026-03-10 | NEW   | resources/views/pages/tasks-pwa.blade.php — PWA задачи
+2026-03-10 | EDIT  | routes/web.php — маршруты /dashboard-pwa, /promotions-pwa, /tasks-pwa
+2026-03-10 | COMMIT| feat(pwa): добавить PWA страницы для dashboard, promotions, tasks (6943520)
+2026-03-10 | DONE  | All PWA pages completed
 
