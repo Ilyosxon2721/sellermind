@@ -75,4 +75,11 @@
 2026-03-10 | NEW   | resources/views/pages/marketplace/show-pwa.blade.php — PWA дашборд аккаунта
 2026-03-10 | COMMIT| feat(marketplace): добавить PWA страницы для маркетплейсов (d37822f)
 2026-03-10 | DONE  | PWA marketplace completed
+2026-03-10 | TASK  | Добавить недостающие PWA страницы
+2026-03-10 | NEW   | resources/views/pages/dashboard-pwa.blade.php — PWA главная страница
+2026-03-10 | NEW   | resources/views/pages/promotions-pwa.blade.php — PWA акции
+2026-03-10 | NEW   | resources/views/pages/tasks-pwa.blade.php — PWA задачи
+2026-03-10 | EDIT  | routes/web.php — маршруты /dashboard-pwa, /promotions-pwa, /tasks-pwa
+2026-03-10 | COMMIT| feat(pwa): добавить PWA страницы для dashboard, promotions, tasks (6943520)
+2026-03-10 | DONE  | All PWA pages completed
 
