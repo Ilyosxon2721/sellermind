@@ -349,18 +349,10 @@ Schedule::command('stock:check-low')
 Schedule::job(new \App\Jobs\PollWildberriesOrdersJob)
     ->everyThirtySeconds()
     ->withoutOverlapping()
-    ->runInBackground()
-    ->name('poll-wb-orders')
-    ->onFailure(function () {
-        \Log::error('WB orders polling failed');
-    });
+    ->name('poll-wb-orders');
 
 // Uzum: polling новых заказов каждую минуту
 Schedule::job(new \App\Jobs\PollUzumOrdersJob)
     ->everyMinute()
     ->withoutOverlapping()
-    ->runInBackground()
-    ->name('poll-uzum-orders')
-    ->onFailure(function () {
-        \Log::error('Uzum orders polling failed');
-    });
+    ->name('poll-uzum-orders');
