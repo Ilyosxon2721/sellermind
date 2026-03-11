@@ -25,6 +25,11 @@ final class YandexWebhookController extends Controller
 
     public function handle(Request $request, string $webhookUuid): JsonResponse
     {
+        // Яндекс.Маркет делает GET запрос для верификации URL
+        if ($request->isMethod('GET')) {
+            return response()->json(['status' => 'ok'], 200);
+        }
+
         $config = MarketplaceWebhookConfig::where('webhook_uuid', $webhookUuid)
             ->whereIn('marketplace', [MarketplaceType::YANDEX->value, MarketplaceType::YM->value])
             ->where('is_active', true)

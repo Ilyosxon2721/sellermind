@@ -1017,6 +1017,6 @@ Route::prefix('webhook')->group(function () {
         ->middleware([\App\Http\Middleware\VerifyOzonWebhookIp::class])
         ->name('webhook.ozon');
 
-    Route::post('yandex/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
+    Route::match(['GET', 'POST'], 'yandex/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
         ->name('webhook.yandex');
 });
