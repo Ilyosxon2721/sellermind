@@ -8,13 +8,14 @@ enum MarketplaceType: string
 {
     case OZON = 'ozon';
     case YANDEX = 'yandex';
+    case YM = 'ym';
     case WILDBERRIES = 'wildberries';
     case UZUM = 'uzum';
 
     public function supportsWebhook(): bool
     {
         return match ($this) {
-            self::OZON, self::YANDEX => true,
+            self::OZON, self::YANDEX, self::YM => true,
             default => false,
         };
     }
@@ -31,7 +32,7 @@ enum MarketplaceType: string
     {
         return match ($this) {
             self::OZON => 'Ozon',
-            self::YANDEX => 'Yandex Market',
+            self::YANDEX, self::YM => 'Yandex Market',
             self::WILDBERRIES => 'Wildberries',
             self::UZUM => 'Uzum Market',
         };

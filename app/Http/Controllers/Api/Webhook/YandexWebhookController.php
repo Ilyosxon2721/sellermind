@@ -26,7 +26,7 @@ final class YandexWebhookController extends Controller
     public function handle(Request $request, string $webhookUuid): JsonResponse
     {
         $config = MarketplaceWebhookConfig::where('webhook_uuid', $webhookUuid)
-            ->where('marketplace', MarketplaceType::YANDEX->value)
+            ->whereIn('marketplace', [MarketplaceType::YANDEX->value, MarketplaceType::YM->value])
             ->where('is_active', true)
             ->first();
 
