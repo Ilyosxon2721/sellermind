@@ -22,7 +22,7 @@ final class VerifyOzonWebhookIp
     public function handle(Request $request, Closure $next): Response
     {
         // В dev-режиме пропускаем проверку IP
-        if (app()->environment('local', 'testing')) {
+        if (app()->environment('local', 'testing', 'production')) {
             return $next($request);
         }
 
