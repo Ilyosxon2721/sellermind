@@ -35,7 +35,13 @@ final class OzonWebhookController extends Controller
             return response()->json(['status' => 'not_found'], 404);
         }
 
-        $payload      = $request->all();
+        $payload     = $request->all();
+
+        // Ozon шлёт PING для проверки webhook URL
+        if (($payload['message_type'] ?? null) === 'TYPE_PING') {
+            return response()->json(['time' => time()], 200);
+        }
+
         $messageType  = $payload['message_type'] ?? 'unknown';
         $postingNumber = $payload['posting_number'] ?? null;
         $changedAt    = $payload['changed_at'] ?? now()->toISOString();
