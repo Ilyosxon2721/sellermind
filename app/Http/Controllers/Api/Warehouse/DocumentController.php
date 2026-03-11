@@ -309,7 +309,7 @@ class DocumentController extends Controller
             $doc->delete();
         });
 
-        return $this->successResponse(null, 'Документ удалён');
+        return $this->successResponse(null, ['message' => 'Документ удалён']);
     }
 
     public function reverse($id)

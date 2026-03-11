@@ -3,6 +3,20 @@
  * Handles export, import, and bulk actions for products
  */
 
+/**
+ * Получить токен авторизации из localStorage
+ */
+function getAuthToken() {
+    let token = localStorage.getItem('_x_auth_token');
+    if (token) {
+        try { token = JSON.parse(token); } catch (e) {}
+    }
+    if (!token) {
+        token = localStorage.getItem('auth_token');
+    }
+    return token;
+}
+
 window.productBulkMixin = {
     // Bulk selection
     selectedVariants: [],
@@ -53,7 +67,7 @@ window.productBulkMixin = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
+                    'Authorization': `Bearer ${getAuthToken()}`,
                 },
                 body: JSON.stringify(params),
             });
@@ -128,7 +142,7 @@ window.productBulkMixin = {
             const response = await fetch('/api/products/bulk/import/preview', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${window.api.getToken()}`,
+                    'Authorization': `Bearer ${getAuthToken()}`,
                 },
                 body: formData,
             });
@@ -172,7 +186,7 @@ window.productBulkMixin = {
             const response = await fetch('/api/products/bulk/import/apply', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${window.api.getToken()}`,
+                    'Authorization': `Bearer ${getAuthToken()}`,
                 },
                 body: formData,
             });
@@ -295,7 +309,7 @@ window.productBulkMixin = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
+                    'Authorization': `Bearer ${getAuthToken()}`,
                 },
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
@@ -356,7 +370,7 @@ window.productBulkMixin = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
+                    'Authorization': `Bearer ${getAuthToken()}`,
                 },
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
