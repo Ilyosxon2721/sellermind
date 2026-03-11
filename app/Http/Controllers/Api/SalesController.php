@@ -69,34 +69,26 @@ class SalesController extends Controller
         // Build unified orders collection
         $orders = collect();
 
-        // Get Uzum orders
-        if (! $marketplace || $marketplace === 'uzum') {
-            $uzumOrders = $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
-            $orders = $orders->merge($uzumOrders);
-        }
+        // Получаем заказы с каждого маркетплейса, оборачивая в try/catch
+        // чтобы ошибка одного не ломала весь endpoint
+        $sources = [
+            'uzum' => fn () => $this->getUzumOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
+            'wb' => fn () => $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
+            'ozon' => fn () => $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
+            'ym' => fn () => $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode),
+            'manual' => fn () => $this->getManualOrders($companyId, $dateFrom, $dateTo, $status, $search),
+        ];
 
-        // Get WB orders (RUB amounts will be converted)
-        if (! $marketplace || $marketplace === 'wb') {
-            $wbOrders = $this->getWbOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
-            $orders = $orders->merge($wbOrders);
-        }
+        foreach ($sources as $source => $fetcher) {
+            if ($marketplace && $marketplace !== $source) {
+                continue;
+            }
 
-        // Get OZON orders
-        if (! $marketplace || $marketplace === 'ozon') {
-            $ozonOrders = $this->getOzonOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
-            $orders = $orders->merge($ozonOrders);
-        }
-
-        // Get Yandex Market orders
-        if (! $marketplace || $marketplace === 'ym') {
-            $ymOrders = $this->getYandexMarketOrders($companyId, $dateFrom, $dateTo, $status, $search, $dateMode);
-            $orders = $orders->merge($ymOrders);
-        }
-
-        // Get manual/channel orders
-        if (! $marketplace || $marketplace === 'manual') {
-            $manualOrders = $this->getManualOrders($companyId, $dateFrom, $dateTo, $status, $search);
-            $orders = $orders->merge($manualOrders);
+            try {
+                $orders = $orders->merge($fetcher());
+            } catch (\Exception $e) {
+                \Log::error("Sales: ошибка загрузки заказов {$source}: {$e->getMessage()}");
+            }
         }
 
         // Sort by date descending
@@ -1329,6 +1321,26 @@ class SalesController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Нормализация валюты Yandex Market (RUR -> RUB и т.д.)
+     */
+    private function normalizeYmCurrency(?string $currency): string
+    {
+        if (! $currency) {
+            return 'RUB';
+        }
+
+        $currency = strtoupper(trim($currency));
+
+        $map = [
+            'RUR' => 'RUB',
+            'BYR' => 'BYN',
+            'UAH' => 'UAH',
+        ];
+
+        return $map[$currency] ?? ($currency ?: 'RUB');
     }
 
     /**
