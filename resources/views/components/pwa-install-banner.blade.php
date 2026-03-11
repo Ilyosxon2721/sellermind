@@ -10,7 +10,8 @@
     x-transition:leave="transition ease-in duration-200"
     x-transition:leave-start="opacity-100 translate-y-0"
     x-transition:leave-end="opacity-0 translate-y-full"
-    class="fixed bottom-0 left-0 right-0 z-[100] browser-only"
+    x-cloak
+    class="fixed bottom-0 left-0 right-0 z-[100]"
     style="padding-bottom: env(safe-area-inset-bottom, 16px);"
 >
     {{-- Backdrop blur overlay --}}
@@ -94,7 +95,7 @@
 
             {{-- iOS Instructions (shown only on iOS in browser) --}}
             <div
-                x-show="isIOS && !canInstallNatively"
+                x-show="isIOS && showIOSInstructions"
                 x-transition
                 class="px-4 pb-4"
             >
@@ -130,24 +131,25 @@ function pwaInstallBanner() {
         isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
         canInstallNatively: false,
         deferredPrompt: null,
+        showIOSInstructions: false,
 
         init() {
-            // Check if already dismissed recently (within 7 days)
-            const dismissed = localStorage.getItem('pwa_install_dismissed');
-            if (dismissed) {
-                const dismissedDate = new Date(parseInt(dismissed));
-                const daysSince = (Date.now() - dismissedDate) / (1000 * 60 * 60 * 24);
-                if (daysSince < 7) {
-                    return; // Don't show for 7 days after dismiss
-                }
-            }
-
-            // Check if already installed
-            if (this.isPWAInstalled) {
+            // Не показывать в PWA режиме
+            if (this.isPWAInstalled || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                this.isPWAInstalled = true;
                 return;
             }
 
-            // Listen for beforeinstallprompt event (Android/Chrome)
+            // Проверяем, не был ли баннер закрыт (7 дней)
+            const dismissed = localStorage.getItem('pwa_install_dismissed');
+            if (dismissed) {
+                const daysSince = (Date.now() - parseInt(dismissed)) / (1000 * 60 * 60 * 24);
+                if (daysSince < 7) {
+                    return;
+                }
+            }
+
+            // Слушаем beforeinstallprompt (Android/Chrome)
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 this.deferredPrompt = e;
@@ -155,24 +157,32 @@ function pwaInstallBanner() {
                 this.showBannerWithDelay();
             });
 
-            // For iOS, show banner after delay if in Safari
+            // Для iOS Safari показываем баннер с инструкциями
             if (this.isIOS && this.isSafari()) {
                 this.showBannerWithDelay();
             }
 
-            // Track installation
+            // Для десктопных браузеров без beforeinstallprompt — показываем через 3 сек
+            if (!this.isIOS) {
+                setTimeout(() => {
+                    if (!this.showBanner && !this.canInstallNatively && !this.isPWAInstalled) {
+                        this.showBannerWithDelay();
+                    }
+                }, 1000);
+            }
+
+            // Отслеживаем установку
             window.addEventListener('appinstalled', () => {
                 this.showBanner = false;
                 this.isPWAInstalled = true;
                 localStorage.removeItem('pwa_install_dismissed');
 
-                // Haptic feedback
                 if (window.SmHaptic) {
                     window.SmHaptic.success();
                 }
             });
 
-            // Update isPWAInstalled if display mode changes
+            // Отслеживаем изменение display-mode
             window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
                 this.isPWAInstalled = e.matches;
                 if (e.matches) {
@@ -186,13 +196,10 @@ function pwaInstallBanner() {
         },
 
         showBannerWithDelay() {
-            // Show banner after user has spent some time on the site (3 seconds)
             setTimeout(() => {
-                // Only show if user is still on page and page is visible
                 if (!document.hidden && !this.isPWAInstalled) {
                     this.showBanner = true;
 
-                    // Haptic feedback
                     if (window.SmHaptic) {
                         window.SmHaptic.light();
                     }
@@ -202,22 +209,27 @@ function pwaInstallBanner() {
 
         async install() {
             if (this.deferredPrompt) {
-                // Native install prompt (Android/Chrome)
-                this.deferredPrompt.prompt();
-
-                const { outcome } = await this.deferredPrompt.userChoice;
-
-                if (outcome === 'accepted') {
-                    this.showBanner = false;
+                // Нативный промпт установки (Android/Chrome)
+                try {
+                    this.deferredPrompt.prompt();
+                    const { outcome } = await this.deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        this.showBanner = false;
+                    }
+                } catch (e) {
+                    console.warn('Install prompt failed:', e);
+                } finally {
+                    this.deferredPrompt = null;
                 }
-
-                this.deferredPrompt = null;
             } else if (this.isIOS) {
-                // For iOS, just show the instructions more prominently
-                // The instructions are already visible in the banner
+                // Показываем инструкции для iOS
+                this.showIOSInstructions = true;
                 if (window.SmHaptic) {
                     window.SmHaptic.medium();
                 }
+            } else {
+                // Десктопный браузер без нативного промпта — скрываем баннер и запоминаем
+                this.dismiss();
             }
         },
 
@@ -225,7 +237,6 @@ function pwaInstallBanner() {
             this.showBanner = false;
             localStorage.setItem('pwa_install_dismissed', Date.now().toString());
 
-            // Haptic feedback
             if (window.SmHaptic) {
                 window.SmHaptic.light();
             }
