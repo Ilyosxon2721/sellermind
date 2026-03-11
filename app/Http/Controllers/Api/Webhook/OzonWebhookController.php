@@ -26,6 +26,15 @@ final class OzonWebhookController extends Controller
 
     public function handle(Request $request, string $webhookUuid): JsonResponse
     {
+        $payload = $request->all();
+
+        Log::info('Ozon webhook payload', ['payload' => $payload]);
+
+        // Ozon шлёт PING для проверки webhook URL — отвечаем до проверки конфига
+        if (($payload['message_type'] ?? null) === 'TYPE_PING') {
+            return response()->json(['time' => (string) time()], 200);
+        }
+
         $config = MarketplaceWebhookConfig::where('webhook_uuid', $webhookUuid)
             ->where('marketplace', MarketplaceType::OZON->value)
             ->where('is_active', true)
@@ -33,15 +42,6 @@ final class OzonWebhookController extends Controller
 
         if (! $config) {
             return response()->json(['status' => 'not_found'], 404);
-        }
-
-        $payload     = $request->all();
-
-        Log::info('Ozon webhook payload', ['payload' => $payload]);
-
-        // Ozon шлёт PING для проверки webhook URL
-        if (($payload['message_type'] ?? null) === 'TYPE_PING') {
-            return response()->json(['time' => time()], 200);
         }
 
         $messageType  = $payload['message_type'] ?? 'unknown';
