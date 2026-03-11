@@ -171,6 +171,13 @@ class ProductController extends Controller
     {
         $this->authorizeCompany($request, $product);
 
+        // Помечаем все варианты товара как удалённые
+        $product->variants()->update(['is_deleted' => true, 'is_active' => false]);
+
+        // Деактивируем связанные SKU на складе
+        \App\Models\Warehouse\Sku::where('product_id', $product->id)
+            ->update(['is_active' => false]);
+
         $product->is_archived = true;
         $product->save();
         $product->delete();
