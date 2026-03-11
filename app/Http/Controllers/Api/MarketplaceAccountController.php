@@ -25,6 +25,12 @@ class MarketplaceAccountController extends Controller
 
         $accounts = MarketplaceAccount::where('company_id', $request->company_id)->get();
 
+        $accountIds = $accounts->pluck('id')->toArray();
+        $webhookAccountIds = \App\Models\MarketplaceWebhookConfig::whereIn('store_id', $accountIds)
+            ->where('is_active', true)
+            ->pluck('store_id')
+            ->toArray();
+
         // No caching - always return fresh data to prevent stale reads after create/delete
         return response()->json([
             'accounts' => $accounts->map(fn ($a) => [
@@ -35,6 +41,7 @@ class MarketplaceAccountController extends Controller
                 'display_name' => $a->getDisplayName(),
                 'is_active' => $a->is_active,
                 'connected_at' => $a->connected_at,
+                'has_webhook' => in_array($a->id, $webhookAccountIds),
             ]),
             'available_marketplaces' => MarketplaceAccount::getMarketplaceLabels(),
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
