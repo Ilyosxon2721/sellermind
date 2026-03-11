@@ -6,6 +6,8 @@ namespace App\Services\Notifications;
 
 use App\Enums\EventType;
 use App\Models\MarketplaceEvent;
+use App\Models\OfflineSale;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -53,6 +55,40 @@ final class TelegramNotificationService
         }
 
         $this->send($chatId, $message);
+    }
+
+    /**
+     * Уведомление о подтверждённой ручной продаже
+     */
+    public function notifyOfflineSale(OfflineSale $sale): void
+    {
+        if (! $this->enabled || empty($this->botToken)) {
+            return;
+        }
+
+        $user = User::where('company_id', $sale->company_id)
+            ->where('telegram_notifications_enabled', true)
+            ->whereNotNull('telegram_id')
+            ->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $typeLabels = ['retail' => 'Розница', 'wholesale' => 'Опт', 'direct' => 'Прямая'];
+        $type = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
+        $amount = number_format($sale->total_amount, 0, '.', ' ');
+        $currency = $sale->currency_code ?? 'UZS';
+        $customer = $sale->customer_name ? "\n👤 Клиент: {$sale->customer_name}" : '';
+
+        $message = "🛒 *РУЧНАЯ ПРОДАЖА*\n\n"
+            . "🔢 Номер: {$sale->sale_number}\n"
+            . "📋 Тип: {$type}\n"
+            . "💰 Сумма: {$amount} {$currency}"
+            . $customer . "\n"
+            . "🕐 Дата: " . $sale->sale_date->format('d.m.Y') . "\n";
+
+        $this->send((string) $user->telegram_id, $message);
     }
 
     private function buildMessage(MarketplaceEvent $event): ?string

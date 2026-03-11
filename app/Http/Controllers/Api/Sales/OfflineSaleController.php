@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
 use App\Models\OfflineSale;
 use App\Models\OfflineSaleItem;
+use App\Services\Notifications\TelegramNotificationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -226,6 +227,8 @@ class OfflineSaleController extends Controller
         }
 
         $sale->update(['status' => OfflineSale::STATUS_CONFIRMED]);
+
+        app(TelegramNotificationService::class)->notifyOfflineSale($sale->fresh());
 
         return $this->successResponse($sale->fresh());
     }
