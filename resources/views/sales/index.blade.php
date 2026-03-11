@@ -15,6 +15,11 @@
     <x-mobile-header />
     <x-pwa-top-navbar title="Продажи" subtitle="Заказы с маркетплейсов">
         <x-slot name="actions">
+            <button @click="triggerSync()" :disabled="syncStatus?.status === 'running'" class="p-2 hover:bg-white/10 rounded-lg transition-colors active:scale-95">
+                <svg class="w-6 h-6" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </button>
             <a href="/sales/create" class="p-2 hover:bg-white/10 rounded-lg transition-colors active:scale-95">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -32,6 +37,12 @@
                     <p class="text-sm text-gray-500 mt-1">Все заказы с маркетплейсов и ручные проводки</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button class="btn btn-secondary text-sm" @click="triggerSync()" :disabled="syncStatus?.status === 'running'">
+                        <svg class="w-4 h-4 mr-1.5" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span x-text="syncStatus?.status === 'running' ? 'Синхронизация...' : 'Синхронизировать'"></span>
+                    </button>
                     <button class="btn btn-secondary text-sm" @click="loadOrders()">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -70,7 +81,7 @@
                         </div>
                         <div>
                             <div class="font-medium text-gray-900">
-                                <span x-show="syncStatus?.status === 'running'">Синхронизация Uzum Market</span>
+                                <span x-show="syncStatus?.status === 'running'" x-text="'Синхронизация ' + (syncStatus?.marketplace ? getMarketplaceName(syncStatus.marketplace) : 'маркетплейсов')"></span>
                                 <span x-show="syncStatus?.status === 'completed'">Синхронизация завершена</span>
                                 <span x-show="syncStatus?.status === 'failed'">Ошибка синхронизации</span>
                                 <span x-show="syncStatus?.status === 'rate_limited'">Ожидание (лимит запросов)</span>
@@ -448,6 +459,11 @@
 {{-- PWA MODE - Native --}}
 <div class="pwa-only min-h-screen" x-data="salesPage()" style="background: #f2f2f7;">
     <x-pwa-header title="Продажи">
+        <button @click="triggerSync()" :disabled="syncStatus?.status === 'running'" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
         <button @click="showFilterSheet = true" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
@@ -755,14 +771,28 @@ function salesPage() {
 
         async triggerSync(fullSync = false) {
             try {
+                this.syncStatus = { status: 'running', message: 'Запуск синхронизации...' };
                 const response = await window.api.post('/sales/trigger-sync', { full_sync: fullSync });
                 if (response.data.success) {
                     // Начинаем опрос статуса
                     setTimeout(() => this.checkSyncStatus(), 1000);
+                } else {
+                    this.syncStatus = null;
                 }
             } catch (error) {
                 console.error('Failed to trigger sync:', error);
+                this.syncStatus = null;
             }
+        },
+
+        getMarketplaceName(marketplace) {
+            const names = {
+                'wildberries': 'Wildberries',
+                'ozon': 'Ozon',
+                'uzum': 'Uzum Market',
+                'yandex_market': 'Yandex Market'
+            };
+            return names[marketplace] || marketplace;
         },
 
         formatTimeRemaining(seconds) {

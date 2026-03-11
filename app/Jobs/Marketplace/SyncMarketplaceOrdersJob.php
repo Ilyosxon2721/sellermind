@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 
 class SyncMarketplaceOrdersJob implements ShouldQueue
 {
@@ -33,10 +34,30 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
         // Берём свежие данные аккаунта, чтобы учитывать обновлённые токены/shop_id/флаги активности
         $account = MarketplaceAccount::find($this->account->id);
         if (! $account || ! $account->is_active) {
+            $this->markSyncCompleted('failed', 'Аккаунт неактивен или не найден');
             return;
         }
 
-        $syncService->syncOrders($account, $this->from, $this->to, $this->statuses);
+        try {
+            $syncService->syncOrders($account, $this->from, $this->to, $this->statuses);
+            $this->markSyncCompleted('completed', 'Синхронизация заказов завершена');
+        } catch (\Throwable $e) {
+            $this->markSyncCompleted('failed', 'Ошибка: ' . mb_substr($e->getMessage(), 0, 200));
+            throw $e;
+        }
+    }
+
+    /**
+     * Обновить статус синхронизации в кэше
+     */
+    private function markSyncCompleted(string $status, string $message): void
+    {
+        Cache::put("sales_orders_sync:{$this->account->id}", [
+            'status' => $status,
+            'message' => $message,
+            'marketplace' => $this->account->marketplace,
+            'completed_at' => now()->toIso8601String(),
+        ], 120); // Храним 2 минуты после завершения
     }
 
     public function tags(): array
