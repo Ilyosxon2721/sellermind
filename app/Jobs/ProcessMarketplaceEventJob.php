@@ -21,6 +21,7 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
 
     public int $tries = 5;
     public int $timeout = 30;
+    public string $queue = 'marketplace-events';
 
     public function __construct(
         public readonly MarketplaceEvent $event,
@@ -76,8 +77,4 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
         ]);
     }
 
-    public function queue(): string
-    {
-        return 'marketplace-events';
-    }
 }
