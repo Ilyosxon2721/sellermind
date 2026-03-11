@@ -127,7 +127,8 @@
             {{-- Main Stats Cards --}}
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {{-- Продажи (Доход) --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-200 flex items-center space-x-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-200 flex items-center space-x-4 transition-all duration-300"
+                     :class="{ 'sm-stat-update': _statsChanged }">
                     <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -317,7 +318,9 @@
 
                             {{-- Orders rows --}}
                             <template x-for="order in orders" :key="order.id">
-                                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" @click="viewOrder(order)">
+                                <tr class="hover:bg-gray-50 transition-colors cursor-pointer"
+                                    :class="window.SmartRefresh ? window.SmartRefresh.rowClass(order) : ''"
+                                    @click="viewOrder(order)">
                                     <td class="px-6 py-4">
                                         <div class="font-semibold text-gray-900" x-text="'#' + (order.order_number || order.id)"></div>
                                     </td>
@@ -525,7 +528,9 @@
             </div>
 
             <template x-for="order in orders" :key="order.id" x-show="!loading">
-                <div class="native-card native-pressable" @click="viewOrder(order)" onclick="if(window.haptic) window.haptic.light()">
+                <div class="native-card native-pressable"
+                     :class="window.SmartRefresh ? window.SmartRefresh.cardClass(order) : ''"
+                     @click="viewOrder(order)" onclick="if(window.haptic) window.haptic.light()">
                     <div class="flex items-start justify-between">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center space-x-2 mb-2">
@@ -718,6 +723,7 @@ function salesPage() {
             byMarketplace: []
         },
         orders: [],
+        _statsChanged: false,
         pagination: {
             currentPage: 1,
             lastPage: 1,
@@ -827,7 +833,10 @@ function salesPage() {
         },
 
         async loadOrders(page = 1) {
-            this.loading = true;
+            // При авто-обновлении не показываем loading (фоновое обновление)
+            const isAutoRefresh = this.orders.length > 0 && page === this.pagination.currentPage;
+            if (!isAutoRefresh) this.loading = true;
+
             try {
                 // Convert period to date_from/date_to
                 const dates = this.periodToDates(this.filters.period);
@@ -841,7 +850,22 @@ function salesPage() {
                 if (this.filters.search) params.set('search', this.filters.search);
 
                 const response = await window.api.get(`/sales?${params}`);
-                this.orders = response.data.data || [];
+                const newOrders = response.data.data || [];
+
+                // Умное обновление с анимацией
+                if (isAutoRefresh && window.SmartRefresh) {
+                    const result = window.SmartRefresh.merge(
+                        this.orders, newOrders, 'id',
+                        { compareFields: ['status', 'total_amount', 'raw_status'] }
+                    );
+                    this.orders = result.merged;
+                    // Очищаем анимации после завершения
+                    if (result.stats.added > 0 || result.stats.updated > 0) {
+                        window.SmartRefresh.clearAnimations(this.orders, 1500);
+                    }
+                } else {
+                    this.orders = newOrders;
+                }
 
                 // Update pagination
                 const meta = response.data.meta || {};
@@ -851,6 +875,9 @@ function salesPage() {
                     perPage: meta.per_page || 20,
                     total: meta.total || 0
                 };
+
+                // Сохраняем старые значения для анимации
+                const oldStats = { ...this.stats };
 
                 // Map API stats to frontend stats
                 const apiStats = response.data.stats || {};
@@ -866,6 +893,18 @@ function salesPage() {
                     avgOrderValue: apiStats.avgOrderValue || 0,
                     byMarketplace: apiStats.byMarketplace || []
                 };
+
+                // Анимация стат-карточек при изменении
+                if (isAutoRefresh && window.SmartRefresh) {
+                    this._statsChanged = (
+                        oldStats.totalRevenue !== this.stats.totalRevenue ||
+                        oldStats.totalOrders !== this.stats.totalOrders ||
+                        oldStats.salesCount !== this.stats.salesCount
+                    );
+                    if (this._statsChanged) {
+                        setTimeout(() => { this._statsChanged = false; }, 800);
+                    }
+                }
             } catch (error) {
                 console.error('Failed to load orders:', error);
             } finally {

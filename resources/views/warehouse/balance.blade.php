@@ -131,7 +131,7 @@
                             </td></tr>
                         </template>
                         <template x-for="row in items" :key="row.sku_id">
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="hover:bg-gray-50 transition-colors" :class="window.SmartRefresh ? window.SmartRefresh.rowClass(row) : ''">
                                 <td class="px-6 py-4 text-sm font-semibold text-blue-600" x-text="row.sku_code"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.barcode || '—'"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.product_name || '—'"></td>
@@ -230,9 +230,20 @@
             toast: { show: false, message: '', type: 'success' },
             summary: { total_quantity: 0, total_cost: 0 },
             summaryLoading: false,
+            autoRefreshInterval: null,
 
             init() {
                 this.loadSummary();
+                this.autoRefreshInterval = setInterval(() => {
+                    this.load(false);
+                }, 60000);
+            },
+
+            destroy() {
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                    this.autoRefreshInterval = null;
+                }
             },
 
             get totalOnHand() {
@@ -298,7 +309,10 @@
                 if (resetPage) {
                     this.pagination.current_page = 1;
                 }
-                this.loading = true;
+                const isBackgroundRefresh = !resetPage && this.items.length > 0;
+                if (!isBackgroundRefresh) {
+                    this.loading = true;
+                }
                 try {
                     const params = new URLSearchParams({
                         warehouse_id: this.warehouseId,
@@ -314,7 +328,13 @@
                     if (!resp.ok || json.errors) {
                         throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
                     }
-                    this.items = json.data?.items || [];
+                    const newItems = json.data?.items || [];
+                    if (isBackgroundRefresh && window.SmartRefresh) {
+                        this.items = window.SmartRefresh.merge(this.items, newItems, 'sku_id');
+                        window.SmartRefresh.clearAnimations(this.items, 1500);
+                    } else {
+                        this.items = newItems;
+                    }
                     const pag = json.data?.meta || json.data?.pagination;
                     if (pag) {
                         this.pagination = {
@@ -446,7 +466,7 @@
         {{-- Items List --}}
         <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
             <template x-for="row in items" :key="row.sku_id">
-                <a :href="row.product_id ? '/products/' + row.product_id + '/edit' : '#'" class="native-card block">
+                <a :href="row.product_id ? '/products/' + row.product_id + '/edit' : '#'" class="native-card block" :class="window.SmartRefresh ? window.SmartRefresh.cardClass(row) : ''">
                     <div class="flex items-start justify-between mb-2">
                         <p class="native-body font-semibold text-blue-600" x-text="row.sku_code"></p>
                         <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium" x-text="parseInt(row.available) + ' шт'"></span>
