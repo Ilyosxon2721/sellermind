@@ -76,17 +76,36 @@ final class TelegramNotificationService
         }
 
         $typeLabels = ['retail' => 'Розница', 'wholesale' => 'Опт', 'direct' => 'Прямая'];
-        $type = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
-        $amount = number_format((float) $sale->total_amount, 0, '.', ' ');
+        $type     = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
+        $amount   = number_format((float) $sale->total_amount, 0, '.', ' ');
         $currency = $sale->currency_code ?? 'UZS';
-        $customer = $sale->customer_name ? "\n👤 Клиент: {$sale->customer_name}" : '';
 
         $message = "🛒 *РУЧНАЯ ПРОДАЖА*\n\n"
             . "🔢 Номер: {$sale->sale_number}\n"
             . "📋 Тип: {$type}\n"
-            . "💰 Сумма: {$amount} {$currency}"
-            . $customer . "\n"
-            . "🕐 Дата: " . $sale->sale_date->format('d.m.Y') . "\n";
+            . "💰 Сумма: {$amount} {$currency}\n";
+
+        // Контрагент
+        $counterpartyName = $sale->counterparty?->name ?? $sale->customer_name ?? null;
+        if ($counterpartyName) {
+            $message .= "🤝 Контрагент: {$counterpartyName}\n";
+        }
+
+        // Товары
+        $items = $sale->relationLoaded('items') ? $sale->items : $sale->items()->get();
+        if ($items->isNotEmpty()) {
+            $message .= "🛍 Товары:\n";
+            foreach ($items->take(5) as $item) {
+                $name = $item->product_name ?? $item->sku_code ?? '—';
+                $qty  = (int) $item->quantity;
+                $message .= "  • {$name} × {$qty}\n";
+            }
+            if ($items->count() > 5) {
+                $message .= '  ...и ещё ' . ($items->count() - 5) . " шт.\n";
+            }
+        }
+
+        $message .= "🕐 Дата: " . $sale->sale_date->format('d.m.Y') . "\n";
 
         $this->send((string) $user->telegram_id, $message);
     }
@@ -105,41 +124,97 @@ final class TelegramNotificationService
 
     private function orderCreatedMessage(MarketplaceEvent $event): string
     {
-        return "✅ *НОВЫЙ ЗАКАЗ*\n\n"
+        $payload = $event->payload ?? [];
+        $text = "✅ *НОВЫЙ ЗАКАЗ*\n\n"
             . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n"
-            . "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+            . "🔢 Заказ: \#{$event->entity_id}\n";
+
+        if (! empty($payload['total_price'])) {
+            $amount = number_format((float) $payload['total_price'], 0, '.', ' ');
+            $currency = $payload['currency'] ?? 'RUB';
+            $text .= "💰 Сумма: {$amount} {$currency}\n";
+        }
+
+        if (! empty($payload['items']) && is_array($payload['items'])) {
+            $text .= "🛍 Товары:\n";
+            foreach (array_slice($payload['items'], 0, 5) as $item) {
+                $name = $item['name'] ?? $item['subject'] ?? $item['title'] ?? '—';
+                $qty  = $item['quantity'] ?? $item['qty'] ?? 1;
+                $text .= "  • {$name} × {$qty}\n";
+            }
+            if (count($payload['items']) > 5) {
+                $text .= '  ...и ещё ' . (count($payload['items']) - 5) . " шт.\n";
+            }
+        }
+
+        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+
+        return $text;
     }
 
     private function orderCancelledMessage(MarketplaceEvent $event): string
     {
-        return "❌ *ЗАКАЗ ОТМЕНЁН*\n\n"
+        $payload = $event->payload ?? [];
+        $text = "❌ *ЗАКАЗ ОТМЕНЁН*\n\n"
             . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n"
-            . "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+            . "🔢 Заказ: \#{$event->entity_id}\n";
+
+        if (! empty($payload['cancel_reason'])) {
+            $text .= "📝 Причина: {$payload['cancel_reason']}\n";
+        }
+
+        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+
+        return $text;
     }
 
     private function orderStatusMessage(MarketplaceEvent $event): string
     {
-        return "⚠️ *СТАТУС ЗАКАЗА ИЗМЕНЁН*\n\n"
+        $payload = $event->payload ?? [];
+        $text = "⚠️ *СТАТУС ЗАКАЗА ИЗМЕНЁН*\n\n"
             . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n"
-            . "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+            . "🔢 Заказ: \#{$event->entity_id}\n";
+
+        if (! empty($payload['status'])) {
+            $text .= "📋 Статус: {$payload['status']}\n";
+        }
+
+        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+
+        return $text;
     }
 
     private function returnMessage(MarketplaceEvent $event): string
     {
-        return "🔄 *ВОЗВРАТ*\n\n"
+        $payload = $event->payload ?? [];
+        $text = "🔄 *ВОЗВРАТ*\n\n"
             . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n"
-            . "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+            . "🔢 Заказ: \#{$event->entity_id}\n";
+
+        if (! empty($payload['total_price'])) {
+            $amount = number_format((float) $payload['total_price'], 0, '.', ' ');
+            $text .= "💰 Сумма: {$amount}\n";
+        }
+
+        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+
+        return $text;
     }
 
     private function chatMessage(MarketplaceEvent $event): string
     {
-        return "💬 *НОВОЕ СООБЩЕНИЕ*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $payload = $event->payload ?? [];
+        $text = "💬 *НОВОЕ СООБЩЕНИЕ*\n\n"
+            . "📦 Маркетплейс: {$event->marketplace->label()}\n";
+
+        if (! empty($payload['text'])) {
+            $preview = mb_substr($payload['text'], 0, 100);
+            $text .= "✉️ {$preview}\n";
+        }
+
+        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+
+        return $text;
     }
 
     private function send(string $chatId, string $message): void
