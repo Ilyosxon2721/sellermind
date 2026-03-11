@@ -72,6 +72,8 @@ class StockController extends Controller
 
         $query = \App\Models\Warehouse\Sku::query()
             ->byCompany($companyId)
+            ->where('is_active', true)
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
             ->with(['product.images', 'productVariant.mainImage', 'productVariant.optionValues'])
             ->orderBy('sku_code');
 
@@ -476,10 +478,18 @@ class StockController extends Controller
         $totalCost = 0;
 
         foreach ($warehouses as $warehouse) {
+            // Получаем ID активных SKU (не удалённые товары)
+            $activeSkuIds = \App\Models\Warehouse\Sku::query()
+                ->byCompany($companyId)
+                ->where('is_active', true)
+                ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                ->pluck('id');
+
             // Получаем все SKU на складе с положительным остатком
             $ledgerData = \App\Models\Warehouse\StockLedger::query()
                 ->where('company_id', $companyId)
                 ->where('warehouse_id', $warehouse->id)
+                ->whereIn('sku_id', $activeSkuIds)
                 ->selectRaw('sku_id, SUM(qty_delta) as qty, SUM(cost_delta) as cost')
                 ->groupBy('sku_id')
                 ->having('qty', '>', 0)

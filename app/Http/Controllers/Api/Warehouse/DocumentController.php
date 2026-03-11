@@ -93,7 +93,7 @@ class DocumentController extends Controller
 
         $lines = $request->validate([
             'lines' => ['required', 'array'],
-            'lines.*.sku_id' => ['required', 'integer'],
+            'lines.*.sku_id' => ['required', 'integer', 'exists:skus,id'],
             'lines.*.qty' => ['required', 'numeric', 'min:0.001'],
             'lines.*.unit_id' => ['required', 'integer'],
             'lines.*.unit_cost' => ['nullable', 'numeric'],
@@ -111,6 +111,15 @@ class DocumentController extends Controller
             $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
 
             foreach ($lines as $line) {
+                // Пропускаем неактивные SKU или SKU от удалённых товаров
+                $sku = \App\Models\Warehouse\Sku::where('id', $line['sku_id'])
+                    ->where('is_active', true)
+                    ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                    ->first();
+                if (! $sku) {
+                    continue;
+                }
+
                 // Ensure unit exists (auto-create default if missing)
                 $unitId = $line['unit_id'];
                 if (! Unit::find($unitId)) {
