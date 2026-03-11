@@ -34,8 +34,13 @@ final class TelegramNotificationService
             return;
         }
 
-        // Берём chat_id из пользователя — Telegram привязан на уровне аккаунта
-        $user = $account->user;
+        // Берём chat_id из пользователя — сначала напрямую, потом через компанию
+        $user = $account->user
+            ?? $account->company?->users()
+                ->where('telegram_notifications_enabled', true)
+                ->whereNotNull('telegram_id')
+                ->first();
+
         if (! $user || ! $user->telegram_id || ! $user->telegram_notifications_enabled) {
             return;
         }
