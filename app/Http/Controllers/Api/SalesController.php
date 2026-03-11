@@ -560,22 +560,28 @@ class SalesController extends Controller
             return collect();
         }
 
-        // Try UzumFinanceOrder first (contains all order types for analytics)
-        try {
-            $hasFinanceOrders = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
+        $allOrders = collect();
 
-            if ($hasFinanceOrders) {
-                return $this->getUzumFinanceOrders($companyId, $dateFrom, $dateTo, $status, $search);
-            }
+        // Загружаем UzumFinanceOrder (FBO/FBS/DBS/EDBS — аналитика)
+        try {
+            $financeOrders = $this->getUzumFinanceOrders($companyId, $dateFrom, $dateTo, $status, $search);
+            $allOrders = $allOrders->merge($financeOrders);
         } catch (\Exception $e) {
-            // Table might not exist yet, fall back to UzumOrder
+            \Log::error("Uzum finance orders error: {$e->getMessage()}");
         }
 
-        // Fallback to UzumOrder (FBS only)
+        // Загружаем UzumOrder (FBS — оперативные заказы) и исключаем дубликаты по order_number
+        $financeOrderNumbers = $allOrders->pluck('order_number')->filter()->toArray();
+
         $query = UzumOrder::query()
             ->whereHas('account', fn ($query) => $query->where('company_id', $companyId))
             ->whereDate('ordered_at', '>=', $dateFrom)
             ->whereDate('ordered_at', '<=', $dateTo);
+
+        // Исключаем заказы, которые уже есть в UzumFinanceOrder
+        if (! empty($financeOrderNumbers)) {
+            $query->whereNotIn('external_order_id', $financeOrderNumbers);
+        }
 
         if ($status) {
             $query->whereIn('status_normalized', $this->mapStatusToDbStatuses($status));
@@ -588,7 +594,7 @@ class SalesController extends Controller
             });
         }
 
-        return $query->get()->map(fn ($order) => [
+        $uzumOrders = $query->get()->map(fn ($order) => [
             'id' => 'uzum_'.$order->id,
             'order_number' => $order->external_order_id,
             'created_at' => $order->resolvedOrderedAt()?->toIso8601String(),
@@ -599,6 +605,8 @@ class SalesController extends Controller
             'status' => $this->normalizeStatus($order->status_normalized),
             'raw_status' => $order->status,
         ]);
+
+        return $allOrders->merge($uzumOrders);
     }
 
     /**
@@ -622,37 +630,17 @@ class SalesController extends Controller
         $query = UzumFinanceOrder::query()
             ->whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->where(function ($q) use ($dateFrom, $dateTo) {
-                // Продажи (TO_WITHDRAW) - фильтруем по date_issued
+                // Заказы с date_issued — фильтруем по date_issued
+                // (TO_WITHDRAW, COMPLETED, PROCESSING+date_issued, CANCELED+date_issued)
                 $q->where(function ($sub) use ($dateFrom, $dateTo) {
-                    $sub->where('status', 'TO_WITHDRAW')
+                    $sub->whereNotNull('date_issued')
                         ->whereDate('date_issued', '>=', $dateFrom)
                         ->whereDate('date_issued', '<=', $dateTo);
                 })
-                // Продажи (PROCESSING с date_issued) - фильтруем по date_issued (дата выкупа)
+                // Заказы без date_issued — фильтруем по order_date
+                // (PROCESSING без выкупа, CANCELED без выкупа, и любые другие статусы)
                     ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('status', 'PROCESSING')
-                            ->whereNotNull('date_issued')
-                            ->whereDate('date_issued', '>=', $dateFrom)
-                            ->whereDate('date_issued', '<=', $dateTo);
-                    })
-                // Возвраты (CANCELED с date_issued) - по date_issued
-                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('status', 'CANCELED')
-                            ->whereNotNull('date_issued')
-                            ->whereDate('date_issued', '>=', $dateFrom)
-                            ->whereDate('date_issued', '<=', $dateTo);
-                    })
-                // В транзите (PROCESSING без date_issued) - по дате заказа
-                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('status', 'PROCESSING')
-                            ->whereNull('date_issued')
-                            ->whereDate('order_date', '>=', $dateFrom)
-                            ->whereDate('order_date', '<=', $dateTo);
-                    })
-                // Отмены (CANCELED без date_issued) - по дате заказа
-                    ->orWhere(function ($sub) use ($dateFrom, $dateTo) {
-                        $sub->where('status', 'CANCELED')
-                            ->whereNull('date_issued')
+                        $sub->whereNull('date_issued')
                             ->whereDate('order_date', '>=', $dateFrom)
                             ->whereDate('order_date', '<=', $dateTo);
                     });

@@ -162,13 +162,14 @@ function pwaInstallBanner() {
                 this.showBannerWithDelay();
             }
 
-            // Для десктопных браузеров без beforeinstallprompt — показываем через 3 сек
+            // Для десктопных браузеров — ждём beforeinstallprompt подольше
             if (!this.isIOS) {
                 setTimeout(() => {
                     if (!this.showBanner && !this.canInstallNatively && !this.isPWAInstalled) {
-                        this.showBannerWithDelay();
+                        // Не показываем баннер если браузер не подтвердил возможность установки
+                        console.log('PWA: beforeinstallprompt not fired — browser may not support install or manifest invalid');
                     }
-                }, 1000);
+                }, 5000);
             }
 
             // Отслеживаем установку
@@ -228,8 +229,38 @@ function pwaInstallBanner() {
                     window.SmHaptic.medium();
                 }
             } else {
-                // Десктопный браузер без нативного промпта — скрываем баннер и запоминаем
-                this.dismiss();
+                // Десктопный браузер — пробуем ожидание beforeinstallprompt
+                // Если промпт не сработал, показываем инструкцию
+                const waitForPrompt = new Promise((resolve) => {
+                    const handler = (e) => {
+                        e.preventDefault();
+                        this.deferredPrompt = e;
+                        resolve(true);
+                    };
+                    window.addEventListener('beforeinstallprompt', handler, { once: true });
+                    setTimeout(() => {
+                        window.removeEventListener('beforeinstallprompt', handler);
+                        resolve(false);
+                    }, 500);
+                });
+
+                const gotPrompt = await waitForPrompt;
+                if (gotPrompt && this.deferredPrompt) {
+                    try {
+                        this.deferredPrompt.prompt();
+                        const { outcome } = await this.deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            this.showBanner = false;
+                        }
+                    } catch (e) {
+                        console.warn('Install prompt failed:', e);
+                    } finally {
+                        this.deferredPrompt = null;
+                    }
+                } else {
+                    // Браузер не поддерживает установку
+                    alert('Для установки используйте меню браузера → "Установить приложение" или "Добавить на главный экран"');
+                }
             }
         },
 

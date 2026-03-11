@@ -64,18 +64,31 @@ class DocumentController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $doc = InventoryDocument::create([
-            'company_id' => $companyId,
-            'doc_no' => ($data['doc_no'] ?? null) ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
-            'type' => $data['type'],
-            'status' => InventoryDocument::STATUS_DRAFT,
-            'warehouse_id' => $data['warehouse_id'],
-            'warehouse_to_id' => $data['warehouse_to_id'] ?? null,
-            'comment' => $data['comment'] ?? null,
-            'created_by' => $userId,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'source_doc_no' => $data['source_doc_no'] ?? null,
-        ]);
+        // Повторяем при дублировании номера документа (race condition)
+        $attempts = 0;
+        $doc = null;
+        while ($attempts < 3) {
+            try {
+                $doc = InventoryDocument::create([
+                    'company_id' => $companyId,
+                    'doc_no' => ($data['doc_no'] ?? null) ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
+                    'type' => $data['type'],
+                    'status' => InventoryDocument::STATUS_DRAFT,
+                    'warehouse_id' => $data['warehouse_id'],
+                    'warehouse_to_id' => $data['warehouse_to_id'] ?? null,
+                    'comment' => $data['comment'] ?? null,
+                    'created_by' => $userId,
+                    'supplier_id' => $data['supplier_id'] ?? null,
+                    'source_doc_no' => $data['source_doc_no'] ?? null,
+                ]);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $attempts++;
+                if ($attempts >= 3 || ! str_contains($e->getMessage(), 'Duplicate entry')) {
+                    return $this->errorResponse('Ошибка создания документа: '.$e->getMessage(), 'create_failed', null, 422);
+                }
+            }
+        }
 
         return $this->successResponse($doc);
     }

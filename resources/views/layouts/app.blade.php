@@ -29,7 +29,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SellerMind">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/build/manifest.json">
+    <link rel="manifest" href="/build/manifest.webmanifest">
 
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">
