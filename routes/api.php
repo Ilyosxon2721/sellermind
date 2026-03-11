@@ -1019,4 +1019,7 @@ Route::prefix('webhook')->group(function () {
 
     Route::match(['GET', 'POST'], 'yandex/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
         ->name('webhook.yandex');
+
+    Route::match(['GET', 'POST'], 'yandex/{webhookUuid}/notification', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
+        ->name('webhook.yandex.notification');
 });
