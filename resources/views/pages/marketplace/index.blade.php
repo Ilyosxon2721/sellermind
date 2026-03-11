@@ -477,6 +477,22 @@
                                                         {{ __('marketplace.passes') }}
                                                     </a>
                                                 </div>
+
+                                                <!-- Webhook кнопка для YM и Ozon -->
+                                                <div class="flex space-x-2" x-show="['ym', 'yandex', 'ozon'].includes(normalizeMarketplace(account.marketplace))">
+                                                    <button type="button"
+                                                            @click.stop="openWebhookModal(account)"
+                                                            class="flex-1 px-3 py-2 text-sm font-medium rounded-lg text-center transition flex items-center justify-center gap-1.5"
+                                                            :class="{
+                                                                'mp-btn-secondary-ozon': normalizeMarketplace(account.marketplace) === 'ozon',
+                                                                'mp-btn-secondary-ym': normalizeMarketplace(account.marketplace) === 'ym' || normalizeMarketplace(account.marketplace) === 'yandex'
+                                                            }">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                                        </svg>
+                                                        Webhook
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </template>
@@ -737,10 +753,142 @@
     </div>
 </div>
 
+<!-- Webhook Modal -->
+<div x-show="showWebhookModal" x-cloak
+     class="fixed inset-0 z-50 overflow-y-auto"
+     @keydown.escape.window="showWebhookModal = false">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="showWebhookModal = false"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-yellow-100/50 border-yellow-200/50"
+                 :class="{
+                     'from-blue-50 to-blue-100/50 border-blue-200/50': webhookAccount && normalizeMarketplace(webhookAccount.marketplace) === 'ozon',
+                     'from-yellow-50 to-yellow-100/50 border-yellow-200/50': webhookAccount && ['ym','yandex'].includes(normalizeMarketplace(webhookAccount.marketplace))
+                 }">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                             :class="{
+                                 'bg-blue-600': webhookAccount && normalizeMarketplace(webhookAccount.marketplace) === 'ozon',
+                                 'bg-yellow-400': webhookAccount && ['ym','yandex'].includes(normalizeMarketplace(webhookAccount.marketplace))
+                             }">
+                            <svg class="w-5 h-5" :class="webhookAccount && ['ym','yandex'].includes(normalizeMarketplace(webhookAccount.marketplace)) ? 'text-gray-900' : 'text-white'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-gray-900">Настройка Webhook</h2>
+                            <p class="text-xs text-gray-500" x-text="webhookAccount ? webhookAccount.name : ''"></p>
+                        </div>
+                    </div>
+                    <button @click="showWebhookModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Описание -->
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p class="text-sm text-blue-800 font-medium mb-1">Что такое Webhook?</p>
+                    <p class="text-sm text-blue-700">Webhook позволяет получать уведомления о новых заказах в реальном времени. Вставьте этот URL в настройках личного кабинета маркетплейса.</p>
+                </div>
+
+                <!-- URL -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Ваш Webhook URL</label>
+                    <div x-show="webhookLoading" class="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
+                    <div x-show="!webhookLoading && webhookUrl" class="flex gap-2">
+                        <input type="text"
+                               :value="webhookUrl"
+                               readonly
+                               class="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 font-mono focus:outline-none select-all"
+                               @click="$el.select()">
+                        <button @click="copyWebhookUrl()"
+                                class="px-4 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-1.5"
+                                :class="webhookCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'">
+                            <svg x-show="!webhookCopied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            <svg x-show="webhookCopied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span x-text="webhookCopied ? 'Скопировано!' : 'Копировать'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Инструкция для YM -->
+                <template x-if="webhookAccount && ['ym','yandex'].includes(normalizeMarketplace(webhookAccount.marketplace))">
+                    <div class="space-y-3">
+                        <p class="text-sm font-medium text-gray-700">Как настроить в Яндекс.Маркете:</p>
+                        <ol class="space-y-2">
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                Войдите в <a href="https://partner.market.yandex.ru" target="_blank" class="text-blue-600 hover:underline font-medium">Личный кабинет Яндекс.Маркета</a>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                Перейдите в <strong>Настройки → Уведомления о заказах</strong>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                                Вставьте скопированный URL в поле <strong>URL для уведомлений</strong>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                                Нажмите <strong>Сохранить</strong> и проверьте подключение
+                            </li>
+                        </ol>
+                    </div>
+                </template>
+
+                <!-- Инструкция для Ozon -->
+                <template x-if="webhookAccount && normalizeMarketplace(webhookAccount.marketplace) === 'ozon'">
+                    <div class="space-y-3">
+                        <p class="text-sm font-medium text-gray-700">Как настроить в Ozon:</p>
+                        <ol class="space-y-2">
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                Войдите в <a href="https://seller.ozon.ru/app/settings/api-keys" target="_blank" class="text-blue-600 hover:underline font-medium">Личный кабинет Ozon Seller</a>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                Перейдите в <strong>Настройки → Push-уведомления</strong>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                                Вставьте URL и выберите типы событий: <strong>Заказы, Возвраты</strong>
+                            </li>
+                            <li class="flex gap-2.5 text-sm text-gray-600">
+                                <span class="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                                Нажмите <strong>Сохранить</strong>
+                            </li>
+                        </ol>
+                    </div>
+                </template>
+
+                <button @click="showWebhookModal = false"
+                        class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition text-sm">
+                    Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function marketplacePage() {
     return {
         showConnectModal: false,
+        showWebhookModal: false,
+        webhookAccount: null,
+        webhookUrl: null,
+        webhookLoading: false,
+        webhookCopied: false,
         selectedMarketplace: null,
         credentials: {},
         accountName: '',
@@ -1041,6 +1189,36 @@ function marketplacePage() {
             } finally {
                 this.loading = false;
             }
+        },
+
+        async openWebhookModal(account) {
+            this.webhookAccount = account;
+            this.webhookUrl = null;
+            this.webhookCopied = false;
+            this.webhookLoading = true;
+            this.showWebhookModal = true;
+
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${account.id}/webhook-url`, {
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.webhookUrl = data.webhook_url;
+                }
+            } catch (e) {
+                console.error('Failed to load webhook url', e);
+            } finally {
+                this.webhookLoading = false;
+            }
+        },
+
+        copyWebhookUrl() {
+            if (!this.webhookUrl) return;
+            navigator.clipboard.writeText(this.webhookUrl).then(() => {
+                this.webhookCopied = true;
+                setTimeout(() => this.webhookCopied = false, 2000);
+            });
         },
 
         async openConnectModal(marketplace) {

@@ -285,6 +285,21 @@ class MarketplaceAccountController extends Controller
             }
         }
 
+        // Для маркетплейсов с webhook — автоматически создать конфиг
+        $webhookUrl = null;
+        if (in_array($account->marketplace, ['ym', 'yandex', 'ozon'])) {
+            $webhookConfig = \App\Models\MarketplaceWebhookConfig::firstOrCreate(
+                ['store_id' => $account->id],
+                [
+                    'marketplace' => $account->marketplace,
+                    'is_active' => true,
+                ]
+            );
+
+            $routeName = in_array($account->marketplace, ['ym', 'yandex']) ? 'webhook.yandex.notification' : 'webhook.ozon';
+            $webhookUrl = route($routeName, ['webhookUuid' => $webhookConfig->webhook_uuid]);
+        }
+
         return response()->json([
             'message' => 'Маркетплейс успешно подключён! '.$testResult['message'].$shopsInfo,
             'account' => [
@@ -295,7 +310,37 @@ class MarketplaceAccountController extends Controller
                 'connected_at' => $account->connected_at,
             ],
             'test_result' => $testResult,
+            'webhook_url' => $webhookUrl,
         ], 201);
+    }
+
+    public function getWebhookUrl(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        if (! in_array($account->marketplace, ['ym', 'yandex', 'ozon'])) {
+            return response()->json(['message' => 'Этот маркетплейс не поддерживает webhook.'], 422);
+        }
+
+        $webhookConfig = \App\Models\MarketplaceWebhookConfig::firstOrCreate(
+            ['store_id' => $account->id],
+            [
+                'marketplace' => $account->marketplace,
+                'is_active' => true,
+            ]
+        );
+
+        $routeName = in_array($account->marketplace, ['ym', 'yandex']) ? 'webhook.yandex.notification' : 'webhook.ozon';
+        $webhookUrl = route($routeName, ['webhookUuid' => $webhookConfig->webhook_uuid]);
+
+        return response()->json([
+            'webhook_url' => $webhookUrl,
+            'is_active' => $webhookConfig->is_active,
+            'last_received_at' => $webhookConfig->last_received_at,
+            'events_count' => $webhookConfig->events_count,
+        ]);
     }
 
     public function destroy(Request $request, MarketplaceAccount $account): JsonResponse

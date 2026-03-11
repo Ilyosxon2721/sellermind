@@ -397,6 +397,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('accounts/{account}/monitoring/stop', [MarketplaceAccountController::class, 'stopMonitoring']);
         Route::get('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'getSyncSettings']);
         Route::put('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'updateSyncSettings']);
+        Route::get('accounts/{account}/webhook-url', [MarketplaceAccountController::class, 'getWebhookUrl']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
         Route::get('uzum/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'uzumFinanceOrders']);
         Route::get('wb/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'wbFinanceOrders']);
