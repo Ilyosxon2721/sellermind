@@ -46,6 +46,8 @@ class MarketplaceAccount extends Model
         'sync_settings',
         'risment_credential_id',
         'source',
+        'telegram_chat_id',
+        'telegram_username',
     ];
 
     // Fields that should be encrypted
@@ -525,6 +527,25 @@ class MarketplaceAccount extends Model
         }
 
         return array_filter($credentials);
+    }
+
+    /**
+     * Проверить, подключён ли Telegram к данному аккаунту маркетплейса
+     */
+    public function isTelegramConnected(): bool
+    {
+        return ! empty($this->telegram_chat_id);
+    }
+
+    /**
+     * Отключить Telegram от аккаунта маркетплейса
+     */
+    public function disconnectTelegram(): void
+    {
+        $this->update([
+            'telegram_chat_id' => null,
+            'telegram_username' => null,
+        ]);
     }
 
     public function markAsConnected(): void

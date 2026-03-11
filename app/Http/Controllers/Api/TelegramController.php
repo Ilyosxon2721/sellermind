@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MarketplaceAccount;
 use App\Models\TelegramLinkCode;
 use App\Models\User;
 use App\Models\UserNotificationSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class TelegramController extends Controller
 {
@@ -59,6 +63,81 @@ class TelegramController extends Controller
 
         return response()->json([
             'message' => 'Telegram аккаунт отключен',
+        ]);
+    }
+
+    /**
+     * Сгенерировать код привязки Telegram к аккаунту маркетплейса
+     */
+    public function generateAccountLinkCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'marketplace_account_id' => 'required|integer',
+        ]);
+
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($validated['marketplace_account_id']);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        $linkCode = TelegramLinkCode::generateForAccount($user->id, $account->id);
+
+        return response()->json([
+            'code' => $linkCode->code,
+            'expires_at' => $linkCode->expires_at->toIso8601String(),
+            'bot_username' => config('telegram.bot_username'),
+            'account_name' => $account->getDisplayName(),
+        ]);
+    }
+
+    /**
+     * Отключить Telegram от аккаунта маркетплейса
+     */
+    public function disconnectAccountTelegram(Request $request, int $accountId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($accountId);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        $account->disconnectTelegram();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Получить статус привязки Telegram к аккаунту маркетплейса
+     */
+    public function getAccountTelegramStatus(Request $request, int $accountId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($accountId);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Найти активный незарезервированный код для этого аккаунта
+        $pendingCode = TelegramLinkCode::where('marketplace_account_id', $accountId)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'connected' => $account->isTelegramConnected(),
+            'telegram_username' => $account->telegram_username,
+            'pending_code_expires_at' => $pendingCode?->expires_at->toIso8601String(),
         ]);
     }
 

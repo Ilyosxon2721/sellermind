@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 class TelegramLinkCode extends Model
 {
@@ -13,6 +14,7 @@ class TelegramLinkCode extends Model
 
     protected $fillable = [
         'user_id',
+        'marketplace_account_id',
         'code',
         'expires_at',
         'is_used',
@@ -24,7 +26,7 @@ class TelegramLinkCode extends Model
     ];
 
     /**
-     * Get the user that owns the link code.
+     * Пользователь, которому принадлежит код
      */
     public function user(): BelongsTo
     {
@@ -32,29 +34,64 @@ class TelegramLinkCode extends Model
     }
 
     /**
-     * Generate a new link code for a user
+     * Аккаунт маркетплейса, к которому привязывается Telegram
      */
-    public static function generate(int $userId): self
+    public function marketplaceAccount(): BelongsTo
     {
-        // Invalidate previous codes
-        self::where('user_id', $userId)
+        return $this->belongsTo(MarketplaceAccount::class);
+    }
+
+    /**
+     * Сгенерировать код привязки пользователя к аккаунту маркетплейса
+     *
+     * Удаляет неиспользованные коды для данного аккаунта,
+     * генерирует 6-значный цифровой код с TTL 10 минут.
+     */
+    public static function generateForAccount(int $userId, int $accountId): self
+    {
+        // Инвалидировать предыдущие коды для этого аккаунта маркетплейса
+        self::where('marketplace_account_id', $accountId)
             ->where('is_used', false)
             ->update(['is_used' => true]);
 
-        // Generate unique code
+        // Генерировать уникальный 6-значный цифровой код
         do {
-            $code = strtoupper(Str::random(6));
-        } while (self::where('code', $code)->exists());
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        } while (self::where('code', $code)->where('is_used', false)->exists());
 
         return self::create([
             'user_id' => $userId,
+            'marketplace_account_id' => $accountId,
             'code' => $code,
-            'expires_at' => now()->addHours(24),
+            'expires_at' => now()->addMinutes(10),
         ]);
     }
 
     /**
-     * Check if the code is valid
+     * Сгенерировать код привязки только для пользователя (без аккаунта маркетплейса)
+     */
+    public static function generate(int $userId): self
+    {
+        // Инвалидировать предыдущие коды пользователя
+        self::where('user_id', $userId)
+            ->whereNull('marketplace_account_id')
+            ->where('is_used', false)
+            ->update(['is_used' => true]);
+
+        // Генерировать уникальный 6-значный цифровой код
+        do {
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        } while (self::where('code', $code)->where('is_used', false)->exists());
+
+        return self::create([
+            'user_id' => $userId,
+            'code' => $code,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+    }
+
+    /**
+     * Проверить валидность кода
      */
     public function isValid(): bool
     {
@@ -62,7 +99,7 @@ class TelegramLinkCode extends Model
     }
 
     /**
-     * Mark code as used
+     * Отметить код как использованный
      */
     public function markAsUsed(): void
     {

@@ -34,10 +34,13 @@ final class TelegramNotificationService
             return;
         }
 
-        $chatId = $account->telegram_chat_id ?? null;
-        if (! $chatId) {
+        // Берём chat_id из пользователя — Telegram привязан на уровне аккаунта
+        $user = $account->user;
+        if (! $user || ! $user->telegram_id || ! $user->telegram_notifications_enabled) {
             return;
         }
+
+        $chatId = (string) $user->telegram_id;
 
         $message = $this->buildMessage($event);
         if (! $message) {

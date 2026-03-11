@@ -200,6 +200,11 @@ Route::middleware('auth.any')->group(function () {
         Route::post('disconnect', [TelegramController::class, 'disconnect']);
         Route::get('notification-settings', [TelegramController::class, 'getSettings']);
         Route::put('notification-settings', [TelegramController::class, 'updateSettings']);
+
+        // Привязка Telegram к конкретному аккаунту маркетплейса
+        Route::post('accounts/generate-link-code', [TelegramController::class, 'generateAccountLinkCode']);
+        Route::get('accounts/{accountId}/status', [TelegramController::class, 'getAccountTelegramStatus']);
+        Route::post('accounts/{accountId}/disconnect', [TelegramController::class, 'disconnectAccountTelegram']);
     });
 
     // Web Push Notifications (подписка/отписка требуют авторизации)
