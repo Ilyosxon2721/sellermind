@@ -454,6 +454,57 @@
                         </div>
                     </div>
 
+                    {{-- Automation Settings --}}
+                    <div class="uzum-card">
+                        <div class="uzum-card-header">
+                            <div class="flex items-center space-x-3">
+                                <div class="uzum-stat-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="uzum-card-title">Автоматизация</h3>
+                                    <p class="uzum-card-subtitle">Авто-подтверждение заказов и ответы на отзывы</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="uzum-card-body space-y-4">
+                            <div class="uzum-toggle-item">
+                                <div>
+                                    <div class="font-medium text-gray-900">Авто-подтверждение заказов</div>
+                                    <div class="text-sm text-gray-500">Автоматически переводить новые заказы из «Новые» в «Сборка» каждые 15 минут</div>
+                                </div>
+                                <label class="uzum-toggle">
+                                    <input type="checkbox" x-model="automation.auto_confirm">
+                                    <span class="uzum-toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="uzum-toggle-item">
+                                <div>
+                                    <div class="font-medium text-gray-900">Авто-ответ на отзывы (AI)</div>
+                                    <div class="text-sm text-gray-500">Генерировать ответы на неотвеченные отзывы через Claude AI каждые 30 минут</div>
+                                </div>
+                                <label class="uzum-toggle">
+                                    <input type="checkbox" x-model="automation.auto_reply">
+                                    <span class="uzum-toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div x-show="automation.auto_reply" class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700">Тон ответов</label>
+                                <select x-model="automation.review_tone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="friendly">Дружелюбный</option>
+                                    <option value="professional">Профессиональный</option>
+                                    <option value="casual">Неформальный</option>
+                                </select>
+                            </div>
+                            <button @click="saveAutomation()" :disabled="savingAutomation" class="uzum-btn-primary w-full">
+                                <span x-show="!savingAutomation">Сохранить</span>
+                                <span x-show="savingAutomation">Сохранение...</span>
+                            </button>
+                        </div>
+                    </div>
+
                     {{-- Info Card --}}
                     <div class="uzum-info-alert">
                         <svg class="w-5 h-5 text-uzum-primary mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1006,6 +1057,12 @@ function uzumSettingsPage() {
             auto_sync_stock_on_change: true
         },
         savingSyncSettings: false,
+        automation: {
+            auto_confirm: false,
+            auto_reply: false,
+            review_tone: 'friendly',
+        },
+        savingAutomation: false,
 
         // Auth helpers
         getAuthHeaders() {
@@ -1098,6 +1155,9 @@ function uzumSettingsPage() {
                         this.stockSync.warehouseId = data.account.credentials_json.warehouse_id || '';
                         this.stockSync.sourceWarehouseIds = data.account.credentials_json.source_warehouse_ids || [];
                     }
+                    this.automation.auto_confirm = data.account.uzum_auto_confirm || false;
+                    this.automation.auto_reply = data.account.uzum_auto_reply || false;
+                    this.automation.review_tone = data.account.uzum_review_tone || 'friendly';
                 } else if (res.status === 400) {
                     alert('Этот аккаунт не является Uzum');
                     window.location.href = '/marketplace/{{ $accountId }}';
@@ -1165,6 +1225,30 @@ function uzumSettingsPage() {
                 alert('Ошибка сохранения: ' + e.message);
             }
             this.saving = false;
+        },
+
+        async saveAutomation() {
+            this.savingAutomation = true;
+            try {
+                const res = await this.authFetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        uzum_auto_confirm: this.automation.auto_confirm,
+                        uzum_auto_reply: this.automation.auto_reply,
+                        uzum_review_tone: this.automation.review_tone,
+                    })
+                });
+                if (res.ok) {
+                    alert('Настройки автоматизации сохранены');
+                } else {
+                    const data = await res.json();
+                    alert('Ошибка: ' + (data.message || 'Не удалось сохранить'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка: ' + e.message);
+            }
+            this.savingAutomation = false;
         },
 
         toggleShop(shopId) {
@@ -1385,6 +1469,56 @@ function uzumSettingsPage() {
                     </div>
                     <button @click="saveSyncSettings()" :disabled="savingSyncSettings" class="pwa-btn-primary w-full mt-4" onclick="if(window.haptic) window.haptic.medium()">
                         <span x-text="savingSyncSettings ? 'Сохранение...' : 'Сохранить настройки'"></span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- PWA Automation Card --}}
+            <div class="pwa-card">
+                <div class="pwa-card-header">
+                    <div class="flex items-center space-x-3">
+                        <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="pwa-card-title">Автоматизация</h3>
+                            <p class="text-xs text-gray-500">Авто-подтверждение и ответы на отзывы</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="pwa-card-body space-y-3">
+                    <div class="pwa-toggle-item">
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">Авто-подтверждение заказов</p>
+                            <p class="text-xs text-gray-500">Переводить новые заказы в «Сборка» каждые 15 мин</p>
+                        </div>
+                        <label class="pwa-toggle">
+                            <input type="checkbox" x-model="automation.auto_confirm">
+                            <span class="pwa-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="pwa-toggle-item">
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">Авто-ответ на отзывы (AI)</p>
+                            <p class="text-xs text-gray-500">Генерировать ответы через Claude AI каждые 30 мин</p>
+                        </div>
+                        <label class="pwa-toggle">
+                            <input type="checkbox" x-model="automation.auto_reply">
+                            <span class="pwa-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div x-show="automation.auto_reply" class="space-y-2">
+                        <label class="block text-xs font-medium text-gray-700">Тон ответов</label>
+                        <select x-model="automation.review_tone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="friendly">Дружелюбный</option>
+                            <option value="professional">Профессиональный</option>
+                            <option value="casual">Неформальный</option>
+                        </select>
+                    </div>
+                    <button @click="saveAutomation()" :disabled="savingAutomation" class="pwa-btn-primary w-full mt-4" onclick="if(window.haptic) window.haptic.medium()">
+                        <span x-text="savingAutomation ? 'Сохранение...' : 'Сохранить'"></span>
                     </button>
                 </div>
             </div>
@@ -1700,6 +1834,12 @@ function uzumSettingsPWA() {
             auto_sync_stock_on_change: true
         },
         savingSyncSettings: false,
+        automation: {
+            auto_confirm: false,
+            auto_reply: false,
+            review_tone: 'friendly',
+        },
+        savingAutomation: false,
 
         getAuthHeaders() {
             const token = window.Alpine?.store('auth')?.token ||
@@ -1731,7 +1871,11 @@ function uzumSettingsPWA() {
                 const authStore = this.$store.auth;
                 const res = await this.authFetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings?company_id=' + authStore.currentCompany.id);
                 if (res.ok) {
-                    this.account = (await res.json()).account;
+                    const data = await res.json();
+                    this.account = data.account;
+                    this.automation.auto_confirm = data.account?.uzum_auto_confirm || false;
+                    this.automation.auto_reply = data.account?.uzum_auto_reply || false;
+                    this.automation.review_tone = data.account?.uzum_review_tone || 'friendly';
                     await this.loadSyncSettings();
                 } else if (res.status === 401) {
                     window.location.href = '/login';
@@ -1793,6 +1937,30 @@ function uzumSettingsPWA() {
                 alert('Ошибка: ' + e.message);
             }
             this.saving = false;
+        },
+
+        async saveAutomation() {
+            this.savingAutomation = true;
+            try {
+                const res = await this.authFetch('/api/marketplace/uzum/accounts/{{ $accountId }}/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        uzum_auto_confirm: this.automation.auto_confirm,
+                        uzum_auto_reply: this.automation.auto_reply,
+                        uzum_review_tone: this.automation.review_tone,
+                    })
+                });
+                if (res.ok) {
+                    alert('Настройки автоматизации сохранены');
+                } else {
+                    const data = await res.json();
+                    alert('Ошибка: ' + (data.message || 'Не удалось сохранить'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка: ' + e.message);
+            }
+            this.savingAutomation = false;
         },
 
         async testConnection() {
