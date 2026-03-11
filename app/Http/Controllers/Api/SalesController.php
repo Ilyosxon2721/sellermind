@@ -16,6 +16,7 @@ use App\Models\YandexMarketOrder;
 use App\Services\CurrencyConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SalesController extends Controller
@@ -1538,9 +1539,8 @@ class SalesController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // Получаем все аккаунты Uzum для компании
+        // Получаем ВСЕ активные аккаунты маркетплейсов для компании
         $accounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'uzum')
             ->where('is_active', true)
             ->get();
 
@@ -1548,14 +1548,30 @@ class SalesController extends Controller
         $hasActiveSync = false;
 
         foreach ($accounts as $account) {
-            $status = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
+            // Проверяем Uzum Finance sync (имеет детальный прогресс)
+            if ($account->marketplace === 'uzum') {
+                $status = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
+                if ($status) {
+                    $syncStatuses[] = array_merge($status, [
+                        'account_name' => $account->name ?? $account->getDisplayName(),
+                        'marketplace' => 'uzum',
+                    ]);
 
-            if ($status) {
-                $syncStatuses[] = array_merge($status, [
+                    if (in_array($status['status'] ?? '', ['running', 'rate_limited'])) {
+                        $hasActiveSync = true;
+                    }
+                }
+            }
+
+            // Проверяем общий статус синхронизации заказов для всех маркетплейсов
+            $ordersSyncStatus = Cache::get("sales_orders_sync:{$account->id}");
+            if ($ordersSyncStatus) {
+                $syncStatuses[] = array_merge($ordersSyncStatus, [
                     'account_name' => $account->name ?? $account->getDisplayName(),
+                    'marketplace' => $account->marketplace,
                 ]);
 
-                if (in_array($status['status'] ?? '', ['running', 'rate_limited'])) {
+                if (in_array($ordersSyncStatus['status'] ?? '', ['running'])) {
                     $hasActiveSync = true;
                 }
             }
@@ -1568,7 +1584,7 @@ class SalesController extends Controller
     }
 
     /**
-     * Запустить синхронизацию финансовых заказов Uzum вручную
+     * Запустить синхронизацию заказов со всех маркетплейсов
      */
     public function triggerSync(Request $request): JsonResponse
     {
@@ -1576,6 +1592,7 @@ class SalesController extends Controller
             'full_sync' => ['nullable', 'boolean'],
             'days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'account_id' => ['nullable', 'integer'],
+            'marketplace' => ['nullable', 'string', 'in:uzum,wildberries,ozon,yandex_market'],
         ]);
 
         $companyId = $this->getCompanyId();
@@ -1587,14 +1604,18 @@ class SalesController extends Controller
         $fullSync = $validated['full_sync'] ?? false;
         $days = $validated['days'] ?? 90;
         $accountId = $validated['account_id'] ?? null;
+        $marketplace = $validated['marketplace'] ?? null;
 
-        // Получаем аккаунты Uzum для компании
+        // Получаем ВСЕ активные аккаунты маркетплейсов для компании
         $query = MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'uzum')
             ->where('is_active', true);
 
         if ($accountId) {
             $query->where('id', $accountId);
+        }
+
+        if ($marketplace) {
+            $query->where('marketplace', $marketplace);
         }
 
         $accounts = $query->get();
@@ -1602,19 +1623,47 @@ class SalesController extends Controller
         if ($accounts->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Нет активных аккаунтов Uzum',
+                'message' => 'Нет активных аккаунтов маркетплейсов',
             ], 404);
         }
 
         $dispatched = 0;
+        $from = now()->subDays($days);
+        $to = now();
+
+        // Определяем безопасное соединение для очереди
+        $connection = config('queue.default', 'sync');
+        if ($connection === 'sync') {
+            $connection = 'database';
+        }
+
         foreach ($accounts as $account) {
             // Проверяем, нет ли уже активной синхронизации
-            $status = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
-            if ($status && in_array($status['status'] ?? '', ['running', 'rate_limited'])) {
-                continue; // Пропускаем, уже синхронизируется
+            $existingStatus = Cache::get("sales_orders_sync:{$account->id}");
+            if ($existingStatus && ($existingStatus['status'] ?? '') === 'running') {
+                continue;
             }
 
-            \App\Jobs\SyncUzumFinanceOrdersJob::dispatch($account, $fullSync, $days);
+            // Для Uzum — запускаем финансовый sync с прогрессом
+            if ($account->marketplace === 'uzum') {
+                $uzumStatus = \App\Jobs\SyncUzumFinanceOrdersJob::getSyncStatus($account->id);
+                if ($uzumStatus && in_array($uzumStatus['status'] ?? '', ['running', 'rate_limited'])) {
+                    continue;
+                }
+                \App\Jobs\SyncUzumFinanceOrdersJob::dispatch($account, $fullSync, $days);
+            }
+
+            // Для всех маркетплейсов — запускаем общий sync заказов
+            Cache::put("sales_orders_sync:{$account->id}", [
+                'status' => 'running',
+                'message' => 'Синхронизация заказов ' . $this->getMarketplaceName($account->marketplace),
+                'marketplace' => $account->marketplace,
+                'started_at' => now()->toIso8601String(),
+            ], 600); // TTL 10 минут
+
+            \App\Jobs\Marketplace\SyncMarketplaceOrdersJob::dispatch($account, $from, $to)
+                ->onConnection($connection);
+
             $dispatched++;
         }
 
@@ -1625,6 +1674,20 @@ class SalesController extends Controller
                 : 'Синхронизация уже выполняется',
             'dispatched' => $dispatched,
         ]);
+    }
+
+    /**
+     * Получить отображаемое имя маркетплейса
+     */
+    private function getMarketplaceName(string $marketplace): string
+    {
+        return match ($marketplace) {
+            'wildberries' => 'Wildberries',
+            'ozon' => 'Ozon',
+            'uzum' => 'Uzum Market',
+            'yandex_market' => 'Yandex Market',
+            default => $marketplace,
+        };
     }
 
     /**
