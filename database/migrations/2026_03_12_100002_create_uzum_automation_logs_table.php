@@ -41,7 +41,7 @@ return new class extends Migration
             $table->timestamp('replied_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['marketplace_account_id', 'uzum_review_id']);
+            $table->unique(['marketplace_account_id', 'uzum_review_id'], 'uzum_reply_logs_account_review_unique');
         });
     }
 
