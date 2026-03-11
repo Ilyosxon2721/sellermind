@@ -77,7 +77,7 @@ final class TelegramNotificationService
 
         $typeLabels = ['retail' => 'Розница', 'wholesale' => 'Опт', 'direct' => 'Прямая'];
         $type = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
-        $amount = number_format($sale->total_amount, 0, '.', ' ');
+        $amount = number_format((float) $sale->total_amount, 0, '.', ' ');
         $currency = $sale->currency_code ?? 'UZS';
         $customer = $sale->customer_name ? "\n👤 Клиент: {$sale->customer_name}" : '';
 
