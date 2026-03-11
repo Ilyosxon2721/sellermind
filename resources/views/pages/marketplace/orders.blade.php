@@ -39,6 +39,7 @@
         wsConnectedFlag: false,
         _wsDebounceTimer: null,
         _lastWsEventTime: 0,
+        autoRefreshInterval: null,
 @php
 $__uzumShopsJson = ($uzumShops ?? collect())
     ->map(fn($s) => [
@@ -359,6 +360,17 @@ $__uzumShopsJson = ($uzumShops ?? collect())
              setTimeout(() => {
                  this.setupWebSocketListeners();
              }, 1000);
+
+             // Авто-обновление каждые 60 секунд (silent mode)
+             this.autoRefreshInterval = setInterval(() => {
+                 this.loadOrders(true);
+             }, 60000);
+         },
+         destroy() {
+             if (this.autoRefreshInterval) {
+                 clearInterval(this.autoRefreshInterval);
+                 this.autoRefreshInterval = null;
+             }
          },
          setupWebSocketListeners() {
              const companyId = this.$store.auth.currentCompany.id;
@@ -561,13 +573,24 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 const res = await fetch(url, { headers: this.getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
-                    this.orders = (data.orders || []).map(o => {
+                    const newOrders = (data.orders || []).map(o => {
                         // Для Uzum используем фактическую дату из API без преобразований
                         if (this.accountMarketplace === 'uzum' && o.raw_payload?.dateCreated) {
                             o.ordered_at = o.raw_payload.dateCreated;
                         }
                         return o;
                     });
+
+                    if (silent && this.orders.length > 0 && window.SmartRefresh) {
+                        const result = window.SmartRefresh.merge(this.orders, newOrders, 'id', { compareFields: ['status', 'total_amount'] });
+                        this.orders = result.merged;
+                        if (result.stats.added > 0 || result.stats.updated > 0) {
+                            window.SmartRefresh.clearAnimations(this.orders, 1500);
+                        }
+                    } else {
+                        this.orders = newOrders;
+                    }
+
                     this._loadOrdersRetryCount = 0; // Reset retry count on success
                 } else if (res.status === 401) {
                     window.location.href = '/login';
@@ -2309,7 +2332,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
                         <template x-for="order in tabOrders" :key="order.id">
-                            <tr class="hover:bg-gray-50 cursor-pointer" @click="viewOrder(order)">
+                            <tr class="hover:bg-gray-50 cursor-pointer" :class="window.SmartRefresh ? window.SmartRefresh.rowClass(order) : ''" @click="viewOrder(order)">
                                 <td class="px-4 py-3 text-sm font-semibold text-gray-900">
                                     <div class="flex items-center space-x-2">
                                         <span x-text="order.external_order_id || '—'"></span>
@@ -2899,7 +2922,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
             <!-- Orders List (for all other tabs except in_assembly and in_delivery) -->
             <div x-show="!isUzum() && !loading && tabOrders.length > 0 && activeTab !== 'in_assembly' && activeTab !== 'in_delivery' && deliveryTypeFilter !== 'fbo'" class="space-y-4">
                 <template x-for="order in tabOrders" :key="order.id">
-                    <div class="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition overflow-hidden">
+                    <div class="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition overflow-hidden" :class="window.SmartRefresh ? window.SmartRefresh.rowClass(order) : ''">
                         <div class="p-5 cursor-pointer" @click="viewOrder(order)">
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex-1 flex items-start space-x-4">
@@ -4640,7 +4663,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
         <template x-if="!loading && filteredOrders().length > 0">
             <div class="space-y-2">
                 <template x-for="order in filteredOrders()" :key="order.id">
-                    <div @click="viewOrder(order)" class="native-card active:bg-gray-50 cursor-pointer">
+                    <div @click="viewOrder(order)" class="native-card active:bg-gray-50 cursor-pointer" :class="window.SmartRefresh ? window.SmartRefresh.rowClass(order) : ''">
                         <div class="flex items-start space-x-3">
                             {{-- Product Image --}}
                             <div class="w-14 h-14 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">

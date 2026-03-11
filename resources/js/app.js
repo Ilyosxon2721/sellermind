@@ -1,4 +1,5 @@
 import './bootstrap';
+import './smart-refresh'; // Умное обновление данных с анимацией
 import './polling'; // HTTP polling для real-time обновлений
 import './haptic'; // Haptic feedback system
 import './loading'; // Global loading indicator
