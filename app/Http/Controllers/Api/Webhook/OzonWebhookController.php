@@ -30,9 +30,12 @@ final class OzonWebhookController extends Controller
 
         Log::info('Ozon webhook payload', ['payload' => $payload]);
 
-        // Ozon шлёт PING для проверки webhook URL — возвращаем то же time что прислали
+        // Ozon шлёт PING для проверки webhook URL — возвращаем time из запроса + name
         if (($payload['message_type'] ?? null) === 'TYPE_PING') {
-            return response()->json(['time' => $payload['time'] ?? time()], 200);
+            return response()->json([
+                'name' => 'SellerMind',
+                'time' => $payload['time'] ?? time(),
+            ], 200);
         }
 
         $config = MarketplaceWebhookConfig::where('webhook_uuid', $webhookUuid)
