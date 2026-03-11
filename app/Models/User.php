@@ -41,6 +41,27 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        // Создаём дефолтные настройки уведомлений при регистрации
+        static::created(function (self $user) {
+            UserNotificationSetting::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'notify_low_stock'          => true,
+                    'notify_new_order'          => true,
+                    'notify_marketplace_order'  => true,
+                    'notify_offline_sale'       => true,
+                    'notify_bulk_operations'    => true,
+                    'notify_critical_errors'    => true,
+                    'channel_telegram'          => true,
+                    'channel_database'          => true,
+                    'low_stock_threshold'       => 10,
+                ]
+            );
+        });
+    }
+
     /**
      * Основная (текущая) компания пользователя
      */
