@@ -33,7 +33,11 @@ final class YandexWebhookController extends Controller
         // Яндекс.Маркет шлёт PING для проверки — отвечаем именем
         $payload = $request->all();
         if (($payload['notificationType'] ?? $payload['type'] ?? null) === 'PING') {
-            return response()->json(['name' => 'SellerMind'], 200);
+            return response()->json([
+                'name'    => 'SellerMind',
+                'version' => '1.0.0',
+                'time'    => $payload['time'] ?? now()->toISOString(),
+            ], 200);
         }
 
         $config = MarketplaceWebhookConfig::where('webhook_uuid', $webhookUuid)
