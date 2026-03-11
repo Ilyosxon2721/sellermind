@@ -1004,3 +1004,14 @@ Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
     Route::delete('webhooks/{id}', [WebhookController::class, 'destroy']);
     Route::post('webhooks/{id}/test', [WebhookController::class, 'test']);
 });
+
+
+// ── Marketplace Event Webhooks (public, no auth, IP-checked) ──
+Route::prefix('webhook')->group(function () {
+    Route::post('ozon/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\OzonWebhookController::class, 'handle'])
+        ->middleware([\App\Http\Middleware\VerifyOzonWebhookIp::class])
+        ->name('webhook.ozon');
+
+    Route::post('yandex/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
+        ->name('webhook.yandex');
+});

@@ -338,3 +338,29 @@ Schedule::command('stock:check-low')
         \Log::error('Low stock check failed');
     })
     ->appendOutputTo(storage_path('logs/low-stock.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Marketplace Event Polling (Real-time notifications)
+|--------------------------------------------------------------------------
+*/
+
+// Wildberries: polling новых заказов каждые 30 секунд
+Schedule::job(new \App\Jobs\PollWildberriesOrdersJob)
+    ->everyThirtySeconds()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->name('poll-wb-orders')
+    ->onFailure(function () {
+        \Log::error('WB orders polling failed');
+    });
+
+// Uzum: polling новых заказов каждую минуту
+Schedule::job(new \App\Jobs\PollUzumOrdersJob)
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->name('poll-uzum-orders')
+    ->onFailure(function () {
+        \Log::error('Uzum orders polling failed');
+    });
