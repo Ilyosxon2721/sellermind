@@ -696,6 +696,7 @@ function salesPage() {
         showCustomDateSheet: false,
         syncStatus: null,
         syncPollingInterval: null,
+        autoRefreshInterval: null,
         filters: {
             period: 'month',
             marketplace: '',
@@ -727,6 +728,25 @@ function salesPage() {
         init() {
             this.loadOrders();
             this.checkSyncStatus();
+
+            // Авто-обновление данных каждые 60 секунд
+            this.autoRefreshInterval = setInterval(() => {
+                // Не обновляем если идёт ручная синхронизация
+                if (this.syncStatus?.status !== 'running') {
+                    this.loadOrders(this.pagination.currentPage);
+                }
+            }, 60000);
+        },
+
+        destroy() {
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+                this.autoRefreshInterval = null;
+            }
+            if (this.syncPollingInterval) {
+                clearInterval(this.syncPollingInterval);
+                this.syncPollingInterval = null;
+            }
         },
 
         async checkSyncStatus() {
