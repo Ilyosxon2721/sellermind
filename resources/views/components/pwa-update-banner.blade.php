@@ -1,7 +1,7 @@
 {{-- PWA Update Banner - Shows when a new version of the app is available --}}
 
+<div x-data="pwaUpdateBanner()">
 <div
-    x-data="pwaUpdateBanner()"
     x-show="showUpdateBanner"
     x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0 -translate-y-full"
@@ -97,6 +97,7 @@
 
 {{-- Changelog Modal --}}
 <div
+    x-cloak
     x-show="showChangelog"
     x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0"
@@ -183,6 +184,7 @@
             </button>
         </div>
     </div>
+</div>
 </div>
 
 <style>
