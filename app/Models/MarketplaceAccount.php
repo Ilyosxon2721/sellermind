@@ -48,6 +48,10 @@ class MarketplaceAccount extends Model
         'source',
         'telegram_chat_id',
         'telegram_username',
+        // Uzum автоматизация
+        'uzum_auto_confirm',
+        'uzum_auto_reply',
+        'uzum_review_tone',
     ];
 
     // Fields that should be encrypted
@@ -76,6 +80,8 @@ class MarketplaceAccount extends Model
             'wb_last_successful_call' => 'datetime',
             'uzum_token_expires_at' => 'datetime',
             'uzum_settings' => 'array',
+            'uzum_auto_confirm' => 'boolean',
+            'uzum_auto_reply' => 'boolean',
             'stock_sync_strategy' => 'string',
             'stock_size_strategy' => 'string',
             'sync_settings' => 'array',

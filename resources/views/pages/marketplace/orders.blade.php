@@ -39,7 +39,6 @@
         wsConnectedFlag: false,
         _wsDebounceTimer: null,
         _lastWsEventTime: 0,
-        autoRefreshInterval: null,
 @php
 $__uzumShopsJson = ($uzumShops ?? collect())
     ->map(fn($s) => [
@@ -361,16 +360,6 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                  this.setupWebSocketListeners();
              }, 1000);
 
-             // Авто-обновление каждые 60 секунд (silent mode)
-             this.autoRefreshInterval = setInterval(() => {
-                 this.loadOrders(true);
-             }, 60000);
-         },
-         destroy() {
-             if (this.autoRefreshInterval) {
-                 clearInterval(this.autoRefreshInterval);
-                 this.autoRefreshInterval = null;
-             }
          },
          setupWebSocketListeners() {
              const companyId = this.$store.auth.currentCompany.id;
@@ -4816,6 +4805,28 @@ $__uzumShopsJson = ($uzumShops ?? collect())
                 </div>
             </div>
         </div>
+    </div>
+</div>
+@endsection
+div>
+    </div>
+</div>
+@endsection
+</div>
+                </div>
+
+                {{-- Actions --}}
+                <div class="space-y-2 pb-4">
+                    <button @click="showOrderModal = false" class="native-btn w-full bg-gray-200 text-gray-800">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+div>
     </div>
 </div>
 @endsection

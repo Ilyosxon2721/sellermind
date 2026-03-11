@@ -29,7 +29,25 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(php -m:*)",
       "Bash(find:*)",
-      "Bash(composer dump-autoload:*)"
+      "Bash(composer dump-autoload:*)",
+      "Bash(npx vite build:*)",
+      "Bash(git -C /Applications/MAMP/htdocs/sellermind-ai status --short)",
+      "Bash(git -C /Applications/MAMP/htdocs/sellermind-ai diff --stat)",
+      "Bash(git -C /Applications/MAMP/htdocs/sellermind-ai log --oneline -5)",
+      "Bash(npm run build:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(composer show:*)",
+      "Bash(grep -n \"accountId\\\\|account_id\\\\|$accountId\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/wb-orders.blade.php)",
+      "Bash(grep -n \"accountId\\\\|account_id\\\\|$accountId\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/uzum-fbs-orders.blade.php)",
+      "Bash(grep -n \"accountId\\\\|account_id\\\\|$accountId\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/ozon-orders.blade.php)",
+      "Bash(git stash:*)",
+      "Bash(grep -r telegram_chat_id /Applications/MAMP/htdocs/sellermind-ai/ --include=*.php)",
+      "Bash(grep -n \"marketplace_account\\\\|MarketplaceAccount\" /Applications/MAMP/htdocs/sellermind-ai/app/Http/Controllers/Api/*.php)",
+      "Bash(grep -n \"telegram_chat_id\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*.php)",
+      "WebFetch(domain:yandex.ru)",
+      "WebSearch",
+      "WebFetch(domain:docs.ozon.ru)"
     ]
   }
 }

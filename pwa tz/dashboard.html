@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SellerMind PWA - Dashboard</title>
+    <style>
+        :root {
+            /* Primary */
+            --color-primary: #007AFF;
+            --color-primary-light: #E5F1FF;
+            --color-primary-dark: #0056B3;
+            
+            /* Background */
+            --bg-primary: #F2F2F7;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #E5E5EA;
+            
+            /* Text */
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #C7C7CC;
+            
+            /* Status */
+            --color-success: #34C759;
+            --color-warning: #FF9500;
+            --color-error: #FF3B30;
+            --color-info: #5856D6;
+            
+            /* Marketplace */
+            --color-uzum: #7B3FF2;
+            --color-wb: #CB11AB;
+            --color-ozon: #005BFF;
+            
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            
+            /* Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            
+            /* Safe areas */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-top: calc(44px + var(--safe-top));
+            padding-bottom: calc(56px + var(--safe-bottom));
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* Header */
+        .sm-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: calc(44px + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: var(--spacing-lg);
+            padding-right: var(--spacing-lg);
+            z-index: 100;
+        }
+        
+        .sm-header-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .sm-header-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: linear-gradient(135deg, var(--color-primary), #5856D6);
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        /* Main Content */
+        .sm-main {
+            padding: var(--spacing-lg);
+            padding-bottom: calc(var(--spacing-xl) + 56px + var(--safe-bottom));
+        }
+        
+        /* Revenue Card */
+        .sm-revenue-card {
+            background: linear-gradient(135deg, var(--color-primary), #5856D6);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            color: white;
+            margin-bottom: var(--spacing-lg);
+            box-shadow: 0 8px 32px rgba(0, 122, 255, 0.25);
+        }
+        
+        .sm-revenue-label {
+            font-size: 14px;
+            opacity: 0.85;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .sm-revenue-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .sm-revenue-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        /* Metrics Grid */
+        .sm-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sm-metric-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        
+        .sm-metric-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--spacing-md);
+            font-size: 20px;
+        }
+        
+        .sm-metric-icon.blue { background: #E5F1FF; }
+        .sm-metric-icon.green { background: #E8F9ED; }
+        .sm-metric-icon.orange { background: #FFF3E5; }
+        .sm-metric-icon.red { background: #FFEBE9; }
+        
+        .sm-metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .sm-metric-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        /* Section Header */
+        .sm-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+            padding: 0 var(--spacing-xs);
+        }
+        
+        .sm-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .sm-section-link {
+            font-size: 14px;
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        /* Quick Actions */
+        .sm-quick-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            overflow-x: auto;
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-sm);
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .sm-quick-actions::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .sm-quick-action {
+            flex: 0 0 auto;
+            width: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .sm-quick-action-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--spacing-sm);
+            font-size: 24px;
+            transition: transform 0.15s;
+        }
+        
+        .sm-quick-action:active .sm-quick-action-icon {
+            transform: scale(0.92);
+        }
+        
+        .sm-quick-action-icon.receive { background: linear-gradient(135deg, #34C759, #30D158); }
+        .sm-quick-action-icon.ship { background: linear-gradient(135deg, #FF9500, #FF9F0A); }
+        .sm-quick-action-icon.inventory { background: linear-gradient(135deg, #5856D6, #AF52DE); }
+        .sm-quick-action-icon.scan { background: linear-gradient(135deg, #007AFF, #5AC8FA); }
+        
+        .sm-quick-action-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+        
+        /* Order List */
+        .sm-orders {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        .sm-order-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            display: flex;
+            gap: var(--spacing-md);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        
+        .sm-order-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+        
+        .sm-order-image {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .sm-order-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sm-order-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: 4px;
+        }
+        
+        .sm-order-marketplace {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .sm-order-marketplace.uzum { background: var(--color-uzum); }
+        .sm-order-marketplace.wb { background: var(--color-wb); }
+        .sm-order-marketplace.ozon { background: var(--color-ozon); }
+        
+        .sm-order-number {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .sm-order-product {
+            font-size: 14px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 6px;
+        }
+        
+        .sm-order-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sm-order-price {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .sm-order-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        
+        .sm-order-status.new {
+            background: #E5F1FF;
+            color: var(--color-primary);
+        }
+        
+        .sm-order-status.shipped {
+            background: #E8F9ED;
+            color: var(--color-success);
+        }
+        
+        .sm-order-status.pending {
+            background: #FFF3E5;
+            color: var(--color-warning);
+        }
+        
+        /* Tab Bar */
+        .sm-tabbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(56px + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding-top: 6px;
+            z-index: 100;
+        }
+        
+        .sm-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 4px 12px;
+            transition: transform 0.1s;
+        }
+        
+        .sm-tab:active {
+            transform: scale(0.92);
+        }
+        
+        .sm-tab-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+            opacity: 0.4;
+            transition: opacity 0.15s;
+        }
+        
+        .sm-tab.active .sm-tab-icon {
+            opacity: 1;
+        }
+        
+        .sm-tab-label {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            transition: color 0.15s;
+        }
+        
+        .sm-tab.active .sm-tab-label {
+            color: var(--color-primary);
+            font-weight: 500;
+        }
+        
+        /* Shimmer Effect */
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Skeleton */
+        .sm-skeleton-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            display: flex;
+            gap: var(--spacing-md);
+        }
+        
+        .sm-skeleton-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+        }
+        
+        .sm-skeleton-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+        
+        .sm-skeleton-line {
+            height: 14px;
+            border-radius: 4px;
+        }
+        
+        /* Pull to Refresh indicator */
+        .sm-refresh-indicator {
+            position: fixed;
+            top: calc(44px + var(--safe-top) + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 50;
+        }
+        
+        .sm-refresh-indicator.visible {
+            opacity: 1;
+        }
+        
+        .sm-refresh-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--bg-tertiary);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Cache indicator */
+        .sm-cache-badge {
+            position: fixed;
+            top: calc(44px + var(--safe-top) + 10px);
+            right: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sm-header">
+        <span class="sm-header-title">Сегодня</span>
+        <button class="sm-header-btn">И</button>
+    </header>
+    
+    <!-- Refresh Indicator -->
+    <div class="sm-refresh-indicator" id="refreshIndicator">
+        <div class="sm-refresh-spinner"></div>
+        Обновление...
+    </div>
+    
+    <!-- Cache Badge (показывается если данные из кэша) -->
+    <!-- <div class="sm-cache-badge">📦 Кэш</div> -->
+    
+    <!-- Main Content -->
+    <main class="sm-main">
+        <!-- Revenue Card -->
+        <div class="sm-revenue-card">
+            <p class="sm-revenue-label">💰 Доход сегодня</p>
+            <p class="sm-revenue-value">12,450,000 сум</p>
+            <span class="sm-revenue-change">
+                📈 +12% к вчера
+            </span>
+        </div>
+        
+        <!-- Metrics -->
+        <div class="sm-metrics">
+            <div class="sm-metric-card">
+                <div class="sm-metric-icon blue">📦</div>
+                <p class="sm-metric-value">45</p>
+                <p class="sm-metric-label">Заказов</p>
+            </div>
+            <div class="sm-metric-card">
+                <div class="sm-metric-icon green">🛒</div>
+                <p class="sm-metric-value">23</p>
+                <p class="sm-metric-label">Продаж</p>
+            </div>
+            <div class="sm-metric-card">
+                <div class="sm-metric-icon orange">📊</div>
+                <p class="sm-metric-value">89%</p>
+                <p class="sm-metric-label">В наличии</p>
+            </div>
+            <div class="sm-metric-card">
+                <div class="sm-metric-icon red">⚠️</div>
+                <p class="sm-metric-value">3</p>
+                <p class="sm-metric-label">Мало товара</p>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="sm-section-header">
+            <span class="sm-section-title">Быстрые действия</span>
+        </div>
+        <div class="sm-quick-actions">
+            <a href="#" class="sm-quick-action">
+                <div class="sm-quick-action-icon receive">📥</div>
+                <span class="sm-quick-action-label">Приём</span>
+            </a>
+            <a href="#" class="sm-quick-action">
+                <div class="sm-quick-action-icon ship">📤</div>
+                <span class="sm-quick-action-label">Отгрузка</span>
+            </a>
+            <a href="#" class="sm-quick-action">
+                <div class="sm-quick-action-icon inventory">📋</div>
+                <span class="sm-quick-action-label">Инвентарь</span>
+            </a>
+            <a href="#" class="sm-quick-action">
+                <div class="sm-quick-action-icon scan">📷</div>
+                <span class="sm-quick-action-label">Сканер</span>
+            </a>
+        </div>
+        
+        <!-- Recent Orders -->
+        <div class="sm-section-header">
+            <span class="sm-section-title">Последние заказы</span>
+            <a href="#" class="sm-section-link">Все →</a>
+        </div>
+        <div class="sm-orders">
+            <a href="#" class="sm-order-card">
+                <div class="sm-order-image">📱</div>
+                <div class="sm-order-content">
+                    <div class="sm-order-header">
+                        <div class="sm-order-marketplace uzum">U</div>
+                        <span class="sm-order-number">#12345</span>
+                    </div>
+                    <p class="sm-order-product">iPhone Case Black × 2 шт</p>
+                    <div class="sm-order-footer">
+                        <span class="sm-order-price">89,000 сум</span>
+                        <span class="sm-order-status new">🆕 Новый</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="#" class="sm-order-card">
+                <div class="sm-order-image">🔌</div>
+                <div class="sm-order-content">
+                    <div class="sm-order-header">
+                        <div class="sm-order-marketplace wb">W</div>
+                        <span class="sm-order-number">#67890</span>
+                    </div>
+                    <p class="sm-order-product">Samsung Charger 25W</p>
+                    <div class="sm-order-footer">
+                        <span class="sm-order-price">125,000 сум</span>
+                        <span class="sm-order-status shipped">✅ Отгружен</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="#" class="sm-order-card">
+                <div class="sm-order-image">🎧</div>
+                <div class="sm-order-content">
+                    <div class="sm-order-header">
+                        <div class="sm-order-marketplace ozon">O</div>
+                        <span class="sm-order-number">#11223</span>
+                    </div>
+                    <p class="sm-order-product">AirPods Pro 2 × 1 шт</p>
+                    <div class="sm-order-footer">
+                        <span class="sm-order-price">2,500,000 сум</span>
+                        <span class="sm-order-status pending">⏳ Сборка</span>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- Skeleton Example (для загрузки) -->
+            <!--
+            <div class="sm-skeleton-card">
+                <div class="sm-skeleton-avatar shimmer"></div>
+                <div class="sm-skeleton-content">
+                    <div class="sm-skeleton-line shimmer" style="width: 60%"></div>
+                    <div class="sm-skeleton-line shimmer" style="width: 80%"></div>
+                    <div class="sm-skeleton-line shimmer" style="width: 40%"></div>
+                </div>
+            </div>
+            -->
+        </div>
+    </main>
+    
+    <!-- Tab Bar -->
+    <nav class="sm-tabbar">
+        <a href="#" class="sm-tab active">
+            <span class="sm-tab-icon">🏠</span>
+            <span class="sm-tab-label">Главная</span>
+        </a>
+        <a href="#" class="sm-tab">
+            <span class="sm-tab-icon">📦</span>
+            <span class="sm-tab-label">Склад</span>
+        </a>
+        <a href="#" class="sm-tab">
+            <span class="sm-tab-icon">⚡</span>
+            <span class="sm-tab-label">Маркет</span>
+        </a>
+        <a href="#" class="sm-tab">
+            <span class="sm-tab-icon">🛒</span>
+            <span class="sm-tab-label">Продажи</span>
+        </a>
+        <a href="#" class="sm-tab">
+            <span class="sm-tab-icon">•••</span>
+            <span class="sm-tab-label">Ещё</span>
+        </a>
+    </nav>
+    
+    <script>
+        // Pull to refresh demo
+        let startY = 0;
+        let isPulling = false;
+        
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) {
+                startY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            const currentY = e.touches[0].clientY;
+            const diff = currentY - startY;
+            
+            if (diff > 60) {
+                document.getElementById('refreshIndicator').classList.add('visible');
+            }
+        });
+        
+        document.addEventListener('touchend', () => {
+            if (document.getElementById('refreshIndicator').classList.contains('visible')) {
+                setTimeout(() => {
+                    document.getElementById('refreshIndicator').classList.remove('visible');
+                }, 1500);
+            }
+            isPulling = false;
+        });
+        
+        // Haptic feedback simulation
+        document.querySelectorAll('.sm-tab, .sm-quick-action, .sm-order-card').forEach(el => {
+            el.addEventListener('click', () => {
+                if (navigator.vibrate) {
+                    navigator.vibrate(10);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

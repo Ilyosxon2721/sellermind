@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SellerMind PWA - PIN Code</title>
+    <style>
+        :root {
+            --color-primary: #007AFF;
+            --bg-primary: #F2F2F7;
+            --bg-secondary: #FFFFFF;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --color-error: #FF3B30;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            padding-top: calc(40px + var(--safe-top));
+            padding-bottom: calc(40px + var(--safe-bottom));
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .pin-container {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* Logo */
+        .pin-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .pin-logo-icon {
+            font-size: 40px;
+        }
+        
+        /* Title */
+        .pin-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .pin-subtitle {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        /* Dots */
+        .pin-dots {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+        
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.15s ease;
+        }
+        
+        .pin-dot.filled {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        .pin-dot.error {
+            background: var(--color-error);
+            animation: shake 0.5s ease;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        
+        /* Keypad */
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            width: 100%;
+            max-width: 280px;
+        }
+        
+        .pin-key {
+            aspect-ratio: 1;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 28px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .pin-key:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+        
+        .pin-key.biometric {
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 32px;
+        }
+        
+        .pin-key.delete {
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 24px;
+        }
+        
+        .pin-key.empty {
+            background: transparent;
+            cursor: default;
+        }
+        
+        .pin-key.empty:active {
+            transform: none;
+        }
+        
+        /* Footer */
+        .pin-footer {
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .pin-forgot {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            text-decoration: none;
+            padding: 12px;
+        }
+        
+        .pin-forgot:active {
+            color: white;
+        }
+        
+        /* Face ID animation */
+        .faceid-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .faceid-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .faceid-icon {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .faceid-frame {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .faceid-frame::before,
+        .faceid-frame::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid white;
+        }
+        
+        .faceid-frame::before {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 8px 0 0 0;
+        }
+        
+        .faceid-frame::after {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 8px 0 0;
+        }
+        
+        .faceid-frame-bottom::before,
+        .faceid-frame-bottom::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid white;
+        }
+        
+        .faceid-frame-bottom::before {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+            border-radius: 0 0 0 8px;
+        }
+        
+        .faceid-frame-bottom::after {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+            border-radius: 0 0 8px 0;
+        }
+        
+        .faceid-face {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            animation: faceidPulse 1.5s ease infinite;
+        }
+        
+        @keyframes faceidPulse {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.9); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .faceid-text {
+            color: white;
+            font-size: 17px;
+            font-weight: 500;
+        }
+        
+        .faceid-cancel {
+            position: absolute;
+            bottom: 50px;
+            color: white;
+            font-size: 17px;
+            background: none;
+            border: none;
+            padding: 12px 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="pin-container">
+        <!-- Logo -->
+        <div class="pin-logo">
+            <span class="pin-logo-icon">🔐</span>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="pin-title">SellerMind</h1>
+        <p class="pin-subtitle">Введите PIN-код</p>
+        
+        <!-- Dots -->
+        <div class="pin-dots" id="pinDots">
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+        </div>
+        
+        <!-- Keypad -->
+        <div class="pin-keypad">
+            <button class="pin-key" data-value="1">1</button>
+            <button class="pin-key" data-value="2">2</button>
+            <button class="pin-key" data-value="3">3</button>
+            <button class="pin-key" data-value="4">4</button>
+            <button class="pin-key" data-value="5">5</button>
+            <button class="pin-key" data-value="6">6</button>
+            <button class="pin-key" data-value="7">7</button>
+            <button class="pin-key" data-value="8">8</button>
+            <button class="pin-key" data-value="9">9</button>
+            <button class="pin-key biometric" id="biometricBtn">👆</button>
+            <button class="pin-key" data-value="0">0</button>
+            <button class="pin-key delete" id="deleteBtn">⌫</button>
+        </div>
+        
+        <!-- Footer -->
+        <div class="pin-footer">
+            <a href="#" class="pin-forgot">Забыли PIN? Войти иначе</a>
+        </div>
+    </div>
+    
+    <!-- Face ID Overlay -->
+    <div class="faceid-overlay" id="faceidOverlay">
+        <div class="faceid-icon">
+            <div class="faceid-frame"></div>
+            <div class="faceid-frame-bottom"></div>
+            <span class="faceid-face">😊</span>
+        </div>
+        <p class="faceid-text">Face ID</p>
+        <button class="faceid-cancel" onclick="hideFaceID()">Отмена</button>
+    </div>
+    
+    <script>
+        let pin = '';
+        const correctPin = '1234'; // Demo PIN
+        const dots = document.querySelectorAll('.pin-dot');
+        const keys = document.querySelectorAll('.pin-key[data-value]');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const biometricBtn = document.getElementById('biometricBtn');
+        const faceidOverlay = document.getElementById('faceidOverlay');
+        
+        // Vibrate helper
+        function vibrate(pattern = 10) {
+            if (navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+        
+        // Update dots display
+        function updateDots() {
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('filled', i < pin.length);
+                dot.classList.remove('error');
+            });
+        }
+        
+        // Check PIN
+        function checkPin() {
+            if (pin === correctPin) {
+                vibrate([10, 50, 10]);
+                // Success - redirect to dashboard
+                setTimeout(() => {
+                    alert('✅ PIN верный! Перенаправление на главную...');
+                    // window.location.href = '/dashboard';
+                }, 300);
+            } else {
+                vibrate([50, 100, 50]);
+                // Error animation
+                dots.forEach(dot => dot.classList.add('error'));
+                setTimeout(() => {
+                    pin = '';
+                    updateDots();
+                }, 500);
+            }
+        }
+        
+        // Key press
+        keys.forEach(key => {
+            key.addEventListener('click', () => {
+                if (pin.length < 4) {
+                    vibrate();
+                    pin += key.dataset.value;
+                    updateDots();
+                    
+                    if (pin.length === 4) {
+                        setTimeout(checkPin, 200);
+                    }
+                }
+            });
+        });
+        
+        // Delete
+        deleteBtn.addEventListener('click', () => {
+            if (pin.length > 0) {
+                vibrate();
+                pin = pin.slice(0, -1);
+                updateDots();
+            }
+        });
+        
+        // Biometric
+        biometricBtn.addEventListener('click', () => {
+            vibrate();
+            showFaceID();
+        });
+        
+        function showFaceID() {
+            faceidOverlay.classList.add('visible');
+            // Simulate Face ID
+            setTimeout(() => {
+                hideFaceID();
+                vibrate([10, 50, 10]);
+                alert('✅ Face ID подтверждён! Перенаправление...');
+            }, 2000);
+        }
+        
+        function hideFaceID() {
+            faceidOverlay.classList.remove('visible');
+        }
+        
+        // Auto-trigger Face ID on load (if available)
+        // setTimeout(showFaceID, 500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SellerMind PWA - Маркетплейс</title>
+    <style>
+        :root {
+            --color-primary: #007AFF;
+            --bg-primary: #F2F2F7;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #E5E5EA;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #C7C7CC;
+            --color-success: #34C759;
+            --color-warning: #FF9500;
+            --color-error: #FF3B30;
+            --color-uzum: #7B3FF2;
+            --color-wb: #CB11AB;
+            --color-ozon: #005BFF;
+            --color-ym: #FFCC00;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-top: calc(44px + var(--safe-top));
+            padding-bottom: calc(56px + var(--safe-bottom));
+            -webkit-user-select: none;
+        }
+        
+        /* Header */
+        .sm-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: calc(44px + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: var(--spacing-lg);
+            padding-right: var(--spacing-lg);
+            z-index: 100;
+        }
+        
+        .sm-header-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+        
+        .sm-header-badge {
+            background: var(--color-error);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        
+        .sm-header-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: none; border: none;
+            font-size: 20px;
+        }
+        
+        .sm-main { padding: var(--spacing-lg); }
+        
+        /* Stats Row */
+        .sm-stats-row {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-sm);
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sm-stats-row::-webkit-scrollbar { display: none; }
+        
+        .sm-stat-card {
+            flex: 0 0 auto;
+            min-width: 100px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            text-align: center;
+        }
+        
+        .sm-stat-card.active {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .sm-stat-value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        
+        .sm-stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+        
+        /* Marketplace Tabs */
+        .sm-mp-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sm-mp-tabs::-webkit-scrollbar { display: none; }
+        
+        .sm-mp-tab {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        
+        .sm-mp-tab.active {
+            background: var(--text-primary);
+            border-color: var(--text-primary);
+            color: white;
+        }
+        
+        .sm-mp-tab-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .sm-mp-tab-icon.uzum { background: var(--color-uzum); }
+        .sm-mp-tab-icon.wb { background: var(--color-wb); }
+        .sm-mp-tab-icon.ozon { background: var(--color-ozon); }
+        .sm-mp-tab-icon.ym { background: var(--color-ym); color: #000; }
+        
+        .sm-mp-tab-count {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        
+        .sm-mp-tab.active .sm-mp-tab-count {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Search */
+        .sm-search {
+            position: relative;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sm-search-icon {
+            position: absolute;
+            left: 14px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: var(--text-tertiary);
+        }
+        
+        .sm-search-input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+        }
+        
+        .sm-search-input::placeholder { color: var(--text-tertiary); }
+        
+        /* Status Filter */
+        .sm-status-filter {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .sm-status-filter::-webkit-scrollbar { display: none; }
+        
+        .sm-status-btn {
+            flex: 0 0 auto;
+            padding: 6px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .sm-status-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+        
+        .sm-status-btn.new { border-color: var(--color-primary); color: var(--color-primary); }
+        .sm-status-btn.processing { border-color: var(--color-warning); color: var(--color-warning); }
+        .sm-status-btn.shipped { border-color: var(--color-success); color: var(--color-success); }
+        
+        /* Date Group */
+        .sm-date-group {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sm-date-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--spacing-md);
+            padding-left: var(--spacing-sm);
+        }
+        
+        /* Order List */
+        .sm-order-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        .sm-order-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.15s;
+        }
+        
+        .sm-order-card:active { transform: scale(0.98); }
+        
+        .sm-order-mp-bar {
+            height: 4px;
+        }
+        
+        .sm-order-mp-bar.uzum { background: var(--color-uzum); }
+        .sm-order-mp-bar.wb { background: var(--color-wb); }
+        .sm-order-mp-bar.ozon { background: var(--color-ozon); }
+        
+        .sm-order-content {
+            padding: var(--spacing-lg);
+        }
+        
+        .sm-order-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .sm-order-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .sm-order-mp-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .sm-order-mp-icon.uzum { background: var(--color-uzum); }
+        .sm-order-mp-icon.wb { background: var(--color-wb); }
+        .sm-order-mp-icon.ozon { background: var(--color-ozon); }
+        
+        .sm-order-number {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .sm-order-status {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .sm-order-status.new {
+            background: #E5F1FF;
+            color: var(--color-primary);
+        }
+        
+        .sm-order-status.processing {
+            background: #FFF3E5;
+            color: var(--color-warning);
+        }
+        
+        .sm-order-status.shipped {
+            background: #E8F9ED;
+            color: var(--color-success);
+        }
+        
+        .sm-order-status.delivered {
+            background: #E8F9ED;
+            color: var(--color-success);
+        }
+        
+        .sm-order-status.cancelled {
+            background: #FFEBE9;
+            color: var(--color-error);
+        }
+        
+        /* Product Row */
+        .sm-order-products {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .sm-order-product-img {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .sm-order-product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sm-order-product-name {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        
+        .sm-order-product-qty {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .sm-order-more {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        
+        /* Order Footer */
+        .sm-order-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--bg-tertiary);
+        }
+        
+        .sm-order-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .sm-order-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .sm-order-price {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        /* Tab Bar */
+        .sm-tabbar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(56px + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding-top: 6px;
+            z-index: 100;
+        }
+        
+        .sm-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 4px 12px;
+            position: relative;
+        }
+        
+        .sm-tab-icon { font-size: 24px; margin-bottom: 2px; opacity: 0.4; }
+        .sm-tab.active .sm-tab-icon { opacity: 1; }
+        .sm-tab-label { font-size: 10px; color: var(--text-tertiary); }
+        .sm-tab.active .sm-tab-label { color: var(--color-primary); font-weight: 500; }
+        
+        .sm-tab-badge {
+            position: absolute;
+            top: 0;
+            right: 4px;
+            background: var(--color-error);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+        
+        /* Pull to refresh */
+        .sm-refresh {
+            position: fixed;
+            top: calc(44px + var(--safe-top) + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 50;
+        }
+        
+        .sm-refresh.visible { opacity: 1; }
+        
+        .sm-spinner {
+            width: 16px; height: 16px;
+            border: 2px solid var(--bg-tertiary);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Shimmer */
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sm-header">
+        <div style="display: flex; align-items: center;">
+            <span class="sm-header-title">Маркетплейс</span>
+            <span class="sm-header-badge">12</span>
+        </div>
+        <button class="sm-header-btn">🔔</button>
+    </header>
+    
+    <!-- Refresh Indicator -->
+    <div class="sm-refresh" id="refresh">
+        <div class="sm-spinner"></div>
+        Обновление...
+    </div>
+    
+    <main class="sm-main">
+        <!-- Stats Row -->
+        <div class="sm-stats-row">
+            <div class="sm-stat-card active">
+                <div class="sm-stat-value">67</div>
+                <div class="sm-stat-label">Всего</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-value">12</div>
+                <div class="sm-stat-label">Новые</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-value">8</div>
+                <div class="sm-stat-label">В сборке</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-value">45</div>
+                <div class="sm-stat-label">Отгружено</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-value">2</div>
+                <div class="sm-stat-label">Отмена</div>
+            </div>
+        </div>
+        
+        <!-- Marketplace Tabs -->
+        <div class="sm-mp-tabs">
+            <a href="#" class="sm-mp-tab active">
+                Все
+                <span class="sm-mp-tab-count">67</span>
+            </a>
+            <a href="#" class="sm-mp-tab">
+                <span class="sm-mp-tab-icon uzum">U</span>
+                Uzum
+                <span class="sm-mp-tab-count">34</span>
+            </a>
+            <a href="#" class="sm-mp-tab">
+                <span class="sm-mp-tab-icon wb">W</span>
+                WB
+                <span class="sm-mp-tab-count">21</span>
+            </a>
+            <a href="#" class="sm-mp-tab">
+                <span class="sm-mp-tab-icon ozon">O</span>
+                Ozon
+                <span class="sm-mp-tab-count">12</span>
+            </a>
+        </div>
+        
+        <!-- Search -->
+        <div class="sm-search">
+            <span class="sm-search-icon">🔍</span>
+            <input type="text" class="sm-search-input" placeholder="Номер заказа...">
+        </div>
+        
+        <!-- Status Filter -->
+        <div class="sm-status-filter">
+            <button class="sm-status-btn active">Все</button>
+            <button class="sm-status-btn new">🆕 Новые (12)</button>
+            <button class="sm-status-btn processing">📦 В сборке (8)</button>
+            <button class="sm-status-btn shipped">✅ Отгружено</button>
+        </div>
+        
+        <!-- Today's Orders -->
+        <div class="sm-date-group">
+            <div class="sm-date-header">Сегодня • 23 заказа</div>
+            <div class="sm-order-list">
+                <!-- Order 1 - Uzum New -->
+                <a href="order-detail.html" class="sm-order-card">
+                    <div class="sm-order-mp-bar uzum"></div>
+                    <div class="sm-order-content">
+                        <div class="sm-order-header">
+                            <div class="sm-order-info">
+                                <div class="sm-order-mp-icon uzum">U</div>
+                                <span class="sm-order-number">#SM-123456</span>
+                            </div>
+                            <span class="sm-order-status new">🆕 Новый</span>
+                        </div>
+                        <div class="sm-order-products">
+                            <div class="sm-order-product-img">📱</div>
+                            <div class="sm-order-product-info">
+                                <div class="sm-order-product-name">iPhone 15 Pro Case Silicone Black</div>
+                                <div class="sm-order-product-qty">× 2 шт</div>
+                            </div>
+                        </div>
+                        <div class="sm-order-footer">
+                            <div class="sm-order-meta">
+                                <span class="sm-order-meta-item">📍 Ташкент</span>
+                                <span class="sm-order-meta-item">⏱️ 14:30</span>
+                            </div>
+                            <span class="sm-order-price">89,000 сум</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- Order 2 - WB Processing -->
+                <a href="#" class="sm-order-card">
+                    <div class="sm-order-mp-bar wb"></div>
+                    <div class="sm-order-content">
+                        <div class="sm-order-header">
+                            <div class="sm-order-info">
+                                <div class="sm-order-mp-icon wb">W</div>
+                                <span class="sm-order-number">#WB-789012</span>
+                            </div>
+                            <span class="sm-order-status processing">📦 Сборка</span>
+                        </div>
+                        <div class="sm-order-products">
+                            <div class="sm-order-product-img">🔌</div>
+                            <div class="sm-order-product-info">
+                                <div class="sm-order-product-name">Samsung Fast Charger 25W</div>
+                                <div class="sm-order-product-qty">× 1 шт</div>
+                            </div>
+                            <div class="sm-order-product-img">🎧</div>
+                            <div class="sm-order-more">+2</div>
+                        </div>
+                        <div class="sm-order-footer">
+                            <div class="sm-order-meta">
+                                <span class="sm-order-meta-item">📍 Самарканд</span>
+                                <span class="sm-order-meta-item">⏱️ 13:15</span>
+                            </div>
+                            <span class="sm-order-price">245,000 сум</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- Order 3 - Ozon Shipped -->
+                <a href="#" class="sm-order-card">
+                    <div class="sm-order-mp-bar ozon"></div>
+                    <div class="sm-order-content">
+                        <div class="sm-order-header">
+                            <div class="sm-order-info">
+                                <div class="sm-order-mp-icon ozon">O</div>
+                                <span class="sm-order-number">#OZ-345678</span>
+                            </div>
+                            <span class="sm-order-status shipped">✅ Отгружен</span>
+                        </div>
+                        <div class="sm-order-products">
+                            <div class="sm-order-product-img">🎧</div>
+                            <div class="sm-order-product-info">
+                                <div class="sm-order-product-name">AirPods Pro 2nd Gen</div>
+                                <div class="sm-order-product-qty">× 1 шт</div>
+                            </div>
+                        </div>
+                        <div class="sm-order-footer">
+                            <div class="sm-order-meta">
+                                <span class="sm-order-meta-item">📍 Бухара</span>
+                                <span class="sm-order-meta-item">⏱️ 11:00</span>
+                            </div>
+                            <span class="sm-order-price">2,500,000 сум</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Yesterday's Orders -->
+        <div class="sm-date-group">
+            <div class="sm-date-header">Вчера • 18 заказов</div>
+            <div class="sm-order-list">
+                <!-- Order 4 -->
+                <a href="#" class="sm-order-card">
+                    <div class="sm-order-mp-bar uzum"></div>
+                    <div class="sm-order-content">
+                        <div class="sm-order-header">
+                            <div class="sm-order-info">
+                                <div class="sm-order-mp-icon uzum">U</div>
+                                <span class="sm-order-number">#SM-123400</span>
+                            </div>
+                            <span class="sm-order-status delivered">✅ Доставлен</span>
+                        </div>
+                        <div class="sm-order-products">
+                            <div class="sm-order-product-img">⌚</div>
+                            <div class="sm-order-product-info">
+                                <div class="sm-order-product-name">Apple Watch Band Sport</div>
+                                <div class="sm-order-product-qty">× 3 шт</div>
+                            </div>
+                        </div>
+                        <div class="sm-order-footer">
+                            <div class="sm-order-meta">
+                                <span class="sm-order-meta-item">📍 Наманган</span>
+                                <span class="sm-order-meta-item">⏱️ 16:45</span>
+                            </div>
+                            <span class="sm-order-price">135,000 сум</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- Order 5 - Cancelled -->
+                <a href="#" class="sm-order-card">
+                    <div class="sm-order-mp-bar wb"></div>
+                    <div class="sm-order-content">
+                        <div class="sm-order-header">
+                            <div class="sm-order-info">
+                                <div class="sm-order-mp-icon wb">W</div>
+                                <span class="sm-order-number">#WB-788000</span>
+                            </div>
+                            <span class="sm-order-status cancelled">❌ Отменён</span>
+                        </div>
+                        <div class="sm-order-products">
+                            <div class="sm-order-product-img">📱</div>
+                            <div class="sm-order-product-info">
+                                <div class="sm-order-product-name">Samsung S24 Clear Case</div>
+                                <div class="sm-order-product-qty">× 1 шт</div>
+                            </div>
+                        </div>
+                        <div class="sm-order-footer">
+                            <div class="sm-order-meta">
+                                <span class="sm-order-meta-item">📍 Фергана</span>
+                                <span class="sm-order-meta-item">⏱️ 10:20</span>
+                            </div>
+                            <span class="sm-order-price" style="text-decoration: line-through; color: var(--text-tertiary);">45,000 сум</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Tab Bar -->
+    <nav class="sm-tabbar">
+        <a href="dashboard.html" class="sm-tab">
+            <span class="sm-tab-icon">🏠</span>
+            <span class="sm-tab-label">Главная</span>
+        </a>
+        <a href="warehouse.html" class="sm-tab">
+            <span class="sm-tab-icon">📦</span>
+            <span class="sm-tab-label">Склад</span>
+        </a>
+        <a href="#" class="sm-tab active">
+            <span class="sm-tab-icon">⚡</span>
+            <span class="sm-tab-label">Маркет</span>
+            <span class="sm-tab-badge">12</span>
+        </a>
+        <a href="sales.html" class="sm-tab">
+            <span class="sm-tab-icon">🛒</span>
+            <span class="sm-tab-label">Продажи</span>
+        </a>
+        <a href="more.html" class="sm-tab">
+            <span class="sm-tab-icon">•••</span>
+            <span class="sm-tab-label">Ещё</span>
+        </a>
+    </nav>
+    
+    <script>
+        // Pull to refresh
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) startY = e.touches[0].clientY;
+        });
+        document.addEventListener('touchmove', (e) => {
+            if (startY && e.touches[0].clientY - startY > 60) {
+                document.getElementById('refresh').classList.add('visible');
+            }
+        });
+        document.addEventListener('touchend', () => {
+            if (document.getElementById('refresh').classList.contains('visible')) {
+                setTimeout(() => document.getElementById('refresh').classList.remove('visible'), 1500);
+            }
+            startY = 0;
+        });
+    </script>
+</body>
+</html>

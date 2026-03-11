@@ -466,11 +466,33 @@ function ozonOrdersPage() {
             await this.loadStats();
             await this.loadCancelReasons();
 
-            // Автообновление каждые 15 минут
-            setInterval(() => {
-                this.loadOrders();
-                this.loadStats();
-            }, 15 * 60 * 1000);
+            // Подписка на WS канал данных
+            const companyId = {{ auth()->user()->company_id }};
+            const accountId = {{ $accountId }};
+
+            const subscribeToChannels = () => {
+                if (window.subscribeToChannel) {
+                    window.subscribeToChannel(`company.${companyId}`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.orders`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.sync`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.data`);
+                    window.subscribeToChannel(`marketplace-account.${accountId}`);
+                }
+            };
+
+            const wsState = window.getWebSocketState ? window.getWebSocketState() : null;
+            if (wsState && wsState.connected) {
+                subscribeToChannels();
+            }
+            window.addEventListener('websocket:connected', subscribeToChannels, { once: true });
+
+            window.addEventListener('websocket:message', (event) => {
+                const { channel, eventName, data } = event.detail;
+                if (eventName === 'data.changed') {
+                    this.loadOrders();
+                    this.loadStats();
+                }
+            });
         },
         
         async loadOrders() {

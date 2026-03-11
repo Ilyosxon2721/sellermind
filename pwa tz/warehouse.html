@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SellerMind PWA - Склад</title>
+    <style>
+        :root {
+            --color-primary: #007AFF;
+            --bg-primary: #F2F2F7;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #E5E5EA;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #C7C7CC;
+            --color-success: #34C759;
+            --color-warning: #FF9500;
+            --color-error: #FF3B30;
+            --color-info: #5856D6;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-top: calc(44px + var(--safe-top));
+            padding-bottom: calc(56px + var(--safe-bottom));
+            -webkit-user-select: none;
+        }
+        
+        /* Header */
+        .sm-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: calc(44px + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: var(--spacing-lg);
+            padding-right: var(--spacing-lg);
+            z-index: 100;
+        }
+        
+        .sm-header-title { font-size: 17px; font-weight: 600; }
+        
+        .sm-header-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: none; border: none;
+            font-size: 20px;
+        }
+        
+        .sm-main { padding: var(--spacing-lg); }
+        
+        /* Search */
+        .sm-search {
+            position: relative;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sm-search-icon {
+            position: absolute;
+            left: 14px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: var(--text-tertiary);
+        }
+        
+        .sm-search-input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+        }
+        
+        .sm-search-input::placeholder { color: var(--text-tertiary); }
+        
+        /* Stats Grid */
+        .sm-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sm-stat-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+        }
+        
+        .sm-stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--spacing-md);
+            font-size: 20px;
+        }
+        
+        .sm-stat-icon.blue { background: #E5F1FF; }
+        .sm-stat-icon.green { background: #E8F9ED; }
+        .sm-stat-icon.orange { background: #FFF3E5; }
+        .sm-stat-icon.purple { background: #F3E8FF; }
+        
+        .sm-stat-value { font-size: 24px; font-weight: 700; }
+        .sm-stat-label { font-size: 13px; color: var(--text-secondary); }
+        
+        /* Section Title */
+        .sm-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--spacing-md);
+            padding-left: var(--spacing-sm);
+        }
+        
+        /* Menu List */
+        .sm-menu-list {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sm-menu-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            text-decoration: none;
+            color: inherit;
+            border-bottom: 1px solid var(--bg-tertiary);
+            transition: background 0.15s;
+        }
+        
+        .sm-menu-item:last-child { border-bottom: none; }
+        .sm-menu-item:active { background: var(--bg-tertiary); }
+        
+        .sm-menu-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .sm-menu-icon.blue { background: #E5F1FF; }
+        .sm-menu-icon.green { background: #E8F9ED; }
+        .sm-menu-icon.orange { background: #FFF3E5; }
+        .sm-menu-icon.red { background: #FFEBE9; }
+        .sm-menu-icon.purple { background: #F3E8FF; }
+        .sm-menu-icon.cyan { background: #E0F7FA; }
+        
+        .sm-menu-content { flex: 1; }
+        .sm-menu-title { font-size: 16px; font-weight: 500; }
+        .sm-menu-subtitle { font-size: 13px; color: var(--text-secondary); }
+        
+        .sm-menu-badge {
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .sm-menu-badge.blue { background: #E5F1FF; color: var(--color-primary); }
+        .sm-menu-badge.orange { background: #FFF3E5; color: var(--color-warning); }
+        .sm-menu-badge.red { background: #FFEBE9; color: var(--color-error); }
+        
+        .sm-menu-chevron { color: var(--text-tertiary); font-size: 18px; }
+        
+        /* Quick Actions */
+        .sm-quick-row {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sm-quick-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-lg);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.15s;
+        }
+        
+        .sm-quick-btn:active { transform: scale(0.95); }
+        
+        .sm-quick-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .sm-quick-icon.receive { background: linear-gradient(135deg, #34C759, #30D158); }
+        .sm-quick-icon.writeoff { background: linear-gradient(135deg, #FF3B30, #FF453A); }
+        .sm-quick-icon.move { background: linear-gradient(135deg, #007AFF, #5AC8FA); }
+        .sm-quick-icon.scan { background: linear-gradient(135deg, #5856D6, #AF52DE); }
+        
+        .sm-quick-label { font-size: 12px; color: var(--text-secondary); text-align: center; }
+        
+        /* Tab Bar */
+        .sm-tabbar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: calc(56px + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-around;
+            padding-top: 6px;
+            z-index: 100;
+        }
+        
+        .sm-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 4px 12px;
+        }
+        
+        .sm-tab-icon { font-size: 24px; margin-bottom: 2px; opacity: 0.4; }
+        .sm-tab.active .sm-tab-icon { opacity: 1; }
+        .sm-tab-label { font-size: 10px; color: var(--text-tertiary); }
+        .sm-tab.active .sm-tab-label { color: var(--color-primary); font-weight: 500; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sm-header">
+        <span class="sm-header-title">Склад</span>
+        <button class="sm-header-btn">🏭</button>
+    </header>
+    
+    <main class="sm-main">
+        <!-- Search -->
+        <div class="sm-search">
+            <span class="sm-search-icon">🔍</span>
+            <input type="text" class="sm-search-input" placeholder="Поиск по SKU...">
+        </div>
+        
+        <!-- Stats -->
+        <div class="sm-stats-grid">
+            <div class="sm-stat-card">
+                <div class="sm-stat-icon blue">📊</div>
+                <div class="sm-stat-value">1,234</div>
+                <div class="sm-stat-label">Позиций</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-icon green">📦</div>
+                <div class="sm-stat-value">56,780</div>
+                <div class="sm-stat-label">Всего шт</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-icon orange">⚠️</div>
+                <div class="sm-stat-value">12</div>
+                <div class="sm-stat-label">Мало товара</div>
+            </div>
+            <div class="sm-stat-card">
+                <div class="sm-stat-icon purple">🔒</div>
+                <div class="sm-stat-value">89</div>
+                <div class="sm-stat-label">В резерве</div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="sm-section-title">Быстрые действия</div>
+        <div class="sm-quick-row">
+            <a href="#" class="sm-quick-btn">
+                <div class="sm-quick-icon receive">📥</div>
+                <span class="sm-quick-label">Приём</span>
+            </a>
+            <a href="#" class="sm-quick-btn">
+                <div class="sm-quick-icon writeoff">📤</div>
+                <span class="sm-quick-label">Списание</span>
+            </a>
+            <a href="#" class="sm-quick-btn">
+                <div class="sm-quick-icon move">↔️</div>
+                <span class="sm-quick-label">Перемещение</span>
+            </a>
+            <a href="#" class="sm-quick-btn">
+                <div class="sm-quick-icon scan">📷</div>
+                <span class="sm-quick-label">Сканер</span>
+            </a>
+        </div>
+        
+        <!-- Main Menu -->
+        <div class="sm-section-title">Разделы</div>
+        <div class="sm-menu-list">
+            <a href="balance.html" class="sm-menu-item">
+                <div class="sm-menu-icon blue">📊</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Остатки</div>
+                    <div class="sm-menu-subtitle">Текущие остатки по SKU</div>
+                </div>
+                <span class="sm-menu-badge blue">1,234</span>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon green">📥</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Приёмки</div>
+                    <div class="sm-menu-subtitle">Оприходование товара</div>
+                </div>
+                <span class="sm-menu-badge orange">3</span>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon cyan">📋</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Документы</div>
+                    <div class="sm-menu-subtitle">Все складские документы</div>
+                </div>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon purple">🔒</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Резервы</div>
+                    <div class="sm-menu-subtitle">Зарезервированные товары</div>
+                </div>
+                <span class="sm-menu-badge blue">89</span>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon orange">📖</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Журнал движений</div>
+                    <div class="sm-menu-subtitle">История операций</div>
+                </div>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon red">🗑️</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Списания</div>
+                    <div class="sm-menu-subtitle">Брак и потери</div>
+                </div>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+        </div>
+        
+        <!-- Warehouses -->
+        <div class="sm-section-title">Склады</div>
+        <div class="sm-menu-list">
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon blue">🏭</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Основной склад</div>
+                    <div class="sm-menu-subtitle">45,230 шт • 980 SKU</div>
+                </div>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+            <a href="#" class="sm-menu-item">
+                <div class="sm-menu-icon green">🏬</div>
+                <div class="sm-menu-content">
+                    <div class="sm-menu-title">Магазин</div>
+                    <div class="sm-menu-subtitle">11,550 шт • 254 SKU</div>
+                </div>
+                <span class="sm-menu-chevron">›</span>
+            </a>
+        </div>
+    </main>
+    
+    <!-- Tab Bar -->
+    <nav class="sm-tabbar">
+        <a href="dashboard.html" class="sm-tab">
+            <span class="sm-tab-icon">🏠</span>
+            <span class="sm-tab-label">Главная</span>
+        </a>
+        <a href="#" class="sm-tab active">
+            <span class="sm-tab-icon">📦</span>
+            <span class="sm-tab-label">Склад</span>
+        </a>
+        <a href="marketplace.html" class="sm-tab">
+            <span class="sm-tab-icon">⚡</span>
+            <span class="sm-tab-label">Маркет</span>
+        </a>
+        <a href="sales.html" class="sm-tab">
+            <span class="sm-tab-icon">🛒</span>
+            <span class="sm-tab-label">Продажи</span>
+        </a>
+        <a href="more.html" class="sm-tab">
+            <span class="sm-tab-icon">•••</span>
+            <span class="sm-tab-label">Ещё</span>
+        </a>
+    </nav>
+</body>
+</html>

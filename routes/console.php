@@ -356,3 +356,17 @@ Schedule::job(new \App\Jobs\PollUzumOrdersJob)
     ->everyMinute()
     ->withoutOverlapping()
     ->name('poll-uzum-orders');
+
+// Uzum автоматизация: автоподтверждение новых заказов каждые 15 минут
+Schedule::job(new \App\Jobs\UzumAutoConfirmJob)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('uzum:auto-confirm');
+
+// Uzum автоматизация: автоответы на отзывы каждые 30 минут
+Schedule::job(new \App\Jobs\UzumAutoReplyJob)
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('uzum:auto-reply');

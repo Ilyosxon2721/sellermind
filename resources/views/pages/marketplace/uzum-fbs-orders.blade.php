@@ -1523,31 +1523,34 @@ function uzumOrdersPage() {
         },
 
         initWebSocket() {
-            if (window.Echo) {
-                const companyId = window.Alpine?.store('auth')?.currentCompany?.id || 1;
-                window.Echo.private(`company.${companyId}`)
-                    .listen('.marketplace.orders.updated', (e) => {
-                        if (e.marketplace_account_id === this.accountId) {
-                            this.loadOrders();
-                            this.loadStats();
-                        }
-                    })
-                    .listen('.sync.progress', (e) => {
-                        if (e.marketplace_account_id === this.accountId) {
-                            this.syncProgress = e.progress || 0;
-                            this.syncMessage = e.message || 'Синхронизация...';
-                            if (e.status === 'completed') {
-                                this.syncInProgress = false;
-                                this.syncProgress = 0;
-                                this.syncMessage = '';
-                                this.loadOrders();
-                                this.loadStats();
-                                this.showMessage('Синхронизация завершена', 'success');
-                            }
-                        }
-                    });
-                this.wsConnected = true;
+            const companyId = {{ auth()->user()->company_id }};
+            const accountId = this.accountId;
+
+            // Подписка на WS каналы данных
+            const subscribeToChannels = () => {
+                if (window.subscribeToChannel) {
+                    window.subscribeToChannel(`company.${companyId}`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.orders`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.sync`);
+                    window.subscribeToChannel(`company.${companyId}.marketplace.${accountId}.data`);
+                    window.subscribeToChannel(`marketplace-account.${accountId}`);
+                }
+            };
+
+            const wsState = window.getWebSocketState ? window.getWebSocketState() : null;
+            if (wsState && wsState.connected) {
+                subscribeToChannels();
             }
+            window.addEventListener('websocket:connected', subscribeToChannels, { once: true });
+
+            // Слушаем входящие сообщения
+            window.addEventListener('websocket:message', (event) => {
+                const { channel, eventName, data } = event.detail;
+                if (eventName === 'data.changed') {
+                    this.loadOrders();
+                    this.loadStats();
+                }
+            });
         }
     }
 }
