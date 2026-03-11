@@ -112,7 +112,19 @@ Route::middleware('auth.any')->group(function () {
         return redirect()->route('dashboard');
     });
 
-    Route::get('/dashboard', function () {
+    Route::get('/dashboard', function (Illuminate\Http\Request $request) {
+        $isPWA = $request->cookie('pwa_installed') === 'true'
+            || $request->header('X-Requested-With') === 'com.sellermind.pwa';
+
+        // Определяем мобильное устройство по User-Agent
+        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini|IEMobile/i', $request->userAgent() ?? '');
+
+        // Мобильные и PWA → новый Flutter-дизайн
+        if ($isPWA || $isMobile) {
+            return view('pages.dashboard-flutter');
+        }
+
+        // Десктоп → старый дизайн
         return view('pages.dashboard');
     })->name('dashboard');
 
