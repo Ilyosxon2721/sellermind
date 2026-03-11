@@ -20,7 +20,7 @@
     <meta name="msapplication-tap-highlight" content="no">
 
     {{-- Manifest --}}
-    <link rel="manifest" href="/build/manifest.json">
+    <link rel="manifest" href="/build/manifest.webmanifest">
 
     {{-- Apple Touch Icons --}}
     <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">

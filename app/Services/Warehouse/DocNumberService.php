@@ -9,10 +9,19 @@ class DocNumberService
     public function generate(int $companyId, string $type): string
     {
         $prefix = strtoupper($type).'-'.now()->format('Ymd').'-';
-        $seq = DB::table('inventory_documents')
+
+        // Используем MAX номера вместо count для избежания дублей
+        $lastDocNo = DB::table('inventory_documents')
             ->where('company_id', $companyId)
-            ->where('type', $type)
-            ->count() + 1;
+            ->where('doc_no', 'like', $prefix.'%')
+            ->max('doc_no');
+
+        if ($lastDocNo) {
+            $lastSeq = (int) substr($lastDocNo, strlen($prefix));
+            $seq = $lastSeq + 1;
+        } else {
+            $seq = 1;
+        }
 
         return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
