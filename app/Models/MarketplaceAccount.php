@@ -25,7 +25,6 @@ class MarketplaceAccount extends Model
         // Uzum specific
         'uzum_client_id',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
         'uzum_token_expires_at',
@@ -65,7 +64,6 @@ class MarketplaceAccount extends Model
         'wb_prices_token',
         'wb_statistics_token',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
     ];
@@ -99,7 +97,6 @@ class MarketplaceAccount extends Model
         'wb_prices_token',
         'wb_statistics_token',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
     ];
@@ -287,33 +284,6 @@ class MarketplaceAccount extends Model
         } catch (\Exception $e) {
             return null;
         }
-    }
-
-    public function setUzumApiKeyAttribute(?string $value): void
-    {
-        // Store token as-is without encryption for simplicity
-        // Uzum tokens are short-lived and DB is already protected
-        $this->attributes['uzum_api_key'] = $value;
-    }
-
-    public function getUzumApiKeyAttribute(?string $value): ?string
-    {
-        if (! $value) {
-            return null;
-        }
-
-        // Check if value looks like Laravel encrypted string (starts with eyJ)
-        // If so, try to decrypt for backwards compatibility with old encrypted tokens
-        if (str_starts_with($value, 'eyJ')) {
-            try {
-                return Crypt::decryptString($value);
-            } catch (\Exception $e) {
-                // Decryption failed - might be a plain token that happens to start with eyJ
-                // or encrypted with different APP_KEY - return as-is
-            }
-        }
-
-        return $value;
     }
 
     public function setUzumAccessTokenAttribute(?string $value): void
@@ -509,7 +479,6 @@ class MarketplaceAccount extends Model
             // Uzum specific
             'uzum_client_id' => $this->uzum_client_id,
             'uzum_client_secret' => $this->uzum_client_secret,
-            'uzum_api_key' => $this->uzum_api_key,
             'uzum_access_token' => $this->uzum_access_token,
             'uzum_refresh_token' => $this->uzum_refresh_token,
             'uzum_token_expires_at' => $this->uzum_token_expires_at,
@@ -673,7 +642,7 @@ class MarketplaceAccount extends Model
             return false;
         }
 
-        return (bool) ($this->uzum_access_token || $this->uzum_api_key || $this->api_key);
+        return (bool) ($this->uzum_access_token || $this->api_key);
     }
 
     /**
@@ -682,7 +651,7 @@ class MarketplaceAccount extends Model
     public function getUzumAuthHeaders(): array
     {
         // Accessors already decrypt tokens, no need to decrypt again
-        $token = $this->uzum_access_token ?? $this->uzum_api_key ?? $this->api_key;
+        $token = $this->uzum_access_token ?? $this->api_key;
 
         // DEBUG: Log token info for troubleshooting
         \Log::debug('Uzum getUzumAuthHeaders token check', [

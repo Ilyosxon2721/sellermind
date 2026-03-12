@@ -151,12 +151,9 @@ class MarketplaceHttpClient
                         $apiKey = $credentials['api_key'] ?? '';
                     }
                 } elseif ($account->marketplace === 'uzum') {
-                    // Приоритет: uzum_access_token > api_key > uzum_api_key > api_token
-                    // api_key стоит выше uzum_api_key т.к. именно в нём хранится рабочий Bearer-токен Uzum
+                    // Токен Uzum хранится в api_key (основное поле)
                     $apiKey = $credentials['uzum_access_token']
                         ?? $credentials['api_key']
-                        ?? $credentials['uzum_api_key']
-                        ?? $credentials['api_token']
                         ?? '';
 
                 } else {
