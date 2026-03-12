@@ -95,8 +95,8 @@
     </script>
 </head>
 <body class="bg-gray-50">
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen">
-        <!-- Hamburger Menu & Sidebar Overlay (Mobile Only) -->
+    <div x-data="{ sidebarOpen: false }" class="min-h-screen pt-14 lg:pt-0">
+        <!-- Mobile Top Navbar & Sidebar Overlay -->
         <x-hamburger-menu />
 
         @yield('content')
