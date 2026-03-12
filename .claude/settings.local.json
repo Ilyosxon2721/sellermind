@@ -51,7 +51,9 @@
       "Bash(python3 -m json.tool)",
       "Bash(python3 -c \":*)",
       "Bash(grep -r \"TelegramLinkCode\\\\|telegram_link_codes\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
-      "Bash(grep -r \"UserNotificationSettings\\\\|user_notification_settings\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)"
+      "Bash(grep -r \"UserNotificationSettings\\\\|user_notification_settings\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }

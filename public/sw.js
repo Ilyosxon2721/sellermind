@@ -8,7 +8,7 @@
  * - Images: Stale While Revalidate
  */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 
 const CACHE_NAMES = {
     shell: `shell-${CACHE_VERSION}`,
