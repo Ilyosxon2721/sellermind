@@ -706,7 +706,7 @@ class MarketplaceSyncService
         $updateData = [
             'status' => $orderData['status'] ?? null,
             'status_normalized' => $orderData['status_normalized'] ?? $orderData['status'] ?? null,
-            'delivery_type' => $orderData['wb_delivery_type'] ?? $orderData['delivery_type'] ?? null,
+            'delivery_type' => $orderData['delivery_type'] ?? $orderData['wb_delivery_type'] ?? null,
             'shop_id' => $orderData['shop_id'] ?? $orderData['raw_payload']['shopId'] ?? null,
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,
