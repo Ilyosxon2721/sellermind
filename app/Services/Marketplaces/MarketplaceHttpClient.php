@@ -151,9 +151,8 @@ class MarketplaceHttpClient
                         $apiKey = $credentials['api_key'] ?? '';
                     }
                 } elseif ($account->marketplace === 'uzum') {
+                    // Токен Uzum хранится в api_key (основное поле)
                     $apiKey = $credentials['uzum_access_token']
-                        ?? $credentials['uzum_api_key']
-                        ?? $credentials['api_token']
                         ?? $credentials['api_key']
                         ?? '';
 

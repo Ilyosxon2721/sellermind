@@ -280,6 +280,117 @@
                 </div>
             </div>
         </div>
+
+        {{-- Подписки на уведомления по маркетплейсам --}}
+        <div class="mt-6">
+            <h4 class="text-md font-semibold text-gray-900 mb-4">Подписки на заказы</h4>
+            <p class="text-sm text-gray-600 mb-4">Фильтруйте уведомления по маркетплейсу и аккаунту</p>
+
+            {{-- Форма добавления подписки --}}
+            <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Маркетплейс</label>
+                        <select x-model="newSub.marketplace"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <option value="">Все маркетплейсы</option>
+                            <option value="uzum">Uzum Market</option>
+                            <option value="wb">Wildberries</option>
+                            <option value="ozon">Ozon</option>
+                            <option value="ym">Yandex Market</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Аккаунт</label>
+                        <select x-model="newSub.marketplace_account_id"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <option value="">Все аккаунты</option>
+                            <template x-for="acc in filteredAccounts" :key="acc.id">
+                                <option :value="acc.id" x-text="acc.name + ' (' + acc.marketplace + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-4 mb-3">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" x-model="newSub.notify_new" class="rounded border-gray-300 text-indigo-600">
+                        Новые заказы
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" x-model="newSub.notify_status" class="rounded border-gray-300 text-indigo-600">
+                        Смена статуса
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" x-model="newSub.notify_cancel" class="rounded border-gray-300 text-indigo-600">
+                        Отмены
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-4 mb-3">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" x-model="newSub.daily_summary" class="rounded border-gray-300 text-indigo-600">
+                        Дневной отчёт
+                    </label>
+                    <template x-if="newSub.daily_summary">
+                        <input type="time" x-model="newSub.summary_time"
+                               class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    </template>
+                </div>
+
+                <button @click="createSubscription()"
+                        :disabled="subSaving"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                    <span x-show="!subSaving">Добавить подписку</span>
+                    <span x-show="subSaving">Сохранение...</span>
+                </button>
+            </div>
+
+            {{-- Список подписок --}}
+            <div class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
+                <template x-if="subscriptions.length === 0">
+                    <p class="text-sm text-gray-500 py-4 text-center">Подписок пока нет</p>
+                </template>
+                <template x-for="sub in subscriptions" :key="sub.id">
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-medium text-gray-900" x-text="getMarketplaceName(sub.marketplace)"></span>
+                                <template x-if="sub.account">
+                                    <span class="text-sm text-gray-500" x-text="'· ' + sub.account.name"></span>
+                                </template>
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                <span x-show="sub.notify_new" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">Новые</span>
+                                <span x-show="sub.notify_status" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">Статусы</span>
+                                <span x-show="sub.notify_cancel" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-red-100 text-red-700">Отмены</span>
+                                <span x-show="sub.daily_summary" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-700" x-text="'Отчёт ' + (sub.summary_time || '')"></span>
+                            </div>
+                        </div>
+                        <button @click="deleteSubscription(sub.id)"
+                                class="ml-3 p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Тестовое уведомление --}}
+        <div class="mt-6 bg-white border border-gray-200 rounded-lg p-4">
+            <h4 class="text-md font-semibold text-gray-900 mb-3">Тестирование</h4>
+            <button @click="sendTestNotification()"
+                    :disabled="testSending"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50">
+                <span x-show="!testSending">Отправить тестовое уведомление</span>
+                <span x-show="testSending">Отправка...</span>
+            </button>
+            <template x-if="testResult">
+                <p class="mt-2 text-sm" :class="testResult.success ? 'text-green-600' : 'text-red-600'" x-text="testResult.message"></p>
+            </template>
+        </div>
     </div>
 </div>
 
@@ -312,6 +423,27 @@ function telegramSettings() {
         showLinkCodeModal: false,
         linkCode: '',
         botUsername: '{{ config("telegram.bot_username") }}',
+        accounts: [],
+        subscriptions: [],
+        subSaving: false,
+        testSending: false,
+        testResult: null,
+        newSub: {
+            marketplace: '',
+            marketplace_account_id: '',
+            notify_new: true,
+            notify_status: true,
+            notify_cancel: true,
+            daily_summary: false,
+            summary_time: '20:00',
+        },
+
+        get filteredAccounts() {
+            if (!this.newSub.marketplace) return this.accounts;
+            const mpMap = { 'uzum': 'uzum', 'wb': 'wildberries', 'ozon': 'ozon', 'ym': 'yandex_market' };
+            const mp = mpMap[this.newSub.marketplace] || this.newSub.marketplace;
+            return this.accounts.filter(a => a.marketplace === mp || a.marketplace === this.newSub.marketplace);
+        },
 
         getToken() {
             const t = localStorage.getItem('_x_auth_token');
@@ -322,6 +454,8 @@ function telegramSettings() {
             await this.loadStatus();
             if (this.connected) {
                 await this.loadSettings();
+                await this.loadAccounts();
+                await this.loadSubscriptions();
             }
         },
 
@@ -421,6 +555,96 @@ function telegramSettings() {
                 console.error('Failed to update settings:', error);
                 alert('Ошибка сохранения настроек');
             }
+        },
+
+        async loadAccounts() {
+            try {
+                const res = await fetch('/api/marketplace/accounts', {
+                    headers: { 'Authorization': `Bearer ${this.getToken()}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.accounts = data.data || data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        },
+
+        async loadSubscriptions() {
+            try {
+                const res = await fetch('/api/telegram/subscriptions', {
+                    headers: { 'Authorization': `Bearer ${this.getToken()}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.subscriptions = data.data || data || [];
+                }
+            } catch (e) {
+                console.error('Failed to load subscriptions:', e);
+            }
+        },
+
+        async createSubscription() {
+            this.subSaving = true;
+            try {
+                const res = await fetch('/api/telegram/subscriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.getToken()}`,
+                    },
+                    body: JSON.stringify(this.newSub),
+                });
+                if (res.ok) {
+                    await this.loadSubscriptions();
+                    this.newSub = { marketplace: '', marketplace_account_id: '', notify_new: true, notify_status: true, notify_cancel: true, daily_summary: false, summary_time: '20:00' };
+                    alert('Подписка добавлена');
+                } else {
+                    const data = await res.json();
+                    alert(data.message || 'Ошибка создания подписки');
+                }
+            } catch (e) {
+                alert('Ошибка создания подписки');
+            }
+            this.subSaving = false;
+        },
+
+        async deleteSubscription(id) {
+            if (!confirm('Удалить подписку?')) return;
+            try {
+                await fetch(`/api/telegram/subscriptions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${this.getToken()}` },
+                });
+                this.subscriptions = this.subscriptions.filter(s => s.id !== id);
+            } catch (e) {
+                alert('Ошибка удаления');
+            }
+        },
+
+        async sendTestNotification() {
+            this.testSending = true;
+            this.testResult = null;
+            try {
+                const res = await fetch('/api/telegram/test-notification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.getToken()}`,
+                    },
+                });
+                const data = await res.json();
+                this.testResult = { success: res.ok, message: data.message || (res.ok ? 'Отправлено!' : 'Ошибка') };
+            } catch (e) {
+                this.testResult = { success: false, message: 'Ошибка отправки' };
+            }
+            this.testSending = false;
+        },
+
+        getMarketplaceName(mp) {
+            const names = { 'uzum': 'Uzum Market', 'wb': 'Wildberries', 'ozon': 'Ozon', 'ym': 'Yandex Market' };
+            return names[mp] || mp || 'Все маркетплейсы';
         },
     };
 }

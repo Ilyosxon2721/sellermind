@@ -32,6 +32,7 @@ class YandexMarketOrderObserver
             totalAmount: (float) ($order->total_price ?? 0),
             currency: $order->currency ?? 'RUB',
         );
+        $this->notifySubscribers($order, 'ym', $order->status_normalized ?? $order->status ?? 'new');
     }
 
     /**
@@ -44,6 +45,11 @@ class YandexMarketOrderObserver
         // Only broadcast if important fields changed
         if ($order->wasChanged(['status', 'substatus', 'total_price'])) {
             $this->safeBroadcast($order);
+        }
+
+        // Уведомить подписчиков при смене статуса
+        if ($order->wasChanged('status')) {
+            $this->notifySubscribers($order, 'ym', $order->status_normalized ?? $order->status ?? 'updated');
         }
     }
 

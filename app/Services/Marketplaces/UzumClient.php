@@ -922,6 +922,8 @@ final class UzumClient implements MarketplaceClientInterface
                 try {
                     $stopStatus = false;
                     do {
+                        // Без scheme — API возвращает все заказы (FBS + DBS),
+                        // scheme сохраняется в raw_payload каждого заказа
                         $query = [
                             'page' => $page,
                             'size' => $size,
@@ -1276,10 +1278,10 @@ final class UzumClient implements MarketplaceClientInterface
         foreach ($params as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $item) {
-                    $parts[] = rawurlencode($key).'='.rawurlencode($item);
+                    $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $item);
                 }
             } else {
-                $parts[] = rawurlencode($key).'='.rawurlencode($value);
+                $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $value);
             }
         }
 

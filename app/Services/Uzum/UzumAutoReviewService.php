@@ -29,7 +29,7 @@ final class UzumAutoReviewService
     public function processAccount(MarketplaceAccount $account): array
     {
         $stats = ['processed' => 0, 'replied' => 0, 'skipped' => 0, 'errors' => 0];
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             Log::warning("UzumAutoReview: нет токена для аккаунта #{$account->id}");
@@ -44,7 +44,7 @@ final class UzumAutoReviewService
                 'size' => 20,
             ]);
 
-            $response = Http::withToken($token)->timeout(30)->post($url, (object) []);
+            $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->post($url, (object) []);
 
             if (! $response->successful()) {
                 break;
@@ -127,7 +127,7 @@ final class UzumAutoReviewService
         }
 
         // Отправляем ответ на отзыв
-        $sendResponse = Http::withToken($token)->timeout(30)->post(
+        $sendResponse = Http::withHeaders(['Authorization' => $token])->timeout(30)->post(
             'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
             [['reviewId' => $reviewId, 'content' => $replyText]]
         );

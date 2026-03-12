@@ -606,6 +606,15 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.uzum-orders');
 
+    // Uzum Reviews
+    Route::get('/marketplace/{accountId}/uzum-reviews', function ($accountId) {
+        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+        return view('pages.marketplace.uzum-reviews', [
+            'accountId' => $accountId,
+            'accountName' => $account->name,
+        ]);
+    })->name('marketplace.uzum-reviews');
+
     // Ozon Settings
     Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {
         return view('pages.marketplace.ozon-settings', ['accountId' => $accountId]);

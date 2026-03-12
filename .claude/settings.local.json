@@ -47,7 +47,11 @@
       "Bash(grep -n \"telegram_chat_id\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*.php)",
       "WebFetch(domain:yandex.ru)",
       "WebSearch",
-      "WebFetch(domain:docs.ozon.ru)"
+      "WebFetch(domain:docs.ozon.ru)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -r \"TelegramLinkCode\\\\|telegram_link_codes\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
+      "Bash(grep -r \"UserNotificationSettings\\\\|user_notification_settings\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)"
     ]
   }
 }

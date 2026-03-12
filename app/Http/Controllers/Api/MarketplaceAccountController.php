@@ -151,10 +151,10 @@ class MarketplaceAccountController extends Controller
                 $existing->wb_statistics_token = $creds['wb_statistics_token'] ?? null;
             }
 
-            // For Uzum: save API token to dedicated field
+            // For Uzum: save API token to api_key field
             if ($request->marketplace === 'uzum') {
                 $creds = $request->credentials;
-                $existing->uzum_api_key = $creds['api_token'] ?? null;
+                $existing->api_key = $creds['api_token'] ?? null;
             }
 
             $existing->save();
@@ -213,10 +213,10 @@ class MarketplaceAccountController extends Controller
             $accountData['wb_statistics_token'] = $creds['wb_statistics_token'] ?? null;
         }
 
-        // For Uzum: save API token to dedicated field
+        // For Uzum: save API token to api_key field
         if ($request->marketplace === 'uzum') {
             $creds = $request->credentials;
-            $accountData['uzum_api_key'] = $creds['api_token'] ?? null;
+            $accountData['api_key'] = $creds['api_token'] ?? null;
         }
 
         $account = MarketplaceAccount::create($accountData);
@@ -439,7 +439,7 @@ class MarketplaceAccountController extends Controller
         $masked = [];
         $sensitiveFields = [
             'api_key', 'api_token', 'oauth_token', 'oauth_refresh_token',
-            'client_secret', 'uzum_api_key', 'uzum_access_token', 'uzum_refresh_token',
+            'client_secret', 'uzum_access_token', 'uzum_refresh_token',
             'uzum_client_secret', 'wb_content_token', 'wb_marketplace_token',
             'wb_prices_token', 'wb_statistics_token',
         ];
@@ -485,7 +485,7 @@ class MarketplaceAccountController extends Controller
                 break;
 
             case 'uzum':
-                $display[] = ['label' => 'API Token', 'value' => $account->uzum_access_token || $account->uzum_api_key || $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
+                $display[] = ['label' => 'API Token', 'value' => $account->uzum_access_token || $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
                 $shops = $account->credentials_json['shop_ids'] ?? $account->getDecryptedCredentials()['shop_ids'] ?? [];
                 $display[] = ['label' => 'Shop IDs', 'value' => ! empty($shops) ? implode(', ', (array) $shops) : '❌ Не настроены'];
                 break;

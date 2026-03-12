@@ -1144,7 +1144,7 @@ class ProcessRismentQueues extends Command
                     // Uzum-специфичные
                     'uzum_client_id' => $credentials['uzum_client_id'] ?? null,
                     'uzum_client_secret' => ! empty($credentials['uzum_client_secret']) ? encrypt($credentials['uzum_client_secret']) : null,
-                    'uzum_api_key' => ! empty($credentials['uzum_api_key']) ? encrypt($credentials['uzum_api_key']) : null,
+                    'api_key' => ! empty($credentials['uzum_api_key']) ? $credentials['uzum_api_key'] : null,
                 ], fn ($v) => $v !== null)
             );
 

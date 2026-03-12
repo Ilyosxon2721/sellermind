@@ -33,16 +33,16 @@ class UzumUpdateToken extends Command
         $this->info("Обновляем токен для аккаунта #{$account->id} ({$account->name})");
 
         // Show old token info
-        $oldToken = $account->uzum_api_key;
+        $oldToken = $account->api_key;
         $this->line('Старый токен: '.($oldToken ? substr($oldToken, 0, 20).'...' : 'NULL'));
 
-        // Update token (setter will encrypt automatically)
-        $account->uzum_api_key = $newToken;
+        // Update token
+        $account->api_key = $newToken;
         $account->save();
 
         // Verify update
         $account->refresh();
-        $verifyToken = $account->uzum_api_key;
+        $verifyToken = $account->api_key;
 
         $this->info('Новый токен сохранён: '.substr($verifyToken, 0, 20).'...');
 

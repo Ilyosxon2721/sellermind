@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Models\TelegramLinkCode;
+use App\Models\TelegramSubscription;
 use App\Models\User;
 use App\Models\UserNotificationSetting;
+use App\Telegram\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -223,5 +225,95 @@ class TelegramController extends Controller
         }
 
         return response()->json($settings);
+    }
+
+    /**
+     * Список подписок пользователя
+     */
+    public function listSubscriptions(Request $request): JsonResponse
+    {
+        $subscriptions = TelegramSubscription::where('user_id', $request->user()->id)
+            ->with('account:id,name,marketplace')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $subscriptions]);
+    }
+
+    /**
+     * Создать подписку на уведомления
+     */
+    public function createSubscription(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (empty($user->telegram_id)) {
+            return response()->json(['message' => 'Сначала привяжите Telegram'], 422);
+        }
+
+        $validated = $request->validate([
+            'marketplace' => 'nullable|string|in:uzum,wb,ozon,ym',
+            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
+            'notify_new' => 'boolean',
+            'notify_status' => 'boolean',
+            'notify_cancel' => 'boolean',
+            'daily_summary' => 'boolean',
+            'summary_time' => 'nullable|date_format:H:i',
+        ]);
+
+        $subscription = TelegramSubscription::create([
+            'user_id' => $user->id,
+            'chat_id' => $user->telegram_id,
+            'marketplace' => $validated['marketplace'] ?: null,
+            'marketplace_account_id' => $validated['marketplace_account_id'] ?: null,
+            'notify_new' => $validated['notify_new'] ?? true,
+            'notify_status' => $validated['notify_status'] ?? true,
+            'notify_cancel' => $validated['notify_cancel'] ?? true,
+            'daily_summary' => $validated['daily_summary'] ?? false,
+            'summary_time' => $validated['daily_summary'] ?? false ? ($validated['summary_time'] ?? '20:00') : null,
+        ]);
+
+        return response()->json([
+            'message' => 'Подписка создана',
+            'data' => $subscription->load('account:id,name,marketplace'),
+        ], 201);
+    }
+
+    /**
+     * Удалить подписку
+     */
+    public function deleteSubscription(Request $request, int $id): JsonResponse
+    {
+        $subscription = TelegramSubscription::where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $subscription->delete();
+
+        return response()->json(['message' => 'Подписка удалена']);
+    }
+
+    /**
+     * Отправить тестовое уведомление
+     */
+    public function sendTestNotification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (empty($user->telegram_id)) {
+            return response()->json(['message' => 'Telegram не привязан'], 422);
+        }
+
+        try {
+            $telegram = app(TelegramService::class);
+            $telegram->sendMessage(
+                $user->telegram_id,
+                "🧪 <b>Тестовое уведомление</b>\n\nSellerMind успешно подключён!\nУведомления о заказах будут приходить сюда.",
+                ['parse_mode' => 'HTML'],
+            );
+
+            return response()->json(['message' => 'Тестовое уведомление отправлено']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Ошибка: '.$e->getMessage()], 500);
+        }
     }
 }

@@ -205,6 +205,12 @@ Route::middleware('auth.any')->group(function () {
         Route::post('accounts/generate-link-code', [TelegramController::class, 'generateAccountLinkCode']);
         Route::get('accounts/{accountId}/status', [TelegramController::class, 'getAccountTelegramStatus']);
         Route::post('accounts/{accountId}/disconnect', [TelegramController::class, 'disconnectAccountTelegram']);
+
+        // Подписки на уведомления о заказах
+        Route::get('subscriptions', [TelegramController::class, 'listSubscriptions']);
+        Route::post('subscriptions', [TelegramController::class, 'createSubscription']);
+        Route::delete('subscriptions/{id}', [TelegramController::class, 'deleteSubscription']);
+        Route::post('test-notification', [TelegramController::class, 'sendTestNotification']);
     });
 
     // Web Push Notifications (подписка/отписка требуют авторизации)
@@ -583,6 +589,9 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/settings', [UzumSettingsController::class, 'update']);
             Route::post('accounts/{account}/test', [UzumSettingsController::class, 'test']);
             Route::get('accounts/{account}/shops', [UzumSettingsController::class, 'shops']);
+            Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewsController::class, 'index']);
+            Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewsController::class, 'reply']);
+            Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewsController::class, 'aiReply']);
         });
 
         // Yandex Market
