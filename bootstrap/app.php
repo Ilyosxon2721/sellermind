@@ -31,7 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add locale middleware to appropriate groups
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\DetectPwaMode::class,
         ]);
 
         $middleware->api(append: [

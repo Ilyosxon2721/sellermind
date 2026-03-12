@@ -23,49 +23,8 @@
     <!-- Robots (noindex for internal app pages) -->
     <meta name="robots" content="noindex, nofollow">
 
-    <!-- PWA Meta Tags -->
+    <!-- Mobile -->
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SellerMind">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/build/manifest.webmanifest">
-
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/images/icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="/images/icons/icon-192x192.png">
-
-    <!-- iOS Splash Screens -->
-    <!-- iPhone SE, iPod touch -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPhone 8, 7, 6s, 6 -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPhone 8 Plus, 7 Plus, 6s Plus, 6 Plus -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone X, XS, 11 Pro, 12 mini, 13 mini -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone XR, 11 -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPhone XS Max, 11 Pro Max -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone 12, 12 Pro, 13, 13 Pro, 14 -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone 12 Pro Max, 13 Pro Max, 14 Plus -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone 14 Pro -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPhone 14 Pro Max, 15 Plus, 15 Pro Max -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
-    <!-- iPad Mini, Air -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPad Pro 10.5" -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1668x2224.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPad Pro 11" -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)">
-    <!-- iPad Pro 12.9" -->
-    <link rel="apple-touch-startup-image" href="/images/splash/apple-splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-72x72.png">
@@ -93,29 +52,10 @@
         .min-h-screen { min-height: 100vh; }
         .bg-gray-50 { background-color: #f9fafb; }
         [x-cloak] { display: none !important; }
-        /* PWA/Browser mode visibility - critical for preventing flash */
-        .pwa-only { display: none !important; }
-        .pwa-mode .pwa-only { display: block !important; }
-        .pwa-mode .browser-only { display: none !important; }
-        .browser-mode .browser-only { display: flex !important; }
     </style>
 
-    <!-- Early PWA detection to prevent flash of wrong content -->
-    <script>
-        (function() {
-            var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-            var isIOSStandalone = window.navigator.standalone === true;
-            if (isStandalone || isIOSStandalone) {
-                document.documentElement.classList.add('pwa-mode');
-            } else {
-                document.documentElement.classList.add('browser-mode');
-            }
-            window.isPWAInstalled = isStandalone || isIOSStandalone;
-        })();
-    </script>
-
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js', 'resources/js/pwa/auth.js', 'resources/js/pwa/haptic.js', 'resources/js/pwa/cache.js', 'resources/js/pwa/offline.js', 'resources/js/pwa/background-sync.js', 'resources/js/pwa/badge.js', 'resources/js/pwa/push.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
@@ -155,18 +95,10 @@
     </script>
 </head>
 <body class="bg-gray-50">
-    <!-- Splash Screen (PWA only) -->
-    <x-splash-screen />
-
-    <!-- PIN Screen (PWA only, shows if PIN is set) -->
-    @auth
-    <x-pin-screen />
-    @endauth
-
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         <!-- Hamburger Menu & Sidebar Overlay (Mobile Only) -->
         <x-hamburger-menu />
-        
+
         @yield('content')
     </div>
 
@@ -179,35 +111,6 @@
     <!-- Loading Overlay -->
     <x-loading-overlay />
 
-    <!-- Offline Indicator -->
-    <x-offline-indicator />
-
-    <!-- Bottom Tab Navigation (PWA only, mobile/tablet) -->
-    @auth
-    <x-bottom-tab-nav />
-    @endauth
-
-    <!-- Global Action Sheet -->
-    <x-global-action-sheet />
-
-    <!-- PWA More Menu (triggered from tabbar) -->
-    @auth
-    <x-pwa.more-menu />
-    @endauth
-
-    <!-- PWA Tab Bar (standalone PWA mode only) -->
-    @auth
-    <x-pwa-tab-bar />
-    @endauth
-
-    <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
-    @vite('resources/js/pwa.js')
-
-    <!-- PWA Install Banner -->
-    <x-pwa-install-banner />
-
-    <!-- PWA Update Banner -->
-    <x-pwa-update-banner />
     {{-- Chart.js для страниц с графиками --}}
     @stack('scripts')
 </body>
