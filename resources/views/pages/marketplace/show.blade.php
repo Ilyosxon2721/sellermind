@@ -364,10 +364,7 @@
              setTimeout(() => toast.remove(), 4000);
          }
      }"
-     class="flex h-screen bg-gray-100" :class="[getBrandClass(), {
-         'flex-row': $store.ui.navPosition === 'left',
-         'flex-row-reverse': $store.ui.navPosition === 'right'
-     }]">
+     class="flex h-screen bg-gray-100" :class="getBrandClass() + ($store.ui.navPosition === 'right' ? ' flex-row-reverse' : ' flex-row')">
 
     <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
         <x-sidebar />
