@@ -1386,97 +1386,211 @@ class FinanceController extends Controller
         $marketplaces = [];
 
         // ========== UZUM ==========
+        // Используем ту же логику что и SalesController:
+        // 1. Приоритет — UzumFinanceOrder (FBO/FBS/DBS/EDBS — полные данные)
+        // 2. Fallback — UzumOrder (FBS — оперативные), исключая дубликаты
+        //
+        // Статусы UzumFinanceOrder:
+        //   TO_WITHDRAW / (PROCESSING + date_issued) → sold (продано)
+        //   PROCESSING + date_issued NULL → transit (в пути)
+        //   CANCELED + date_issued → returned (возврат после выкупа)
+        //   CANCELED + date_issued NULL → cancelled (отмена до выкупа)
         try {
+            $ordersCount = 0;
+            $ordersAmount = 0;
+            $soldCount = 0;
+            $soldAmount = 0;
+            $returnsCount = 0;
+            $returnsAmount = 0;
+            $cancelledCount = 0;
+            $cancelledAmount = 0;
+            $financeOrderNumbers = [];
+
+            // 1. UzumFinanceOrder — основной источник
+            $hasFinanceOrders = class_exists(\App\Models\UzumFinanceOrder::class)
+                && \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
+
+            if ($hasFinanceOrders) {
+                // Базовый запрос с фильтрацией по дате (как в SalesController)
+                $finQuery = fn () => \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->where(function ($q) use ($from, $to) {
+                        // Заказы с date_issued — фильтруем по date_issued
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        // Заказы без date_issued — фильтруем по order_date
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    });
+
+                // Все заказы
+                $finAll = $finQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $ordersCount += (int) ($finAll?->cnt ?? 0);
+                $ordersAmount += (float) ($finAll?->total_amount ?? 0);
+
+                // Продано: TO_WITHDRAW или (PROCESSING + date_issued NOT NULL)
+                $finSold = $finQuery()
+                    ->where(function ($q) {
+                        $q->where('status', 'TO_WITHDRAW')
+                            ->orWhere(function ($sub) {
+                                $sub->where('status', 'PROCESSING')
+                                    ->whereNotNull('date_issued');
+                            });
+                    })
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $soldCount += (int) ($finSold?->cnt ?? 0);
+                $soldAmount += (float) ($finSold?->total_amount ?? 0);
+
+                // Возвраты: CANCELED + date_issued NOT NULL (возврат после выкупа)
+                $finReturns = $finQuery()
+                    ->where('status', 'CANCELED')
+                    ->whereNotNull('date_issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $returnsCount += (int) ($finReturns?->cnt ?? 0);
+                $returnsAmount += (float) ($finReturns?->total_amount ?? 0);
+
+                // Отменённые: CANCELED + date_issued NULL (отмена до выкупа)
+                $finCancelled = $finQuery()
+                    ->where('status', 'CANCELED')
+                    ->whereNull('date_issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $cancelledCount += (int) ($finCancelled?->cnt ?? 0);
+                $cancelledAmount += (float) ($finCancelled?->total_amount ?? 0);
+
+                // Собираем order_number для дедупликации с UzumOrder
+                $financeOrderNumbers = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->where(function ($q) use ($from, $to) {
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->pluck('order_number')
+                    ->filter()
+                    ->toArray();
+            }
+
+            // 2. UzumOrder — дополнительный источник (исключая дубликаты)
             if (class_exists(\App\Models\UzumOrder::class)) {
                 $uzumQuery = fn () => \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to);
+                    ->whereDate('ordered_at', '<=', $to)
+                    ->when(! empty($financeOrderNumbers), fn ($q) => $q->whereNotIn('external_order_id', $financeOrderNumbers));
 
-                // Все заказы (независимо от типа доставки)
-                $uzumAll = $uzumQuery()
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzAll = $uzumQuery()->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $ordersCount += (int) ($uzAll?->cnt ?? 0);
+                $ordersAmount += (float) ($uzAll?->amount ?? 0);
 
-                // Проданные (issued = доставлено клиенту)
-                $uzumSold = $uzumQuery()
-                    ->where('status', 'issued')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzSold = $uzumQuery()->where('status', 'issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $soldCount += (int) ($uzSold?->cnt ?? 0);
+                $soldAmount += (float) ($uzSold?->amount ?? 0);
 
-                // Возвраты
-                $uzumReturns = $uzumQuery()
-                    ->where('status', 'returns')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzReturns = $uzumQuery()->where('status', 'returns')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $returnsCount += (int) ($uzReturns?->cnt ?? 0);
+                $returnsAmount += (float) ($uzReturns?->amount ?? 0);
 
-                // Отменённые
-                $uzumCancelled = $uzumQuery()
-                    ->where('status', 'cancelled')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
-
-                $ordersCount = (int) ($uzumAll?->cnt ?? 0);
-                $ordersAmount = (float) ($uzumAll?->amount ?? 0);
-                $soldCount = (int) ($uzumSold?->cnt ?? 0);
-                $soldAmount = (float) ($uzumSold?->amount ?? 0);
-                $returnsCount = (int) ($uzumReturns?->cnt ?? 0);
-                $returnsAmount = (float) ($uzumReturns?->amount ?? 0);
-                $cancelledCount = (int) ($uzumCancelled?->cnt ?? 0);
-                $cancelledAmount = (float) ($uzumCancelled?->amount ?? 0);
-
-                $marketplaces['uzum'] = [
-                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
-                    'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
-                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
-                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
-                    'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
-                    'currency' => 'UZS',
-                ];
-
-                // Добавляем к итогам (Uzum уже в UZS)
-                $totals['orders']['count'] += $ordersCount;
-                $totals['orders']['amount'] += $ordersAmount;
-                $totals['sold']['count'] += $soldCount;
-                $totals['sold']['amount'] += $soldAmount;
-                $totals['returns']['count'] += $returnsCount;
-                $totals['returns']['amount'] += $returnsAmount;
-                $totals['cancelled']['count'] += $cancelledCount;
-                $totals['cancelled']['amount'] += $cancelledAmount;
+                $uzCancelled = $uzumQuery()->where('status', 'cancelled')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $cancelledCount += (int) ($uzCancelled?->cnt ?? 0);
+                $cancelledAmount += (float) ($uzCancelled?->amount ?? 0);
             }
+
+            $marketplaces['uzum'] = [
+                'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
+                'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
+                'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
+                'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
+                'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
+                'currency' => 'UZS',
+            ];
+
+            // Добавляем к итогам (Uzum уже в UZS)
+            $totals['orders']['count'] += $ordersCount;
+            $totals['orders']['amount'] += $ordersAmount;
+            $totals['sold']['count'] += $soldCount;
+            $totals['sold']['amount'] += $soldAmount;
+            $totals['returns']['count'] += $returnsCount;
+            $totals['returns']['amount'] += $returnsAmount;
+            $totals['cancelled']['count'] += $cancelledCount;
+            $totals['cancelled']['amount'] += $cancelledAmount;
         } catch (\Exception $e) {
+            \Log::error('marketplaceIncome Uzum error', ['error' => $e->getMessage()]);
             $marketplaces['uzum'] = ['error' => $e->getMessage()];
         }
 
         // ========== WILDBERRIES ==========
+        // Используем ту же логику что и SalesController:
+        // Продажи (is_realization=true, is_cancel=false) → фильтр по last_change_date
+        // Возвраты (is_realization=true, is_cancel=true) → фильтр по last_change_date
+        // В транзите (is_realization=false, is_cancel=false) → фильтр по order_date
+        // Отмены (is_realization=false, is_cancel=true) → фильтр по order_date
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbQuery = fn () => \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to);
+                $amountExpr = 'COALESCE(for_pay, finished_price, total_price, 0)';
+                $wbBase = fn () => \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId));
 
-                // Все заказы
-                $wbAll = $wbQuery()
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                // Все заказы (с учётом разных дат по статусу)
+                $wbAll = $wbBase()
+                    ->where(function ($q) use ($from, $to) {
+                        // Продажи/возвраты → last_change_date
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->where('is_realization', true)
+                                ->whereDate('last_change_date', '>=', $from)
+                                ->whereDate('last_change_date', '<=', $to);
+                        })
+                        // В транзите/отмены → order_date
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->where('is_realization', false)
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
-                // Проданные (is_realization=true, не отменённые, не возвраты)
-                $wbSold = $wbQuery()
+                // Проданные: is_realization=true AND is_cancel=false → last_change_date
+                $wbSold = $wbBase()
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
-                    ->where('is_return', false)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->whereDate('last_change_date', '>=', $from)
+                    ->whereDate('last_change_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
-                // Возвраты
-                $wbReturns = $wbQuery()
-                    ->where('is_return', true)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
-                    ->first();
-
-                // Отменённые
-                $wbCancelled = $wbQuery()
+                // Возвраты: is_realization=true AND is_cancel=true → last_change_date
+                $wbReturns = $wbBase()
+                    ->where('is_realization', true)
                     ->where('is_cancel', true)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->whereDate('last_change_date', '>=', $from)
+                    ->whereDate('last_change_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
+                    ->first();
+
+                // Отменённые: is_realization=false AND is_cancel=true → order_date
+                $wbCancelled = $wbBase()
+                    ->where('is_realization', false)
+                    ->where('is_cancel', true)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
                 $ordersCount = (int) ($wbAll?->cnt ?? 0);
