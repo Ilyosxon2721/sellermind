@@ -124,73 +124,74 @@
                 </div>
             </div>
 
-            {{-- Main Stats Cards --}}
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {{-- Main Stats Cards - горизонтальная прокрутка на мобильных --}}
+            <div class="flex md:grid md:grid-cols-5 gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible scrollbar-hide snap-x snap-mandatory">
                 {{-- Продажи (Доход) --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-200 flex items-center space-x-4 transition-all duration-300"
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-green-200 flex items-center space-x-3 transition-all duration-300 min-w-[200px] md:min-w-0 snap-start shrink-0 md:shrink"
                      :class="{ 'sm-stat-update': _statsChanged }">
-                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-green-600" x-text="formatMoney(stats.salesAmount || stats.totalRevenue)">0 сум</div>
-                        <div class="text-sm text-gray-500">Продажи (доход)</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-green-600 truncate" x-text="formatMoney(stats.salesAmount || stats.totalRevenue)">0 сум</div>
+                        <div class="text-xs text-gray-500">Продажи (доход)</div>
                         <div class="text-xs text-green-600" x-text="(stats.salesCount || 0) + ' заказов'"></div>
                     </div>
                 </div>
                 {{-- В транзите --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-yellow-200 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-yellow-200 flex items-center space-x-3 min-w-[200px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-yellow-600" x-text="formatMoney(stats.transitAmount || 0)">0 сум</div>
-                        <div class="text-sm text-gray-500">В транзите</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-yellow-600 truncate" x-text="formatMoney(stats.transitAmount || 0)">0 сум</div>
+                        <div class="text-xs text-gray-500">В транзите</div>
                         <div class="text-xs text-yellow-600" x-text="(stats.transitCount || 0) + ' заказов'"></div>
                     </div>
                 </div>
                 {{-- Всего заказов --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-3 min-w-[160px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
-                        <div class="text-sm text-gray-500">Всего заказов</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
+                        <div class="text-xs text-gray-500">Всего заказов</div>
                     </div>
                 </div>
                 {{-- Отменено --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-red-100 flex items-center space-x-3 min-w-[180px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-red-600" x-text="stats.cancelledOrders || 0">0</div>
-                        <div class="text-sm text-gray-500">Отменено</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-red-600" x-text="stats.cancelledOrders || 0">0</div>
+                        <div class="text-xs text-gray-500">Отменено</div>
                         <div class="text-xs text-red-500" x-show="stats.cancelledAmount > 0" x-text="'-' + formatMoney(stats.cancelledAmount)"></div>
                     </div>
                 </div>
                 {{-- Средний чек --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-3 min-w-[180px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
-                        <div class="text-sm text-gray-500">Средний чек</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-gray-900 truncate" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
+                        <div class="text-xs text-gray-500">Средний чек</div>
                     </div>
                 </div>
             </div>
+            <style>.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}</style>
 
             {{-- Marketplace Stats --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-show="stats.byMarketplace && stats.byMarketplace.length > 0">
