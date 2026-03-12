@@ -98,9 +98,11 @@
          activeTab: 'overview',
          getToken() {
              // Try Alpine store first
-             if (this.$store.auth.token) {
-                 return this.$store.auth.token;
-             }
+             try {
+                 if (this.$store?.auth?.token) {
+                     return this.$store.auth.token;
+                 }
+             } catch (e) {}
              // Try Alpine persist format
              const persistToken = localStorage.getItem('_x_auth_token');
              if (persistToken) {
@@ -158,14 +160,28 @@
          async init() {
              await this.$nextTick();
 
-             const token = this.getToken();
+             // Подождать пока токен станет доступен (Alpine persist может инициализироваться с задержкой)
+             let token = this.getToken();
              if (!token) {
+                 await new Promise(r => setTimeout(r, 200));
+                 token = this.getToken();
+             }
+             if (!token) {
+                 await new Promise(r => setTimeout(r, 500));
+                 token = this.getToken();
+             }
+             if (!token) {
+                 console.error('No auth token found, redirecting to login');
                  window.location.href = '/login';
                  return;
              }
-             await this.loadAccount();
-             await this.loadLogs();
-             this.connectSse();
+             try {
+                 await this.loadAccount();
+                 await this.loadLogs();
+                 this.connectSse();
+             } catch (e) {
+                 console.error('Marketplace show init error:', e);
+             }
          },
          async loadAccount() {
              const res = await fetch('/api/marketplace/accounts/{{ $accountId }}', {
@@ -682,7 +698,7 @@
          syncing: { all: false },
          activeTab: 'overview',
          getToken() {
-             if (this.$store.auth.token) return this.$store.auth.token;
+             try { if (this.$store?.auth?.token) return this.$store.auth.token; } catch(e) {}
              const persistToken = localStorage.getItem('_x_auth_token');
              if (persistToken) {
                  try { return JSON.parse(persistToken); } catch (e) { return persistToken; }
