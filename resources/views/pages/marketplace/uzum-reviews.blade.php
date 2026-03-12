@@ -14,6 +14,7 @@
     .uzum-bg-rose { background-color: #F4488D; }
     .uzum-btn { background: linear-gradient(135deg, #3A007D 0%, #F4488D 100%); color: white; }
     .uzum-btn:hover { filter: brightness(1.1); }
+    .uzum-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
     .uzum-btn-outline { border: 2px solid #3A007D; color: #3A007D; }
     .uzum-btn-outline:hover { background-color: #3A007D; color: white; }
     .uzum-tab-active {
@@ -90,8 +91,8 @@
                         </div>
                     </div>
 
-                    <!-- Stats + Refresh -->
-                    <div class="flex items-center space-x-3">
+                    <!-- Stats + Refresh (only when authenticated) -->
+                    <div x-show="authenticated" class="flex items-center space-x-3">
                         <!-- Summary Stats -->
                         <div x-show="!loading && stats.total > 0" class="hidden md:flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-xl text-sm">
                             <div class="flex items-center space-x-1">
@@ -120,12 +121,19 @@
                             </svg>
                             <span x-text="loading ? 'Загрузка...' : 'Обновить'"></span>
                         </button>
+
+                        <!-- Disconnect -->
+                        <button @click="disconnect()" class="text-sm text-gray-400 hover:text-red-500 transition" title="Отключить аккаунт Uzum">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Filter Tabs -->
-            <div class="px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50">
+            <!-- Filter Tabs (only when authenticated) -->
+            <div x-show="authenticated" class="px-6 flex items-center space-x-1 border-t border-gray-100 bg-gray-50/50">
                 <button @click="setFilter('unanswered')"
                         class="px-5 py-3.5 text-sm font-medium border-b-2 transition whitespace-nowrap"
                         :class="filter === 'unanswered' ? 'uzum-tab-active' : 'uzum-tab'">
@@ -156,8 +164,106 @@
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto p-6">
 
-            <!-- Loading Skeleton -->
-            <div x-show="loading && reviews.length === 0" class="max-w-4xl mx-auto space-y-4">
+            <!-- Checking Auth -->
+            <div x-show="checking" class="max-w-md mx-auto mt-12 flex justify-center">
+                <svg class="animate-spin h-8 w-8 text-[#3A007D]" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+
+            <!-- Auth Form (shown when not authenticated) -->
+            <div x-show="!checking && !authenticated" class="max-w-md mx-auto mt-8">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <!-- Auth Header -->
+                    <div class="uzum-gradient px-6 py-5 text-center">
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-white font-bold text-lg">Авторизация Uzum Seller</h2>
+                        <p class="text-white/70 text-sm mt-1">Для доступа к отзывам войдите в аккаунт продавца</p>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex border-b border-gray-200">
+                        <button @click="authTab = 'login'"
+                                class="flex-1 py-3 px-4 text-sm transition-colors border-b-2"
+                                :class="authTab === 'login' ? 'uzum-tab-active' : 'uzum-tab'">
+                            Логин / Пароль
+                        </button>
+                        <button @click="authTab = 'token'"
+                                class="flex-1 py-3 px-4 text-sm transition-colors border-b-2"
+                                :class="authTab === 'token' ? 'uzum-tab-active' : 'uzum-tab'">
+                            Вставить токен
+                        </button>
+                    </div>
+
+                    <div class="p-6">
+                        <!-- Error message -->
+                        <div x-show="authError" x-cloak class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700" x-text="authError"></div>
+
+                        <!-- Login/Password tab -->
+                        <div x-show="authTab === 'login'">
+                            <form @submit.prevent="doLogin()">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Email или логин</label>
+                                        <input type="text" x-model="loginForm.login" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-transparent text-sm"
+                                               placeholder="email@example.com">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+                                        <input type="password" x-model="loginForm.password" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-transparent text-sm"
+                                               placeholder="Ваш пароль">
+                                    </div>
+                                    <button type="submit" :disabled="authLoading" class="w-full px-4 py-3 uzum-btn rounded-xl font-semibold text-sm transition">
+                                        <span x-show="!authLoading">Войти в Uzum Seller</span>
+                                        <span x-show="authLoading" class="flex items-center justify-center gap-2">
+                                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                            Авторизация...
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Token tab -->
+                        <div x-show="authTab === 'token'">
+                            <p class="text-sm text-gray-500 mb-4">Вставьте access_token из Uzum Seller</p>
+                            <form @submit.prevent="doSaveToken()">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Access Token</label>
+                                        <textarea x-model="tokenForm.token" required rows="4"
+                                                  class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-transparent text-sm font-mono"
+                                                  placeholder="Вставьте токен сюда..."></textarea>
+                                    </div>
+                                    <button type="submit" :disabled="authLoading" class="w-full px-4 py-3 uzum-btn rounded-xl font-semibold text-sm transition">
+                                        <span x-show="!authLoading">Сохранить токен</span>
+                                        <span x-show="authLoading" class="flex items-center justify-center gap-2">
+                                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                            Сохранение...
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton (when authenticated) -->
+            <div x-show="authenticated && loading && reviews.length === 0" class="max-w-4xl mx-auto space-y-4">
                 <template x-for="i in 4" :key="i">
                     <div class="bg-white rounded-xl p-5 animate-pulse">
                         <div class="flex items-start space-x-4">
@@ -174,7 +280,7 @@
             </div>
 
             <!-- Error State -->
-            <div x-show="error && !loading" class="max-w-4xl mx-auto">
+            <div x-show="authenticated && error && !loading" class="max-w-4xl mx-auto">
                 <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
                     <svg class="w-12 h-12 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -187,7 +293,7 @@
             </div>
 
             <!-- Empty State -->
-            <div x-show="!loading && !error && reviews.length === 0" class="max-w-4xl mx-auto">
+            <div x-show="authenticated && !loading && !error && reviews.length === 0" class="max-w-4xl mx-auto">
                 <div class="bg-white rounded-xl p-12 text-center border border-gray-200">
                     <div class="w-16 h-16 uzum-gradient rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +311,7 @@
             </div>
 
             <!-- Reviews List -->
-            <div x-show="!loading || reviews.length > 0" class="max-w-4xl mx-auto space-y-4">
+            <div x-show="authenticated && (!loading || reviews.length > 0)" class="max-w-4xl mx-auto space-y-4">
                 <template x-for="review in reviews" :key="review.id">
                     <div class="review-card bg-white p-5">
                         <!-- Review Header -->
@@ -213,17 +319,17 @@
                             <div class="flex items-start space-x-3 min-w-0">
                                 <!-- Avatar -->
                                 <div class="w-10 h-10 uzum-gradient rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
-                                     x-text="(review.customerName || 'A').charAt(0).toUpperCase()">
+                                     x-text="(review.customerName || review.author?.firstName || 'A').charAt(0).toUpperCase()">
                                 </div>
                                 <div class="min-w-0">
                                     <div class="flex items-center space-x-2 flex-wrap gap-1">
-                                        <span class="font-semibold text-gray-900" x-text="review.customerName || 'Покупатель'"></span>
+                                        <span class="font-semibold text-gray-900" x-text="review.customerName || review.author?.firstName || 'Покупатель'"></span>
                                         <!-- Reply status badge -->
-                                        <span x-show="review.reply" class="px-2 py-0.5 text-xs rounded-full badge-answered font-medium">Отвечен</span>
-                                        <span x-show="!review.reply" class="px-2 py-0.5 text-xs rounded-full badge-unanswered font-medium">Без ответа</span>
+                                        <span x-show="review.reply || review.answer" class="px-2 py-0.5 text-xs rounded-full badge-answered font-medium">Отвечен</span>
+                                        <span x-show="!review.reply && !review.answer" class="px-2 py-0.5 text-xs rounded-full badge-unanswered font-medium">Без ответа</span>
                                     </div>
                                     <!-- Product Name -->
-                                    <p x-show="review.productName" class="text-xs text-gray-400 mt-0.5 truncate" x-text="review.productName"></p>
+                                    <p x-show="review.productName || review.productTitle" class="text-xs text-gray-400 mt-0.5 truncate" x-text="review.productName || review.productTitle"></p>
                                 </div>
                             </div>
 
@@ -242,8 +348,8 @@
                         </div>
 
                         <!-- Review Text -->
-                        <div x-show="review.text" class="mt-3">
-                            <p class="text-gray-700 text-sm leading-relaxed" x-text="review.text"></p>
+                        <div x-show="review.text || review.body" class="mt-3">
+                            <p class="text-gray-700 text-sm leading-relaxed" x-text="review.text || review.body"></p>
                         </div>
 
                         <!-- Pros / Cons -->
@@ -259,9 +365,9 @@
                         </div>
 
                         <!-- Existing Reply -->
-                        <div x-show="review.reply" class="mt-3 bg-gray-50 rounded-lg p-3 border-l-4 border-[#3A007D]">
+                        <div x-show="review.reply || review.answer" class="mt-3 bg-gray-50 rounded-lg p-3 border-l-4 border-[#3A007D]">
                             <p class="text-xs font-semibold text-[#3A007D] mb-1">Ваш ответ:</p>
-                            <p class="text-sm text-gray-700" x-text="review.reply"></p>
+                            <p class="text-sm text-gray-700" x-text="review.reply || review.answer?.body"></p>
                         </div>
 
                         <!-- Action Row -->
@@ -274,11 +380,11 @@
                             </div>
                             <button @click="openReplyModal(review)"
                                     class="px-4 py-2 text-sm font-medium rounded-lg transition flex items-center space-x-1.5"
-                                    :class="review.reply ? 'uzum-btn-outline' : 'uzum-btn'">
+                                    :class="(review.reply || review.answer) ? 'uzum-btn-outline' : 'uzum-btn'">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
                                 </svg>
-                                <span x-text="review.reply ? 'Редактировать ответ' : 'Ответить'"></span>
+                                <span x-text="(review.reply || review.answer) ? 'Редактировать ответ' : 'Ответить'"></span>
                             </button>
                         </div>
                     </div>
@@ -330,7 +436,7 @@
                     </div>
                     <div>
                         <h3 class="font-semibold text-gray-900">Ответ на отзыв</h3>
-                        <p class="text-xs text-gray-500" x-text="replyModal.review?.customerName || 'Покупатель'"></p>
+                        <p class="text-xs text-gray-500" x-text="replyModal.review?.customerName || replyModal.review?.author?.firstName || 'Покупатель'"></p>
                     </div>
                 </div>
                 <button @click="replyModal.show = false" class="text-gray-400 hover:text-gray-600 transition">
@@ -349,7 +455,7 @@
                         </svg>
                     </template>
                 </div>
-                <p class="text-sm text-gray-600 line-clamp-3" x-text="replyModal.review?.text || 'Отзыв без текста'"></p>
+                <p class="text-sm text-gray-600 line-clamp-3" x-text="replyModal.review?.text || replyModal.review?.body || 'Отзыв без текста'"></p>
             </div>
 
             <!-- Modal Body -->
@@ -436,6 +542,15 @@
 function uzumReviewsPage() {
     return {
         accountId: @js($accountId),
+        // Auth state
+        checking: true,
+        authenticated: false,
+        authTab: 'login',
+        authLoading: false,
+        authError: null,
+        loginForm: { login: '', password: '' },
+        tokenForm: { token: '' },
+        // Reviews state
         reviews: [],
         loading: false,
         error: null,
@@ -462,8 +577,91 @@ function uzumReviewsPage() {
         },
 
         async init() {
-            await this.loadReviews();
+            await this.checkAuth();
         },
+
+        getHeaders() {
+            const headers = window.getAuthHeaders ? window.getAuthHeaders() : { 'Accept': 'application/json' };
+            headers['Content-Type'] = 'application/json';
+            return headers;
+        },
+
+        // ===== Auth Methods =====
+
+        async checkAuth() {
+            this.checking = true;
+            try {
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/check-auth`, {
+                    headers: this.getHeaders()
+                });
+                const data = await res.json();
+                this.authenticated = data.authenticated || false;
+                if (this.authenticated) {
+                    await this.loadReviews();
+                }
+            } catch (e) {
+                console.error('Check auth error:', e);
+            }
+            this.checking = false;
+        },
+
+        async doLogin() {
+            this.authLoading = true;
+            this.authError = null;
+            try {
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/login`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({
+                        login: this.loginForm.login,
+                        password: this.loginForm.password
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.authenticated = true;
+                    this.showToast('Авторизация успешна', 'success');
+                    await this.loadReviews();
+                } else {
+                    this.authError = data.message || 'Ошибка авторизации';
+                }
+            } catch (e) {
+                this.authError = 'Ошибка подключения к серверу';
+            }
+            this.authLoading = false;
+        },
+
+        async doSaveToken() {
+            this.authLoading = true;
+            this.authError = null;
+            try {
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/save-token`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({ token: this.tokenForm.token })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.authenticated = true;
+                    this.showToast('Токен сохранён', 'success');
+                    await this.loadReviews();
+                } else {
+                    this.authError = data.message || 'Ошибка сохранения токена';
+                }
+            } catch (e) {
+                this.authError = 'Ошибка подключения к серверу';
+            }
+            this.authLoading = false;
+        },
+
+        async disconnect() {
+            this.authenticated = false;
+            this.reviews = [];
+            this.page = 0;
+            this.stats = { total: 0, unanswered: 0, answered: 0, avgRating: '0.0' };
+        },
+
+        // ===== Reviews Methods =====
 
         async loadReviews() {
             this.loading = true;
@@ -472,13 +670,15 @@ function uzumReviewsPage() {
             this.reviews = [];
 
             try {
-                const url = `/api/marketplace/uzum/accounts/${this.accountId}/reviews?page=0&filter=${this.filter}`;
-                const res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/reviews?page=0&size=20`, {
+                    headers: this.getHeaders()
                 });
+
+                if (res.status === 401) {
+                    this.authenticated = false;
+                    this.loading = false;
+                    return;
+                }
 
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
@@ -486,9 +686,14 @@ function uzumReviewsPage() {
                 }
 
                 const data = await res.json();
-                this.reviews = data.reviews ?? data.data ?? [];
-                this.hasMore = data.hasMore ?? data.has_more ?? false;
-                this.updateStats(data);
+                if (data.success) {
+                    const allReviews = data.reviews ?? [];
+                    this.hasMore = allReviews.length >= 20;
+                    this.updateStats({ reviews: allReviews });
+                    this.applyFilter(allReviews);
+                } else {
+                    throw new Error(data.message || 'Ошибка загрузки');
+                }
             } catch (e) {
                 this.error = e.message || 'Не удалось загрузить отзывы';
             } finally {
@@ -502,60 +707,62 @@ function uzumReviewsPage() {
             this.page++;
 
             try {
-                const url = `/api/marketplace/uzum/accounts/${this.accountId}/reviews?page=${this.page}&filter=${this.filter}`;
-                const res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/reviews?page=${this.page}&size=20`, {
+                    headers: this.getHeaders()
                 });
 
                 if (!res.ok) throw new Error(`Ошибка ${res.status}`);
 
                 const data = await res.json();
-                const newReviews = data.reviews ?? data.data ?? [];
-                this.reviews = [...this.reviews, ...newReviews];
-                this.hasMore = data.hasMore ?? data.has_more ?? false;
+                if (data.success) {
+                    const newReviews = data.reviews ?? [];
+                    this.reviews = [...this.reviews, ...newReviews];
+                    this.hasMore = newReviews.length >= 20;
+                }
             } catch (e) {
                 this.showToast('Не удалось загрузить отзывы: ' + e.message, 'error');
+                this.page--;
             } finally {
                 this.loading = false;
+            }
+        },
+
+        applyFilter(allReviews) {
+            if (!allReviews) allReviews = this._allReviews || [];
+            this._allReviews = allReviews;
+
+            if (this.filter === 'unanswered') {
+                this.reviews = allReviews.filter(r => !r.reply && !r.answer);
+            } else if (this.filter === 'answered') {
+                this.reviews = allReviews.filter(r => r.reply || r.answer);
+            } else {
+                this.reviews = [...allReviews];
             }
         },
 
         async setFilter(value) {
             if (this.filter === value) return;
             this.filter = value;
-            await this.loadReviews();
+            this.applyFilter();
         },
 
         updateStats(data) {
-            if (data.stats) {
-                this.stats = {
-                    total: data.stats.total ?? 0,
-                    unanswered: data.stats.unanswered ?? 0,
-                    answered: data.stats.answered ?? 0,
-                    avgRating: data.stats.avg_rating ? parseFloat(data.stats.avg_rating).toFixed(1) : '0.0',
-                };
-            } else {
-                // Вычислить из списка если stats не пришёл
-                const all = data.reviews ?? data.data ?? [];
-                const answered = all.filter(r => r.reply).length;
-                const sum = all.reduce((a, r) => a + (r.rating || 0), 0);
-                this.stats = {
-                    total: data.total ?? all.length,
-                    unanswered: (data.total ?? all.length) - answered,
-                    answered: answered,
-                    avgRating: all.length ? (sum / all.length).toFixed(1) : '0.0',
-                };
-            }
+            const all = data.reviews ?? [];
+            const answered = all.filter(r => r.reply || r.answer).length;
+            const sum = all.reduce((a, r) => a + (r.rating || 0), 0);
+            this.stats = {
+                total: all.length,
+                unanswered: all.length - answered,
+                answered: answered,
+                avgRating: all.length ? (sum / all.length).toFixed(1) : '0.0',
+            };
         },
 
         openReplyModal(review) {
             this.replyModal = {
                 show: true,
                 review: review,
-                text: review.reply || '',
+                text: review.reply || review.answer?.body || '',
                 generating: false,
                 saving: false,
             };
@@ -566,19 +773,16 @@ function uzumReviewsPage() {
             this.replyModal.generating = true;
 
             try {
-                const res = await fetch(
-                    `/api/marketplace/uzum/accounts/${this.accountId}/reviews/${this.replyModal.review.id}/ai-reply`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                        },
-                        body: JSON.stringify({}),
-                    }
-                );
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/ai-reply`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({
+                        review_id: this.replyModal.review.id,
+                        review_text: this.replyModal.review.text || this.replyModal.review.body || '',
+                        rating: this.replyModal.review.rating,
+                        product_name: this.replyModal.review.productName || this.replyModal.review.productTitle || '',
+                    }),
+                });
 
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
@@ -599,19 +803,14 @@ function uzumReviewsPage() {
             this.replyModal.saving = true;
 
             try {
-                const res = await fetch(
-                    `/api/marketplace/uzum/accounts/${this.accountId}/reviews/${this.replyModal.review.id}/reply`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                        },
-                        body: JSON.stringify({ content: this.replyModal.text.trim() }),
-                    }
-                );
+                const res = await fetch(`/api/uzum-reviews/${this.accountId}/reply`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify({
+                        review_id: this.replyModal.review.id,
+                        content: this.replyModal.text.trim()
+                    }),
+                });
 
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
@@ -621,19 +820,24 @@ function uzumReviewsPage() {
                 // Обновить отзыв в списке
                 const idx = this.reviews.findIndex(r => r.id === this.replyModal.review.id);
                 if (idx !== -1) {
-                    this.reviews[idx] = { ...this.reviews[idx], reply: this.replyModal.text.trim() };
+                    this.reviews[idx] = { ...this.reviews[idx], reply: this.replyModal.text.trim(), answer: { body: this.replyModal.text.trim() } };
                     // Убрать из списка неотвеченных
                     if (this.filter === 'unanswered') {
                         this.reviews.splice(idx, 1);
                     }
                 }
 
+                // Also update _allReviews
+                if (this._allReviews) {
+                    const allIdx = this._allReviews.findIndex(r => r.id === this.replyModal.review.id);
+                    if (allIdx !== -1) {
+                        this._allReviews[allIdx] = { ...this._allReviews[allIdx], reply: this.replyModal.text.trim(), answer: { body: this.replyModal.text.trim() } };
+                    }
+                    this.updateStats({ reviews: this._allReviews });
+                }
+
                 this.replyModal.show = false;
                 this.showToast('Ответ успешно отправлен', 'success');
-
-                // Пересчитать статы
-                this.stats.answered++;
-                if (this.stats.unanswered > 0) this.stats.unanswered--;
             } catch (e) {
                 this.showToast('Не удалось отправить: ' + e.message, 'error');
             } finally {

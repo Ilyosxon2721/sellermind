@@ -90,8 +90,70 @@
 
         <!-- Content -->
         <main class="flex-1 overflow-y-auto p-6">
+            <!-- Auth Error - Inline Login Form -->
+            <div x-show="authError" class="max-w-md mx-auto mt-12">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-8" x-data="{
+                    email: '', password: '', loginError: '', loginLoading: false,
+                    async doLogin() {
+                        this.loginError = '';
+                        this.loginLoading = true;
+                        try {
+                            const res = await fetch('/api/auth/login', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                body: JSON.stringify({ email: this.email, password: this.password })
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.token) {
+                                localStorage.setItem('_x_auth_token', JSON.stringify(data.token));
+                                if (data.user) localStorage.setItem('_x_auth_user', JSON.stringify(data.user));
+                                window.location.reload();
+                            } else {
+                                this.loginError = data.message || 'Неверный email или пароль';
+                            }
+                        } catch (e) {
+                            this.loginError = 'Ошибка подключения к серверу';
+                        } finally {
+                            this.loginLoading = false;
+                        }
+                    }
+                }">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900">Требуется авторизация</h3>
+                        <p class="text-sm text-gray-500 mt-1">Войдите в аккаунт для доступа к отзывам</p>
+                    </div>
+
+                    <div x-show="loginError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" x-text="loginError"></div>
+
+                    <form @submit.prevent="doLogin()" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" x-model="email" required
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="email@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+                            <input type="password" x-model="password" required
+                                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Введите пароль">
+                        </div>
+                        <button type="submit" :disabled="loginLoading"
+                                class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+                            <span x-show="!loginLoading">Войти</span>
+                            <span x-show="loginLoading">Вход...</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Loading -->
-            <div x-show="loading && reviews.length === 0" class="text-center py-12">
+            <div x-show="loading && reviews.length === 0 && !authError" class="text-center py-12">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 <p class="mt-2 text-gray-600">Загрузка отзывов...</p>
             </div>
@@ -309,10 +371,7 @@ function reviewsPage() {
             marketplace: '',
         },
 
-        getToken() {
-            const t = localStorage.getItem('_x_auth_token');
-            return t ? JSON.parse(t) : null;
-        },
+        authError: false,
 
         async init() {
             await Promise.all([
@@ -331,16 +390,14 @@ function reviewsPage() {
                 });
 
                 const response = await fetch(`/api/reviews?${params}`, {
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                    },
+                    headers: window.getAuthHeaders(),
                 });
 
+                if (response.status === 401) { this.authError = true; return; }
                 const data = await response.json();
                 this.reviews = data.data || [];
             } catch (error) {
                 console.error('Failed to load reviews:', error);
-                alert('Ошибка загрузки отзывов');
             } finally {
                 this.loading = false;
             }
@@ -349,11 +406,10 @@ function reviewsPage() {
         async loadTemplates() {
             try {
                 const response = await fetch('/api/reviews/templates', {
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                    },
+                    headers: window.getAuthHeaders(),
                 });
 
+                if (response.status === 401) return;
                 const data = await response.json();
                 this.templates = data.data || [];
             } catch (error) {
@@ -364,11 +420,10 @@ function reviewsPage() {
         async loadStats() {
             try {
                 const response = await fetch('/api/reviews/statistics', {
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                    },
+                    headers: window.getAuthHeaders(),
                 });
 
+                if (response.status === 401) return;
                 this.stats = await response.json();
             } catch (error) {
                 console.error('Failed to load stats:', error);
@@ -380,10 +435,7 @@ function reviewsPage() {
             try {
                 const response = await fetch(`/api/reviews/${reviewId}/generate`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { ...window.getAuthHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         tone: 'professional',
                         length: 'medium',
@@ -410,10 +462,7 @@ function reviewsPage() {
             try {
                 const response = await fetch(`/api/reviews/${reviewId}/save-response`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { ...window.getAuthHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         response_text: this.editingResponse[reviewId],
                         is_ai_generated: this.isAiGenerated[reviewId] || isAiGenerated,
@@ -446,10 +495,7 @@ function reviewsPage() {
             try {
                 const response = await fetch('/api/reviews/bulk-generate', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.getToken()}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { ...window.getAuthHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         review_ids: this.selectedReviews,
                         save_immediately: false,
