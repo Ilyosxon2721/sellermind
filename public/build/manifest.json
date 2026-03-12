@@ -8,7 +8,7 @@
     "name": "vendor"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BKBolS44.css",
+    "file": "assets/app-Bsds25Cl.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -16,17 +16,8 @@
       "app.css"
     ]
   },
-  "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-DXqDBdN4.css",
-    "src": "resources/css/pwa-native.css",
-    "isEntry": true,
-    "name": "pwa-native",
-    "names": [
-      "pwa-native.css"
-    ]
-  },
   "resources/js/app.js": {
-    "file": "assets/app-CHwzXAhl.js",
+    "file": "assets/app-CbNYoIoQ.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -34,65 +25,5 @@
       "_vendor-Dos3PyFQ.js",
       "_alpine-w3y3or6b.js"
     ]
-  },
-  "resources/js/pwa-detector.js": {
-    "file": "assets/pwa-detector-D6Cllna4.js",
-    "name": "pwa-detector",
-    "src": "resources/js/pwa-detector.js",
-    "isEntry": true
-  },
-  "resources/js/pwa.js": {
-    "file": "assets/pwa-D92Ux5UJ.js",
-    "name": "pwa",
-    "src": "resources/js/pwa.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/auth.js": {
-    "file": "assets/auth-BR4MnXFQ.js",
-    "name": "auth",
-    "src": "resources/js/pwa/auth.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/background-sync.js": {
-    "file": "assets/background-sync-qJ0lfHrO.js",
-    "name": "background-sync",
-    "src": "resources/js/pwa/background-sync.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/badge.js": {
-    "file": "assets/badge-3iqfzH-r.js",
-    "name": "badge",
-    "src": "resources/js/pwa/badge.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/cache.js": {
-    "file": "assets/cache-Darw7aRS.js",
-    "name": "cache",
-    "src": "resources/js/pwa/cache.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/haptic.js": {
-    "file": "assets/haptic-CfNrweLE.js",
-    "name": "haptic",
-    "src": "resources/js/pwa/haptic.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/offline.js": {
-    "file": "assets/offline-DNt7BfSJ.js",
-    "name": "offline",
-    "src": "resources/js/pwa/offline.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/push.js": {
-    "file": "assets/push-0o07MK2h.js",
-    "name": "push",
-    "src": "resources/js/pwa/push.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/sw-background-sync.js": {
-    "file": "assets/sw-background-sync-DjFT_WmH.js",
-    "name": "sw-background-sync",
-    "src": "resources/js/pwa/sw-background-sync.js",
-    "isEntry": true
   }
 }
