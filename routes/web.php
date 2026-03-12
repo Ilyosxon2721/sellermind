@@ -55,22 +55,10 @@ Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function
 
 // Root redirect to Russian
 Route::get('/', function (Illuminate\Http\Request $request) {
-    // Check if PWA is installed (standalone mode)
-    $isPWA = $request->cookie('pwa_installed') === 'true'
-        || $request->header('X-Requested-With') === 'com.sellermind.pwa';
-
-    // PWA App Mode: Act like a native app
-    if ($isPWA) {
-        if (auth()->check()) {
-            // Authenticated → Dashboard (Flutter PWA версия)
-            return redirect('/dashboard-flutter');
-        } else {
-            // Not authenticated → Login (skip landing)
-            return redirect('/login');
-        }
+    if (auth()->check()) {
+        return redirect('/dashboard');
     }
 
-    // Browser Mode: Redirect to Russian landing by default
     return redirect('/ru');
 })->name('home');
 
@@ -101,66 +89,24 @@ Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
-    Route::get('/home', function (Illuminate\Http\Request $request) {
-        $isPWA = $request->cookie('pwa_installed') === 'true'
-            || $request->header('X-Requested-With') === 'com.sellermind.pwa';
-
-        if ($isPWA) {
-            return redirect('/dashboard-flutter');
-        }
-
+    Route::get('/home', function () {
         return redirect()->route('dashboard');
     });
 
-    Route::get('/dashboard', function (Illuminate\Http\Request $request) {
-        $isPWA = $request->cookie('pwa_installed') === 'true'
-            || $request->header('X-Requested-With') === 'com.sellermind.pwa';
-
-        // Определяем мобильное устройство по User-Agent
-        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini|IEMobile/i', $request->userAgent() ?? '');
-
-        // Мобильные и PWA → новый Flutter-дизайн
-        if ($isPWA || $isMobile) {
-            return view('pages.dashboard-flutter');
-        }
-
-        // Десктоп → старый дизайн
+    Route::get('/dashboard', function () {
         return view('pages.dashboard');
     })->name('dashboard');
-
-    // Flutter-style Dashboard for PWA
-    Route::get('/dashboard-flutter', function () {
-        return view('pages.dashboard-flutter');
-    })->name('dashboard.flutter');
-
-    // PWA-optimized dashboard
-    Route::get('/dashboard-pwa', function () {
-        return view('pages.dashboard-pwa');
-    })->name('dashboard.pwa');
 
     Route::get('/chat', function () {
         return view('pages.chat');
     })->name('chat');
 
-    Route::get('/chat-pwa', function () {
-        return view('pages.chat-pwa');
-    })->name('chat.pwa');
-
-    Route::get('/products-pwa', function () {
-        return view('pages.products-pwa');
-    })->name('products.pwa');
-
     Route::get('/settings', function () {
         return view('pages.settings');
     })->name('settings');
 
-    Route::get('/settings-pwa', function () {
-        return view('pages.settings-pwa');
-    })->name('settings.pwa');
-
-    // Profile page (PWA-optimized)
     Route::get('/profile', function () {
-        return view('pages.profile-pwa');
+        return view('pages.profile');
     })->name('profile');
 
     // Integrations
@@ -178,19 +124,9 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.promotions');
     })->name('promotions');
 
-    // PWA-optimized promotions
-    Route::get('/promotions-pwa', function () {
-        return view('pages.promotions-pwa');
-    })->name('promotions.pwa');
-
     Route::get('/analytics', function () {
         return view('pages.analytics');
     })->name('analytics');
-
-    // PWA-optimized analytics page
-    Route::get('/analytics/pwa', function () {
-        return view('pages.analytics-pwa');
-    })->name('analytics.pwa');
 
     // Analytics sub-pages
     Route::prefix('analytics')->name('analytics.')->group(function () {
@@ -222,10 +158,6 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/reviews', function () {
         return view('pages.reviews');
     })->name('reviews');
-
-    Route::get('/reviews-pwa', function () {
-        return view('pages.reviews-pwa');
-    })->name('reviews.pwa');
 
     Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
 

@@ -5,8 +5,10 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-/* PWA Styles */
-@import './pwa/animations.css';
+/* Скрыть устаревшие PWA-only секции, browser-only показывать как обычно */
+@layer base {
+    .pwa-only { display: none !important; }
+}
 
 /* ============================================
    SELLERMIND DESIGN SYSTEM
