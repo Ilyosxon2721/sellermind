@@ -80,7 +80,6 @@
     }
 </style>
 
-{{-- BROWSER MODE --}}
 <div class="browser-only" x-data="{
          account: null,
          logs: [],
