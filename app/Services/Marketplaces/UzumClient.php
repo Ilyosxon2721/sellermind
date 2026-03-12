@@ -926,7 +926,6 @@ final class UzumClient implements MarketplaceClientInterface
                             'page' => $page,
                             'size' => $size,
                             'status' => $status,
-                            'scheme' => 'FBS',
                             'shopIds' => $shopId, // API expects 'shopIds' (plural)
                         ];
 
