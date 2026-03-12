@@ -19,7 +19,7 @@ final class UzumAutoConfirmService
     public function processAccount(MarketplaceAccount $account): array
     {
         $stats = ['confirmed' => 0, 'failed' => 0, 'skipped' => 0];
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             Log::warning("UzumAutoConfirm: нет токена для аккаунта #{$account->id}");

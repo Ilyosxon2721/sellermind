@@ -27,7 +27,7 @@ final class UzumReviewsController extends Controller
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             return response()->json(['message' => 'Нет токена Uzum.'], 400);
@@ -81,7 +81,7 @@ final class UzumReviewsController extends Controller
             'content' => ['required', 'string', 'max:1000'],
         ]);
 
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             return response()->json(['message' => 'Нет токена Uzum.'], 400);
@@ -114,7 +114,7 @@ final class UzumReviewsController extends Controller
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             return response()->json(['message' => 'Нет токена Uzum.'], 400);

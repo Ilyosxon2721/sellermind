@@ -29,7 +29,7 @@ final class UzumAutoReviewService
     public function processAccount(MarketplaceAccount $account): array
     {
         $stats = ['processed' => 0, 'replied' => 0, 'skipped' => 0, 'errors' => 0];
-        $token = $account->uzum_access_token ?? $account->oauth_token;
+        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
         if (! $token) {
             Log::warning("UzumAutoReview: нет токена для аккаунта #{$account->id}");
