@@ -623,7 +623,10 @@ function uzumReviewsPage() {
                     this.showToast('Авторизация успешна', 'success');
                     await this.loadReviews();
                 } else {
-                    this.authError = data.message || 'Ошибка авторизации';
+                    let errMsg = data.message || 'Ошибка авторизации';
+                    if (data.debug) errMsg += ' (' + data.debug + ')';
+                    if (data.status_code) errMsg += ' [HTTP ' + data.status_code + ']';
+                    this.authError = errMsg;
                 }
             } catch (e) {
                 this.authError = 'Ошибка подключения к серверу';
