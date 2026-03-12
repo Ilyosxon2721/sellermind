@@ -47,6 +47,7 @@ final class UzumAutoConfirmService
                 [
                     'shopIds' => $shopIds,
                     'status' => 'CREATED',
+                    'scheme' => 'FBS',
                     'page' => $page,
                     'size' => 50,
                 ]
