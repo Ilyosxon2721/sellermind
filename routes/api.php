@@ -350,6 +350,15 @@ Route::middleware('auth.any')->group(function () {
         Route::get('{review}/suggest-templates', [ReviewResponseController::class, 'suggestTemplates']);
     });
 
+    // Uzum Reviews (scraper-based)
+    Route::prefix('uzum-reviews/{accountId}')->group(function () {
+        Route::get('check-auth', [\App\Http\Controllers\Api\UzumReviewController::class, 'checkAuth']);
+        Route::post('login', [\App\Http\Controllers\Api\UzumReviewController::class, 'login']);
+        Route::post('save-token', [\App\Http\Controllers\Api\UzumReviewController::class, 'saveToken']);
+        Route::get('reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
+        Route::post('reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+    });
+
     // Dialogs
     Route::apiResource('dialogs', DialogController::class);
     Route::post('dialogs/{dialog}/hide', [ChatController::class, 'hideDialog']);
