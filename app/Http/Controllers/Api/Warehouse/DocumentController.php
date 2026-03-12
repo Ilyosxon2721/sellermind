@@ -146,14 +146,21 @@ class DocumentController extends Controller
                 $currencyCode = $line['currency_code'] ?? 'UZS';
                 $exchangeRate = $line['exchange_rate'] ?? null;
 
+                // Если курс не передан — определяем из настроек финансов
+                if (! $exchangeRate || $exchangeRate <= 0) {
+                    $cur = strtoupper($currencyCode);
+                    $exchangeRate = match ($cur) {
+                        'USD' => (float) ($financeSettings->usd_rate ?? 1),
+                        'RUB' => (float) ($financeSettings->rub_rate ?? 1),
+                        'EUR' => (float) ($financeSettings->eur_rate ?? 1),
+                        default => 1.0,
+                    };
+                }
+
                 // Рассчитываем стоимость в базовой валюте
                 $totalCostBase = null;
                 if ($totalCost !== null) {
-                    if ($exchangeRate && $exchangeRate > 0) {
-                        $totalCostBase = $totalCost * $exchangeRate;
-                    } else {
-                        $totalCostBase = $financeSettings->convertToBase($totalCost, $currencyCode);
-                    }
+                    $totalCostBase = $totalCost * $exchangeRate;
                 }
 
                 InventoryDocumentLine::create([
@@ -258,13 +265,19 @@ class DocumentController extends Controller
                     $currencyCode = $lineData['currency_code'] ?? $line->currency_code ?? 'UZS';
                     $exchangeRate = $lineData['exchange_rate'] ?? $line->exchange_rate;
 
-                    // Рассчитываем стоимость в базовой валюте
-                    $totalCostBase = $totalCost;
-                    if ($exchangeRate && $exchangeRate > 0) {
-                        $totalCostBase = $totalCost * $exchangeRate;
-                    } else {
-                        $totalCostBase = $financeSettings->convertToBase($totalCost, $currencyCode);
+                    // Если курс не задан — определяем из настроек финансов
+                    if (! $exchangeRate || $exchangeRate <= 0) {
+                        $cur = strtoupper($currencyCode);
+                        $exchangeRate = match ($cur) {
+                            'USD' => (float) ($financeSettings->usd_rate ?? 1),
+                            'RUB' => (float) ($financeSettings->rub_rate ?? 1),
+                            'EUR' => (float) ($financeSettings->eur_rate ?? 1),
+                            default => 1.0,
+                        };
                     }
+
+                    // Рассчитываем стоимость в базовой валюте
+                    $totalCostBase = $totalCost * $exchangeRate;
 
                     $line->update([
                         'unit_cost' => $lineData['unit_cost'],
