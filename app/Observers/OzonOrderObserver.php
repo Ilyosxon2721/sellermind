@@ -32,6 +32,7 @@ class OzonOrderObserver
             totalAmount: (float) ($ozonOrder->total_price ?? 0),
             currency: $ozonOrder->currency ?? 'RUB',
         );
+        $this->notifySubscribers($ozonOrder, 'ozon', $ozonOrder->status ?? 'new');
     }
 
     /**
@@ -44,6 +45,11 @@ class OzonOrderObserver
         // Only broadcast if important fields changed
         if ($ozonOrder->wasChanged(['status', 'substatus', 'total_price'])) {
             $this->safeBroadcast($ozonOrder);
+        }
+
+        // Уведомить подписчиков при смене статуса
+        if ($ozonOrder->wasChanged('status')) {
+            $this->notifySubscribers($ozonOrder, 'ozon', $ozonOrder->status ?? 'updated');
         }
     }
 

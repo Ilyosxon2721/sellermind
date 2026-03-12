@@ -47,7 +47,12 @@
       "Bash(grep -n \"telegram_chat_id\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*.php)",
       "WebFetch(domain:yandex.ru)",
       "WebSearch",
-      "WebFetch(domain:docs.ozon.ru)"
+      "WebFetch(domain:docs.ozon.ru)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(grep -rn:*)",
+      "Bash(git -c core.editor=true rebase --continue)",
+      "Bash(git -c core.editor=cat rebase --continue)"
     ]
   }
 }

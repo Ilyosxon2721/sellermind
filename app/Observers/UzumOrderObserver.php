@@ -32,6 +32,7 @@ class UzumOrderObserver
             totalAmount: (float) ($uzumOrder->total_amount ?? 0),
             currency: $uzumOrder->currency ?? 'UZS',
         );
+        $this->notifySubscribers($uzumOrder, 'uzum', $uzumOrder->status_normalized ?? 'new');
     }
 
     /**
@@ -42,6 +43,11 @@ class UzumOrderObserver
         // Только если изменился статус или другие важные поля
         if ($uzumOrder->wasChanged(['status', 'total_amount', 'ordered_at'])) {
             $this->safeBroadcast($uzumOrder, 'updated');
+        }
+
+        // Уведомить подписчиков при смене статуса
+        if ($uzumOrder->wasChanged('status')) {
+            $this->notifySubscribers($uzumOrder, 'uzum', $uzumOrder->status_normalized ?? $uzumOrder->status ?? 'updated');
         }
     }
 

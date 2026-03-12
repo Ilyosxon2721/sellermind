@@ -370,3 +370,10 @@ Schedule::job(new \App\Jobs\UzumAutoReplyJob)
     ->withoutOverlapping()
     ->onOneServer()
     ->name('uzum:auto-reply');
+
+// Telegram: дневной отчёт подписчикам (каждую минуту — проверяет summary_time)
+Schedule::command('telegram:daily-summary')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->name('telegram:daily-summary')
+    ->appendOutputTo(storage_path('logs/telegram-daily-summary.log'));

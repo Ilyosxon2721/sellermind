@@ -32,6 +32,7 @@ class WbOrderObserver
             totalAmount: (float) ($wbOrder->total_amount ?? 0),
             currency: $wbOrder->currency_code ?? 'RUB',
         );
+        $this->notifySubscribers($wbOrder, 'wb', $wbOrder->status_normalized ?? 'new');
     }
 
     /**
@@ -44,6 +45,11 @@ class WbOrderObserver
         // Only broadcast if important fields changed
         if ($wbOrder->wasChanged(['status', 'status_normalized', 'wb_status', 'total_amount', 'ordered_at'])) {
             $this->safeBroadcast($wbOrder);
+        }
+
+        // Уведомить подписчиков при смене статуса
+        if ($wbOrder->wasChanged(['status', 'status_normalized'])) {
+            $this->notifySubscribers($wbOrder, 'wb', $wbOrder->status_normalized ?? $wbOrder->status ?? 'updated');
         }
     }
 

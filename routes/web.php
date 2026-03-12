@@ -105,6 +105,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    Route::get('/settings/telegram', function () {
+        return view('settings.telegram');
+    })->name('settings.telegram');
+
     Route::get('/profile', function () {
         return view('pages.profile');
     })->name('profile');
