@@ -41,7 +41,7 @@ final class UzumReviewsController extends Controller
             'size' => 20,
         ]);
 
-        $response = Http::withToken($token)->timeout(30)->post($url, (object) []);
+        $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->post($url, (object) []);
 
         if (! $response->successful()) {
             Log::warning('UzumReviews: ошибка получения отзывов', [
@@ -87,7 +87,7 @@ final class UzumReviewsController extends Controller
             return response()->json(['message' => 'Нет токена Uzum.'], 400);
         }
 
-        $response = Http::withToken($token)->timeout(30)->post(
+        $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->post(
             'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
             [['reviewId' => $reviewId, 'content' => $validated['content']]]
         );
@@ -121,7 +121,7 @@ final class UzumReviewsController extends Controller
         }
 
         // Получаем данные отзыва
-        $reviewResponse = Http::withToken($token)->timeout(30)
+        $reviewResponse = Http::withHeaders(['Authorization' => $token])->timeout(30)
             ->get("https://api-seller.uzum.uz/api/seller/product-reviews/review/{$reviewId}");
 
         if (! $reviewResponse->successful()) {

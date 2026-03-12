@@ -42,7 +42,7 @@ final class UzumAutoConfirmService
 
         $page = 0;
         do {
-            $response = Http::withToken($token)->timeout(30)->get(
+            $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->get(
                 'https://api-seller.uzum.uz/api/seller-openapi/v2/fbs/orders',
                 [
                     'shopIds' => $shopIds,
@@ -68,7 +68,7 @@ final class UzumAutoConfirmService
                 }
 
                 // Отправляем запрос на подтверждение заказа
-                $confirmResponse = Http::withToken($token)->timeout(30)
+                $confirmResponse = Http::withHeaders(['Authorization' => $token])->timeout(30)
                     ->post("https://api-seller.uzum.uz/api/seller-openapi/v1/fbs/order/{$orderId}/confirm");
 
                 $success = $confirmResponse->successful();
