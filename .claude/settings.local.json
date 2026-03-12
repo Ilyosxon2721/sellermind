@@ -48,11 +48,10 @@
       "WebFetch(domain:yandex.ru)",
       "WebSearch",
       "WebFetch(domain:docs.ozon.ru)",
-      "Bash(git rebase:*)",
-      "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(grep -rn:*)",
-      "Bash(git -c core.editor=true rebase --continue)",
-      "Bash(git -c core.editor=cat rebase --continue)"
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -r \"TelegramLinkCode\\\\|telegram_link_codes\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
+      "Bash(grep -r \"UserNotificationSettings\\\\|user_notification_settings\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)"
     ]
   }
 }
