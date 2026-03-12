@@ -915,25 +915,24 @@ final class UzumClient implements MarketplaceClientInterface
             $isActiveStatus = in_array($status, $activeStatuses);
             $isExtendedWindow = in_array($status, $extendedWindowStatuses);
 
-            // Делаем отдельные запросы для каждого магазина и схемы (FBS + DBS)
+            // Делаем отдельные запросы для каждого магазина
             foreach ($shopIds as $shopId) {
-                foreach (['FBS', 'DBS'] as $scheme) {
                 $page = 0;
 
                 try {
                     $stopStatus = false;
                     do {
+                        // Без scheme — API возвращает все заказы (FBS + DBS),
+                        // scheme сохраняется в raw_payload каждого заказа
                         $query = [
                             'page' => $page,
                             'size' => $size,
                             'status' => $status,
-                            'scheme' => $scheme,
                             'shopIds' => $shopId, // API expects 'shopIds' (plural)
                         ];
 
                         Log::info('Uzum API fetching orders for status', [
                             'status' => $status,
-                            'scheme' => $scheme,
                             'shopId' => $shopId,
                             'page' => $page,
                             'size' => $size,
@@ -991,7 +990,6 @@ final class UzumClient implements MarketplaceClientInterface
                     ]);
                     // продолжим остальные магазины/статусы
                 }
-                } // end foreach scheme
             } // end foreach shopId
         } // end foreach status
 
