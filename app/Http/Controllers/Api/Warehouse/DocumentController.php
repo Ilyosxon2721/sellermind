@@ -296,6 +296,36 @@ class DocumentController extends Controller
     }
 
     /**
+     * Обновить заголовок чернового документа
+     */
+    public function update($id, Request $request)
+    {
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
+
+        if ($doc->status !== InventoryDocument::STATUS_DRAFT) {
+            return $this->errorResponse('Редактирование доступно только для черновиков', 'invalid_state', null, 422);
+        }
+
+        $data = $request->validate([
+            'warehouse_id' => ['sometimes', 'integer'],
+            'warehouse_to_id' => ['nullable', 'integer'],
+            'comment' => ['nullable', 'string'],
+            'reason' => ['nullable', 'string'],
+            'supplier_id' => ['nullable', 'integer'],
+            'source_doc_no' => ['nullable', 'string'],
+        ]);
+
+        $doc->update($data);
+
+        return $this->successResponse($doc->fresh(['lines.sku', 'lines.unit', 'warehouse', 'supplier']));
+    }
+
+    /**
      * Удалить черновой документ
      * Только для статуса DRAFT — проведённые документы нельзя удалять, только сторнировать
      */

@@ -679,6 +679,7 @@ Route::middleware('auth.any')->group(function () {
             Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
             Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
             Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
+            Route::patch('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'update']);
             // Удаление черновика — только owner
             Route::delete('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'destroy']);
             // Сторнирование проведённого документа — только owner
