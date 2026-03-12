@@ -891,9 +891,8 @@ final class UzumClient implements MarketplaceClientInterface
             'external_statuses' => $statuses,
         ]);
 
-        // Активные статусы и отмены/возвраты (заказы в работе + отмененные + возвраты) - загружаем ВСЕ без фильтрации по дате
-        // ВАЖНО: CANCELED, PENDING_CANCELLATION и RETURNED должны загружаться без фильтра по дате,
-        // чтобы обновлять старые заказы, которые были отменены или возвращены
+        // Активные статусы (заказы в работе) — загружаем без фильтрации по дате,
+        // т.к. их немного и они всегда актуальны
         $activeStatuses = [
             'CREATED',
             'PACKING',
@@ -901,13 +900,20 @@ final class UzumClient implements MarketplaceClientInterface
             'DELIVERING',
             'ACCEPTED_AT_DP',
             'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
-            'CANCELED',  // Для обновления отмененных заказов
-            'PENDING_CANCELLATION',  // Для обновления заказов в процессе отмены
-            'RETURNED',  // Для обновления возвращённых заказов
         ];
+
+        // Статусы с расширенным окном (90 дней вместо бесконечности)
+        // чтобы обновлять недавно отменённые/возвращённые заказы, не загружая всю историю
+        $extendedWindowStatuses = [
+            'CANCELED',
+            'PENDING_CANCELLATION',
+            'RETURNED',
+        ];
+        $extendedWindowMs = now()->subDays(90)->getTimestamp() * 1000;
 
         foreach ($statuses as $status) {
             $isActiveStatus = in_array($status, $activeStatuses);
+            $isExtendedWindow = in_array($status, $extendedWindowStatuses);
 
             // Делаем отдельные запросы для каждого магазина
             foreach ($shopIds as $shopId) {
@@ -929,6 +935,7 @@ final class UzumClient implements MarketplaceClientInterface
                             'page' => $page,
                             'size' => $size,
                             'is_active_status' => $isActiveStatus,
+                            'is_extended_window' => $isExtendedWindow,
                         ]);
 
                         $response = $this->request($account, 'GET', $path, $query);
@@ -940,28 +947,37 @@ final class UzumClient implements MarketplaceClientInterface
                             'shopId' => $shopId,
                             'page' => $page,
                             'orders_received' => count($list),
-                            'response_keys' => array_keys($response),
-                            'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
-                            'raw_response_sample' => mb_substr(json_encode($response), 0, 500),
                         ]);
 
                         foreach ($list as $orderData) {
-                            // Для активных статусов загружаем все заказы без фильтрации по дате
-                            if (! $isActiveStatus) {
-                                $created = $orderData['dateCreated'] ?? null;
+                            $created = $orderData['dateCreated'] ?? null;
+
+                            // Для активных статусов загружаем все (их мало)
+                            // Для расширенного окна (отмены/возвраты) — за 90 дней
+                            // Для остальных (COMPLETED, DELIVERED) — по переданному диапазону дат
+                            if ($isActiveStatus) {
+                                // Без фильтрации по дате
+                            } elseif ($isExtendedWindow) {
+                                if ($created && is_numeric($created) && $created < $extendedWindowMs) {
+                                    $stopStatus = true;
+
+                                    continue;
+                                }
+                            } else {
                                 if ($fromMs && $created && is_numeric($created) && $created < $fromMs) {
                                     $stopStatus = true;
 
                                     continue;
                                 }
-                                if ($toMs && $created && is_numeric($created) && $created > $toMs) {
-                                    // Слишком свежий — продолжаем, но не прерываем
-                                }
                             }
+
                             $orders[] = $this->mapOrderData($orderData, 'fbs');
                         }
 
                         $page++;
+
+                        // Задержка между запросами для защиты от rate limit
+                        usleep(300000); // 300ms
                     } while (! $stopStatus && ! empty($list) && count($list) === $size);
                 } catch (\Throwable $e) {
                     Log::warning('Uzum fetchOrders status failed', [
@@ -1383,15 +1399,17 @@ final class UzumClient implements MarketplaceClientInterface
             'external_order_id' => isset($orderData['id']) ? (string) $orderData['id'] : null,
             'status' => $statusNormalized,
             'status_normalized' => $statusNormalized,
+            'shop_id' => $orderData['shopId'] ?? null,
             'customer_name' => $deliveryInfo['customerFullname'] ?? null,
             'customer_phone' => $deliveryInfo['customerPhone'] ?? null,
             'total_amount' => isset($orderData['price']) ? (float) $orderData['price'] : 0,
             'currency' => 'UZS',
             'ordered_at' => $orderData['dateCreated'] ?? null,
+            'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Узум специфичные поля (кладем в общие колонки)
-            'wb_delivery_type' => $deliveryType ?? strtolower($orderData['deliveryType'] ?? ''),
+            // Тип доставки (FBS/FBO/DBS)
+            'delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? $orderData['deliveryType'] ?? ''),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -1400,7 +1418,6 @@ final class UzumClient implements MarketplaceClientInterface
             'delivery_longitude' => $address['longitude'] ?? null,
             'delivery_latitude' => $address['latitude'] ?? null,
             'wb_status_group' => $this->mapStatusGroup($statusNormalized),
-            'wb_delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? ''),
         ];
     }
 
