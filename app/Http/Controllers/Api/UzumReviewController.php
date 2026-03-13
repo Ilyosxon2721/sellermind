@@ -6,21 +6,31 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
+use App\Services\Uzum\Api\UzumApiManager;
+use App\Services\Uzum\UzumAiReplyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Единый контроллер отзывов Uzum.
+ *
+ * Обслуживает оба набора роутов:
+ * - /api/uzum-reviews/{accountId}/...  (старые, frontend)
+ * - /api/marketplace/uzum/accounts/{account}/reviews/...  (новые, REST)
+ */
 final class UzumReviewController extends Controller
 {
+    // ─── АВТОРИЗАЦИЯ ───────────────────────────────────────────
+
     /**
      * Проверить наличие токена для отзывов
      */
     public function checkAuth(int $accountId): JsonResponse
     {
         $account = MarketplaceAccount::findOrFail($accountId);
-
-        $token = $account->uzum_access_token ?? $account->api_key;
+        $token = $this->resolveToken($account);
 
         return response()->json([
             'authenticated' => ! empty($token),
@@ -28,63 +38,7 @@ final class UzumReviewController extends Controller
     }
 
     /**
-     * Диагностика токена и API-соединения (только в debug-режиме)
-     */
-    public function debug(int $accountId): JsonResponse
-    {
-        if (! config('app.debug')) {
-            return response()->json(['message' => 'Debug disabled'], 403);
-        }
-
-        $account = MarketplaceAccount::findOrFail($accountId);
-        $token = $account->uzum_access_token ?? $account->api_key;
-
-        $result = [
-            'has_token' => ! empty($token),
-            'token_length' => $token ? strlen($token) : 0,
-            'token_start' => $token ? substr($token, 0, 30) . '...' : null,
-            'is_jwt' => $token && str_starts_with($token, 'eyJ'),
-            'has_refresh' => ! empty($account->uzum_refresh_token),
-            'expires_at' => $account->uzum_token_expires_at,
-            'raw_db_start' => substr($account->getAttributes()['uzum_access_token'] ?? '', 0, 30),
-        ];
-
-        if ($token) {
-            // Тест 1: Bearer + token
-            $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?page=0&size=1';
-            try {
-                $r1 = Http::withHeaders([
-                    'Authorization' => "Bearer {$token}",
-                    'Accept' => 'application/json',
-                ])->timeout(15)->post($url, (object) []);
-                $result['test_bearer'] = [
-                    'status' => $r1->status(),
-                    'body' => mb_substr($r1->body(), 0, 500),
-                ];
-            } catch (\Exception $e) {
-                $result['test_bearer'] = ['error' => $e->getMessage()];
-            }
-
-            // Тест 2: Без Bearer
-            try {
-                $r2 = Http::withHeaders([
-                    'Authorization' => $token,
-                    'Accept' => 'application/json',
-                ])->timeout(15)->post($url, (object) []);
-                $result['test_raw'] = [
-                    'status' => $r2->status(),
-                    'body' => mb_substr($r2->body(), 0, 500),
-                ];
-            } catch (\Exception $e) {
-                $result['test_raw'] = ['error' => $e->getMessage()];
-            }
-        }
-
-        return response()->json($result);
-    }
-
-    /**
-     * Авторизоваться в Uzum Seller через OAuth2 Password Grant
+     * OAuth2 Password Grant — авторизация в Uzum
      */
     public function login(Request $request, int $accountId): JsonResponse
     {
@@ -100,183 +54,165 @@ final class UzumReviewController extends Controller
         $clientSecret = config('uzum.oauth_client_secret', 'clientSecret');
 
         try {
-            // Uzum OAuth2 требует Basic Auth с client_id (даже без secret)
-            $httpRequest = Http::asForm()
+            $response = Http::asForm()
                 ->accept('application/json')
                 ->withBasicAuth($clientId, $clientSecret)
-                ->timeout(30);
-
-            $formData = [
-                'grant_type' => 'password',
-                'username' => $request->input('login'),
-                'password' => $request->input('password'),
-            ];
-
-            Log::debug("Uzum OAuth2 login attempt for account #{$accountId}", [
-                'url' => $tokenUrl,
-                'username' => $request->input('login'),
-                'client_id' => $clientId,
-            ]);
-
-            $response = $httpRequest->post($tokenUrl, $formData);
+                ->timeout(30)
+                ->post($tokenUrl, [
+                    'grant_type' => 'password',
+                    'username' => $request->input('login'),
+                    'password' => $request->input('password'),
+                ]);
 
             if ($response->successful()) {
                 $data = $response->json();
                 $token = $data['access_token'] ?? null;
-                $refreshToken = $data['refresh_token'] ?? null;
-                $expiresIn = $data['expires_in'] ?? 3600;
 
                 if ($token) {
-                    // Модель сама шифрует через mutator
                     $account->uzum_access_token = $token;
-                    if ($refreshToken) {
-                        $account->uzum_refresh_token = $refreshToken;
+                    if (! empty($data['refresh_token'])) {
+                        $account->uzum_refresh_token = $data['refresh_token'];
                     }
-                    $account->uzum_token_expires_at = now()->addSeconds($expiresIn - 60);
+                    $account->uzum_token_expires_at = now()->addSeconds(($data['expires_in'] ?? 3600) - 60);
                     $account->save();
 
-                    Log::info("Uzum OAuth2 auth success for account #{$accountId}");
-
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Авторизация успешна',
-                    ]);
+                    return response()->json(['success' => true, 'message' => 'Авторизация успешна']);
                 }
             }
 
-            $errorMessage = $response->json('error_description')
-                ?? $response->json('error')
-                ?? $response->body();
-
-            Log::warning("Uzum OAuth2 auth failed for account #{$accountId}", [
-                'status' => $response->status(),
-                'error' => $errorMessage,
-                'body' => $response->body(),
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Не удалось авторизоваться в Uzum. Проверьте логин и пароль.',
-                'debug' => $errorMessage,
-                'status_code' => $response->status(),
+                'message' => 'Не удалось авторизоваться. Проверьте логин и пароль.',
             ], 422);
         } catch (\Exception $e) {
-            Log::error("Uzum OAuth2 auth exception for account #{$accountId}: {$e->getMessage()}");
+            Log::error("Uzum OAuth2 error: {$e->getMessage()}", ['account_id' => $accountId]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка подключения к Uzum',
-                'debug' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
 
     /**
-     * Сохранить токен напрямую (если пользователь вставляет вручную)
+     * Сохранить токен вручную
      */
     public function saveToken(Request $request, int $accountId): JsonResponse
     {
-        $request->validate([
-            'token' => 'required|string|min:10',
-        ]);
+        $request->validate(['token' => 'required|string|min:10']);
 
         $account = MarketplaceAccount::findOrFail($accountId);
-        // Модель сама шифрует через mutator
         $account->uzum_access_token = $request->input('token');
         $account->uzum_token_expires_at = now()->addDays(30);
         $account->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Токен сохранён',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Токен сохранён']);
     }
 
     /**
-     * Загрузить отзывы из Uzum
+     * Диагностика токена (только debug режим)
      */
-    public function reviews(Request $request, int $accountId): JsonResponse
+    public function debug(int $accountId): JsonResponse
     {
-        $account = MarketplaceAccount::findOrFail($accountId);
-        $token = $account->uzum_access_token ?? $account->api_key;
+        if (! config('app.debug')) {
+            return response()->json(['message' => 'Debug disabled'], 403);
+        }
 
+        $account = MarketplaceAccount::findOrFail($accountId);
+        $token = $this->resolveToken($account);
+
+        return response()->json([
+            'has_token' => ! empty($token),
+            'token_length' => $token ? strlen($token) : 0,
+            'token_start' => $token ? substr($token, 0, 30) . '...' : null,
+            'is_jwt' => $token && str_starts_with($token, 'eyJ'),
+            'has_refresh' => ! empty($account->uzum_refresh_token),
+            'expires_at' => $account->uzum_token_expires_at,
+        ]);
+    }
+
+    // ─── ОТЗЫВЫ ────────────────────────────────────────────────
+
+    /**
+     * Получить список отзывов
+     *
+     * Поддерживает оба формата:
+     * - GET /api/uzum-reviews/{accountId}/reviews?page=0&size=20
+     * - GET /api/marketplace/uzum/accounts/{account}/reviews?filter=unanswered
+     */
+    public function reviews(Request $request, int|MarketplaceAccount $accountId): JsonResponse
+    {
+        $account = $accountId instanceof MarketplaceAccount
+            ? $accountId
+            : MarketplaceAccount::findOrFail($accountId);
+
+        // Проверка доступа (если вызвано через REST-роут с авторизованным пользователем)
+        if ($request->user() && method_exists($request->user(), 'hasCompanyAccess')) {
+            if (! $request->user()->hasCompanyAccess($account->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+        }
+
+        $token = $this->resolveToken($account);
         if (! $token) {
             return response()->json([
                 'success' => false,
                 'message' => 'Требуется авторизация в Uzum',
-            ], 401);
-        }
-
-        Log::debug("Uzum reviews: token info for account #{$accountId}", [
-            'token_length' => strlen($token),
-            'token_start' => substr($token, 0, 20),
-            'is_jwt' => str_starts_with($token, 'eyJ'),
-            'has_refresh' => ! empty($account->uzum_refresh_token),
-            'expires_at' => $account->uzum_token_expires_at,
-        ]);
-
-        $page = (int) $request->input('page', 0);
-        $size = (int) $request->input('size', 20);
-
-        $response = $this->fetchReviews($token, $page, $size, $accountId);
-
-        // Если 401 и есть refresh_token — попробовать обновить токен
-        if ($response->status() === 401 && $account->uzum_refresh_token) {
-            Log::info("Uzum reviews: attempting token refresh for account #{$accountId}");
-            $newToken = $this->refreshToken($account);
-            if ($newToken) {
-                $token = $newToken;
-                $response = $this->fetchReviews($token, $page, $size, $accountId);
-            }
-        }
-
-        // Если всё ещё 401 — попробовать без Bearer (некоторые эндпоинты Uzum не хотят Bearer)
-        if ($response->status() === 401) {
-            $rawToken = $account->uzum_access_token ?? $account->api_key;
-            Log::info("Uzum reviews: retrying without Bearer for account #{$accountId}");
-            $response = $this->fetchReviewsRaw($rawToken, $page, $size, $accountId);
-        }
-
-        Log::debug("Uzum reviews API final response for account #{$accountId}", [
-            'status' => $response->status(),
-            'body_preview' => mb_substr($response->body(), 0, 2000),
-        ]);
-
-        if ($response->status() === 401) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Токен Uzum истёк. Авторизуйтесь заново.',
                 'auth_required' => true,
             ], 401);
         }
 
-        if (! $response->successful()) {
-            Log::warning("Uzum reviews failed for account #{$accountId}", [
-                'status' => $response->status(),
-                'body' => mb_substr($response->body(), 0, 2000),
-            ]);
+        $page = (int) $request->input('page', 0);
+        $size = (int) $request->input('size', 20);
+        $filter = $request->input('filter', 'all');
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка загрузки отзывов: ' . $response->status(),
-            ], $response->status());
+        // Запрос через UzumApiManager
+        try {
+            $uzum = new UzumApiManager($account);
+            $response = $uzum->reviews()->list($page, $size);
+            $reviews = $response['payload'] ?? $response['productReviews'] ?? $response['content'] ?? [];
+
+            // Если ответ — массив напрямую
+            if (empty($reviews) && isset($response[0])) {
+                $reviews = $response;
+            }
+        } catch (\RuntimeException $e) {
+            // Если 401 — попробовать refresh token
+            if (str_contains($e->getMessage(), 'токен') || str_contains($e->getMessage(), '401')) {
+                $newToken = $this->refreshToken($account);
+                if ($newToken) {
+                    try {
+                        $uzum = new UzumApiManager($account->fresh());
+                        $response = $uzum->reviews()->list($page, $size);
+                        $reviews = $response['payload'] ?? $response['content'] ?? [];
+                    } catch (\Exception) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Токен истёк. Авторизуйтесь заново.',
+                            'auth_required' => true,
+                        ], 401);
+                    }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Токен истёк. Авторизуйтесь заново.',
+                        'auth_required' => true,
+                    ], 401);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 502);
+            }
         }
 
-        $json = $response->json();
-
-        // Uzum может возвращать отзывы в разных форматах
-        $reviews = $json['payload'] ?? $json['productReviews'] ?? $json['reviews']
-            ?? $json['data'] ?? $json['content'] ?? $json['items'] ?? [];
-
-        // Если ответ — массив напрямую (без обёртки)
-        if (empty($reviews) && isset($json[0])) {
-            $reviews = $json;
+        // Фильтрация по статусу ответа
+        if ($filter === 'unanswered') {
+            $reviews = array_values(array_filter($reviews, fn ($r) => ($r['replyStatus'] ?? null) === null));
+        } elseif ($filter === 'answered') {
+            $reviews = array_values(array_filter($reviews, fn ($r) => ($r['replyStatus'] ?? null) !== null));
         }
-
-        Log::info("Uzum reviews loaded for account #{$accountId}", [
-            'count' => count($reviews),
-            'response_keys' => is_array($json) ? array_keys($json) : [],
-        ]);
 
         return response()->json([
             'success' => true,
@@ -284,44 +220,142 @@ final class UzumReviewController extends Controller
             'page' => $page,
             'size' => $size,
             'total' => count($reviews),
-            'debug_keys' => config('app.debug') ? (is_array($json) ? array_keys($json) : []) : null,
+            'has_more' => count($response['payload'] ?? $response['content'] ?? []) >= $size,
         ]);
     }
 
     /**
-     * Запрос отзывов с Bearer-префиксом
+     * Ответить на отзыв
+     *
+     * Поддерживает оба формата:
+     * - POST /api/uzum-reviews/{accountId}/reply          body: {review_id, content}
+     * - POST /api/.../accounts/{account}/reviews/{reviewId}/reply  body: {content}
      */
-    private function fetchReviews(string $token, int $page, int $size, int $accountId): \Illuminate\Http\Client\Response
+    public function reply(Request $request, int|MarketplaceAccount $accountId, ?int $reviewId = null): JsonResponse
     {
-        $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?' . http_build_query([
-            'page' => $page,
-            'size' => $size,
+        $account = $accountId instanceof MarketplaceAccount
+            ? $accountId
+            : MarketplaceAccount::findOrFail($accountId);
+
+        if ($request->user() && method_exists($request->user(), 'hasCompanyAccess')) {
+            if (! $request->user()->hasCompanyAccess($account->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+        }
+
+        $request->validate([
+            'content' => 'required|string|max:1000',
+            'review_id' => $reviewId ? 'nullable' : 'required|integer',
         ]);
 
-        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
+        $reviewId = $reviewId ?? (int) $request->input('review_id');
+        $content = $request->input('content');
 
-        return Http::withHeaders([
-            'Authorization' => $authValue,
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url, (object) []);
+        $token = $this->resolveToken($account);
+        if (! $token) {
+            return response()->json(['success' => false, 'message' => 'Требуется авторизация'], 401);
+        }
+
+        try {
+            $uzum = new UzumApiManager($account);
+            $uzum->reviews()->reply($reviewId, $content);
+
+            return response()->json(['success' => true, 'status' => 'ok', 'message' => 'Ответ отправлен']);
+        } catch (\Exception $e) {
+            Log::warning('Uzum reply error', [
+                'account_id' => $account->id,
+                'review_id' => $reviewId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка отправки ответа: ' . $e->getMessage(),
+            ], 502);
+        }
     }
 
     /**
-     * Запрос отзывов без Bearer-префикса (fallback)
+     * Сгенерировать ответ через Claude AI
+     *
+     * Поддерживает оба формата:
+     * - POST /api/uzum-reviews/{accountId}/ai-reply       body: {review_id, review_text, rating, product_name}
+     * - POST /api/.../accounts/{account}/reviews/{reviewId}/ai-reply
      */
-    private function fetchReviewsRaw(string $token, int $page, int $size, int $accountId): \Illuminate\Http\Client\Response
+    public function aiReply(Request $request, int|MarketplaceAccount $accountId, ?int $reviewId = null): JsonResponse
     {
-        $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?' . http_build_query([
-            'page' => $page,
-            'size' => $size,
-        ]);
+        $account = $accountId instanceof MarketplaceAccount
+            ? $accountId
+            : MarketplaceAccount::findOrFail($accountId);
 
-        return Http::withHeaders([
-            'Authorization' => $token,
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url, (object) []);
+        if ($request->user() && method_exists($request->user(), 'hasCompanyAccess')) {
+            if (! $request->user()->hasCompanyAccess($account->company_id)) {
+                return response()->json(['message' => 'Доступ запрещён.'], 403);
+            }
+        }
+
+        $token = $this->resolveToken($account);
+        if (! $token) {
+            return response()->json(['message' => 'Требуется авторизация'], 401);
+        }
+
+        $reviewId = $reviewId ?? (int) $request->input('review_id');
+
+        // Данные из запроса
+        $reviewText = $request->input('review_text', '');
+        $rating = (int) $request->input('rating', 0);
+        $productName = $request->input('product_name', '');
+
+        // Если данных нет — подтянуть из Uzum API
+        if (empty($reviewText) && $reviewId) {
+            try {
+                $uzum = new UzumApiManager($account);
+                $review = $uzum->reviews()->detail($reviewId);
+                $reviewText = $review['content'] ?? '';
+                $rating = $review['rating'] ?? $rating;
+                $productName = $review['product']['productTitle'] ?? $productName;
+
+                $pros = $review['pros'] ?? '';
+                $cons = $review['cons'] ?? '';
+                if ($pros) {
+                    $reviewText .= " | Плюсы: {$pros}";
+                }
+                if ($cons) {
+                    $reviewText .= " | Минусы: {$cons}";
+                }
+            } catch (\Exception $e) {
+                Log::warning('Uzum: не удалось загрузить отзыв для AI', [
+                    'review_id' => $reviewId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Генерация через AI-сервис
+        $aiService = new UzumAiReplyService();
+
+        if (! $aiService->isConfigured() && ! (empty(trim($reviewText)) && $rating >= 4)) {
+            return response()->json(['message' => 'AI не настроен.'], 500);
+        }
+
+        $tone = $account->uzum_review_tone ?? 'friendly';
+        $text = $aiService->generate($rating, $reviewText, $productName, $tone);
+
+        if (! $text) {
+            return response()->json(['message' => 'Ошибка AI генерации.'], 502);
+        }
+
+        return response()->json(['text' => $text]);
+    }
+
+    // ─── ВНУТРЕННИЕ МЕТОДЫ ─────────────────────────────────────
+
+    /**
+     * Получить токен из аккаунта (единый порядок приоритетов)
+     */
+    private function resolveToken(MarketplaceAccount $account): ?string
+    {
+        return $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token ?? null;
     }
 
     /**
@@ -329,6 +363,10 @@ final class UzumReviewController extends Controller
      */
     private function refreshToken(MarketplaceAccount $account): ?string
     {
+        if (! $account->uzum_refresh_token) {
+            return null;
+        }
+
         $tokenUrl = config('uzum.oauth_token_url', 'https://api-seller.uzum.uz/api/oauth/token');
         $clientId = config('uzum.oauth_client_id', 'b2b-front');
         $clientSecret = config('uzum.oauth_client_secret', 'clientSecret');
@@ -355,65 +393,20 @@ final class UzumReviewController extends Controller
                     $account->uzum_token_expires_at = now()->addSeconds(($data['expires_in'] ?? 3600) - 60);
                     $account->save();
 
-                    Log::info("Uzum token refreshed for account #{$account->id}");
+                    Log::info('Uzum token refreshed', ['account_id' => $account->id]);
 
                     return $newToken;
                 }
             }
 
-            Log::warning("Uzum token refresh failed for account #{$account->id}", [
+            Log::warning('Uzum token refresh failed', [
+                'account_id' => $account->id,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
         } catch (\Exception $e) {
             Log::error("Uzum token refresh exception: {$e->getMessage()}");
         }
 
         return null;
-    }
-
-    /**
-     * Ответить на отзыв
-     */
-    public function reply(Request $request, int $accountId): JsonResponse
-    {
-        $request->validate([
-            'review_id' => 'required|integer',
-            'content' => 'required|string|max:500',
-        ]);
-
-        $account = MarketplaceAccount::findOrFail($accountId);
-        $token = $account->uzum_access_token ?? $account->api_key;
-
-        if (! $token) {
-            return response()->json(['success' => false, 'message' => 'Требуется авторизация'], 401);
-        }
-
-        try {
-            $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
-            $response = Http::withHeaders([
-                    'Authorization' => $authValue,
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ])
-                ->timeout(30)
-                ->post('https://api-seller.uzum.uz/api/seller/product-reviews/reply/create', [
-                    [
-                        'reviewId' => (int) $request->input('review_id'),
-                        'content' => $request->input('content'),
-                    ],
-                ]);
-
-            if ($response->successful()) {
-                return response()->json(['success' => true, 'message' => 'Ответ отправлен']);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка отправки ответа: ' . $response->status(),
-            ], $response->status());
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
     }
 }

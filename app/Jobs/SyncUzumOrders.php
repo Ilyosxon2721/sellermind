@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Jobs\Concerns\HandlesMarketplaceRateLimiting;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\MarketplaceSyncService;
+use App\Services\Uzum\UzumOrderSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -62,7 +63,7 @@ class SyncUzumOrders implements ShouldBeUnique, ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(MarketplaceSyncService $syncService): void
+    public function handle(): void
     {
         $account = $this->getAccount();
 
@@ -86,9 +87,13 @@ class SyncUzumOrders implements ShouldBeUnique, ShouldQueue
         ]);
 
         try {
-            // Тянем последние 30 дней (по умолчанию внутри syncOrders)
-            $syncService->syncOrders($account);
-            Log::info('SyncUzumOrders completed', ['account_id' => $account->id]);
+            $syncService = new UzumOrderSyncService();
+            $stats = $syncService->sync($account, daysBack: 30);
+
+            Log::info('SyncUzumOrders completed', [
+                'account_id' => $account->id,
+                'stats' => $stats,
+            ]);
         } catch (\Throwable $e) {
             Log::error('SyncUzumOrders failed', [
                 'account_id' => $account->id,
