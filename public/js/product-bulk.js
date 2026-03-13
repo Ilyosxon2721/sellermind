@@ -4,9 +4,27 @@
  */
 
 /**
- * Получить токен авторизации из localStorage
+ * Получить заголовки авторизации (Bearer токен + session cookies)
  */
-function getAuthToken() {
+function getBulkAuthHeaders(contentType) {
+    const headers = {
+        'Accept': 'application/json',
+    };
+
+    if (contentType) {
+        headers['Content-Type'] = contentType;
+    }
+
+    // Используем глобальный helper если доступен
+    if (typeof window.getAuthHeaders === 'function') {
+        const authHeaders = window.getAuthHeaders();
+        if (authHeaders.Authorization) {
+            headers['Authorization'] = authHeaders.Authorization;
+        }
+        return headers;
+    }
+
+    // Fallback: читаем токен из localStorage
     let token = localStorage.getItem('_x_auth_token');
     if (token) {
         try { token = JSON.parse(token); } catch (e) {}
@@ -14,7 +32,21 @@ function getAuthToken() {
     if (!token) {
         token = localStorage.getItem('auth_token');
     }
-    return token;
+    if (token && token !== 'session-auth') {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+/**
+ * Обёртка для fetch с credentials (session cookies)
+ */
+async function bulkFetch(url, options = {}) {
+    return fetch(url, {
+        credentials: 'same-origin',
+        ...options,
+    });
 }
 
 window.productBulkMixin = {
@@ -63,17 +95,15 @@ window.productBulkMixin = {
                 params.search = this.search;
             }
 
-            const response = await fetch('/api/products/bulk/export', {
+            const response = await bulkFetch('/api/products/bulk/export', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
+                headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify(params),
             });
 
             if (!response.ok) {
-                throw new Error('Export failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             // Download file
@@ -139,17 +169,15 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await fetch('/api/products/bulk/import/preview', {
+            const response = await bulkFetch('/api/products/bulk/import/preview', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
+                headers: getBulkAuthHeaders(null),
                 body: formData,
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Preview failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             this.importPreview = await response.json();
@@ -183,17 +211,15 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await fetch('/api/products/bulk/import/apply', {
+            const response = await bulkFetch('/api/products/bulk/import/apply', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
+                headers: getBulkAuthHeaders(null),
                 body: formData,
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Import failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
@@ -305,12 +331,9 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await fetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/api/products/bulk/update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
+                headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
                     action: action,
@@ -318,8 +341,8 @@ window.productBulkMixin = {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Bulk action failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
@@ -366,12 +389,9 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await fetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/api/products/bulk/update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
+                headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
                     action: 'update_prices',
@@ -380,8 +400,8 @@ window.productBulkMixin = {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Price update failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
