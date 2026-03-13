@@ -357,6 +357,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('save-token', [\App\Http\Controllers\Api\UzumReviewController::class, 'saveToken']);
         Route::get('reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
         Route::post('reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+        Route::get('debug', [\App\Http\Controllers\Api\UzumReviewController::class, 'debug']);
     });
 
     // Dialogs

@@ -766,14 +766,13 @@ function uzumReviewsPage() {
                     headers: this.getHeaders()
                 });
 
-                if (res.status === 401) {
-                    this.authenticated = false;
-                    this.loading = false;
-                    return;
-                }
-
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
+                    if (res.status === 401) {
+                        // Показать ошибку, но НЕ сбрасывать authenticated —
+                        // иначе будет цикл логин→401→логин
+                        throw new Error(data.message || 'Токен Uzum истёк или недействителен. Попробуйте выйти и войти заново.');
+                    }
                     throw new Error(data.message || `Ошибка ${res.status}`);
                 }
 
