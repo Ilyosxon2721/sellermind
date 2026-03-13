@@ -12,7 +12,8 @@
         "laravel/reverb": "^1.6",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.10.1",
-        "minishlink/web-push": "^10.0"
+        "minishlink/web-push": "^10.0",
+        "phpoffice/phpspreadsheet": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Controller for bulk product operations
@@ -65,66 +67,75 @@ class ProductBulkController extends Controller
 
         $products = $query->get();
 
-        // Prepare data for CSV export
-        $csvData = [];
-        $csvData[] = [
-            'Product ID',
-            'Product Name',
-            'Article',
-            'Category',
-            'Variant ID',
+        // Заголовки колонок
+        $headers = [
+            'ID товара',
+            'Название',
+            'Артикул',
+            'Категория',
+            'ID варианта',
             'SKU',
-            'Barcode',
-            'Purchase Price',
-            'Retail Price',
-            'Old Price',
-            'Stock',
-            'Is Active',
-            'Variant Options',
+            'Штрихкод',
+            'Закупочная цена',
+            'Розничная цена',
+            'Старая цена',
+            'Остаток',
+            'Активен',
+            'Опции варианта',
         ];
 
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Товары');
+
+        // Записываем заголовки
+        foreach ($headers as $col => $header) {
+            $cell = $sheet->setCellValue([$col + 1, 1], $header);
+        }
+
+        // Стиль заголовков: жирный шрифт
+        $lastCol = chr(ord('A') + count($headers) - 1);
+        $sheet->getStyle("A1:{$lastCol}1")->getFont()->setBold(true);
+
+        // Записываем данные
+        $row = 2;
         foreach ($products as $product) {
             foreach ($product->variants as $variant) {
-                $csvData[] = [
-                    $product->id,
-                    $product->name,
-                    $product->article,
-                    $product->category?->name ?? '',
-                    $variant->id,
-                    $variant->sku,
-                    $variant->barcode ?? '',
-                    $variant->purchase_price ?? 0,
-                    $variant->price_default ?? 0,
-                    $variant->old_price_default ?? 0,
-                    $variant->stock_default ?? 0,
-                    $variant->is_active ? 'Yes' : 'No',
-                    $this->formatVariantOptions($variant),
-                ];
+                $sheet->setCellValue([1, $row], $product->id);
+                $sheet->setCellValue([2, $row], $product->name);
+                $sheet->setCellValue([3, $row], $product->article);
+                $sheet->setCellValue([4, $row], $product->category?->name ?? '');
+                $sheet->setCellValue([5, $row], $variant->id);
+                $sheet->setCellValue([6, $row], $variant->sku);
+                $sheet->setCellValue([7, $row], $variant->barcode ?? '');
+                $sheet->setCellValue([8, $row], $variant->purchase_price ?? 0);
+                $sheet->setCellValue([9, $row], $variant->price_default ?? 0);
+                $sheet->setCellValue([10, $row], $variant->old_price_default ?? 0);
+                $sheet->setCellValue([11, $row], $variant->stock_default ?? 0);
+                $sheet->setCellValue([12, $row], $variant->is_active ? 'Да' : 'Нет');
+                $sheet->setCellValue([13, $row], $this->formatVariantOptions($variant));
+                $row++;
             }
         }
 
-        // Create CSV file
-        $filename = 'products_export_'.now()->format('Y-m-d_His').'.csv';
+        // Автоширина колонок
+        foreach (range('A', $lastCol) as $colLetter) {
+            $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+        }
+
+        // Сохраняем во временный файл
+        $filename = 'products_export_'.now()->format('Y-m-d_His').'.xlsx';
         $filePath = storage_path('app/temp/'.$filename);
 
-        // Ensure temp directory exists
         if (! file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
 
-        $file = fopen($filePath, 'w');
-
-        // Add BOM for UTF-8
-        fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-
-        foreach ($csvData as $row) {
-            fputcsv($file, $row, ';'); // Use semicolon for Excel compatibility
-        }
-
-        fclose($file);
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($filePath);
 
         return response()->download($filePath, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend();
     }
 
