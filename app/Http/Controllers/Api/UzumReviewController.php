@@ -20,11 +20,67 @@ final class UzumReviewController extends Controller
     {
         $account = MarketplaceAccount::findOrFail($accountId);
 
-        $token = $account->uzum_access_token ?? $account->uzum_api_key ?? $account->api_key;
+        $token = $account->uzum_access_token ?? $account->api_key;
 
         return response()->json([
             'authenticated' => ! empty($token),
         ]);
+    }
+
+    /**
+     * Диагностика токена и API-соединения (только в debug-режиме)
+     */
+    public function debug(int $accountId): JsonResponse
+    {
+        if (! config('app.debug')) {
+            return response()->json(['message' => 'Debug disabled'], 403);
+        }
+
+        $account = MarketplaceAccount::findOrFail($accountId);
+        $token = $account->uzum_access_token ?? $account->api_key;
+
+        $result = [
+            'has_token' => ! empty($token),
+            'token_length' => $token ? strlen($token) : 0,
+            'token_start' => $token ? substr($token, 0, 30) . '...' : null,
+            'is_jwt' => $token && str_starts_with($token, 'eyJ'),
+            'has_refresh' => ! empty($account->uzum_refresh_token),
+            'expires_at' => $account->uzum_token_expires_at,
+            'raw_db_start' => substr($account->getAttributes()['uzum_access_token'] ?? '', 0, 30),
+        ];
+
+        if ($token) {
+            // Тест 1: Bearer + token
+            $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?page=0&size=1';
+            try {
+                $r1 = Http::withHeaders([
+                    'Authorization' => "Bearer {$token}",
+                    'Accept' => 'application/json',
+                ])->timeout(15)->post($url, (object) []);
+                $result['test_bearer'] = [
+                    'status' => $r1->status(),
+                    'body' => mb_substr($r1->body(), 0, 500),
+                ];
+            } catch (\Exception $e) {
+                $result['test_bearer'] = ['error' => $e->getMessage()];
+            }
+
+            // Тест 2: Без Bearer
+            try {
+                $r2 = Http::withHeaders([
+                    'Authorization' => $token,
+                    'Accept' => 'application/json',
+                ])->timeout(15)->post($url, (object) []);
+                $result['test_raw'] = [
+                    'status' => $r2->status(),
+                    'body' => mb_substr($r2->body(), 0, 500),
+                ];
+            } catch (\Exception $e) {
+                $result['test_raw'] = ['error' => $e->getMessage()];
+            }
+        }
+
+        return response()->json($result);
     }
 
     /**
@@ -142,7 +198,7 @@ final class UzumReviewController extends Controller
     public function reviews(Request $request, int $accountId): JsonResponse
     {
         $account = MarketplaceAccount::findOrFail($accountId);
-        $token = $account->uzum_access_token ?? $account->uzum_api_key ?? $account->api_key;
+        $token = $account->uzum_access_token ?? $account->api_key;
 
         if (! $token) {
             return response()->json([
@@ -176,7 +232,7 @@ final class UzumReviewController extends Controller
 
         // Если всё ещё 401 — попробовать без Bearer (некоторые эндпоинты Uzum не хотят Bearer)
         if ($response->status() === 401) {
-            $rawToken = $account->uzum_access_token ?? $account->uzum_api_key ?? $account->api_key;
+            $rawToken = $account->uzum_access_token ?? $account->api_key;
             Log::info("Uzum reviews: retrying without Bearer for account #{$accountId}");
             $response = $this->fetchReviewsRaw($rawToken, $page, $size, $accountId);
         }
@@ -327,7 +383,7 @@ final class UzumReviewController extends Controller
         ]);
 
         $account = MarketplaceAccount::findOrFail($accountId);
-        $token = $account->uzum_access_token ?? $account->uzum_api_key ?? $account->api_key;
+        $token = $account->uzum_access_token ?? $account->api_key;
 
         if (! $token) {
             return response()->json(['success' => false, 'message' => 'Требуется авторизация'], 401);
