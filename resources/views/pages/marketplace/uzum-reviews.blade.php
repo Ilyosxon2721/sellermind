@@ -198,6 +198,11 @@
                                 :class="authTab === 'token' ? 'uzum-tab-active' : 'uzum-tab'">
                             Вставить токен
                         </button>
+                        <button @click="authTab = 'helper'"
+                                class="flex-1 py-3 px-4 text-sm transition-colors border-b-2"
+                                :class="authTab === 'helper' ? 'uzum-tab-active' : 'uzum-tab'">
+                            Помощник
+                        </button>
                     </div>
 
                     <div class="p-6">
@@ -235,18 +240,9 @@
                         </div>
 
                         <!-- Token tab -->
+                        <!-- Token tab -->
                         <div x-show="authTab === 'token'">
-                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
-                                <p class="text-sm font-medium text-blue-800 mb-2">Как получить токен:</p>
-                                <ol class="text-xs text-blue-700 space-y-1 list-decimal list-inside">
-                                    <li>Откройте <a href="https://seller.uzum.uz" target="_blank" class="underline font-medium">seller.uzum.uz</a> и войдите в аккаунт</li>
-                                    <li>Нажмите <kbd class="px-1 py-0.5 bg-blue-100 rounded text-[10px] font-mono">F12</kbd> для открытия DevTools</li>
-                                    <li>Перейдите на вкладку <strong>Network</strong> (Сеть)</li>
-                                    <li>Обновите страницу и нажмите на любой запрос к <code class="text-[10px] bg-blue-100 px-1 rounded">api-seller.uzum.uz</code></li>
-                                    <li>В разделе <strong>Request Headers</strong> найдите <code class="text-[10px] bg-blue-100 px-1 rounded">Authorization</code></li>
-                                    <li>Скопируйте значение токена (без слова Bearer)</li>
-                                </ol>
-                            </div>
+                            <p class="text-sm text-gray-500 mb-4">Если у вас уже есть токен — вставьте его ниже. Если нет — перейдите на вкладку <button @click="authTab = 'helper'" class="text-[#7B2FBE] underline font-medium">Помощник</button>.</p>
                             <form @submit.prevent="doSaveToken()">
                                 <div class="space-y-4">
                                     <div>
@@ -267,6 +263,84 @@
                                     </button>
                                 </div>
                             </form>
+                        </div>
+
+                        <!-- Helper tab — простой способ получения токена -->
+                        <div x-show="authTab === 'helper'">
+                            <div class="space-y-4">
+                                <!-- Шаг 1 -->
+                                <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <div class="flex items-start gap-3">
+                                        <span class="flex-shrink-0 w-7 h-7 bg-[#7B2FBE] text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-800 mb-1">Откройте Uzum Seller и войдите в аккаунт</p>
+                                            <a href="https://seller.uzum.uz" target="_blank"
+                                               class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7B2FBE] text-white rounded-lg text-sm font-medium hover:bg-[#6B25A8] transition">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                </svg>
+                                                Открыть seller.uzum.uz
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Шаг 2 -->
+                                <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <div class="flex items-start gap-3">
+                                        <span class="flex-shrink-0 w-7 h-7 bg-[#7B2FBE] text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-semibold text-gray-800 mb-2">Перетащите эту кнопку на панель закладок браузера</p>
+                                            <p class="text-xs text-gray-500 mb-3">Зажмите кнопку мышкой и перетащите наверх, где закладки</p>
+                                            {{-- Bookmarklet: извлекает токен из localStorage Uzum Seller --}}
+                                            <a href="javascript:void(function(){try{var t='';var ls=localStorage;var keys=Object.keys(ls);for(var i=0;i<keys.length;i++){var k=keys[i];var v=ls.getItem(k);if(v&&v.length>50){try{var p=JSON.parse(v);if(p.access_token){t=p.access_token;break}if(p.token){t=p.token;break}}catch(e){if(v.match(/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)){t=v;break}}}}if(!t){var cookies=document.cookie.split(';');for(var j=0;j<cookies.length;j++){var c=cookies[j].trim();if(c.match(/token/i)){var val=c.split('=')[1];if(val&&val.match(/^eyJ/)){t=val;break}}}}if(t){var el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('Токен скопирован!\n\nВернитесь в SellerMind и вставьте его (Ctrl+V).')}else{alert('Токен не найден.\n\nУбедитесь что вы вошли в seller.uzum.uz и обновите страницу.')}}catch(err){alert('Ошибка: '+err.message)}})()"
+                                               class="inline-block px-5 py-2.5 bg-gradient-to-r from-[#7B2FBE] to-[#3A007D] text-white rounded-lg text-sm font-bold shadow-md cursor-grab active:cursor-grabbing select-none"
+                                               onclick="event.preventDefault();alert('Не кликайте! Зажмите кнопку мышкой и ПЕРЕТАЩИТЕ её на панель закладок браузера (наверх).');">
+                                                Получить токен Uzum
+                                            </a>
+                                            <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                                Если панель закладок скрыта — нажмите Ctrl+Shift+B
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Шаг 3 -->
+                                <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <div class="flex items-start gap-3">
+                                        <span class="flex-shrink-0 w-7 h-7 bg-[#7B2FBE] text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-800 mb-1">На сайте Uzum Seller нажмите на закладку</p>
+                                            <p class="text-xs text-gray-500">Токен автоматически скопируется. Вернитесь сюда и вставьте его ниже.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Поле вставки токена -->
+                                <form @submit.prevent="doSaveToken()">
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Вставьте скопированный токен</label>
+                                            <textarea x-model="tokenForm.token" required rows="3"
+                                                      class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-transparent text-sm font-mono"
+                                                      placeholder="Ctrl+V для вставки токена..."></textarea>
+                                        </div>
+                                        <button type="submit" :disabled="authLoading" class="w-full px-4 py-3 uzum-btn rounded-xl font-semibold text-sm transition">
+                                            <span x-show="!authLoading">Подключить аккаунт</span>
+                                            <span x-show="authLoading" class="flex items-center justify-center gap-2">
+                                                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                </svg>
+                                                Подключение...
+                                            </span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -555,7 +629,7 @@ function uzumReviewsPage() {
         // Auth state
         checking: true,
         authenticated: false,
-        authTab: 'login',
+        authTab: 'helper',
         authLoading: false,
         authError: null,
         loginForm: { login: '', password: '' },
@@ -633,10 +707,15 @@ function uzumReviewsPage() {
                     this.showToast('Авторизация успешна', 'success');
                     await this.loadReviews();
                 } else {
-                    let errMsg = data.message || 'Ошибка авторизации';
-                    if (data.debug) errMsg += ' (' + data.debug + ')';
-                    if (data.status_code) errMsg += ' [HTTP ' + data.status_code + ']';
-                    this.authError = errMsg;
+                    // Понятное сообщение для пользователя
+                    const debug = (data.debug || '').toLowerCase();
+                    if (debug.includes('invalid_grant') || debug.includes('bad credentials')) {
+                        this.authError = 'Неверный логин или пароль. Проверьте данные или используйте вкладку «Помощник» для подключения через токен.';
+                    } else if (data.status_code === 403) {
+                        this.authError = 'Доступ запрещён. Попробуйте подключиться через вкладку «Помощник».';
+                    } else {
+                        this.authError = data.message || 'Ошибка авторизации. Попробуйте вкладку «Помощник».';
+                    }
                 }
             } catch (e) {
                 this.authError = 'Ошибка подключения к серверу';
@@ -729,8 +808,12 @@ function uzumReviewsPage() {
                 const data = await res.json();
                 if (data.success) {
                     const newReviews = data.reviews ?? [];
-                    this.reviews = [...this.reviews, ...newReviews];
                     this.hasMore = newReviews.length >= 20;
+                    // Добавить в общий массив и применить фильтр
+                    if (!this._allReviews) this._allReviews = [];
+                    this._allReviews = [...this._allReviews, ...newReviews];
+                    this.updateStats({ reviews: this._allReviews });
+                    this.applyFilter(this._allReviews);
                 }
             } catch (e) {
                 this.showToast('Не удалось загрузить отзывы: ' + e.message, 'error');
