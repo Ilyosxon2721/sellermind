@@ -173,8 +173,11 @@ Route::middleware('auth.any')->group(function () {
             Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
             Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
 
-            // Экспорт товаров в XLSX (через web для session auth)
+            // Bulk операции (через web для session auth)
             Route::match(['get', 'post'], '/bulk/export', [\App\Http\Controllers\Api\ProductBulkController::class, 'export'])->name('bulk.export');
+            Route::post('/bulk/import/preview', [\App\Http\Controllers\Api\ProductBulkController::class, 'previewImport'])->name('bulk.import.preview');
+            Route::post('/bulk/import/apply', [\App\Http\Controllers\Api\ProductBulkController::class, 'applyImport'])->name('bulk.import.apply');
+            Route::post('/bulk/update', [\App\Http\Controllers\Api\ProductBulkController::class, 'bulkUpdate'])->name('bulk.update');
         });
     });
 

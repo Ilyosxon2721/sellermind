@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -147,18 +148,11 @@ class ProductBulkController extends Controller
     public function previewImport(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'], // 10MB max
+            'file' => ['required', 'file', 'max:10240'], // 10MB max
         ]);
 
         $file = $request->file('file');
-        $csvData = array_map(function ($row) {
-            return str_getcsv($row, ';');
-        }, file($file->getPathname()));
-
-        // Remove BOM if present
-        if (isset($csvData[0][0])) {
-            $csvData[0][0] = str_replace("\xEF\xBB\xBF", '', $csvData[0][0]);
-        }
+        $csvData = $this->parseImportFile($file);
 
         // Remove header row
         $header = array_shift($csvData);
@@ -184,7 +178,7 @@ class ProductBulkController extends Controller
             $newRetailPrice = $row[9] ?? null;
             $newOldPrice = $row[10] ?? null;
             $newStock = $row[11] ?? null;
-            $isActive = isset($row[12]) ? strtolower(trim($row[12])) === 'yes' : null;
+            $isActive = isset($row[12]) && trim($row[12]) !== '' ? in_array(strtolower(trim($row[12])), ['yes', 'да', '1', 'true']) : null;
 
             // Validate variant
             $variant = null;
@@ -268,28 +262,26 @@ class ProductBulkController extends Controller
     public function applyImport(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+            'file' => ['required', 'file', 'max:10240'],
         ]);
 
         $file = $request->file('file');
-        $csvData = array_map(function ($row) {
-            return str_getcsv($row, ';');
-        }, file($file->getPathname()));
 
-        // Remove BOM if present
-        if (isset($csvData[0][0])) {
-            $csvData[0][0] = str_replace("\xEF\xBB\xBF", '', $csvData[0][0]);
-        }
-
-        // Remove header
-        array_shift($csvData);
-
-        // Store file temporarily and dispatch job
+        // Конвертируем любой формат (XLSX/CSV) в CSV для джоба
         $tempFilePath = storage_path('app/temp/import_'.uniqid().'.csv');
         if (! file_exists(dirname($tempFilePath))) {
             mkdir(dirname($tempFilePath), 0755, true);
         }
-        $file->move(dirname($tempFilePath), basename($tempFilePath));
+
+        $rows = $this->parseImportFile($file);
+        // Записываем как CSV с точкой с запятой
+        $fp = fopen($tempFilePath, 'w');
+        foreach ($rows as $row) {
+            fputcsv($fp, $row, ';');
+        }
+        fclose($fp);
+
+        // Убираем заголовок — джоб сам удалит первую строку
 
         // Dispatch job for processing
         ProcessBulkProductUpdateJob::dispatch(
@@ -438,6 +430,62 @@ class ProductBulkController extends Controller
                 'message' => 'Bulk update failed: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Парсинг файла импорта (поддержка CSV и XLSX)
+     *
+     * @return array<int, array<int, string>>
+     */
+    protected function parseImportFile(\Illuminate\Http\UploadedFile $file): array
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (in_array($extension, ['xlsx', 'xls'])) {
+            return $this->parseXlsxFile($file->getPathname());
+        }
+
+        // CSV / TXT
+        return $this->parseCsvFile($file->getPathname());
+    }
+
+    /**
+     * Парсинг XLSX файла через PhpSpreadsheet
+     */
+    protected function parseXlsxFile(string $path): array
+    {
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = [];
+
+        foreach ($sheet->getRowIterator() as $row) {
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            $rowData = [];
+            foreach ($cellIterator as $cell) {
+                $rowData[] = (string) ($cell->getValue() ?? '');
+            }
+            $rows[] = $rowData;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Парсинг CSV файла (разделитель — точка с запятой)
+     */
+    protected function parseCsvFile(string $path): array
+    {
+        $rows = array_map(function ($row) {
+            return str_getcsv($row, ';');
+        }, file($path));
+
+        // Удаляем BOM
+        if (isset($rows[0][0])) {
+            $rows[0][0] = str_replace("\xEF\xBB\xBF", '', $rows[0][0]);
+        }
+
+        return $rows;
     }
 
     /**
