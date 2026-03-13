@@ -473,6 +473,7 @@ class StockController extends Controller
         }
 
         $service = app(StockBalanceService::class);
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
         $warehouseStats = [];
         $totalQuantity = 0;
         $totalCost = 0;
@@ -486,12 +487,15 @@ class StockController extends Controller
                 ->pluck('id');
 
             // Получаем все SKU на складе с положительным остатком
+            // Стоимость рассчитываем из актуальных закупочных цен вариантов (с конвертацией валют)
             $ledgerData = \App\Models\Warehouse\StockLedger::query()
-                ->where('company_id', $companyId)
-                ->where('warehouse_id', $warehouse->id)
-                ->whereIn('sku_id', $activeSkuIds)
-                ->selectRaw('sku_id, SUM(qty_delta) as qty, SUM(cost_delta) as cost')
-                ->groupBy('sku_id')
+                ->where('stock_ledger.company_id', $companyId)
+                ->where('stock_ledger.warehouse_id', $warehouse->id)
+                ->whereIn('stock_ledger.sku_id', $activeSkuIds)
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->selectRaw('stock_ledger.sku_id, SUM(stock_ledger.qty_delta) as qty, product_variants.purchase_price, product_variants.purchase_price_currency')
+                ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
                 ->having('qty', '>', 0)
                 ->get();
 
@@ -501,15 +505,10 @@ class StockController extends Controller
 
             foreach ($ledgerData as $data) {
                 $qty = (float) $data->qty;
-                $cost = (float) $data->cost;
-
-                // Если себестоимость в ledger равна 0, пробуем взять из ProductVariant
-                if ($cost <= 0 && $qty > 0) {
-                    $sku = \App\Models\Warehouse\Sku::find($data->sku_id);
-                    if ($sku && $sku->productVariant?->purchase_price > 0) {
-                        $cost = $qty * $sku->productVariant->getPurchasePriceInBase();
-                    }
-                }
+                $purchasePrice = (float) ($data->purchase_price ?? 0);
+                $currency = $data->purchase_price_currency ?? 'UZS';
+                $priceInBase = $financeSettings->convertToBase($purchasePrice, $currency);
+                $cost = $priceInBase * $qty;
 
                 $warehouseQty += $qty;
                 $warehouseCost += max(0, $cost);

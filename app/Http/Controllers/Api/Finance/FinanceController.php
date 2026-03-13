@@ -451,41 +451,86 @@ class FinanceController extends Controller
         $baseCurrency = 'UZS';
 
         try {
-            // Получаем текущее количество и себестоимость
-            // cost_delta уже в UZS и уже учитывает направление (+ для поступлений, - для списаний)
-            $summary = StockLedger::byCompany($companyId)
-                ->selectRaw('SUM(qty_delta) as total_qty, SUM(cost_delta) as total_cost')
-                ->first();
+            // Рассчитываем стоимость из актуальных закупочных цен вариантов (с конвертацией валют)
+            $stockData = StockLedger::where('stock_ledger.company_id', $companyId)
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->select(
+                    'stock_ledger.sku_id',
+                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
+                    'product_variants.purchase_price',
+                    'product_variants.purchase_price_currency',
+                )
+                ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
+                ->having('qty', '>', 0)
+                ->get();
 
-            $totalQty = max(0, (float) ($summary?->total_qty ?? 0));
-            $totalCostBase = max(0, (float) ($summary?->total_cost ?? 0));
+            $totalQty = 0;
+            $totalCostBase = 0;
 
-            // Конвертируем в выбранную валюту
+            foreach ($stockData as $item) {
+                $qty = (float) $item->qty;
+                $totalQty += $qty;
+
+                $purchasePrice = (float) ($item->purchase_price ?? 0);
+                $currency = $item->purchase_price_currency ?? 'UZS';
+                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
+                $totalCostBase += $priceInBase * $qty;
+            }
+
+            $totalCostBase = max(0, $totalCostBase);
+
+            // Конвертируем в выбранную валюту отображения
             $totalCost = $currencyService
                 ? $currencyService->convert($totalCostBase, $baseCurrency, $displayCurrency)
                 : $totalCostBase;
 
-            // Группировка по складам
-            $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
+            // Группировка по складам (тоже с конвертацией закупочных цен)
+            $byWarehouseData = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.cost_delta) as cost')
-                ->groupBy('warehouses.id', 'warehouses.name')
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->select(
+                    'warehouses.id as warehouse_id',
+                    'warehouses.name as warehouse_name',
+                    'stock_ledger.sku_id',
+                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
+                    'product_variants.purchase_price',
+                    'product_variants.purchase_price_currency',
+                )
+                ->groupBy('warehouses.id', 'warehouses.name', 'stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
                 ->having('qty', '>', 0)
                 ->get();
 
-            $warehouseData = $byWarehouse->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
-                $costBase = max(0, (float) $w->cost);
+            // Агрегируем по складу
+            $warehouseMap = [];
+            foreach ($byWarehouseData as $item) {
+                $wId = $item->warehouse_id;
+                if (! isset($warehouseMap[$wId])) {
+                    $warehouseMap[$wId] = ['id' => $wId, 'name' => $item->warehouse_name, 'qty' => 0, 'cost_base' => 0];
+                }
+                $qty = (float) $item->qty;
+                $purchasePrice = (float) ($item->purchase_price ?? 0);
+                $currency = $item->purchase_price_currency ?? 'UZS';
+                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
+
+                $warehouseMap[$wId]['qty'] += $qty;
+                $warehouseMap[$wId]['cost_base'] += $priceInBase * $qty;
+            }
+
+            $warehouseData = collect($warehouseMap)->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
+                $costBase = max(0, $w['cost_base']);
                 $cost = $currencyService
                     ? $currencyService->convert($costBase, $baseCurrency, $displayCurrency)
                     : $costBase;
 
                 return [
-                    'id' => $w->id,
-                    'name' => $w->name,
-                    'qty' => (float) $w->qty,
+                    'id' => $w['id'],
+                    'name' => $w['name'],
+                    'qty' => $w['qty'],
                     'cost' => $cost,
                 ];
-            })->toArray();
+            })->values()->toArray();
 
             return [
                 'total_qty' => $totalQty,
