@@ -8,6 +8,7 @@ use App\Jobs\SendTelegramOrderNotification;
 use App\Models\TelegramSubscription;
 use App\Notifications\NewMarketplaceOrderNotification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 trait NotifiesMarketplaceOrder
@@ -23,6 +24,13 @@ trait NotifiesMarketplaceOrder
         string $currency,
     ): void {
         try {
+            // Дедупликация: не отправлять повторно для того же заказа (10 мин кэш)
+            $cacheKey = "notify:new:{$marketplace}:{$orderNumber}";
+            if (Cache::has($cacheKey)) {
+                return;
+            }
+            Cache::put($cacheKey, true, 600);
+
             $account = $order->account;
             if (! $account) {
                 return;
@@ -64,6 +72,13 @@ trait NotifiesMarketplaceOrder
     protected function notifySubscribers(Model $order, string $marketplace, string $status): void
     {
         try {
+            // Дедупликация: не отправлять повторно для того же заказа+статуса (10 мин кэш)
+            $cacheKey = "notify:sub:{$marketplace}:{$order->id}:{$status}";
+            if (Cache::has($cacheKey)) {
+                return;
+            }
+            Cache::put($cacheKey, true, 600);
+
             $account = $order->account;
             if (! $account) {
                 return;
