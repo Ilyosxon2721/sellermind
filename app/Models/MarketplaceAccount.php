@@ -651,8 +651,13 @@ class MarketplaceAccount extends Model
      */
     public function getUzumAuthHeaders(): array
     {
-        // Accessors already decrypt tokens, no need to decrypt again
-        $token = $this->uzum_access_token ?? $this->api_key;
+        // Приоритет: если uzum_access_token не просрочен — используем его,
+        // иначе берём api_key (основной токен, введённый пользователем)
+        $token = null;
+        if ($this->uzum_access_token && $this->uzum_token_expires_at && $this->uzum_token_expires_at > now()) {
+            $token = $this->uzum_access_token;
+        }
+        $token = $token ?? $this->api_key;
 
         if (! $token) {
             return [];
