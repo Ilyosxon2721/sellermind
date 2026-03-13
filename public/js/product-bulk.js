@@ -81,12 +81,12 @@ window.productBulkMixin = {
     bulkActionLoading: false,
 
     /**
-     * Экспорт товаров в XLSX через web-маршрут (session auth)
+     * Экспорт товаров в XLSX через web-маршрут (GET — session auth)
      */
     async exportProducts() {
         try {
-            // Собираем параметры
-            const params = {};
+            // Собираем query-параметры
+            const queryParams = new URLSearchParams();
 
             if (this.selectedVariants.length > 0) {
                 const productIds = [...new Set(
@@ -95,39 +95,13 @@ window.productBulkMixin = {
                         return variant?.product_id;
                     }).filter(Boolean)
                 )];
-                params.product_ids = productIds;
+                productIds.forEach(id => queryParams.append('product_ids[]', id));
             }
 
-            // Скачиваем через скрытую форму (session auth автоматически)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/products/bulk/export';
-            form.style.display = 'none';
-
-            // CSRF токен
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            if (csrfToken) {
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrfToken;
-                form.appendChild(csrfInput);
-            }
-
-            // Параметры (product_ids)
-            if (params.product_ids) {
-                params.product_ids.forEach(id => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'product_ids[]';
-                    input.value = id;
-                    form.appendChild(input);
-                });
-            }
-
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
+            // Простое перенаправление — браузер сам отправит session cookie
+            const queryString = queryParams.toString();
+            const url = '/products/bulk/export' + (queryString ? '?' + queryString : '');
+            window.location.href = url;
 
             this.showToast('success', 'Экспорт запущен, файл скачивается...');
         } catch (error) {
