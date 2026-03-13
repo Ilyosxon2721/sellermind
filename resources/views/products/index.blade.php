@@ -282,7 +282,7 @@
     </a>
 </div>
 {{-- Hidden Export Form --}}
-<form id="exportForm" method="POST" action="/api/products/bulk/export" class="hidden">
+<form id="exportForm" method="POST" action="/products/bulk/export" class="hidden">
     @csrf
     @if($filters['category_id'] ?? null)
         <input type="hidden" name="category_id" value="{{ $filters['category_id'] }}">
