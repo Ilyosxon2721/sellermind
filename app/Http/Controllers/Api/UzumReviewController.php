@@ -44,13 +44,11 @@ final class UzumReviewController extends Controller
         $clientSecret = config('uzum.oauth_client_secret', '');
 
         try {
+            // Uzum OAuth2 требует Basic Auth с client_id (даже без secret)
             $httpRequest = Http::asForm()
                 ->accept('application/json')
+                ->withBasicAuth($clientId, $clientSecret)
                 ->timeout(30);
-
-            if (! empty($clientSecret)) {
-                $httpRequest = $httpRequest->withBasicAuth($clientId, $clientSecret);
-            }
 
             $formData = [
                 'grant_type' => 'password',
@@ -58,16 +56,10 @@ final class UzumReviewController extends Controller
                 'password' => $request->input('password'),
             ];
 
-            // Всегда добавляем client_id в тело запроса
-            if (empty($clientSecret)) {
-                $formData['client_id'] = $clientId;
-            }
-
             Log::debug("Uzum OAuth2 login attempt for account #{$accountId}", [
                 'url' => $tokenUrl,
                 'username' => $request->input('login'),
                 'client_id' => $clientId,
-                'has_secret' => ! empty($clientSecret),
             ]);
 
             $response = $httpRequest->post($tokenUrl, $formData);
