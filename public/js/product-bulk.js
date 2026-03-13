@@ -4,7 +4,8 @@
  */
 
 /**
- * Получить заголовки авторизации (Bearer токен + session cookies)
+ * Получить заголовки авторизации
+ * Bearer токен + X-XSRF-TOKEN (для Sanctum stateful API)
  */
 function getBulkAuthHeaders(contentType) {
     const headers = {
@@ -15,25 +16,33 @@ function getBulkAuthHeaders(contentType) {
         headers['Content-Type'] = contentType;
     }
 
-    // Используем глобальный helper если доступен
-    if (typeof window.getAuthHeaders === 'function') {
-        const authHeaders = window.getAuthHeaders();
-        if (authHeaders.Authorization) {
-            headers['Authorization'] = authHeaders.Authorization;
-        }
-        return headers;
+    // X-XSRF-TOKEN из cookie (Sanctum stateful auth)
+    const xsrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('XSRF-TOKEN='))
+        ?.split('=')[1];
+    if (xsrfToken) {
+        headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
     }
 
-    // Fallback: читаем токен из localStorage
-    let token = localStorage.getItem('_x_auth_token');
-    if (token) {
-        try { token = JSON.parse(token); } catch (e) {}
+    // Bearer токен из Alpine store или localStorage
+    let token = null;
+    try {
+        token = Alpine.store('auth')?.token;
+    } catch (e) {}
+
+    if (!token) {
+        const stored = localStorage.getItem('_x_auth_token');
+        if (stored) {
+            try { token = JSON.parse(stored); } catch (e) { token = stored; }
+        }
     }
     if (!token) {
         token = localStorage.getItem('auth_token');
     }
+
     if (token && token !== 'session-auth') {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers['Authorization'] = 'Bearer ' + token;
     }
 
     return headers;
@@ -111,7 +120,7 @@ window.productBulkMixin = {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `products_export_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `products_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
