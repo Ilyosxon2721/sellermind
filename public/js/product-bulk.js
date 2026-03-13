@@ -81,15 +81,14 @@ window.productBulkMixin = {
     bulkActionLoading: false,
 
     /**
-     * Export products to CSV
+     * Экспорт товаров в XLSX через web-маршрут (session auth)
      */
     async exportProducts() {
         try {
+            // Собираем параметры
             const params = {};
 
-            // If products are selected, export only those
             if (this.selectedVariants.length > 0) {
-                // Get unique product IDs from selected variants
                 const productIds = [...new Set(
                     this.selectedVariants.map(vid => {
                         const variant = this.findVariantById(vid);
@@ -99,34 +98,38 @@ window.productBulkMixin = {
                 params.product_ids = productIds;
             }
 
-            // Add filters
-            if (this.search) {
-                params.search = this.search;
+            // Скачиваем через скрытую форму (session auth автоматически)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/products/bulk/export';
+            form.style.display = 'none';
+
+            // CSRF токен
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
             }
 
-            const response = await bulkFetch('/api/products/bulk/export', {
-                method: 'POST',
-                headers: getBulkAuthHeaders('application/json'),
-                body: JSON.stringify(params),
-            });
-
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.message || `Ошибка ${response.status}`);
+            // Параметры (product_ids)
+            if (params.product_ids) {
+                params.product_ids.forEach(id => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'product_ids[]';
+                    input.value = id;
+                    form.appendChild(input);
+                });
             }
 
-            // Download file
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `products_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
 
-            this.showToast('success', 'Товары экспортированы');
+            this.showToast('success', 'Экспорт запущен, файл скачивается...');
         } catch (error) {
             console.error('Export error:', error);
             this.showToast('error', 'Ошибка экспорта: ' + error.message);
