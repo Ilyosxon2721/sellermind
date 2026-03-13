@@ -282,7 +282,8 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return null;
+            // Токен мог быть сохранён в открытом виде (миграция из uzum_api_key)
+            return $value;
         }
     }
 
@@ -652,15 +653,6 @@ class MarketplaceAccount extends Model
     {
         // Accessors already decrypt tokens, no need to decrypt again
         $token = $this->uzum_access_token ?? $this->api_key;
-
-        // DEBUG: Log token info for troubleshooting
-        \Log::debug('Uzum getUzumAuthHeaders token check', [
-            'account_id' => $this->id,
-            'has_token' => ! empty($token),
-            'token_length' => $token ? strlen($token) : 0,
-            'token_start' => $token ? substr($token, 0, 10) : null,
-            'token_looks_encrypted' => $token && str_starts_with($token, 'eyJ'),
-        ]);
 
         if (! $token) {
             return [];
