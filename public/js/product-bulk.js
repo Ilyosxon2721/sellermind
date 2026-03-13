@@ -137,10 +137,10 @@ window.productBulkMixin = {
     handleDrop(event) {
         this.isDragging = false;
         const file = event.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+        if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
             this.importFile = file;
         } else {
-            this.showToast('error', 'Пожалуйста, загрузите CSV файл');
+            this.showToast('error', 'Пожалуйста, загрузите XLSX или CSV файл');
         }
     },
 
@@ -156,7 +156,7 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await bulkFetch('/api/products/bulk/import/preview', {
+            const response = await bulkFetch('/products/bulk/import/preview', {
                 method: 'POST',
                 headers: getBulkAuthHeaders(null),
                 body: formData,
@@ -198,7 +198,7 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await bulkFetch('/api/products/bulk/import/apply', {
+            const response = await bulkFetch('/products/bulk/import/apply', {
                 method: 'POST',
                 headers: getBulkAuthHeaders(null),
                 body: formData,
@@ -318,7 +318,7 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await bulkFetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/products/bulk/update', {
                 method: 'POST',
                 headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({
@@ -379,7 +379,7 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await bulkFetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/products/bulk/update', {
                 method: 'POST',
                 headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({

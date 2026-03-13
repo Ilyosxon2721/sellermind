@@ -75,7 +75,7 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                 $newRetailPrice = isset($row[9]) && $row[9] !== '' ? (float) $row[9] : null;
                 $newOldPrice = isset($row[10]) && $row[10] !== '' ? (float) $row[10] : null;
                 $newStock = isset($row[11]) && $row[11] !== '' ? (int) $row[11] : null;
-                $isActive = isset($row[12]) ? strtolower(trim($row[12])) === 'yes' : null;
+                $isActive = isset($row[12]) && trim($row[12]) !== '' ? in_array(strtolower(trim($row[12])), ['yes', 'да', '1', 'true']) : null;
 
                 // Find variant
                 $variant = ProductVariant::with('product')

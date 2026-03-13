@@ -22,7 +22,7 @@
             <!-- Step 1: Upload File -->
             <div x-show="importStep === 1">
                 <p class="text-gray-600 mb-4">
-                    Загрузите CSV файл с обновлёнными данными товаров. Используйте экспорт как шаблон.
+                    Загрузите XLSX или CSV файл с обновлёнными данными товаров. Используйте экспорт как шаблон.
                 </p>
 
                 <!-- Drag & Drop Zone -->
@@ -34,7 +34,7 @@
                     <input type="file"
                            ref="importFileInput"
                            @change="handleFileSelect"
-                           accept=".csv,.txt"
+                           accept=".csv,.txt,.xlsx,.xls"
                            class="hidden">
 
                     <div class="mb-4">
@@ -46,7 +46,7 @@
                     <template x-if="!importFile">
                         <div>
                             <p class="text-gray-700 font-medium mb-2">
-                                Перетащите CSV файл сюда
+                                Перетащите файл сюда (XLSX или CSV)
                             </p>
                             <p class="text-gray-500 text-sm mb-4">или</p>
                             <button @click="$refs.importFileInput.click()"
@@ -88,8 +88,8 @@
                     <ul class="text-sm text-blue-800 space-y-1">
                         <li>• Не изменяйте ID товаров и вариантов</li>
                         <li>• Не удаляйте и не меняйте порядок столбцов</li>
-                        <li>• Используйте точку с запятой (;) как разделитель</li>
-                        <li>• Сохраняйте файл в кодировке UTF-8</li>
+                        <li>• Поддерживаются форматы: XLSX (рекомендуется) и CSV (разделитель ;)</li>
+                        <li>• Для CSV: сохраняйте файл в кодировке UTF-8</li>
                     </ul>
                 </div>
             </div>
@@ -144,7 +144,14 @@
                                 <div class="space-y-1">
                                     <template x-for="(value, key) in change.changes" :key="key">
                                         <div class="text-xs flex items-center space-x-2">
-                                            <span class="text-gray-600 capitalize" x-text="key.replace('_', ' ')"></span>:
+                                            <span class="text-gray-600" x-text="({
+                                                purchase_price: 'Закупочная цена',
+                                                purchase_price_currency: 'Валюта закупки',
+                                                price_default: 'Розничная цена',
+                                                old_price_default: 'Старая цена',
+                                                stock_default: 'Остаток',
+                                                is_active: 'Активен',
+                                            })[key] || key"></span>:
                                             <span class="text-red-600 line-through" x-text="value.old"></span>
                                             <span class="text-gray-400">→</span>
                                             <span class="text-green-600 font-medium" x-text="value.new"></span>
