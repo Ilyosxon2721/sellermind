@@ -236,12 +236,22 @@
 
                         <!-- Token tab -->
                         <div x-show="authTab === 'token'">
-                            <p class="text-sm text-gray-500 mb-4">Вставьте access_token из Uzum Seller</p>
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
+                                <p class="text-sm font-medium text-blue-800 mb-2">Как получить токен:</p>
+                                <ol class="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                                    <li>Откройте <a href="https://seller.uzum.uz" target="_blank" class="underline font-medium">seller.uzum.uz</a> и войдите в аккаунт</li>
+                                    <li>Нажмите <kbd class="px-1 py-0.5 bg-blue-100 rounded text-[10px] font-mono">F12</kbd> для открытия DevTools</li>
+                                    <li>Перейдите на вкладку <strong>Network</strong> (Сеть)</li>
+                                    <li>Обновите страницу и нажмите на любой запрос к <code class="text-[10px] bg-blue-100 px-1 rounded">api-seller.uzum.uz</code></li>
+                                    <li>В разделе <strong>Request Headers</strong> найдите <code class="text-[10px] bg-blue-100 px-1 rounded">Authorization</code></li>
+                                    <li>Скопируйте значение токена (без слова Bearer)</li>
+                                </ol>
+                            </div>
                             <form @submit.prevent="doSaveToken()">
                                 <div class="space-y-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Access Token</label>
-                                        <textarea x-model="tokenForm.token" required rows="4"
+                                        <textarea x-model="tokenForm.token" required rows="3"
                                                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3A007D] focus:border-transparent text-sm font-mono"
                                                   placeholder="Вставьте токен сюда..."></textarea>
                                     </div>
