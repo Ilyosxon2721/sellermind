@@ -37,6 +37,8 @@ final class UzumAutoReviewService
             return $stats;
         }
 
+        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
+
         $page = 0;
         do {
             $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?'.http_build_query([
@@ -44,7 +46,7 @@ final class UzumAutoReviewService
                 'size' => 20,
             ]);
 
-            $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->post($url, (object) []);
+            $response = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post($url, (object) []);
 
             if (! $response->successful()) {
                 break;
@@ -127,7 +129,8 @@ final class UzumAutoReviewService
         }
 
         // Отправляем ответ на отзыв
-        $sendResponse = Http::withHeaders(['Authorization' => $token])->timeout(30)->post(
+        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
+        $sendResponse = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post(
             'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
             [['reviewId' => $reviewId, 'content' => $replyText]]
         );

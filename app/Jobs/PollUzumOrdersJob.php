@@ -28,6 +28,11 @@ final class PollUzumOrdersJob implements ShouldQueue
     public int $timeout = 30;
     public int $tries   = 1;
 
+    /**
+     * Статусы заказов для поллинга (OpenAPI v2)
+     */
+    private const POLL_STATUSES = ['CREATED', 'PACKING'];
+
     public function handle(
         PollingLockManager $lockManager,
         DeduplicationService $dedup,
@@ -45,12 +50,17 @@ final class PollUzumOrdersJob implements ShouldQueue
 
             try {
                 $account = MarketplaceAccount::find($state->store_id);
-                if (! $account || empty($account->api_key)) {
+                if (! $account) {
                     continue;
                 }
 
-                $apiKey = decrypt($account->api_key);
-                $this->pollOrders($state, $account, $apiKey, $dedup, $eventStore);
+                $headers = $account->getUzumAuthHeaders();
+                if (empty($headers)) {
+                    Log::warning("Uzum polling: no auth token for store {$state->store_id}");
+                    continue;
+                }
+
+                $this->pollOrders($state, $account, $headers, $dedup, $eventStore);
 
             } catch (\Throwable $e) {
                 $state->increment('consecutive_errors');
@@ -69,58 +79,61 @@ final class PollUzumOrdersJob implements ShouldQueue
     private function pollOrders(
         MarketplacePollingState $state,
         MarketplaceAccount $account,
-        string $apiKey,
+        array $headers,
         DeduplicationService $dedup,
         EventStoreService $eventStore,
     ): void {
-        $since = $state->last_poll_at
-            ? $state->last_poll_at->toISOString()
-            : now()->subHour()->toISOString();
+        $baseUrl = config('uzum.base_url', 'https://api-seller.uzum.uz/api/seller-openapi');
 
-        $response = Http::timeout(15)
-            ->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
-                'Accept'        => 'application/json',
-            ])
-            ->get('https://api-seller.uzum.uz/api/seller/order/list', [
-                'statuses' => ['NEW', 'AWAITING_PACKAGING'],
-                'dateFrom' => $since,
-                'size'     => 100,
-            ]);
+        foreach (self::POLL_STATUSES as $status) {
+            $response = Http::timeout(15)
+                ->withHeaders(array_merge($headers, [
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ]))
+                ->get("{$baseUrl}/v2/fbs/orders", [
+                    'status'  => $status,
+                    'size'    => 50,
+                    'page'    => 0,
+                ]);
 
-        if (! $response->successful()) {
-            throw new \RuntimeException("Uzum API error: {$response->status()}");
-        }
-
-        $orders = $response->json('payload.orders', $response->json('orders', []));
-
-        if (empty($orders)) {
-            $state->update(['last_poll_at' => now(), 'consecutive_errors' => 0]);
-
-            return;
-        }
-
-        foreach ($orders as $order) {
-            $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
-            $externalId = "uzum_order_{$orderId}";
-
-            if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
+            if ($response->status() === 429) {
+                Log::warning("Uzum polling: rate limited for store {$account->id}, status {$status}");
+                usleep(500_000);
                 continue;
             }
 
-            $data = new MarketplaceEventData(
-                marketplace: MarketplaceType::UZUM,
-                eventType: EventType::ORDER_CREATED,
-                entityType: EntityType::ORDER,
-                entityId: $orderId,
-                storeId: $account->id,
-                rawPayload: $order,
-                externalId: $externalId,
-            );
+            if (! $response->successful()) {
+                throw new \RuntimeException("Uzum API error: {$response->status()} for status {$status}");
+            }
 
-            $event = $eventStore->create($data);
-            ProcessMarketplaceEventJob::dispatch($event)->onQueue('marketplace-events');
-            $dedup->markProcessed(MarketplaceType::UZUM, $externalId);
+            $orders = $response->json('payload.orders', $response->json('orders', []));
+
+            foreach ($orders as $order) {
+                $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
+                $externalId = "uzum_order_{$orderId}";
+
+                if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
+                    continue;
+                }
+
+                $data = new MarketplaceEventData(
+                    marketplace: MarketplaceType::UZUM,
+                    eventType: EventType::ORDER_CREATED,
+                    entityType: EntityType::ORDER,
+                    entityId: $orderId,
+                    storeId: $account->id,
+                    rawPayload: $order,
+                    externalId: $externalId,
+                );
+
+                $event = $eventStore->create($data);
+                ProcessMarketplaceEventJob::dispatch($event)->onQueue('marketplace-events');
+                $dedup->markProcessed(MarketplaceType::UZUM, $externalId);
+            }
+
+            // Пауза между статусами для rate-limiting
+            usleep(300_000);
         }
 
         $state->update([
@@ -128,6 +141,6 @@ final class PollUzumOrdersJob implements ShouldQueue
             'consecutive_errors' => 0,
         ]);
 
-        Log::info('Uzum polling: found ' . count($orders) . " orders for store {$account->id}");
+        Log::info("Uzum polling completed for store {$account->id}");
     }
 }

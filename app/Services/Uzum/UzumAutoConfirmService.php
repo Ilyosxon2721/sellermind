@@ -27,6 +27,8 @@ final class UzumAutoConfirmService
             return $stats;
         }
 
+        $headers = $account->getUzumAuthHeaders();
+
         // Получаем shop_ids привязанных магазинов
         $shopIds = DB::table('marketplace_shops')
             ->where('marketplace_account_id', $account->id)
@@ -42,7 +44,7 @@ final class UzumAutoConfirmService
 
         $page = 0;
         do {
-            $response = Http::withHeaders(['Authorization' => $token])->timeout(30)->get(
+            $response = Http::withHeaders($headers)->timeout(30)->get(
                 'https://api-seller.uzum.uz/api/seller-openapi/v2/fbs/orders',
                 [
                     'shopIds' => $shopIds,
@@ -68,7 +70,7 @@ final class UzumAutoConfirmService
                 }
 
                 // Отправляем запрос на подтверждение заказа
-                $confirmResponse = Http::withHeaders(['Authorization' => $token])->timeout(30)
+                $confirmResponse = Http::withHeaders($headers)->timeout(30)
                     ->post("https://api-seller.uzum.uz/api/seller-openapi/v1/fbs/order/{$orderId}/confirm");
 
                 $success = $confirmResponse->successful();
