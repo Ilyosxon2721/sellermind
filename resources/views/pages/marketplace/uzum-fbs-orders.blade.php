@@ -200,10 +200,10 @@
                                 <button @click="setLastWeek()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">7 дней</button>
                                 <button @click="setLastMonth()" class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">30 дней</button>
                             </div>
-                            <input type="date" x-model="dateFrom" @change="orderMode === 'fbs' ? (loadOrders(), loadStats()) : loadFboOrders()"
+                            <input type="date" x-model="dateFrom" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                             <span class="text-gray-400">—</span>
-                            <input type="date" x-model="dateTo" @change="orderMode === 'fbs' ? (loadOrders(), loadStats()) : loadFboOrders()"
+                            <input type="date" x-model="dateTo" @change="orderMode === 'fbo' ? loadFboOrders() : (loadOrders(), loadStats())"
                                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#3A007D] focus:border-[#3A007D]">
                         </div>
                     </div>
