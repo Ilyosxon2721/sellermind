@@ -76,10 +76,6 @@ class UzumSettingsController extends Controller
         if (array_key_exists('api_key', $validated)) {
             $value = $validated['api_key'];
             $updateData['api_key'] = $value === '' ? null : $value;
-            // Очищаем старый OAuth2 токен, чтобы getUzumAuthHeaders() использовал новый api_key
-            $updateData['uzum_access_token'] = null;
-            $updateData['uzum_refresh_token'] = null;
-            $updateData['uzum_token_expires_at'] = null;
         }
         if (array_key_exists('shop_id', $validated)) {
             $updateData['shop_id'] = $validated['shop_id'];

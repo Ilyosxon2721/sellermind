@@ -192,6 +192,7 @@ final class UzumEndpoints
         'path' => '/api/seller/product-reviews',
         'desc' => 'Получение списка отзывов (undocumented)',
         'base_override' => 'https://api-seller.uzum.uz',
+        'auth' => 'oauth',
         'params' => ['page', 'size'],
     ];
 
@@ -200,6 +201,7 @@ final class UzumEndpoints
         'path' => '/api/seller/product-reviews/review/{reviewId}',
         'desc' => 'Получение деталей отзыва (undocumented)',
         'base_override' => 'https://api-seller.uzum.uz',
+        'auth' => 'oauth',
     ];
 
     public const REVIEW_REPLY = [
@@ -207,6 +209,7 @@ final class UzumEndpoints
         'path' => '/api/seller/product-reviews/reply/create',
         'desc' => 'Ответ на отзыв (undocumented)',
         'base_override' => 'https://api-seller.uzum.uz',
+        'auth' => 'oauth',
     ];
 
     // ─── АВТОРИЗАЦИЯ (OAuth2) ──────────────────────────────────
