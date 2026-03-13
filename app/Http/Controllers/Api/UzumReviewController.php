@@ -52,11 +52,25 @@ final class UzumReviewController extends Controller
                 $httpRequest = $httpRequest->withBasicAuth($clientId, $clientSecret);
             }
 
-            $response = $httpRequest->post($tokenUrl, [
+            $formData = [
                 'grant_type' => 'password',
                 'username' => $request->input('login'),
                 'password' => $request->input('password'),
+            ];
+
+            // Всегда добавляем client_id в тело запроса
+            if (empty($clientSecret)) {
+                $formData['client_id'] = $clientId;
+            }
+
+            Log::debug("Uzum OAuth2 login attempt for account #{$accountId}", [
+                'url' => $tokenUrl,
+                'username' => $request->input('login'),
+                'client_id' => $clientId,
+                'has_secret' => ! empty($clientSecret),
             ]);
+
+            $response = $httpRequest->post($tokenUrl, $formData);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -89,12 +103,14 @@ final class UzumReviewController extends Controller
             Log::warning("Uzum OAuth2 auth failed for account #{$accountId}", [
                 'status' => $response->status(),
                 'error' => $errorMessage,
+                'body' => $response->body(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Не удалось авторизоваться в Uzum. Проверьте логин и пароль.',
-                'debug' => config('app.debug') ? $errorMessage : null,
+                'debug' => $errorMessage,
+                'status_code' => $response->status(),
             ], 422);
         } catch (\Exception $e) {
             Log::error("Uzum OAuth2 auth exception for account #{$accountId}: {$e->getMessage()}");
