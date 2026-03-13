@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Finance\FinanceSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -123,6 +124,26 @@ class ProductVariant extends Model
         $parts = array_filter([$this->option_values_summary, $this->sku]);
 
         return implode(' • ', $parts);
+    }
+
+    /**
+     * Получить закупочную цену, сконвертированную в базовую валюту (UZS)
+     */
+    public function getPurchasePriceInBase(?FinanceSettings $settings = null): float
+    {
+        $price = (float) ($this->purchase_price ?? 0);
+        if ($price == 0) {
+            return 0;
+        }
+
+        $currency = $this->purchase_price_currency ?? 'UZS';
+        if ($currency === 'UZS') {
+            return $price;
+        }
+
+        $settings = $settings ?? FinanceSettings::getForCompany($this->company_id);
+
+        return $settings->convertToBase($price, $currency);
     }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder

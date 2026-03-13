@@ -2038,10 +2038,12 @@ class FinanceController extends Controller
      * 1. СНАЧАЛА ищем связь с внутренним товаром (ProductVariant.purchase_price)
      * 2. Если связи нет - берём из маркетплейса (UzumFinanceOrder.purchase_price и т.д.)
      *
-     * ВАЖНО: purchase_price в ProductVariant хранится в UZS!
+     * ВАЖНО: purchase_price в ProductVariant конвертируется в UZS через getPurchasePriceInBase()
      */
     protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
     {
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
         $result = [
             'total' => 0,
             'total_items' => 0,
@@ -2094,7 +2096,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price;
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $fromInternal = true;
                         }
                     }
@@ -2106,7 +2108,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price;
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $fromInternal = true;
                         }
                     }
@@ -2181,7 +2183,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
@@ -2195,7 +2197,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
@@ -2206,13 +2208,13 @@ class FinanceController extends Controller
                             ->where('sku', $order->supplier_article)
                             ->first();
                         if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
 
                     if ($purchasePrice) {
-                        $wbCogs += (float) $purchasePrice; // В UZS
+                        $wbCogs += (float) $purchasePrice; // В UZS (сконвертировано)
                         $wbWithCogs++;
                     }
                 }
@@ -2271,7 +2273,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $ozonFromInternal++;
                         }
                     }
@@ -2282,7 +2284,7 @@ class FinanceController extends Controller
                             ->where('sku', $order->sku)
                             ->first();
                         if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                             $ozonFromInternal++;
                         }
                     }
@@ -2342,9 +2344,9 @@ class FinanceController extends Controller
                         $offlineItemsCount++;
                         $costPrice = null;
 
-                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара
+                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара (конвертируем в UZS)
                         if ($item->productVariant && $item->productVariant->purchase_price) {
-                            $costPrice = (float) $item->productVariant->purchase_price;
+                            $costPrice = $item->productVariant->getPurchasePriceInBase($financeSettings);
                             $offlineFromInternal++;
                         }
                         // 2. Если нет - берём из SaleItem.cost_price

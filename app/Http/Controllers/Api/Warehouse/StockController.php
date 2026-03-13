@@ -106,10 +106,10 @@ class StockController extends Controller
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
             $cost = $costs[$sku->id] ?? ['total_cost' => 0, 'unit_cost' => 0];
 
-            // Get unit cost: prefer ledger cost, fallback to ProductVariant.purchase_price
+            // Get unit cost: prefer ledger cost, fallback to ProductVariant.purchase_price (конвертированная в UZS)
             $unitCost = $cost['unit_cost'] ?? 0;
             if ($unitCost == 0 && $sku->productVariant?->purchase_price) {
-                $unitCost = (float) $sku->productVariant->purchase_price;
+                $unitCost = $sku->productVariant->getPurchasePriceInBase();
             }
 
             // Calculate total cost using the determined unit cost
@@ -507,7 +507,7 @@ class StockController extends Controller
                 if ($cost <= 0 && $qty > 0) {
                     $sku = \App\Models\Warehouse\Sku::find($data->sku_id);
                     if ($sku && $sku->productVariant?->purchase_price > 0) {
-                        $cost = $qty * (float) $sku->productVariant->purchase_price;
+                        $cost = $qty * $sku->productVariant->getPurchasePriceInBase();
                     }
                 }
 

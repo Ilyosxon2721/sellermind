@@ -160,8 +160,7 @@ class SyncProductVariantsToWarehouse extends Command
      */
     /**
      * Создает начальные записи остатков в stock_ledger
-     * cost_delta хранит закупочную цену за единицу в USD
-     * Себестоимость рассчитывается динамически: qty × cost_delta × usd_rate
+     * cost_delta хранит полную стоимость (qty × цена) в базовой валюте (UZS)
      */
     private function syncInitialStock(Sku $warehouseSku, ProductVariant $variant): void
     {
@@ -176,8 +175,9 @@ class SyncProductVariantsToWarehouse extends Command
         }
 
         if ($defaultWarehouse && $variant->stock_default > 0) {
-            // cost_delta = закупочная цена за единицу в USD
-            $purchasePrice = $variant->purchase_price ?? 0;
+            // Конвертируем закупочную цену в базовую валюту (UZS)
+            $purchasePriceBase = $variant->getPurchasePriceInBase();
+            $costDelta = $purchasePriceBase * $variant->stock_default;
 
             // Создаем запись в stock_ledger как начальное оприходование
             StockLedger::create([
@@ -187,8 +187,8 @@ class SyncProductVariantsToWarehouse extends Command
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $variant->stock_default,
-                'cost_delta' => $purchasePrice, // Закупочная цена за единицу в USD
-                'currency_code' => 'USD',
+                'cost_delta' => $costDelta,
+                'currency_code' => 'UZS',
                 'document_id' => null,
                 'document_line_id' => null,
                 'source_type' => 'INITIAL_SYNC',
@@ -196,7 +196,9 @@ class SyncProductVariantsToWarehouse extends Command
                 'created_by' => null,
             ]);
 
-            $costInfo = $purchasePrice > 0 ? ", закупка: \${$purchasePrice}/шт" : '';
+            $currency = $variant->purchase_price_currency ?? 'UZS';
+            $price = $variant->purchase_price ?? 0;
+            $costInfo = $price > 0 ? ", закупка: {$price} {$currency}/шт (= " . number_format($purchasePriceBase, 0) . " UZS)" : '';
             $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'{$costInfo}");
         }
     }

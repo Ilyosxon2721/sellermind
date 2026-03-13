@@ -250,7 +250,9 @@ class SaleItem extends Model
                 return;
             }
 
-            // Create stock ledger entry
+            // Create stock ledger entry (cost_delta в UZS — конвертируем из валюты варианта)
+            $costDelta = $variant->getPurchasePriceInBase() * $qtyDelta;
+
             StockLedger::create([
                 'company_id' => $this->sale->company_id,
                 'occurred_at' => now(),
@@ -258,7 +260,7 @@ class SaleItem extends Model
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $qtyDelta,
-                'cost_delta' => 0,
+                'cost_delta' => $costDelta,
                 'currency_code' => 'UZS',
                 'document_id' => null,
                 'document_line_id' => null,
@@ -335,7 +337,7 @@ class SaleItem extends Model
         $item->quantity = $quantity;
         $item->unit_price = $unitPrice ?? $variant->price_default ?? 0;
         $item->discount_percent = $discountPercent;
-        $item->cost_price = $variant->purchase_price;
+        $item->cost_price = $variant->getPurchasePriceInBase();
         $item->tax_percent = 0; // По умолчанию без налога
 
         $item->calculateTotals();
