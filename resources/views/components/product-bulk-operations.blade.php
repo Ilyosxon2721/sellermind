@@ -264,10 +264,21 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Закупочная цена
                 </label>
-                <input type="number"
-                       x-model="bulkPriceForm.purchase_price"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                       placeholder="Оставьте пустым чтобы не менять">
+                <div class="flex gap-2">
+                    <input type="number"
+                           x-model="bulkPriceForm.purchase_price"
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Оставьте пустым чтобы не менять">
+                    <select x-model="bulkPriceForm.purchase_price_currency"
+                            class="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option value="">—</option>
+                        <option value="UZS">UZS</option>
+                        <option value="USD">USD</option>
+                        <option value="RUB">RUB</option>
+                        <option value="EUR">EUR</option>
+                        <option value="KZT">KZT</option>
+                    </select>
+                </div>
             </div>
 
             <div>

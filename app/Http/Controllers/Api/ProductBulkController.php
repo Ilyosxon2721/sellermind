@@ -77,6 +77,7 @@ class ProductBulkController extends Controller
             'SKU',
             'Штрихкод',
             'Закупочная цена',
+            'Валюта закупки',
             'Розничная цена',
             'Старая цена',
             'Остаток',
@@ -109,11 +110,12 @@ class ProductBulkController extends Controller
                 $sheet->setCellValue([6, $row], $variant->sku);
                 $sheet->setCellValue([7, $row], $variant->barcode ?? '');
                 $sheet->setCellValue([8, $row], $variant->purchase_price ?? 0);
-                $sheet->setCellValue([9, $row], $variant->price_default ?? 0);
-                $sheet->setCellValue([10, $row], $variant->old_price_default ?? 0);
-                $sheet->setCellValue([11, $row], $variant->stock_default ?? 0);
-                $sheet->setCellValue([12, $row], $variant->is_active ? 'Да' : 'Нет');
-                $sheet->setCellValue([13, $row], $this->formatVariantOptions($variant));
+                $sheet->setCellValue([9, $row], $variant->purchase_price_currency ?? 'UZS');
+                $sheet->setCellValue([10, $row], $variant->price_default ?? 0);
+                $sheet->setCellValue([11, $row], $variant->old_price_default ?? 0);
+                $sheet->setCellValue([12, $row], $variant->stock_default ?? 0);
+                $sheet->setCellValue([13, $row], $variant->is_active ? 'Да' : 'Нет');
+                $sheet->setCellValue([14, $row], $this->formatVariantOptions($variant));
                 $row++;
             }
         }
@@ -178,10 +180,11 @@ class ProductBulkController extends Controller
             $variantId = $row[4] ?? null;
             $sku = $row[5] ?? null;
             $newPurchasePrice = $row[7] ?? null;
-            $newRetailPrice = $row[8] ?? null;
-            $newOldPrice = $row[9] ?? null;
-            $newStock = $row[10] ?? null;
-            $isActive = isset($row[11]) ? strtolower(trim($row[11])) === 'yes' : null;
+            $newPurchaseCurrency = isset($row[8]) && in_array(strtoupper(trim($row[8])), ['UZS', 'USD', 'RUB', 'EUR', 'KZT']) ? strtoupper(trim($row[8])) : null;
+            $newRetailPrice = $row[9] ?? null;
+            $newOldPrice = $row[10] ?? null;
+            $newStock = $row[11] ?? null;
+            $isActive = isset($row[12]) ? strtolower(trim($row[12])) === 'yes' : null;
 
             // Validate variant
             $variant = null;
@@ -206,6 +209,12 @@ class ProductBulkController extends Controller
                 $changes['purchase_price'] = [
                     'old' => $variant->purchase_price,
                     'new' => (float) $newPurchasePrice,
+                ];
+            }
+            if ($newPurchaseCurrency !== null && ($variant->purchase_price_currency ?? 'UZS') !== $newPurchaseCurrency) {
+                $changes['purchase_price_currency'] = [
+                    'old' => $variant->purchase_price_currency ?? 'UZS',
+                    'new' => $newPurchaseCurrency,
                 ];
             }
             if ($newRetailPrice !== null && $newRetailPrice !== '' && $variant->price_default != $newRetailPrice) {
@@ -357,6 +366,9 @@ class ProductBulkController extends Controller
                     }
                     if (isset($data['purchase_price'])) {
                         $updateData['purchase_price'] = (float) $data['purchase_price'];
+                    }
+                    if (isset($data['purchase_price_currency']) && in_array($data['purchase_price_currency'], ['UZS', 'USD', 'RUB', 'EUR', 'KZT'])) {
+                        $updateData['purchase_price_currency'] = $data['purchase_price_currency'];
                     }
                     if (isset($data['old_price_default'])) {
                         $updateData['old_price_default'] = (float) $data['old_price_default'];

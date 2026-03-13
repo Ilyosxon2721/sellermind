@@ -71,10 +71,11 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
                 // Parse row
                 $variantId = $row[4] ?? null;
                 $newPurchasePrice = isset($row[7]) && $row[7] !== '' ? (float) $row[7] : null;
-                $newRetailPrice = isset($row[8]) && $row[8] !== '' ? (float) $row[8] : null;
-                $newOldPrice = isset($row[9]) && $row[9] !== '' ? (float) $row[9] : null;
-                $newStock = isset($row[10]) && $row[10] !== '' ? (int) $row[10] : null;
-                $isActive = isset($row[11]) ? strtolower(trim($row[11])) === 'yes' : null;
+                $newPurchaseCurrency = isset($row[8]) && in_array(strtoupper(trim($row[8])), ['UZS', 'USD', 'RUB', 'EUR', 'KZT']) ? strtoupper(trim($row[8])) : null;
+                $newRetailPrice = isset($row[9]) && $row[9] !== '' ? (float) $row[9] : null;
+                $newOldPrice = isset($row[10]) && $row[10] !== '' ? (float) $row[10] : null;
+                $newStock = isset($row[11]) && $row[11] !== '' ? (int) $row[11] : null;
+                $isActive = isset($row[12]) ? strtolower(trim($row[12])) === 'yes' : null;
 
                 // Find variant
                 $variant = ProductVariant::with('product')
@@ -95,6 +96,9 @@ class ProcessBulkProductUpdateJob implements ShouldQueue
 
                 if ($newPurchasePrice !== null) {
                     $updateData['purchase_price'] = $newPurchasePrice;
+                }
+                if ($newPurchaseCurrency !== null) {
+                    $updateData['purchase_price_currency'] = $newPurchaseCurrency;
                 }
                 if ($newRetailPrice !== null) {
                     $updateData['price_default'] = $newRetailPrice;
