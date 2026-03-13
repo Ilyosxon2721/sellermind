@@ -357,6 +357,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('save-token', [\App\Http\Controllers\Api\UzumReviewController::class, 'saveToken']);
         Route::get('reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
         Route::post('reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+        Route::post('ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
         Route::get('debug', [\App\Http\Controllers\Api\UzumReviewController::class, 'debug']);
     });
 
@@ -599,9 +600,9 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/settings', [UzumSettingsController::class, 'update']);
             Route::post('accounts/{account}/test', [UzumSettingsController::class, 'test']);
             Route::get('accounts/{account}/shops', [UzumSettingsController::class, 'shops']);
-            Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewsController::class, 'index']);
-            Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewsController::class, 'reply']);
-            Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewsController::class, 'aiReply']);
+            Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
+            Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+            Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
         });
 
         // Yandex Market
@@ -679,6 +680,7 @@ Route::middleware('auth.any')->group(function () {
             Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
             Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
             Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
+            Route::patch('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'update']);
             // Удаление черновика — только owner
             Route::delete('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'destroy']);
             // Сторнирование проведённого документа — только owner

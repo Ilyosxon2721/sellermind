@@ -80,7 +80,8 @@
     }
 </style>
 
-<div class="browser-only" x-data="{
+{{-- BROWSER MODE --}}
+<div class="browser-only flex flex-row h-screen bg-gray-100" x-data="{
          account: null,
          logs: [],
          syncing: {
@@ -363,7 +364,7 @@
              setTimeout(() => toast.remove(), 4000);
          }
      }"
-     class="flex flex-row h-screen bg-gray-100" :class="getBrandClass()">
+     :class="getBrandClass()">
 
     <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
         <x-sidebar />

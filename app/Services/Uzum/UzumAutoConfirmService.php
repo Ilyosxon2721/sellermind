@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Uzum;
 
 use App\Models\MarketplaceAccount;
+use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 final class UzumAutoConfirmService
@@ -19,13 +19,8 @@ final class UzumAutoConfirmService
     public function processAccount(MarketplaceAccount $account): array
     {
         $stats = ['confirmed' => 0, 'failed' => 0, 'skipped' => 0];
-        $token = $account->uzum_access_token ?? $account->api_key ?? $account->oauth_token;
 
-        if (! $token) {
-            Log::warning("UzumAutoConfirm: нет токена для аккаунта #{$account->id}");
-
-            return $stats;
-        }
+        $uzum = new UzumApiManager($account);
 
         $headers = $account->getUzumAuthHeaders();
 
@@ -58,10 +53,10 @@ final class UzumAutoConfirmService
                 break;
             }
 
-            $orders = $response->json('payload.sellerOrders', []);
-            if (empty($orders)) {
-                break;
-            }
+        try {
+            $orders = $uzum->orders()->all($shopIdsStr, status: 'CREATED', pageSize: 50);
+        } catch (\Throwable $e) {
+            Log::error("UzumAutoConfirm: ошибка загрузки заказов #{$account->id}", ['error' => $e->getMessage()]);
 
             foreach ($orders as $order) {
                 $orderId = $order['id'] ?? null;
@@ -90,11 +85,31 @@ final class UzumAutoConfirmService
                 usleep(200_000); // Пауза 0.2 сек между запросами
             }
 
-            $page++;
-            if ($page > 20) {
-                break;
+            try {
+                $uzum->orders()->confirm($orderId);
+                $success = true;
+                $errorMessage = null;
+                $errorCode = null;
+            } catch (\Throwable $e) {
+                $success = false;
+                $errorMessage = $e->getMessage();
+                $errorCode = $e->getCode() ?: null;
             }
-        } while (! empty($orders));
+
+            DB::table('uzum_order_confirm_logs')->insert([
+                'marketplace_account_id' => $account->id,
+                'uzum_order_id' => $orderId,
+                'status' => $success ? 'confirmed' : 'failed',
+                'error_message' => $errorMessage,
+                'error_code' => $errorCode,
+                'confirmed_at' => $success ? now() : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $stats[$success ? 'confirmed' : 'failed']++;
+            usleep(200_000); // Пауза 0.2 сек между запросами
+        }
 
         Log::info("UzumAutoConfirm: аккаунт #{$account->id}", $stats);
 

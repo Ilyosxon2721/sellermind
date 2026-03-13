@@ -35,6 +35,12 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                         <span>Сохранить себестоимость</span>
                     </button>
+                    <a class="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-xl transition-colors flex items-center space-x-2 cursor-pointer"
+                            :href="getEditUrl()"
+                            x-show="doc && doc.status === 'DRAFT'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span>Редактировать</span>
+                    </a>
                     <button class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center space-x-2"
                             @click="postDoc()"
                             x-show="doc && doc.status === 'DRAFT'">
@@ -201,6 +207,18 @@
                 return this.doc && this.doc.type === 'IN' && this.doc.status === 'DRAFT';
             },
 
+            getEditUrl() {
+                if (!this.doc) return '#';
+                const typeMap = {
+                    'IN': 'in',
+                    'WRITE_OFF': 'write-off',
+                    'INVENTORY': 'inventory',
+                };
+                const prefix = typeMap[this.doc.type];
+                if (!prefix) return `/warehouse/documents/${id}`;
+                return `/warehouse/${prefix}/${id}/edit`;
+            },
+
             updateCost(idx, value) {
                 const line = this.lines[idx];
                 if (!line) return;
@@ -337,6 +355,9 @@
         <button x-show="doc && doc.type === 'IN' && doc.status === 'DRAFT' && hasCostChanges" @click="saveCosts()" class="native-header-btn text-blue-600" onclick="if(window.haptic) window.haptic.light()">
             Сохранить
         </button>
+        <a x-show="doc && doc.status === 'DRAFT'" :href="getEditUrl()" class="native-header-btn text-amber-600" onclick="if(window.haptic) window.haptic.light()">
+            Изменить
+        </a>
         <button x-show="doc && doc.status === 'DRAFT'" @click="postDoc()" class="native-header-btn text-green-600" onclick="if(window.haptic) window.haptic.light()">
             Провести
         </button>

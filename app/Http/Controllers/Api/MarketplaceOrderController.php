@@ -813,12 +813,12 @@ class MarketplaceOrderController extends Controller
                 return response()->json(['message' => 'Размер этикетки должен быть LARGE или BIG'], 422);
             }
 
-            $client = app(\App\Services\Marketplaces\UzumClient::class);
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
 
             $stickers = [];
 
             foreach ($request->order_ids as $orderId) {
-                $label = $client->getOrderLabel($account, (string) $orderId, $size);
+                $label = $syncService->getOrderLabel($account, (int) $orderId, $size);
                 if (! $label) {
                     continue;
                 }
@@ -879,38 +879,8 @@ class MarketplaceOrderController extends Controller
         }
 
         try {
-            $client = app(\App\Services\Marketplaces\UzumClient::class);
-            $data = $client->confirmOrder($account, $order->external_order_id);
-            if (! $data) {
-                return response()->json(['message' => 'Не удалось подтвердить заказ Uzum'], 422);
-            }
-
-            $orderedAt = $data['ordered_at'] ?? $order->ordered_at;
-            $orderedAtParsed = $this->parseUzumTimestamp($orderedAt) ?? $order->ordered_at;
-
-            // Обновляем заказ
-            $order->update([
-                'status' => $data['status'] ?? $order->status,
-                'status_normalized' => $data['status_normalized'] ?? $data['status'] ?? $order->status,
-                'raw_payload' => $data['raw_payload'] ?? $order->raw_payload,
-                'ordered_at' => $orderedAtParsed,
-                'total_amount' => $data['total_amount'] ?? $order->total_amount,
-            ]);
-
-            // Обновляем позиции
-            if (! empty($data['items'])) {
-                $order->items()->delete();
-                foreach ($data['items'] as $item) {
-                    $order->items()->create([
-                        'external_offer_id' => $item['external_offer_id'] ?? null,
-                        'name' => $item['name'] ?? null,
-                        'quantity' => $item['quantity'] ?? 1,
-                        'price' => $item['price'] ?? null,
-                        'total_price' => $item['total_price'] ?? null,
-                        'raw_payload' => $item['raw_payload'] ?? null,
-                    ]);
-                }
-            }
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+            $syncService->confirmOrder($account, (int) $order->external_order_id);
 
             return response()->json([
                 'message' => 'Заказ подтверждён',
@@ -975,20 +945,9 @@ class MarketplaceOrderController extends Controller
 
         try {
             if ($marketplace === 'uzum') {
-                // Отмена заказа Uzum
-                $client = app(\App\Services\Marketplaces\UzumClient::class);
-                $data = $client->cancelOrder($account, $order->external_order_id);
-
-                if (! $data) {
-                    return response()->json(['message' => 'Не удалось отменить заказ Uzum'], 422);
-                }
-
-                // Обновляем заказ
-                $order->update([
-                    'status' => $data['status'] ?? 'cancelled',
-                    'status_normalized' => $data['status_normalized'] ?? 'cancelled',
-                    'raw_payload' => $data['raw_payload'] ?? $order->raw_payload,
-                ]);
+                // Отмена заказа Uzum через новый сервис
+                $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+                $syncService->cancelOrder($account, (int) $order->external_order_id);
             } else {
                 // Отмена заказа WB
                 $orderService = $this->getWbOrderService($account);

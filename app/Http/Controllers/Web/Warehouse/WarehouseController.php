@@ -255,6 +255,82 @@ class WarehouseController extends Controller
         ]);
     }
 
+    public function editReceipt(Request $request, int $id): View
+    {
+        $this->ensureUser($request);
+        $companyId = $this->getCompanyId();
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $suppliers = \App\Models\AP\Supplier::query()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('warehouse.in-edit', [
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $warehouses->first()?->id,
+            'suppliers' => $suppliers,
+            'documentId' => $id,
+        ]);
+    }
+
+    public function editWriteOff(Request $request, int $id): View
+    {
+        $this->ensureUser($request);
+        $companyId = $this->getCompanyId();
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $reasons = WriteOffReason::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'requires_comment']);
+
+        if ($reasons->isEmpty()) {
+            $this->seedWriteOffReasons($companyId);
+            $reasons = WriteOffReason::query()
+                ->where('company_id', $companyId)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'code', 'name', 'requires_comment']);
+        }
+
+        return view('warehouse.write-off-edit', [
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $warehouses->first()?->id,
+            'reasons' => $reasons,
+            'documentId' => $id,
+        ]);
+    }
+
+    public function editInventory(Request $request, int $id): View
+    {
+        $this->ensureUser($request);
+        $companyId = $this->getCompanyId();
+
+        $warehouses = Warehouse::query()
+            ->where('company_id', $companyId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('warehouse.inventory-edit', [
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $warehouses->first()?->id,
+            'documentId' => $id,
+        ]);
+    }
+
     private function seedWriteOffReasons(int $companyId): void
     {
         $defaultReasons = WriteOffReason::getDefaultReasons();

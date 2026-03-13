@@ -45,6 +45,7 @@ trait NotifiesMarketplaceOrder
                     orderNumber: $orderNumber,
                     totalAmount: $totalAmount,
                     currency: $currency,
+                    order: $order,
                 ));
             }
         } catch (\Exception $e) {

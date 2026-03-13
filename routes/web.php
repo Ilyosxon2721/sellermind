@@ -180,6 +180,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/balance', [WarehouseController::class, 'balance'])->name('balance');
         Route::get('/in', [WarehouseController::class, 'receipts'])->name('in');
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('in.create');
+        Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('warehouses');
         Route::get('/create', function () {
             return view('warehouse.warehouse-create');
@@ -199,10 +200,12 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
+        Route::get('/write-off/{id}/edit', [WarehouseController::class, 'editWriteOff'])->name('write-off.edit');
 
         // Inventory (инвентаризация)
         Route::get('/inventory', [WarehouseController::class, 'inventoryList'])->name('inventory');
         Route::get('/inventory/create', [WarehouseController::class, 'createInventory'])->name('inventory.create');
+        Route::get('/inventory/{id}/edit', [WarehouseController::class, 'editInventory'])->name('inventory.edit');
 
         // Web-based API routes for warehouse CRUD (uses session auth)
         Route::middleware('auth')->group(function () {
@@ -220,6 +223,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/balance', [WarehouseController::class, 'balance'])->name('cabinet.warehouse.balance');
         Route::get('/in', [WarehouseController::class, 'receipts'])->name('cabinet.warehouse.in');
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('cabinet.warehouse.in.create');
+        Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('cabinet.warehouse.in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('cabinet.warehouse.warehouses');
         Route::get('/create', function () {
             return view('warehouse.warehouse-create');
@@ -239,6 +243,8 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('cabinet.warehouse.write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('cabinet.warehouse.write-off.create');
+        Route::get('/write-off/{id}/edit', [WarehouseController::class, 'editWriteOff'])->name('cabinet.warehouse.write-off.edit');
+        Route::get('/inventory/{id}/edit', [WarehouseController::class, 'editInventory'])->name('cabinet.warehouse.inventory.edit');
     });
 
     Route::get('/tasks', function () {

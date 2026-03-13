@@ -8,6 +8,7 @@ use App\Models\OzonOrder;
 use App\Models\UzumOrder;
 use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
+use App\Services\CurrencyConversionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -50,50 +51,69 @@ final class OrderMessageBuilder
         $mp = self::MARKETPLACES[$data['marketplace']] ?? ['emoji' => '📦', 'name' => $data['marketplace']];
         $status = self::STATUSES[$data['status']] ?? ['emoji' => '📋', 'label' => $data['status']];
 
+        // Конвертация суммы в сум
+        $totalUzs = $this->convertToUzs($data['total'], $data['currency_code'], $order);
+        $currencyDisplay = 'сум';
+
         $lines = [];
+        // 1. Название маркетплейса
         $lines[] = "{$mp['emoji']} <b>{$mp['name']}</b>  │  {$status['emoji']} {$status['label']}";
         $lines[] = '━━━━━━━━━━━━━━━━━━━━';
         $lines[] = '';
+
+        // 2. Номер заказа
         $lines[] = "📋 <b>Заказ #{$this->escape($data['external_id'])}</b>";
-        $lines[] = "🏬 {$this->escape($data['account_name'])}";
+
+        // 3. Дата и время заказа
+        if (! empty($data['ordered_at'])) {
+            $lines[] = "🕐 {$data['ordered_at']}";
+        }
         $lines[] = '';
 
-        // Товары
+        // 4-5. Товары с количеством, SKU и штрих-кодом
         if (! empty($data['items'])) {
             $lines[] = '🛒 <b>Товары:</b>';
+            $shown = 0;
             foreach ($data['items'] as $item) {
+                if ($shown >= 5) {
+                    $remaining = count($data['items']) - 5;
+                    $lines[] = "   <i>...и ещё {$remaining} товар(ов)</i>";
+                    break;
+                }
                 $prefix = ($item['qty'] > 1) ? "{$item['qty']}× " : '• ';
-                $price = $this->formatMoney($item['price']);
-                $lines[] = "   {$prefix}{$this->escape($item['name'])} — {$price} {$data['currency']}";
+                $lines[] = "   {$prefix}{$this->escape($item['name'])}";
+                // SKU (артикул)
+                if (! empty($item['sku'])) {
+                    $lines[] = "     📎 SKU: <code>{$this->escape((string) $item['sku'])}</code>";
+                }
+                // Штрих-код
+                if (! empty($item['barcode'])) {
+                    $lines[] = "     🏷 Штрих-код: <code>{$this->escape((string) $item['barcode'])}</code>";
+                }
+                $shown++;
             }
             $lines[] = '';
         }
 
-        // Итого
-        $lines[] = "💰 <b>Итого: {$this->formatMoney($data['total'])} {$data['currency']}</b>";
+        // 6. Сумма заказа в сум
+        $lines[] = "💰 <b>Итого: {$this->formatMoney($totalUzs)} {$currencyDisplay}</b>";
+        // Показать оригинальную сумму если валюта не UZS
+        if ($data['currency_code'] !== 'UZS' && $data['currency_code'] !== 'сум') {
+            $lines[] = "   <i>({$this->formatMoney($data['total'])} {$data['currency']})</i>";
+        }
         $lines[] = '';
 
-        // Детали доставки
-        if (! empty($data['delivery'])) {
-            $lines[] = "📍 {$this->escape($data['delivery'])}";
-        }
-        if (! empty($data['warehouse'])) {
-            $lines[] = "🏭 {$this->escape($data['warehouse'])}";
-        }
-        if (! empty($data['buyer'])) {
-            $lines[] = "👤 {$this->escape($data['buyer'])}";
-        }
-
-        $lines[] = '';
         $lines[] = '━━━━━━━━━━━━━━━━━━━━';
 
         // Дневная статистика
         $daily = $this->getDailyStats($order, $data['marketplace']);
-        $lines[] = "📊 Сегодня: <b>{$daily->count}</b> заказов · <b>{$this->formatMoney((float) $daily->revenue)}</b> {$data['currency']}";
+        $dailyUzs = $this->convertToUzs((float) $daily->revenue, $data['currency_code'], $order);
+        $lines[] = "📊 Сегодня: <b>{$daily->count}</b> заказов · <b>{$this->formatMoney($dailyUzs)}</b> {$currencyDisplay}";
 
+        // 7. Кнопка "Подробнее" со ссылкой на заказ
         return [
             'text' => implode("\n", $lines),
-            'reply_markup' => $this->buildInlineKeyboard($data['marketplace'], $data['external_id']),
+            'reply_markup' => $this->buildInlineKeyboard($data['marketplace'], $data['external_id'], $data['account_id']),
         ];
     }
 
@@ -211,10 +231,13 @@ final class OrderMessageBuilder
         $items = [];
         if ($order->relationLoaded('items') || $order->items()->exists()) {
             foreach ($order->items as $item) {
+                $raw = $item->raw_payload ?? [];
                 $items[] = [
                     'name' => $item->name ?? 'Товар',
                     'qty' => (int) ($item->quantity ?? 1),
                     'price' => (float) ($item->total_price ?? $item->price ?? 0),
+                    'sku' => $raw['skuId'] ?? $item->external_offer_id ?? '',
+                    'barcode' => $raw['barcode'] ?? '',
                 ];
             }
         }
@@ -227,9 +250,12 @@ final class OrderMessageBuilder
             'external_id' => $order->external_order_id ?? (string) $order->id,
             'status' => $order->status_normalized ?? $order->status ?? 'new',
             'account_name' => $order->account?->name ?? 'Uzum',
+            'account_id' => $order->marketplace_account_id,
             'items' => $items,
             'total' => (float) ($order->total_amount ?? 0),
             'currency' => $order->currency ?? 'сум',
+            'currency_code' => 'UZS',
+            'ordered_at' => $order->ordered_at ? $order->ordered_at->format('d.m.Y H:i') : '',
             'delivery' => $order->delivery_address_full ?: ($order->delivery_city ?? ''),
             'warehouse' => $warehouse,
             'buyer' => $order->customer_name ?? '',
@@ -247,11 +273,20 @@ final class OrderMessageBuilder
             'external_id' => $order->external_order_id ?? (string) $order->id,
             'status' => $order->status_normalized ?? $order->status ?? 'new',
             'account_name' => $order->account?->name ?? 'Wildberries',
+            'account_id' => $order->marketplace_account_id,
             'items' => [
-                ['name' => $itemName, 'qty' => 1, 'price' => (float) ($order->total_amount ?? $order->price ?? 0)],
+                [
+                    'name' => $itemName,
+                    'qty' => 1,
+                    'price' => (float) ($order->total_amount ?? $order->price ?? 0),
+                    'sku' => $order->sku ?? $raw['supplierArticle'] ?? '',
+                    'barcode' => $raw['barcode'] ?? '',
+                ],
             ],
             'total' => (float) ($order->total_amount ?? $order->price ?? 0),
             'currency' => '₽',
+            'currency_code' => 'RUB',
+            'ordered_at' => $order->ordered_at ? $order->ordered_at->format('d.m.Y H:i') : '',
             'delivery' => $raw['regionName'] ?? $raw['oblastOkrugName'] ?? '',
             'warehouse' => $raw['warehouseName'] ?? '',
             'buyer' => $order->customer_name ?? '',
@@ -267,6 +302,8 @@ final class OrderMessageBuilder
                 'name' => $product['name'] ?? $product['offer_id'] ?? 'Товар',
                 'qty' => (int) ($product['quantity'] ?? 1),
                 'price' => (float) ($product['price'] ?? 0),
+                'sku' => $product['offer_id'] ?? $product['sku'] ?? '',
+                'barcode' => $product['barcode'] ?? '',
             ];
         }
 
@@ -275,9 +312,12 @@ final class OrderMessageBuilder
             'external_id' => $order->posting_number ?? (string) $order->order_id,
             'status' => $order->status ?? 'new',
             'account_name' => $order->marketplaceAccount?->name ?? 'Ozon',
+            'account_id' => $order->marketplace_account_id,
             'items' => $items,
             'total' => (float) ($order->total_price ?? 0),
             'currency' => '₽',
+            'currency_code' => 'RUB',
+            'ordered_at' => $order->created_at_ozon ? $order->created_at_ozon->format('d.m.Y H:i') : '',
             'delivery' => $order->delivery_address ?? '',
             'warehouse' => '',
             'buyer' => $order->customer_name ?? '',
@@ -293,6 +333,8 @@ final class OrderMessageBuilder
                 'name' => $item['offerName'] ?? $item['offerId'] ?? 'Товар',
                 'qty' => (int) ($item['count'] ?? 1),
                 'price' => (float) ($item['price'] ?? 0),
+                'sku' => $item['offerId'] ?? $item['shopSku'] ?? '',
+                'barcode' => '',
             ];
         }
 
@@ -301,9 +343,12 @@ final class OrderMessageBuilder
             'external_id' => (string) ($order->order_id ?? $order->id),
             'status' => $order->status_normalized ?? $order->status ?? 'new',
             'account_name' => $order->marketplaceAccount?->name ?? 'Yandex Market',
+            'account_id' => $order->marketplace_account_id,
             'items' => $items,
             'total' => (float) ($order->total_price ?? 0),
             'currency' => '₽',
+            'currency_code' => 'RUB',
+            'ordered_at' => $order->created_at_ym ? $order->created_at_ym->format('d.m.Y H:i') : '',
             'delivery' => $orderData['delivery']['address']['city'] ?? '',
             'warehouse' => '',
             'buyer' => $order->customer_name ?? '',
@@ -317,9 +362,12 @@ final class OrderMessageBuilder
             'external_id' => (string) ($order->external_order_id ?? $order->order_id ?? $order->id),
             'status' => $order->status ?? 'new',
             'account_name' => $order->account?->name ?? '',
+            'account_id' => $order->marketplace_account_id ?? null,
             'items' => [],
             'total' => (float) ($order->total_amount ?? $order->total_price ?? 0),
             'currency' => '',
+            'currency_code' => 'UZS',
+            'ordered_at' => $order->created_at?->format('d.m.Y H:i') ?? '',
             'delivery' => '',
             'warehouse' => '',
             'buyer' => '',
@@ -381,13 +429,49 @@ final class OrderMessageBuilder
         ];
     }
 
-    private function buildInlineKeyboard(string $marketplace, string $externalId): array
+    private function buildInlineKeyboard(string $marketplace, string $externalId, ?int $accountId = null): array
     {
+        $baseUrl = config('app.url');
+
+        // Ссылка на страницу заказов конкретного маркетплейса
+        if ($accountId) {
+            $mpRoute = match ($marketplace) {
+                'wb' => "/marketplace/{$accountId}/wb-orders",
+                'uzum' => "/marketplace/{$accountId}/uzum-orders",
+                'ozon' => "/marketplace/{$accountId}/ozon-orders",
+                'ym', 'yandex_market' => "/marketplace/{$accountId}/ym-orders",
+                default => '/orders',
+            };
+            $url = $baseUrl . $mpRoute;
+        } else {
+            $url = $baseUrl . '/orders';
+        }
+
         return [
             'inline_keyboard' => [[
-                ['text' => '📋 Открыть в SellerMind', 'url' => config('app.url') . '/orders'],
+                ['text' => '📋 Подробнее', 'url' => $url],
             ]],
         ];
+    }
+
+    /**
+     * Конвертировать сумму в UZS (сум)
+     */
+    private function convertToUzs(float $amount, string $currencyCode, Model $order): float
+    {
+        if ($currencyCode === 'UZS' || $currencyCode === 'сум') {
+            return $amount;
+        }
+
+        try {
+            $company = $order->account?->company;
+            $converter = new CurrencyConversionService($company);
+
+            return $converter->convert($amount, $currencyCode, 'UZS');
+        } catch (\Exception $e) {
+            // Фоллбэк: вернуть оригинальную сумму
+            return $amount;
+        }
     }
 
     private function formatMoney(float $amount): string
