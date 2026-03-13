@@ -76,6 +76,7 @@ window.productBulkMixin = {
     bulkPriceForm: {
         retail_price: '',
         purchase_price: '',
+        purchase_price_currency: '',
         old_price: '',
     },
     bulkActionLoading: false,
@@ -359,6 +360,9 @@ window.productBulkMixin = {
         if (this.bulkPriceForm.purchase_price) {
             data.purchase_price = parseFloat(this.bulkPriceForm.purchase_price);
         }
+        if (this.bulkPriceForm.purchase_price_currency) {
+            data.purchase_price_currency = this.bulkPriceForm.purchase_price_currency;
+        }
         if (this.bulkPriceForm.old_price) {
             data.old_price = parseFloat(this.bulkPriceForm.old_price);
         }
@@ -396,6 +400,7 @@ window.productBulkMixin = {
             this.bulkPriceForm = {
                 retail_price: '',
                 purchase_price: '',
+                purchase_price_currency: '',
                 old_price: '',
             };
             this.clearSelection();

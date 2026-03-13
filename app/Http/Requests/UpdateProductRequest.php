@@ -38,6 +38,7 @@ class UpdateProductRequest extends FormRequest
             'variants.*.id' => ['sometimes', 'integer'],
             'variants.*.sku' => ['required', 'string', 'max:100'],
             'variants.*.barcode' => ['nullable', 'string', 'max:20'],
+            'variants.*.purchase_price_currency' => ['sometimes', 'string', 'in:UZS,USD,RUB,EUR,KZT'],
             'variants.*.is_active' => ['sometimes', 'boolean'],
             'variants.*.option_value_ids' => ['sometimes', 'array'],
             'variants.*.option_value_ids.*' => ['integer'],

@@ -1244,7 +1244,7 @@
                         <h2 class="text-lg font-semibold text-gray-900">Базовые цены</h2>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm">
-                                <thead><tr class="text-left text-xs text-gray-500 bg-gray-50"><th class="px-3 py-2 rounded-l-lg">Вариант</th><th class="px-3 py-2">Цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Старая цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2 rounded-r-lg">Закупка ({{ $currency ?? 'UZS' }})</th></tr></thead>
+                                <thead><tr class="text-left text-xs text-gray-500 bg-gray-50"><th class="px-3 py-2 rounded-l-lg">Вариант</th><th class="px-3 py-2">Цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Старая цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Закупка</th><th class="px-3 py-2 rounded-r-lg">Валюта закупки</th></tr></thead>
                                 <tbody class="divide-y divide-gray-100">
                                     <template x-for="(variant, idx) in variants" :key="idx">
                                         <tr>
@@ -1252,6 +1252,15 @@
                                             <td class="px-3 py-2"><input type="number" step="0.01" class="w-24 border rounded-lg px-2 py-1" x-model="variant.price_default"></td>
                                             <td class="px-3 py-2"><input type="number" step="0.01" class="w-24 border rounded-lg px-2 py-1" x-model="variant.old_price_default"></td>
                                             <td class="px-3 py-2"><input type="number" step="0.01" class="w-24 border rounded-lg px-2 py-1" x-model="variant.purchase_price"></td>
+                                            <td class="px-3 py-2">
+                                                <select x-model="variant.purchase_price_currency" class="w-20 border rounded-lg px-2 py-1 text-sm">
+                                                    <option value="UZS">UZS</option>
+                                                    <option value="USD">USD</option>
+                                                    <option value="RUB">RUB</option>
+                                                    <option value="EUR">EUR</option>
+                                                    <option value="KZT">KZT</option>
+                                                </select>
+                                            </td>
                                         </tr>
                                     </template>
                                 </tbody>

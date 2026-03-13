@@ -90,6 +90,7 @@ class ProductService
                 'article_suffix',
                 'option_values_summary',
                 'purchase_price',
+                'purchase_price_currency',
                 'price_default',
                 'old_price_default',
                 'stock_default',

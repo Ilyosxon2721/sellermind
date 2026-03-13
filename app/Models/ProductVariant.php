@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $article_suffix
  * @property string|null $option_values_summary
  * @property float|null $purchase_price
+ * @property string $purchase_price_currency
  * @property float|null $price_default
  * @property float|null $old_price_default
  * @property int|null $stock_default
@@ -39,6 +40,10 @@ class ProductVariant extends Model
 {
     use HasFactory;
 
+    protected $attributes = [
+        'purchase_price_currency' => 'UZS',
+    ];
+
     protected $fillable = [
         'company_id',
         'product_id',
@@ -48,6 +53,7 @@ class ProductVariant extends Model
         'article_suffix',
         'option_values_summary',
         'purchase_price',
+        'purchase_price_currency',
         'price_default',
         'old_price_default',
         'stock_default',
