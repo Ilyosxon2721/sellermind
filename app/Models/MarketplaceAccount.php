@@ -667,9 +667,12 @@ class MarketplaceAccount extends Model
         }
 
         $header = config('uzum.auth.header', 'Authorization');
-        // По спецификации Uzum токен передается без Bearer-префикса,
-        // но оставляем поддержку кастомного префикса через конфиг.
+        // OAuth2 JWT-токены (начинаются с eyJ) требуют Bearer-префикс.
+        // Для обычных API-ключей используем значение из конфига.
         $prefix = trim(config('uzum.auth.prefix', ''));
+        if ($prefix === '' && $token && str_starts_with($token, 'eyJ')) {
+            $prefix = 'Bearer';
+        }
         $value = $prefix !== '' ? trim($prefix.' '.$token) : $token;
 
         // Отдаем сразу оба заголовка: Authorization и X-API-KEY,
