@@ -1916,7 +1916,20 @@ function uzumOrdersPWA() {
         },
 
         tabCount(tab) {
-            return this.orders.filter(o => this.normalizeStatus(o) === tab).length;
+            // Фильтруем заказы по текущему режиму (FBS/DBS) перед подсчётом
+            let modeOrders = this.orders;
+            if (this.orderMode === 'fbs') {
+                modeOrders = this.orders.filter(o => {
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || 'FBS').toUpperCase();
+                    return scheme === 'FBS';
+                });
+            } else if (this.orderMode === 'dbs') {
+                modeOrders = this.orders.filter(o => {
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || '').toUpperCase();
+                    return scheme === 'DBS' || scheme === 'EDBS';
+                });
+            }
+            return modeOrders.filter(o => this.normalizeStatus(o) === tab).length;
         },
 
         normalizeStatus(order) {
