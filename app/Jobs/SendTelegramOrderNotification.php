@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\Telegram\OrderMessageBuilder;
+use App\Telegram\TelegramRateLimitException;
 use App\Telegram\TelegramService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,6 +46,13 @@ final class SendTelegramOrderNotification implements ShouldQueue
                     'reply_markup' => json_encode($message['reply_markup']),
                 ],
             );
+        } catch (TelegramRateLimitException $e) {
+            // При 429 — откладываем job на retry_after секунд, не считаем как попытку
+            Log::warning('Telegram rate limit, откладываем job', [
+                'retry_after' => $e->retryAfter,
+                'order_id' => $this->order->id,
+            ]);
+            $this->release($e->retryAfter);
         } catch (\Exception $e) {
             Log::error('Telegram order notification failed', [
                 'chat_id' => $this->chatId,

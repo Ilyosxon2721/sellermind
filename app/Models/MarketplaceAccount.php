@@ -658,13 +658,9 @@ class MarketplaceAccount extends Model
             return [];
         }
 
-        $header = config('uzum.auth.header', 'Authorization');
-        $prefix = trim(config('uzum.auth.prefix', ''));
-        $value = $prefix !== '' ? trim($prefix . ' ' . $token) : $token;
-
+        // Uzum OpenAPI: токен передаётся в Authorization без префикса
         return [
-            $header => $value,
-            'X-API-KEY' => $value,
+            'Authorization' => $token,
         ];
     }
 
