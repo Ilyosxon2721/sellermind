@@ -849,24 +849,47 @@ class DashboardController extends Controller
 
     /**
      * Данные склада
+     * Стоимость рассчитывается из актуальных закупочных цен вариантов (с конвертацией валют)
      */
     private function getWarehouseData(int $companyId): array
     {
         $warehouses = Warehouse::where('company_id', $companyId)->get();
         $warehouseIds = $warehouses->pluck('id');
 
-        // Получаем агрегированные данные по остаткам из stock_ledger
-        $stockData = StockLedger::whereIn('warehouse_id', $warehouseIds)
-            ->select('sku_id', DB::raw('SUM(qty_delta) as quantity'), DB::raw('SUM(cost_delta) as total_cost'))
-            ->groupBy('sku_id')
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
+        // Получаем остатки по SKU с данными варианта для конвертации валюты
+        $stockData = StockLedger::whereIn('stock_ledger.warehouse_id', $warehouseIds)
+            ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+            ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+            ->select(
+                'stock_ledger.sku_id',
+                DB::raw('SUM(stock_ledger.qty_delta) as quantity'),
+                'product_variants.purchase_price',
+                'product_variants.purchase_price_currency',
+            )
+            ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
             ->having('quantity', '>', 0)
             ->get();
 
-        $totalItems = $stockData->sum('quantity');
-        $totalValue = $stockData->sum('total_cost');
+        $totalItems = 0;
+        $totalValue = 0;
+        $lowStock = 0;
 
-        // Критически низкие остатки (меньше 10 единиц)
-        $lowStock = $stockData->where('quantity', '>', 0)->where('quantity', '<', 10)->count();
+        foreach ($stockData as $item) {
+            $qty = (float) $item->quantity;
+            $totalItems += $qty;
+
+            // Конвертируем закупочную цену в базовую валюту (UZS)
+            $purchasePrice = (float) ($item->purchase_price ?? 0);
+            $currency = $item->purchase_price_currency ?? 'UZS';
+            $priceInBase = $financeSettings->convertToBase($purchasePrice, $currency);
+            $totalValue += $priceInBase * $qty;
+
+            if ($qty > 0 && $qty < 10) {
+                $lowStock++;
+            }
+        }
 
         // Последние инвентаризации
         $recentDocuments = Inventory::whereIn('warehouse_id', $warehouseIds)

@@ -15,7 +15,7 @@ class FixStockLedgerCosts extends Command
      *
      * @var string
      */
-    protected $signature = 'stock:fix-costs {--company_id=} {--dry-run} {--force} {--all : Fix all INITIAL_SYNC entries regardless of cost_delta value}';
+    protected $signature = 'stock:fix-costs {--company_id=} {--dry-run} {--force} {--all : Fix all entries regardless of cost_delta value}';
 
     /**
      * The console command description.
@@ -53,9 +53,8 @@ class FixStockLedgerCosts extends Command
 
         $this->info("Using rates: USD={$financeSettings->usd_rate}, RUB={$financeSettings->rub_rate}, EUR={$financeSettings->eur_rate}");
 
-        // Find entries that need fixing:
-        // - source_type = 'INITIAL_SYNC' (from variant sync)
-        $query = StockLedger::where('source_type', 'INITIAL_SYNC');
+        // Find entries that need fixing (все типы записей связанные с ProductVariant)
+        $query = StockLedger::whereIn('source_type', ['INITIAL_SYNC', 'initial_stock', 'stock_adjustment']);
 
         // If --all is not set, only look for entries with small cost_delta (likely wrong)
         if (! $fixAll) {
