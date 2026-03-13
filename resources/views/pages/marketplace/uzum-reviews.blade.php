@@ -808,8 +808,12 @@ function uzumReviewsPage() {
                 const data = await res.json();
                 if (data.success) {
                     const newReviews = data.reviews ?? [];
-                    this.reviews = [...this.reviews, ...newReviews];
                     this.hasMore = newReviews.length >= 20;
+                    // Добавить в общий массив и применить фильтр
+                    if (!this._allReviews) this._allReviews = [];
+                    this._allReviews = [...this._allReviews, ...newReviews];
+                    this.updateStats({ reviews: this._allReviews });
+                    this.applyFilter(this._allReviews);
                 }
             } catch (e) {
                 this.showToast('Не удалось загрузить отзывы: ' + e.message, 'error');

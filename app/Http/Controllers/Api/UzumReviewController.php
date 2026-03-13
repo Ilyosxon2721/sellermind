@@ -160,9 +160,20 @@ final class UzumReviewController extends Controller
         ]);
 
         try {
-            $response = Http::withToken($token)
+            // Uzum API принимает токен без Bearer-префикса
+            $response = Http::withHeaders([
+                    'Authorization' => $token,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
                 ->timeout(30)
                 ->post($url, (object) []);
+
+            Log::debug("Uzum reviews API response for account #{$accountId}", [
+                'status' => $response->status(),
+                'body_preview' => mb_substr($response->body(), 0, 2000),
+                'url' => $url,
+            ]);
 
             if ($response->status() === 401) {
                 return response()->json([
@@ -173,13 +184,32 @@ final class UzumReviewController extends Controller
             }
 
             if (! $response->successful()) {
+                Log::warning("Uzum reviews failed for account #{$accountId}", [
+                    'status' => $response->status(),
+                    'body' => mb_substr($response->body(), 0, 2000),
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Ошибка загрузки отзывов: ' . $response->status(),
                 ], $response->status());
             }
 
-            $reviews = $response->json('payload', []);
+            $json = $response->json();
+
+            // Uzum может возвращать отзывы в разных форматах
+            $reviews = $json['payload'] ?? $json['productReviews'] ?? $json['reviews']
+                ?? $json['data'] ?? $json['content'] ?? $json['items'] ?? [];
+
+            // Если ответ — массив напрямую (без обёртки)
+            if (empty($reviews) && isset($json[0])) {
+                $reviews = $json;
+            }
+
+            Log::info("Uzum reviews loaded for account #{$accountId}", [
+                'count' => count($reviews),
+                'response_keys' => array_keys($json),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -187,6 +217,7 @@ final class UzumReviewController extends Controller
                 'page' => $page,
                 'size' => $size,
                 'total' => count($reviews),
+                'debug_keys' => config('app.debug') ? array_keys($json) : null,
             ]);
         } catch (\Exception $e) {
             Log::error("Uzum reviews fetch error: {$e->getMessage()}");
@@ -216,7 +247,11 @@ final class UzumReviewController extends Controller
         }
 
         try {
-            $response = Http::withToken($token)
+            $response = Http::withHeaders([
+                    'Authorization' => $token,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
                 ->timeout(30)
                 ->post('https://api-seller.uzum.uz/api/seller/product-reviews/reply/create', [
                     [
