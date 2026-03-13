@@ -160,9 +160,10 @@ final class UzumReviewController extends Controller
         ]);
 
         try {
-            // Uzum API принимает токен без Bearer-префикса
+            // OAuth2 токены требуют Bearer-префикс
+            $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
             $response = Http::withHeaders([
-                    'Authorization' => $token,
+                    'Authorization' => $authValue,
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
@@ -247,8 +248,9 @@ final class UzumReviewController extends Controller
         }
 
         try {
+            $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
             $response = Http::withHeaders([
-                    'Authorization' => $token,
+                    'Authorization' => $authValue,
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
