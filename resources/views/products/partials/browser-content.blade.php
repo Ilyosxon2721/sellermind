@@ -101,6 +101,7 @@
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Название</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Артикул</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Категория</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Себестоимость</th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Варианты</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Каналы</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Обновлено</th>
@@ -128,6 +129,24 @@
                         <td class="px-6 py-4 text-sm text-gray-700">{{ $product->article }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700">
                             {{ optional($categories->firstWhere('id', $product->category_id))->name ?? '—' }}
+                        </td>
+                        <td class="px-6 py-4">
+                            @php
+                                $firstVariant = $product->variants->first();
+                                $hasCost = $firstVariant && $firstVariant->purchase_price > 0;
+                            @endphp
+                            @if($hasCost)
+                                <div class="flex items-center space-x-1.5">
+                                    <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    <span class="text-sm font-medium text-gray-900">{{ number_format((float)$firstVariant->purchase_price, 0, '.', ' ') }}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $firstVariant->purchase_price_currency === 'USD' ? 'bg-blue-100 text-blue-700' : ($firstVariant->purchase_price_currency === 'RUB' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700') }}">{{ $firstVariant->purchase_price_currency ?? 'UZS' }}</span>
+                                </div>
+                            @else
+                                <div class="flex items-center space-x-1.5">
+                                    <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                    <span class="text-xs text-red-500">Не указана</span>
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 text-center">
                             <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">{{ $product->variants_count }}</span>
@@ -166,7 +185,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center">
+                        <td colspan="9" class="px-6 py-12 text-center">
                             <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             </div>

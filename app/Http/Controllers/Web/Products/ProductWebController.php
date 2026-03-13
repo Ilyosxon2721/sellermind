@@ -51,7 +51,7 @@ class ProductWebController extends Controller
 
         $query = Product::query()
             ->forCompany($companyId)
-            ->with(['mainImage', 'images', 'channelSettings.channel'])
+            ->with(['mainImage', 'images', 'channelSettings.channel', 'variants:id,product_id,purchase_price,purchase_price_currency'])
             ->withCount('variants');
 
         if ($filters['search']) {

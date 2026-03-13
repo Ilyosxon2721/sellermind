@@ -163,6 +163,9 @@ Route::middleware('auth.any')->group(function () {
 
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
+        Route::get('/purchase-prices', function () {
+            return view('products.purchase-prices');
+        })->name('purchase-prices');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
         Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
 

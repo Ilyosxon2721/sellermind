@@ -288,6 +288,13 @@ Route::middleware('auth.any')->group(function () {
         Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
     });
 
+    // Себестоимость товаров
+    Route::prefix('products')->group(function () {
+        Route::get('purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
+        Route::post('purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
+        Route::patch('variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
+    });
+
     // Product Bulk Operations — только owner
     Route::prefix('products/bulk')->middleware('company.owner')->group(function () {
         Route::post('export', [ProductBulkController::class, 'export']);
