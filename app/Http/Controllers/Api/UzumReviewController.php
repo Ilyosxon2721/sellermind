@@ -39,9 +39,9 @@ final class UzumReviewController extends Controller
 
         $account = MarketplaceAccount::findOrFail($accountId);
 
-        $tokenUrl = 'https://api-seller.uzum.uz/api/oauth/token';
+        $tokenUrl = config('uzum.oauth_token_url', 'https://api-seller.uzum.uz/api/oauth/token');
         $clientId = config('uzum.oauth_client_id', 'b2b-front');
-        $clientSecret = config('uzum.oauth_client_secret', '');
+        $clientSecret = config('uzum.oauth_client_secret', 'clientSecret');
 
         try {
             // Uzum OAuth2 требует Basic Auth с client_id (даже без secret)
