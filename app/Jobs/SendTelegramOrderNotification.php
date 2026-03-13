@@ -29,7 +29,7 @@ final class SendTelegramOrderNotification implements ShouldQueue
         private readonly Model $order,
         private readonly string $chatId,
     ) {
-        $this->onQueue('telegram');
+        $this->onQueue('default');
     }
 
     public function handle(OrderMessageBuilder $builder, TelegramService $telegram): void
