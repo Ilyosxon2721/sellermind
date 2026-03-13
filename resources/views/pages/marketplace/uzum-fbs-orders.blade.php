@@ -1390,22 +1390,19 @@ function uzumOrdersPage() {
                     return scheme === 'DBS' || scheme === 'EDBS';
                 });
             }
-            // Считаем по нормализованному статусу
+            // Маппинг статусов — аналогично filteredOrders
             const statusMap = {
-                'new': ['new', 'created', 'pending', 'awaiting_confirmation', 'confirming'],
-                'in_assembly': ['approved', 'confirmed', 'in_assembly', 'assembling', 'processing', 'accepted_by_seller'],
-                'in_supply': ['assembled', 'ready', 'ready_for_shipment', 'in_supply', 'ready_to_ship'],
-                'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum', 'delivering', 'in_delivery', 'in_transit', 'on_the_way'],
-                'waiting_pickup': ['waiting_pickup', 'arrived', 'at_pickup_point', 'ready_for_pickup'],
-                'issued': ['issued', 'delivered', 'completed', 'received'],
-                'cancelled': ['cancelled', 'canceled', 'rejected'],
-                'returns': ['returns', 'returned', 'return_requested', 'refunded']
+                'new': ['new'],
+                'in_assembly': ['in_assembly'],
+                'in_supply': ['in_supply'],
+                'accepted_uzum': ['accepted_uzum', 'shipped_to_uzum'],
+                'waiting_pickup': ['waiting_pickup'],
+                'issued': ['issued', 'delivered'],
+                'cancelled': ['cancelled', 'canceled'],
+                'returns': ['returns', 'returned']
             };
             const validStatuses = statusMap[status] || [status];
-            return modeOrders.filter(o => {
-                const s = (o.status || o.state || '').toLowerCase();
-                return validStatuses.includes(s);
-            }).length;
+            return modeOrders.filter(o => validStatuses.includes(o.status)).length;
         },
 
         getStatusLabel(status) {
