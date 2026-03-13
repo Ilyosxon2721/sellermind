@@ -29,12 +29,18 @@ final class UzumAutoReviewService
 
         $uzum = new UzumApiManager($account);
 
+        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
+
         $page = 0;
         do {
-            try {
-                $response = $uzum->reviews()->list($page, 20);
-            } catch (\Throwable $e) {
-                Log::error("UzumAutoReview: ошибка загрузки отзывов #{$account->id}", ['error' => $e->getMessage()]);
+            $url = 'https://api-seller.uzum.uz/api/seller/product-reviews?'.http_build_query([
+                'page' => $page,
+                'size' => 20,
+            ]);
+
+            $response = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post($url, (object) []);
+
+            if (! $response->successful()) {
                 break;
             }
 
@@ -105,15 +111,14 @@ final class UzumAutoReviewService
             return 'error';
         }
 
-        // Отправляем ответ через плагин
-        try {
-            $uzum->reviews()->reply($reviewId, $replyText);
-            $success = true;
-            $errorMessage = null;
-        } catch (\Throwable $e) {
-            $success = false;
-            $errorMessage = $e->getMessage();
-        }
+        // Отправляем ответ на отзыв
+        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
+        $sendResponse = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post(
+            'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
+            [['reviewId' => $reviewId, 'content' => $replyText]]
+        );
+
+        $status = $sendResponse->successful() ? 'sent' : 'failed';
 
         DB::table('uzum_review_reply_logs')->insert([
             'marketplace_account_id' => $account->id,
