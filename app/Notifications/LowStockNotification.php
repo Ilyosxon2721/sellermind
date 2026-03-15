@@ -22,6 +22,19 @@ class LowStockNotification extends Notification implements ShouldQueue
     ) {}
 
     /**
+     * Ключ дедупликации: один товар — не чаще раза в сутки
+     */
+    public function deduplicationKey(): string
+    {
+        return 'lowstock_' . $this->variant->id;
+    }
+
+    public function deduplicationTtl(): int
+    {
+        return 24 * 3600; // 24 часа
+    }
+
+    /**
      * Get the notification's delivery channels.
      */
     public function via(object $notifiable): array

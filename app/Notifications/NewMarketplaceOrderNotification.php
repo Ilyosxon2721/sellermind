@@ -28,6 +28,19 @@ final class NewMarketplaceOrderNotification extends Notification implements Shou
     ) {}
 
     /**
+     * Ключ дедупликации: один заказ = одно уведомление навсегда
+     */
+    public function deduplicationKey(): string
+    {
+        return 'order_' . $this->marketplace . '_' . $this->orderNumber;
+    }
+
+    public function deduplicationTtl(): int
+    {
+        return 30 * 24 * 3600; // 30 дней
+    }
+
+    /**
      * Каналы доставки уведомления.
      */
     public function via(object $notifiable): array
