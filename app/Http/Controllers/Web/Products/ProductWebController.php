@@ -52,7 +52,15 @@ class ProductWebController extends Controller
         $query = Product::query()
             ->forCompany($companyId)
             ->with(['mainImage', 'images', 'channelSettings.channel', 'variants:id,product_id,purchase_price,purchase_price_currency'])
-            ->withCount('variants');
+            ->withCount('variants')
+            ->addSelect(['total_stock' => \App\Models\Warehouse\StockLedger::query()
+                ->selectRaw('COALESCE(SUM(qty_delta), 0)')
+                ->whereIn('sku_id', function ($q) {
+                    $q->select('id')
+                        ->from('skus')
+                        ->whereColumn('skus.product_id', 'products.id');
+                }),
+            ]);
 
         if ($filters['search']) {
             $escapedSearch = $this->escapeLike($filters['search']);
