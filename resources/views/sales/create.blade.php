@@ -748,7 +748,9 @@ function saleCreatePage() {
 
         async confirmSale() {
             if (!confirm('Подтвердить продажу и зарезервировать товары?')) return;
+            this._confirmingAfterSave = true;
             const saleId = await this.saveSale('draft');
+            this._confirmingAfterSave = false;
             if (saleId) {
                 await this.confirmSaleAPI(saleId);
             }
@@ -792,8 +794,13 @@ function saleCreatePage() {
 
                 if (resp.ok) {
                     const data = await resp.json();
-                    alert('Продажа сохранена');
-                    return data.data.id;
+                    const saleId = data.data.id;
+                    // Если просто черновик (не confirmSale), сразу переходим
+                    if (status === 'draft' && !this._confirmingAfterSave) {
+                        window.location.href = '/sales/' + saleId;
+                        return saleId;
+                    }
+                    return saleId;
                 } else {
                     const error = await resp.json();
                     console.error('Save sale error response:', error);
@@ -822,8 +829,8 @@ function saleCreatePage() {
                 });
 
                 if (resp.ok) {
-                    alert('Продажа подтверждена! Товары зарезервированы.');
-                    window.location.href = '/sales';
+                    this.saving = true; // Блокируем повторные нажатия до redirect
+                    window.location.href = '/sales/' + saleId;
                 } else {
                     const error = await resp.json();
                     console.error('Confirm sale error response:', error);
