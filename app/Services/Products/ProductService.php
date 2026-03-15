@@ -260,6 +260,15 @@ class ProductService
                 $product->images()->create($payload);
             }
         }
+
+        // Автоматически привязать main_image_id к вариантам
+        $variantImages = $product->images()->whereNotNull('variant_id')->get();
+        $byVariant = $variantImages->groupBy('variant_id');
+        foreach ($byVariant as $variantId => $imgs) {
+            $product->variants()
+                ->where('id', $variantId)
+                ->update(['main_image_id' => $imgs->first()->id]);
+        }
     }
 
     protected function syncAttributes(Product $product, array $attributes): void
