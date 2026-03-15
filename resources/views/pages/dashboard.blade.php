@@ -281,23 +281,23 @@
                                                     <div class="flex items-center space-x-3">
                                                         <div class="w-10 h-10 rounded-lg flex items-center justify-center"
                                                              :class="{
-                                                                 'bg-purple-100': account.marketplace === 'wb',
+                                                                 'bg-purple-100': account.marketplace === 'wb' || account.marketplace === 'wildberries',
                                                                  'bg-blue-100': account.marketplace === 'uzum',
                                                                  'bg-sky-100': account.marketplace === 'ozon',
-                                                                 'bg-yellow-100': account.marketplace === 'ym'
+                                                                 'bg-yellow-100': account.marketplace === 'ym' || account.marketplace === 'yandex_market'
                                                              }">
                                                             <span class="text-lg font-bold"
                                                                   :class="{
-                                                                      'text-purple-600': account.marketplace === 'wb',
+                                                                      'text-purple-600': account.marketplace === 'wb' || account.marketplace === 'wildberries',
                                                                       'text-blue-600': account.marketplace === 'uzum',
                                                                       'text-sky-600': account.marketplace === 'ozon',
-                                                                      'text-yellow-600': account.marketplace === 'ym'
+                                                                      'text-yellow-600': account.marketplace === 'ym' || account.marketplace === 'yandex_market'
                                                                   }"
-                                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'OZ','ym':'YM'})[account.marketplace] || account.marketplace"></span>
+                                                                  x-text="({'wb':'WB','wildberries':'WB','uzum':'UZ','ozon':'OZ','ym':'YM','yandex_market':'YM'})[account.marketplace] || account.marketplace.substring(0,2).toUpperCase()"></span>
                                                         </div>
                                                         <div>
                                                             <p class="font-medium text-gray-900" x-text="account.name"></p>
-                                                            <p class="text-xs text-gray-500" x-text="({'wb':'Wildberries','uzum':'Uzum','ozon':'Ozon','ym':'Yandex Market'})[account.marketplace] || account.marketplace"></p>
+                                                            <p class="text-xs text-gray-500" x-text="({'wb':'Wildberries','wildberries':'Wildberries','uzum':'Uzum','ozon':'Ozon','ym':'Yandex Market','yandex_market':'Yandex Market'})[account.marketplace] || account.marketplace"></p>
                                                         </div>
                                                     </div>
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
