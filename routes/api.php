@@ -111,6 +111,7 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::post('/{id}/confirm', [\App\Http\Controllers\Api\SalesManagementController::class, 'confirm']);
         Route::post('/{id}/complete', [\App\Http\Controllers\Api\SalesManagementController::class, 'complete']);
         Route::post('/{id}/cancel', [\App\Http\Controllers\Api\SalesManagementController::class, 'cancel']);
+        Route::post('/{id}/revert-draft', [\App\Http\Controllers\Api\SalesManagementController::class, 'revertToDraft']);
         Route::post('/{id}/ship', [\App\Http\Controllers\Api\SalesManagementController::class, 'ship']);
         Route::get('/{id}/reservations', [\App\Http\Controllers\Api\SalesManagementController::class, 'getReservations']);
         Route::post('/{id}/items', [\App\Http\Controllers\Api\SalesManagementController::class, 'addItem']);
@@ -1035,7 +1036,6 @@ Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
     Route::delete('webhooks/{id}', [WebhookController::class, 'destroy']);
     Route::post('webhooks/{id}/test', [WebhookController::class, 'test']);
 });
-
 
 // ── Marketplace Event Webhooks (public, no auth, IP-checked) ──
 Route::prefix('webhook')->group(function () {
