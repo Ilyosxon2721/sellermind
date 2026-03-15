@@ -34,10 +34,28 @@ final class UzumEndpoints
         'params' => ['searchQuery', 'sortBy', 'order', 'size', 'page', 'productRank', 'filter'],
     ];
 
+    public const PRODUCT_IMPORT = [
+        'method' => 'POST',
+        'path' => '/v1/product/import',
+        'desc' => 'Создание/импорт нового товара',
+    ];
+
+    public const PRODUCT_UPDATE = [
+        'method' => 'PUT',
+        'path' => '/v1/product/{productId}',
+        'desc' => 'Обновление существующего товара',
+    ];
+
     public const PRODUCT_PRICE_UPDATE = [
         'method' => 'POST',
         'path' => '/v1/product/{shopId}/sendPriceData',
         'desc' => 'Изменение цен SKU (официальный Swagger-эндпоинт)',
+    ];
+
+    public const FBS_PRICE_UPDATE = [
+        'method' => 'PUT',
+        'path' => '/v2/fbs/sku/price',
+        'desc' => 'Обновление цены FBS SKU',
     ];
 
     // ─── FBS ЗАКАЗЫ ────────────────────────────────────────────
