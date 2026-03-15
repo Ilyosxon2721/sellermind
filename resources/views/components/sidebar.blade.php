@@ -105,6 +105,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">Категории</span>
                         </a>
+                        <a href="/products/purchase-prices" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('products/purchase-prices*') ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs text-orange-500">•</span>
+                            <span class="text-sm">Себестоимость</span>
+                        </a>
                     </div>
                 </div>
             </template>
