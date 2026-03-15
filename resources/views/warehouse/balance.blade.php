@@ -115,7 +115,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                         <template x-if="loading">
-                            <tr><td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <tr><td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                 <div class="flex items-center justify-center space-x-2">
                                     <svg class="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                                     <span>Загрузка...</span>
@@ -123,7 +123,7 @@
                             </td></tr>
                         </template>
                         <template x-if="!loading && items.length === 0">
-                            <tr><td colspan="9" class="px-6 py-12 text-center">
+                            <tr><td colspan="10" class="px-6 py-12 text-center">
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 </div>
@@ -134,14 +134,10 @@
                         <template x-for="row in items" :key="row.sku_id">
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4">
-                                    <template x-if="row.image_url">
-                                        <img :src="row.image_url" :alt="row.sku_code" class="w-10 h-10 rounded-lg object-cover border border-gray-100" loading="lazy">
-                                    </template>
-                                    <template x-if="!row.image_url">
-                                        <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        </div>
-                                    </template>
+                                    <img x-show="row.image_url" :src="row.image_url" :alt="row.sku_code" class="w-10 h-10 rounded-lg object-cover border border-gray-100" loading="lazy">
+                                    <div x-show="!row.image_url" class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-sm font-semibold text-blue-600" x-text="row.sku_code"></td>
                                 <td class="px-6 py-4 text-sm text-gray-700" x-text="row.barcode || '—'"></td>
@@ -479,14 +475,10 @@
             <template x-for="row in items" :key="row.sku_id">
                 <a :href="row.product_id ? '/products/' + row.product_id + '/edit' : '#'" class="native-card block">
                     <div class="flex items-start gap-3 mb-2">
-                        <template x-if="row.image_url">
-                            <img :src="row.image_url" :alt="row.sku_code" class="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" loading="lazy">
-                        </template>
-                        <template x-if="!row.image_url">
-                            <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            </div>
-                        </template>
+                        <img x-show="row.image_url" :src="row.image_url" :alt="row.sku_code" class="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" loading="lazy">
+                        <div x-show="!row.image_url" class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                            <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between">
                                 <p class="native-body font-semibold text-blue-600" x-text="row.sku_code"></p>
