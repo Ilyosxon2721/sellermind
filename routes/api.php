@@ -272,9 +272,13 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
     // Products
-    // IMPORTANT: upload-image must be before apiResource to avoid being caught by {product} param
-    // Uses web middleware for session-based auth from product edit page
+    // IMPORTANT: upload-image and purchase-prices must be before apiResource to avoid being caught by {product} param
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
+
+    // Себестоимость товаров (до apiResource чтобы не перехватывалось {product})
+    Route::get('products/purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
+    Route::post('products/purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
+    Route::patch('products/variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
 
     Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
@@ -286,13 +290,6 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products/{product}/publish', [ProductController::class, 'publish']);
         Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
         Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
-    });
-
-    // Себестоимость товаров
-    Route::prefix('products')->group(function () {
-        Route::get('purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
-        Route::post('purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
-        Route::patch('variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
     });
 
     // Product Bulk Operations — только owner
