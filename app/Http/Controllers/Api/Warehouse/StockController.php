@@ -115,12 +115,9 @@ class StockController extends Controller
                 $unitCost = $cost['unit_cost'] ?? 0;
             }
 
-            // Calculate total cost using the determined unit cost
+            // Сумма = себестоимость × количество на складе
             $onHand = $balance['on_hand'] ?? 0;
-            $totalCost = $cost['total_cost'] ?? 0;
-            if ($totalCost == 0 && $unitCost > 0 && $onHand > 0) {
-                $totalCost = $unitCost * $onHand;
-            }
+            $totalCost = $unitCost * $onHand;
 
             // Get image URL (variant image first, then product image)
             $imageUrl = null;
