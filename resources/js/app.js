@@ -1,4 +1,5 @@
 import './bootstrap';
+import './smart-refresh'; // Умное обновление данных с анимацией
 import './polling'; // HTTP polling для real-time обновлений
 import './haptic'; // Haptic feedback system
 import './loading'; // Global loading indicator
@@ -51,6 +52,36 @@ try {
 
 // Global API access - include raw api for get/post/delete methods
 window.api = { ...api, auth, companies, products, dialogs, chat, images, tasks, get: api.get, post: api.post, delete: api.delete };
+
+/**
+ * Глобальный helper для получения auth headers.
+ * Если есть реальный API токен — отправляем Bearer.
+ * Если нет — не отправляем Authorization, полагаемся на session cookie.
+ */
+window.getAuthHeaders = function() {
+    const headers = { 'Accept': 'application/json' };
+
+    // Проверяем Alpine store
+    let token = null;
+    try {
+        token = Alpine.store('auth')?.token;
+    } catch (e) {}
+
+    // Fallback на localStorage
+    if (!token) {
+        const stored = localStorage.getItem('_x_auth_token');
+        if (stored) {
+            try { token = JSON.parse(stored); } catch (e) { token = stored; }
+        }
+    }
+
+    // Не отправляем Bearer для session-auth или пустых токенов
+    if (token && token !== 'session-auth') {
+        headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    return headers;
+};
 
 // Auth Store
 Alpine.store('auth', {

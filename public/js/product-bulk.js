@@ -3,6 +3,61 @@
  * Handles export, import, and bulk actions for products
  */
 
+/**
+ * Получить заголовки авторизации
+ * Bearer токен + X-XSRF-TOKEN (для Sanctum stateful API)
+ */
+function getBulkAuthHeaders(contentType) {
+    const headers = {
+        'Accept': 'application/json',
+    };
+
+    if (contentType) {
+        headers['Content-Type'] = contentType;
+    }
+
+    // X-XSRF-TOKEN из cookie (Sanctum stateful auth)
+    const xsrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('XSRF-TOKEN='))
+        ?.split('=')[1];
+    if (xsrfToken) {
+        headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
+    }
+
+    // Bearer токен из Alpine store или localStorage
+    let token = null;
+    try {
+        token = Alpine.store('auth')?.token;
+    } catch (e) {}
+
+    if (!token) {
+        const stored = localStorage.getItem('_x_auth_token');
+        if (stored) {
+            try { token = JSON.parse(stored); } catch (e) { token = stored; }
+        }
+    }
+    if (!token) {
+        token = localStorage.getItem('auth_token');
+    }
+
+    if (token && token !== 'session-auth') {
+        headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    return headers;
+}
+
+/**
+ * Обёртка для fetch с credentials (session cookies)
+ */
+async function bulkFetch(url, options = {}) {
+    return fetch(url, {
+        credentials: 'same-origin',
+        ...options,
+    });
+}
+
 window.productBulkMixin = {
     // Bulk selection
     selectedVariants: [],
@@ -21,59 +76,35 @@ window.productBulkMixin = {
     bulkPriceForm: {
         retail_price: '',
         purchase_price: '',
+        purchase_price_currency: '',
         old_price: '',
     },
     bulkActionLoading: false,
 
     /**
-     * Export products to CSV
+     * Экспорт товаров в XLSX через web-маршрут (GET — session auth)
      */
     async exportProducts() {
         try {
-            const params = {};
+            // Собираем query-параметры
+            const queryParams = new URLSearchParams();
 
-            // If products are selected, export only those
             if (this.selectedVariants.length > 0) {
-                // Get unique product IDs from selected variants
                 const productIds = [...new Set(
                     this.selectedVariants.map(vid => {
                         const variant = this.findVariantById(vid);
                         return variant?.product_id;
                     }).filter(Boolean)
                 )];
-                params.product_ids = productIds;
+                productIds.forEach(id => queryParams.append('product_ids[]', id));
             }
 
-            // Add filters
-            if (this.search) {
-                params.search = this.search;
-            }
+            // Простое перенаправление — браузер сам отправит session cookie
+            const queryString = queryParams.toString();
+            const url = '/products/bulk/export' + (queryString ? '?' + queryString : '');
+            window.location.href = url;
 
-            const response = await fetch('/api/products/bulk/export', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
-                },
-                body: JSON.stringify(params),
-            });
-
-            if (!response.ok) {
-                throw new Error('Export failed');
-            }
-
-            // Download file
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `products_export_${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            this.showToast('success', 'Товары экспортированы');
+            this.showToast('success', 'Экспорт запущен, файл скачивается...');
         } catch (error) {
             console.error('Export error:', error);
             this.showToast('error', 'Ошибка экспорта: ' + error.message);
@@ -106,10 +137,10 @@ window.productBulkMixin = {
     handleDrop(event) {
         this.isDragging = false;
         const file = event.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+        if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
             this.importFile = file;
         } else {
-            this.showToast('error', 'Пожалуйста, загрузите CSV файл');
+            this.showToast('error', 'Пожалуйста, загрузите XLSX или CSV файл');
         }
     },
 
@@ -125,17 +156,15 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await fetch('/api/products/bulk/import/preview', {
+            const response = await bulkFetch('/products/bulk/import/preview', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${window.api.getToken()}`,
-                },
+                headers: getBulkAuthHeaders(null),
                 body: formData,
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Preview failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             this.importPreview = await response.json();
@@ -169,17 +198,15 @@ window.productBulkMixin = {
             const formData = new FormData();
             formData.append('file', this.importFile);
 
-            const response = await fetch('/api/products/bulk/import/apply', {
+            const response = await bulkFetch('/products/bulk/import/apply', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${window.api.getToken()}`,
-                },
+                headers: getBulkAuthHeaders(null),
                 body: formData,
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Import failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
@@ -291,12 +318,9 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await fetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/products/bulk/update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
-                },
+                headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
                     action: action,
@@ -304,8 +328,8 @@ window.productBulkMixin = {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Bulk action failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
@@ -336,6 +360,9 @@ window.productBulkMixin = {
         if (this.bulkPriceForm.purchase_price) {
             data.purchase_price = parseFloat(this.bulkPriceForm.purchase_price);
         }
+        if (this.bulkPriceForm.purchase_price_currency) {
+            data.purchase_price_currency = this.bulkPriceForm.purchase_price_currency;
+        }
         if (this.bulkPriceForm.old_price) {
             data.old_price = parseFloat(this.bulkPriceForm.old_price);
         }
@@ -352,12 +379,9 @@ window.productBulkMixin = {
         this.bulkActionLoading = true;
 
         try {
-            const response = await fetch('/api/products/bulk/update', {
+            const response = await bulkFetch('/products/bulk/update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${window.api.getToken()}`,
-                },
+                headers: getBulkAuthHeaders('application/json'),
                 body: JSON.stringify({
                     variant_ids: this.selectedVariants,
                     action: 'update_prices',
@@ -366,8 +390,8 @@ window.productBulkMixin = {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Price update failed');
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
             }
 
             const result = await response.json();
@@ -376,6 +400,7 @@ window.productBulkMixin = {
             this.bulkPriceForm = {
                 retail_price: '',
                 purchase_price: '',
+                purchase_price_currency: '',
                 old_price: '',
             };
             this.clearSelection();

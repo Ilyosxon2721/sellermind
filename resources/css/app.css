@@ -5,6 +5,12 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Скрыть устаревшие PWA-only секции, browser-only показывать как обычно */
+@layer base {
+    .pwa-only { display: none !important; }
+    .browser-only { display: flex; }
+}
+
 /* ============================================
    SELLERMIND DESIGN SYSTEM
    ============================================ */

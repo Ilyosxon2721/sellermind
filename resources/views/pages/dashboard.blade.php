@@ -3,8 +3,7 @@
 @section('content')
 <div x-data="dashboardPage()" x-init="init()">
 
-    {{-- BROWSER MODE - Regular Web Layout --}}
-    <div class="browser-only flex h-screen bg-gray-50"
+    <div class="flex h-screen bg-gray-50"
          :class="{
              'flex-row': $store.ui.navPosition === 'left',
              'flex-row-reverse': $store.ui.navPosition === 'right'
@@ -12,24 +11,17 @@
         <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
             <x-sidebar></x-sidebar>
         </template>
-        <x-mobile-header />
-        <x-pwa-top-navbar :title="__('dashboard.title')">
-            <x-slot name="subtitle">
-                <span x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></span>
-            </x-slot>
-        </x-pwa-top-navbar>
 
-        <!-- Main Content (Browser) -->
-        <div class="flex-1 flex flex-col overflow-hidden"
-             :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
-            <!-- Header (hidden on mobile, shown on desktop) -->
-            <header class="hidden lg:block bg-white border-b border-gray-200 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900">{{ __('dashboard.title') }}</h1>
-                        <p class="text-sm text-gray-500" x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></p>
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                    <div class="min-w-0">
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ __('dashboard.title') }}</h1>
+                        <p class="text-sm text-gray-500 truncate" x-text="$store.auth.currentCompany?.name || '{{ __('dashboard.select_company') }}'"></p>
                     </div>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 sm:space-x-4">
                         <x-ui.select x-model="period" @change="loadData()">
                             <option value="today">{{ __('dashboard.today') }}</option>
                             <option value="week" selected>{{ __('dashboard.7_days') }}</option>
@@ -44,10 +36,8 @@
                 </div>
             </header>
 
-            <!-- Dashboard Content (Browser) -->
-            <main class="flex-1 overflow-y-auto p-6"
-                  :class="{ 'pb-20': $store.ui.navPosition === 'bottom' }"
-                  x-pull-to-refresh="loadData">
+            <!-- Dashboard Content -->
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6">
 
                 {{-- Loading State --}}
                 <div x-show="loading" class="space-y-6">
@@ -291,23 +281,23 @@
                                                     <div class="flex items-center space-x-3">
                                                         <div class="w-10 h-10 rounded-lg flex items-center justify-center"
                                                              :class="{
-                                                                 'bg-purple-100': account.marketplace === 'wb',
+                                                                 'bg-purple-100': account.marketplace === 'wb' || account.marketplace === 'wildberries',
                                                                  'bg-blue-100': account.marketplace === 'uzum',
                                                                  'bg-sky-100': account.marketplace === 'ozon',
-                                                                 'bg-yellow-100': account.marketplace === 'ym'
+                                                                 'bg-yellow-100': account.marketplace === 'ym' || account.marketplace === 'yandex_market'
                                                              }">
                                                             <span class="text-lg font-bold"
                                                                   :class="{
-                                                                      'text-purple-600': account.marketplace === 'wb',
+                                                                      'text-purple-600': account.marketplace === 'wb' || account.marketplace === 'wildberries',
                                                                       'text-blue-600': account.marketplace === 'uzum',
                                                                       'text-sky-600': account.marketplace === 'ozon',
-                                                                      'text-yellow-600': account.marketplace === 'ym'
+                                                                      'text-yellow-600': account.marketplace === 'ym' || account.marketplace === 'yandex_market'
                                                                   }"
-                                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'OZ','ym':'YM'})[account.marketplace] || account.marketplace"></span>
+                                                                  x-text="({'wb':'WB','wildberries':'WB','uzum':'UZ','ozon':'OZ','ym':'YM','yandex_market':'YM'})[account.marketplace] || account.marketplace.substring(0,2).toUpperCase()"></span>
                                                         </div>
                                                         <div>
                                                             <p class="font-medium text-gray-900" x-text="account.name"></p>
-                                                            <p class="text-xs text-gray-500" x-text="({'wb':'Wildberries','uzum':'Uzum','ozon':'Ozon','ym':'Yandex Market'})[account.marketplace] || account.marketplace"></p>
+                                                            <p class="text-xs text-gray-500" x-text="({'wb':'Wildberries','wildberries':'Wildberries','uzum':'Uzum','ozon':'Ozon','ym':'Yandex Market','yandex_market':'Yandex Market'})[account.marketplace] || account.marketplace"></p>
                                                         </div>
                                                     </div>
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
@@ -511,313 +501,18 @@
             </main>
         </div>
     </div>
-
-    {{-- PWA MODE - Native App Layout --}}
-    <div class="pwa-only min-h-screen" style="background: #f2f2f7;">
-        <x-pwa-header title="{{ __('dashboard.title') }}" :showProfile="true">
-            <button @click="showPeriodSheet = true"
-                    class="native-header-btn"
-                    onclick="if(window.haptic) window.haptic.light()">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-                </svg>
-            </button>
-        </x-pwa-header>
-
-        <main class="native-scroll"
-              style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
-              x-pull-to-refresh="loadData">
-
-            {{-- Loading State --}}
-            <div x-show="loading" x-cloak class="px-4 py-4 space-y-4">
-                <x-skeleton-stats-card />
-                <x-skeleton-stats-card />
-                <x-skeleton-list :items="5" />
-            </div>
-
-            {{-- Content --}}
-            <div x-show="!loading" x-cloak>
-                {{-- Period Badge --}}
-                <div class="px-4 pt-4 pb-2">
-                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 bg-white rounded-full shadow-sm">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        <span class="text-sm font-medium text-gray-700" x-text="periodLabel"></span>
-                    </div>
-                </div>
-
-                {{-- Alerts Banner (PWA) --}}
-                <div x-show="alerts.total_count > 0" class="px-4 pb-2">
-                    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3" @click="showAlertsModal = true">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium text-amber-800" x-text="alerts.total_count + ' оповещений'"></p>
-                            </div>
-                            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Stats Grid --}}
-                <div class="px-4 pb-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        {{-- Revenue Card --}}
-                        <div class="native-card">
-                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.revenue') }}</p>
-                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="formatMoney(stats.revenue)">0 сум</p>
-                            <p class="text-xs text-gray-400 mt-1" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
-                        </div>
-
-                        {{-- Orders Today Card --}}
-                        <div class="native-card">
-                            <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-green-500/30">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                </svg>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.today') }}</p>
-                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.today_orders">0</p>
-                            <p class="text-xs text-gray-400 mt-1" x-text="formatMoney(stats.today_revenue)"></p>
-                        </div>
-
-                        {{-- Products Card --}}
-                        <div class="native-card native-pressable" @click="window.location.href='/products'">
-                            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.products') }}</p>
-                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="stats.products_count">0</p>
-                            <div class="flex items-center mt-1">
-                                <span class="text-xs text-blue-600 font-medium">{{ __('dashboard.open') }}</span>
-                                <svg class="w-3 h-3 text-blue-600 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </div>
-                        </div>
-
-                        {{-- Warehouse Card --}}
-                        <div class="native-card native-pressable" @click="window.location.href='/inventory'">
-                            <div class="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-teal-500/30">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                </svg>
-                            </div>
-                            <p class="text-xs text-gray-500 mb-1">{{ __('dashboard.warehouse') }}</p>
-                            <p class="text-lg font-bold text-gray-900 leading-tight" x-text="formatMoney(warehouse.total_value)">0 сум</p>
-                            <p class="text-xs text-gray-400 mt-1" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Quick Stats Row --}}
-                <div class="px-4 pb-4">
-                    <div class="grid grid-cols-4 gap-2">
-                        <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/marketplaces'">
-                            <p class="text-lg font-bold text-orange-600" x-text="stats.marketplace_accounts">0</p>
-                            <p class="text-xs text-gray-500">{{ __('dashboard.mp') }}</p>
-                        </div>
-                        <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/reviews'">
-                            <p class="text-lg font-bold text-yellow-600" x-text="reviews.pending_response || 0">0</p>
-                            <p class="text-xs text-gray-500">{{ __('dashboard.reviews') }}</p>
-                        </div>
-                        <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/supplies'">
-                            <p class="text-lg font-bold text-indigo-600" x-text="supplies.active_count || 0">0</p>
-                            <p class="text-xs text-gray-500">{{ __('dashboard.supplies') }}</p>
-                        </div>
-                        <div class="native-card p-3 text-center native-pressable" @click="window.location.href='/ai'">
-                            <p class="text-lg font-bold text-pink-600" x-text="ai.running_tasks || 0">0</p>
-                            <p class="text-xs text-gray-500">AI</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Recent Orders --}}
-                <div class="px-4 pt-3">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-base font-semibold text-gray-900">{{ __('dashboard.recent_orders') }}</h2>
-                        <a href="/sales" class="text-sm font-medium text-blue-600">{{ __('dashboard.all') }}</a>
-                    </div>
-
-                    <div class="space-y-2" x-show="recentOrders.length > 0">
-                        <template x-for="order in recentOrders" :key="order.id">
-                            <div class="native-card native-pressable"
-                                 @click="window.location.href = '/sales?id=' + order.id">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex-1">
-                                        <div class="flex items-center space-x-2 mb-1">
-                                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded"
-                                                  :class="{
-                                                      'bg-purple-100 text-purple-700': order.marketplace === 'wb',
-                                                      'bg-blue-100 text-blue-700': order.marketplace === 'uzum',
-                                                      'bg-sky-100 text-sky-700': order.marketplace === 'ozon',
-                                                      'bg-yellow-100 text-yellow-700': order.marketplace === 'ym'
-                                                  }"
-                                                  x-text="({'wb':'WB','uzum':'UZ','ozon':'Ozon','ym':'YM'})[order.marketplace] || order.marketplace"></span>
-                                            <p class="text-sm font-semibold text-gray-900" x-text="'#' + order.order_number"></p>
-                                        </div>
-                                        <p class="text-xs text-gray-500" x-text="order.account_name"></p>
-                                        <p class="text-xs text-gray-400" x-text="order.date"></p>
-                                    </div>
-                                    <div class="text-right flex items-center space-x-2">
-                                        <div>
-                                            <p class="text-sm font-bold text-gray-900" x-text="formatMoney(order.amount)"></p>
-                                            <span x-text="order.status_label || order.status" :class="getStatusClass(order.status)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"></span>
-                                        </div>
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    <div x-show="!loading && recentOrders.length === 0" x-cloak class="native-card text-center py-12">
-                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                            </svg>
-                        </div>
-                        <p class="text-sm font-medium text-gray-900 mb-1">{{ __('dashboard.no_orders_yet') }}</p>
-                        <p class="text-xs text-gray-500">{{ __('dashboard.orders_will_appear') }}</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        {{-- Period Selection Sheet --}}
-        <div x-show="showPeriodSheet"
-             x-cloak
-             @click.self="showPeriodSheet = false"
-             class="native-modal-overlay"
-             style="display: none;">
-            <div class="native-sheet" @click.away="showPeriodSheet = false">
-                <div class="native-sheet-handle"></div>
-                <h3 class="native-headline mb-4">{{ __('dashboard.select_period') }}</h3>
-                <div class="space-y-2">
-                    <button @click="period = 'today'; loadData(); showPeriodSheet = false"
-                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                            :class="period === 'today' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                        {{ __('dashboard.today') }}
-                    </button>
-                    <button @click="period = 'week'; loadData(); showPeriodSheet = false"
-                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                            :class="period === 'week' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                        {{ __('dashboard.7_days') }}
-                    </button>
-                    <button @click="period = 'month'; loadData(); showPeriodSheet = false"
-                            class="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                            :class="period === 'month' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
-                        {{ __('dashboard.30_days') }}
-                    </button>
-                    <x-ui.button @click="showPeriodSheet = false"
-                            variant="secondary" class="w-full mt-4">
-                        {{ __('dashboard.cancel') }}
-                    </x-ui.button>
-                </div>
-            </div>
-        </div>
-
-        {{-- Alerts Modal --}}
-        <div x-show="showAlertsModal"
-             x-cloak
-             @click.self="showAlertsModal = false"
-             class="native-modal-overlay">
-            <div class="native-sheet max-h-[70vh] overflow-y-auto" @click.away="showAlertsModal = false">
-                <div class="native-sheet-handle"></div>
-                <h3 class="native-headline mb-4">{{ __('dashboard.alerts') }}</h3>
-                <div class="space-y-3">
-                    <template x-for="alert in alerts.items" :key="alert.type + '_' + (alert.sku_id || alert.review_id || alert.supply_id || Math.random())">
-                        <div class="p-3 rounded-xl border"
-                             :class="{
-                                 'bg-red-50 border-red-200': alert.severity === 'error',
-                                 'bg-amber-50 border-amber-200': alert.severity === 'warning',
-                                 'bg-blue-50 border-blue-200': alert.severity === 'info'
-                             }"
-                             @click="if(alert.action_url) window.location.href = alert.action_url">
-                            <div class="flex items-start space-x-3">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center"
-                                     :class="{
-                                         'bg-red-100': alert.severity === 'error',
-                                         'bg-amber-100': alert.severity === 'warning',
-                                         'bg-blue-100': alert.severity === 'info'
-                                     }">
-                                    <template x-if="alert.type === 'low_stock'">
-                                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'review'">
-                                        <svg class="w-4 h-4" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'supply'">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'orders'">
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                        </svg>
-                                    </template>
-                                    <template x-if="alert.type === 'subscription'">
-                                        <svg class="w-4 h-4" :class="alert.severity === 'error' ? 'text-red-600' : 'text-amber-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </template>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium" :class="{
-                                        'text-red-800': alert.severity === 'error',
-                                        'text-amber-800': alert.severity === 'warning',
-                                        'text-blue-800': alert.severity === 'info'
-                                    }" x-text="alert.title"></p>
-                                    <p class="text-xs" :class="{
-                                        'text-red-600': alert.severity === 'error',
-                                        'text-amber-600': alert.severity === 'warning',
-                                        'text-blue-600': alert.severity === 'info'
-                                    }" x-text="alert.message"></p>
-                                </div>
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-                <x-ui.button @click="showAlertsModal = false"
-                        variant="secondary" class="w-full mt-4">
-                    {{ __('dashboard.close') }}
-                </x-ui.button>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
 function dashboardPage() {
     return {
         loading: false,
+        refreshing: false,
         period: 'week',
         showPeriodSheet: false,
         showAlertsModal: false,
+        showNotificationsSheet: false,
+        notifications: [],
         stats: {
             revenue: 0,
             orders_count: 0,

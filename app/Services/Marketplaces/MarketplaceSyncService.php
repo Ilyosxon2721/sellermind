@@ -12,6 +12,7 @@ use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
+use App\Services\Uzum\UzumOrderSyncService;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Services\Marketplaces\Wildberries\WildberriesPriceService;
@@ -301,6 +302,33 @@ class MarketplaceSyncService
                 ));
 
                 $log->markAsSuccess("WB orders synced: {$allOrdersResult['created']} new, {$allOrdersResult['synced']} total, {$syncResult['updated']} updated with details, {$archived} archived");
+
+                return;
+            }
+
+            // Для Uzum используем новый UzumOrderSyncService
+            if ($account->marketplace === 'uzum' || $account->isUzum()) {
+                broadcast(new MarketplaceSyncProgress(
+                    $account->company_id,
+                    $account->id,
+                    'progress',
+                    'Загрузка FBS заказов Uzum...',
+                    25
+                ));
+
+                $uzumSync = new UzumOrderSyncService();
+                $daysBack = (int) ceil($from->diffInDays($to, true)) ?: 30;
+                $stats = $uzumSync->sync($account, $daysBack);
+
+                broadcast(new MarketplaceSyncProgress(
+                    $account->company_id,
+                    $account->id,
+                    'completed',
+                    "Синхронизация Uzum завершена: {$stats['created']} новых, {$stats['updated']} обновлено",
+                    100
+                ));
+
+                $log->markAsSuccess("Uzum orders synced: {$stats['created']} new, {$stats['updated']} updated, {$stats['total']} total");
 
                 return;
             }
@@ -706,7 +734,7 @@ class MarketplaceSyncService
         $updateData = [
             'status' => $orderData['status'] ?? null,
             'status_normalized' => $orderData['status_normalized'] ?? $orderData['status'] ?? null,
-            'delivery_type' => $orderData['wb_delivery_type'] ?? $orderData['delivery_type'] ?? null,
+            'delivery_type' => $orderData['delivery_type'] ?? $orderData['wb_delivery_type'] ?? null,
             'shop_id' => $orderData['shop_id'] ?? $orderData['raw_payload']['shopId'] ?? null,
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,

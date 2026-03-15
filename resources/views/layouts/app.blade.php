@@ -23,18 +23,12 @@
     <!-- Robots (noindex for internal app pages) -->
     <meta name="robots" content="noindex, nofollow">
 
-    <!-- PWA Meta Tags -->
+    <!-- Mobile -->
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SellerMind">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/build/manifest.json">
 
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" sizes="152x152" href="/images/icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="/images/icons/icon-192x192.png">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-72x72.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/icon-72x72.png">
 
     <!-- Resource Hints for Performance -->
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
@@ -58,29 +52,10 @@
         .min-h-screen { min-height: 100vh; }
         .bg-gray-50 { background-color: #f9fafb; }
         [x-cloak] { display: none !important; }
-        /* PWA/Browser mode visibility - critical for preventing flash */
-        .pwa-only { display: none !important; }
-        .pwa-mode .pwa-only { display: block !important; }
-        .pwa-mode .browser-only { display: none !important; }
-        .browser-mode .browser-only { display: flex !important; }
     </style>
 
-    <!-- Early PWA detection to prevent flash of wrong content -->
-    <script>
-        (function() {
-            var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-            var isIOSStandalone = window.navigator.standalone === true;
-            if (isStandalone || isIOSStandalone) {
-                document.documentElement.classList.add('pwa-mode');
-            } else {
-                document.documentElement.classList.add('browser-mode');
-            }
-            window.isPWAInstalled = isStandalone || isIOSStandalone;
-        })();
-    </script>
-
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/css/pwa-native.css', 'resources/js/pwa-detector.js', 'resources/js/app.js', 'resources/js/pwa/auth.js', 'resources/js/pwa/haptic.js', 'resources/js/pwa/cache.js', 'resources/js/pwa/offline.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
     <script>
@@ -120,18 +95,10 @@
     </script>
 </head>
 <body class="bg-gray-50">
-    <!-- Splash Screen (PWA only) -->
-    <x-splash-screen />
-
-    <!-- PIN Screen (PWA only, shows if PIN is set) -->
-    @auth
-    <x-pin-screen />
-    @endauth
-
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen">
-        <!-- Hamburger Menu & Sidebar Overlay (Mobile Only) -->
+    <div x-data="{ sidebarOpen: false }" class="min-h-screen pt-14 lg:pt-0">
+        <!-- Mobile Top Navbar & Sidebar Overlay -->
         <x-hamburger-menu />
-        
+
         @yield('content')
     </div>
 
@@ -144,86 +111,6 @@
     <!-- Loading Overlay -->
     <x-loading-overlay />
 
-    <!-- Offline Indicator -->
-    <x-offline-indicator />
-
-    <!-- Bottom Tab Navigation (PWA only, mobile/tablet) -->
-    @auth
-    <x-bottom-tab-nav />
-    @endauth
-
-    <!-- Global Action Sheet -->
-    <x-global-action-sheet />
-
-    <!-- PWA More Menu (triggered from tabbar) -->
-    @auth
-    <x-pwa.more-menu />
-    @endauth
-
-    <!-- PWA Auto-registration (handled by vite-plugin-pwa) -->
-    @vite('resources/js/pwa.js')
-
-    <!-- PWA Install Prompt -->
-    <script>
-        let deferredPrompt;
-        let pwaInstallButton = null;
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent default install prompt
-            e.preventDefault();
-            deferredPrompt = e;
-
-            // Show custom install button
-            showInstallPromotion();
-        });
-
-        function showInstallPromotion() {
-            // Create install button if not exists
-            if (!pwaInstallButton && deferredPrompt) {
-                pwaInstallButton = document.createElement('button');
-                pwaInstallButton.innerHTML = `
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                    </svg>
-                    Установить приложение
-                `;
-                pwaInstallButton.className = 'fixed bottom-4 right-4 z-50 px-4 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center font-medium';
-                pwaInstallButton.onclick = installPWA;
-                document.body.appendChild(pwaInstallButton);
-
-                // Auto-hide after 10 seconds
-                setTimeout(() => {
-                    if (pwaInstallButton) {
-                        pwaInstallButton.style.opacity = '0';
-                        setTimeout(() => pwaInstallButton?.remove(), 300);
-                    }
-                }, 10000);
-            }
-        }
-
-        async function installPWA() {
-            if (!deferredPrompt) return;
-
-            // Show install prompt
-            deferredPrompt.prompt();
-
-            // Wait for user response
-            const { outcome } = await deferredPrompt.userChoice;
-            // Clear the prompt
-            deferredPrompt = null;
-            pwaInstallButton?.remove();
-            pwaInstallButton = null;
-        }
-
-        // Track if app was installed
-        window.addEventListener('appinstalled', () => {
-            deferredPrompt = null;
-            pwaInstallButton?.remove();
-        });
-
-        // Expose install function globally
-        window.installPWA = installPWA;
-    </script>
     {{-- Chart.js для страниц с графиками --}}
     @stack('scripts')
 </body>

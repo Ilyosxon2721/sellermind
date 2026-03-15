@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'quick_actions' => [
+        'sync' => 'Sync',
+        'prices' => 'Prices',
+        'reviews' => 'Reviews',
+        'tasks' => 'Tasks',
+    ],
     'pin' => [
         'enter_title' => 'Enter PIN',
         'enter_subtitle' => 'To access the app',

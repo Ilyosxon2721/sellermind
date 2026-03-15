@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Observers\Traits;
 
+use App\Jobs\SendTelegramOrderNotification;
+use App\Models\TelegramSubscription;
 use App\Notifications\NewMarketplaceOrderNotification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 trait NotifiesMarketplaceOrder
@@ -21,6 +24,13 @@ trait NotifiesMarketplaceOrder
         string $currency,
     ): void {
         try {
+            // Дедупликация: не отправлять повторно для того же заказа (10 мин кэш)
+            $cacheKey = "notify:new:{$marketplace}:{$orderNumber}";
+            if (Cache::has($cacheKey)) {
+                return;
+            }
+            Cache::put($cacheKey, true, 600);
+
             $account = $order->account;
             if (! $account) {
                 return;
@@ -43,12 +53,64 @@ trait NotifiesMarketplaceOrder
                     orderNumber: $orderNumber,
                     totalAmount: $totalAmount,
                     currency: $currency,
+                    order: $order,
                 ));
             }
         } catch (\Exception $e) {
             Log::error('Failed to dispatch marketplace order notification', [
                 'marketplace' => $marketplace,
                 'order_number' => $orderNumber,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Отправить уведомления подписчикам TelegramSubscription (новая система).
+     * Работает параллельно со старой системой $user->notify().
+     */
+    protected function notifySubscribers(Model $order, string $marketplace, string $status): void
+    {
+        try {
+            // Дедупликация: не отправлять повторно для того же заказа+статуса (10 мин кэш)
+            $cacheKey = "notify:sub:{$marketplace}:{$order->id}:{$status}";
+            if (Cache::has($cacheKey)) {
+                return;
+            }
+            Cache::put($cacheKey, true, 600);
+
+            $account = $order->account;
+            if (! $account) {
+                return;
+            }
+
+            $company = $account->company;
+            if (! $company) {
+                return;
+            }
+
+            // Получить всех пользователей компании
+            $userIds = $company->users()->pluck('users.id');
+
+            // Найти подходящие подписки
+            $subscriptions = TelegramSubscription::query()
+                ->active()
+                ->whereIn('user_id', $userIds)
+                ->forMarketplace($marketplace)
+                ->forAccount($account->id)
+                ->get();
+
+            foreach ($subscriptions as $subscription) {
+                if (! $subscription->shouldNotifyForStatus($status)) {
+                    continue;
+                }
+
+                SendTelegramOrderNotification::dispatch($order, $subscription->chat_id);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to notify subscribers', [
+                'marketplace' => $marketplace,
+                'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
         }

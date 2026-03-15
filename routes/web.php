@@ -55,22 +55,10 @@ Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function
 
 // Root redirect to Russian
 Route::get('/', function (Illuminate\Http\Request $request) {
-    // Check if PWA is installed (standalone mode)
-    $isPWA = $request->cookie('pwa_installed') === 'true'
-        || $request->header('X-Requested-With') === 'com.sellermind.pwa';
-
-    // PWA App Mode: Act like a native app
-    if ($isPWA) {
-        if (auth()->check()) {
-            // Authenticated → Dashboard
-            return redirect('/dashboard');
-        } else {
-            // Not authenticated → Login (skip landing)
-            return redirect('/login');
-        }
+    if (auth()->check()) {
+        return redirect('/dashboard');
     }
 
-    // Browser Mode: Redirect to Russian landing by default
     return redirect('/ru');
 })->name('home');
 
@@ -86,6 +74,11 @@ Route::get('/register', function () {
 Route::get('/api/health', function () {
     return response()->json(['status' => 'ok'], 200);
 });
+
+// Offline page for PWA
+Route::get('/offline', function () {
+    return view('offline');
+})->name('offline');
 
 // Auth API routes (in web.php for proper session cookie handling)
 // These MUST be in web.php, not api.php, for session cookies to work correctly
@@ -112,6 +105,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.settings');
     })->name('settings');
 
+    Route::get('/profile', function () {
+        return view('pages.profile');
+    })->name('profile');
+
     // Integrations
     Route::get('/integrations', [\App\Http\Controllers\Web\IntegrationController::class, 'index'])
         ->name('integrations.index');
@@ -131,6 +128,33 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.analytics');
     })->name('analytics');
 
+    // Analytics sub-pages
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/revenue', function () {
+            return view('pages.analytics');
+        })->name('revenue');
+
+        Route::get('/products', function () {
+            return view('pages.analytics');
+        })->name('products');
+
+        Route::get('/abc', function () {
+            return view('pages.analytics');
+        })->name('abc');
+
+        Route::get('/pnl', function () {
+            return view('pages.analytics');
+        })->name('pnl');
+
+        Route::get('/stock', function () {
+            return view('pages.analytics');
+        })->name('stock');
+
+        Route::get('/funnel', function () {
+            return view('pages.analytics');
+        })->name('funnel');
+    });
+
     Route::get('/reviews', function () {
         return view('pages.reviews');
     })->name('reviews');
@@ -139,6 +163,9 @@ Route::middleware('auth.any')->group(function () {
 
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
+        Route::get('/purchase-prices', function () {
+            return view('products.purchase-prices');
+        })->name('purchase-prices');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
         Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
 
@@ -148,6 +175,12 @@ Route::middleware('auth.any')->group(function () {
             Route::put('/{product}', [ProductWebController::class, 'update'])->name('update');
             Route::delete('/{product}', [ProductWebController::class, 'destroy'])->name('destroy');
             Route::post('/{product}/publish', [ProductWebController::class, 'publish'])->name('publish');
+
+            // Bulk операции (через web для session auth)
+            Route::match(['get', 'post'], '/bulk/export', [\App\Http\Controllers\Api\ProductBulkController::class, 'export'])->name('bulk.export');
+            Route::post('/bulk/import/preview', [\App\Http\Controllers\Api\ProductBulkController::class, 'previewImport'])->name('bulk.import.preview');
+            Route::post('/bulk/import/apply', [\App\Http\Controllers\Api\ProductBulkController::class, 'applyImport'])->name('bulk.import.apply');
+            Route::post('/bulk/update', [\App\Http\Controllers\Api\ProductBulkController::class, 'bulkUpdate'])->name('bulk.update');
         });
     });
 
@@ -156,6 +189,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/balance', [WarehouseController::class, 'balance'])->name('balance');
         Route::get('/in', [WarehouseController::class, 'receipts'])->name('in');
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('in.create');
+        Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('warehouses');
         Route::get('/create', function () {
             return view('warehouse.warehouse-create');
@@ -175,10 +209,12 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
+        Route::get('/write-off/{id}/edit', [WarehouseController::class, 'editWriteOff'])->name('write-off.edit');
 
         // Inventory (инвентаризация)
         Route::get('/inventory', [WarehouseController::class, 'inventoryList'])->name('inventory');
         Route::get('/inventory/create', [WarehouseController::class, 'createInventory'])->name('inventory.create');
+        Route::get('/inventory/{id}/edit', [WarehouseController::class, 'editInventory'])->name('inventory.edit');
 
         // Web-based API routes for warehouse CRUD (uses session auth)
         Route::middleware('auth')->group(function () {
@@ -196,6 +232,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/balance', [WarehouseController::class, 'balance'])->name('cabinet.warehouse.balance');
         Route::get('/in', [WarehouseController::class, 'receipts'])->name('cabinet.warehouse.in');
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('cabinet.warehouse.in.create');
+        Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('cabinet.warehouse.in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('cabinet.warehouse.warehouses');
         Route::get('/create', function () {
             return view('warehouse.warehouse-create');
@@ -215,11 +252,18 @@ Route::middleware('auth.any')->group(function () {
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('cabinet.warehouse.write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('cabinet.warehouse.write-off.create');
+        Route::get('/write-off/{id}/edit', [WarehouseController::class, 'editWriteOff'])->name('cabinet.warehouse.write-off.edit');
+        Route::get('/inventory/{id}/edit', [WarehouseController::class, 'editInventory'])->name('cabinet.warehouse.inventory.edit');
     });
 
     Route::get('/tasks', function () {
         return view('pages.tasks');
     })->name('tasks');
+
+    // PWA-optimized tasks
+    Route::get('/tasks-pwa', function () {
+        return view('pages.tasks-pwa');
+    })->name('tasks.pwa');
 
     // Agent Mode
     Route::get('/agent', function () {
@@ -320,6 +364,15 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/marketplace', function () {
         return view('pages.marketplace.index');
     })->name('marketplace.index');
+
+    // PWA-optimized marketplace pages
+    Route::get('/marketplace-pwa', function () {
+        return view('pages.marketplace.index-pwa');
+    })->name('marketplace.pwa');
+
+    Route::get('/marketplace-pwa/{accountId}', function ($accountId) {
+        return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
+    })->name('marketplace.show.pwa');
 
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
@@ -567,6 +620,15 @@ Route::middleware('auth.any')->group(function () {
             'uzumShops' => $uzumShops,
         ]);
     })->name('marketplace.uzum-orders');
+
+    // Uzum Reviews
+    Route::get('/marketplace/{accountId}/uzum-reviews', function ($accountId) {
+        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
+        return view('pages.marketplace.uzum-reviews', [
+            'accountId' => $accountId,
+            'accountName' => $account->name,
+        ]);
+    })->name('marketplace.uzum-reviews');
 
     // Ozon Settings
     Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {

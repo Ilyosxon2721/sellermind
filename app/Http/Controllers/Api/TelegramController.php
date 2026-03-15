@@ -1,13 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MarketplaceAccount;
 use App\Models\TelegramLinkCode;
+use App\Models\TelegramSubscription;
 use App\Models\User;
 use App\Models\UserNotificationSetting;
+use App\Telegram\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class TelegramController extends Controller
 {
@@ -59,6 +65,81 @@ class TelegramController extends Controller
 
         return response()->json([
             'message' => 'Telegram аккаунт отключен',
+        ]);
+    }
+
+    /**
+     * Сгенерировать код привязки Telegram к аккаунту маркетплейса
+     */
+    public function generateAccountLinkCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'marketplace_account_id' => 'required|integer',
+        ]);
+
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($validated['marketplace_account_id']);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        $linkCode = TelegramLinkCode::generateForAccount($user->id, $account->id);
+
+        return response()->json([
+            'code' => $linkCode->code,
+            'expires_at' => $linkCode->expires_at->toIso8601String(),
+            'bot_username' => config('telegram.bot_username'),
+            'account_name' => $account->getDisplayName(),
+        ]);
+    }
+
+    /**
+     * Отключить Telegram от аккаунта маркетплейса
+     */
+    public function disconnectAccountTelegram(Request $request, int $accountId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($accountId);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        $account->disconnectTelegram();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Получить статус привязки Telegram к аккаунту маркетплейса
+     */
+    public function getAccountTelegramStatus(Request $request, int $accountId): JsonResponse
+    {
+        $user = $request->user();
+
+        // Найти аккаунт и проверить владельца
+        $account = MarketplaceAccount::findOrFail($accountId);
+
+        if ($account->user_id !== $user->id) {
+            return response()->json(['message' => 'Доступ запрещён'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Найти активный незарезервированный код для этого аккаунта
+        $pendingCode = TelegramLinkCode::where('marketplace_account_id', $accountId)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'connected' => $account->isTelegramConnected(),
+            'telegram_username' => $account->telegram_username,
+            'pending_code_expires_at' => $pendingCode?->expires_at->toIso8601String(),
         ]);
     }
 
@@ -144,5 +225,95 @@ class TelegramController extends Controller
         }
 
         return response()->json($settings);
+    }
+
+    /**
+     * Список подписок пользователя
+     */
+    public function listSubscriptions(Request $request): JsonResponse
+    {
+        $subscriptions = TelegramSubscription::where('user_id', $request->user()->id)
+            ->with('account:id,name,marketplace')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $subscriptions]);
+    }
+
+    /**
+     * Создать подписку на уведомления
+     */
+    public function createSubscription(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (empty($user->telegram_id)) {
+            return response()->json(['message' => 'Сначала привяжите Telegram'], 422);
+        }
+
+        $validated = $request->validate([
+            'marketplace' => 'nullable|string|in:uzum,wb,ozon,ym',
+            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
+            'notify_new' => 'boolean',
+            'notify_status' => 'boolean',
+            'notify_cancel' => 'boolean',
+            'daily_summary' => 'boolean',
+            'summary_time' => 'nullable|date_format:H:i',
+        ]);
+
+        $subscription = TelegramSubscription::create([
+            'user_id' => $user->id,
+            'chat_id' => $user->telegram_id,
+            'marketplace' => $validated['marketplace'] ?: null,
+            'marketplace_account_id' => $validated['marketplace_account_id'] ?: null,
+            'notify_new' => $validated['notify_new'] ?? true,
+            'notify_status' => $validated['notify_status'] ?? true,
+            'notify_cancel' => $validated['notify_cancel'] ?? true,
+            'daily_summary' => $validated['daily_summary'] ?? false,
+            'summary_time' => $validated['daily_summary'] ?? false ? ($validated['summary_time'] ?? '20:00') : null,
+        ]);
+
+        return response()->json([
+            'message' => 'Подписка создана',
+            'data' => $subscription->load('account:id,name,marketplace'),
+        ], 201);
+    }
+
+    /**
+     * Удалить подписку
+     */
+    public function deleteSubscription(Request $request, int $id): JsonResponse
+    {
+        $subscription = TelegramSubscription::where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $subscription->delete();
+
+        return response()->json(['message' => 'Подписка удалена']);
+    }
+
+    /**
+     * Отправить тестовое уведомление
+     */
+    public function sendTestNotification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (empty($user->telegram_id)) {
+            return response()->json(['message' => 'Telegram не привязан'], 422);
+        }
+
+        try {
+            $telegram = app(TelegramService::class);
+            $telegram->sendMessage(
+                $user->telegram_id,
+                "🧪 <b>Тестовое уведомление</b>\n\nSellerMind успешно подключён!\nУведомления о заказах будут приходить сюда.",
+                ['parse_mode' => 'HTML'],
+            );
+
+            return response()->json(['message' => 'Тестовое уведомление отправлено']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Ошибка: '.$e->getMessage()], 500);
+        }
     }
 }

@@ -37,6 +37,11 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v1"/></svg>
                         {{ __('debts.add_payment') }}
                     </button>
+                    <button class="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1.5"
+                            @click="openAmountCurrencyModal()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        {{ __('debts.edit_amount_currency') }}
+                    </button>
                     <button class="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-50 flex items-center gap-1.5"
                             @click="showWriteOffModal = true">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
@@ -307,6 +312,52 @@
         </div>
     </div>
 
+    {{-- AMOUNT/CURRENCY CORRECTION MODAL --}}
+    <div x-show="showAmountCurrencyModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="fixed inset-0 bg-black/50" @click="showAmountCurrencyModal = false"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('debts.edit_amount_currency_title') }}</h3>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                    <div class="bg-blue-50 rounded-lg p-3 text-sm text-blue-700" x-show="debt?.amount_paid > 0">
+                        <p>{{ __('debts.min_amount_warning', ['amount' => '']) }}<span x-text="formatMoney(debt?.amount_paid || 0)"></span></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('debts.new_amount') }} *</label>
+                        <input type="number" step="0.01" :min="debt?.amount_paid || 0.01"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" x-model="amountCurrencyForm.original_amount">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('debts.new_currency') }} *</label>
+                        <select class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" x-model="amountCurrencyForm.currency_code">
+                            <option value="UZS">UZS - Узбекский сум</option>
+                            <option value="USD">USD - Доллар США</option>
+                            <option value="EUR">EUR - Евро</option>
+                            <option value="RUB">RUB - Российский рубль</option>
+                            <option value="KZT">KZT - Казахстанский тенге</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('debts.correction_reason') }}</label>
+                        <textarea class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" rows="2"
+                                  x-model="amountCurrencyForm.correction_reason"
+                                  placeholder="{{ __('debts.correction_reason_placeholder') }}"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50" @click="showAmountCurrencyModal = false">{{ __('common.cancel') }}</button>
+                    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                            @click="updateAmountCurrency()" :disabled="savingAmountCurrency || !amountCurrencyForm.original_amount">
+                        <svg x-show="savingAmountCurrency" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="savingAmountCurrency ? '...' : '{{ __('common.save') }}'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- TOAST --}}
     <div x-show="toast.show" x-cloak x-transition
          class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white"
@@ -345,6 +396,7 @@
                 {{-- Actions --}}
                 <div class="flex gap-2" x-show="debt.status !== 'paid' && debt.status !== 'written_off'">
                     <button class="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm rounded-lg font-medium" @click="openPaymentModal()">{{ __('debts.add_payment') }}</button>
+                    <button class="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm rounded-lg" @click="openAmountCurrencyModal()">{{ __('debts.edit_amount_currency') }}</button>
                     <button class="px-4 py-2.5 border border-amber-300 text-amber-700 text-sm rounded-lg" @click="showWriteOffModal = true">{{ __('debts.write_off') }}</button>
                 </div>
 
@@ -382,7 +434,15 @@ function debtShowPage(debtId) {
 
         showPaymentModal: false,
         showWriteOffModal: false,
+        showAmountCurrencyModal: false,
         writeOffReason: '',
+        savingAmountCurrency: false,
+
+        amountCurrencyForm: {
+            original_amount: '',
+            currency_code: 'UZS',
+            correction_reason: '',
+        },
 
         cashAccounts: [],
 
@@ -491,6 +551,43 @@ function debtShowPage(debtId) {
                 this.showToast(e.message, 'error');
             } finally {
                 this.writingOff = false;
+            }
+        },
+
+        openAmountCurrencyModal() {
+            this.amountCurrencyForm = {
+                original_amount: this.debt.original_amount,
+                currency_code: this.debt.currency_code || 'UZS',
+                correction_reason: '',
+            };
+            this.showAmountCurrencyModal = true;
+        },
+
+        async updateAmountCurrency() {
+            if (this.savingAmountCurrency) return;
+
+            // Validate minimum amount
+            if (parseFloat(this.amountCurrencyForm.original_amount) < (this.debt.amount_paid || 0)) {
+                this.showToast('{{ __('debts.min_amount_warning', ['amount' => '']) }}' + this.formatMoney(this.debt.amount_paid), 'error');
+                return;
+            }
+
+            this.savingAmountCurrency = true;
+            try {
+                const resp = await fetch(`/api/finance/debts/${this.debtId}/amount-currency`, {
+                    method: 'PATCH',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.amountCurrencyForm),
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || json.message || 'Error');
+                this.showAmountCurrencyModal = false;
+                this.showToast('{{ __('debts.amount_updated') }}');
+                await this.loadDebt();
+            } catch (e) {
+                this.showToast(e.message, 'error');
+            } finally {
+                this.savingAmountCurrency = false;
             }
         },
 

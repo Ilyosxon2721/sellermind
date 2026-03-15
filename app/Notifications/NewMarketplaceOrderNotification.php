@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Channels\TelegramChannel;
+use App\Services\Telegram\OrderMessageBuilder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -25,6 +27,7 @@ final class NewMarketplaceOrderNotification extends Notification implements Shou
         public string $orderNumber,
         public float $totalAmount,
         public string $currency,
+        public ?Model $order = null,
     ) {}
 
     /**
@@ -69,20 +72,35 @@ final class NewMarketplaceOrderNotification extends Notification implements Shou
     }
 
     /**
-     * Telegram-представление уведомления.
+     * Telegram-представление уведомления (через OrderMessageBuilder).
      */
     public function toTelegram(object $notifiable): array
     {
+        // Если передан order — используем красивый формат через OrderMessageBuilder
+        if ($this->order) {
+            $builder = app(OrderMessageBuilder::class);
+            $message = $builder->build($this->order);
+
+            return [
+                'text' => $message['text'],
+                'options' => [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => json_encode($message['reply_markup']),
+                ],
+            ];
+        }
+
+        // Фоллбэк для старых вызовов без order
         $emoji = $this->getMarketplaceEmoji();
         $label = $this->getMarketplaceLabel();
 
-        $message = "{$emoji} *Новый заказ на {$label}*\n\n";
-        $message .= "Аккаунт: *{$this->accountName}*\n";
-        $message .= "Заказ: `{$this->orderNumber}`\n\n";
-        $message .= "💰 Сумма: *{$this->totalAmount}* {$this->currency}";
+        $text = "{$emoji} *Новый заказ на {$label}*\n\n";
+        $text .= "Аккаунт: *{$this->accountName}*\n";
+        $text .= "Заказ: `{$this->orderNumber}`\n\n";
+        $text .= "💰 Сумма: *{$this->totalAmount}* {$this->currency}";
 
         return [
-            'text' => $message,
+            'text' => $text,
             'options' => [
                 'parse_mode' => 'Markdown',
             ],

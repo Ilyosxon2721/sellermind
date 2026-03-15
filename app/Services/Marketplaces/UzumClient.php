@@ -1,6 +1,6 @@
 <?php
 
-// file: app/Services/Marketplaces/UzumClient.php
+declare(strict_types=1);
 
 namespace App\Services\Marketplaces;
 
@@ -10,17 +10,21 @@ use DateTimeInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class UzumClient implements MarketplaceClientInterface
+/**
+ * Клиент для интеграции с Uzum Market Seller API
+ *
+ * Поддерживаемые API:
+ * - Product API v1 (товары, каталог)
+ * - Shops API v1 (магазины)
+ * - Orders API v2 (заказы)
+ * - Finance API v1 (финансы)
+ */
+final class UzumClient implements MarketplaceClientInterface
 {
-    protected MarketplaceHttpClient $http;
-
-    protected IssueDetectorService $issueDetector;
-
-    public function __construct(MarketplaceHttpClient $http, IssueDetectorService $issueDetector)
-    {
-        $this->http = $http;
-        $this->issueDetector = $issueDetector;
-    }
+    public function __construct(
+        private readonly MarketplaceHttpClient $http,
+        private readonly IssueDetectorService $issueDetector,
+    ) {}
 
     public function getMarketplaceCode(): string
     {
@@ -439,21 +443,26 @@ class UzumClient implements MarketplaceClientInterface
     }
 
     /**
-     * Ping API to check connectivity (health-check)
-     * Uses seller info endpoint - lightweight and validates API key
+     * Быстрая проверка доступности API (health-check)
+     *
+     * Использует endpoint магазинов - легковесный и валидирует API ключ.
+     *
+     * @return array{success: bool, message: string, response_time_ms: int|null, data?: array}
      */
     public function ping(MarketplaceAccount $account): array
     {
-        // Always try /v1/shops first - it's the most reliable endpoint
+        $startTime = microtime(true);
+        $lastError = null;
+
+        // GET /v1/shops - легковесный endpoint для проверки
         $paths = ['/v1/shops'];
 
         foreach ($paths as $path) {
-            $start = microtime(true);
             try {
                 $response = $this->request($account, 'GET', $path);
-                $duration = round((microtime(true) - $start) * 1000);
+                $duration = (int) round((microtime(true) - $startTime) * 1000);
 
-                \Log::info('Uzum ping success', [
+                Log::info('Uzum ping success', [
                     'account_id' => $account->id,
                     'path' => $path,
                     'duration_ms' => $duration,
@@ -465,12 +474,11 @@ class UzumClient implements MarketplaceClientInterface
                     'message' => 'Uzum Market API доступен',
                     'response_time_ms' => $duration,
                     'data' => $response,
-                    'endpoint' => $path,
                 ];
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
 
-                \Log::warning('Uzum ping failed', [
+                Log::warning('Uzum ping failed', [
                     'account_id' => $account->id,
                     'path' => $path,
                     'error' => $lastError,
@@ -480,10 +488,12 @@ class UzumClient implements MarketplaceClientInterface
             }
         }
 
+        $duration = (int) round((microtime(true) - $startTime) * 1000);
+
         return [
             'success' => false,
-            'message' => 'Ошибка пинга Uzum: '.($lastError ?? 'endpoint not found'),
-            'response_time_ms' => null,
+            'message' => 'Ошибка: '.($lastError ?? 'endpoint not found'),
+            'response_time_ms' => $duration,
         ];
     }
 
@@ -881,9 +891,8 @@ class UzumClient implements MarketplaceClientInterface
             'external_statuses' => $statuses,
         ]);
 
-        // Активные статусы и отмены/возвраты (заказы в работе + отмененные + возвраты) - загружаем ВСЕ без фильтрации по дате
-        // ВАЖНО: CANCELED, PENDING_CANCELLATION и RETURNED должны загружаться без фильтра по дате,
-        // чтобы обновлять старые заказы, которые были отменены или возвращены
+        // Активные статусы (заказы в работе) — загружаем без фильтрации по дате,
+        // т.к. их немного и они всегда актуальны
         $activeStatuses = [
             'CREATED',
             'PACKING',
@@ -891,13 +900,20 @@ class UzumClient implements MarketplaceClientInterface
             'DELIVERING',
             'ACCEPTED_AT_DP',
             'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
-            'CANCELED',  // Для обновления отмененных заказов
-            'PENDING_CANCELLATION',  // Для обновления заказов в процессе отмены
-            'RETURNED',  // Для обновления возвращённых заказов
         ];
+
+        // Статусы с расширенным окном (90 дней вместо бесконечности)
+        // чтобы обновлять недавно отменённые/возвращённые заказы, не загружая всю историю
+        $extendedWindowStatuses = [
+            'CANCELED',
+            'PENDING_CANCELLATION',
+            'RETURNED',
+        ];
+        $extendedWindowMs = now()->subDays(90)->getTimestamp() * 1000;
 
         foreach ($statuses as $status) {
             $isActiveStatus = in_array($status, $activeStatuses);
+            $isExtendedWindow = in_array($status, $extendedWindowStatuses);
 
             // Делаем отдельные запросы для каждого магазина
             foreach ($shopIds as $shopId) {
@@ -906,6 +922,8 @@ class UzumClient implements MarketplaceClientInterface
                 try {
                     $stopStatus = false;
                     do {
+                        // Без scheme — API возвращает все заказы (FBS + DBS),
+                        // scheme сохраняется в raw_payload каждого заказа
                         $query = [
                             'page' => $page,
                             'size' => $size,
@@ -919,6 +937,7 @@ class UzumClient implements MarketplaceClientInterface
                             'page' => $page,
                             'size' => $size,
                             'is_active_status' => $isActiveStatus,
+                            'is_extended_window' => $isExtendedWindow,
                         ]);
 
                         $response = $this->request($account, 'GET', $path, $query);
@@ -930,28 +949,37 @@ class UzumClient implements MarketplaceClientInterface
                             'shopId' => $shopId,
                             'page' => $page,
                             'orders_received' => count($list),
-                            'response_keys' => array_keys($response),
-                            'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
-                            'raw_response_sample' => mb_substr(json_encode($response), 0, 500),
                         ]);
 
                         foreach ($list as $orderData) {
-                            // Для активных статусов загружаем все заказы без фильтрации по дате
-                            if (! $isActiveStatus) {
-                                $created = $orderData['dateCreated'] ?? null;
+                            $created = $orderData['dateCreated'] ?? null;
+
+                            // Для активных статусов загружаем все (их мало)
+                            // Для расширенного окна (отмены/возвраты) — за 90 дней
+                            // Для остальных (COMPLETED, DELIVERED) — по переданному диапазону дат
+                            if ($isActiveStatus) {
+                                // Без фильтрации по дате
+                            } elseif ($isExtendedWindow) {
+                                if ($created && is_numeric($created) && $created < $extendedWindowMs) {
+                                    $stopStatus = true;
+
+                                    continue;
+                                }
+                            } else {
                                 if ($fromMs && $created && is_numeric($created) && $created < $fromMs) {
                                     $stopStatus = true;
 
                                     continue;
                                 }
-                                if ($toMs && $created && is_numeric($created) && $created > $toMs) {
-                                    // Слишком свежий — продолжаем, но не прерываем
-                                }
                             }
+
                             $orders[] = $this->mapOrderData($orderData, 'fbs');
                         }
 
                         $page++;
+
+                        // Задержка между запросами для защиты от rate limit
+                        usleep(300000); // 300ms
                     } while (! $stopStatus && ! empty($list) && count($list) === $size);
                 } catch (\Throwable $e) {
                     Log::warning('Uzum fetchOrders status failed', [
@@ -1098,18 +1126,6 @@ class UzumClient implements MarketplaceClientInterface
         $timeout = (int) config('uzum.timeout', 30);
 
         $authHeaders = $account->getUzumAuthHeaders();
-        $authToken = $authHeaders['Authorization'] ?? null;
-
-        // DEBUG: Log exact token being sent
-        Log::warning('Uzum API DEBUG - Token being sent', [
-            'account_id' => $account->id,
-            'path' => $path,
-            'has_auth_header' => ! empty($authToken),
-            'token_length' => $authToken ? strlen($authToken) : 0,
-            'token_first_20' => $authToken ? substr($authToken, 0, 20) : null,
-            'token_last_10' => $authToken ? substr($authToken, -10) : null,
-            'token_looks_encrypted' => $authToken && str_starts_with($authToken, 'eyJ'),
-        ]);
 
         $headers = array_merge([
             'Accept' => 'application/json',
@@ -1250,10 +1266,10 @@ class UzumClient implements MarketplaceClientInterface
         foreach ($params as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $item) {
-                    $parts[] = rawurlencode($key).'='.rawurlencode($item);
+                    $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $item);
                 }
             } else {
-                $parts[] = rawurlencode($key).'='.rawurlencode($value);
+                $parts[] = rawurlencode((string) $key).'='.rawurlencode((string) $value);
             }
         }
 
@@ -1373,15 +1389,17 @@ class UzumClient implements MarketplaceClientInterface
             'external_order_id' => isset($orderData['id']) ? (string) $orderData['id'] : null,
             'status' => $statusNormalized,
             'status_normalized' => $statusNormalized,
+            'shop_id' => $orderData['shopId'] ?? null,
             'customer_name' => $deliveryInfo['customerFullname'] ?? null,
             'customer_phone' => $deliveryInfo['customerPhone'] ?? null,
             'total_amount' => isset($orderData['price']) ? (float) $orderData['price'] : 0,
             'currency' => 'UZS',
             'ordered_at' => $orderData['dateCreated'] ?? null,
+            'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Узум специфичные поля (кладем в общие колонки)
-            'wb_delivery_type' => $deliveryType ?? strtolower($orderData['deliveryType'] ?? ''),
+            // Тип доставки (FBS/FBO/DBS)
+            'delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? $orderData['deliveryType'] ?? ''),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -1390,7 +1408,6 @@ class UzumClient implements MarketplaceClientInterface
             'delivery_longitude' => $address['longitude'] ?? null,
             'delivery_latitude' => $address['latitude'] ?? null,
             'wb_status_group' => $this->mapStatusGroup($statusNormalized),
-            'wb_delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? ''),
         ];
     }
 

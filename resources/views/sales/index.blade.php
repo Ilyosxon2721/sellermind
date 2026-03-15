@@ -15,6 +15,11 @@
     <x-mobile-header />
     <x-pwa-top-navbar title="Продажи" subtitle="Заказы с маркетплейсов">
         <x-slot name="actions">
+            <button @click="triggerSync()" :disabled="syncStatus?.status === 'running'" class="p-2 hover:bg-white/10 rounded-lg transition-colors active:scale-95">
+                <svg class="w-6 h-6" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </button>
             <a href="/sales/create" class="p-2 hover:bg-white/10 rounded-lg transition-colors active:scale-95">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -32,6 +37,12 @@
                     <p class="text-sm text-gray-500 mt-1">Все заказы с маркетплейсов и ручные проводки</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button class="btn btn-secondary text-sm" @click="triggerSync()" :disabled="syncStatus?.status === 'running'">
+                        <svg class="w-4 h-4 mr-1.5" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span x-text="syncStatus?.status === 'running' ? 'Синхронизация...' : 'Синхронизировать'"></span>
+                    </button>
                     <button class="btn btn-secondary text-sm" @click="loadOrders()">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -70,7 +81,7 @@
                         </div>
                         <div>
                             <div class="font-medium text-gray-900">
-                                <span x-show="syncStatus?.status === 'running'">Синхронизация Uzum Market</span>
+                                <span x-show="syncStatus?.status === 'running'" x-text="'Синхронизация ' + (syncStatus?.marketplace ? getMarketplaceName(syncStatus.marketplace) : 'маркетплейсов')"></span>
                                 <span x-show="syncStatus?.status === 'completed'">Синхронизация завершена</span>
                                 <span x-show="syncStatus?.status === 'failed'">Ошибка синхронизации</span>
                                 <span x-show="syncStatus?.status === 'rate_limited'">Ожидание (лимит запросов)</span>
@@ -113,72 +124,74 @@
                 </div>
             </div>
 
-            {{-- Main Stats Cards --}}
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {{-- Main Stats Cards - горизонтальная прокрутка на мобильных --}}
+            <div class="flex md:grid md:grid-cols-5 gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible scrollbar-hide snap-x snap-mandatory">
                 {{-- Продажи (Доход) --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-green-200 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-green-200 flex items-center space-x-3 transition-all duration-300 min-w-[200px] md:min-w-0 snap-start shrink-0 md:shrink"
+                     :class="{ 'sm-stat-update': _statsChanged }">
+                    <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-green-600" x-text="formatMoney(stats.salesAmount || stats.totalRevenue)">0 сум</div>
-                        <div class="text-sm text-gray-500">Продажи (доход)</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-green-600 truncate" x-text="formatMoney(stats.salesAmount || stats.totalRevenue)">0 сум</div>
+                        <div class="text-xs text-gray-500">Продажи (доход)</div>
                         <div class="text-xs text-green-600" x-text="(stats.salesCount || 0) + ' заказов'"></div>
                     </div>
                 </div>
                 {{-- В транзите --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-yellow-200 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-yellow-200 flex items-center space-x-3 min-w-[200px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-yellow-600" x-text="formatMoney(stats.transitAmount || 0)">0 сум</div>
-                        <div class="text-sm text-gray-500">В транзите</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-yellow-600 truncate" x-text="formatMoney(stats.transitAmount || 0)">0 сум</div>
+                        <div class="text-xs text-gray-500">В транзите</div>
                         <div class="text-xs text-yellow-600" x-text="(stats.transitCount || 0) + ' заказов'"></div>
                     </div>
                 </div>
                 {{-- Всего заказов --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-3 min-w-[160px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
-                        <div class="text-sm text-gray-500">Всего заказов</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-gray-900" x-text="stats.totalOrders">0</div>
+                        <div class="text-xs text-gray-500">Всего заказов</div>
                     </div>
                 </div>
                 {{-- Отменено --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-red-100 flex items-center space-x-3 min-w-[180px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-red-600" x-text="stats.cancelledOrders || 0">0</div>
-                        <div class="text-sm text-gray-500">Отменено</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-red-600" x-text="stats.cancelledOrders || 0">0</div>
+                        <div class="text-xs text-gray-500">Отменено</div>
                         <div class="text-xs text-red-500" x-show="stats.cancelledAmount > 0" x-text="'-' + formatMoney(stats.cancelledAmount)"></div>
                     </div>
                 </div>
                 {{-- Средний чек --}}
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-3 min-w-[180px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
                     </div>
-                    <div>
-                        <div class="text-2xl font-bold text-gray-900" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
-                        <div class="text-sm text-gray-500">Средний чек</div>
+                    <div class="min-w-0">
+                        <div class="text-lg md:text-2xl font-bold text-gray-900 truncate" x-text="formatMoney(stats.avgOrderValue || 0)">0 сум</div>
+                        <div class="text-xs text-gray-500">Средний чек</div>
                     </div>
                 </div>
             </div>
+            <style>.scrollbar-hide::-webkit-scrollbar{display:none}.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}</style>
 
             {{-- Marketplace Stats --}}
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100" x-show="stats.byMarketplace && stats.byMarketplace.length > 0">
@@ -306,7 +319,9 @@
 
                             {{-- Orders rows --}}
                             <template x-for="order in orders" :key="order.id">
-                                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" @click="viewOrder(order)">
+                                <tr class="hover:bg-gray-50 transition-colors cursor-pointer"
+                                    :class="window.SmartRefresh ? window.SmartRefresh.rowClass(order) : ''"
+                                    @click="viewOrder(order)">
                                     <td class="px-6 py-4">
                                         <div class="font-semibold text-gray-900" x-text="'#' + (order.order_number || order.id)"></div>
                                     </td>
@@ -448,6 +463,11 @@
 {{-- PWA MODE - Native --}}
 <div class="pwa-only min-h-screen" x-data="salesPage()" style="background: #f2f2f7;">
     <x-pwa-header title="Продажи">
+        <button @click="triggerSync()" :disabled="syncStatus?.status === 'running'" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
+            <svg class="w-6 h-6" :class="{ 'animate-spin': syncStatus?.status === 'running' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </button>
         <button @click="showFilterSheet = true" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
@@ -509,7 +529,9 @@
             </div>
 
             <template x-for="order in orders" :key="order.id" x-show="!loading">
-                <div class="native-card native-pressable" @click="viewOrder(order)" onclick="if(window.haptic) window.haptic.light()">
+                <div class="native-card native-pressable"
+                     :class="window.SmartRefresh ? window.SmartRefresh.cardClass(order) : ''"
+                     @click="viewOrder(order)" onclick="if(window.haptic) window.haptic.light()">
                     <div class="flex items-start justify-between">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center space-x-2 mb-2">
@@ -680,6 +702,7 @@ function salesPage() {
         showCustomDateSheet: false,
         syncStatus: null,
         syncPollingInterval: null,
+        autoRefreshInterval: null,
         filters: {
             period: 'month',
             marketplace: '',
@@ -701,6 +724,7 @@ function salesPage() {
             byMarketplace: []
         },
         orders: [],
+        _statsChanged: false,
         pagination: {
             currentPage: 1,
             lastPage: 1,
@@ -711,6 +735,25 @@ function salesPage() {
         init() {
             this.loadOrders();
             this.checkSyncStatus();
+
+            // Авто-обновление данных каждые 60 секунд
+            this.autoRefreshInterval = setInterval(() => {
+                // Не обновляем если идёт ручная синхронизация
+                if (this.syncStatus?.status !== 'running') {
+                    this.loadOrders(this.pagination.currentPage);
+                }
+            }, 60000);
+        },
+
+        destroy() {
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+                this.autoRefreshInterval = null;
+            }
+            if (this.syncPollingInterval) {
+                clearInterval(this.syncPollingInterval);
+                this.syncPollingInterval = null;
+            }
         },
 
         async checkSyncStatus() {
@@ -755,14 +798,28 @@ function salesPage() {
 
         async triggerSync(fullSync = false) {
             try {
+                this.syncStatus = { status: 'running', message: 'Запуск синхронизации...' };
                 const response = await window.api.post('/sales/trigger-sync', { full_sync: fullSync });
                 if (response.data.success) {
                     // Начинаем опрос статуса
                     setTimeout(() => this.checkSyncStatus(), 1000);
+                } else {
+                    this.syncStatus = null;
                 }
             } catch (error) {
                 console.error('Failed to trigger sync:', error);
+                this.syncStatus = null;
             }
+        },
+
+        getMarketplaceName(marketplace) {
+            const names = {
+                'wildberries': 'Wildberries',
+                'ozon': 'Ozon',
+                'uzum': 'Uzum Market',
+                'yandex_market': 'Yandex Market'
+            };
+            return names[marketplace] || marketplace;
         },
 
         formatTimeRemaining(seconds) {
@@ -777,7 +834,10 @@ function salesPage() {
         },
 
         async loadOrders(page = 1) {
-            this.loading = true;
+            // При авто-обновлении не показываем loading (фоновое обновление)
+            const isAutoRefresh = this.orders.length > 0 && page === this.pagination.currentPage;
+            if (!isAutoRefresh) this.loading = true;
+
             try {
                 // Convert period to date_from/date_to
                 const dates = this.periodToDates(this.filters.period);
@@ -791,7 +851,22 @@ function salesPage() {
                 if (this.filters.search) params.set('search', this.filters.search);
 
                 const response = await window.api.get(`/sales?${params}`);
-                this.orders = response.data.data || [];
+                const newOrders = response.data.data || [];
+
+                // Умное обновление с анимацией
+                if (isAutoRefresh && window.SmartRefresh) {
+                    const result = window.SmartRefresh.merge(
+                        this.orders, newOrders, 'id',
+                        { compareFields: ['status', 'total_amount', 'raw_status'] }
+                    );
+                    this.orders = result.merged;
+                    // Очищаем анимации после завершения
+                    if (result.stats.added > 0 || result.stats.updated > 0) {
+                        window.SmartRefresh.clearAnimations(this.orders, 1500);
+                    }
+                } else {
+                    this.orders = newOrders;
+                }
 
                 // Update pagination
                 const meta = response.data.meta || {};
@@ -801,6 +876,9 @@ function salesPage() {
                     perPage: meta.per_page || 20,
                     total: meta.total || 0
                 };
+
+                // Сохраняем старые значения для анимации
+                const oldStats = { ...this.stats };
 
                 // Map API stats to frontend stats
                 const apiStats = response.data.stats || {};
@@ -816,6 +894,18 @@ function salesPage() {
                     avgOrderValue: apiStats.avgOrderValue || 0,
                     byMarketplace: apiStats.byMarketplace || []
                 };
+
+                // Анимация стат-карточек при изменении
+                if (isAutoRefresh && window.SmartRefresh) {
+                    this._statsChanged = (
+                        oldStats.totalRevenue !== this.stats.totalRevenue ||
+                        oldStats.totalOrders !== this.stats.totalOrders ||
+                        oldStats.salesCount !== this.stats.salesCount
+                    );
+                    if (this._statsChanged) {
+                        setTimeout(() => { this._statsChanged = false; }, 800);
+                    }
+                }
             } catch (error) {
                 console.error('Failed to load orders:', error);
             } finally {

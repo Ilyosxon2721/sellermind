@@ -139,9 +139,32 @@ class TelegramService
             return [];
         }
 
+        // Глобальный rate-limit: если недавно получили 429, не шлём запрос
+        $rateLimitKey = 'telegram:rate_limited';
+        if (\Illuminate\Support\Facades\Cache::has($rateLimitKey)) {
+            Log::info('Telegram: пропускаем запрос — rate limit активен', ['method' => $method]);
+
+            return ['ok' => false, 'rate_limited' => true];
+        }
+
         $url = "{$this->baseUrl}{$this->token}/{$method}";
 
         $response = Http::post($url, $params);
+
+        if ($response->status() === 429) {
+            $body = $response->json();
+            $retryAfter = $body['parameters']['retry_after'] ?? 60;
+
+            // Блокируем все Telegram запросы на время retry_after
+            \Illuminate\Support\Facades\Cache::put($rateLimitKey, true, $retryAfter);
+
+            Log::warning('Telegram rate limit 429: блокируем на {$retryAfter}с', [
+                'method' => $method,
+                'retry_after' => $retryAfter,
+            ]);
+
+            throw new TelegramRateLimitException($retryAfter);
+        }
 
         if (! $response->successful()) {
             Log::error('Telegram API Error', [

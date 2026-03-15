@@ -24,7 +24,7 @@ class UzumSettingsController extends Controller
         }
 
         $preview = $this->maskToken(
-            $account->api_key ?? $account->uzum_api_key ?? $account->uzum_access_token
+            $account->api_key ?? $account->uzum_access_token
         );
 
         return response()->json([
@@ -36,11 +36,14 @@ class UzumSettingsController extends Controller
                 'shop_id' => $account->shop_id,
                 'shop_ids' => $account->credentials_json['shop_ids'] ?? ($account->shop_id ? [$account->shop_id] : []),
                 'tokens' => [
-                    'api_key' => ! empty($account->api_key) || ! empty($account->uzum_api_key) || ! empty($account->uzum_access_token),
+                    'api_key' => ! empty($account->api_key) || ! empty($account->uzum_access_token),
                 ],
                 'api_key_preview' => $preview,
                 'last_successful_call' => $account->wb_last_successful_call, // reuse field for now
                 'credentials_json' => $account->credentials_json,
+                'uzum_auto_confirm' => (bool) $account->uzum_auto_confirm,
+                'uzum_auto_reply' => (bool) $account->uzum_auto_reply,
+                'uzum_review_tone' => $account->uzum_review_tone ?? 'friendly',
             ],
         ]);
     }
@@ -64,6 +67,9 @@ class UzumSettingsController extends Controller
             'warehouse_id' => ['nullable', 'integer'],
             'source_warehouse_ids' => ['nullable', 'array'],
             'source_warehouse_ids.*' => ['integer'],
+            'uzum_auto_confirm' => ['nullable', 'boolean'],
+            'uzum_auto_reply' => ['nullable', 'boolean'],
+            'uzum_review_tone' => ['nullable', 'string', 'in:friendly,professional,casual'],
         ]);
 
         $updateData = [];
@@ -104,6 +110,16 @@ class UzumSettingsController extends Controller
             $updateData['credentials_json'] = $credentialsJson;
         }
 
+        if ($request->has('uzum_auto_confirm')) {
+            $updateData['uzum_auto_confirm'] = (bool) $validated['uzum_auto_confirm'];
+        }
+        if ($request->has('uzum_auto_reply')) {
+            $updateData['uzum_auto_reply'] = (bool) $validated['uzum_auto_reply'];
+        }
+        if ($request->has('uzum_review_tone')) {
+            $updateData['uzum_review_tone'] = $validated['uzum_review_tone'];
+        }
+
         if (! empty($updateData)) {
             $account->update($updateData);
         }
@@ -130,7 +146,7 @@ class UzumSettingsController extends Controller
                     'api_key' => ! empty($account->api_key),
                 ],
                 'api_key_preview' => $this->maskToken(
-                    $account->api_key ?? $account->uzum_api_key ?? $account->uzum_access_token
+                    $account->api_key ?? $account->uzum_access_token
                 ),
             ],
         ]);

@@ -25,6 +25,12 @@ class MarketplaceAccountController extends Controller
 
         $accounts = MarketplaceAccount::where('company_id', $request->company_id)->get();
 
+        $accountIds = $accounts->pluck('id')->toArray();
+        $webhookAccountIds = \App\Models\MarketplaceWebhookConfig::whereIn('store_id', $accountIds)
+            ->where('is_active', true)
+            ->pluck('store_id')
+            ->toArray();
+
         // No caching - always return fresh data to prevent stale reads after create/delete
         return response()->json([
             'accounts' => $accounts->map(fn ($a) => [
@@ -35,6 +41,7 @@ class MarketplaceAccountController extends Controller
                 'display_name' => $a->getDisplayName(),
                 'is_active' => $a->is_active,
                 'connected_at' => $a->connected_at,
+                'has_webhook' => in_array($a->id, $webhookAccountIds),
             ]),
             'available_marketplaces' => MarketplaceAccount::getMarketplaceLabels(),
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -144,10 +151,10 @@ class MarketplaceAccountController extends Controller
                 $existing->wb_statistics_token = $creds['wb_statistics_token'] ?? null;
             }
 
-            // For Uzum: save API token to dedicated field
+            // For Uzum: save API token to api_key field
             if ($request->marketplace === 'uzum') {
                 $creds = $request->credentials;
-                $existing->uzum_api_key = $creds['api_token'] ?? null;
+                $existing->api_key = $creds['api_token'] ?? null;
             }
 
             $existing->save();
@@ -206,10 +213,10 @@ class MarketplaceAccountController extends Controller
             $accountData['wb_statistics_token'] = $creds['wb_statistics_token'] ?? null;
         }
 
-        // For Uzum: save API token to dedicated field
+        // For Uzum: save API token to api_key field
         if ($request->marketplace === 'uzum') {
             $creds = $request->credentials;
-            $accountData['uzum_api_key'] = $creds['api_token'] ?? null;
+            $accountData['api_key'] = $creds['api_token'] ?? null;
         }
 
         $account = MarketplaceAccount::create($accountData);
@@ -285,6 +292,21 @@ class MarketplaceAccountController extends Controller
             }
         }
 
+        // Для маркетплейсов с webhook — автоматически создать конфиг
+        $webhookUrl = null;
+        if (in_array($account->marketplace, ['ym', 'yandex', 'ozon'])) {
+            $webhookConfig = \App\Models\MarketplaceWebhookConfig::firstOrCreate(
+                ['store_id' => $account->id],
+                [
+                    'marketplace' => $account->marketplace,
+                    'is_active' => true,
+                ]
+            );
+
+            $routeName = in_array($account->marketplace, ['ym', 'yandex']) ? 'webhook.yandex.notification' : 'webhook.ozon';
+            $webhookUrl = route($routeName, ['webhookUuid' => $webhookConfig->webhook_uuid]);
+        }
+
         return response()->json([
             'message' => 'Маркетплейс успешно подключён! '.$testResult['message'].$shopsInfo,
             'account' => [
@@ -295,7 +317,37 @@ class MarketplaceAccountController extends Controller
                 'connected_at' => $account->connected_at,
             ],
             'test_result' => $testResult,
+            'webhook_url' => $webhookUrl,
         ], 201);
+    }
+
+    public function getWebhookUrl(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        if (! in_array($account->marketplace, ['ym', 'yandex', 'ozon'])) {
+            return response()->json(['message' => 'Этот маркетплейс не поддерживает webhook.'], 422);
+        }
+
+        $webhookConfig = \App\Models\MarketplaceWebhookConfig::firstOrCreate(
+            ['store_id' => $account->id],
+            [
+                'marketplace' => $account->marketplace,
+                'is_active' => true,
+            ]
+        );
+
+        $routeName = in_array($account->marketplace, ['ym', 'yandex']) ? 'webhook.yandex.notification' : 'webhook.ozon';
+        $webhookUrl = route($routeName, ['webhookUuid' => $webhookConfig->webhook_uuid]);
+
+        return response()->json([
+            'webhook_url' => $webhookUrl,
+            'is_active' => $webhookConfig->is_active,
+            'last_received_at' => $webhookConfig->last_received_at,
+            'events_count' => $webhookConfig->events_count,
+        ]);
     }
 
     public function destroy(Request $request, MarketplaceAccount $account): JsonResponse
@@ -387,7 +439,7 @@ class MarketplaceAccountController extends Controller
         $masked = [];
         $sensitiveFields = [
             'api_key', 'api_token', 'oauth_token', 'oauth_refresh_token',
-            'client_secret', 'uzum_api_key', 'uzum_access_token', 'uzum_refresh_token',
+            'client_secret', 'uzum_access_token', 'uzum_refresh_token',
             'uzum_client_secret', 'wb_content_token', 'wb_marketplace_token',
             'wb_prices_token', 'wb_statistics_token',
         ];
@@ -433,7 +485,7 @@ class MarketplaceAccountController extends Controller
                 break;
 
             case 'uzum':
-                $display[] = ['label' => 'API Token', 'value' => $account->uzum_access_token || $account->uzum_api_key || $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
+                $display[] = ['label' => 'API Token', 'value' => $account->uzum_access_token || $account->api_key ? '✅ Настроен' : '❌ Не настроен'];
                 $shops = $account->credentials_json['shop_ids'] ?? $account->getDecryptedCredentials()['shop_ids'] ?? [];
                 $display[] = ['label' => 'Shop IDs', 'value' => ! empty($shops) ? implode(', ', (array) $shops) : '❌ Не настроены'];
                 break;

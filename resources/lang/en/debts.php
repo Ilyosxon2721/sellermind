@@ -107,4 +107,14 @@ return [
     'cash_income' => 'Cash income',
     'cash_expense' => 'Cash expense',
     'no_cash_accounts' => 'No cash accounts available',
+
+    // Amount & currency correction
+    'edit_amount_currency' => 'Correct',
+    'edit_amount_currency_title' => 'Correct amount and currency',
+    'new_amount' => 'New amount',
+    'new_currency' => 'Currency',
+    'correction_reason' => 'Correction reason',
+    'correction_reason_placeholder' => 'E.g.: input error, changed conditions...',
+    'amount_updated' => 'Amount and currency updated',
+    'min_amount_warning' => 'Minimum amount: :amount (already paid)',
 ];

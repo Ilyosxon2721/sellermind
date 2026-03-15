@@ -56,7 +56,7 @@ class ProductVariantObserver
                 }
             }
 
-                        // Use wasChanged() to see if 'stock_default' was part of the update.
+            // Use wasChanged() to see if 'stock_default' was part of the update.
             if ($variant->wasChanged('stock_default')) {
                 // getOriginal() provides the value before the update.
                 $oldStock = (int) ($variant->getOriginal('stock_default') ?? 0);
@@ -173,7 +173,8 @@ class ProductVariantObserver
                 'warehouse_id' => $warehouse->id,
                 'sku_id' => $sku->id,
                 'qty_delta' => $variant->stock_default,
-                'cost_delta' => ($variant->purchase_price ?? 0) * $variant->stock_default,
+                'cost_delta' => $variant->getPurchasePriceInBase() * $variant->stock_default,
+                'currency_code' => 'UZS',
                 'source_type' => 'initial_stock',
                 'source_id' => $variant->id,
             ]);
@@ -259,7 +260,8 @@ class ProductVariantObserver
                 'warehouse_id' => $warehouse->id,
                 'sku_id' => $sku->id,
                 'qty_delta' => $delta,
-                'cost_delta' => ($variant->purchase_price ?? 0) * $delta,
+                'cost_delta' => $variant->getPurchasePriceInBase() * $delta,
+                'currency_code' => 'UZS',
                 'source_type' => 'stock_adjustment',
                 'source_id' => $variant->id,
             ]);

@@ -38,6 +38,7 @@ class StoreProductRequest extends FormRequest
             'variants.*.id' => ['sometimes', 'integer'],
             'variants.*.sku' => ['required', 'string', 'max:100'],
             'variants.*.barcode' => ['nullable', 'string', 'max:20'],
+            'variants.*.purchase_price_currency' => ['sometimes', 'string', 'in:UZS,USD,RUB,EUR,KZT'],
             'variants.*.is_active' => ['sometimes', 'boolean'],
             'variants.*.option_value_ids' => ['sometimes', 'array'],
             'variants.*.option_value_ids.*' => ['integer'],
@@ -92,7 +93,7 @@ class StoreProductRequest extends FormRequest
 
             // Лимит индивидуальных характеристик товара (без product_variant_id)
             $attributes = collect($this->input('attributes', []));
-            $productAttributes = $attributes->filter(fn($attr) => empty($attr['product_variant_id']));
+            $productAttributes = $attributes->filter(fn ($attr) => empty($attr['product_variant_id']));
             if ($productAttributes->count() > 5) {
                 $validator->errors()->add('attributes', 'Максимум 5 индивидуальных характеристик товара.');
             }

@@ -25,7 +25,6 @@ class MarketplaceAccount extends Model
         // Uzum specific
         'uzum_client_id',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
         'uzum_token_expires_at',
@@ -46,6 +45,12 @@ class MarketplaceAccount extends Model
         'sync_settings',
         'risment_credential_id',
         'source',
+        'telegram_chat_id',
+        'telegram_username',
+        // Uzum автоматизация
+        'uzum_auto_confirm',
+        'uzum_auto_reply',
+        'uzum_review_tone',
     ];
 
     // Fields that should be encrypted
@@ -59,7 +64,6 @@ class MarketplaceAccount extends Model
         'wb_prices_token',
         'wb_statistics_token',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
     ];
@@ -74,6 +78,8 @@ class MarketplaceAccount extends Model
             'wb_last_successful_call' => 'datetime',
             'uzum_token_expires_at' => 'datetime',
             'uzum_settings' => 'array',
+            'uzum_auto_confirm' => 'boolean',
+            'uzum_auto_reply' => 'boolean',
             'stock_sync_strategy' => 'string',
             'stock_size_strategy' => 'string',
             'sync_settings' => 'array',
@@ -91,7 +97,6 @@ class MarketplaceAccount extends Model
         'wb_prices_token',
         'wb_statistics_token',
         'uzum_client_secret',
-        'uzum_api_key',
         'uzum_refresh_token',
         'uzum_access_token',
     ];
@@ -277,35 +282,9 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
-            return null;
+            // Токен мог быть сохранён в открытом виде (миграция из uzum_api_key)
+            return $value;
         }
-    }
-
-    public function setUzumApiKeyAttribute(?string $value): void
-    {
-        // Store token as-is without encryption for simplicity
-        // Uzum tokens are short-lived and DB is already protected
-        $this->attributes['uzum_api_key'] = $value;
-    }
-
-    public function getUzumApiKeyAttribute(?string $value): ?string
-    {
-        if (! $value) {
-            return null;
-        }
-
-        // Check if value looks like Laravel encrypted string (starts with eyJ)
-        // If so, try to decrypt for backwards compatibility with old encrypted tokens
-        if (str_starts_with($value, 'eyJ')) {
-            try {
-                return Crypt::decryptString($value);
-            } catch (\Exception $e) {
-                // Decryption failed - might be a plain token that happens to start with eyJ
-                // or encrypted with different APP_KEY - return as-is
-            }
-        }
-
-        return $value;
     }
 
     public function setUzumAccessTokenAttribute(?string $value): void
@@ -501,7 +480,6 @@ class MarketplaceAccount extends Model
             // Uzum specific
             'uzum_client_id' => $this->uzum_client_id,
             'uzum_client_secret' => $this->uzum_client_secret,
-            'uzum_api_key' => $this->uzum_api_key,
             'uzum_access_token' => $this->uzum_access_token,
             'uzum_refresh_token' => $this->uzum_refresh_token,
             'uzum_token_expires_at' => $this->uzum_token_expires_at,
@@ -525,6 +503,25 @@ class MarketplaceAccount extends Model
         }
 
         return array_filter($credentials);
+    }
+
+    /**
+     * Проверить, подключён ли Telegram к данному аккаунту маркетплейса
+     */
+    public function isTelegramConnected(): bool
+    {
+        return ! empty($this->telegram_chat_id);
+    }
+
+    /**
+     * Отключить Telegram от аккаунта маркетплейса
+     */
+    public function disconnectTelegram(): void
+    {
+        $this->update([
+            'telegram_chat_id' => null,
+            'telegram_username' => null,
+        ]);
     }
 
     public function markAsConnected(): void
@@ -646,41 +643,44 @@ class MarketplaceAccount extends Model
             return false;
         }
 
-        return (bool) ($this->uzum_access_token || $this->uzum_api_key || $this->api_key);
+        return (bool) ($this->uzum_access_token || $this->api_key);
     }
 
     /**
-     * Build Uzum auth headers from stored credentials
+     * Заголовки авторизации для Uzum OpenAPI (заказы, товары, остатки, цены)
+     * Использует api_key (Ключ API из кабинета Uzum)
      */
     public function getUzumAuthHeaders(): array
     {
-        // Accessors already decrypt tokens, no need to decrypt again
-        $token = $this->uzum_access_token ?? $this->uzum_api_key ?? $this->api_key;
-
-        // DEBUG: Log token info for troubleshooting
-        \Log::debug('Uzum getUzumAuthHeaders token check', [
-            'account_id' => $this->id,
-            'has_token' => ! empty($token),
-            'token_length' => $token ? strlen($token) : 0,
-            'token_start' => $token ? substr($token, 0, 10) : null,
-            'token_looks_encrypted' => $token && str_starts_with($token, 'eyJ'),
-        ]);
+        $token = $this->api_key;
 
         if (! $token) {
             return [];
         }
 
-        $header = config('uzum.auth.header', 'Authorization');
-        // По спецификации Uzum токен передается без Bearer-префикса,
-        // но оставляем поддержку кастомного префикса через конфиг.
-        $prefix = trim(config('uzum.auth.prefix', ''));
-        $value = $prefix !== '' ? trim($prefix.' '.$token) : $token;
-
-        // Отдаем сразу оба заголовка: Authorization и X-API-KEY,
-        // чтобы исключить проблемы с ожиданиями на стороне API.
+        // Uzum OpenAPI: токен передаётся в Authorization без префикса
         return [
-            $header => $value,
-            'X-API-KEY' => $value,
+            'Authorization' => $token,
+        ];
+    }
+
+    /**
+     * Заголовки авторизации для Uzum Seller Panel (отзывы)
+     * Использует uzum_access_token (OAuth2 токен)
+     */
+    public function getUzumOAuthHeaders(): array
+    {
+        $token = $this->uzum_access_token;
+
+        if (! $token) {
+            return [];
+        }
+
+        $prefix = str_starts_with($token, 'eyJ') ? 'Bearer' : '';
+        $value = $prefix !== '' ? trim($prefix . ' ' . $token) : $token;
+
+        return [
+            'Authorization' => $value,
         ];
     }
 

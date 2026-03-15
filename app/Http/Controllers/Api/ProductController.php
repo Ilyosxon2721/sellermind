@@ -171,6 +171,13 @@ class ProductController extends Controller
     {
         $this->authorizeCompany($request, $product);
 
+        // Помечаем все варианты товара как удалённые
+        $product->variants()->update(['is_deleted' => true, 'is_active' => false]);
+
+        // Деактивируем связанные SKU на складе
+        \App\Models\Warehouse\Sku::where('product_id', $product->id)
+            ->update(['is_active' => false]);
+
         $product->is_archived = true;
         $product->save();
         $product->delete();
@@ -213,8 +220,8 @@ class ProductController extends Controller
         $this->authorizeCompany($request, $product);
 
         $variantId = $request->query('variant_id');
-        $channel   = $request->query('channel', 'default');
-        $days      = (int) $request->query('days', 90);
+        $channel = $request->query('channel', 'default');
+        $days = (int) $request->query('days', 90);
 
         $query = PriceHistory::where('product_id', $product->id)
             ->where('channel', $channel)
@@ -228,7 +235,7 @@ class ProductController extends Controller
         $history = $query->get(['product_variant_id', 'price', 'old_price', 'changed_at', 'changed_by']);
 
         return response()->json([
-            'data'   => $history,
+            'data' => $history,
             'period' => $days,
         ]);
     }

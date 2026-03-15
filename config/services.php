@@ -35,4 +35,26 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Web Push Notifications (VAPID)
+    |--------------------------------------------------------------------------
+    |
+    | Настройки VAPID ключей для Web Push уведомлений PWA.
+    | Генерация ключей: php artisan vapid:generate
+    |
+    */
+    'vapid' => [
+        'subject' => env('VAPID_SUBJECT', 'mailto:support@sellermind.uz'),
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+    ],
+
+    'telegram' => [
+        'bot_token'             => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username'          => env('TELEGRAM_BOT_USERNAME'),
+        'webhook_url'           => env('TELEGRAM_WEBHOOK_URL'),
+        'notifications_enabled' => env('TELEGRAM_NOTIFICATIONS_ENABLED', false),
+    ],
+
 ];

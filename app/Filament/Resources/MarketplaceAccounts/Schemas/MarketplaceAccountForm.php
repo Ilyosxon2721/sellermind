@@ -41,8 +41,6 @@ class MarketplaceAccountForm
                 TextInput::make('uzum_client_id'),
                 Textarea::make('uzum_client_secret')
                     ->columnSpanFull(),
-                Textarea::make('uzum_api_key')
-                    ->columnSpanFull(),
                 DateTimePicker::make('uzum_token_expires_at'),
                 TextInput::make('uzum_settings'),
                 TextInput::make('stock_sync_strategy')

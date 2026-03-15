@@ -109,9 +109,9 @@ class UzumSyncOrders extends Command
                         'status' => $orderData['status'] ?? 'unknown',
                         'status_normalized' => $orderData['status_normalized'] ?? null,
                         'delivery_type' => $orderData['delivery_type'] ?? null,
-                        'shop_id' => $orderData['shop_id'] ?? null,
-                        'customer_name' => $orderData['customer']['name'] ?? null,
-                        'customer_phone' => $orderData['customer']['phone'] ?? null,
+                        'shop_id' => $orderData['shop_id'] ?? $orderData['raw_payload']['shopId'] ?? null,
+                        'customer_name' => $orderData['customer_name'] ?? null,
+                        'customer_phone' => $orderData['customer_phone'] ?? null,
                         'total_amount' => $orderData['total_amount'] ?? 0,
                         'currency' => $orderData['currency'] ?? 'UZS',
                         'ordered_at' => isset($orderData['ordered_at']) && is_numeric($orderData['ordered_at'])
@@ -120,11 +120,11 @@ class UzumSyncOrders extends Command
                         'delivered_at' => isset($orderData['delivered_at']) && is_numeric($orderData['delivered_at'])
                             ? \Carbon\Carbon::createFromTimestampMs($orderData['delivered_at'], config('app.timezone'))
                             : ($orderData['delivered_at'] ?? null),
-                        'delivery_address_full' => $orderData['customer']['address'] ?? null,
-                        'delivery_city' => $orderData['customer']['city'] ?? null,
-                        'delivery_street' => $orderData['customer']['street'] ?? null,
-                        'delivery_home' => $orderData['customer']['home'] ?? null,
-                        'delivery_flat' => $orderData['customer']['flat'] ?? null,
+                        'delivery_address_full' => $orderData['delivery_address_full'] ?? null,
+                        'delivery_city' => $orderData['delivery_city'] ?? null,
+                        'delivery_street' => $orderData['delivery_street'] ?? null,
+                        'delivery_home' => $orderData['delivery_home'] ?? null,
+                        'delivery_flat' => $orderData['delivery_flat'] ?? null,
                         'raw_payload' => $orderData['raw_payload'] ?? $orderData,
                     ]
                 );

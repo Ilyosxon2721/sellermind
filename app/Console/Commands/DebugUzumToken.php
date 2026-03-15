@@ -34,25 +34,22 @@ class DebugUzumToken extends Command
             $this->info("\n=== Account #{$account->id}: {$account->name} ===");
 
             // Get raw value from DB
-            $rawApiKey = $account->getAttributes()['uzum_api_key'] ?? null;
             $rawAccessToken = $account->getAttributes()['uzum_access_token'] ?? null;
             $rawGeneralApiKey = $account->getAttributes()['api_key'] ?? null;
 
             $this->line("\nRaw DB values:");
-            $this->line('  uzum_api_key: '.($rawApiKey ? substr($rawApiKey, 0, 50).'...' : 'NULL'));
             $this->line('  uzum_access_token: '.($rawAccessToken ? substr($rawAccessToken, 0, 50).'...' : 'NULL'));
             $this->line('  api_key: '.($rawGeneralApiKey ? substr($rawGeneralApiKey, 0, 50).'...' : 'NULL'));
 
             // Check if values look encrypted (Laravel encrypted strings start with eyJ)
             $this->line("\nEncryption check:");
-            $this->line('  uzum_api_key looks encrypted: '.($rawApiKey && str_starts_with($rawApiKey, 'eyJ') ? 'YES' : 'NO'));
             $this->line('  uzum_access_token looks encrypted: '.($rawAccessToken && str_starts_with($rawAccessToken, 'eyJ') ? 'YES' : 'NO'));
             $this->line('  api_key looks encrypted: '.($rawGeneralApiKey && str_starts_with($rawGeneralApiKey, 'eyJ') ? 'YES' : 'NO'));
 
             // Try decryption
             $this->line("\nDecryption attempts:");
 
-            foreach (['uzum_api_key' => $rawApiKey, 'uzum_access_token' => $rawAccessToken, 'api_key' => $rawGeneralApiKey] as $field => $raw) {
+            foreach (['uzum_access_token' => $rawAccessToken, 'api_key' => $rawGeneralApiKey] as $field => $raw) {
                 if (! $raw) {
                     continue;
                 }
@@ -69,7 +66,7 @@ class DebugUzumToken extends Command
 
             // Get token via accessor
             $this->line("\nAccessor values:");
-            $accessorToken = $account->uzum_api_key ?? $account->uzum_access_token ?? $account->api_key;
+            $accessorToken = $account->uzum_access_token ?? $account->api_key;
             $this->line('  Final token via accessor: '.($accessorToken ? substr($accessorToken, 0, 30).'...' : 'NULL'));
             $this->line('  Token length: '.($accessorToken ? strlen($accessorToken) : 0));
             $this->line('  Token looks encrypted: '.($accessorToken && str_starts_with($accessorToken, 'eyJ') ? 'YES (BAD!)' : 'NO (GOOD)'));
@@ -119,7 +116,7 @@ class DebugUzumToken extends Command
                 $this->warn('  1. APP_KEY mismatch between when token was saved and now');
                 $this->warn('  2. Token was double-encrypted');
                 $this->line("\nFIX: Update token directly in DB without encryption:");
-                $this->line("UPDATE marketplace_accounts SET uzum_api_key = 'YOUR_PLAIN_TOKEN' WHERE id = {$account->id};");
+                $this->line("UPDATE marketplace_accounts SET api_key = 'YOUR_PLAIN_TOKEN' WHERE id = {$account->id};");
             } elseif (! $accessorToken) {
                 $this->error('PROBLEM: No token found!');
             } else {

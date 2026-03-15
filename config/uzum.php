@@ -26,6 +26,11 @@ return [
         'returned' => 'canceled',
     ],
 
+    // OAuth2 (Seller Panel авторизация для отзывов и т.д.)
+    'oauth_token_url' => env('UZUM_OAUTH_TOKEN_URL', 'https://api-seller.uzum.uz/api/oauth/token'),
+    'oauth_client_id' => env('UZUM_OAUTH_CLIENT_ID', 'b2b-front'),
+    'oauth_client_secret' => env('UZUM_OAUTH_CLIENT_SECRET', 'clientSecret'),
+
     // Rate limiting settings
     'rate_limit_delay_ms' => env('UZUM_RATE_LIMIT_DELAY_MS', 500), // Задержка между запросами в мс
     'rate_limit_retry_after' => env('UZUM_RATE_LIMIT_RETRY_AFTER', 60), // Ожидание при 429 в секундах

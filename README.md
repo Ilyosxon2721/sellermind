@@ -1,283 +1,268 @@
-# 🤖 SellerMind Autopilot
+# SellerMind AI
 
-Полная автоматизация разработки с Claude Code.
-
----
-
-## 📦 Что в комплекте
-
-```
-sellermind-autopilot/
-├── CLAUDE.md                    # Главный конфиг проекта
-├── TASKS.md                     # Список задач
-├── AUTOPILOT_LOG.md             # Лог автопилота
-├── BLOCKERS.md                  # Заблокированные задачи
-├── .claude/
-│   ├── settings.json            # Hooks и настройки
-│   ├── agents/
-│   │   ├── architect.md         # Проектирование
-│   │   ├── backend.md           # PHP/Laravel
-│   │   ├── frontend.md          # Alpine/Tailwind
-│   │   ├── tester.md            # Тестирование
-│   │   └── reviewer.md          # Code review
-│   └── commands/
-│       ├── autopilot.md         # /autopilot
-│       ├── implement.md         # /implement
-│       ├── fix.md               # /fix
-│       └── review.md            # /review
-└── scripts/
-    └── night-dev.sh             # Ночной режим
-```
+Платформа управления продажами на маркетплейсах СНГ.
 
 ---
 
-## 🚀 Установка
+## О проекте
 
-### 1. Скопируй файлы в проект
+SellerMind AI помогает продавцам автоматизировать работу с маркетплейсами: синхронизация товаров, аналитика продаж, умные акции, AI-ответы на отзывы и массовые операции.
 
-```bash
-# Распакуй архив
-unzip sellermind-autopilot.zip
-
-# Скопируй в проект
-cp -r sellermind-autopilot/* ~/projects/sellermind/
-
-# Перейди в проект
-cd ~/projects/sellermind
-```
-
-### 2. Установи Claude Code (если ещё нет)
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-### 3. Настрой API ключ
-
-```bash
-# Добавь в ~/.bashrc или ~/.zshrc
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-### 4. Сделай скрипт исполняемым
-
-```bash
-chmod +x scripts/night-dev.sh
-```
+| Параметр | Значение |
+|----------|----------|
+| Домен | sellermind.uz |
+| Версия | 1.0 |
 
 ---
 
-## 🎮 Использование
+## Технический стек
 
-### Режим 1: Интерактивный (VS Code)
+**Backend:**
+- Laravel 12
+- PHP 8.2+
+- MySQL 8.0
+- Redis
+- Laravel Reverb (WebSocket)
+
+**Frontend:**
+- Alpine.js 3.x
+- Tailwind CSS 4.0
+- Chart.js 4.4
+- Blade Templates
+
+**Инфраструктура:**
+- Laravel Forge
+- Nginx + PHP-FPM
+- Supervisor (Queue Workers)
+
+---
+
+## Требования
+
+- PHP 8.2+
+- Composer 2.x
+- MySQL 8.0
+- Redis
+- Node.js 18+ и npm
+
+---
+
+## Установка
+
+### 1. Клонирование репозитория
 
 ```bash
-# Открой проект
-cd ~/projects/sellermind
-code .
-
-# Запусти Claude Code (Ctrl+Shift+P → "Claude Code")
-
-# Используй команды:
-/autopilot           # Автономная разработка
-/implement <фича>    # Реализовать функцию
-/fix <баг>          # Исправить баг
-/review             # Code review
+git clone https://github.com/Ilyosxon2721/sellermind.git
+cd sellermind
 ```
 
-### Режим 2: Ночной (терминал)
+### 2. Установка зависимостей
 
 ```bash
-# Вечером перед сном:
-./scripts/night-dev.sh
+composer install
+npm install
+```
 
-# Утром проверь:
-cat AUTOPILOT_LOG.md
-git log --oneline -10
+### 3. Настройка окружения
 
-# Если всё ок — пушь вручную:
-php artisan test --parallel
-git push origin develop
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+### 4. Настройка базы данных
+
+Создайте базу данных MySQL и укажите параметры в `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=sellermind_ai
+DB_USERNAME=your_user
+DB_PASSWORD=your_password
+```
+
+### 5. Миграции
+
+```bash
+php artisan migrate
+```
+
+### 6. Сборка фронтенда
+
+```bash
+npm run build
 ```
 
 ---
 
-## 📋 Workflow
+## Конфигурация
 
-```
-┌─────────────────────────────────────────────┐
-│                  TASKS.md                   │
-│                                             │
-│  🟡 Очередь        →  🔴 В работе          │
-│                           │                 │
-│                    ┌──────┴──────┐          │
-│                    │  AUTOPILOT  │          │
-│                    │             │          │
-│                    │ 1. Анализ   │          │
-│                    │ 2. Код      │          │
-│                    │ 3. Тесты    │          │
-│                    │ 4. Review   │          │
-│                    │ 5. Коммит   │          │
-│                    └──────┬──────┘          │
-│                           │                 │
-│  ✅ Выполнено      ←──────┘                │
-│                                             │
-│  🚫 Заблокировано  ←  (если проблема)      │
-│         ↓                                   │
-│    BLOCKERS.md                              │
-└─────────────────────────────────────────────┘
-```
+### Основные переменные `.env`
 
----
+```env
+# Приложение
+APP_NAME="SellerMind AI"
+APP_URL=https://your-domain.com
 
-## ⚙️ Настройка
+# База данных
+DB_CONNECTION=mysql
+DB_DATABASE=sellermind_ai
 
-### Изменить лимит задач
+# Redis (кэш, очереди, сессии)
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
 
-В `scripts/night-dev.sh`:
-```bash
-MAX_TASKS=10  # По умолчанию 5
-```
+# OpenAI (для AI-ответов на отзывы)
+OPENAI_API_KEY=your_key
 
-### Добавить свои hooks
+# Маркетплейсы
+WB_API_KEY=your_wildberries_key
+OZON_CLIENT_ID=your_ozon_client_id
+OZON_API_KEY=your_ozon_key
+UZUM_API_KEY=your_uzum_key
+YM_API_KEY=your_yandex_key
+YM_CAMPAIGN_ID=your_campaign_id
 
-В `.claude/settings.json`:
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit",
-        "hooks": [{
-          "type": "command",
-          "command": "your-command"
-        }]
-      }
-    ]
-  }
-}
-```
-
-### Добавить свою задачу
-
-В `TASKS.md` добавь:
-```markdown
-- [ ] #XXX **[TYPE]** Описание задачи
-  - Файлы: `app/...`
-  - Детали: ...
+# Telegram (опционально)
+TELEGRAM_BOT_TOKEN=your_bot_token
 ```
 
 ---
 
-## 🛡 Безопасность
+## Запуск
 
-### ⚠️ GIT PUSH ОТКЛЮЧЁН!
+### Разработка
 
-Claude Code **только коммитит локально** и никогда не пушит в GitHub.
-Это защита от автодеплоя на Forge.
-
-**Workflow:**
-```
-Claude Code                          Ты
-     │                                │
-     ├── код                          │
-     ├── тесты                        │
-     ├── git commit ──────────────▶  проверяешь
-     │                                │
-     │                           git push (вручную)
-     │                                │
-     │                           Forge деплоит
-```
-
-**После работы Claude проверь:**
 ```bash
-# Посмотри что накоммитил Claude
-git log --oneline -10
+# Все сервисы одной командой
+composer dev
 
-# Проверь изменения
-git diff HEAD~5 --stat
+# Или по отдельности:
+php artisan serve        # HTTP сервер
+npm run dev              # Vite (фронтенд)
+php artisan queue:work   # Очереди
+php artisan reverb:start # WebSocket
+```
 
-# Прогони тесты
+### Production
+
+```bash
+npm run build
+php artisan optimize
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+---
+
+## Тестирование
+
+```bash
+# Все тесты
+php artisan test
+
+# Параллельный запуск
 php artisan test --parallel
 
-# Если всё ок — пушь
-git push origin develop
+# Конкретный тест
+php artisan test --filter=TestName
+
+# С покрытием
+php artisan test --coverage --min=70
 ```
 
-### Что НЕ будет делать автопилот:
-- ❌ `git push` — запрещено полностью!
-- ❌ `migrate:fresh` — удаление БД
-- ❌ `rm -rf` — удаление файлов
-- ❌ Изменение `.env.production`
+### Линтинг
 
-### Когда остановится:
-- Тесты падают 3 раза подряд
-- Нужны миграции (требует подтверждения)
-- Непонятная задача
-
----
-
-## 📊 Мониторинг
-
-### Логи
 ```bash
-# Лог автопилота
-cat AUTOPILOT_LOG.md
-
-# Лог hooks
-cat .claude/autopilot.log
-
-# Лог тестов
-cat .claude/test.log
-```
-
-### Git история
-```bash
-# Коммиты за ночь
-git log --since="8 hours ago" --oneline
-
-# Изменённые файлы
-git diff --stat HEAD~5
+./vendor/bin/pint
 ```
 
 ---
 
-## ❓ FAQ
+## Модули проекта
 
-**Q: Сколько стоит?**
-A: Зависит от использования API. ~$0.01-0.05 за задачу.
+### Bulk Operations
+Массовые операции с товарами: изменение цен, статусов, категорий.
 
-**Q: Безопасно ли?**
-A: Да, есть ограничения на опасные команды.
+### Telegram Notifications
+Уведомления о заказах, остатках и синхронизации в Telegram.
 
-**Q: Что если сломает код?**
-A: Используй `git checkout .` для отката. Тесты должны ловить проблемы.
+### Smart Promotions
+Автоматические акции на основе аналитики продаж.
 
-**Q: Работает без интернета?**
-A: Нет, требуется API Anthropic.
+### Sales Analytics
+Дашборд с графиками продаж, остатков и прибыльности.
 
----
-
-## 🆘 Проблемы
-
-### Claude не запускается
-```bash
-# Проверь установку
-claude --version
-
-# Проверь API ключ
-echo $ANTHROPIC_API_KEY
-```
-
-### Тесты падают
-```bash
-# Проверь логи
-cat .claude/test.log
-
-# Откати изменения
-git checkout .
-```
+### AI Review Responses
+Генерация ответов на отзывы покупателей с помощью OpenAI.
 
 ---
 
-Сделано с ❤️ для автоматизации SellerMind
+## Интеграции маркетплейсов
+
+| Маркетплейс | API | Статус |
+|-------------|-----|--------|
+| Wildberries | Statistics, Content, Prices, Warehouse | Готово |
+| Ozon | Seller API | Готово |
+| Uzum | Market API | Частично |
+| Yandex Market | Partner API | Готово |
+
+---
+
+## Структура проекта
+
+```
+sellermind/
+├── app/
+│   ├── Http/Controllers/     # Контроллеры
+│   ├── Models/               # Eloquent модели
+│   ├── Services/             # Бизнес-логика
+│   │   ├── Marketplaces/     # API клиенты маркетплейсов
+│   │   ├── Analytics/        # Сервисы аналитики
+│   │   ├── Promotions/       # Smart Promotions
+│   │   └── Reviews/          # AI ответы
+│   ├── Jobs/                 # Фоновые задачи
+│   └── Notifications/        # Уведомления
+├── resources/views/          # Blade шаблоны
+├── tests/                    # Тесты
+└── docs/                     # Документация
+```
+
+---
+
+## Полезные команды
+
+```bash
+# Очистка кэша
+php artisan optimize:clear
+
+# Статус приложения
+php artisan about
+
+# Логи в реальном времени
+php artisan pail
+```
+
+---
+
+## Документация
+
+| Файл | Описание |
+|------|----------|
+| `CLAUDE.md` | Конфигурация Claude Code |
+| `TASKS.md` | Список задач |
+| `docs/SMART_PROMOTIONS_GUIDE.md` | Smart Promotions |
+| `docs/SALES_ANALYTICS_GUIDE.md` | Аналитика |
+| `docs/BULK_OPERATIONS_GUIDE.md` | Массовые операции |
+
+---
+
+## Лицензия
+
+MIT

@@ -168,6 +168,7 @@ class DocumentPostingService
             'sku_id' => $line->sku_id,
             'qty_delta' => $qtyDelta,
             'cost_delta' => $costDelta,
+            'currency_code' => $line->currency_code ?? 'UZS',
             'document_id' => $document->id,
             'document_line_id' => $line->id,
             'source_type' => $document->source_type,

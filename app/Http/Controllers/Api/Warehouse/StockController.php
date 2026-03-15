@@ -72,6 +72,8 @@ class StockController extends Controller
 
         $query = \App\Models\Warehouse\Sku::query()
             ->byCompany($companyId)
+            ->where('is_active', true)
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
             ->with(['product.images', 'productVariant.mainImage', 'productVariant.optionValues'])
             ->orderBy('sku_code');
 
@@ -104,10 +106,10 @@ class StockController extends Controller
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
             $cost = $costs[$sku->id] ?? ['total_cost' => 0, 'unit_cost' => 0];
 
-            // Get unit cost: prefer ledger cost, fallback to ProductVariant.purchase_price
+            // Get unit cost: prefer ledger cost, fallback to ProductVariant.purchase_price (конвертированная в UZS)
             $unitCost = $cost['unit_cost'] ?? 0;
             if ($unitCost == 0 && $sku->productVariant?->purchase_price) {
-                $unitCost = (float) $sku->productVariant->purchase_price;
+                $unitCost = $sku->productVariant->getPurchasePriceInBase();
             }
 
             // Calculate total cost using the determined unit cost
@@ -434,6 +436,104 @@ class StockController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Получить сводку по стоимости товаров на складе
+     *
+     * Возвращает:
+     * - Общую стоимость товаров на складе (по сумме)
+     * - Общее количество товаров
+     * - Разбивку по складам пользователя
+     */
+    public function summary(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => ['nullable', 'integer'],
+        ]);
+
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        // Получаем все склады компании
+        $warehousesQuery = \App\Models\Warehouse\Warehouse::byCompany($companyId);
+        if ($request->warehouse_id) {
+            $warehousesQuery->where('id', $request->warehouse_id);
+        }
+        $warehouses = $warehousesQuery->get();
+
+        if ($warehouses->isEmpty()) {
+            return $this->successResponse([
+                'total_quantity' => 0,
+                'total_cost' => 0,
+                'warehouses' => [],
+            ]);
+        }
+
+        $service = app(StockBalanceService::class);
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+        $warehouseStats = [];
+        $totalQuantity = 0;
+        $totalCost = 0;
+
+        foreach ($warehouses as $warehouse) {
+            // Получаем ID активных SKU (не удалённые товары)
+            $activeSkuIds = \App\Models\Warehouse\Sku::query()
+                ->byCompany($companyId)
+                ->where('is_active', true)
+                ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                ->pluck('id');
+
+            // Получаем все SKU на складе с положительным остатком
+            // Стоимость рассчитываем из актуальных закупочных цен вариантов (с конвертацией валют)
+            $ledgerData = \App\Models\Warehouse\StockLedger::query()
+                ->where('stock_ledger.company_id', $companyId)
+                ->where('stock_ledger.warehouse_id', $warehouse->id)
+                ->whereIn('stock_ledger.sku_id', $activeSkuIds)
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->selectRaw('stock_ledger.sku_id, SUM(stock_ledger.qty_delta) as qty, product_variants.purchase_price, product_variants.purchase_price_currency')
+                ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
+                ->having('qty', '>', 0)
+                ->get();
+
+            $warehouseQty = 0;
+            $warehouseCost = 0;
+            $skuCount = 0;
+
+            foreach ($ledgerData as $data) {
+                $qty = (float) $data->qty;
+                $purchasePrice = (float) ($data->purchase_price ?? 0);
+                $currency = $data->purchase_price_currency ?? 'UZS';
+                $priceInBase = $financeSettings->convertToBase($purchasePrice, $currency);
+                $cost = $priceInBase * $qty;
+
+                $warehouseQty += $qty;
+                $warehouseCost += max(0, $cost);
+                $skuCount++;
+            }
+
+            $warehouseStats[] = [
+                'id' => $warehouse->id,
+                'name' => $warehouse->name,
+                'code' => $warehouse->code,
+                'is_default' => (bool) $warehouse->is_default,
+                'quantity' => $warehouseQty,
+                'cost' => round($warehouseCost, 2),
+                'sku_count' => $skuCount,
+            ];
+
+            $totalQuantity += $warehouseQty;
+            $totalCost += $warehouseCost;
+        }
+
+        return $this->successResponse([
+            'total_quantity' => $totalQuantity,
+            'total_cost' => round($totalCost, 2),
+            'warehouses' => $warehouseStats,
+        ]);
     }
 
     /**

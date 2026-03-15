@@ -15,14 +15,14 @@ class FixStockLedgerCosts extends Command
      *
      * @var string
      */
-    protected $signature = 'stock:fix-costs {--company_id=} {--dry-run} {--force} {--all : Fix all INITIAL_SYNC entries regardless of cost_delta value}';
+    protected $signature = 'stock:fix-costs {--company_id=} {--dry-run} {--force} {--all : Fix all entries regardless of cost_delta value}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Fix stock_ledger cost_delta values: recalculate from ProductVariant purchase_price and convert to UZS';
+    protected $description = 'Fix stock_ledger cost_delta values: recalculate from ProductVariant purchase_price (with currency conversion) to UZS';
 
     /**
      * Execute the console command.
@@ -51,12 +51,10 @@ class FixStockLedgerCosts extends Command
             return 1;
         }
 
-        $usdRate = $financeSettings->usd_rate ?? 12700;
-        $this->info("Using USD rate: {$usdRate}");
+        $this->info("Using rates: USD={$financeSettings->usd_rate}, RUB={$financeSettings->rub_rate}, EUR={$financeSettings->eur_rate}");
 
-        // Find entries that need fixing:
-        // - source_type = 'INITIAL_SYNC' (from variant sync)
-        $query = StockLedger::where('source_type', 'INITIAL_SYNC');
+        // Find entries that need fixing (все типы записей связанные с ProductVariant)
+        $query = StockLedger::whereIn('source_type', ['INITIAL_SYNC', 'initial_stock', 'stock_adjustment']);
 
         // If --all is not set, only look for entries with small cost_delta (likely wrong)
         if (! $fixAll) {
@@ -100,9 +98,11 @@ class FixStockLedgerCosts extends Command
             $oldCost = $entry->cost_delta ?? 0;
             $qty = $entry->qty_delta;
             $purchasePrice = $variant->purchase_price ?? 0;
+            $currency = $variant->purchase_price_currency ?? 'UZS';
 
-            // Calculate correct cost: qty * purchase_price * usd_rate
-            $newCost = abs($qty) * $purchasePrice * $usdRate;
+            // Конвертируем закупочную цену в базовую валюту (UZS) с учётом валюты варианта
+            $purchasePriceBase = $variant->getPurchasePriceInBase($financeSettings);
+            $newCost = abs($qty) * $purchasePriceBase;
 
             // Skip if new cost would be the same (or both are 0)
             if (abs($oldCost - $newCost) < 0.01) {
@@ -114,6 +114,7 @@ class FixStockLedgerCosts extends Command
                 'sku_id' => $entry->sku_id,
                 'qty' => $qty,
                 'purchase_price' => $purchasePrice,
+                'purchase_currency' => $currency,
                 'old_cost' => $oldCost,
                 'new_cost' => $newCost,
                 'variant_id' => $variant->id,
@@ -139,7 +140,7 @@ class FixStockLedgerCosts extends Command
                 $row['entry_id'],
                 $row['sku_id'],
                 $row['qty'],
-                '$'.number_format($row['purchase_price'], 2),
+                number_format($row['purchase_price'], 2) . ' ' . $row['purchase_currency'],
                 number_format($row['old_cost'], 2),
                 number_format($row['new_cost'], 0),
                 $row['variant_sku'],
@@ -147,7 +148,7 @@ class FixStockLedgerCosts extends Command
         }
 
         $this->table(
-            ['ID', 'SKU ID', 'Qty', 'Purchase Price (USD)', 'Old Cost', 'New Cost (UZS)', 'Variant SKU'],
+            ['ID', 'SKU ID', 'Qty', 'Purchase Price', 'Old Cost', 'New Cost (UZS)', 'Variant SKU'],
             $tableRows
         );
 

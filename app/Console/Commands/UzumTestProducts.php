@@ -34,8 +34,8 @@ class UzumTestProducts extends Command
         $this->info("Testing account #{$account->id}: {$account->name}");
 
         // 1. Check raw DB value
-        $rawApiKey = $account->getAttributes()['uzum_api_key'] ?? null;
-        $this->line("\n1. Raw DB uzum_api_key: ".($rawApiKey ? substr($rawApiKey, 0, 30).'...' : 'NULL'));
+        $rawApiKey = $account->getAttributes()['api_key'] ?? null;
+        $this->line("\n1. Raw DB api_key: ".($rawApiKey ? substr($rawApiKey, 0, 30).'...' : 'NULL'));
         $this->line('   Looks encrypted: '.($rawApiKey && str_starts_with($rawApiKey, 'eyJ') ? 'YES' : 'NO'));
 
         // 2. Try to decrypt
@@ -52,7 +52,7 @@ class UzumTestProducts extends Command
         }
 
         // 3. Get via accessor
-        $accessorToken = $account->uzum_api_key;
+        $accessorToken = $account->api_key;
         $this->line("\n3. Token via accessor: ".($accessorToken ? substr($accessorToken, 0, 30).'...' : 'NULL'));
         $this->line('   Accessor token looks encrypted: '.($accessorToken && str_starts_with($accessorToken, 'eyJ') ? 'YES (BAD!)' : 'NO'));
 

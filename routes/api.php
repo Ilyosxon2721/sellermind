@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductDescriptionController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\ReviewResponseController;
 use App\Http\Controllers\Api\SalesAnalyticsController;
 use App\Http\Controllers\Api\SubscriptionController;
@@ -60,6 +61,9 @@ Route::prefix('webhooks/marketplaces')->middleware('throttle:webhooks')->group(f
     Route::post('{marketplace}', [MarketplaceWebhookController::class, 'handle']);
     Route::post('{marketplace}/{accountId}', [MarketplaceWebhookController::class, 'handleForAccount']);
 });
+
+// Web Push VAPID public key (no auth required for PWA subscription)
+Route::get('push/vapid-public-key', [PushSubscriptionController::class, 'getVapidPublicKey']);
 
 // RISMENT Integration Link (uses session + sanctum auth)
 Route::middleware(['web', 'auth.any'])->prefix('integration')->group(function () {
@@ -196,6 +200,23 @@ Route::middleware('auth.any')->group(function () {
         Route::post('disconnect', [TelegramController::class, 'disconnect']);
         Route::get('notification-settings', [TelegramController::class, 'getSettings']);
         Route::put('notification-settings', [TelegramController::class, 'updateSettings']);
+
+        // Привязка Telegram к конкретному аккаунту маркетплейса
+        Route::post('accounts/generate-link-code', [TelegramController::class, 'generateAccountLinkCode']);
+        Route::get('accounts/{accountId}/status', [TelegramController::class, 'getAccountTelegramStatus']);
+        Route::post('accounts/{accountId}/disconnect', [TelegramController::class, 'disconnectAccountTelegram']);
+
+        // Подписки на уведомления о заказах
+        Route::get('subscriptions', [TelegramController::class, 'listSubscriptions']);
+        Route::post('subscriptions', [TelegramController::class, 'createSubscription']);
+        Route::delete('subscriptions/{id}', [TelegramController::class, 'deleteSubscription']);
+        Route::post('test-notification', [TelegramController::class, 'sendTestNotification']);
+    });
+
+    // Web Push Notifications (подписка/отписка требуют авторизации)
+    Route::prefix('push')->group(function () {
+        Route::post('subscribe', [PushSubscriptionController::class, 'subscribe']);
+        Route::post('unsubscribe', [PushSubscriptionController::class, 'unsubscribe']);
     });
 
     // Polling API (для real-time обновлений без WebSocket)
@@ -267,6 +288,13 @@ Route::middleware('auth.any')->group(function () {
         Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
     });
 
+    // Себестоимость товаров
+    Route::prefix('products')->group(function () {
+        Route::get('purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
+        Route::post('purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
+        Route::patch('variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
+    });
+
     // Product Bulk Operations — только owner
     Route::prefix('products/bulk')->middleware('company.owner')->group(function () {
         Route::post('export', [ProductBulkController::class, 'export']);
@@ -329,6 +357,17 @@ Route::middleware('auth.any')->group(function () {
         Route::get('{review}/suggest-templates', [ReviewResponseController::class, 'suggestTemplates']);
     });
 
+    // Uzum Reviews (scraper-based)
+    Route::prefix('uzum-reviews/{accountId}')->group(function () {
+        Route::get('check-auth', [\App\Http\Controllers\Api\UzumReviewController::class, 'checkAuth']);
+        Route::post('login', [\App\Http\Controllers\Api\UzumReviewController::class, 'login']);
+        Route::post('save-token', [\App\Http\Controllers\Api\UzumReviewController::class, 'saveToken']);
+        Route::get('reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
+        Route::post('reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+        Route::post('ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
+        Route::get('debug', [\App\Http\Controllers\Api\UzumReviewController::class, 'debug']);
+    });
+
     // Dialogs
     Route::apiResource('dialogs', DialogController::class);
     Route::post('dialogs/{dialog}/hide', [ChatController::class, 'hideDialog']);
@@ -382,6 +421,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('accounts/{account}/monitoring/stop', [MarketplaceAccountController::class, 'stopMonitoring']);
         Route::get('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'getSyncSettings']);
         Route::put('accounts/{account}/sync-settings', [MarketplaceAccountController::class, 'updateSyncSettings']);
+        Route::get('accounts/{account}/webhook-url', [MarketplaceAccountController::class, 'getWebhookUrl']);
         Route::get('uzum/accounts/{account}/shops', [MarketplaceOrderController::class, 'uzumShops']);
         Route::get('uzum/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'uzumFinanceOrders']);
         Route::get('wb/accounts/{account}/finance-orders', [MarketplaceOrderController::class, 'wbFinanceOrders']);
@@ -567,6 +607,9 @@ Route::middleware('auth.any')->group(function () {
             Route::put('accounts/{account}/settings', [UzumSettingsController::class, 'update']);
             Route::post('accounts/{account}/test', [UzumSettingsController::class, 'test']);
             Route::get('accounts/{account}/shops', [UzumSettingsController::class, 'shops']);
+            Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
+            Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
+            Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
         });
 
         // Yandex Market
@@ -626,6 +669,7 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('stock')->group(function () {
             Route::get('balance', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'balance']);
             Route::get('ledger', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'ledger']);
+            Route::get('summary', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'summary']);
             Route::post('update-cost', [\App\Http\Controllers\Api\Warehouse\StockController::class, 'updateCost']);
 
             Route::get('reservations', [\App\Http\Controllers\Api\Warehouse\ReservationController::class, 'index']);
@@ -643,6 +687,7 @@ Route::middleware('auth.any')->group(function () {
             Route::post('documents/{id}/lines', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'addLines']);
             Route::post('documents/{id}/post', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'post']);
             Route::patch('documents/{id}/lines/costs', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'updateLineCosts']);
+            Route::patch('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'update']);
             // Удаление черновика — только owner
             Route::delete('documents/{id}', [\App\Http\Controllers\Api\Warehouse\DocumentController::class, 'destroy']);
             // Сторнирование проведённого документа — только owner
@@ -749,6 +794,10 @@ Route::middleware('auth.any')->group(function () {
         Route::put('settings', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateSettings']);
         Route::get('reports', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'reports']);
 
+        // Currencies and exchange rates
+        Route::get('currencies', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'currencies']);
+        Route::put('currencies/rates', [\App\Http\Controllers\Api\Finance\FinanceController::class, 'updateRates']);
+
         // Transactions
         Route::get('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'index']);
         Route::post('transactions', [\App\Http\Controllers\Api\Finance\TransactionController::class, 'store']);
@@ -772,6 +821,7 @@ Route::middleware('auth.any')->group(function () {
         Route::get('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'payments']);
         Route::post('debts/{id}/payments', [\App\Http\Controllers\Api\Finance\DebtController::class, 'addPayment']);
         Route::post('debts/{id}/write-off', [\App\Http\Controllers\Api\Finance\DebtController::class, 'writeOff']);
+        Route::patch('debts/{id}/amount-currency', [\App\Http\Controllers\Api\Finance\DebtController::class, 'updateAmountCurrency']);
 
         // Employees
         Route::get('employees', [\App\Http\Controllers\Api\Finance\EmployeeController::class, 'index']);
@@ -987,4 +1037,18 @@ Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
     Route::post('webhooks', [WebhookController::class, 'store']);
     Route::delete('webhooks/{id}', [WebhookController::class, 'destroy']);
     Route::post('webhooks/{id}/test', [WebhookController::class, 'test']);
+});
+
+
+// ── Marketplace Event Webhooks (public, no auth, IP-checked) ──
+Route::prefix('webhook')->group(function () {
+    Route::post('ozon/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\OzonWebhookController::class, 'handle'])
+        ->middleware([\App\Http\Middleware\VerifyOzonWebhookIp::class])
+        ->name('webhook.ozon');
+
+    Route::match(['GET', 'POST'], 'yandex/{webhookUuid}', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
+        ->name('webhook.yandex');
+
+    Route::match(['GET', 'POST'], 'yandex/{webhookUuid}/notification', [\App\Http\Controllers\Api\Webhook\YandexWebhookController::class, 'handle'])
+        ->name('webhook.yandex.notification');
 });

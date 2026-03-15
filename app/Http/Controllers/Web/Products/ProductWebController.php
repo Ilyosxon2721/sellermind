@@ -51,7 +51,7 @@ class ProductWebController extends Controller
 
         $query = Product::query()
             ->forCompany($companyId)
-            ->with(['mainImage', 'images', 'channelSettings.channel'])
+            ->with(['mainImage', 'images', 'channelSettings.channel', 'variants:id,product_id,purchase_price,purchase_price_currency'])
             ->withCount('variants');
 
         if ($filters['search']) {
@@ -385,6 +385,7 @@ class ProductWebController extends Controller
                     'article_suffix' => $variant->article_suffix,
                     'option_values_summary' => $variant->option_values_summary,
                     'purchase_price' => $variant->purchase_price,
+                    'purchase_price_currency' => $variant->purchase_price_currency ?? 'UZS',
                     'price_default' => $variant->price_default,
                     'old_price_default' => $variant->old_price_default,
                     'stock_default' => $variant->stock_default,

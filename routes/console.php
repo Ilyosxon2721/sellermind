@@ -326,7 +326,6 @@ Schedule::command('marketplace:auto-link --all')
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
 
-
 // Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
 Schedule::command('stock:check-low')
     ->dailyAt('08:00')
@@ -339,3 +338,42 @@ Schedule::command('stock:check-low')
         \Log::error('Low stock check failed');
     })
     ->appendOutputTo(storage_path('logs/low-stock.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Marketplace Event Polling (Real-time notifications)
+|--------------------------------------------------------------------------
+*/
+
+// Wildberries: polling новых заказов каждые 30 секунд
+Schedule::job(new \App\Jobs\PollWildberriesOrdersJob)
+    ->everyThirtySeconds()
+    ->withoutOverlapping()
+    ->name('poll-wb-orders');
+
+// Uzum: polling новых заказов каждую минуту
+Schedule::job(new \App\Jobs\PollUzumOrdersJob)
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->name('poll-uzum-orders');
+
+// Uzum автоматизация: автоподтверждение новых заказов каждые 15 минут
+Schedule::job(new \App\Jobs\UzumAutoConfirmJob)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('uzum:auto-confirm');
+
+// Uzum автоматизация: автоответы на отзывы каждые 30 минут
+Schedule::job(new \App\Jobs\UzumAutoReplyJob)
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('uzum:auto-reply');
+
+// Telegram: дневной отчёт подписчикам (каждую минуту — проверяет summary_time)
+Schedule::command('telegram:daily-summary')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->name('telegram:daily-summary')
+    ->appendOutputTo(storage_path('logs/telegram-daily-summary.log'));

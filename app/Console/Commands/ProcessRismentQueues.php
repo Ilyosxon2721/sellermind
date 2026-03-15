@@ -1131,8 +1131,10 @@ class ProcessRismentQueues extends Command
                     'source' => 'risment',
                     'is_active' => $data['is_active'] ?? true,
                     'connected_at' => now(),
-                    // Общие поля
-                    'api_key' => ! empty($credentials['api_token']) ? encrypt($credentials['api_token']) : null,
+                    // Общие поля (Eloquent accessor шифрует api_key автоматически)
+                    'api_key' => ! empty($credentials['uzum_api_key'])
+                        ? $credentials['uzum_api_key']
+                        : (! empty($credentials['api_token']) ? $credentials['api_token'] : null),
                     'client_id' => $credentials['client_id'] ?? $credentials['supplier_id'] ?? null,
                     'client_secret' => ! empty($credentials['client_secret']) ? encrypt($credentials['client_secret']) : null,
                     'shop_id' => $credentials['shop_id'] ?? $credentials['supplier_id'] ?? null,
@@ -1144,7 +1146,6 @@ class ProcessRismentQueues extends Command
                     // Uzum-специфичные
                     'uzum_client_id' => $credentials['uzum_client_id'] ?? null,
                     'uzum_client_secret' => ! empty($credentials['uzum_client_secret']) ? encrypt($credentials['uzum_client_secret']) : null,
-                    'uzum_api_key' => ! empty($credentials['uzum_api_key']) ? encrypt($credentials['uzum_api_key']) : null,
                 ], fn ($v) => $v !== null)
             );
 

@@ -8,6 +8,7 @@ use App\Models\AgentTaskRun;
 use App\Models\Company;
 use App\Models\Inventory;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceSyncLog;
 use App\Models\OzonOrder;
 use App\Models\Product;
 use App\Models\Review;
@@ -46,10 +47,12 @@ class DashboardController extends Controller
             $validated = $request->validate([
                 'company_id' => ['nullable', 'integer'],
                 'date_mode' => ['nullable', 'string', 'in:order_date,completion_date'],
+                'period' => ['nullable', 'string', 'in:today,week,month'],
             ]);
 
             $companyId = $validated['company_id'] ?? null;
             $dateMode = $validated['date_mode'] ?? 'order_date';
+            $period = $validated['period'] ?? 'week';
 
             if (! $companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
@@ -73,7 +76,7 @@ class DashboardController extends Controller
             $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo, $dateMode);
 
             // === МАРКЕТПЛЕЙСЫ ===
-            $marketplaceData = $this->getMarketplaceData($companyId);
+            $marketplaceData = $this->getMarketplaceData($companyId, $period);
 
             // === СКЛАД ===
             $warehouseData = $this->getWarehouseData($companyId);
@@ -672,50 +675,221 @@ class DashboardController extends Controller
     }
 
     /**
-     * Данные маркетплейсов
+     * Данные маркетплейсов с детализацией по аккаунтам
+     *
+     * @param  string  $period  today|week|month - период для расчёта revenue и orders_count
      */
-    private function getMarketplaceData(int $companyId): array
+    private function getMarketplaceData(int $companyId, string $period = 'week'): array
     {
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
+
+        // Определяем дату начала периода
+        $startDate = match ($period) {
+            'today' => Carbon::today(),
+            'week' => Carbon::today()->subDays(7),
+            'month' => Carbon::today()->subDays(30),
+            default => Carbon::today()->subDays(7),
+        };
 
         $byMarketplace = $accounts->groupBy('marketplace')->map(fn ($group) => [
             'count' => $group->count(),
             'active' => $group->where('is_active', true)->count(),
         ]);
 
+        // Собираем данные по каждому аккаунту
+        $accountsData = $accounts->map(function ($account) use ($startDate) {
+            // Получаем revenue и orders_count в зависимости от типа маркетплейса
+            $revenueData = $this->getAccountRevenueData($account, $startDate);
+
+            // Получаем последнюю успешную синхронизацию
+            $lastSync = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
+                ->where('status', MarketplaceSyncLog::STATUS_SUCCESS)
+                ->orderByDesc('finished_at')
+                ->first();
+
+            return [
+                'id' => $account->id,
+                'name' => $account->name ?? $account->getDisplayName(),
+                'marketplace' => $this->normalizeMarketplaceName($account->marketplace),
+                'is_active' => (bool) $account->is_active,
+                'revenue' => $revenueData['revenue'],
+                'orders_count' => $revenueData['orders_count'],
+                'last_sync' => $lastSync?->finished_at?->format('Y-m-d H:i:s'),
+            ];
+        });
+
         return [
             'accounts_count' => $accounts->count(),
             'active_count' => $accounts->where('is_active', true)->count(),
             'by_marketplace' => $byMarketplace,
-            'accounts' => $accounts->map(fn ($a) => [
-                'id' => $a->id,
-                'name' => $a->name ?? $a->getDisplayName(),
-                'marketplace' => $a->marketplace,
-                'is_active' => $a->is_active,
-            ]),
+            'accounts' => $accountsData->values(),
         ];
     }
 
     /**
+     * Получить revenue и orders_count для конкретного аккаунта
+     *
+     * @return array{revenue: float, orders_count: int}
+     */
+    private function getAccountRevenueData(MarketplaceAccount $account, Carbon $startDate): array
+    {
+        $marketplace = strtolower($account->marketplace);
+
+        return match ($marketplace) {
+            'wb', 'wildberries' => $this->getWildberriesAccountRevenue($account->id, $startDate),
+            'ozon' => $this->getOzonAccountRevenue($account->id, $startDate),
+            'uzum' => $this->getUzumAccountRevenue($account->id, $startDate),
+            'ym', 'yandex_market' => $this->getYandexMarketAccountRevenue($account->id, $startDate),
+            default => ['revenue' => 0.0, 'orders_count' => 0],
+        };
+    }
+
+    /**
+     * Revenue и orders_count для Wildberries аккаунта
+     * is_realization=true, не отменённые (is_cancel=false, is_return=false)
+     */
+    private function getWildberriesAccountRevenue(int $accountId, Carbon $startDate): array
+    {
+        $query = WildberriesOrder::where('marketplace_account_id', $accountId)
+            ->whereDate('order_date', '>=', $startDate)
+            ->where('is_realization', true)
+            ->where('is_cancel', false)
+            ->where('is_return', false);
+
+        $revenueRub = (float) (clone $query)->sum('for_pay');
+        $ordersCount = (clone $query)->count();
+
+        // Конвертируем из RUB в валюту отображения
+        $revenue = $this->currencyService->convertFromRub($revenueRub);
+
+        return [
+            'revenue' => $revenue,
+            'orders_count' => $ordersCount,
+        ];
+    }
+
+    /**
+     * Revenue и orders_count для Ozon аккаунта
+     * stock_status='sold' или 'delivered'
+     */
+    private function getOzonAccountRevenue(int $accountId, Carbon $startDate): array
+    {
+        $query = OzonOrder::where('marketplace_account_id', $accountId)
+            ->whereDate('created_at_ozon', '>=', $startDate)
+            ->whereIn('stock_status', ['sold', 'delivered']);
+
+        $revenueRub = (float) (clone $query)->sum('total_price');
+        $ordersCount = (clone $query)->count();
+
+        // Конвертируем из RUB в валюту отображения
+        $revenue = $this->currencyService->convertFromRub($revenueRub);
+
+        return [
+            'revenue' => $revenue,
+            'orders_count' => $ordersCount,
+        ];
+    }
+
+    /**
+     * Revenue и orders_count для Uzum аккаунта
+     * Используем UzumFinanceOrder (Finance API)
+     * Статусы: COMPLETED, TO_WITHDRAW - завершённые продажи
+     */
+    private function getUzumAccountRevenue(int $accountId, Carbon $startDate): array
+    {
+        $query = UzumFinanceOrder::where('marketplace_account_id', $accountId)
+            ->whereDate('order_date', '>=', $startDate)
+            ->whereIn('status', ['COMPLETED', 'TO_WITHDRAW']);
+
+        // Uzum хранит цены в тийинах, умножаем sell_price на amount
+        $revenueTiyin = (float) (clone $query)->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $revenue = $revenueTiyin / 100; // Конвертируем тийины в сумы
+
+        $ordersCount = (int) (clone $query)->sum('amount');
+
+        return [
+            'revenue' => $revenue,
+            'orders_count' => $ordersCount,
+        ];
+    }
+
+    /**
+     * Revenue и orders_count для Yandex Market аккаунта
+     * stock_status='sold' или 'delivered'
+     */
+    private function getYandexMarketAccountRevenue(int $accountId, Carbon $startDate): array
+    {
+        $query = YandexMarketOrder::where('marketplace_account_id', $accountId)
+            ->whereDate('created_at_ym', '>=', $startDate)
+            ->whereIn('stock_status', ['sold', 'delivered']);
+
+        $revenueRub = (float) (clone $query)->sum('total_price');
+        $ordersCount = (clone $query)->count();
+
+        // Конвертируем из RUB в валюту отображения
+        $revenue = $this->currencyService->convertFromRub($revenueRub);
+
+        return [
+            'revenue' => $revenue,
+            'orders_count' => $ordersCount,
+        ];
+    }
+
+    /**
+     * Нормализовать название маркетплейса
+     */
+    private function normalizeMarketplaceName(string $marketplace): string
+    {
+        return match (strtolower($marketplace)) {
+            'wb' => 'wildberries',
+            'ym' => 'yandex_market',
+            default => strtolower($marketplace),
+        };
+    }
+
+    /**
      * Данные склада
+     * Стоимость рассчитывается из актуальных закупочных цен вариантов (с конвертацией валют)
      */
     private function getWarehouseData(int $companyId): array
     {
         $warehouses = Warehouse::where('company_id', $companyId)->get();
         $warehouseIds = $warehouses->pluck('id');
 
-        // Получаем агрегированные данные по остаткам из stock_ledger
-        $stockData = StockLedger::whereIn('warehouse_id', $warehouseIds)
-            ->select('sku_id', DB::raw('SUM(qty_delta) as quantity'), DB::raw('SUM(cost_delta) as total_cost'))
-            ->groupBy('sku_id')
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
+        // Получаем остатки по SKU с данными варианта для конвертации валюты
+        $stockData = StockLedger::whereIn('stock_ledger.warehouse_id', $warehouseIds)
+            ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+            ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+            ->select(
+                'stock_ledger.sku_id',
+                DB::raw('SUM(stock_ledger.qty_delta) as quantity'),
+                'product_variants.purchase_price',
+                'product_variants.purchase_price_currency',
+            )
+            ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
             ->having('quantity', '>', 0)
             ->get();
 
-        $totalItems = $stockData->sum('quantity');
-        $totalValue = $stockData->sum('total_cost');
+        $totalItems = 0;
+        $totalValue = 0;
+        $lowStock = 0;
 
-        // Критически низкие остатки (меньше 10 единиц)
-        $lowStock = $stockData->where('quantity', '>', 0)->where('quantity', '<', 10)->count();
+        foreach ($stockData as $item) {
+            $qty = (float) $item->quantity;
+            $totalItems += $qty;
+
+            // Конвертируем закупочную цену в базовую валюту (UZS)
+            $purchasePrice = (float) ($item->purchase_price ?? 0);
+            $currency = $item->purchase_price_currency ?? 'UZS';
+            $priceInBase = $financeSettings->convertToBase($purchasePrice, $currency);
+            $totalValue += $priceInBase * $qty;
+
+            if ($qty > 0 && $qty < 10) {
+                $lowStock++;
+            }
+        }
 
         // Последние инвентаризации
         $recentDocuments = Inventory::whereIn('warehouse_id', $warehouseIds)
@@ -774,6 +948,7 @@ class DashboardController extends Controller
      * Полная информация для комплексного дашборда
      *
      * @param  string  $date_mode  - "order_date" (по дате заказа) или "completion_date" (по дате выкупа)
+     * @param  string  $period  - "today", "week", "month" - период для данных маркетплейсов
      */
     public function full(Request $request): JsonResponse
     {
@@ -781,10 +956,12 @@ class DashboardController extends Controller
             $validated = $request->validate([
                 'company_id' => ['nullable', 'integer'],
                 'date_mode' => ['nullable', 'string', 'in:order_date,completion_date'],
+                'period' => ['nullable', 'string', 'in:today,week,month'],
             ]);
 
             $companyId = $validated['company_id'] ?? null;
             $dateMode = $validated['date_mode'] ?? 'order_date';
+            $period = $validated['period'] ?? 'week';
 
             if (! $companyId) {
                 return response()->json(['error' => 'company_id is required'], 400);
@@ -806,7 +983,7 @@ class DashboardController extends Controller
 
             // Базовые данные
             $salesData = $this->getSalesData($companyId, $today, $weekAgo, $monthAgo, $dateMode);
-            $marketplaceData = $this->getMarketplaceData($companyId);
+            $marketplaceData = $this->getMarketplaceData($companyId, $period);
             $warehouseData = $this->getWarehouseData($companyId);
             $productsData = $this->getProductsData($companyId);
 

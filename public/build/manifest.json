@@ -1,20 +1,14 @@
 {
-  "_alpine-B58kCZLe.js": {
-    "file": "assets/alpine-B58kCZLe.js",
+  "_alpine-w3y3or6b.js": {
+    "file": "assets/alpine-w3y3or6b.js",
     "name": "alpine"
   },
   "_vendor-Dos3PyFQ.js": {
     "file": "assets/vendor-Dos3PyFQ.js",
     "name": "vendor"
   },
-  "node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
-    "file": "assets/workbox-window.prod.es5-CLYUWRvB.js",
-    "name": "workbox-window.prod.es5",
-    "src": "node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
-    "isDynamicEntry": true
-  },
   "resources/css/app.css": {
-    "file": "assets/app-BdkmyN8Z.css",
+    "file": "assets/app-DSxvnn8p.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -22,62 +16,14 @@
       "app.css"
     ]
   },
-  "resources/css/pwa-native.css": {
-    "file": "assets/pwa-native-BoTSsjhg.css",
-    "src": "resources/css/pwa-native.css",
-    "isEntry": true,
-    "name": "pwa-native",
-    "names": [
-      "pwa-native.css"
-    ]
-  },
   "resources/js/app.js": {
-    "file": "assets/app-BbswoOL0.js",
+    "file": "assets/app-DyxpUz-g.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
       "_vendor-Dos3PyFQ.js",
-      "_alpine-B58kCZLe.js"
+      "_alpine-w3y3or6b.js"
     ]
-  },
-  "resources/js/pwa-detector.js": {
-    "file": "assets/pwa-detector-D6Cllna4.js",
-    "name": "pwa-detector",
-    "src": "resources/js/pwa-detector.js",
-    "isEntry": true
-  },
-  "resources/js/pwa.js": {
-    "file": "assets/pwa-BMeDGpla.js",
-    "name": "pwa",
-    "src": "resources/js/pwa.js",
-    "isEntry": true,
-    "dynamicImports": [
-      "node_modules/workbox-window/build/workbox-window.prod.es5.mjs"
-    ]
-  },
-  "resources/js/pwa/auth.js": {
-    "file": "assets/auth-BR4MnXFQ.js",
-    "name": "auth",
-    "src": "resources/js/pwa/auth.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/cache.js": {
-    "file": "assets/cache-Darw7aRS.js",
-    "name": "cache",
-    "src": "resources/js/pwa/cache.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/haptic.js": {
-    "file": "assets/haptic-CfNrweLE.js",
-    "name": "haptic",
-    "src": "resources/js/pwa/haptic.js",
-    "isEntry": true
-  },
-  "resources/js/pwa/offline.js": {
-    "file": "assets/offline-BrF8q5bc.js",
-    "name": "offline",
-    "src": "resources/js/pwa/offline.js",
-    "isEntry": true
   }
 }

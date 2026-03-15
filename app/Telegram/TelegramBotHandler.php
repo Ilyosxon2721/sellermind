@@ -2,6 +2,7 @@
 
 namespace App\Telegram;
 
+use App\Models\MarketplaceAccount;
 use App\Models\User;
 use App\Services\AIService;
 use Illuminate\Support\Facades\Log;
@@ -215,8 +216,8 @@ class TelegramBotHandler
             return;
         }
 
-        // Verify the link code and associate the Telegram user with the account
-        $code = strtoupper($args[0]);
+        // Найти код привязки в базе данных
+        $code = $args[0];
         $linkCode = \App\Models\TelegramLinkCode::where('code', $code)->first();
 
         if (! $linkCode) {
@@ -231,17 +232,40 @@ class TelegramBotHandler
             return;
         }
 
-        // Link the Telegram account
+        $telegramId = (string) $message['from']['id'];
+        $telegramUsername = $message['from']['username'] ?? null;
+
+        // Привязать Telegram к пользователю (основной flow)
         $user = $linkCode->user;
         $user->update([
-            'telegram_id' => (string) $message['from']['id'],
-            'telegram_username' => $message['from']['username'] ?? null,
+            'telegram_id' => $telegramId,
+            'telegram_username' => $telegramUsername,
             'telegram_notifications_enabled' => true,
         ]);
+
+        // Если код привязан к конкретному аккаунту маркетплейса — привязать и к нему
+        $accountName = null;
+        if ($linkCode->marketplace_account_id) {
+            $account = MarketplaceAccount::find($linkCode->marketplace_account_id);
+
+            if ($account) {
+                $account->update([
+                    'telegram_chat_id' => $telegramId,
+                    'telegram_username' => $telegramUsername,
+                ]);
+                $accountName = $account->getDisplayName();
+            }
+        }
 
         $linkCode->markAsUsed();
 
         $text = "✅ <b>Аккаунт успешно привязан!</b>\n\n";
+
+        // Упомянуть название аккаунта маркетплейса, если есть
+        if ($accountName) {
+            $text .= "Маркетплейс: <b>{$accountName}</b>\n\n";
+        }
+
         $text .= "Теперь вы будете получать уведомления о:\n";
         $text .= "• Низких остатках товаров\n";
         $text .= "• Завершении массовых операций\n";

@@ -451,41 +451,86 @@ class FinanceController extends Controller
         $baseCurrency = 'UZS';
 
         try {
-            // Получаем текущее количество и себестоимость
-            // cost_delta уже в UZS и уже учитывает направление (+ для поступлений, - для списаний)
-            $summary = StockLedger::byCompany($companyId)
-                ->selectRaw('SUM(qty_delta) as total_qty, SUM(cost_delta) as total_cost')
-                ->first();
+            // Рассчитываем стоимость из актуальных закупочных цен вариантов (с конвертацией валют)
+            $stockData = StockLedger::where('stock_ledger.company_id', $companyId)
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->select(
+                    'stock_ledger.sku_id',
+                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
+                    'product_variants.purchase_price',
+                    'product_variants.purchase_price_currency',
+                )
+                ->groupBy('stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
+                ->having('qty', '>', 0)
+                ->get();
 
-            $totalQty = max(0, (float) ($summary?->total_qty ?? 0));
-            $totalCostBase = max(0, (float) ($summary?->total_cost ?? 0));
+            $totalQty = 0;
+            $totalCostBase = 0;
 
-            // Конвертируем в выбранную валюту
+            foreach ($stockData as $item) {
+                $qty = (float) $item->qty;
+                $totalQty += $qty;
+
+                $purchasePrice = (float) ($item->purchase_price ?? 0);
+                $currency = $item->purchase_price_currency ?? 'UZS';
+                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
+                $totalCostBase += $priceInBase * $qty;
+            }
+
+            $totalCostBase = max(0, $totalCostBase);
+
+            // Конвертируем в выбранную валюту отображения
             $totalCost = $currencyService
                 ? $currencyService->convert($totalCostBase, $baseCurrency, $displayCurrency)
                 : $totalCostBase;
 
-            // Группировка по складам
-            $byWarehouse = StockLedger::where('stock_ledger.company_id', $companyId)
+            // Группировка по складам (тоже с конвертацией закупочных цен)
+            $byWarehouseData = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('warehouses', 'stock_ledger.warehouse_id', '=', 'warehouses.id')
-                ->selectRaw('warehouses.id, warehouses.name, SUM(stock_ledger.qty_delta) as qty, SUM(stock_ledger.cost_delta) as cost')
-                ->groupBy('warehouses.id', 'warehouses.name')
+                ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
+                ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
+                ->select(
+                    'warehouses.id as warehouse_id',
+                    'warehouses.name as warehouse_name',
+                    'stock_ledger.sku_id',
+                    \DB::raw('SUM(stock_ledger.qty_delta) as qty'),
+                    'product_variants.purchase_price',
+                    'product_variants.purchase_price_currency',
+                )
+                ->groupBy('warehouses.id', 'warehouses.name', 'stock_ledger.sku_id', 'product_variants.purchase_price', 'product_variants.purchase_price_currency')
                 ->having('qty', '>', 0)
                 ->get();
 
-            $warehouseData = $byWarehouse->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
-                $costBase = max(0, (float) $w->cost);
+            // Агрегируем по складу
+            $warehouseMap = [];
+            foreach ($byWarehouseData as $item) {
+                $wId = $item->warehouse_id;
+                if (! isset($warehouseMap[$wId])) {
+                    $warehouseMap[$wId] = ['id' => $wId, 'name' => $item->warehouse_name, 'qty' => 0, 'cost_base' => 0];
+                }
+                $qty = (float) $item->qty;
+                $purchasePrice = (float) ($item->purchase_price ?? 0);
+                $currency = $item->purchase_price_currency ?? 'UZS';
+                $priceInBase = $settings->convertToBase($purchasePrice, $currency);
+
+                $warehouseMap[$wId]['qty'] += $qty;
+                $warehouseMap[$wId]['cost_base'] += $priceInBase * $qty;
+            }
+
+            $warehouseData = collect($warehouseMap)->map(function ($w) use ($currencyService, $baseCurrency, $displayCurrency) {
+                $costBase = max(0, $w['cost_base']);
                 $cost = $currencyService
                     ? $currencyService->convert($costBase, $baseCurrency, $displayCurrency)
                     : $costBase;
 
                 return [
-                    'id' => $w->id,
-                    'name' => $w->name,
-                    'qty' => (float) $w->qty,
+                    'id' => $w['id'],
+                    'name' => $w['name'],
+                    'qty' => $w['qty'],
                     'cost' => $cost,
                 ];
-            })->toArray();
+            })->values()->toArray();
 
             return [
                 'total_qty' => $totalQty,
@@ -1386,97 +1431,211 @@ class FinanceController extends Controller
         $marketplaces = [];
 
         // ========== UZUM ==========
+        // Используем ту же логику что и SalesController:
+        // 1. Приоритет — UzumFinanceOrder (FBO/FBS/DBS/EDBS — полные данные)
+        // 2. Fallback — UzumOrder (FBS — оперативные), исключая дубликаты
+        //
+        // Статусы UzumFinanceOrder:
+        //   TO_WITHDRAW / (PROCESSING + date_issued) → sold (продано)
+        //   PROCESSING + date_issued NULL → transit (в пути)
+        //   CANCELED + date_issued → returned (возврат после выкупа)
+        //   CANCELED + date_issued NULL → cancelled (отмена до выкупа)
         try {
+            $ordersCount = 0;
+            $ordersAmount = 0;
+            $soldCount = 0;
+            $soldAmount = 0;
+            $returnsCount = 0;
+            $returnsAmount = 0;
+            $cancelledCount = 0;
+            $cancelledAmount = 0;
+            $financeOrderNumbers = [];
+
+            // 1. UzumFinanceOrder — основной источник
+            $hasFinanceOrders = class_exists(\App\Models\UzumFinanceOrder::class)
+                && \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))->exists();
+
+            if ($hasFinanceOrders) {
+                // Базовый запрос с фильтрацией по дате (как в SalesController)
+                $finQuery = fn () => \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->where(function ($q) use ($from, $to) {
+                        // Заказы с date_issued — фильтруем по date_issued
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        // Заказы без date_issued — фильтруем по order_date
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    });
+
+                // Все заказы
+                $finAll = $finQuery()
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $ordersCount += (int) ($finAll?->cnt ?? 0);
+                $ordersAmount += (float) ($finAll?->total_amount ?? 0);
+
+                // Продано: TO_WITHDRAW или (PROCESSING + date_issued NOT NULL)
+                $finSold = $finQuery()
+                    ->where(function ($q) {
+                        $q->where('status', 'TO_WITHDRAW')
+                            ->orWhere(function ($sub) {
+                                $sub->where('status', 'PROCESSING')
+                                    ->whereNotNull('date_issued');
+                            });
+                    })
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $soldCount += (int) ($finSold?->cnt ?? 0);
+                $soldAmount += (float) ($finSold?->total_amount ?? 0);
+
+                // Возвраты: CANCELED + date_issued NOT NULL (возврат после выкупа)
+                $finReturns = $finQuery()
+                    ->where('status', 'CANCELED')
+                    ->whereNotNull('date_issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $returnsCount += (int) ($finReturns?->cnt ?? 0);
+                $returnsAmount += (float) ($finReturns?->total_amount ?? 0);
+
+                // Отменённые: CANCELED + date_issued NULL (отмена до выкупа)
+                $finCancelled = $finQuery()
+                    ->where('status', 'CANCELED')
+                    ->whereNull('date_issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(sell_price * amount) as total_amount')
+                    ->first();
+                $cancelledCount += (int) ($finCancelled?->cnt ?? 0);
+                $cancelledAmount += (float) ($finCancelled?->total_amount ?? 0);
+
+                // Собираем order_number для дедупликации с UzumOrder
+                $financeOrderNumbers = \App\Models\UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->where(function ($q) use ($from, $to) {
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->whereNotNull('date_issued')
+                                ->whereDate('date_issued', '>=', $from)
+                                ->whereDate('date_issued', '<=', $to);
+                        })
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->whereNull('date_issued')
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->pluck('order_number')
+                    ->filter()
+                    ->toArray();
+            }
+
+            // 2. UzumOrder — дополнительный источник (исключая дубликаты)
             if (class_exists(\App\Models\UzumOrder::class)) {
                 $uzumQuery = fn () => \App\Models\UzumOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->whereDate('ordered_at', '>=', $from)
-                    ->whereDate('ordered_at', '<=', $to);
+                    ->whereDate('ordered_at', '<=', $to)
+                    ->when(! empty($financeOrderNumbers), fn ($q) => $q->whereNotIn('external_order_id', $financeOrderNumbers));
 
-                // Все заказы (независимо от типа доставки)
-                $uzumAll = $uzumQuery()
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzAll = $uzumQuery()->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $ordersCount += (int) ($uzAll?->cnt ?? 0);
+                $ordersAmount += (float) ($uzAll?->amount ?? 0);
 
-                // Проданные (issued = доставлено клиенту)
-                $uzumSold = $uzumQuery()
-                    ->where('status', 'issued')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzSold = $uzumQuery()->where('status', 'issued')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $soldCount += (int) ($uzSold?->cnt ?? 0);
+                $soldAmount += (float) ($uzSold?->amount ?? 0);
 
-                // Возвраты
-                $uzumReturns = $uzumQuery()
-                    ->where('status', 'returns')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
+                $uzReturns = $uzumQuery()->where('status', 'returns')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $returnsCount += (int) ($uzReturns?->cnt ?? 0);
+                $returnsAmount += (float) ($uzReturns?->amount ?? 0);
 
-                // Отменённые
-                $uzumCancelled = $uzumQuery()
-                    ->where('status', 'cancelled')
-                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-                    ->first();
-
-                $ordersCount = (int) ($uzumAll?->cnt ?? 0);
-                $ordersAmount = (float) ($uzumAll?->amount ?? 0);
-                $soldCount = (int) ($uzumSold?->cnt ?? 0);
-                $soldAmount = (float) ($uzumSold?->amount ?? 0);
-                $returnsCount = (int) ($uzumReturns?->cnt ?? 0);
-                $returnsAmount = (float) ($uzumReturns?->amount ?? 0);
-                $cancelledCount = (int) ($uzumCancelled?->cnt ?? 0);
-                $cancelledAmount = (float) ($uzumCancelled?->amount ?? 0);
-
-                $marketplaces['uzum'] = [
-                    'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
-                    'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
-                    'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
-                    'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
-                    'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
-                    'currency' => 'UZS',
-                ];
-
-                // Добавляем к итогам (Uzum уже в UZS)
-                $totals['orders']['count'] += $ordersCount;
-                $totals['orders']['amount'] += $ordersAmount;
-                $totals['sold']['count'] += $soldCount;
-                $totals['sold']['amount'] += $soldAmount;
-                $totals['returns']['count'] += $returnsCount;
-                $totals['returns']['amount'] += $returnsAmount;
-                $totals['cancelled']['count'] += $cancelledCount;
-                $totals['cancelled']['amount'] += $cancelledAmount;
+                $uzCancelled = $uzumQuery()->where('status', 'cancelled')
+                    ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')->first();
+                $cancelledCount += (int) ($uzCancelled?->cnt ?? 0);
+                $cancelledAmount += (float) ($uzCancelled?->amount ?? 0);
             }
+
+            $marketplaces['uzum'] = [
+                'orders' => ['count' => $ordersCount, 'amount' => $ordersAmount],
+                'sold' => ['count' => $soldCount, 'amount' => $soldAmount],
+                'returns' => ['count' => $returnsCount, 'amount' => $returnsAmount],
+                'cancelled' => ['count' => $cancelledCount, 'amount' => $cancelledAmount],
+                'avg_order_value' => $soldCount > 0 ? $soldAmount / $soldCount : 0,
+                'currency' => 'UZS',
+            ];
+
+            // Добавляем к итогам (Uzum уже в UZS)
+            $totals['orders']['count'] += $ordersCount;
+            $totals['orders']['amount'] += $ordersAmount;
+            $totals['sold']['count'] += $soldCount;
+            $totals['sold']['amount'] += $soldAmount;
+            $totals['returns']['count'] += $returnsCount;
+            $totals['returns']['amount'] += $returnsAmount;
+            $totals['cancelled']['count'] += $cancelledCount;
+            $totals['cancelled']['amount'] += $cancelledAmount;
         } catch (\Exception $e) {
+            \Log::error('marketplaceIncome Uzum error', ['error' => $e->getMessage()]);
             $marketplaces['uzum'] = ['error' => $e->getMessage()];
         }
 
         // ========== WILDBERRIES ==========
+        // Используем ту же логику что и SalesController:
+        // Продажи (is_realization=true, is_cancel=false) → фильтр по last_change_date
+        // Возвраты (is_realization=true, is_cancel=true) → фильтр по last_change_date
+        // В транзите (is_realization=false, is_cancel=false) → фильтр по order_date
+        // Отмены (is_realization=false, is_cancel=true) → фильтр по order_date
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
-                $wbQuery = fn () => \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
-                    ->whereDate('order_date', '>=', $from)
-                    ->whereDate('order_date', '<=', $to);
+                $amountExpr = 'COALESCE(for_pay, finished_price, total_price, 0)';
+                $wbBase = fn () => \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId));
 
-                // Все заказы
-                $wbAll = $wbQuery()
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                // Все заказы (с учётом разных дат по статусу)
+                $wbAll = $wbBase()
+                    ->where(function ($q) use ($from, $to) {
+                        // Продажи/возвраты → last_change_date
+                        $q->where(function ($sub) use ($from, $to) {
+                            $sub->where('is_realization', true)
+                                ->whereDate('last_change_date', '>=', $from)
+                                ->whereDate('last_change_date', '<=', $to);
+                        })
+                        // В транзите/отмены → order_date
+                        ->orWhere(function ($sub) use ($from, $to) {
+                            $sub->where('is_realization', false)
+                                ->whereDate('order_date', '>=', $from)
+                                ->whereDate('order_date', '<=', $to);
+                        });
+                    })
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
-                // Проданные (is_realization=true, не отменённые, не возвраты)
-                $wbSold = $wbQuery()
+                // Проданные: is_realization=true AND is_cancel=false → last_change_date
+                $wbSold = $wbBase()
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
-                    ->where('is_return', false)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->whereDate('last_change_date', '>=', $from)
+                    ->whereDate('last_change_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
-                // Возвраты
-                $wbReturns = $wbQuery()
-                    ->where('is_return', true)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
-                    ->first();
-
-                // Отменённые
-                $wbCancelled = $wbQuery()
+                // Возвраты: is_realization=true AND is_cancel=true → last_change_date
+                $wbReturns = $wbBase()
+                    ->where('is_realization', true)
                     ->where('is_cancel', true)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as amount')
+                    ->whereDate('last_change_date', '>=', $from)
+                    ->whereDate('last_change_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
+                    ->first();
+
+                // Отменённые: is_realization=false AND is_cancel=true → order_date
+                $wbCancelled = $wbBase()
+                    ->where('is_realization', false)
+                    ->where('is_cancel', true)
+                    ->whereDate('order_date', '>=', $from)
+                    ->whereDate('order_date', '<=', $to)
+                    ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
 
                 $ordersCount = (int) ($wbAll?->cnt ?? 0);
@@ -1924,10 +2083,12 @@ class FinanceController extends Controller
      * 1. СНАЧАЛА ищем связь с внутренним товаром (ProductVariant.purchase_price)
      * 2. Если связи нет - берём из маркетплейса (UzumFinanceOrder.purchase_price и т.д.)
      *
-     * ВАЖНО: purchase_price в ProductVariant хранится в UZS!
+     * ВАЖНО: purchase_price в ProductVariant конвертируется в UZS через getPurchasePriceInBase()
      */
     protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
     {
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
         $result = [
             'total' => 0,
             'total_items' => 0,
@@ -1980,7 +2141,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price;
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $fromInternal = true;
                         }
                     }
@@ -1992,7 +2153,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price;
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $fromInternal = true;
                         }
                     }
@@ -2067,7 +2228,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
@@ -2081,7 +2242,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
@@ -2092,13 +2253,13 @@ class FinanceController extends Controller
                             ->where('sku', $order->supplier_article)
                             ->first();
                         if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                             $wbFromInternal++;
                         }
                     }
 
                     if ($purchasePrice) {
-                        $wbCogs += (float) $purchasePrice; // В UZS
+                        $wbCogs += (float) $purchasePrice; // В UZS (сконвертировано)
                         $wbWithCogs++;
                     }
                 }
@@ -2157,7 +2318,7 @@ class FinanceController extends Controller
                             ->with('variant')
                             ->first();
                         if ($link && $link->variant && $link->variant->purchase_price) {
-                            $purchasePrice = $link->variant->purchase_price; // В UZS
+                            $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                             $ozonFromInternal++;
                         }
                     }
@@ -2168,7 +2329,7 @@ class FinanceController extends Controller
                             ->where('sku', $order->sku)
                             ->first();
                         if ($variant && $variant->purchase_price) {
-                            $purchasePrice = $variant->purchase_price; // В UZS
+                            $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                             $ozonFromInternal++;
                         }
                     }
@@ -2228,9 +2389,9 @@ class FinanceController extends Controller
                         $offlineItemsCount++;
                         $costPrice = null;
 
-                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара
+                        // 1. СНАЧАЛА ищем себестоимость из связанного внутреннего товара (конвертируем в UZS)
                         if ($item->productVariant && $item->productVariant->purchase_price) {
-                            $costPrice = (float) $item->productVariant->purchase_price;
+                            $costPrice = $item->productVariant->getPurchasePriceInBase($financeSettings);
                             $offlineFromInternal++;
                         }
                         // 2. Если нет - берём из SaleItem.cost_price
@@ -2274,5 +2435,112 @@ class FinanceController extends Controller
         $result['total_revenue'] = $totalRevenue;
 
         return $result;
+    }
+
+    /**
+     * Получить список доступных валют и текущих курсов
+     *
+     * Возвращает:
+     * - Базовую валюту
+     * - Список поддерживаемых валют с текущими курсами
+     * - Возможность обновить курсы
+     */
+    public function currencies(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+
+        // Список поддерживаемых валют
+        $currencies = [
+            [
+                'code' => 'UZS',
+                'name' => 'Узбекский сум',
+                'symbol' => 'сўм',
+                'rate' => 1.0,
+                'is_base' => $financeSettings->base_currency_code === 'UZS',
+            ],
+            [
+                'code' => 'USD',
+                'name' => 'Доллар США',
+                'symbol' => '$',
+                'rate' => $financeSettings->usd_rate ?? 12700,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'RUB',
+                'name' => 'Российский рубль',
+                'symbol' => '₽',
+                'rate' => $financeSettings->rub_rate ?? 140,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'EUR',
+                'name' => 'Евро',
+                'symbol' => '€',
+                'rate' => $financeSettings->eur_rate ?? 13800,
+                'is_base' => false,
+            ],
+            [
+                'code' => 'KZT',
+                'name' => 'Казахстанский тенге',
+                'symbol' => '₸',
+                'rate' => 27, // Примерный курс KZT к UZS
+                'is_base' => false,
+            ],
+        ];
+
+        return $this->successResponse([
+            'base_currency' => $financeSettings->base_currency_code ?? 'UZS',
+            'currencies' => $currencies,
+            'rates_updated_at' => $financeSettings->rates_updated_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Обновить курсы валют для компании
+     */
+    public function updateRates(Request $request)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $data = $request->validate([
+            'usd_rate' => ['nullable', 'numeric', 'min:0.01'],
+            'rub_rate' => ['nullable', 'numeric', 'min:0.01'],
+            'eur_rate' => ['nullable', 'numeric', 'min:0.01'],
+        ]);
+
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+
+        $updateData = ['rates_updated_at' => now()];
+
+        if (isset($data['usd_rate'])) {
+            $updateData['usd_rate'] = $data['usd_rate'];
+        }
+        if (isset($data['rub_rate'])) {
+            $updateData['rub_rate'] = $data['rub_rate'];
+        }
+        if (isset($data['eur_rate'])) {
+            $updateData['eur_rate'] = $data['eur_rate'];
+        }
+
+        $financeSettings->update($updateData);
+
+        Log::info('Currency rates updated', [
+            'company_id' => $companyId,
+            'user_id' => Auth::id(),
+            'rates' => $updateData,
+        ]);
+
+        return $this->successResponse([
+            'message' => 'Курсы валют обновлены',
+            'settings' => $financeSettings->fresh(),
+        ]);
     }
 }

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SellerMind PWA - Заказ #SM-123456</title>
+    <style>
+        :root {
+            --color-primary: #007AFF;
+            --bg-primary: #F2F2F7;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #E5E5EA;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #C7C7CC;
+            --color-success: #34C759;
+            --color-warning: #FF9500;
+            --color-error: #FF3B30;
+            --color-uzum: #7B3FF2;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-top: calc(44px + var(--safe-top));
+            padding-bottom: calc(140px + var(--safe-bottom));
+            -webkit-user-select: none;
+        }
+        
+        /* Header */
+        .sm-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: calc(44px + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            padding-left: var(--spacing-sm);
+            padding-right: var(--spacing-lg);
+            z-index: 100;
+        }
+        
+        .sm-header-back {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--color-primary);
+            font-size: 24px;
+            text-decoration: none;
+        }
+        
+        .sm-header-title {
+            flex: 1;
+            font-size: 17px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .sm-header-action {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--color-primary);
+            font-size: 20px;
+            background: none; border: none;
+        }
+        
+        .sm-main { padding: var(--spacing-lg); }
+        
+        /* Order Hero */
+        .sm-order-hero {
+            background: linear-gradient(135deg, var(--color-uzum), #9B5DE5);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            color: white;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sm-order-hero-mp {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .sm-order-hero-number {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .sm-order-hero-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* Section */
+        .sm-section {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-lg);
+            overflow: hidden;
+        }
+        
+        .sm-section-header {
+            padding: var(--spacing-lg);
+            padding-bottom: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .sm-section-content {
+            padding: var(--spacing-lg);
+        }
+        
+        /* Product Item */
+        .sm-product-item {
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+        
+        .sm-product-item:last-child {
+            border-bottom: none;
+        }
+        
+        .sm-product-img {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-md);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+        
+        .sm-product-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sm-product-name {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .sm-product-sku {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .sm-product-price-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sm-product-price {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .sm-product-total {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .sm-product-qty {
+            background: var(--bg-primary);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        /* Info Row */
+        .sm-info-row {
+            display: flex;
+            align-items: flex-start;
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+        
+        .sm-info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .sm-info-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-right: var(--spacing-md);
+            flex-shrink: 0;
+        }
+        
+        .sm-info-content {
+            flex: 1;
+        }
+        
+        .sm-info-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+        
+        .sm-info-value {
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        .sm-info-action {
+            color: var(--color-primary);
+            font-size: 20px;
+            padding: 8px;
+        }
+        
+        /* Timeline */
+        .sm-timeline {
+            padding: var(--spacing-lg);
+        }
+        
+        .sm-timeline-item {
+            display: flex;
+            gap: var(--spacing-md);
+            padding-bottom: var(--spacing-lg);
+            position: relative;
+        }
+        
+        .sm-timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        
+        .sm-timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 28px;
+            bottom: 0;
+            width: 2px;
+            background: var(--bg-tertiary);
+        }
+        
+        .sm-timeline-item:last-child::before {
+            display: none;
+        }
+        
+        .sm-timeline-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+        
+        .sm-timeline-dot.active {
+            background: var(--color-success);
+            color: white;
+        }
+        
+        .sm-timeline-dot.current {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .sm-timeline-content {
+            flex: 1;
+            padding-top: 4px;
+        }
+        
+        .sm-timeline-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .sm-timeline-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Totals */
+        .sm-totals {
+            padding: var(--spacing-lg);
+        }
+        
+        .sm-total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--spacing-sm) 0;
+            font-size: 14px;
+        }
+        
+        .sm-total-row.final {
+            padding-top: var(--spacing-md);
+            margin-top: var(--spacing-sm);
+            border-top: 1px solid var(--bg-tertiary);
+            font-size: 17px;
+            font-weight: 700;
+        }
+        
+        /* Bottom Actions */
+        .sm-bottom-actions {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            padding-bottom: calc(var(--spacing-lg) + var(--safe-bottom));
+            border-top: 1px solid var(--bg-tertiary);
+            z-index: 100;
+        }
+        
+        .sm-btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 17px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .sm-btn-primary:active {
+            opacity: 0.8;
+        }
+        
+        .sm-btn-row {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+        
+        .sm-btn-secondary {
+            flex: 1;
+            padding: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .sm-btn-secondary.danger {
+            color: var(--color-error);
+        }
+        
+        .sm-btn-secondary:active {
+            opacity: 0.7;
+        }
+        
+        /* Action Sheet */
+        .sm-action-sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .sm-action-sheet.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .sm-action-sheet-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        .sm-action-sheet-content {
+            position: relative;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            padding: var(--spacing-lg);
+            padding-bottom: calc(var(--spacing-lg) + var(--safe-bottom));
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+        
+        .sm-action-sheet.visible .sm-action-sheet-content {
+            transform: translateY(0);
+        }
+        
+        .sm-action-sheet-handle {
+            width: 36px;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin: 0 auto var(--spacing-lg);
+        }
+        
+        .sm-action-sheet-title {
+            font-size: 17px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sm-action-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .sm-action-btn.primary { background: var(--color-primary); color: white; }
+        .sm-action-btn.danger { background: #FFEBE9; color: var(--color-error); }
+        .sm-action-btn.cancel { margin-top: var(--spacing-sm); font-weight: 600; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sm-header">
+        <a href="marketplace.html" class="sm-header-back">←</a>
+        <h1 class="sm-header-title">Заказ</h1>
+        <button class="sm-header-action" onclick="showActions()">⋯</button>
+    </header>
+    
+    <main class="sm-main">
+        <!-- Order Hero -->
+        <div class="sm-order-hero">
+            <p class="sm-order-hero-mp">🟣 UZUM MARKET</p>
+            <p class="sm-order-hero-number">#SM-123456</p>
+            <div class="sm-order-hero-status">
+                🆕 Новый заказ
+            </div>
+        </div>
+        
+        <!-- Products -->
+        <div class="sm-section">
+            <div class="sm-section-header">Товары (2)</div>
+            <div class="sm-section-content">
+                <div class="sm-product-item">
+                    <div class="sm-product-img">📱</div>
+                    <div class="sm-product-info">
+                        <div class="sm-product-name">iPhone 15 Pro Case Silicone Black</div>
+                        <div class="sm-product-sku">SKU: IP-CASE-001</div>
+                        <div class="sm-product-price-row">
+                            <span class="sm-product-price">44,500 × 2</span>
+                            <span class="sm-product-total">89,000 сум</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Delivery -->
+        <div class="sm-section">
+            <div class="sm-section-header">Доставка</div>
+            <div class="sm-section-content">
+                <div class="sm-info-row">
+                    <div class="sm-info-icon">📍</div>
+                    <div class="sm-info-content">
+                        <div class="sm-info-label">Адрес</div>
+                        <div class="sm-info-value">г. Ташкент, Чиланзарский р-н, ул. Катартал, д. 15, кв. 23</div>
+                    </div>
+                </div>
+                <div class="sm-info-row">
+                    <div class="sm-info-icon">👤</div>
+                    <div class="sm-info-content">
+                        <div class="sm-info-label">Получатель</div>
+                        <div class="sm-info-value">Иванов Иван Иванович</div>
+                    </div>
+                </div>
+                <div class="sm-info-row">
+                    <div class="sm-info-icon">📞</div>
+                    <div class="sm-info-content">
+                        <div class="sm-info-label">Телефон</div>
+                        <div class="sm-info-value">+998 90 123 45 67</div>
+                    </div>
+                    <a href="tel:+998901234567" class="sm-info-action">📲</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="sm-section">
+            <div class="sm-section-header">История</div>
+            <div class="sm-timeline">
+                <div class="sm-timeline-item">
+                    <div class="sm-timeline-dot current">🆕</div>
+                    <div class="sm-timeline-content">
+                        <div class="sm-timeline-title">Новый заказ</div>
+                        <div class="sm-timeline-time">Сегодня, 14:30</div>
+                    </div>
+                </div>
+                <div class="sm-timeline-item">
+                    <div class="sm-timeline-dot">📦</div>
+                    <div class="sm-timeline-content">
+                        <div class="sm-timeline-title">Сборка</div>
+                        <div class="sm-timeline-time">Ожидается</div>
+                    </div>
+                </div>
+                <div class="sm-timeline-item">
+                    <div class="sm-timeline-dot">🚚</div>
+                    <div class="sm-timeline-content">
+                        <div class="sm-timeline-title">Отгрузка</div>
+                        <div class="sm-timeline-time">Ожидается</div>
+                    </div>
+                </div>
+                <div class="sm-timeline-item">
+                    <div class="sm-timeline-dot">✅</div>
+                    <div class="sm-timeline-content">
+                        <div class="sm-timeline-title">Доставлен</div>
+                        <div class="sm-timeline-time">Ожидается</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Totals -->
+        <div class="sm-section">
+            <div class="sm-section-header">Итого</div>
+            <div class="sm-totals">
+                <div class="sm-total-row">
+                    <span>Товары (2 шт)</span>
+                    <span>89,000 сум</span>
+                </div>
+                <div class="sm-total-row">
+                    <span>Доставка</span>
+                    <span>15,000 сум</span>
+                </div>
+                <div class="sm-total-row">
+                    <span>Комиссия МП</span>
+                    <span style="color: var(--color-error);">-8,900 сум</span>
+                </div>
+                <div class="sm-total-row final">
+                    <span>К получению</span>
+                    <span>95,100 сум</span>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Bottom Actions -->
+    <div class="sm-bottom-actions">
+        <button class="sm-btn-primary" onclick="showConfirm()">
+            ✅ Собрать заказ
+        </button>
+        <div class="sm-btn-row">
+            <button class="sm-btn-secondary">
+                📞 Позвонить
+            </button>
+            <button class="sm-btn-secondary danger">
+                ❌ Отменить
+            </button>
+        </div>
+    </div>
+    
+    <!-- Action Sheet -->
+    <div class="sm-action-sheet" id="actionSheet">
+        <div class="sm-action-sheet-backdrop" onclick="hideActions()"></div>
+        <div class="sm-action-sheet-content">
+            <div class="sm-action-sheet-handle"></div>
+            <div class="sm-action-sheet-title">Действия</div>
+            <button class="sm-action-btn">🖨️ Печать этикетки</button>
+            <button class="sm-action-btn">📋 Копировать адрес</button>
+            <button class="sm-action-btn">📝 Добавить комментарий</button>
+            <button class="sm-action-btn danger">❌ Отменить заказ</button>
+            <button class="sm-action-btn cancel" onclick="hideActions()">Закрыть</button>
+        </div>
+    </div>
+    
+    <script>
+        function showActions() {
+            document.getElementById('actionSheet').classList.add('visible');
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+        
+        function hideActions() {
+            document.getElementById('actionSheet').classList.remove('visible');
+        }
+        
+        function showConfirm() {
+            if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
+            alert('✅ Заказ отмечен как "Собран"!\n\nПереход к следующему заказу...');
+        }
+    </script>
+</body>
+</html>

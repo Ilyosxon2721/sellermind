@@ -64,18 +64,31 @@ class DocumentController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $doc = InventoryDocument::create([
-            'company_id' => $companyId,
-            'doc_no' => ($data['doc_no'] ?? null) ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
-            'type' => $data['type'],
-            'status' => InventoryDocument::STATUS_DRAFT,
-            'warehouse_id' => $data['warehouse_id'],
-            'warehouse_to_id' => $data['warehouse_to_id'] ?? null,
-            'comment' => $data['comment'] ?? null,
-            'created_by' => $userId,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'source_doc_no' => $data['source_doc_no'] ?? null,
-        ]);
+        // Повторяем при дублировании номера документа (race condition)
+        $attempts = 0;
+        $doc = null;
+        while ($attempts < 3) {
+            try {
+                $doc = InventoryDocument::create([
+                    'company_id' => $companyId,
+                    'doc_no' => ($data['doc_no'] ?? null) ?: app(\App\Services\Warehouse\DocNumberService::class)->generate($companyId, $data['type']),
+                    'type' => $data['type'],
+                    'status' => InventoryDocument::STATUS_DRAFT,
+                    'warehouse_id' => $data['warehouse_id'],
+                    'warehouse_to_id' => $data['warehouse_to_id'] ?? null,
+                    'comment' => $data['comment'] ?? null,
+                    'created_by' => $userId,
+                    'supplier_id' => $data['supplier_id'] ?? null,
+                    'source_doc_no' => $data['source_doc_no'] ?? null,
+                ]);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $attempts++;
+                if ($attempts >= 3 || ! str_contains($e->getMessage(), 'Duplicate entry')) {
+                    return $this->errorResponse('Ошибка создания документа: '.$e->getMessage(), 'create_failed', null, 422);
+                }
+            }
+        }
 
         return $this->successResponse($doc);
     }
@@ -93,18 +106,33 @@ class DocumentController extends Controller
 
         $lines = $request->validate([
             'lines' => ['required', 'array'],
-            'lines.*.sku_id' => ['required', 'integer'],
+            'lines.*.sku_id' => ['required', 'integer', 'exists:skus,id'],
             'lines.*.qty' => ['required', 'numeric', 'min:0.001'],
             'lines.*.unit_id' => ['required', 'integer'],
             'lines.*.unit_cost' => ['nullable', 'numeric'],
+            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
+            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
             'lines.*.counted_qty' => ['nullable', 'numeric'],
             'lines.*.location_id' => ['nullable', 'integer'],
             'lines.*.location_to_id' => ['nullable', 'integer'],
         ])['lines'];
 
-        DB::transaction(function () use ($doc, $lines) {
+        DB::transaction(function () use ($doc, $lines, $companyId) {
             $doc->lines()->delete();
+
+            // Получаем настройки финансов для расчета базовой стоимости
+            $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
             foreach ($lines as $line) {
+                // Пропускаем неактивные SKU или SKU от удалённых товаров
+                $sku = \App\Models\Warehouse\Sku::where('id', $line['sku_id'])
+                    ->where('is_active', true)
+                    ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                    ->first();
+                if (! $sku) {
+                    continue;
+                }
+
                 // Ensure unit exists (auto-create default if missing)
                 $unitId = $line['unit_id'];
                 if (! Unit::find($unitId)) {
@@ -112,13 +140,39 @@ class DocumentController extends Controller
                     $unitId = $unit->id;
                 }
 
+                $unitCost = $line['unit_cost'] ?? null;
+                $qty = (float) $line['qty'];
+                $totalCost = isset($unitCost) ? $unitCost * $qty : null;
+                $currencyCode = $line['currency_code'] ?? 'UZS';
+                $exchangeRate = $line['exchange_rate'] ?? null;
+
+                // Если курс не передан — определяем из настроек финансов
+                if (! $exchangeRate || $exchangeRate <= 0) {
+                    $cur = strtoupper($currencyCode);
+                    $exchangeRate = match ($cur) {
+                        'USD' => (float) ($financeSettings->usd_rate ?? 1),
+                        'RUB' => (float) ($financeSettings->rub_rate ?? 1),
+                        'EUR' => (float) ($financeSettings->eur_rate ?? 1),
+                        default => 1.0,
+                    };
+                }
+
+                // Рассчитываем стоимость в базовой валюте
+                $totalCostBase = null;
+                if ($totalCost !== null) {
+                    $totalCostBase = $totalCost * $exchangeRate;
+                }
+
                 InventoryDocumentLine::create([
                     'document_id' => $doc->id,
                     'sku_id' => $line['sku_id'],
-                    'qty' => $line['qty'],
+                    'qty' => $qty,
                     'unit_id' => $unitId,
-                    'unit_cost' => $line['unit_cost'] ?? null,
-                    'total_cost' => isset($line['unit_cost']) ? $line['unit_cost'] * $line['qty'] : null,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $totalCost,
+                    'currency_code' => $currencyCode,
+                    'exchange_rate' => $exchangeRate,
+                    'total_cost_base' => $totalCostBase,
                     'location_id' => $line['location_id'] ?? null,
                     'location_to_id' => $line['location_to_id'] ?? null,
                     'counted_qty' => $line['counted_qty'] ?? null,
@@ -194,18 +248,43 @@ class DocumentController extends Controller
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.id' => ['required', 'integer'],
             'lines.*.unit_cost' => ['required', 'numeric', 'min:0'],
+            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
+            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
         ]);
 
-        DB::transaction(function () use ($doc, $data) {
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+
+        DB::transaction(function () use ($doc, $data, $financeSettings) {
             foreach ($data['lines'] as $lineData) {
                 $line = InventoryDocumentLine::where('document_id', $doc->id)
                     ->where('id', $lineData['id'])
                     ->first();
 
                 if ($line) {
+                    $totalCost = round($lineData['unit_cost'] * (float) $line->qty, 2);
+                    $currencyCode = $lineData['currency_code'] ?? $line->currency_code ?? 'UZS';
+                    $exchangeRate = $lineData['exchange_rate'] ?? $line->exchange_rate;
+
+                    // Если курс не задан — определяем из настроек финансов
+                    if (! $exchangeRate || $exchangeRate <= 0) {
+                        $cur = strtoupper($currencyCode);
+                        $exchangeRate = match ($cur) {
+                            'USD' => (float) ($financeSettings->usd_rate ?? 1),
+                            'RUB' => (float) ($financeSettings->rub_rate ?? 1),
+                            'EUR' => (float) ($financeSettings->eur_rate ?? 1),
+                            default => 1.0,
+                        };
+                    }
+
+                    // Рассчитываем стоимость в базовой валюте
+                    $totalCostBase = $totalCost * $exchangeRate;
+
                     $line->update([
                         'unit_cost' => $lineData['unit_cost'],
-                        'total_cost' => round($lineData['unit_cost'] * (float) $line->qty, 2),
+                        'total_cost' => $totalCost,
+                        'currency_code' => $currencyCode,
+                        'exchange_rate' => $exchangeRate,
+                        'total_cost_base' => $totalCostBase,
                     ]);
                 }
             }
@@ -216,6 +295,35 @@ class DocumentController extends Controller
         );
     }
 
+    /**
+     * Обновить заголовок чернового документа
+     */
+    public function update($id, Request $request)
+    {
+        $companyId = $this->getCompanyId();
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+
+        $doc = InventoryDocument::byCompany($companyId)->findOrFail($id);
+
+        if ($doc->status !== InventoryDocument::STATUS_DRAFT) {
+            return $this->errorResponse('Редактирование доступно только для черновиков', 'invalid_state', null, 422);
+        }
+
+        $data = $request->validate([
+            'warehouse_id' => ['sometimes', 'integer'],
+            'warehouse_to_id' => ['nullable', 'integer'],
+            'comment' => ['nullable', 'string'],
+            'reason' => ['nullable', 'string'],
+            'supplier_id' => ['nullable', 'integer'],
+            'source_doc_no' => ['nullable', 'string'],
+        ]);
+
+        $doc->update($data);
+
+        return $this->successResponse($doc->fresh(['lines.sku', 'lines.unit', 'warehouse', 'supplier']));
+    }
 
     /**
      * Удалить черновой документ
@@ -244,7 +352,7 @@ class DocumentController extends Controller
             $doc->delete();
         });
 
-        return $this->successResponse(null, 'Документ удалён');
+        return $this->successResponse(null, ['message' => 'Документ удалён']);
     }
 
     public function reverse($id)

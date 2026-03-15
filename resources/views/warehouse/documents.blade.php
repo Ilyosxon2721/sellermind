@@ -149,7 +149,7 @@
                             </td></tr>
                         </template>
                         <template x-for="doc in items" :key="doc.id">
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="hover:bg-gray-50 transition-colors" :class="window.SmartRefresh ? window.SmartRefresh.rowClass(doc) : ''">
                                 <td class="px-6 py-4">
                                     <a :href="`/warehouse/documents/${doc.id}`" class="font-semibold text-slate-700 hover:text-slate-900 hover:underline" x-text="doc.doc_no"></a>
                                 </td>
@@ -312,6 +312,7 @@
             items: [],
             error: '',
             loading: false,
+            autoRefreshInterval: null,
             showModal: false,
             toast: { show: false, message: '', type: 'success' },
             form: {
@@ -374,16 +375,26 @@
                     }
                 } catch(e) { alert('Ошибка: ' + e.message); }
             },
-            async load() {
+            async load(silent = false) {
                 this.error = '';
-                this.loading = true;
+                if (!silent || this.items.length === 0) {
+                    this.loading = true;
+                }
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([k, v]) => { if (v) params.append(k, v); });
                 try {
                     const resp = await fetch(`/api/marketplace/inventory/documents?${params.toString()}`, {headers: this.getAuthHeaders()});
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка загрузки');
-                    this.items = json.data || [];
+                    const newItems = json.data || [];
+                    if (silent && this.items.length > 0 && window.SmartRefresh) {
+                        const changed = window.SmartRefresh.merge(this.items, newItems, 'id');
+                        if (changed) {
+                            window.SmartRefresh.clearAnimations(this.items, 1500);
+                        }
+                    } else {
+                        this.items = newItems;
+                    }
                 } catch (e) {
                     console.error(e);
                     this.error = e.message || 'Ошибка';
@@ -494,8 +505,18 @@
                 }
             },
 
+            destroy() {
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                    this.autoRefreshInterval = null;
+                }
+            },
+
             init() {
                 this.load();
+                this.autoRefreshInterval = setInterval(() => {
+                    this.load(true);
+                }, 60000);
             }
         }
     }
@@ -560,7 +581,7 @@
         {{-- Documents List --}}
         <div x-show="!loading && items.length > 0" class="px-4 space-y-2 pb-4">
             <template x-for="doc in items" :key="doc.id">
-                <div class="native-card native-pressable" @click="window.location.href = `/warehouse/documents/${doc.id}`">
+                <div class="native-card native-pressable" :class="window.SmartRefresh ? window.SmartRefresh.cardClass(doc) : ''" @click="window.location.href = `/warehouse/documents/${doc.id}`">
                     <div class="flex items-start justify-between mb-2">
                         <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
                             'bg-blue-100 text-blue-700': doc.type === 'IN',

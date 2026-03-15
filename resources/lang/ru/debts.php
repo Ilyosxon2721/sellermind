@@ -107,4 +107,14 @@ return [
     'cash_income' => 'Приход на кассу',
     'cash_expense' => 'Расход с кассы',
     'no_cash_accounts' => 'Нет доступных счетов',
+
+    // Корректировка суммы и валюты
+    'edit_amount_currency' => 'Корректировка',
+    'edit_amount_currency_title' => 'Корректировка суммы и валюты',
+    'new_amount' => 'Новая сумма',
+    'new_currency' => 'Валюта',
+    'correction_reason' => 'Причина корректировки',
+    'correction_reason_placeholder' => 'Например: ошибка при вводе, изменение условий...',
+    'amount_updated' => 'Сумма и валюта обновлены',
+    'min_amount_warning' => 'Минимальная сумма: :amount (уже оплачено)',
 ];
