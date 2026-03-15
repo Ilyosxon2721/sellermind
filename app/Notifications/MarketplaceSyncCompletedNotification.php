@@ -23,6 +23,19 @@ class MarketplaceSyncCompletedNotification extends Notification implements Shoul
     ) {}
 
     /**
+     * Ключ дедупликации: не чаще раза в час на маркетплейс
+     */
+    public function deduplicationKey(): string
+    {
+        return 'sync_' . $this->marketplace . '_' . date('YmdH');
+    }
+
+    public function deduplicationTtl(): int
+    {
+        return 3600; // 1 час
+    }
+
+    /**
      * Get the notification's delivery channels.
      */
     public function via(object $notifiable): array
