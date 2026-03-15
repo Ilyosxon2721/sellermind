@@ -304,6 +304,7 @@
             async goToPage(page) {
                 if (page < 1 || page > this.pagination.last_page || page === this.pagination.current_page) return;
                 this.pagination.current_page = page;
+                this.items = [];
                 await this.load(false);
             },
 
