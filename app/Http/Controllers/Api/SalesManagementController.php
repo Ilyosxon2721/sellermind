@@ -297,6 +297,38 @@ class SalesManagementController extends Controller
     }
 
     /**
+     * Вернуть подтверждённую продажу в черновик
+     */
+    public function revertToDraft(Request $request, int $id): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+
+        $sale = Sale::query()
+            ->byCompany($companyId)
+            ->findOrFail($id);
+
+        if ($sale->status !== 'confirmed') {
+            return response()->json([
+                'message' => 'Only confirmed sales can be reverted to draft',
+            ], 403);
+        }
+
+        try {
+            $sale = $this->saleService->revertToDraft($sale);
+
+            return response()->json([
+                'message' => 'Sale reverted to draft successfully',
+                'data' => $sale,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to revert sale to draft',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Отгрузить товары (финализировать резерв и синхронизировать с маркетплейсами)
      */
     public function ship(Request $request, int $id): JsonResponse

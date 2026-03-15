@@ -279,6 +279,49 @@ class SaleService
     }
 
     /**
+     * Вернуть подтверждённую продажу в черновик
+     *
+     * @throws \Exception
+     */
+    public function revertToDraft(Sale $sale): Sale
+    {
+        return DB::transaction(function () use ($sale) {
+            if ($sale->status !== 'confirmed') {
+                throw new \Exception('Only confirmed sales can be reverted to draft');
+            }
+
+            // Отменяем резервы и возвращаем товары на склад
+            $results = $this->reservationService->cancelReservations($sale);
+
+            if ($results['failed'] > 0) {
+                Log::warning('Some reservations could not be cancelled during revert to draft', [
+                    'sale_id' => $sale->id,
+                    'errors' => $results['errors'],
+                ]);
+            }
+
+            // Удаляем долг контрагента, привязанный к этой продаже
+            FinanceDebt::where('source_type', Sale::class)
+                ->where('source_id', $sale->id)
+                ->delete();
+
+            // Возвращаем продажу в черновик
+            $sale->status = 'draft';
+            $sale->confirmed_at = null;
+            $sale->confirmed_by = null;
+            $sale->save();
+
+            Log::info('Sale reverted to draft', [
+                'sale_id' => $sale->id,
+                'sale_number' => $sale->sale_number,
+                'reservations_cancelled' => $results['success'],
+            ]);
+
+            return $sale->fresh(['items']);
+        });
+    }
+
+    /**
      * Отменить продажу и вернуть остатки
      *
      * @throws \Exception

@@ -43,7 +43,38 @@
                 </div>
                 {{-- Action buttons for manual draft/confirmed sales --}}
                 <div x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_')" class="flex items-center space-x-2 ml-2">
-                    <button x-show="order.status === 'draft'"
+                    <button x-show="order.status === 'draft' && !editing"
+                            @click="startEditing()"
+                            class="flex items-center space-x-1 px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        <span>Редактировать</span>
+                    </button>
+                    <button x-show="editing"
+                            @click="saveChanges()"
+                            :disabled="actionLoading"
+                            class="flex items-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Сохранить</span>
+                    </button>
+                    <button x-show="editing"
+                            @click="cancelEditing()"
+                            class="flex items-center space-x-1 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                        <span>Отмена</span>
+                    </button>
+                    <button x-show="order.status === 'confirmed' && !editing"
+                            @click="revertToDraft()"
+                            :disabled="actionLoading"
+                            class="flex items-center space-x-1 px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition disabled:opacity-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                        </svg>
+                        <span>Вернуть в черновик</span>
+                    </button>
+                    <button x-show="order.status === 'draft' && !editing"
                             @click="confirmSale()"
                             :disabled="actionLoading"
                             class="flex items-center space-x-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50">
@@ -52,7 +83,7 @@
                         </svg>
                         <span>Подтвердить</span>
                     </button>
-                    <button x-show="order.status === 'confirmed' || order.status === 'draft'"
+                    <button x-show="(order.status === 'confirmed' || order.status === 'draft') && !editing"
                             @click="completeSale()"
                             :disabled="actionLoading"
                             class="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
@@ -61,7 +92,7 @@
                         </svg>
                         <span>Завершить</span>
                     </button>
-                    <button x-show="order.status === 'draft' || order.status === 'confirmed'"
+                    <button x-show="(order.status === 'draft' || order.status === 'confirmed') && !editing"
                             @click="cancelSale()"
                             :disabled="actionLoading"
                             class="flex items-center space-x-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50">
@@ -248,18 +279,41 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Кол-во</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Цена</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Сумма</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <template x-for="item in order.items" :key="item.id">
+                                <template x-for="(item, idx) in order.items" :key="item.id">
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900" x-text="item.name"></td>
                                         <td class="px-4 py-3 text-sm text-gray-500" x-text="item.sku"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-900 text-right" x-text="parseInt(item.quantity)"></td>
-                                        <td class="px-4 py-3 text-sm text-gray-900 text-right" x-text="formatMoney(item.price, order.currency)"></td>
+                                        <td class="px-4 py-3 text-sm text-right">
+                                            <span x-show="!editing" x-text="parseInt(item.quantity)"></span>
+                                            <input x-show="editing" type="number" min="1" step="1"
+                                                   x-model.number="editItems[idx].quantity"
+                                                   @input="recalcEditItem(idx)"
+                                                   class="w-20 text-right border border-gray-300 rounded px-2 py-1 text-sm">
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-right">
+                                            <span x-show="!editing" x-text="formatMoney(item.price, order.currency)"></span>
+                                            <input x-show="editing" type="number" min="0" step="0.01"
+                                                   x-model.number="editItems[idx].price"
+                                                   @input="recalcEditItem(idx)"
+                                                   class="w-28 text-right border border-gray-300 rounded px-2 py-1 text-sm">
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-right font-medium">
+                                            <span x-show="!editing" x-text="formatMoney((item.quantity || 0) * (item.price || 0), order.currency)"></span>
+                                            <span x-show="editing" x-text="formatMoney((editItems[idx]?.quantity || 0) * (editItems[idx]?.price || 0), order.currency)" class="text-blue-600"></span>
+                                        </td>
                                     </tr>
                                 </template>
                             </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-sm font-semibold text-right">Итого:</td>
+                                    <td class="px-4 py-3 text-sm font-bold text-right" x-text="formatMoney(editing ? editTotal : order.total_amount, order.currency)"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -345,15 +399,31 @@
             <div class="native-card" x-show="order.marketplace === 'manual' && order.id?.startsWith('sale_') && (order.status === 'draft' || order.status === 'confirmed')">
                 <h3 class="font-semibold text-gray-900 mb-3">Действия</h3>
                 <div class="space-y-2">
-                    <button x-show="order.status === 'draft'" @click="confirmSale()" :disabled="actionLoading"
+                    <button x-show="order.status === 'draft' && !editing" @click="startEditing()" :disabled="actionLoading"
+                            class="w-full py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50">
+                        Редактировать
+                    </button>
+                    <button x-show="editing" @click="saveChanges()" :disabled="actionLoading"
+                            class="w-full py-3 bg-green-600 text-white rounded-xl font-medium disabled:opacity-50">
+                        Сохранить изменения
+                    </button>
+                    <button x-show="editing" @click="cancelEditing()"
+                            class="w-full py-3 bg-gray-200 text-gray-700 rounded-xl font-medium">
+                        Отмена редактирования
+                    </button>
+                    <button x-show="order.status === 'confirmed' && !editing" @click="revertToDraft()" :disabled="actionLoading"
+                            class="w-full py-3 bg-amber-100 text-amber-700 rounded-xl font-medium disabled:opacity-50">
+                        Вернуть в черновик
+                    </button>
+                    <button x-show="order.status === 'draft' && !editing" @click="confirmSale()" :disabled="actionLoading"
                             class="w-full py-3 bg-green-600 text-white rounded-xl font-medium disabled:opacity-50">
                         Подтвердить продажу
                     </button>
-                    <button x-show="order.status === 'confirmed' || order.status === 'draft'" @click="completeSale()" :disabled="actionLoading"
+                    <button x-show="(order.status === 'confirmed' || order.status === 'draft') && !editing" @click="completeSale()" :disabled="actionLoading"
                             class="w-full py-3 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50">
                         Завершить продажу
                     </button>
-                    <button x-show="order.status === 'draft' || order.status === 'confirmed'" @click="cancelSale()" :disabled="actionLoading"
+                    <button x-show="(order.status === 'draft' || order.status === 'confirmed') && !editing" @click="cancelSale()" :disabled="actionLoading"
                             class="w-full py-3 bg-red-100 text-red-700 rounded-xl font-medium disabled:opacity-50">
                         Отменить продажу
                     </button>
@@ -399,6 +469,8 @@ function orderDetails() {
         loading: true,
         error: null,
         actionLoading: false,
+        editing: false,
+        editItems: [],
 
         async init() {
             await this.loadOrder();
@@ -525,9 +597,81 @@ function orderDetails() {
         },
 
         getSaleId() {
-            // Extract numeric ID from 'sale_X' format for print URLs
             const id = this.order.id || this.orderId;
             return id?.replace('sale_', '') || id;
+        },
+
+        get editTotal() {
+            return this.editItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.price || 0), 0);
+        },
+
+        startEditing() {
+            this.editItems = (this.order.items || []).map(item => ({
+                id: item.id,
+                quantity: parseFloat(item.quantity) || 0,
+                price: parseFloat(item.price) || 0,
+            }));
+            this.editing = true;
+        },
+
+        cancelEditing() {
+            this.editing = false;
+            this.editItems = [];
+        },
+
+        recalcEditItem(idx) {
+            // Alpine автоматически обновит через x-model
+        },
+
+        async saveChanges() {
+            this.actionLoading = true;
+            const id = this.getSaleId();
+            const headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content
+            };
+            try {
+                for (const edit of this.editItems) {
+                    await fetch(`/api/sales-management/${id}/items/${edit.id}`, {
+                        method: "PUT",
+                        headers,
+                        body: JSON.stringify({
+                            quantity: edit.quantity,
+                            unit_price: edit.price,
+                        })
+                    });
+                }
+                this.editing = false;
+                this.editItems = [];
+                await this.loadOrder();
+                alert("Изменения сохранены!");
+            } catch(e) {
+                alert("Ошибка сохранения: " + e.message);
+            } finally {
+                this.actionLoading = false;
+            }
+        },
+
+        async revertToDraft() {
+            if (!confirm("Вернуть в черновик? Зарезервированные остатки будут возвращены на склад.")) return;
+            this.actionLoading = true;
+            try {
+                const id = this.getSaleId();
+                const res = await fetch(`/api/sales-management/${id}/revert-draft`, {
+                    method: "POST",
+                    headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": document.querySelector("meta[name=csrf-token]")?.content}
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Продажа возвращена в черновик. Теперь можно редактировать.");
+                    await this.loadOrder();
+                } else {
+                    alert("Ошибка: " + (data.error || data.message || "Не удалось вернуть в черновик"));
+                }
+            } catch(e) { alert("Ошибка сети: " + e.message); }
+            finally { this.actionLoading = false; }
         }
     };
 }
