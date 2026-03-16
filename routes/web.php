@@ -762,6 +762,7 @@ Route::prefix('store/{slug}')->group(function () {
     Route::get('/payment/fail', [\App\Http\Controllers\Storefront\PaymentController::class, 'fail'])->name('storefront.payment.fail');
 
     // Storefront API (cart, checkout, payment — JSON endpoints)
+    Route::get('/api/search', [\App\Http\Controllers\Storefront\CatalogController::class, 'search']);
     Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
     Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
     Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);

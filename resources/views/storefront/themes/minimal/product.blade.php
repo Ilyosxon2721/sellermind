@@ -1,5 +1,11 @@
 @extends('storefront.layouts.app')
 
+@php
+    $displayName = $storeProduct->getDisplayName();
+@endphp
+
+@section('page_title', $displayName . ' — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -7,7 +13,6 @@
     $product = $storeProduct->product;
     $images = $product->images()->orderBy('sort_order')->get();
     $mainImage = $product->mainImage;
-    $displayName = $storeProduct->getDisplayName();
     $displayPrice = $storeProduct->getDisplayPrice();
     $description = $storeProduct->custom_description ?: $product->description_full ?: $product->description_short;
 @endphp
@@ -83,19 +88,22 @@
             </div>
 
             {{-- Цена --}}
-            <div class="flex items-baseline gap-3">
+            @php
+                $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
+            @endphp
+            <div class="flex items-baseline gap-3 flex-wrap">
                 <span class="text-2xl font-semibold" style="color: var(--primary);">
                     {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                 </span>
-                @if($storeProduct->custom_old_price || ($storeProduct->custom_price && $product->variants->isNotEmpty()))
-                    @php
-                        $originalPrice = $storeProduct->custom_old_price ?: $product->variants->first()?->price_default;
-                    @endphp
-                    @if($originalPrice && (float)$originalPrice > $displayPrice)
-                        <span class="text-base text-gray-300 line-through">
-                            {{ number_format($originalPrice, 0, '.', ' ') }} {{ $currency }}
-                        </span>
-                    @endif
+                @if($hasDiscount)
+                    <span class="text-base text-gray-400 line-through">
+                        {{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}
+                    </span>
+                    <span class="px-2 py-0.5 text-sm font-medium text-white rounded" style="background: var(--primary);">
+                        -{{ $discountPercent }}%
+                    </span>
                 @endif
             </div>
 

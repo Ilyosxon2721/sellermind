@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -107,10 +109,13 @@
                         $mainImage = $product->mainImage;
                         $displayName = $storeProduct->getDisplayName();
                         $displayPrice = $storeProduct->getDisplayPrice();
+                        $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                        $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                        $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                     @endphp
                     <div class="border border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors">
                         <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
-                            <div class="aspect-square bg-gray-50">
+                            <div class="relative aspect-square bg-gray-50">
                                 @if($mainImage)
                                     <img
                                         src="{{ $mainImage->url }}"
@@ -125,15 +130,27 @@
                                         </svg>
                                     </div>
                                 @endif
+                                @if($hasDiscount)
+                                    <span class="absolute top-2 left-2 px-1.5 py-0.5 text-xs font-medium text-white rounded" style="background: var(--primary);">
+                                        -{{ $discountPercent }}%
+                                    </span>
+                                @endif
                             </div>
                         </a>
                         <div class="p-4">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
                                 <h3 class="text-sm font-medium text-gray-900 line-clamp-2">{{ $displayName }}</h3>
                             </a>
-                            <p class="text-lg font-semibold mt-1" style="color: var(--primary);">
-                                {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                            </p>
+                            <div class="flex items-baseline gap-2 mt-1">
+                                <p class="text-lg font-semibold" style="color: var(--primary);">
+                                    {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
+                                </p>
+                                @if($hasDiscount)
+                                    <p class="text-sm text-gray-400 line-through">
+                                        {{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}
+                                    </p>
+                                @endif
+                            </div>
                             @if($store->theme->show_add_to_cart ?? true)
                                 <button
                                     @click="addToCart({{ $storeProduct->id }})"

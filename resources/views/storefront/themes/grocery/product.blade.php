@@ -1,5 +1,11 @@
 ﻿@extends('storefront.layouts.app')
 
+@php
+    $displayName = $storeProduct->getDisplayName();
+@endphp
+
+@section('page_title', $displayName . ' — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -7,10 +13,14 @@
     $product = $storeProduct->product;
     $images = $product->images()->orderBy('sort_order')->get();
     $mainImage = $product->mainImage;
-    $displayName = $storeProduct->getDisplayName();
     $displayPrice = $storeProduct->getDisplayPrice();
     $description = $storeProduct->custom_description ?: $product->description_full ?: $product->description_short;
+    $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+    $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+    $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
 @endphp
+
+@section('page_title', $displayName . ' — ' . $store->name)
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
     {{-- Хлебные крошки --}}

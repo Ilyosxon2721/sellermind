@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -286,6 +288,9 @@
                             $mainImage = $product->mainImage;
                             $displayName = $storeProduct->getDisplayName();
                             $displayPrice = $storeProduct->getDisplayPrice();
+                            $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                            $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                            $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                         @endphp
                         <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -304,11 +309,18 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-3 left-3 px-3 py-1.5 rounded-xl text-xs font-semibold text-white tracking-wide" style="background: var(--accent);">
-                                            Хит
-                                        </span>
-                                    @endif
+                                    <div class="absolute top-3 left-3 flex flex-col gap-1">
+                                        @if($hasDiscount)
+                                            <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
+                                                -{{ $discountPercent }}%
+                                            </span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-3 py-1.5 rounded-xl text-xs font-semibold text-white tracking-wide" style="background: var(--accent);">
+                                                Хит
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </a>
 
@@ -322,10 +334,7 @@
                                     <span class="text-lg font-bold" style="color: var(--primary);">
                                         {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
-                                    @php
-                                        $oldPrice = $storeProduct->custom_old_price ?: ($product->variants->first()?->old_price_default);
-                                    @endphp
-                                    @if($oldPrice && (float)$oldPrice > $displayPrice)
+                                    @if($hasDiscount)
                                         <span class="text-xs text-gray-300 line-through">
                                             {{ number_format((float)$oldPrice, 0, '.', ' ') }} {{ $currency }}
                                         </span>

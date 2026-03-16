@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;

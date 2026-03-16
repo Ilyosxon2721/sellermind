@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', $page->title . ' — ' . $store->name)
+
 @section('content')
 <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
     {{-- Хлебные крошки --}}

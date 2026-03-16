@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Заказ ' . $order->order_number . ' — ' . $store->name)
+
 @section('content')
 @php
     $currency = $store->currency ?? 'сум';

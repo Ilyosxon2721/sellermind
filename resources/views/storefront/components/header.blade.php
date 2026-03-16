@@ -220,7 +220,7 @@
         @endif
     </div>
 
-    {{-- Поиск (выпадающий) --}}
+    {{-- Поиск с автодополнением --}}
     <div
         x-show="searchOpen"
         x-transition:enter="transition ease-out duration-200"
@@ -232,26 +232,121 @@
         x-cloak
         class="border-t border-gray-100"
         style="background: var(--header-bg);"
+        @keydown.escape.window="searchOpen = false; searchQuery = ''; searchResults = [];"
     >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <form action="/store/{{ $store->slug }}/catalog" method="GET" class="flex items-center gap-3">
+            <form action="/store/{{ $store->slug }}/catalog" method="GET" class="flex items-center gap-3" @submit="searchOpen = false; searchResults = [];">
                 <div class="flex-1 relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                    {{-- Иконка поиска / спиннер --}}
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg x-show="!searchLoading" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <svg x-show="searchLoading" x-cloak class="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+
+                    {{-- Поле ввода --}}
                     <input
                         type="search"
                         name="search"
                         x-ref="searchInput"
+                        x-model="searchQuery"
+                        @input="fetchSearchResults()"
+                        @focus="searchQuery.length >= 2 && fetchSearchResults()"
                         placeholder="Поиск товаров..."
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                        autocomplete="off"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent text-sm bg-white text-gray-900"
                         style="--tw-ring-color: var(--primary);"
                     >
+
+                    {{-- Выпадающий список результатов --}}
+                    <div
+                        x-show="searchResults.length > 0 || (searchQuery.length >= 2 && !searchLoading && searchFetched)"
+                        x-cloak
+                        @click.outside="searchResults = []; searchFetched = false;"
+                        class="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                        style="max-height: 400px; overflow-y: auto;"
+                    >
+                        {{-- Результаты --}}
+                        <template x-if="searchResults.length > 0">
+                            <div>
+                                <template x-for="item in searchResults" :key="item.id">
+                                    <a
+                                        :href="item.url"
+                                        class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                                        @click="searchOpen = false; searchResults = []; searchQuery = '';"
+                                    >
+                                        {{-- Картинка товара --}}
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                            <img
+                                                x-show="item.image"
+                                                :src="item.image"
+                                                :alt="item.name"
+                                                class="w-full h-full object-cover"
+                                                @error="$el.style.display='none'"
+                                            >
+                                            <div x-show="!item.image" class="w-full h-full flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        {{-- Название + цена --}}
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 truncate" x-text="item.name"></p>
+                                            <p class="text-xs text-gray-500" x-text="item.price > 0 ? formatPrice(item.price) : 'Цена не указана'"></p>
+                                        </div>
+
+                                        {{-- Стрелка --}}
+                                        <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
+                                </template>
+
+                                {{-- Ссылка «Показать все результаты» --}}
+                                <a
+                                    :href="`/store/{{ $store->slug }}/catalog?search=${encodeURIComponent(searchQuery)}`"
+                                    class="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium hover:bg-gray-50 transition-colors"
+                                    style="color: var(--primary);"
+                                    @click="searchOpen = false; searchResults = [];"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    Показать все результаты
+                                </a>
+                            </div>
+                        </template>
+
+                        {{-- Ничего не найдено --}}
+                        <template x-if="searchResults.length === 0 && searchQuery.length >= 2 && !searchLoading && searchFetched">
+                            <div class="px-4 py-6 text-center">
+                                <svg class="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <p class="text-sm text-gray-500">По запросу «<span x-text="searchQuery"></span>» ничего не найдено</p>
+                                <a
+                                    :href="`/store/{{ $store->slug }}/catalog?search=${encodeURIComponent(searchQuery)}`"
+                                    class="inline-block mt-2 text-xs font-medium"
+                                    style="color: var(--primary);"
+                                    @click="searchOpen = false; searchResults = [];"
+                                >
+                                    Поиск по каталогу →
+                                </a>
+                            </div>
+                        </template>
+                    </div>
                 </div>
-                <button type="submit" class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium">
+
+                <button type="submit" class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium shrink-0">
                     Найти
                 </button>
-                <button type="button" @click="searchOpen = false" class="p-2 rounded-full hover:bg-black/5 transition-colors">
+                <button type="button" @click="searchOpen = false; searchQuery = ''; searchResults = [];" class="p-2 rounded-full hover:bg-black/5 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -342,6 +437,13 @@
             searchOpen: false,
             cartCount: 0,
 
+            // Поиск с автодополнением
+            searchQuery: '',
+            searchResults: [],
+            searchLoading: false,
+            searchFetched: false,
+            _searchTimer: null,
+
             init() {
                 this.fetchCartCount();
 
@@ -356,7 +458,64 @@
                     this.$nextTick(() => {
                         this.$refs.searchInput?.focus();
                     });
+                } else {
+                    this.searchQuery = '';
+                    this.searchResults = [];
+                    this.searchFetched = false;
                 }
+            },
+
+            /**
+             * Запрос автодополнения к API с debounce 300ms
+             */
+            fetchSearchResults() {
+                clearTimeout(this._searchTimer);
+
+                if (this.searchQuery.length < 2) {
+                    this.searchResults = [];
+                    this.searchFetched = false;
+                    this.searchLoading = false;
+                    return;
+                }
+
+                this._searchTimer = setTimeout(async () => {
+                    this.searchLoading = true;
+                    this.searchFetched = false;
+
+                    try {
+                        const slug = '{{ $store->slug }}';
+                        const url = `/store/${slug}/api/search?q=${encodeURIComponent(this.searchQuery)}`;
+                        const response = await fetch(url, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.searchResults = data.results || [];
+                        } else {
+                            this.searchResults = [];
+                        }
+                    } catch (e) {
+                        this.searchResults = [];
+                    } finally {
+                        this.searchLoading = false;
+                        this.searchFetched = true;
+                    }
+                }, 300);
+            },
+
+            /**
+             * Форматирование цены с разделителями
+             */
+            formatPrice(price) {
+                if (!price || price <= 0) return 'Цена не указана';
+                return new Intl.NumberFormat('ru-RU', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                }).format(price) + ' сум';
             },
 
             async fetchCartCount() {

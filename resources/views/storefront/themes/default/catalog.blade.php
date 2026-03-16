@@ -274,6 +274,8 @@
                             $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
                             $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
                             $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
+                            $totalStock = $product->variants->sum('stock_default');
+                            $isOutOfStock = $totalStock <= 0;
                         @endphp
                         <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -282,7 +284,7 @@
                                         <img
                                             src="{{ $mainImage->url }}"
                                             alt="{{ $displayName }}"
-                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 {{ $isOutOfStock ? 'opacity-60' : '' }}"
                                             loading="lazy"
                                         >
                                     @else
@@ -292,16 +294,28 @@
                                             </svg>
                                         </div>
                                     @endif
+
+                                    {{-- Серый оверлей для товаров не в наличии --}}
+                                    @if($isOutOfStock)
+                                        <div class="absolute inset-0 bg-gray-100/60"></div>
+                                    @endif
+
                                     <div class="absolute top-3 left-3 flex flex-col gap-1.5">
-                                        @if($hasDiscount)
-                                            <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
-                                                -{{ $discountPercent }}%
+                                        @if($isOutOfStock)
+                                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-400 text-white">
+                                                Нет в наличии
                                             </span>
-                                        @endif
-                                        @if($storeProduct->is_featured && !$hasDiscount)
-                                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
-                                                Хит
-                                            </span>
+                                        @else
+                                            @if($hasDiscount)
+                                                <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
+                                                    -{{ $discountPercent }}%
+                                                </span>
+                                            @endif
+                                            @if($storeProduct->is_featured && !$hasDiscount)
+                                                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
+                                                    Хит
+                                                </span>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -314,10 +328,10 @@
                                     </h3>
                                 </a>
                                 <div class="mt-2 flex items-baseline gap-2">
-                                    <span class="text-lg font-bold" style="color: var(--primary);">
+                                    <span class="text-lg font-bold {{ $isOutOfStock ? 'text-gray-400' : '' }}" @if(!$isOutOfStock) style="color: var(--primary);" @endif>
                                         {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
-                                    @if($hasDiscount)
+                                    @if($hasDiscount && !$isOutOfStock)
                                         <span class="text-xs text-gray-400 line-through">
                                             {{ number_format($oldPrice, 0, '.', ' ') }}
                                         </span>
@@ -325,26 +339,35 @@
                                 </div>
 
                                 @if($store->theme->show_add_to_cart ?? true)
-                                    <button
-                                        @click="addToCart({{ $storeProduct->id }})"
-                                        :disabled="adding === {{ $storeProduct->id }}"
-                                        class="mt-3 w-full btn-primary py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                        <template x-if="adding !== {{ $storeProduct->id }}">
-                                            <span class="flex items-center gap-2">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                    @if($isOutOfStock)
+                                        <button
+                                            disabled
+                                            class="mt-3 w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed bg-gray-100 text-gray-400"
+                                        >
+                                            Нет в наличии
+                                        </button>
+                                    @else
+                                        <button
+                                            @click="addToCart({{ $storeProduct->id }})"
+                                            :disabled="adding === {{ $storeProduct->id }}"
+                                            class="mt-3 w-full btn-primary py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <template x-if="adding !== {{ $storeProduct->id }}">
+                                                <span class="flex items-center gap-2">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                                    </svg>
+                                                    В корзину
+                                                </span>
+                                            </template>
+                                            <template x-if="adding === {{ $storeProduct->id }}">
+                                                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                                 </svg>
-                                                В корзину
-                                            </span>
-                                        </template>
-                                        <template x-if="adding === {{ $storeProduct->id }}">
-                                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                            </svg>
-                                        </template>
-                                    </button>
+                                            </template>
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
                         </div>

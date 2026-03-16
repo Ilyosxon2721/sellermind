@@ -1,5 +1,11 @@
 ﻿@extends('storefront.layouts.app')
 
+@php
+    $displayName = $storeProduct->getDisplayName();
+@endphp
+
+@section('page_title', $displayName . ' — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -7,7 +13,6 @@
     $product = $storeProduct->product;
     $images = $product->images()->orderBy('sort_order')->get();
     $mainImage = $product->mainImage;
-    $displayName = $storeProduct->getDisplayName();
     $displayPrice = $storeProduct->getDisplayPrice();
     $description = $storeProduct->custom_description ?: $product->description_full ?: $product->description_short;
 @endphp

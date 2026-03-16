@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProductVariant;
 use App\Models\Store\Store;
 use App\Models\Store\StoreAnalytics;
 use App\Models\Store\StoreProduct;
@@ -65,16 +66,18 @@ final class CartController extends Controller
 
         $data = $request->validate([
             'product_id' => ['required', 'integer'],
-            'quantity' => ['sometimes', 'integer', 'min:1'],
+            'quantity'   => ['sometimes', 'integer', 'min:1'],
+            'variant_id' => ['sometimes', 'nullable', 'integer'],
         ]);
 
-        $quantity = (int) ($data['quantity'] ?? 1);
+        $quantity  = (int) ($data['quantity'] ?? 1);
+        $variantId = isset($data['variant_id']) ? (int) $data['variant_id'] : null;
 
         // Проверяем что товар существует и видим в этом магазине
         $storeProduct = StoreProduct::where('store_id', $store->id)
             ->where('id', $data['product_id'])
             ->where('is_visible', true)
-            ->with('product.mainImage')
+            ->with(['product.mainImage', 'product.variants'])
             ->first();
 
         if (! $storeProduct) {
@@ -86,18 +89,64 @@ final class CartController extends Controller
             );
         }
 
-        $cart = $this->getCart($store);
-        $productKey = (string) $storeProduct->id;
+        // Определяем вариант (явно переданный или первый активный)
+        $variant = null;
+        if ($variantId) {
+            $variant = $storeProduct->product->variants
+                ->where('id', $variantId)
+                ->where('is_active', true)
+                ->where('is_deleted', false)
+                ->first();
 
-        if (isset($cart[$productKey])) {
-            $cart[$productKey]['quantity'] += $quantity;
+            if (! $variant) {
+                return $this->errorResponse(
+                    'Вариант товара не найден',
+                    'variant_not_found',
+                    'variant_id',
+                    404
+                );
+            }
+        } elseif ($storeProduct->product->variants->isNotEmpty()) {
+            // Если вариантов несколько, но variant_id не передан — берём первый активный
+            $variant = $storeProduct->product->variants
+                ->where('is_active', true)
+                ->where('is_deleted', false)
+                ->first();
+        }
+
+        // Проверка наличия выбранного варианта
+        if ($variant && $variant->stock_default <= 0) {
+            return $this->errorResponse(
+                'Товар закончился на складе',
+                'out_of_stock',
+                'variant_id',
+                422
+            );
+        }
+
+        // Цена: если передан variant_id — берём цену варианта; иначе кастомную или из первого варианта
+        $price = $variant
+            ? (float) ($variant->price_default ?? $storeProduct->getDisplayPrice())
+            : $storeProduct->getDisplayPrice();
+
+        // Ключ корзины — учитываем вариант, чтобы разные варианты хранились отдельно
+        $cartKey = $variant
+            ? "{$storeProduct->id}_v{$variant->id}"
+            : (string) $storeProduct->id;
+
+        $cart = $this->getCart($store);
+
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['quantity'] += $quantity;
         } else {
-            $cart[$productKey] = [
+            $variantLabel = $variant?->option_values_summary ?? $variant?->sku ?? null;
+            $cart[$cartKey] = [
                 'product_id' => $storeProduct->id,
-                'quantity' => $quantity,
-                'name' => $storeProduct->getDisplayName(),
-                'price' => $storeProduct->getDisplayPrice(),
-                'image' => $storeProduct->product->mainImage?->url ?? null,
+                'variant_id' => $variant?->id,
+                'quantity'   => $quantity,
+                'name'       => $storeProduct->getDisplayName() . ($variantLabel ? " ({$variantLabel})" : ''),
+                'price'      => $price,
+                'image'      => $storeProduct->product->mainImage?->url ?? null,
             ];
         }
 

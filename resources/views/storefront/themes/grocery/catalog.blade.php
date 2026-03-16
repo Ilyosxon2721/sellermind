@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -182,6 +184,9 @@
                         $mainImage = $product->mainImage;
                         $displayName = $storeProduct->getDisplayName();
                         $displayPrice = $storeProduct->getDisplayPrice();
+                        $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                        $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                        $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                     @endphp
                     <div class="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
                         <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -200,11 +205,18 @@
                                         </svg>
                                     </div>
                                 @endif
-                                @if($storeProduct->is_featured)
-                                    <span class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm" style="background: var(--accent);">
-                                        Хит
-                                    </span>
-                                @endif
+                                <div class="absolute top-3 left-3 flex flex-col gap-1">
+                                    @if($hasDiscount)
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-bold text-white shadow-sm bg-red-500">
+                                            -{{ $discountPercent }}%
+                                        </span>
+                                    @endif
+                                    @if($storeProduct->is_featured && !$hasDiscount)
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm" style="background: var(--accent);">
+                                            Хит
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </a>
 
@@ -214,10 +226,17 @@
                                     {{ $displayName }}
                                 </h3>
                             </a>
-                            <div class="flex items-center justify-between mt-3">
+                            <div class="flex items-center justify-between mt-3 gap-2 flex-wrap">
+                                <div class="flex items-baseline gap-2 flex-wrap">
                                 <span class="text-lg sm:text-xl font-bold" style="color: var(--primary);">
                                     {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                 </span>
+                                @if($hasDiscount)
+                                    <span class="text-xs text-gray-400 line-through">
+                                        {{ number_format((float)$oldPrice, 0, '.', ' ') }} {{ $currency }}
+                                    </span>
+                                @endif
+                                </div>
                                 @if($store->theme->show_add_to_cart ?? true)
                                     <button
                                         @click="addToCart({{ $storeProduct->id }})"

@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Оплата прошла успешно — ' . $store->name)
+
 @section('content')
 <div class="min-h-[60vh] flex items-center justify-center px-4 py-16">
     <div class="bg-white border border-gray-200 rounded-lg p-8 max-w-md w-full text-center">
