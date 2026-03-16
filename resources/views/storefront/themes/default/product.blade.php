@@ -1,6 +1,5 @@
-﻿@extends('storefront.layouts.app')
+@extends('storefront.layouts.app')
 
-@section('content')
 @php
     $theme = $store->theme;
     $currency = $store->currency ?? 'сум';
@@ -10,8 +9,39 @@
     $displayName = $storeProduct->getDisplayName();
     $displayPrice = $storeProduct->getDisplayPrice();
     $description = $storeProduct->custom_description ?: $product->description_full ?: $product->description_short;
+    $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+    $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+    $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
 @endphp
 
+@section('page_title', $displayName . ' — ' . $store->name)
+@section('meta_description', Str::limit(strip_tags($description ?? ''), 160))
+@section('og_type', 'product')
+@if($mainImage)
+    @section('og_image', $mainImage->url)
+@endif
+
+@push('structured_data')
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": @json($displayName),
+    "description": @json(Str::limit(strip_tags($description ?? ''), 300)),
+    @if($mainImage)
+    "image": @json($mainImage->url),
+    @endif
+    "offers": {
+        "@type": "Offer",
+        "price": {{ $displayPrice }},
+        "priceCurrency": "UZS",
+        "availability": "https://schema.org/InStock"
+    }
+}
+</script>
+@endpush
+
+@section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
     {{-- Хлебные крошки --}}
     <nav class="mb-6 text-sm text-gray-500">
@@ -29,7 +59,7 @@
         {{-- Галерея изображений --}}
         <div class="space-y-4">
             {{-- Главное изображение --}}
-            <div class="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden">
+            <div class="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden group cursor-zoom-in">
                 @if($images->isNotEmpty())
                     @foreach($images as $index => $image)
                         <img
@@ -39,7 +69,7 @@
                             x-transition:enter-end="opacity-100"
                             src="{{ $image->url }}"
                             alt="{{ $image->alt_text ?? $displayName }}"
-                            class="absolute inset-0 w-full h-full object-contain"
+                            class="absolute inset-0 w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
                         >
                     @endforeach
                 @else
@@ -48,6 +78,35 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
                     </div>
+                @endif
+
+                {{-- Бейдж скидки --}}
+                @if($hasDiscount)
+                    <span class="absolute top-4 left-4 px-3 py-1.5 rounded-xl text-sm font-bold bg-red-500 text-white z-10">
+                        -{{ $discountPercent }}%
+                    </span>
+                @endif
+
+                {{-- Стрелки навигации по изображениям --}}
+                @if($images->count() > 1)
+                    <button
+                        @click="activeImage = (activeImage - 1 + {{ $images->count() }}) % {{ $images->count() }}"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 hover:bg-white transition-colors opacity-0 group-hover:opacity-100 z-10"
+                        aria-label="Предыдущее фото"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <button
+                        @click="activeImage = (activeImage + 1) % {{ $images->count() }}"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 hover:bg-white transition-colors opacity-0 group-hover:opacity-100 z-10"
+                        aria-label="Следующее фото"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
                 @endif
             </div>
 
@@ -58,7 +117,7 @@
                         <button
                             @click="activeImage = {{ $index }}"
                             class="shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all duration-200"
-                            :class="activeImage === {{ $index }} ? 'border-(--primary) ring-2 ring-(--primary)/20' : 'border-gray-200 hover:border-gray-300'"
+                            :class="activeImage === {{ $index }} ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200 hover:border-gray-300'"
                         >
                             <img
                                 src="{{ $image->url }}"
@@ -84,19 +143,17 @@
             </div>
 
             {{-- Цена --}}
-            <div class="flex items-baseline gap-3">
+            <div class="flex items-baseline gap-3 flex-wrap">
                 <span class="text-3xl font-bold" style="color: var(--primary);">
                     {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                 </span>
-                @if($storeProduct->custom_old_price || ($storeProduct->custom_price && $product->variants->isNotEmpty()))
-                    @php
-                        $originalPrice = $storeProduct->custom_old_price ?: $product->variants->first()?->price_default;
-                    @endphp
-                    @if($originalPrice && (float)$originalPrice > $displayPrice)
-                        <span class="text-lg text-gray-400 line-through">
-                            {{ number_format($originalPrice, 0, '.', ' ') }} {{ $currency }}
-                        </span>
-                    @endif
+                @if($hasDiscount)
+                    <span class="text-lg text-gray-400 line-through">
+                        {{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-lg text-sm font-semibold bg-red-100 text-red-600">
+                        -{{ $discountPercent }}%
+                    </span>
                 @endif
             </div>
 
@@ -131,13 +188,14 @@
             @endif
 
             {{-- Количество + Корзина --}}
-            <div class="border-t border-gray-100 pt-6 space-y-4">
+            <div class="border-t border-gray-100 pt-6 space-y-4" data-add-to-cart-area>
                 <div class="flex items-center gap-4">
                     <span class="text-sm font-medium text-gray-700">Количество:</span>
                     <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                         <button
                             @click="quantity > 1 ? quantity-- : null"
                             class="w-11 h-11 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
+                            aria-label="Уменьшить"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
@@ -153,6 +211,7 @@
                         <button
                             @click="quantity < 99 ? quantity++ : null"
                             class="w-11 h-11 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
+                            aria-label="Увеличить"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -161,26 +220,41 @@
                     </div>
                 </div>
 
-                <button
-                    @click="addToCart()"
-                    :disabled="loading"
-                    class="w-full sm:w-auto btn-primary px-10 py-3.5 rounded-xl text-base font-semibold flex items-center justify-center gap-3 disabled:opacity-50 transition-all duration-200 hover:shadow-lg"
-                >
-                    <template x-if="!loading">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                <div class="flex gap-3">
+                    <button
+                        @click="addToCart()"
+                        :disabled="loading"
+                        data-add-to-cart-btn
+                        class="flex-1 sm:flex-none btn-primary px-10 py-3.5 rounded-xl text-base font-semibold flex items-center justify-center gap-3 disabled:opacity-50 transition-all duration-200 hover:shadow-lg"
+                    >
+                        <template x-if="!loading">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                </svg>
+                                Добавить в корзину
+                            </span>
+                        </template>
+                        <template x-if="loading">
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                             </svg>
-                            Добавить в корзину
-                        </span>
-                    </template>
-                    <template x-if="loading">
-                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </template>
+                    </button>
+
+                    {{-- Поделиться --}}
+                    <button
+                        @click="shareProduct()"
+                        class="w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors shrink-0"
+                        aria-label="Поделиться"
+                        title="Поделиться"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                         </svg>
-                    </template>
-                </button>
+                    </button>
+                </div>
             </div>
 
             {{-- Доставка --}}
@@ -214,12 +288,60 @@
     </div>
 </div>
 
+{{-- Sticky кнопка "Добавить в корзину" на мобильных --}}
+<div
+    x-data="{ show: false }"
+    x-init="
+        const observer = new IntersectionObserver(([e]) => { show = !e.isIntersecting }, { threshold: 0 });
+        const target = document.querySelector('[data-add-to-cart-area]');
+        if (target) observer.observe(target);
+    "
+    x-show="show"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="translate-y-full"
+    x-transition:enter-end="translate-y-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="translate-y-0"
+    x-transition:leave-end="translate-y-full"
+    x-cloak
+    class="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white border-t border-gray-200 px-4 py-3 shadow-lg"
+>
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <span class="text-lg font-bold" style="color: var(--primary);">{{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}</span>
+            @if($hasDiscount)
+                <span class="text-sm text-gray-400 line-through ml-2">{{ number_format($oldPrice, 0, '.', ' ') }}</span>
+            @endif
+        </div>
+        <button
+            onclick="document.querySelector('[data-add-to-cart-btn]')?.click()"
+            class="btn-primary px-6 py-3 rounded-xl text-sm font-semibold flex items-center gap-2"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+            В корзину
+        </button>
+    </div>
+</div>
+
 <script>
     function productPage() {
         return {
             activeImage: 0,
             quantity: 1,
             loading: false,
+
+            init() {
+                // Навигация по изображениям клавишами
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        this.activeImage = (this.activeImage - 1 + {{ $images->count() ?: 1 }}) % {{ $images->count() ?: 1 }};
+                    } else if (e.key === 'ArrowRight') {
+                        this.activeImage = (this.activeImage + 1) % {{ $images->count() ?: 1 }};
+                    }
+                });
+            },
 
             async addToCart() {
                 this.loading = true;
@@ -255,6 +377,19 @@
                     }));
                 } finally {
                     this.loading = false;
+                }
+            },
+
+            shareProduct() {
+                const url = window.location.href;
+                if (navigator.share) {
+                    navigator.share({ title: '{{ addslashes($displayName) }}', url: url });
+                } else if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        window.dispatchEvent(new CustomEvent('show-toast', {
+                            detail: { message: 'Ссылка скопирована', type: 'success' }
+                        }));
+                    });
                 }
             }
         }

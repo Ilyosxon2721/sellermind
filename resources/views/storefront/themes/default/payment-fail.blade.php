@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Ошибка оплаты — ' . $store->name)
+
 @section('content')
 <div class="min-h-[60vh] flex items-center justify-center px-4">
     <div class="text-center max-w-md">
@@ -17,7 +19,7 @@
             </div>
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="/store/{{ $store->slug }}/order/{{ $order->order_number }}"
-                   class="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-xl font-medium hover:opacity-90 transition-opacity">
+                   class="inline-flex items-center justify-center px-6 py-3 btn-primary rounded-xl font-medium">
                     Перейти к заказу
                 </a>
                 <a href="/store/{{ $store->slug }}"
@@ -25,9 +27,27 @@
                     Вернуться в магазин
                 </a>
             </div>
+
+            @if($store->phone || $store->telegram)
+                <div class="mt-6 pt-4 border-t border-gray-100">
+                    <p class="text-sm text-gray-500 mb-2">Нужна помощь?</p>
+                    <div class="flex items-center justify-center gap-3">
+                        @if($store->phone)
+                            <a href="tel:{{ $store->phone }}" class="text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+                                {{ $store->phone }}
+                            </a>
+                        @endif
+                        @if($store->telegram)
+                            <a href="https://t.me/{{ $store->telegram }}" target="_blank" rel="noopener" class="text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+                                Telegram
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            @endif
         @else
             <a href="/store/{{ $store->slug }}"
-               class="inline-flex items-center px-6 py-3 bg-primary text-white rounded-xl font-medium hover:opacity-90 transition-opacity">
+               class="inline-flex items-center px-6 py-3 btn-primary rounded-xl font-medium">
                 Вернуться в магазин
             </a>
         @endif

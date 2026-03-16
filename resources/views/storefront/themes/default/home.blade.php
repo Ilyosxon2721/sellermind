@@ -1,4 +1,6 @@
-﻿@extends('storefront.layouts.app')
+@extends('storefront.layouts.app')
+
+@section('page_title', ($store->theme->hero_title ?? $store->name) . ' — ' . $store->name)
 
 @section('content')
 @php
@@ -16,7 +18,7 @@
             </div>
         @endif
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
-            <div class="max-w-2xl">
+            <div class="max-w-2xl animate-fade-in-up">
                 <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
                     {{ $theme->hero_title ?? $store->name }}
                 </h1>
@@ -29,11 +31,11 @@
                     <div class="mt-8">
                         <a
                             href="{{ $theme->hero_button_url ?? '/store/' . $store->slug . '/catalog' }}"
-                            class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white font-semibold text-base transition-all duration-200 hover:shadow-lg hover:scale-105"
+                            class="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white font-semibold text-base transition-all duration-200 hover:shadow-lg hover:scale-105 group"
                             style="color: var(--primary);"
                         >
                             {{ $theme->hero_button_text }}
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                             </svg>
                         </a>
@@ -49,6 +51,8 @@
     <section
         x-data="bannerCarousel()"
         x-init="startAutoplay()"
+        @mouseenter="stopAutoplay()"
+        @mouseleave="startAutoplay()"
         class="relative overflow-hidden"
     >
         <div class="relative">
@@ -73,7 +77,6 @@
                     @if($banner->url)<a href="{{ $banner->url }}" class="block">@endif
 
                     @switch($mode)
-                        {{-- OVERLAY: текст поверх изображения --}}
                         @case('overlay')
                         @default
                             <div class="relative aspect-[3/1] sm:aspect-[4/1]">
@@ -103,7 +106,6 @@
                             </div>
                             @break
 
-                        {{-- SPLIT: изображение + текст 50/50 --}}
                         @case('split')
                             <div class="flex flex-col sm:flex-row" style="min-height: 200px">
                                 <div class="w-full sm:w-1/2 aspect-video sm:aspect-auto">
@@ -130,7 +132,6 @@
                             </div>
                             @break
 
-                        {{-- IMAGE_ONLY: только изображение --}}
                         @case('image_only')
                             <div class="relative aspect-[3/1] sm:aspect-[4/1]">
                                 <picture>
@@ -142,7 +143,6 @@
                             </div>
                             @break
 
-                        {{-- TEXT_BELOW: изображение сверху, текст снизу --}}
                         @case('text_below')
                             <div>
                                 <div class="aspect-[3/1] sm:aspect-[4/1]">
@@ -183,6 +183,7 @@
                         @click="goTo({{ $index }})"
                         class="w-2.5 h-2.5 rounded-full transition-all duration-300"
                         :class="current === {{ $index }} ? 'bg-white w-7' : 'bg-white/50 hover:bg-white/75'"
+                        aria-label="Баннер {{ $index + 1 }}"
                     ></button>
                 @endforeach
             </div>
@@ -190,6 +191,7 @@
             <button
                 @click="prev()"
                 class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                aria-label="Предыдущий баннер"
             >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -198,6 +200,7 @@
             <button
                 @click="next()"
                 class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                aria-label="Следующий баннер"
             >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -213,9 +216,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between mb-8">
                 <h2 class="text-2xl sm:text-3xl font-bold">Категории</h2>
-                <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+                <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity group flex items-center gap-1" style="color: var(--primary);">
                     Все категории
-                    <svg class="inline w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 </a>
@@ -239,8 +242,8 @@
                             </span>
                         @else
                             <div class="text-center p-4">
-                                <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background: var(--primary); opacity: 0.1;">
-                                    <svg class="w-6 h-6" style="color: var(--primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center bg-primary/10">
+                                    <svg class="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                     </svg>
                                 </div>
@@ -262,9 +265,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between mb-8">
                 <h2 class="text-2xl sm:text-3xl font-bold">Рекомендуемые товары</h2>
-                <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+                <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity group flex items-center gap-1" style="color: var(--primary);">
                     Все товары
-                    <svg class="inline w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 </a>
@@ -280,6 +283,9 @@
                         $mainImage = $product->mainImage;
                         $displayName = $storeProduct->getDisplayName();
                         $displayPrice = $storeProduct->getDisplayPrice();
+                        $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                        $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                        $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                     @endphp
                     <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                         <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -298,11 +304,18 @@
                                         </svg>
                                     </div>
                                 @endif
-                                @if($storeProduct->is_featured)
-                                    <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
-                                        Хит
-                                    </span>
-                                @endif
+                                <div class="absolute top-3 left-3 flex flex-col gap-1.5">
+                                    @if($hasDiscount)
+                                        <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
+                                            -{{ $discountPercent }}%
+                                        </span>
+                                    @endif
+                                    @if($storeProduct->is_featured && !$hasDiscount)
+                                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
+                                            Хит
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </a>
 
@@ -312,10 +325,15 @@
                                     {{ $displayName }}
                                 </h3>
                             </a>
-                            <div class="mt-2 flex items-center justify-between">
+                            <div class="mt-2 flex items-baseline gap-2">
                                 <span class="text-lg font-bold" style="color: var(--primary);">
                                     {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                 </span>
+                                @if($hasDiscount)
+                                    <span class="text-sm text-gray-400 line-through">
+                                        {{ number_format($oldPrice, 0, '.', ' ') }}
+                                    </span>
+                                @endif
                             </div>
 
                             @if($store->theme->show_add_to_cart ?? true)
