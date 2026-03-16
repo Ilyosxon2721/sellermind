@@ -76,14 +76,20 @@ final class StoreCatalogController extends Controller
 
         $newProductIds = $validProductIds->diff($existingProductIds);
 
+        // Загрузить цены из вариантов для новых товаров
+        $productPrices = $this->getProductVariantPrices($newProductIds);
+
         $maxPosition = StoreProduct::where('store_id', $store->id)->max('position') ?? 0;
         $created = [];
 
         foreach ($newProductIds as $productId) {
             $maxPosition++;
+            $prices = $productPrices[$productId] ?? [];
             $created[] = StoreProduct::create([
                 'store_id' => $store->id,
                 'product_id' => $productId,
+                'custom_price' => $prices['price'] ?? null,
+                'custom_old_price' => $prices['old_price'] ?? null,
                 'is_visible' => true,
                 'position' => $maxPosition,
             ]);
@@ -109,6 +115,7 @@ final class StoreCatalogController extends Controller
             'custom_name' => ['nullable', 'string', 'max:255'],
             'custom_description' => ['nullable', 'string'],
             'custom_price' => ['nullable', 'numeric', 'min:0'],
+            'custom_old_price' => ['nullable', 'numeric', 'min:0'],
             'is_visible' => ['sometimes', 'boolean'],
             'is_featured' => ['sometimes', 'boolean'],
             'position' => ['nullable', 'integer', 'min:0'],
@@ -147,22 +154,47 @@ final class StoreCatalogController extends Controller
 
         $newProductIds = $companyProductIds->diff($existingProductIds);
 
+        // Загрузить цены для всех товаров компании
+        $productPrices = $this->getProductVariantPrices($companyProductIds);
+
+        // Добавить новые товары с ценами
         $maxPosition = StoreProduct::where('store_id', $store->id)->max('position') ?? 0;
         $addedCount = 0;
 
         foreach ($newProductIds as $productId) {
             $maxPosition++;
+            $prices = $productPrices[$productId] ?? [];
             StoreProduct::create([
                 'store_id' => $store->id,
                 'product_id' => $productId,
+                'custom_price' => $prices['price'] ?? null,
+                'custom_old_price' => $prices['old_price'] ?? null,
                 'is_visible' => true,
                 'position' => $maxPosition,
             ]);
             $addedCount++;
         }
 
+        // Обновить цены существующих товаров
+        $updatedCount = 0;
+        $existingStoreProducts = StoreProduct::where('store_id', $store->id)
+            ->whereIn('product_id', $existingProductIds)
+            ->get();
+
+        foreach ($existingStoreProducts as $sp) {
+            $prices = $productPrices[$sp->product_id] ?? [];
+            if (! empty($prices)) {
+                $sp->update([
+                    'custom_price' => $prices['price'] ?? $sp->custom_price,
+                    'custom_old_price' => $prices['old_price'] ?? $sp->custom_old_price,
+                ]);
+                $updatedCount++;
+            }
+        }
+
         return $this->successResponse([
             'added' => $addedCount,
+            'updated' => $updatedCount,
             'total' => StoreProduct::where('store_id', $store->id)->count(),
         ]);
     }
@@ -248,6 +280,31 @@ final class StoreCatalogController extends Controller
         $storeCategory->delete();
 
         return $this->successResponse(['message' => 'Категория убрана из магазина']);
+    }
+
+    /**
+     * Получить цены из первого варианта товаров
+     *
+     * @return array<int, array{price: float|null, old_price: float|null}>
+     */
+    private function getProductVariantPrices($productIds): array
+    {
+        $products = Product::whereIn('id', $productIds)
+            ->with('variants:id,product_id,price_default,old_price_default')
+            ->get(['id']);
+
+        $prices = [];
+        foreach ($products as $product) {
+            $firstVariant = $product->variants->first();
+            if ($firstVariant) {
+                $prices[$product->id] = [
+                    'price' => $firstVariant->price_default ? (float) $firstVariant->price_default : null,
+                    'old_price' => $firstVariant->old_price_default ? (float) $firstVariant->old_price_default : null,
+                ];
+            }
+        }
+
+        return $prices;
     }
 
     /**

@@ -318,10 +318,18 @@
                                         {{ $displayName }}
                                     </h3>
                                 </a>
-                                <div class="mt-2.5">
+                                <div class="mt-2.5 flex items-baseline gap-2 flex-wrap">
                                     <span class="text-lg font-bold" style="color: var(--primary);">
                                         {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
+                                    @php
+                                        $oldPrice = $storeProduct->custom_old_price ?: ($product->variants->first()?->old_price_default);
+                                    @endphp
+                                    @if($oldPrice && (float)$oldPrice > $displayPrice)
+                                        <span class="text-xs text-gray-300 line-through">
+                                            {{ number_format((float)$oldPrice, 0, '.', ' ') }} {{ $currency }}
+                                        </span>
+                                    @endif
                                 </div>
 
                                 @if($store->theme->show_add_to_cart ?? true)

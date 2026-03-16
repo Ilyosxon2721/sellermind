@@ -87,9 +87,9 @@
                 <span class="text-3xl sm:text-4xl font-bold" style="color: var(--primary);">
                     {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                 </span>
-                @if($storeProduct->custom_price && $product->variants->isNotEmpty())
+                @if($storeProduct->custom_old_price || ($storeProduct->custom_price && $product->variants->isNotEmpty()))
                     @php
-                        $originalPrice = $product->variants->first()?->price;
+                        $originalPrice = $storeProduct->custom_old_price ?: $product->variants->first()?->price_default;
                     @endphp
                     @if($originalPrice && (float)$originalPrice > $displayPrice)
                         <span class="text-lg text-gray-300 line-through">

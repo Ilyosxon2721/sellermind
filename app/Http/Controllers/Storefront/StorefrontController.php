@@ -29,6 +29,7 @@ final class StorefrontController extends Controller
                 'activeBanners',
                 'visibleCategories.category',
                 'featuredProducts.product.mainImage',
+                'featuredProducts.product.variants:id,product_id,price_default,old_price_default',
             ])
             ->firstOrFail();
 

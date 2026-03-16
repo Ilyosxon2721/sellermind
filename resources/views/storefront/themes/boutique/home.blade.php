@@ -261,9 +261,19 @@
                                     {{ $displayName }}
                                 </h3>
                             </a>
-                            <p class="text-xl font-bold mt-3" style="color: var(--primary);">
-                                {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                            </p>
+                            <div class="mt-3 flex items-baseline gap-2">
+                                <span class="text-xl font-bold" style="color: var(--primary);">
+                                    {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
+                                </span>
+                                @php
+                                    $oldPrice = $storeProduct->custom_old_price ?: ($product->variants->first()?->old_price_default);
+                                @endphp
+                                @if($oldPrice && (float)$oldPrice > $displayPrice)
+                                    <span class="text-sm text-gray-300 line-through">
+                                        {{ number_format((float)$oldPrice, 0, '.', ' ') }} {{ $currency }}
+                                    </span>
+                                @endif
+                            </div>
 
                             @if($store->theme->show_add_to_cart ?? true)
                                 <button

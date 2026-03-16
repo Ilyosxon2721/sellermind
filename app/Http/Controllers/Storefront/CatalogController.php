@@ -52,12 +52,15 @@ final class CatalogController extends Controller
             });
         }
 
-        // Фильтр по цене
+        // Фильтр по цене (через custom_price или price_default первого варианта)
         if ($priceMin = $request->input('price_min')) {
             $query->where(function ($q) use ($priceMin) {
                 $q->where('custom_price', '>=', (float) $priceMin)
-                    ->orWhereHas('product', function ($pq) use ($priceMin) {
-                        $pq->where('price', '>=', (float) $priceMin);
+                    ->orWhere(function ($q2) use ($priceMin) {
+                        $q2->whereNull('custom_price')
+                            ->whereHas('product.variants', function ($vq) use ($priceMin) {
+                                $vq->where('price_default', '>=', (float) $priceMin);
+                            });
                     });
             });
         }
@@ -67,8 +70,8 @@ final class CatalogController extends Controller
                 $q->where('custom_price', '<=', (float) $priceMax)
                     ->orWhere(function ($q2) use ($priceMax) {
                         $q2->whereNull('custom_price')
-                            ->whereHas('product', function ($pq) use ($priceMax) {
-                                $pq->where('price', '<=', (float) $priceMax);
+                            ->whereHas('product.variants', function ($vq) use ($priceMax) {
+                                $vq->where('price_default', '<=', (float) $priceMax);
                             });
                     });
             });
@@ -136,6 +139,14 @@ final class CatalogController extends Controller
             ->where('is_published', true)
             ->with('theme')
             ->firstOrFail();
+    }
+
+    /**
+     * Экранирование спецсимволов LIKE
+     */
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
     /**
