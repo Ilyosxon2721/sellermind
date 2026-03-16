@@ -339,6 +339,11 @@ class SaleService
                 ]);
             }
 
+            // Удаляем долг контрагента если был создан
+            FinanceDebt::where('source_type', Sale::class)
+                ->where('source_id', $sale->id)
+                ->delete();
+
             if (! $sale->cancel()) {
                 throw new \Exception('Cannot cancel sale with status: '.$sale->status);
             }
@@ -347,6 +352,7 @@ class SaleService
                 'sale_id' => $sale->id,
                 'sale_number' => $sale->sale_number,
                 'reservations_cancelled' => $results['success'],
+                'debt_deleted' => true,
             ]);
 
             return $sale->fresh(['items']);

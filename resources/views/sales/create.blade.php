@@ -204,9 +204,13 @@
                                                 <!-- Количество -->
                                                 <div>
                                                     <label class="text-xs text-gray-500">Количество *</label>
-                                                    <input type="number" step="0.001" min="0.001" class="form-input"
+                                                    <input type="number" step="0.001" min="0.001"
+                                                           :max="item.available_stock || 999999"
+                                                           class="form-input"
+                                                           :class="item.quantity > (item.available_stock || 999999) ? 'border-red-500 bg-red-50' : ''"
                                                            x-model.number="item.quantity"
                                                            @input="recalculateItem(index)">
+                                                    <p x-show="item.quantity > (item.available_stock || 999999)" class="text-xs text-red-600 mt-1">Превышает остаток!</p>
                                                 </div>
 
                                                 <!-- Цена продажи -->
@@ -694,6 +698,11 @@ function saleCreatePage() {
 
         recalculateItem(index) {
             const item = this.sale.items[index];
+            // Валидация: не больше доступного остатка
+            if (item.available_stock !== undefined && item.quantity > item.available_stock) {
+                item.quantity = item.available_stock;
+                alert(`Недостаточно остатков. Доступно: ${item.available_stock} шт`);
+            }
             item.subtotal = item.quantity * item.unit_price;
             item.discount_amount = item.subtotal * (item.discount_percent / 100);
             const afterDiscount = item.subtotal - item.discount_amount;
@@ -739,7 +748,9 @@ function saleCreatePage() {
 
         async confirmSale() {
             if (!confirm('Подтвердить продажу и зарезервировать товары?')) return;
+            this._confirmingAfterSave = true;
             const saleId = await this.saveSale('draft');
+            this._confirmingAfterSave = false;
             if (saleId) {
                 await this.confirmSaleAPI(saleId);
             }
@@ -783,8 +794,13 @@ function saleCreatePage() {
 
                 if (resp.ok) {
                     const data = await resp.json();
-                    alert('Продажа сохранена');
-                    return data.data.id;
+                    const saleId = data.data.id;
+                    // Если просто черновик (не confirmSale), сразу переходим
+                    if (status === 'draft' && !this._confirmingAfterSave) {
+                        window.location.href = '/sales/' + saleId;
+                        return saleId;
+                    }
+                    return saleId;
                 } else {
                     const error = await resp.json();
                     console.error('Save sale error response:', error);
@@ -813,8 +829,8 @@ function saleCreatePage() {
                 });
 
                 if (resp.ok) {
-                    alert('Продажа подтверждена! Товары зарезервированы.');
-                    window.location.href = '/sales';
+                    this.saving = true; // Блокируем повторные нажатия до redirect
+                    window.location.href = '/sales/' + saleId;
                 } else {
                     const error = await resp.json();
                     console.error('Confirm sale error response:', error);
@@ -964,7 +980,10 @@ function saleCreatePage() {
                             <div class="grid grid-cols-3 gap-2 mt-3">
                                 <div>
                                     <label class="text-xs text-gray-400">Кол-во</label>
-                                    <input type="number" step="0.001" min="0.001" class="native-input w-full text-sm"
+                                    <input type="number" step="0.001" min="0.001"
+                                           :max="item.available_stock || 999999"
+                                           class="native-input w-full text-sm"
+                                           :class="item.quantity > (item.available_stock || 999999) ? 'border-red-500' : ''"
                                            x-model.number="item.quantity" @input="recalculateItem(index)">
                                 </div>
                                 <div>
