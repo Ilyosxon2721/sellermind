@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', ($store->theme->hero_title ?? $store->name) . ' — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -222,6 +224,9 @@
                         $mainImage = $product->mainImage;
                         $displayName = $storeProduct->getDisplayName();
                         $displayPrice = $storeProduct->getDisplayPrice();
+                        $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                        $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                        $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                     @endphp
                     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-[var(--primary)] transition-colors group">
                         <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -253,9 +258,17 @@
                                 <p class="text-xs text-gray-400 font-mono mt-0.5">{{ $product->article }}</p>
                             @endif
                             <div class="flex items-center justify-between mt-2">
-                                <span class="text-base font-bold font-mono" style="color: var(--primary);">
-                                    {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                                </span>
+                                <div>
+                                    <span class="text-base font-bold font-mono" style="color: var(--primary);">
+                                        {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
+                                    </span>
+                                    @if($hasDiscount)
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-xs text-gray-400 line-through font-mono">{{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}</span>
+                                            <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-mono rounded font-semibold">-{{ $discountPercent }}%</span>
+                                        </div>
+                                    @endif
+                                </div>
                                 @if($store->theme->show_add_to_cart ?? true)
                                     <button
                                         @click="addToCart({{ $storeProduct->id }})"

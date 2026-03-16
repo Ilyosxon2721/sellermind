@@ -762,6 +762,7 @@ Route::prefix('store/{slug}')->group(function () {
     Route::get('/payment/fail', [\App\Http\Controllers\Storefront\PaymentController::class, 'fail'])->name('storefront.payment.fail');
 
     // Storefront API (cart, checkout, payment — JSON endpoints)
+    Route::get('/api/search', [\App\Http\Controllers\Storefront\CatalogController::class, 'search']);
     Route::get('/api/cart', [\App\Http\Controllers\Storefront\CartController::class, 'show']);
     Route::post('/api/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add']);
     Route::put('/api/cart/update', [\App\Http\Controllers\Storefront\CartController::class, 'update']);
@@ -770,7 +771,11 @@ Route::prefix('store/{slug}')->group(function () {
     Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
     Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
     Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
+    Route::post('/api/quick-order', [\App\Http\Controllers\Storefront\CheckoutController::class, 'quickOrder']);
     Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+
+    // Wishlist page
+    Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');
 });
 
 // Payment webhooks (public, no CSRF)

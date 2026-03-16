@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Ошибка оплаты — ' . $store->name)
+
 @section('content')
 <div class="min-h-[60vh] flex items-center justify-center px-4 py-16">
     <div class="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
@@ -11,8 +13,7 @@
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Ошибка оплаты</h1>
         <p class="text-gray-600 mb-8">К сожалению, оплата не прошла. Попробуйте ещё раз или выберите другой способ оплаты.</p>
         <a href="/store/{{ $store->slug }}"
-           class="inline-flex items-center px-8 py-3 text-white rounded-full font-medium text-sm hover:shadow-lg transition-all"
-           style="background: var(--primary)">
+           class="btn-primary inline-flex items-center px-8 py-3 rounded-full font-medium text-sm hover:shadow-lg transition-all">
             Вернуться в магазин
         </a>
     </div>
