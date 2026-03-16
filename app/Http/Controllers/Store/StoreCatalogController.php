@@ -33,9 +33,20 @@ final class StoreCatalogController extends Controller
         $store = $this->findStore($storeId);
 
         $products = StoreProduct::where('store_id', $store->id)
-            ->with('product:id,name,article,price,image')
+            ->with([
+                'product:id,name,article',
+                'product.mainImage',
+                'product.variants:id,product_id,price_default',
+            ])
             ->orderBy('position')
-            ->get();
+            ->get()
+            ->map(function (StoreProduct $sp) {
+                $product = $sp->product;
+                $sp->setAttribute('name', $product?->name);
+                $sp->setAttribute('image', $product?->mainImage?->file_path);
+                $sp->setAttribute('price', $product?->variants->first()?->price_default);
+                return $sp;
+            });
 
         return $this->successResponse($products);
     }
@@ -105,7 +116,7 @@ final class StoreCatalogController extends Controller
 
         $storeProduct->update($data);
 
-        return $this->successResponse($storeProduct->load('product:id,name,article,price,image'));
+        return $this->successResponse($storeProduct->load(['product:id,name,article', 'product.mainImage']));
     }
 
     /**
