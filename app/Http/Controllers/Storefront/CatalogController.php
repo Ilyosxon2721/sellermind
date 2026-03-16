@@ -256,7 +256,7 @@ final class CatalogController extends Controller
     /**
      * Экранирование спецсимволов LIKE
      */
-    private function escapeLike(string $value): string
+    protected function escapeLike(string $value): string
     {
         return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
