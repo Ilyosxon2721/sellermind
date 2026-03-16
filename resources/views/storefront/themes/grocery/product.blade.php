@@ -45,7 +45,9 @@
     >
         {{-- Галерея изображений --}}
         <div class="space-y-4">
-            <div class="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border-2 border-gray-100">
+            <div class="relative aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border-2 border-gray-100 cursor-zoom-in"
+                @click="$dispatch('open-lightbox', { images: @js($images->map(fn($img) => ['url' => $img->url, 'alt' => $img->alt_text ?? $displayName])->values()), startIndex: activeImage })"
+            >
                 @if($images->isNotEmpty())
                     @foreach($images as $index => $image)
                         <img
@@ -180,6 +182,25 @@
                         </svg>
                     </template>
                 </button>
+
+                {{-- Купить в 1 клик + Избранное --}}
+                <div class="flex gap-3">
+                    <button
+                        @click="$dispatch('buy-one-click', { productId: {{ $storeProduct->id }}, variantId: null, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, image: '{{ $mainImage?->url }}', slug: '{{ $store->slug }}', quantity: quantity })"
+                        class="btn-outline-primary px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        В 1 клик
+                    </button>
+                    <button
+                        @click="$store.wishlist?.toggle({ id: {{ $storeProduct->id }}, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, oldPrice: {{ $hasDiscount ? (float)$oldPrice : 'null' }}, image: '{{ $mainImage?->url }}', url: '/store/{{ $store->slug }}/product/{{ $storeProduct->id }}' })"
+                        class="w-12 h-12 rounded-full border-2 border-gray-100 flex items-center justify-center transition-colors shrink-0"
+                        :class="$store.wishlist?.has({{ $storeProduct->id }}) ? 'text-red-500 border-red-200 bg-red-50' : 'text-gray-400 hover:text-red-500'"
+                        title="В избранное"
+                    >
+                        <svg class="w-5 h-5" :fill="$store.wishlist?.has({{ $storeProduct->id }}) ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    </button>
+                </div>
             </div>
 
             {{-- Описание --}}
@@ -260,6 +281,8 @@
     </div>
 </div>
 
+@include('storefront.components.recently-viewed', ['store' => $store, 'excludeProductId' => $storeProduct->id])
+
 <script>
     function groceryProductPage() {
         return {
@@ -305,5 +328,18 @@
             }
         }
     }
+
+    // Трекинг просмотра товара
+    document.addEventListener('DOMContentLoaded', () => {
+        window.dispatchEvent(new CustomEvent('track-product-view', {
+            detail: {
+                id: {{ $storeProduct->id }},
+                name: @js($displayName),
+                price: {{ $displayPrice }},
+                image: @js($mainImage?->url),
+                url: '/store/{{ $store->slug }}/product/{{ $storeProduct->id }}'
+            }
+        }));
+    });
 </script>
 @endsection

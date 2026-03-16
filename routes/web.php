@@ -771,7 +771,11 @@ Route::prefix('store/{slug}')->group(function () {
     Route::post('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'applyPromocode']);
     Route::delete('/api/cart/promocode', [\App\Http\Controllers\Storefront\CartController::class, 'removePromocode']);
     Route::post('/api/checkout', [\App\Http\Controllers\Storefront\CheckoutController::class, 'store']);
+    Route::post('/api/quick-order', [\App\Http\Controllers\Storefront\CheckoutController::class, 'quickOrder']);
     Route::post('/api/payment/{orderId}/initiate', [\App\Http\Controllers\Storefront\PaymentController::class, 'initiate']);
+
+    // Wishlist page
+    Route::get('/wishlist', [\App\Http\Controllers\Storefront\StorefrontController::class, 'wishlist'])->name('storefront.wishlist');
 });
 
 // Payment webhooks (public, no CSRF)

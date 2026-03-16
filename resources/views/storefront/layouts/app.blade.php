@@ -161,6 +161,12 @@
 
     @include('storefront.components.footer', ['store' => $store])
 
+    {{-- Глобальные компоненты --}}
+    @include('storefront.components.wishlist-manager', ['store' => $store])
+    @include('storefront.components.quick-view-modal', ['store' => $store])
+    @include('storefront.components.lightbox')
+    @include('storefront.components.buy-one-click', ['store' => $store])
+
     {{-- Глобальное уведомление (toast) --}}
     <div
         x-data="toastNotification()"

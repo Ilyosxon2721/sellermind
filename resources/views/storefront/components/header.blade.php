@@ -192,6 +192,20 @@
                             </svg>
                         </button>
                     @endif
+
+                    {{-- Избранное --}}
+                    <a href="/store/{{ $store->slug }}/wishlist" class="relative p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Избранное">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                        <span
+                            x-show="$store.wishlist && $store.wishlist.count > 0"
+                            x-text="$store.wishlist?.count || 0"
+                            class="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-xs flex items-center justify-center font-bold"
+                            style="background: var(--accent);"
+                        ></span>
+                    </a>
+
                     @if($showCart)
                         <a href="/store/{{ $store->slug }}/cart" class="relative p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Корзина">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,6 +412,22 @@
                     {{ $page->title }}
                 </a>
             @endforeach
+
+            {{-- Избранное (мобильное меню) --}}
+            <div class="pt-2 border-t border-gray-100 mt-2">
+                <a href="/store/{{ $store->slug }}/wishlist" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                    Избранное
+                    <span
+                        x-show="$store.wishlist && $store.wishlist.count > 0"
+                        x-text="'(' + ($store.wishlist?.count || 0) + ')'"
+                        class="font-bold"
+                        style="color: var(--primary);"
+                    ></span>
+                </a>
+            </div>
 
             @if($showCart)
                 <div class="pt-2 border-t border-gray-100 mt-2">

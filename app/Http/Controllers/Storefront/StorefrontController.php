@@ -65,6 +65,21 @@ final class StorefrontController extends Controller
     }
 
     /**
+     * Страница избранного (Wishlist)
+     *
+     * GET /store/{slug}/wishlist
+     */
+    public function wishlist(string $slug): View
+    {
+        $store = $this->getPublishedStore($slug);
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
+
+        $this->trackPageView($store);
+
+        return view('storefront.wishlist', compact('store'));
+    }
+
+    /**
      * Получить опубликованный магазин по slug
      */
     protected function getPublishedStore(string $slug): Store
