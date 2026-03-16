@@ -20,8 +20,6 @@
     $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
 @endphp
 
-@section('page_title', $displayName . ' — ' . $store->name)
-
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
     {{-- Хлебные крошки --}}
     <nav class="mb-6 text-sm text-gray-500 flex items-center gap-2">
