@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -92,6 +94,13 @@
                 </div>
             </div>
         </aside>
+
+        {{-- Счётчик товаров (мобильный) --}}
+        <div class="lg:hidden mb-3">
+            <p class="text-sm text-gray-500">
+                Найдено: <span class="font-medium text-gray-900">{{ $products->total() }}</span> {{ trans_choice('товар|товара|товаров', $products->total()) }}
+            </p>
+        </div>
 
         {{-- Мобильные фильтры (кнопка) --}}
         <div class="lg:hidden flex items-center gap-3 mb-2">
@@ -262,6 +271,9 @@
                             $mainImage = $product->mainImage;
                             $displayName = $storeProduct->getDisplayName();
                             $displayPrice = $storeProduct->getDisplayPrice();
+                            $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                            $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                            $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                         @endphp
                         <div class="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -280,11 +292,18 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
-                                            Хит
-                                        </span>
-                                    @endif
+                                    <div class="absolute top-3 left-3 flex flex-col gap-1.5">
+                                        @if($hasDiscount)
+                                            <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
+                                                -{{ $discountPercent }}%
+                                            </span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold text-white" style="background: var(--accent);">
+                                                Хит
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </a>
 
@@ -294,10 +313,15 @@
                                         {{ $displayName }}
                                     </h3>
                                 </a>
-                                <div class="mt-2">
+                                <div class="mt-2 flex items-baseline gap-2">
                                     <span class="text-lg font-bold" style="color: var(--primary);">
                                         {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
+                                    @if($hasDiscount)
+                                        <span class="text-xs text-gray-400 line-through">
+                                            {{ number_format($oldPrice, 0, '.', ' ') }}
+                                        </span>
+                                    @endif
                                 </div>
 
                                 @if($store->theme->show_add_to_cart ?? true)
@@ -332,6 +356,9 @@
                     <div class="mt-10">
                         {{ $products->withQueryString()->links() }}
                     </div>
+                    <p class="text-center text-sm text-gray-400 mt-4">
+                        Показано {{ $products->firstItem() }}–{{ $products->lastItem() }} из {{ $products->total() }}
+                    </p>
                 @endif
             @else
                 {{-- Пусто --}}

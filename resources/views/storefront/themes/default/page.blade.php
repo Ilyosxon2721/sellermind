@@ -1,5 +1,10 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', $page->title . ' — ' . $store->name)
+@if($page->meta_description ?? null)
+    @section('meta_description', $page->meta_description)
+@endif
+
 @section('content')
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
     {{-- Хлебные крошки --}}
@@ -21,5 +26,21 @@
             {!! $page->content !!}
         </div>
     </article>
+
+    {{-- Навигация --}}
+    <div class="mt-6 flex justify-between">
+        <a href="/store/{{ $store->slug }}" class="inline-flex items-center gap-2 text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            На главную
+        </a>
+        <a href="/store/{{ $store->slug }}/catalog" class="inline-flex items-center gap-2 text-sm font-medium hover:opacity-75 transition-opacity" style="color: var(--primary);">
+            Каталог
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+    </div>
 </div>
 @endsection

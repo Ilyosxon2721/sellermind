@@ -65,7 +65,7 @@
                                 class="w-full px-5 py-3 rounded-2xl border text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200"
                                 :class="errors.customer_phone ? 'border-red-300 bg-red-50/50' : 'border-gray-200'"
                                 style="--tw-ring-color: var(--primary);"
-                                placeholder="+998 XX XXX XX XX"
+                                placeholder="Номер телефона"
                             >
                             <p x-show="errors.customer_phone" x-text="errors.customer_phone" class="mt-1.5 text-xs text-red-500"></p>
                         </div>

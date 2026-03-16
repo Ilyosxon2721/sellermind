@@ -165,19 +165,19 @@
 
                 {{-- Навигация (desktop) --}}
                 <nav class="hidden lg:flex items-center gap-6 mx-8">
-                    <a href="/store/{{ $store->slug }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                    <a href="/store/{{ $store->slug }}" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug) && !request()->is('store/' . $store->slug . '/*') ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}" @if(request()->is('store/' . $store->slug) && !request()->is('store/' . $store->slug . '/*')) style="border-bottom: 2px solid var(--primary); padding-bottom: 2px;" @endif>
                         Главная
                     </a>
-                    <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                    <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug . '/catalog*') ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}" @if(request()->is('store/' . $store->slug . '/catalog*')) style="border-bottom: 2px solid var(--primary); padding-bottom: 2px;" @endif>
                         Каталог
                     </a>
                     @foreach($menuCategories as $cat)
-                        <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                        <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="text-sm font-medium transition-opacity {{ request('category') == $cat->id ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}">
                             {{ $cat->custom_name ?: $cat->category->name }}
                         </a>
                     @endforeach
                     @foreach($menuPages as $page)
-                        <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                        <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug . '/page/' . $page->slug) ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}">
                             {{ $page->title }}
                         </a>
                     @endforeach
@@ -275,19 +275,31 @@
         style="background: var(--header-bg);"
     >
         <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
-            <a href="/store/{{ $store->slug }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+            <a href="/store/{{ $store->slug }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
                 Главная
             </a>
-            <a href="/store/{{ $store->slug }}/catalog" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+            <a href="/store/{{ $store->slug }}/catalog" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
                 Каталог
             </a>
             @foreach($menuCategories as $cat)
-                <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
                     {{ $cat->custom_name ?: $cat->category->name }}
                 </a>
             @endforeach
             @foreach($menuPages as $page)
-                <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
                     {{ $page->title }}
                 </a>
             @endforeach

@@ -92,6 +92,13 @@
                             Корзина
                         </a>
                     </li>
+                    @if(!$footerPages->contains('slug', 'delivery'))
+                        <li>
+                            <a href="/store/{{ $store->slug }}/page/delivery" class="text-sm opacity-70 hover:opacity-100 transition-opacity">
+                                Доставка и оплата
+                            </a>
+                        </li>
+                    @endif
                 </ul>
             </div>
 
@@ -145,6 +152,34 @@
                         </li>
                     @endif
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    {{-- Способы оплаты --}}
+    <div class="border-t border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <span class="text-xs opacity-50">Безопасные платежи</span>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap justify-center">
+                    {{-- UZCARD --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">UZCARD</span>
+                    {{-- Humo --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">HUMO</span>
+                    {{-- Visa --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">VISA</span>
+                    {{-- Mastercard --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">MC</span>
+                    {{-- Click --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">CLICK</span>
+                    {{-- Payme --}}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-white/10 text-[10px] font-bold tracking-wider opacity-60">PAYME</span>
+                </div>
             </div>
         </div>
     </div>

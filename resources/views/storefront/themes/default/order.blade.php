@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Заказ ' . $order->order_number . ' — ' . $store->name)
+
 @section('content')
 @php
     $currency = $store->currency ?? 'сум';
@@ -38,8 +40,8 @@
     {{-- Успешное оформление --}}
     @if($order->status === 'new')
         <div class="text-center mb-10">
-            <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5" style="background: var(--primary); opacity: 0.1;">
-                <svg class="w-10 h-10" style="color: var(--primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5 bg-primary/10 animate-checkmark">
+                <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
             </div>
@@ -202,6 +204,21 @@
             </div>
         </div>
 
+        {{-- Отменён --}}
+        @if($order->status === 'cancelled')
+            <div class="bg-red-50 border border-red-100 rounded-2xl p-6">
+                <div class="flex items-start gap-3">
+                    <svg class="w-6 h-6 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <div>
+                        <h3 class="text-sm font-semibold text-red-800">Заказ отменён</h3>
+                        <p class="text-sm text-red-600 mt-1">Если у вас есть вопросы, свяжитесь с нами.</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Кнопки --}}
         <div class="flex flex-col sm:flex-row gap-3">
             <a
@@ -216,6 +233,26 @@
             >
                 Продолжить покупки
             </a>
+            @if($store->phone || $store->telegram)
+                @if($store->telegram)
+                    <a
+                        href="https://t.me/{{ $store->telegram }}"
+                        target="_blank"
+                        rel="noopener"
+                        class="px-8 py-3 rounded-xl text-center text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                        Связаться
+                    </a>
+                @elseif($store->phone)
+                    <a
+                        href="tel:{{ $store->phone }}"
+                        class="px-8 py-3 rounded-xl text-center text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                        Позвонить
+                    </a>
+                @endif
+            @endif
         </div>
     </div>
 </div>
