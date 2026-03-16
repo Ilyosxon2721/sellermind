@@ -440,9 +440,14 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-1 left-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded font-mono uppercase">HIT</span>
-                                    @endif
+                                    <div class="absolute top-1 left-1 flex flex-col gap-0.5">
+                                        @if($hasDiscount)
+                                            <span class="px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded font-mono font-semibold">-{{ $discountPercent }}%</span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded font-mono uppercase">HIT</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </a>
                             <div class="flex-1 p-3 flex flex-col justify-between min-w-0">

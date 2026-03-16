@@ -13,8 +13,7 @@
         <h1 class="text-xl font-bold text-gray-900 mb-2 font-mono">ОШИБКА ОПЛАТЫ</h1>
         <p class="text-sm text-gray-600 mb-6">К сожалению, оплата не прошла. Попробуйте ещё раз или выберите другой способ оплаты.</p>
         <a href="/store/{{ $store->slug }}"
-           class="inline-flex items-center px-6 py-2.5 text-sm font-medium text-white rounded-lg transition-colors"
-           style="background: var(--primary)">
+           class="btn-primary inline-flex items-center px-6 py-2.5 text-sm font-medium rounded-lg transition-colors">
             Вернуться в магазин
         </a>
     </div>
