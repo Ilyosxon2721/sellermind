@@ -24,12 +24,12 @@ trait NotifiesMarketplaceOrder
         string $currency,
     ): void {
         try {
-            // Дедупликация: не отправлять повторно для того же заказа (10 мин кэш)
+            // Дедупликация: не отправлять повторно для того же заказа (24 часа кэш)
             $cacheKey = "notify:new:{$marketplace}:{$orderNumber}";
             if (Cache::has($cacheKey)) {
                 return;
             }
-            Cache::put($cacheKey, true, 600);
+            Cache::put($cacheKey, true, 86400);
 
             $account = $order->account;
             if (! $account) {
@@ -72,12 +72,12 @@ trait NotifiesMarketplaceOrder
     protected function notifySubscribers(Model $order, string $marketplace, string $status): void
     {
         try {
-            // Дедупликация: не отправлять повторно для того же заказа+статуса (10 мин кэш)
+            // Дедупликация: не отправлять повторно для того же заказа+статуса (24 часа кэш)
             $cacheKey = "notify:sub:{$marketplace}:{$order->id}:{$status}";
             if (Cache::has($cacheKey)) {
                 return;
             }
-            Cache::put($cacheKey, true, 600);
+            Cache::put($cacheKey, true, 86400);
 
             $account = $order->account;
             if (! $account) {
