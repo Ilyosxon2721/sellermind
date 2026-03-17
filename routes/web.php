@@ -551,9 +551,34 @@ Route::middleware('auth.any')->group(function () {
 
         $products = $query->paginate((int) $request->get('per_page', 50));
 
-        // Добавить себестоимость к каждому товару
-        $products->getCollection()->transform(function ($product) use ($costPriceMap) {
+        // Загрузить варианты для пагинированных товаров
+        $productIds = collect($products->items())->pluck('id')->toArray();
+        $variantsMap = \DB::table('variant_marketplace_links as vml')
+            ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+            ->whereIn('vml.marketplace_product_id', $productIds)
+            ->select('vml.marketplace_product_id', 'pv.id as variant_id', 'pv.sku', 'pv.option_values_summary', 'pv.purchase_price', 'pv.purchase_price_currency')
+            ->get()
+            ->groupBy('marketplace_product_id');
+
+        // Добавить себестоимость и варианты к каждому товару
+        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings) {
             $product->cost_price = $costPriceMap[$product->id] ?? 0;
+            $product->variants = ($variantsMap->get($product->id) ?? collect())
+                ->map(function ($v) use ($financeSettings) {
+                    $price = (float) ($v->purchase_price ?? 0);
+                    $currency = $v->purchase_price_currency ?? 'UZS';
+                    $costUzs = $price > 0
+                        ? ($currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency))
+                        : 0;
+                    return [
+                        'variant_id' => $v->variant_id,
+                        'sku' => $v->sku,
+                        'option_values_summary' => $v->option_values_summary,
+                        'purchase_price' => $price,
+                        'purchase_price_currency' => $currency,
+                        'cost_price' => $costUzs,
+                    ];
+                })->values()->toArray();
             return $product;
         });
 
