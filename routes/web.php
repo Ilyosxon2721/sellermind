@@ -639,6 +639,39 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.stocks.cost-price');
 
+    // Сохранить себестоимость варианта товара
+    Route::post('/marketplace/stocks/variant-cost-price', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'variant_id' => 'required|integer',
+            'purchase_price' => 'required|numeric|min:0',
+            'purchase_price_currency' => 'nullable|string|in:UZS,USD,RUB,EUR',
+        ]);
+
+        $user = auth()->user();
+        $variant = \App\Models\ProductVariant::where('id', $request->variant_id)
+            ->where('company_id', $user->company_id)
+            ->firstOrFail();
+
+        $variant->update([
+            'purchase_price' => $request->purchase_price,
+            'purchase_price_currency' => $request->purchase_price_currency ?? 'UZS',
+        ]);
+
+        $price = (float) $request->purchase_price;
+        $currency = $request->purchase_price_currency ?? 'UZS';
+        if ($currency !== 'UZS' && $price > 0) {
+            $settings = \App\Models\Finance\FinanceSettings::getForCompany($user->company_id);
+            $price = $settings->convertToBase($price, $currency);
+        }
+
+        return response()->json([
+            'success' => true,
+            'cost_price' => $price,
+            'purchase_price' => (float) $request->purchase_price,
+            'purchase_price_currency' => $currency,
+        ]);
+    })->name('marketplace.stocks.variant-cost-price');
+
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);
     })->name('marketplace.show');
