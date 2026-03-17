@@ -31,6 +31,11 @@ class MarketplaceProduct extends Model
         'raw_payload',
         'last_synced_price',
         'last_synced_stock',
+        'stock_fbs',
+        'stock_fbo',
+        'stock_additional',
+        'quantity_sold',
+        'quantity_returned',
         'last_synced_at',
         'last_error',
     ];
@@ -40,6 +45,11 @@ class MarketplaceProduct extends Model
         return [
             'last_synced_price' => 'float',
             'last_synced_stock' => 'integer',
+            'stock_fbs' => 'integer',
+            'stock_fbo' => 'integer',
+            'stock_additional' => 'integer',
+            'quantity_sold' => 'integer',
+            'quantity_returned' => 'integer',
             'last_synced_at' => 'datetime',
             'raw_payload' => 'array',
         ];

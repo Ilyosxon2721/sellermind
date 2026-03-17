@@ -234,15 +234,24 @@ final class UzumClient implements MarketplaceClientInterface
             $price = (float) $product['skuList'][0]['price'];
         }
 
-        // Stock: prefer product quantityFbs/Active, otherwise sum of SKUs
-        $stock = $product['quantityFbs'] ?? $product['quantityActive'] ?? null;
-        if ($stock === null && ! empty($product['skuList'])) {
-            $stock = collect($product['skuList'])->sum(function ($sku) {
-                return ($sku['quantityFbs'] ?? 0)
-                    + ($sku['quantityActive'] ?? 0)
-                    + ($sku['quantityAdditional'] ?? 0);
-            });
+        // Раздельный подсчёт остатков по типам из skuList
+        $stockFbs = 0;
+        $stockFbo = 0;
+        $stockAdditional = 0;
+        $qtySold = 0;
+        $qtyReturned = 0;
+
+        if (! empty($product['skuList'])) {
+            foreach ($product['skuList'] as $sku) {
+                $stockFbs += (int) ($sku['quantityFbs'] ?? 0);
+                $stockFbo += (int) ($sku['quantityActive'] ?? 0);
+                $stockAdditional += (int) ($sku['quantityAdditional'] ?? 0);
+                $qtySold += (int) ($sku['quantitySold'] ?? 0);
+                $qtyReturned += (int) ($sku['quantityReturned'] ?? 0);
+            }
         }
+
+        $totalStock = $stockFbs + $stockFbo + $stockAdditional;
 
         $mp = \App\Models\MarketplaceProduct::updateOrCreate(
             [
@@ -256,7 +265,12 @@ final class UzumClient implements MarketplaceClientInterface
                 'category' => $product['category'] ?? null,
                 'preview_image' => $product['image'] ?? $product['previewImg'] ?? null,
                 'last_synced_price' => $price,
-                'last_synced_stock' => $stock !== null ? (int) $stock : null,
+                'last_synced_stock' => $totalStock,
+                'stock_fbs' => $stockFbs,
+                'stock_fbo' => $stockFbo,
+                'stock_additional' => $stockAdditional,
+                'quantity_sold' => $qtySold,
+                'quantity_returned' => $qtyReturned,
                 'last_synced_at' => now(),
                 'raw_payload' => $product,
             ]

@@ -185,7 +185,8 @@
                                             <div class="flex-1">
                                                 <div class="font-semibold" x-text="sku.skuFullTitle || sku.skuTitle || sku.skuId"></div>
                                                 <div class="text-gray-600">Штрихкод: <span x-text="sku.barcode || '-'"></span></div>
-                                                <div class="text-gray-600">Остаток МП: <span x-text="parseInt((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></span></div>
+                                                <div class="text-gray-600">FBS: <span x-text="sku.quantityFbs ?? 0" class="font-medium"></span> | FBO: <span x-text="sku.quantityActive ?? 0" class="font-medium" :class="(sku.quantityActive ?? 0) > 0 ? 'text-green-600' : 'text-gray-400'"></span> | Доп: <span x-text="sku.quantityAdditional ?? 0"></span></div>
+                                                <div class="text-gray-500">Продано: <span x-text="sku.quantitySold ?? 0"></span> | Возвраты: <span x-text="sku.quantityReturned ?? 0"></span></div>
                                                 <div class="text-gray-600" x-text="sku.characteristics || ''"></div>
                                                 <template x-if="sku.characteristicsList && sku.characteristicsList.length">
                                                     <ul class="mt-1 list-disc list-inside text-gray-600">
@@ -439,6 +440,11 @@
             },
             formatStock(item) {
                 if (!item) return '-';
+                const fbs = item.stock_fbs ?? null;
+                const fbo = item.stock_fbo ?? null;
+                if (fbs !== null || fbo !== null) {
+                    return `FBS: ${fbs ?? 0} | FBO: ${fbo ?? 0}`;
+                }
                 const stock = item.last_synced_stock ?? null;
                 return stock !== null ? stock : '-';
             },
@@ -790,7 +796,8 @@
                                 <div class="native-card">
                                     <p class="native-body font-semibold" x-text="sku.skuFullTitle || sku.skuTitle || sku.skuId"></p>
                                     <p class="native-caption mt-1" x-text="'Штрихкод: ' + (sku.barcode || '-')"></p>
-                                    <p class="native-caption" x-text="'Остаток: ' + parseInt((sku.quantityFbs ?? 0) + (sku.quantityActive ?? 0) + (sku.quantityAdditional ?? 0))"></p>
+                                    <p class="native-caption" x-text="'FBS: ' + (sku.quantityFbs ?? 0) + ' | FBO: ' + (sku.quantityActive ?? 0) + ' | Доп: ' + (sku.quantityAdditional ?? 0)"></p>
+                                    <p class="native-caption" x-text="'Продано: ' + (sku.quantitySold ?? 0) + ' | Возвраты: ' + (sku.quantityReturned ?? 0)"></p>
                                 </div>
                             </template>
                         </div>
@@ -900,6 +907,11 @@ function uzumProductsPwa(accountId) {
         },
         formatStock(item) {
             if (!item) return '-';
+            const fbs = item.stock_fbs ?? null;
+            const fbo = item.stock_fbo ?? null;
+            if (fbs !== null || fbo !== null) {
+                return `FBS: ${fbs ?? 0} | FBO: ${fbo ?? 0}`;
+            }
             const stock = item.last_synced_stock ?? null;
             return stock !== null ? stock + ' шт' : '-';
         },
