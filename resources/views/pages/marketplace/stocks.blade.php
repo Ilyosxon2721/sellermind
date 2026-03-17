@@ -255,7 +255,7 @@
                             </tr>
                             {{-- Строки вариантов --}}
                             <template x-if="expandedRows[item.id] && item.variants && item.variants.length > 0">
-                                <template x-for="v in item.variants" :key="v.variant_id">
+                                <template x-for="v in item.variants" :key="v.sku_id ? 'sku_' + v.sku_id : 'var_' + v.variant_id">
                                     <tr class="bg-indigo-50/30">
                                         <td class="px-4 py-2">
                                             <div class="w-5 h-5 ml-5 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -267,13 +267,33 @@
                                             <div class="text-xs text-gray-400 font-mono mt-0.5" x-text="v.sku"></div>
                                         </td>
                                         <td class="px-4 py-2 text-center text-sm">
-                                            <button @click="openCostModal({...item, id: item.id, purchase_price: v.purchase_price, purchase_price_currency: v.purchase_price_currency, cost_price: v.cost_price, _variant_id: v.variant_id, title: (item.title || '') + ' — ' + (v.option_values_summary || v.sku)})" class="cursor-pointer hover:opacity-80 transition">
+                                            <button @click="openCostModal({...item, purchase_price: v.purchase_price, purchase_price_currency: v.purchase_price_currency, cost_price: v.cost_price, _variant_id: v.variant_id, _sku_id: v.sku_id, title: (item.title || '') + ' — ' + (v.option_values_summary || v.sku)})" class="cursor-pointer hover:opacity-80 transition">
                                                 <span x-show="v.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(v.cost_price)"></span>
                                                 <span x-show="!v.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
                                             </button>
                                         </td>
-                                        <td colspan="6" class="px-4 py-2 text-xs text-gray-400 text-center">
-                                            <span x-show="v.purchase_price && v.purchase_price_currency !== 'UZS'" x-text="v.purchase_price + ' ' + v.purchase_price_currency + ' → UZS'"></span>
+                                        <td class="px-4 py-2 text-center">
+                                            <span x-show="v.stock_fbs !== null" :class="stockClass(v.stock_fbs)" x-text="v.stock_fbs"></span>
+                                            <span x-show="v.stock_fbs === null" class="text-gray-300 text-xs">—</span>
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <span x-show="v.stock_fbo !== null" :class="stockClass(v.stock_fbo)" x-text="v.stock_fbo"></span>
+                                            <span x-show="v.stock_fbo === null" class="text-gray-300 text-xs">—</span>
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <span class="text-sm font-medium text-green-700" x-text="variantStockValue(v)"></span>
+                                        </td>
+                                        <td class="px-4 py-2 text-center font-medium text-gray-700">
+                                            <span x-show="v.quantity_sold !== null" x-text="v.quantity_sold"></span>
+                                            <span x-show="v.quantity_sold === null" class="text-gray-300 text-xs">—</span>
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <span x-show="v.quantity_sold !== null" class="text-xs" :class="returnRateClass(v)" x-text="variantReturnRate(v)"></span>
+                                            <span x-show="v.quantity_sold === null" class="text-gray-300 text-xs">—</span>
+                                        </td>
+                                        <td class="px-4 py-2 text-right text-xs text-gray-500">
+                                            <span x-show="v.price > 0" x-text="fmtMoney(v.price)"></span>
+                                            <span x-show="!(v.price > 0) && v.purchase_price > 0 && v.purchase_price_currency !== 'UZS'" x-text="v.purchase_price + ' ' + v.purchase_price_currency + ' → UZS'"></span>
                                         </td>
                                     </tr>
                                 </template>
@@ -625,6 +645,18 @@ function marketplaceStocks() {
             return this.fmtMoney(qty * price);
         },
 
+        variantStockValue(v) {
+            const qty = (v.stock_fbs ?? 0) + (v.stock_fbo ?? 0);
+            const price = v.cost_price ?? 0;
+            if (!qty || !price) return '—';
+            return this.fmtMoney(qty * price);
+        },
+
+        variantReturnRate(v) {
+            if (!v.quantity_sold || v.quantity_sold === 0) return '—';
+            return ((v.quantity_returned || 0) / v.quantity_sold * 100).toFixed(1) + '%';
+        },
+
         stockClass(value) {
             if (value === null || value === undefined) return 'text-gray-400';
             if (value === 0) return 'text-red-600 font-bold';
@@ -666,7 +698,7 @@ function marketplaceStocks() {
                 if (idx === -1) return;
 
                 if (item._variant_id) {
-                    // Обновить вариант локально без перезагрузки
+                    // Обновить конкретный связанный вариант
                     const vIdx = this.products[idx].variants?.findIndex(v => v.variant_id === item._variant_id);
                     if (vIdx !== undefined && vIdx !== -1) {
                         this.products[idx].variants[vIdx].cost_price = data.cost_price;
@@ -674,10 +706,17 @@ function marketplaceStocks() {
                         this.products[idx].variants[vIdx].purchase_price_currency = data.purchase_price_currency;
                     }
                 } else {
-                    // Обновить товар локально без перезагрузки
+                    // Обновить товар и все его Uzum-варианты (цена хранится на уровне товара)
                     this.products[idx].cost_price = data.cost_price;
                     this.products[idx].purchase_price = data.purchase_price;
                     this.products[idx].purchase_price_currency = data.purchase_price_currency;
+                    if (this.products[idx].variants) {
+                        this.products[idx].variants.forEach(v => {
+                            v.cost_price = data.cost_price;
+                            v.purchase_price = data.purchase_price;
+                            v.purchase_price_currency = data.purchase_price_currency;
+                        });
+                    }
                 }
             });
         },
