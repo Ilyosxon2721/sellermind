@@ -25,13 +25,8 @@ class UzumOrderObserver
     public function created(UzumOrder $uzumOrder): void
     {
         $this->safeBroadcast($uzumOrder, 'created');
-        $this->notifyNewMarketplaceOrder(
-            order: $uzumOrder,
-            marketplace: 'uzum',
-            orderNumber: $uzumOrder->external_order_id ?? (string) $uzumOrder->id,
-            totalAmount: (float) ($uzumOrder->total_amount ?? 0),
-            currency: $uzumOrder->currency ?? 'UZS',
-        );
+        // Уведомляем только через новую систему (TelegramSubscription)
+        // Старая система notifyNewMarketplaceOrder удалена — дублировала уведомления
         $this->notifySubscribers($uzumOrder, 'uzum', $uzumOrder->status_normalized ?? 'new');
     }
 

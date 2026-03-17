@@ -25,13 +25,8 @@ class OzonOrderObserver
     public function created(OzonOrder $ozonOrder): void
     {
         $this->safeBroadcast($ozonOrder);
-        $this->notifyNewMarketplaceOrder(
-            order: $ozonOrder,
-            marketplace: 'ozon',
-            orderNumber: $ozonOrder->posting_number ?? (string) $ozonOrder->order_id,
-            totalAmount: (float) ($ozonOrder->total_price ?? 0),
-            currency: $ozonOrder->currency ?? 'RUB',
-        );
+        // Уведомляем только через новую систему (TelegramSubscription)
+        // Старая система notifyNewMarketplaceOrder удалена — дублировала уведомления
         $this->notifySubscribers($ozonOrder, 'ozon', $ozonOrder->status ?? 'new');
     }
 
