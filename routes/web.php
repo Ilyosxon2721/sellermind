@@ -570,6 +570,8 @@ Route::middleware('auth.any')->group(function () {
         // Варианты Uzum из raw_payload.skuList
         $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
         $uzumRawData = [];
+        // Карта себестоимостей: [marketplace_product_id][external_sku_id] => {variant_id, purchase_price, currency}
+        $uzumSkuCostMap = [];
         if (!empty($uzumAccountIds) && !empty($productIds)) {
             $uzumRows = \DB::table('marketplace_products')
                 ->whereIn('id', $productIds)
@@ -580,24 +582,58 @@ Route::middleware('auth.any')->group(function () {
                 $payload = is_string($row->raw_payload) ? json_decode($row->raw_payload, true) : [];
                 $uzumRawData[$row->id] = $payload['skuList'] ?? [];
             }
+
+            // Загрузить связки SKU → локальный вариант с его закупочной ценой
+            $uzumLinks = \DB::table('variant_marketplace_links as vml')
+                ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+                ->whereIn('vml.marketplace_product_id', $productIds)
+                ->whereIn('vml.marketplace_account_id', $uzumAccountIds)
+                ->whereNotNull('vml.external_sku_id')
+                ->select('vml.marketplace_product_id', 'vml.external_sku_id', 'pv.id as variant_id', 'pv.purchase_price', 'pv.purchase_price_currency')
+                ->get();
+            foreach ($uzumLinks as $link) {
+                $uzumSkuCostMap[$link->marketplace_product_id][$link->external_sku_id] = [
+                    'variant_id'               => $link->variant_id,
+                    'purchase_price'           => (float) ($link->purchase_price ?? 0),
+                    'purchase_price_currency'  => $link->purchase_price_currency ?? 'UZS',
+                ];
+            }
         }
 
         // Добавить себестоимость и варианты к каждому товару
-        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings, $uzumAccountIds, $uzumRawData) {
+        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings, $uzumAccountIds, $uzumRawData, $uzumSkuCostMap) {
             $product->cost_price = $costPriceMap[$product->id] ?? 0;
-            $costUzs = $product->cost_price;
+            $productFallbackCostUzs = $product->cost_price;
             $productPurchasePrice = (float) ($product->purchase_price ?? 0);
             $productPurchaseCurrency = $product->purchase_price_currency ?? 'UZS';
             $isUzum = in_array($product->marketplace_account_id, $uzumAccountIds);
 
             if ($isUzum && isset($uzumRawData[$product->id]) && !empty($uzumRawData[$product->id])) {
-                // Uzum: варианты из raw_payload.skuList
+                // Uzum: варианты из raw_payload.skuList с себестоимостью из связанного локального варианта
+                $skuLinks = $uzumSkuCostMap[$product->id] ?? [];
                 $product->variants = collect($uzumRawData[$product->id])
-                    ->map(function ($sku) use ($costUzs, $productPurchasePrice, $productPurchaseCurrency) {
+                    ->map(function ($sku) use ($skuLinks, $productFallbackCostUzs, $productPurchasePrice, $productPurchaseCurrency, $financeSettings) {
+                        $skuId = (string) ($sku['skuId'] ?? '');
+                        $link = $skuLinks[$skuId] ?? null;
+
+                        if ($link && $link['purchase_price'] > 0) {
+                            // Себестоимость из привязанного локального варианта
+                            $pp = $link['purchase_price'];
+                            $pc = $link['purchase_price_currency'];
+                            $skuCostUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+                            $linkedVariantId = $link['variant_id'];
+                        } else {
+                            // Fallback: себестоимость с уровня товара
+                            $pp = $productPurchasePrice;
+                            $pc = $productPurchaseCurrency;
+                            $skuCostUzs = $productFallbackCostUzs;
+                            $linkedVariantId = null;
+                        }
+
                         return [
-                            'variant_id'            => null,
-                            'sku_id'                => (string) ($sku['skuId'] ?? ''),
-                            'sku'                   => (string) ($sku['barcode'] ?? $sku['skuId'] ?? ''),
+                            'variant_id'            => $linkedVariantId,
+                            'sku_id'                => $skuId,
+                            'sku'                   => (string) ($sku['barcode'] ?? $skuId),
                             'option_values_summary' => $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null,
                             'stock_fbs'             => (int) ($sku['quantityFbs'] ?? 0),
                             'stock_fbo'             => (int) ($sku['quantityActive'] ?? 0),
@@ -605,9 +641,9 @@ Route::middleware('auth.any')->group(function () {
                             'quantity_sold'         => (int) ($sku['quantitySold'] ?? 0),
                             'quantity_returned'     => (int) ($sku['quantityReturned'] ?? 0),
                             'price'                 => (float) ($sku['price'] ?? 0),
-                            'purchase_price'        => $productPurchasePrice,
-                            'purchase_price_currency' => $productPurchaseCurrency,
-                            'cost_price'            => $costUzs,
+                            'purchase_price'        => $pp,
+                            'purchase_price_currency' => $pc,
+                            'cost_price'            => $skuCostUzs,
                             'is_uzum_sku'           => true,
                         ];
                     })->values()->toArray();

@@ -706,15 +706,18 @@ function marketplaceStocks() {
                         this.products[idx].variants[vIdx].purchase_price_currency = data.purchase_price_currency;
                     }
                 } else {
-                    // Обновить товар и все его Uzum-варианты (цена хранится на уровне товара)
+                    // Обновить товар (product-level)
                     this.products[idx].cost_price = data.cost_price;
                     this.products[idx].purchase_price = data.purchase_price;
                     this.products[idx].purchase_price_currency = data.purchase_price_currency;
+                    // Обновить только те Uzum SKU, у которых нет собственной связки с локальным вариантом
                     if (this.products[idx].variants) {
                         this.products[idx].variants.forEach(v => {
-                            v.cost_price = data.cost_price;
-                            v.purchase_price = data.purchase_price;
-                            v.purchase_price_currency = data.purchase_price_currency;
+                            if (!v.variant_id) {
+                                v.cost_price = data.cost_price;
+                                v.purchase_price = data.purchase_price;
+                                v.purchase_price_currency = data.purchase_price_currency;
+                            }
                         });
                     }
                 }
