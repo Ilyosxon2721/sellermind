@@ -553,6 +553,8 @@ Route::middleware('auth.any')->group(function () {
 
         // Загрузить варианты для пагинированных товаров
         $productIds = collect($products->items())->pluck('id')->toArray();
+
+        // Варианты через variant_marketplace_links (для не-Uzum маркетплейсов)
         $variantsMap = \DB::table('variant_marketplace_links as vml')
             ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('vml.marketplace_product_id', $productIds)
@@ -560,25 +562,78 @@ Route::middleware('auth.any')->group(function () {
             ->get()
             ->groupBy('marketplace_product_id');
 
+        // Варианты Uzum из raw_payload.skuList
+        $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
+        $uzumRawData = [];
+        if (!empty($uzumAccountIds) && !empty($productIds)) {
+            $uzumRows = \DB::table('marketplace_products')
+                ->whereIn('id', $productIds)
+                ->whereIn('marketplace_account_id', $uzumAccountIds)
+                ->select('id', 'raw_payload')
+                ->get();
+            foreach ($uzumRows as $row) {
+                $payload = is_string($row->raw_payload) ? json_decode($row->raw_payload, true) : [];
+                $uzumRawData[$row->id] = $payload['skuList'] ?? [];
+            }
+        }
+
         // Добавить себестоимость и варианты к каждому товару
-        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings) {
+        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings, $uzumAccountIds, $uzumRawData) {
             $product->cost_price = $costPriceMap[$product->id] ?? 0;
-            $product->variants = ($variantsMap->get($product->id) ?? collect())
-                ->map(function ($v) use ($financeSettings) {
-                    $price = (float) ($v->purchase_price ?? 0);
-                    $currency = $v->purchase_price_currency ?? 'UZS';
-                    $costUzs = $price > 0
-                        ? ($currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency))
-                        : 0;
-                    return [
-                        'variant_id' => $v->variant_id,
-                        'sku' => $v->sku,
-                        'option_values_summary' => $v->option_values_summary,
-                        'purchase_price' => $price,
-                        'purchase_price_currency' => $currency,
-                        'cost_price' => $costUzs,
-                    ];
-                })->values()->toArray();
+            $costUzs = $product->cost_price;
+            $productPurchasePrice = (float) ($product->purchase_price ?? 0);
+            $productPurchaseCurrency = $product->purchase_price_currency ?? 'UZS';
+            $isUzum = in_array($product->marketplace_account_id, $uzumAccountIds);
+
+            if ($isUzum && isset($uzumRawData[$product->id]) && !empty($uzumRawData[$product->id])) {
+                // Uzum: варианты из raw_payload.skuList
+                $product->variants = collect($uzumRawData[$product->id])
+                    ->map(function ($sku) use ($costUzs, $productPurchasePrice, $productPurchaseCurrency) {
+                        return [
+                            'variant_id'            => null,
+                            'sku_id'                => (string) ($sku['skuId'] ?? ''),
+                            'sku'                   => (string) ($sku['barcode'] ?? $sku['skuId'] ?? ''),
+                            'option_values_summary' => $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null,
+                            'stock_fbs'             => (int) ($sku['quantityFbs'] ?? 0),
+                            'stock_fbo'             => (int) ($sku['quantityActive'] ?? 0),
+                            'stock_additional'      => (int) ($sku['quantityAdditional'] ?? 0),
+                            'quantity_sold'         => (int) ($sku['quantitySold'] ?? 0),
+                            'quantity_returned'     => (int) ($sku['quantityReturned'] ?? 0),
+                            'price'                 => (float) ($sku['price'] ?? 0),
+                            'purchase_price'        => $productPurchasePrice,
+                            'purchase_price_currency' => $productPurchaseCurrency,
+                            'cost_price'            => $costUzs,
+                            'is_uzum_sku'           => true,
+                        ];
+                    })->values()->toArray();
+            } else {
+                // Другие маркетплейсы: варианты из variant_marketplace_links
+                $product->variants = ($variantsMap->get($product->id) ?? collect())
+                    ->map(function ($v) use ($financeSettings) {
+                        $price = (float) ($v->purchase_price ?? 0);
+                        $currency = $v->purchase_price_currency ?? 'UZS';
+                        $vCostUzs = $price > 0
+                            ? ($currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency))
+                            : 0;
+                        return [
+                            'variant_id'            => $v->variant_id,
+                            'sku_id'                => null,
+                            'sku'                   => $v->sku,
+                            'option_values_summary' => $v->option_values_summary,
+                            'stock_fbs'             => null,
+                            'stock_fbo'             => null,
+                            'stock_additional'      => null,
+                            'quantity_sold'         => null,
+                            'quantity_returned'     => null,
+                            'price'                 => null,
+                            'purchase_price'        => $price,
+                            'purchase_price_currency' => $currency,
+                            'cost_price'            => $vCostUzs,
+                            'is_uzum_sku'           => false,
+                        ];
+                    })->values()->toArray();
+            }
+
             return $product;
         });
 
