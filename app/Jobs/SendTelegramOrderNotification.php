@@ -56,13 +56,6 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
                 'status' => $this->status,
             ]);
 
-        // Дедупликация на уровне отправки — не отправлять повторно 24 часа
-        $dedupKey = 'tg_sent:' . get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId;
-        if (Cache::has($dedupKey)) {
-            Log::debug('Telegram order notification skipped (already sent)', [
-                'order_id' => $this->order->id,
-                'chat_id' => $this->chatId,
-            ]);
             return;
         }
 
