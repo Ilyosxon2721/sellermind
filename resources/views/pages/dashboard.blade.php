@@ -115,11 +115,10 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                 </div>
-                                <x-ui.badge variant="warning" x-text="periodLabel"></x-ui.badge>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">В пути / в ПВЗ</h3>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.potential_revenue') }}</h3>
                             <p class="text-3xl font-bold text-amber-600 mb-2" x-text="formatMoney(stats.potential_revenue)">0 сум</p>
-                            <p class="text-sm text-gray-500">Ожидает выкупа</p>
+                            <p class="text-sm text-gray-500" x-text="stats.transit_count + ' в пути, ' + stats.awaiting_count + ' в ПВЗ'"></p>
                         </x-ui.card>
 
                         {{-- Products Card --}}
@@ -535,6 +534,8 @@ function dashboardPage() {
             total_orders: 0,
             period_revenue: 0,
             potential_revenue: 0,
+            transit_count: 0,
+            awaiting_count: 0,
             products_count: 0,
             marketplace_accounts: 0
         },
@@ -632,24 +633,24 @@ function dashboardPage() {
                     let periodRevenue = 0;
                     let potentialRevenue = 0;
 
+                    // Потенциальный доход — все текущие заказы в транзите/ПВЗ (без фильтра по дате)
+                    potentialRevenue = data.summary.total_potential_revenue || 0;
+
                     if (this.period === 'today') {
                         revenue = data.summary.sales_today || 0;
                         ordersCount = data.summary.sales_today_count || 0;
                         totalOrders = data.summary.total_today_count || 0;
                         periodRevenue = data.summary.sales_today || 0;
-                        potentialRevenue = data.summary.potential_revenue_today || 0;
                     } else if (this.period === 'week') {
                         revenue = data.summary.sales_week || 0;
                         ordersCount = data.summary.sales_week_count || 0;
                         totalOrders = data.summary.total_week_count || 0;
                         periodRevenue = data.summary.sales_week || 0;
-                        potentialRevenue = data.summary.potential_revenue_week || 0;
                     } else if (this.period === 'month') {
                         revenue = data.summary.sales_month || 0;
                         ordersCount = data.summary.sales_month_count || 0;
                         totalOrders = data.summary.total_month_count || 0;
                         periodRevenue = data.summary.sales_month || 0;
-                        potentialRevenue = data.summary.potential_revenue_month || 0;
                     }
 
                     this.stats = {
@@ -658,6 +659,8 @@ function dashboardPage() {
                         total_orders: totalOrders,
                         period_revenue: periodRevenue,
                         potential_revenue: potentialRevenue,
+                        transit_count: data.summary.total_transit_count || 0,
+                        awaiting_count: data.summary.total_awaiting_count || 0,
                         products_count: data.summary.products_total || 0,
                         marketplace_accounts: data.summary.marketplaces_count || 0
                     };
