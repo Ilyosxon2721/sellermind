@@ -200,32 +200,42 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        <template x-for="item in products" :key="item.id">
+                    <template x-for="item in products" :key="item.id">
+                        <tbody class="border-b border-gray-100">
+                            {{-- Основная строка товара --}}
                             <tr class="hover:bg-gray-50/50 transition" :class="stockBg(item)">
                                 <td class="px-4 py-3">
-                                    <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                                        <img x-show="item.preview_image" :src="item.preview_image" class="w-full h-full object-cover" loading="lazy" alt="">
-                                        <div x-show="!item.preview_image" class="w-full h-full flex items-center justify-center">
-                                            <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <div class="flex items-center gap-1.5">
+                                        <button x-show="item.variants && item.variants.length > 0"
+                                                @click="toggleExpand(item.id)"
+                                                class="text-gray-400 hover:text-gray-700 transition flex-shrink-0 p-0.5 rounded">
+                                            <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="expandedRows[item.id] ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                            </svg>
+                                        </button>
+                                        <div x-show="!item.variants || item.variants.length === 0" class="w-4 flex-shrink-0"></div>
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                            <img x-show="item.preview_image" :src="item.preview_image" class="w-full h-full object-cover" loading="lazy" alt="">
+                                            <div x-show="!item.preview_image" class="w-full h-full flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 max-w-[280px]">
                                     <div class="font-medium text-gray-900 truncate" x-text="item.title || 'Без названия'"></div>
-                                    <div class="text-xs text-gray-400 mt-0.5" x-text="shopName(item.shop_id)"></div>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-xs text-gray-400" x-text="shopName(item.shop_id)"></span>
+                                        <span x-show="item.variants && item.variants.length > 0" class="text-xs text-indigo-500 font-medium" x-text="item.variants.length + ' вар.'"></span>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3">
                                     <span class="text-xs px-2 py-1 rounded-lg font-medium" :class="mpBadge(item)" x-text="mpLabel(item)"></span>
                                 </td>
                                 <td class="px-4 py-3 text-center text-sm">
                                     <button @click="openCostModal(item)" class="cursor-pointer hover:opacity-80 transition">
-                                        <template x-if="item.cost_price">
-                                            <span class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
-                                        </template>
-                                        <template x-if="!item.cost_price">
-                                            <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
-                                        </template>
+                                        <span x-show="item.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
+                                        <span x-show="!item.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
                                     </button>
                                 </td>
                                 <td class="px-4 py-3 text-center">
@@ -243,8 +253,33 @@
                                 </td>
                                 <td class="px-4 py-3 text-right text-xs text-gray-400" x-text="formatDate(item.last_synced_at)"></td>
                             </tr>
-                        </template>
-                    </tbody>
+                            {{-- Строки вариантов --}}
+                            <template x-if="expandedRows[item.id] && item.variants && item.variants.length > 0">
+                                <template x-for="v in item.variants" :key="v.variant_id">
+                                    <tr class="bg-indigo-50/30">
+                                        <td class="px-4 py-2">
+                                            <div class="w-5 h-5 ml-5 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                <svg class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2 max-w-[280px]" colspan="2">
+                                            <div class="text-sm text-gray-700 truncate" x-text="v.option_values_summary || v.sku || 'Вариант'"></div>
+                                            <div class="text-xs text-gray-400 font-mono mt-0.5" x-text="v.sku"></div>
+                                        </td>
+                                        <td class="px-4 py-2 text-center text-sm">
+                                            <button @click="openCostModal({...item, id: item.id, purchase_price: v.purchase_price, purchase_price_currency: v.purchase_price_currency, cost_price: v.cost_price, _variant_id: v.variant_id, title: (item.title || '') + ' — ' + (v.option_values_summary || v.sku)})" class="cursor-pointer hover:opacity-80 transition">
+                                                <span x-show="v.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(v.cost_price)"></span>
+                                                <span x-show="!v.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
+                                            </button>
+                                        </td>
+                                        <td colspan="6" class="px-4 py-2 text-xs text-gray-400 text-center">
+                                            <span x-show="v.purchase_price && v.purchase_price_currency !== 'UZS'" x-text="v.purchase_price + ' ' + v.purchase_price_currency + ' → UZS'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                    </template>
                 </table>
             </div>
 
@@ -270,6 +305,49 @@
     </div>
     </div>
     </div>
+    </div>
+
+    <!-- Модалка: указать себестоимость (browser) -->
+    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+         @click.self="costModal = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
+                <button @click="costModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4 truncate" x-text="costProduct?.title"></p>
+            <div class="flex gap-2 mb-4">
+                <div class="flex-1">
+                    <label class="text-xs text-gray-500 mb-1 block">Цена</label>
+                    <input x-ref="costInput" type="number" min="0" step="100"
+                           x-model="costPrice"
+                           @keydown.enter="saveCostPrice"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="0">
+                </div>
+                <div class="w-24">
+                    <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
+                    <select x-model="costCurrency"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="UZS">UZS</option>
+                        <option value="USD">USD</option>
+                        <option value="RUB">RUB</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="costModal = false"
+                        class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button @click="saveCostPrice" :disabled="costSaving || !costPrice"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!costSaving">Сохранить</span>
+                    <span x-show="costSaving">Сохранение...</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -349,12 +427,8 @@
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <span class="text-xs text-gray-400">Стоим:</span>
-                                    <template x-if="item.cost_price">
-                                        <span class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
-                                    </template>
-                                    <template x-if="!item.cost_price">
-                                        <button @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
-                                    </template>
+                                    <span x-show="item.cost_price" class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
+                                    <button x-show="!item.cost_price" @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
                                 </div>
                             </div>
                         </div>
@@ -377,8 +451,8 @@
     </div>
 
     <!-- Модалка: указать себестоимость -->
-    <div x-show="costModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-         @click.self="costModal = false" style="display:none">
+    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+         @click.self="costModal = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
@@ -446,6 +520,10 @@ function marketplaceStocks() {
             { value: 'low', label: 'Низкий (<5)' },
             { value: 'normal', label: 'Норма (5+)' },
         ],
+
+        // Развёртывание вариантов
+        expandedRows: {},
+        toggleExpand(id) { this.expandedRows[id] = !this.expandedRows[id]; },
 
         // Модалка себестоимости
         costModal: false,
