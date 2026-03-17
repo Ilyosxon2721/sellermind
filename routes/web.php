@@ -392,6 +392,127 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/marketplace/sync-logs/json', [MarketplaceSyncLogController::class, 'json'])
         ->name('marketplace.sync-logs.json');
 
+    // Остатки МП - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/stocks', function () {
+        return view('pages.marketplace.stocks');
+    })->name('marketplace.stocks');
+
+    Route::get('/marketplace/stocks/json', function (\Illuminate\Http\Request $request) {
+        $user = auth()->user();
+        $companyId = $user->company_id;
+
+        // Получить все активные Uzum аккаунты компании
+        $accounts = \App\Models\MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'uzum')
+            ->where('is_active', true)
+            ->get(['id', 'name']);
+
+        $accountIds = $accounts->pluck('id')->toArray();
+
+        if (empty($accountIds)) {
+            return response()->json([
+                'products' => [],
+                'shops' => [],
+                'accounts' => $accounts,
+                'pagination' => ['total' => 0, 'per_page' => 50, 'current_page' => 1, 'last_page' => 1],
+                'summary' => ['total_fbs' => 0, 'total_fbo' => 0, 'total_additional' => 0, 'total_sold' => 0, 'total_returned' => 0, 'total_products' => 0, 'zero_stock_count' => 0, 'low_stock_count' => 0],
+            ]);
+        }
+
+        $query = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
+            ->select([
+                'id', 'marketplace_account_id', 'title', 'preview_image', 'external_product_id',
+                'shop_id', 'status', 'stock_fbs', 'stock_fbo', 'stock_additional',
+                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_at',
+            ]);
+
+        // Фильтр по аккаунту
+        if ($accountId = $request->get('account_id')) {
+            $query->where('marketplace_account_id', (int) $accountId);
+        }
+
+        // Фильтр по магазину
+        if ($shopId = $request->get('shop_id')) {
+            $query->where('shop_id', $shopId);
+        }
+
+        // Поиск
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('external_product_id', 'like', "%{$search}%");
+            });
+        }
+
+        // Фильтр по остаткам
+        $stockFilter = $request->get('stock_filter', 'all');
+        match ($stockFilter) {
+            'zero' => $query->where(function ($q) {
+                $q->where('stock_fbs', 0)->orWhere('stock_fbo', 0)->orWhereNull('stock_fbs')->orWhereNull('stock_fbo');
+            }),
+            'low' => $query->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->where('stock_fbs', '>', 0)->where('stock_fbs', '<', 5);
+                })->orWhere(function ($q2) {
+                    $q2->where('stock_fbo', '>', 0)->where('stock_fbo', '<', 5);
+                });
+            }),
+            'normal' => $query->where('stock_fbs', '>=', 5)->where('stock_fbo', '>=', 5),
+            default => null,
+        };
+
+        // Сортировка
+        $sortBy = $request->get('sort_by', 'title');
+        $sortDir = $request->get('sort_dir', 'asc');
+        $allowedSorts = ['title', 'stock_fbs', 'stock_fbo', 'quantity_sold', 'quantity_returned', 'last_synced_at'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
+        }
+
+        // Summary (до пагинации, но после фильтров аккаунта)
+        $summaryQuery = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds);
+        if ($accountId) {
+            $summaryQuery->where('marketplace_account_id', (int) $accountId);
+        }
+        $summary = [
+            'total_fbs' => (int) $summaryQuery->sum('stock_fbs'),
+            'total_fbo' => (int) (clone $summaryQuery)->sum('stock_fbo'),
+            'total_additional' => (int) (clone $summaryQuery)->sum('stock_additional'),
+            'total_sold' => (int) (clone $summaryQuery)->sum('quantity_sold'),
+            'total_returned' => (int) (clone $summaryQuery)->sum('quantity_returned'),
+            'total_products' => (clone $summaryQuery)->count(),
+            'zero_stock_count' => (int) (clone $summaryQuery)->where(function ($q) {
+                $q->where('stock_fbs', 0)->orWhere('stock_fbo', 0)->orWhereNull('stock_fbs')->orWhereNull('stock_fbo');
+            })->count(),
+            'low_stock_count' => (int) (clone $summaryQuery)->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->where('stock_fbs', '>', 0)->where('stock_fbs', '<', 5);
+                })->orWhere(function ($q2) {
+                    $q2->where('stock_fbo', '>', 0)->where('stock_fbo', '<', 5);
+                });
+            })->count(),
+        ];
+
+        $products = $query->paginate((int) $request->get('per_page', 50));
+
+        // Магазины для фильтра
+        $shops = \App\Models\MarketplaceShop::whereIn('marketplace_account_id', $accountIds)
+            ->get(['external_id', 'name', 'marketplace_account_id']);
+
+        return response()->json([
+            'products' => $products->items(),
+            'shops' => $shops,
+            'accounts' => $accounts,
+            'pagination' => [
+                'total' => $products->total(),
+                'per_page' => $products->perPage(),
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+            ],
+            'summary' => $summary,
+        ]);
+    })->name('marketplace.stocks.json');
+
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);
     })->name('marketplace.show');
