@@ -475,31 +475,36 @@ Route::middleware('auth.any')->group(function () {
             $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
         }
 
-        // Summary (до пагинации, но после фильтров аккаунта)
+        // Summary — один SQL запрос вместо 11
         $summaryQuery = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds);
         if ($accountId) {
             $summaryQuery->where('marketplace_account_id', (int) $accountId);
         }
+        $raw = $summaryQuery->selectRaw('
+            COALESCE(SUM(stock_fbs), 0) as total_fbs,
+            COALESCE(SUM(stock_fbo), 0) as total_fbo,
+            COALESCE(SUM(stock_additional), 0) as total_additional,
+            COALESCE(SUM(quantity_sold), 0) as total_sold,
+            COALESCE(SUM(quantity_returned), 0) as total_returned,
+            COUNT(*) as total_products,
+            SUM(CASE WHEN COALESCE(stock_fbs, 0) = 0 OR COALESCE(stock_fbo, 0) = 0 THEN 1 ELSE 0 END) as zero_stock_count,
+            SUM(CASE WHEN (stock_fbs > 0 AND stock_fbs < 5) OR (stock_fbo > 0 AND stock_fbo < 5) THEN 1 ELSE 0 END) as low_stock_count,
+            COALESCE(SUM(COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0)), 0) as total_fbs_value,
+            COALESCE(SUM(COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0)), 0) as total_fbo_value,
+            COALESCE(SUM((COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE(last_synced_price, 0)), 0) as total_stock_value
+        ')->first();
         $summary = [
-            'total_fbs' => (int) $summaryQuery->sum('stock_fbs'),
-            'total_fbo' => (int) (clone $summaryQuery)->sum('stock_fbo'),
-            'total_additional' => (int) (clone $summaryQuery)->sum('stock_additional'),
-            'total_sold' => (int) (clone $summaryQuery)->sum('quantity_sold'),
-            'total_returned' => (int) (clone $summaryQuery)->sum('quantity_returned'),
-            'total_products' => (clone $summaryQuery)->count(),
-            'zero_stock_count' => (int) (clone $summaryQuery)->where(function ($q) {
-                $q->where('stock_fbs', 0)->orWhere('stock_fbo', 0)->orWhereNull('stock_fbs')->orWhereNull('stock_fbo');
-            })->count(),
-            'low_stock_count' => (int) (clone $summaryQuery)->where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where('stock_fbs', '>', 0)->where('stock_fbs', '<', 5);
-                })->orWhere(function ($q2) {
-                    $q2->where('stock_fbo', '>', 0)->where('stock_fbo', '<', 5);
-                });
-            })->count(),
-            'total_fbs_value' => (float) (clone $summaryQuery)->selectRaw('SUM(COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0)) as val')->value('val'),
-            'total_fbo_value' => (float) (clone $summaryQuery)->selectRaw('SUM(COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0)) as val')->value('val'),
-            'total_stock_value' => (float) (clone $summaryQuery)->selectRaw('SUM((COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE(last_synced_price, 0)) as val')->value('val'),
+            'total_fbs' => (int) $raw->total_fbs,
+            'total_fbo' => (int) $raw->total_fbo,
+            'total_additional' => (int) $raw->total_additional,
+            'total_sold' => (int) $raw->total_sold,
+            'total_returned' => (int) $raw->total_returned,
+            'total_products' => (int) $raw->total_products,
+            'zero_stock_count' => (int) $raw->zero_stock_count,
+            'low_stock_count' => (int) $raw->low_stock_count,
+            'total_fbs_value' => (float) $raw->total_fbs_value,
+            'total_fbo_value' => (float) $raw->total_fbo_value,
+            'total_stock_value' => (float) $raw->total_stock_value,
         ];
 
         $products = $query->paginate((int) $request->get('per_page', 50));

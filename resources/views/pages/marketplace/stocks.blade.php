@@ -382,6 +382,7 @@ function marketplaceStocks() {
         sortDir: 'asc',
         page: 1,
         searchTimeout: null,
+        abortController: null,
         stockFilters: [
             { value: 'all', label: 'Все' },
             { value: 'zero', label: 'Нулевой' },
@@ -392,6 +393,8 @@ function marketplaceStocks() {
         init() { this.fetchData(); },
 
         async fetchData() {
+            if (this.abortController) this.abortController.abort();
+            this.abortController = new AbortController();
             this.loading = true;
             try {
                 const params = new URLSearchParams();
@@ -404,7 +407,7 @@ function marketplaceStocks() {
                 params.set('sort_dir', this.sortDir);
                 params.set('page', this.page);
 
-                const res = await fetch('/marketplace/stocks/json?' + params.toString());
+                const res = await fetch('/marketplace/stocks/json?' + params.toString(), { signal: this.abortController.signal });
                 const data = await res.json();
 
                 this.products = data.products || [];
@@ -420,6 +423,7 @@ function marketplaceStocks() {
                     this.lastSync = this.formatDate(latest.last_synced_at);
                 }
             } catch (e) {
+                if (e.name === 'AbortError') return;
                 console.error('Failed to fetch stock data:', e);
             }
             this.loading = false;
