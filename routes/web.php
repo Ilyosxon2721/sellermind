@@ -422,19 +422,39 @@ Route::middleware('auth.any')->group(function () {
         $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
         $costPriceMap = [];
 
-        // 1. Из variant_marketplace_links → product_variants (приоритет)
+        // 1. Из variant_marketplace_links → product_variants
+        // Для товаров с несколькими вариантами: взвешенное среднее по last_stock_synced
         $links = \DB::table('variant_marketplace_links as vml')
             ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('vml.marketplace_account_id', $accountIds)
-            ->select('vml.marketplace_product_id', 'pv.purchase_price', 'pv.purchase_price_currency')
-            ->get();
-        foreach ($links as $link) {
-            $price = (float) ($link->purchase_price ?? 0);
-            if ($price > 0) {
-                $currency = $link->purchase_price_currency ?? 'UZS';
-                $costPriceMap[$link->marketplace_product_id] = $currency === 'UZS'
-                    ? $price
-                    : $financeSettings->convertToBase($price, $currency);
+            ->select('vml.marketplace_product_id', 'vml.last_stock_synced', 'pv.purchase_price', 'pv.purchase_price_currency')
+            ->get()
+            ->groupBy('marketplace_product_id');
+        foreach ($links as $productId => $productLinks) {
+            $priced = $productLinks->filter(fn ($l) => (float) ($l->purchase_price ?? 0) > 0);
+            if ($priced->isEmpty()) {
+                continue;
+            }
+            $totalStock = (int) $priced->sum('last_stock_synced');
+            if ($totalStock > 0) {
+                // Взвешенное среднее по остаткам
+                $weightedSum = $priced->sum(function ($l) use ($financeSettings) {
+                    $pp = (float) $l->purchase_price;
+                    $pc = $l->purchase_price_currency ?? 'UZS';
+                    $costUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+
+                    return $costUzs * (int) ($l->last_stock_synced ?? 0);
+                });
+                $costPriceMap[$productId] = $weightedSum / $totalStock;
+            } else {
+                // Нет данных по остаткам — простое среднее
+                $sum = $priced->sum(function ($l) use ($financeSettings) {
+                    $pp = (float) $l->purchase_price;
+                    $pc = $l->purchase_price_currency ?? 'UZS';
+
+                    return $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+                });
+                $costPriceMap[$productId] = $sum / $priced->count();
             }
         }
 
@@ -607,7 +627,11 @@ Route::middleware('auth.any')->group(function () {
         $variantsMap = \DB::table('variant_marketplace_links as vml')
             ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('vml.marketplace_product_id', $productIds)
-            ->select('vml.marketplace_product_id', 'pv.id as variant_id', 'pv.sku', 'pv.option_values_summary', 'pv.purchase_price', 'pv.purchase_price_currency')
+            ->select(
+                'vml.marketplace_product_id', 'pv.id as variant_id', 'pv.sku',
+                'pv.option_values_summary', 'pv.purchase_price', 'pv.purchase_price_currency',
+                'vml.last_stock_synced', 'vml.last_price_synced'
+            )
             ->get()
             ->groupBy('marketplace_product_id');
 
@@ -704,12 +728,12 @@ Route::middleware('auth.any')->group(function () {
                             'sku_id'                => null,
                             'sku'                   => $v->sku,
                             'option_values_summary' => $v->option_values_summary,
-                            'stock_fbs'             => null,
+                            'stock_fbs'             => $v->last_stock_synced !== null ? (int) $v->last_stock_synced : null,
                             'stock_fbo'             => null,
                             'stock_additional'      => null,
                             'quantity_sold'         => null,
                             'quantity_returned'     => null,
-                            'price'                 => null,
+                            'price'                 => $v->last_price_synced !== null ? (float) $v->last_price_synced : null,
                             'purchase_price'        => $price,
                             'purchase_price_currency' => $currency,
                             'cost_price'            => $vCostUzs,
