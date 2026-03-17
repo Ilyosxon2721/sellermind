@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Отправка красивого Telegram-уведомления о заказе подписчику.
+ * Дедупликация: ShouldBeUnique предотвращает дубли в очереди,
+ * Redis-кэш предотвращает повторную отправку того же статуса в течение 30 минут.
  */
 final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
 {
@@ -38,12 +40,22 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
     public function __construct(
         private readonly Model $order,
         private readonly string $chatId,
+        private readonly string $status = '',
     ) {
         $this->onQueue('default');
     }
 
     public function handle(OrderMessageBuilder $builder, TelegramService $telegram): void
     {
+        // Redis-дедупликация: не отправлять тот же статус повторно в течение 30 минут
+        $dedupKey = $this->getDeduplicationKey();
+        if (Cache::has($dedupKey)) {
+            Log::debug('Telegram notification deduplicated', [
+                'order_id' => $this->order->id,
+                'chat_id' => $this->chatId,
+                'status' => $this->status,
+            ]);
+
         // Дедупликация на уровне отправки — не отправлять повторно 24 часа
         $dedupKey = 'tg_sent:' . get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId;
         if (Cache::has($dedupKey)) {
@@ -66,25 +78,8 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
                 ],
             );
 
-            // Запомнить что уведомление отправлено — не дублировать 24 часа
-            Cache::put($dedupKey, true, 86400);
-        } catch (TelegramRateLimitException $e) {
-            // При 429 — откладываем job, но максимум 5 раз
-            $releaseCount = (int) Cache::get('tg_release:' . $this->uniqueId(), 0);
-            if ($releaseCount >= 5) {
-                Log::warning('Telegram rate limit: слишком много release, отбрасываем', [
-                    'order_id' => $this->order->id,
-                ]);
-                return;
-            }
-            Cache::put('tg_release:' . $this->uniqueId(), $releaseCount + 1, 3600);
-
-            Log::warning('Telegram rate limit, откладываем job', [
-                'retry_after' => $e->retryAfter,
-                'order_id' => $this->order->id,
-                'release_count' => $releaseCount + 1,
-            ]);
-            $this->release($e->retryAfter);
+            // Пометить как отправленное на 30 минут
+            Cache::put($dedupKey, true, now()->addMinutes(30));
         } catch (\Exception $e) {
             Log::error('Telegram order notification failed', [
                 'chat_id' => $this->chatId,
@@ -98,10 +93,18 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Уникальный ID чтобы не дублировать уведомления
+     * Уникальный ID для ShouldBeUnique — включает статус заказа
      */
     public function uniqueId(): string
     {
-        return get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId;
+        return get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId . ':' . $this->status;
+    }
+
+    /**
+     * Ключ для Redis-дедупликации отправленных уведомлений
+     */
+    private function getDeduplicationKey(): string
+    {
+        return 'tg_notif:' . get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId . ':' . $this->status;
     }
 }

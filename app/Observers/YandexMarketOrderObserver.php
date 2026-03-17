@@ -25,13 +25,8 @@ class YandexMarketOrderObserver
     public function created(YandexMarketOrder $order): void
     {
         $this->safeBroadcast($order);
-        $this->notifyNewMarketplaceOrder(
-            order: $order,
-            marketplace: 'yandex_market',
-            orderNumber: (string) ($order->order_id ?? $order->id),
-            totalAmount: (float) ($order->total_price ?? 0),
-            currency: $order->currency ?? 'RUB',
-        );
+        // Уведомляем только через новую систему (TelegramSubscription)
+        // Старая система notifyNewMarketplaceOrder удалена — дублировала уведомления
         $this->notifySubscribers($order, 'ym', $order->status_normalized ?? $order->status ?? 'new');
     }
 

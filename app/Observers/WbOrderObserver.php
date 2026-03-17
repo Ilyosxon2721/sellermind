@@ -25,13 +25,8 @@ class WbOrderObserver
     public function created(WbOrder $wbOrder): void
     {
         $this->safeBroadcast($wbOrder);
-        $this->notifyNewMarketplaceOrder(
-            order: $wbOrder,
-            marketplace: 'wildberries',
-            orderNumber: $wbOrder->external_order_id ?? (string) $wbOrder->id,
-            totalAmount: (float) ($wbOrder->total_amount ?? 0),
-            currency: $wbOrder->currency_code ?? 'RUB',
-        );
+        // Уведомляем только через новую систему (TelegramSubscription)
+        // Старая система notifyNewMarketplaceOrder удалена — дублировала уведомления
         $this->notifySubscribers($wbOrder, 'wb', $wbOrder->status_normalized ?? 'new');
     }
 

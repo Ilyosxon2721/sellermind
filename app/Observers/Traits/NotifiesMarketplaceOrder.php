@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 trait NotifiesMarketplaceOrder
 {
     /**
-     * Отправить уведомление о новом заказе с маркетплейса.
+     * Отправить уведомление о новом заказе с маркетплейса (старая система через $user->notify).
+     * Используется только для записи в БД уведомлений — Telegram отправляется через notifySubscribers.
      */
     protected function notifyNewMarketplaceOrder(
         Model $order,
@@ -67,7 +68,7 @@ trait NotifiesMarketplaceOrder
 
     /**
      * Отправить уведомления подписчикам TelegramSubscription (новая система).
-     * Работает параллельно со старой системой $user->notify().
+     * Включает статус в дедупликацию чтобы не спамить одним статусом.
      */
     protected function notifySubscribers(Model $order, string $marketplace, string $status): void
     {
@@ -105,7 +106,7 @@ trait NotifiesMarketplaceOrder
                     continue;
                 }
 
-                SendTelegramOrderNotification::dispatch($order, $subscription->chat_id);
+                SendTelegramOrderNotification::dispatch($order, $subscription->chat_id, $status);
             }
         } catch (\Exception $e) {
             Log::error('Failed to notify subscribers', [
