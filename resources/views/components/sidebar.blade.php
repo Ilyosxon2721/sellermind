@@ -41,7 +41,7 @@
         <div x-show="!$store.ui.sidebarCollapsed" class="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('admin.warehouse_section') }}</div>
 
         {{-- Warehouse Menu - Collapsed: single icon, Expanded: collapsible group --}}
-        <div x-data="{open: {{ request()->is('warehouse*') || request()->is('products*') ? 'true' : 'false' }}}">
+        <div x-data="{open: {{ request()->is('warehouse*') || request()->is('products*') || request()->is('bundles*') ? 'true' : 'false' }}}">
             {{-- Expanded mode: show collapsible group --}}
             <template x-if="!$store.ui.sidebarCollapsed">
                 <div>
@@ -109,13 +109,17 @@
                             <span class="text-xs text-orange-500">•</span>
                             <span class="text-sm">Себестоимость</span>
                         </a>
+                        <a href="/bundles" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('bundles*') ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs text-purple-500">•</span>
+                            <span class="text-sm">Комплекты</span>
+                        </a>
                     </div>
                 </div>
             </template>
             {{-- Collapsed mode: just show warehouse icon --}}
             <template x-if="$store.ui.sidebarCollapsed">
                 <a href="/warehouse"
-                   class="flex items-center justify-center p-2.5 rounded-lg transition {{ request()->is('warehouse*') || request()->is('products*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+                   class="flex items-center justify-center p-2.5 rounded-lg transition {{ request()->is('warehouse*') || request()->is('products*') || request()->is('bundles*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
                    title="{{ __('admin.warehouse_documents') }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>

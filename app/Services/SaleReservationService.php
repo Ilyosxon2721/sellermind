@@ -51,7 +51,13 @@ class SaleReservationService
                 }
 
                 try {
-                    $this->reserveItem($sale, $item);
+                    // Проверяем, является ли товар комплектом
+                    $variant = \App\Models\ProductVariant::with('product.bundleItems.componentVariant')->find($item->product_variant_id);
+                    if ($variant && $variant->product && $variant->product->is_bundle) {
+                        $this->reserveBundleItem($sale, $item, $variant->product);
+                    } else {
+                        $this->reserveItem($sale, $item);
+                    }
                     $results['success']++;
                 } catch (\Exception $e) {
                     $results['failed']++;
@@ -164,6 +170,88 @@ class SaleReservationService
         ]);
 
         return $reservation;
+    }
+
+    /**
+     * Зарезервировать компоненты комплекта
+     * При продаже комплекта списываются все входящие в него товары
+     */
+    protected function reserveBundleItem(Sale $sale, SaleItem $item, \App\Models\Product $bundleProduct): void
+    {
+        $bundleQty = (int) $item->quantity;
+        $reservationIds = [];
+
+        foreach ($bundleProduct->bundleItems as $bundleItem) {
+            $componentVariant = $bundleItem->componentVariant;
+            $componentQty = $bundleItem->quantity * $bundleQty;
+
+            $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $componentVariant->id)->first();
+            if (! $warehouseSku) {
+                throw new \Exception("Компонент комплекта '{$componentVariant->sku}' не зарегистрирован на складе");
+            }
+
+            $availableStock = $this->getAvailableStock($componentVariant, $sale->warehouse_id);
+            if ($availableStock < $componentQty) {
+                throw new \Exception(
+                    "Недостаточно компонента '{$componentVariant->sku}' для комплекта. Доступно: {$availableStock}, требуется: {$componentQty}"
+                );
+            }
+
+            // Списание через ledger
+            StockLedger::create([
+                'company_id' => $sale->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $sale->warehouse_id,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => -$componentQty,
+                'cost_delta' => -($componentVariant->getPurchasePriceInBase() * $componentQty),
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => Sale::class,
+                'source_id' => $sale->id,
+                'created_by' => auth()->id(),
+            ]);
+
+            // Резерв для отслеживания
+            $reservation = StockReservation::create([
+                'company_id' => $sale->company_id,
+                'warehouse_id' => $sale->warehouse_id,
+                'sku_id' => $warehouseSku->id,
+                'qty' => $componentQty,
+                'status' => StockReservation::STATUS_ACTIVE,
+                'reason' => "Комплект: {$bundleProduct->name}",
+                'source_type' => Sale::class,
+                'source_id' => $sale->id,
+                'expires_at' => null,
+                'created_by' => auth()->id(),
+            ]);
+
+            $reservationIds[] = $reservation->id;
+
+            // Обновляем stock_default и синхронизируем с маркетплейсами
+            $componentVariant->decrementStock($componentQty);
+            $this->stockSyncService->syncVariantStock($componentVariant);
+        }
+
+        // Обновляем SaleItem
+        $item->update([
+            'stock_deducted' => true,
+            'stock_deducted_at' => now(),
+            'metadata' => array_merge($item->metadata ?? [], [
+                'is_bundle' => true,
+                'bundle_product_id' => $bundleProduct->id,
+                'reservation_ids' => $reservationIds,
+                'warehouse_id' => $sale->warehouse_id,
+            ]),
+        ]);
+
+        Log::info('Bundle stock reserved for sale', [
+            'sale_id' => $sale->id,
+            'item_id' => $item->id,
+            'bundle_id' => $bundleProduct->id,
+            'bundle_qty' => $bundleQty,
+            'components_count' => $bundleProduct->bundleItems->count(),
+        ]);
     }
 
     /**
