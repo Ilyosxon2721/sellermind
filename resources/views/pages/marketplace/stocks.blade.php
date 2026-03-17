@@ -28,7 +28,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Остатки МП</h1>
-                <p class="text-sm text-gray-500 mt-1">Мониторинг остатков Uzum Market</p>
+                <p class="text-sm text-gray-500 mt-1">Мониторинг остатков на маркетплейсах</p>
             </div>
             <div class="flex items-center gap-3">
                 <span x-show="lastSync" class="text-xs text-gray-400" x-text="'Обновлено: ' + lastSync"></span>
@@ -42,8 +42,9 @@
             </div>
         </div>
 
-        {{-- Summary Cards --}}
+        {{-- Summary Cards - 2 rows --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {{-- FBS --}}
             <div class="bg-white rounded-2xl border border-gray-100 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">FBS остаток</span>
@@ -51,10 +52,11 @@
                         <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     </div>
                 </div>
-                <div class="text-2xl font-bold text-gray-900" x-text="summary.total_fbs?.toLocaleString('ru-RU') ?? '—'"></div>
-                <div class="text-xs text-gray-400 mt-1">у продавца</div>
+                <div class="text-2xl font-bold text-gray-900" x-text="fmt(summary.total_fbs)"></div>
+                <div class="text-xs text-blue-600 font-medium mt-1" x-text="fmtMoney(summary.total_fbs_value)"></div>
             </div>
 
+            {{-- FBO --}}
             <div class="bg-white rounded-2xl border border-gray-100 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">FBO остаток</span>
@@ -62,30 +64,40 @@
                         <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     </div>
                 </div>
-                <div class="text-2xl font-bold text-gray-900" x-text="summary.total_fbo?.toLocaleString('ru-RU') ?? '—'"></div>
-                <div class="text-xs text-gray-400 mt-1">на складе Uzum</div>
+                <div class="text-2xl font-bold text-gray-900" x-text="fmt(summary.total_fbo)"></div>
+                <div class="text-xs text-purple-600 font-medium mt-1" x-text="fmtMoney(summary.total_fbo_value)"></div>
             </div>
 
+            {{-- Total Stock Value --}}
             <div class="bg-white rounded-2xl border border-gray-100 p-5">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Нулевой остаток</span>
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Общая стоимость</span>
+                    <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-bold text-green-700" x-text="fmtMoney(summary.total_stock_value)"></div>
+                <div class="text-xs text-gray-400 mt-1" x-text="fmt(summary.total_products) + ' товаров'"></div>
+            </div>
+
+            {{-- Alerts --}}
+            <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Внимание</span>
                     <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
                         <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                     </div>
                 </div>
-                <div class="text-2xl font-bold text-red-600" x-text="summary.zero_stock_count ?? 0"></div>
-                <div class="text-xs text-gray-400 mt-1">товаров без остатков</div>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-gray-100 p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Низкий остаток</span>
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="flex items-baseline gap-3">
+                    <div>
+                        <span class="text-2xl font-bold text-red-600" x-text="summary.zero_stock_count ?? 0"></span>
+                        <span class="text-xs text-gray-400 ml-1">нулевой</span>
+                    </div>
+                    <div>
+                        <span class="text-2xl font-bold text-amber-600" x-text="summary.low_stock_count ?? 0"></span>
+                        <span class="text-xs text-gray-400 ml-1">низкий</span>
                     </div>
                 </div>
-                <div class="text-2xl font-bold text-amber-600" x-text="summary.low_stock_count ?? 0"></div>
-                <div class="text-xs text-gray-400 mt-1">менее 5 шт</div>
             </div>
         </div>
 
@@ -102,11 +114,21 @@
                            class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
                 </div>
 
+                {{-- Marketplace --}}
+                <select x-model="selectedMarketplace" @change="selectedAccount = ''; selectedShop = ''; applyFilter()"
+                        class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none bg-white">
+                    <option value="">Все МП</option>
+                    <option value="uzum">Uzum</option>
+                    <option value="wb">Wildberries</option>
+                    <option value="ozon">Ozon</option>
+                    <option value="ym">Yandex Market</option>
+                </select>
+
                 {{-- Account --}}
                 <select x-model="selectedAccount" @change="selectedShop = ''; applyFilter()"
                         class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none bg-white">
                     <option value="">Все аккаунты</option>
-                    <template x-for="acc in accounts" :key="acc.id">
+                    <template x-for="acc in filteredAccounts" :key="acc.id">
                         <option :value="acc.id" x-text="acc.name"></option>
                     </template>
                 </select>
@@ -134,14 +156,12 @@
 
         {{-- Table --}}
         <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {{-- Loading --}}
             <div x-show="loading" class="p-8 space-y-3">
                 <template x-for="i in 8" :key="i">
                     <div class="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
                 </template>
             </div>
 
-            {{-- Empty --}}
             <div x-show="!loading && products.length === 0" class="p-12 text-center">
                 <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -150,57 +170,39 @@
                 <p class="text-gray-400 text-sm mt-1">Попробуйте изменить фильтры</p>
             </div>
 
-            {{-- Data Table --}}
             <div x-show="!loading && products.length > 0" class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50 border-b border-gray-100">
                         <tr>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-12"></th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('title')">
-                                <div class="flex items-center gap-1">
-                                    Название
-                                    <span x-show="sortBy === 'title'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
+                                <span class="inline-flex items-center gap-1">Название <span x-show="sortBy === 'title'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
-                            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Магазин</th>
+                            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">МП</th>
+                            <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('last_synced_price')">
+                                <span class="inline-flex items-center gap-1">Цена <span x-show="sortBy === 'last_synced_price'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
+                            </th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('stock_fbs')">
-                                <div class="flex items-center justify-center gap-1">
-                                    FBS
-                                    <span x-show="sortBy === 'stock_fbs'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
+                                <span class="inline-flex items-center gap-1">FBS <span x-show="sortBy === 'stock_fbs'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('stock_fbo')">
-                                <div class="flex items-center justify-center gap-1">
-                                    FBO
-                                    <span x-show="sortBy === 'stock_fbo'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
+                                <span class="inline-flex items-center gap-1">FBO <span x-show="sortBy === 'stock_fbo'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
-                            <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Доп.</th>
+                            <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('stock_value')">
+                                <span class="inline-flex items-center gap-1">Стоимость <span x-show="sortBy === 'stock_value'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
+                            </th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('quantity_sold')">
-                                <div class="flex items-center justify-center gap-1">
-                                    Продано
-                                    <span x-show="sortBy === 'quantity_sold'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
-                            </th>
-                            <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('quantity_returned')">
-                                <div class="flex items-center justify-center gap-1">
-                                    Возвраты
-                                    <span x-show="sortBy === 'quantity_returned'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
+                                <span class="inline-flex items-center gap-1">Продано <span x-show="sortBy === 'quantity_sold'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">% возвр.</th>
                             <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('last_synced_at')">
-                                <div class="flex items-center justify-end gap-1">
-                                    Синхр.
-                                    <span x-show="sortBy === 'last_synced_at'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span>
-                                </div>
+                                <span class="inline-flex items-center gap-1">Синхр. <span x-show="sortBy === 'last_synced_at'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
                         <template x-for="item in products" :key="item.id">
                             <tr class="hover:bg-gray-50/50 transition" :class="stockBg(item)">
-                                {{-- Image --}}
                                 <td class="px-4 py-3">
                                     <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                                         <img x-show="item.preview_image" :src="item.preview_image" class="w-full h-full object-cover" loading="lazy" alt="">
@@ -209,34 +211,27 @@
                                         </div>
                                     </div>
                                 </td>
-                                {{-- Title --}}
-                                <td class="px-4 py-3 max-w-[300px]">
+                                <td class="px-4 py-3 max-w-[280px]">
                                     <div class="font-medium text-gray-900 truncate" x-text="item.title || 'Без названия'"></div>
-                                    <div class="text-xs text-gray-400 mt-0.5" x-text="'ID: ' + (item.external_product_id || '—')"></div>
+                                    <div class="text-xs text-gray-400 mt-0.5" x-text="shopName(item.shop_id)"></div>
                                 </td>
-                                {{-- Shop --}}
                                 <td class="px-4 py-3">
-                                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg" x-text="shopName(item.shop_id)"></span>
+                                    <span class="text-xs px-2 py-1 rounded-lg font-medium" :class="mpBadge(item)" x-text="mpLabel(item)"></span>
                                 </td>
-                                {{-- FBS --}}
+                                <td class="px-4 py-3 text-center text-sm text-gray-700" x-text="item.last_synced_price ? fmtMoney(item.last_synced_price) : '—'"></td>
                                 <td class="px-4 py-3 text-center">
                                     <span :class="stockClass(item.stock_fbs)" x-text="item.stock_fbs ?? '—'"></span>
                                 </td>
-                                {{-- FBO --}}
                                 <td class="px-4 py-3 text-center">
                                     <span :class="stockClass(item.stock_fbo)" x-text="item.stock_fbo ?? '—'"></span>
                                 </td>
-                                {{-- Additional --}}
-                                <td class="px-4 py-3 text-center text-gray-500" x-text="item.stock_additional ?? '—'"></td>
-                                {{-- Sold --}}
+                                <td class="px-4 py-3 text-center">
+                                    <span class="text-sm font-medium text-green-700" x-text="stockValue(item)"></span>
+                                </td>
                                 <td class="px-4 py-3 text-center font-medium text-gray-700" x-text="item.quantity_sold ?? '—'"></td>
-                                {{-- Returned --}}
-                                <td class="px-4 py-3 text-center text-gray-500" x-text="item.quantity_returned ?? '—'"></td>
-                                {{-- Return Rate --}}
                                 <td class="px-4 py-3 text-center">
                                     <span class="text-xs" :class="returnRateClass(item)" x-text="returnRate(item)"></span>
                                 </td>
-                                {{-- Synced At --}}
                                 <td class="px-4 py-3 text-right text-xs text-gray-400" x-text="formatDate(item.last_synced_at)"></td>
                             </tr>
                         </template>
@@ -251,9 +246,7 @@
                 </div>
                 <div class="flex items-center gap-1">
                     <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page <= 1"
-                            class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                        &larr;
-                    </button>
+                            class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition">&larr;</button>
                     <template x-for="p in pageNumbers" :key="p">
                         <button @click="goToPage(p)"
                                 class="px-3 py-1.5 text-xs rounded-lg border transition"
@@ -261,16 +254,14 @@
                                 x-text="p"></button>
                     </template>
                     <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
-                            class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                        &rarr;
-                    </button>
+                            class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition">&rarr;</button>
                 </div>
             </div>
         </div>
     </div>
-    </div>{{-- /max-w --}}
-    </div>{{-- /overflow-y-auto --}}
-    </div>{{-- /flex-col --}}
+    </div>
+    </div>
+    </div>
 </div>
 
 {{-- PWA MODE --}}
@@ -278,27 +269,30 @@
     <x-pwa-header title="Остатки МП" :backUrl="'/marketplace'" />
 
     <div class="px-4 pt-4 space-y-4">
-        {{-- Summary --}}
         <div class="grid grid-cols-2 gap-3">
             <div class="bg-white rounded-2xl p-4">
                 <div class="text-xs text-gray-500">FBS</div>
-                <div class="text-xl font-bold text-gray-900 mt-1" x-text="summary.total_fbs?.toLocaleString('ru-RU') ?? '—'"></div>
+                <div class="text-xl font-bold text-gray-900 mt-1" x-text="fmt(summary.total_fbs)"></div>
+                <div class="text-[10px] text-blue-600 font-medium" x-text="fmtMoney(summary.total_fbs_value)"></div>
             </div>
             <div class="bg-white rounded-2xl p-4">
                 <div class="text-xs text-gray-500">FBO</div>
-                <div class="text-xl font-bold text-gray-900 mt-1" x-text="summary.total_fbo?.toLocaleString('ru-RU') ?? '—'"></div>
+                <div class="text-xl font-bold text-gray-900 mt-1" x-text="fmt(summary.total_fbo)"></div>
+                <div class="text-[10px] text-purple-600 font-medium" x-text="fmtMoney(summary.total_fbo_value)"></div>
             </div>
             <div class="bg-white rounded-2xl p-4">
-                <div class="text-xs text-red-500">Нулевой</div>
-                <div class="text-xl font-bold text-red-600 mt-1" x-text="summary.zero_stock_count ?? 0"></div>
+                <div class="text-xs text-green-600">Стоимость</div>
+                <div class="text-lg font-bold text-green-700 mt-1" x-text="fmtMoney(summary.total_stock_value)"></div>
             </div>
             <div class="bg-white rounded-2xl p-4">
-                <div class="text-xs text-amber-500">Низкий</div>
-                <div class="text-xl font-bold text-amber-600 mt-1" x-text="summary.low_stock_count ?? 0"></div>
+                <div class="text-xs text-red-500">Проблемы</div>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-lg font-bold text-red-600" x-text="summary.zero_stock_count ?? 0"></span>
+                    <span class="text-lg font-bold text-amber-600" x-text="summary.low_stock_count ?? 0"></span>
+                </div>
             </div>
         </div>
 
-        {{-- Search + Filters --}}
         <div class="bg-white rounded-2xl p-3 space-y-3">
             <input type="text" x-model="search" @input="debouncedSearch()"
                    placeholder="Поиск..."
@@ -313,14 +307,12 @@
             </div>
         </div>
 
-        {{-- Loading --}}
         <div x-show="loading" class="space-y-3">
             <template x-for="i in 5" :key="i">
                 <div class="bg-white rounded-2xl p-4 h-24 animate-pulse"></div>
             </template>
         </div>
 
-        {{-- Cards --}}
         <div x-show="!loading" class="space-y-3">
             <template x-for="item in products" :key="item.id">
                 <div class="bg-white rounded-2xl p-4" :class="stockBg(item)">
@@ -332,7 +324,10 @@
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <div class="font-medium text-gray-900 text-sm truncate" x-text="item.title || 'Без названия'"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-gray-900 text-sm truncate" x-text="item.title || 'Без названия'"></span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0" :class="mpBadge(item)" x-text="mpLabel(item)"></span>
+                            </div>
                             <div class="text-xs text-gray-400 mt-0.5" x-text="shopName(item.shop_id)"></div>
                             <div class="flex items-center gap-3 mt-2">
                                 <div class="flex items-center gap-1">
@@ -344,38 +339,26 @@
                                     <span class="text-sm font-semibold" :class="stockClass(item.stock_fbo)" x-text="item.stock_fbo ?? '—'"></span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <span class="text-xs text-gray-400">Прод:</span>
-                                    <span class="text-sm text-gray-700" x-text="item.quantity_sold ?? '—'"></span>
+                                    <span class="text-xs text-gray-400">Стоим:</span>
+                                    <span class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
                                 </div>
-                                <template x-if="returnRate(item) !== '—'">
-                                    <div class="flex items-center gap-1">
-                                        <span class="text-xs text-gray-400">Возвр:</span>
-                                        <span class="text-xs" :class="returnRateClass(item)" x-text="returnRate(item)"></span>
-                                    </div>
-                                </template>
                             </div>
                         </div>
                     </div>
                 </div>
             </template>
 
-            {{-- Empty PWA --}}
             <div x-show="products.length === 0" class="text-center py-12">
                 <p class="text-gray-400 text-sm">Товары не найдены</p>
             </div>
         </div>
 
-        {{-- PWA Pagination --}}
         <div x-show="!loading && pagination.last_page > 1" class="flex justify-center gap-2 pb-4">
             <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page <= 1"
-                    class="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-30">
-                &larr;
-            </button>
+                    class="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-30">&larr;</button>
             <span class="px-4 py-2 text-sm text-gray-500" x-text="pagination.current_page + ' / ' + pagination.last_page"></span>
             <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
-                    class="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-30">
-                &rarr;
-            </button>
+                    class="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-30">&rarr;</button>
         </div>
     </div>
 </div>
@@ -391,6 +374,7 @@ function marketplaceStocks() {
         pagination: {},
         lastSync: null,
         search: '',
+        selectedMarketplace: '',
         selectedAccount: '',
         selectedShop: '',
         stockFilter: 'all',
@@ -405,15 +389,14 @@ function marketplaceStocks() {
             { value: 'normal', label: 'Норма (5+)' },
         ],
 
-        init() {
-            this.fetchData();
-        },
+        init() { this.fetchData(); },
 
         async fetchData() {
             this.loading = true;
             try {
                 const params = new URLSearchParams();
                 if (this.search) params.set('search', this.search);
+                if (this.selectedMarketplace) params.set('marketplace', this.selectedMarketplace);
                 if (this.selectedAccount) params.set('account_id', this.selectedAccount);
                 if (this.selectedShop) params.set('shop_id', this.selectedShop);
                 if (this.stockFilter !== 'all') params.set('stock_filter', this.stockFilter);
@@ -430,7 +413,6 @@ function marketplaceStocks() {
                 this.summary = data.summary || {};
                 this.pagination = data.pagination || {};
 
-                // Last sync from first product
                 if (this.products.length > 0) {
                     const latest = this.products.reduce((a, b) =>
                         (a.last_synced_at || '') > (b.last_synced_at || '') ? a : b
@@ -441,6 +423,11 @@ function marketplaceStocks() {
                 console.error('Failed to fetch stock data:', e);
             }
             this.loading = false;
+        },
+
+        get filteredAccounts() {
+            if (!this.selectedMarketplace) return this.accounts;
+            return this.accounts.filter(a => a.marketplace === this.selectedMarketplace);
         },
 
         get filteredShops() {
@@ -463,7 +450,7 @@ function marketplaceStocks() {
                 this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
             } else {
                 this.sortBy = field;
-                this.sortDir = 'asc';
+                this.sortDir = 'desc';
             }
             this.page = 1;
             this.fetchData();
@@ -471,16 +458,10 @@ function marketplaceStocks() {
 
         debouncedSearch() {
             clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => {
-                this.page = 1;
-                this.fetchData();
-            }, 300);
+            this.searchTimeout = setTimeout(() => { this.page = 1; this.fetchData(); }, 300);
         },
 
-        applyFilter() {
-            this.page = 1;
-            this.fetchData();
-        },
+        applyFilter() { this.page = 1; this.fetchData(); },
 
         goToPage(p) {
             if (p < 1 || p > this.pagination.last_page) return;
@@ -493,6 +474,45 @@ function marketplaceStocks() {
             if (!shopId) return '—';
             const shop = this.shops.find(s => s.external_id == shopId);
             return shop ? shop.name : shopId;
+        },
+
+        // Marketplace helpers
+        mpLabel(item) {
+            const acc = this.accounts.find(a => a.id === item.marketplace_account_id);
+            const mp = acc?.marketplace || '';
+            return { uzum: 'Uzum', wb: 'WB', ozon: 'Ozon', ym: 'YM' }[mp] || mp.toUpperCase();
+        },
+
+        mpBadge(item) {
+            const acc = this.accounts.find(a => a.id === item.marketplace_account_id);
+            const mp = acc?.marketplace || '';
+            return {
+                uzum: 'bg-purple-100 text-purple-700',
+                wb: 'bg-pink-100 text-pink-700',
+                ozon: 'bg-blue-100 text-blue-700',
+                ym: 'bg-yellow-100 text-yellow-800',
+            }[mp] || 'bg-gray-100 text-gray-600';
+        },
+
+        // Formatting
+        fmt(val) {
+            if (val === null || val === undefined) return '—';
+            return Number(val).toLocaleString('ru-RU');
+        },
+
+        fmtMoney(val) {
+            if (!val && val !== 0) return '—';
+            const num = Number(val);
+            if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + ' млн';
+            if (num >= 1000) return Math.round(num).toLocaleString('ru-RU') + ' сум';
+            return num.toFixed(0) + ' сум';
+        },
+
+        stockValue(item) {
+            const qty = (item.stock_fbs ?? 0) + (item.stock_fbo ?? 0);
+            const price = item.last_synced_price ?? 0;
+            if (!qty || !price) return '—';
+            return this.fmtMoney(qty * price);
         },
 
         stockClass(value) {
