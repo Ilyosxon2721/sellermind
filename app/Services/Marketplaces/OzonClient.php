@@ -863,6 +863,15 @@ final class OzonClient implements MarketplaceClientInterface
                 'updated' => $updated,
             ]);
 
+            // Копируем результаты в общую таблицу marketplace_products
+            try {
+                $bridge = new \App\Services\Marketplaces\MarketplaceProductsBridgeService;
+                $bridgeSynced = $bridge->syncFromOzon($account);
+                \Log::info('Ozon bridge sync done', ['account_id' => $account->id, 'bridged' => $bridgeSynced]);
+            } catch (\Exception $e) {
+                \Log::error('Ozon bridge sync failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+            }
+
             return [
                 'synced' => $synced,
                 'created' => $created,

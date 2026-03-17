@@ -875,6 +875,34 @@ Route::middleware('auth.any')->group(function () {
         ]);
     })->name('marketplace.stocks.variant-cost-price');
 
+    // Запустить мост-синхронизацию WB/Ozon → marketplace_products
+    Route::post('/marketplace/bridge-sync', function (\Illuminate\Http\Request $request) {
+        $user      = auth()->user();
+        $companyId = $user->company_id;
+        $bridge    = new \App\Services\Marketplaces\MarketplaceProductsBridgeService;
+
+        $accounts = \App\Models\MarketplaceAccount::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('marketplace', ['wb', 'ozon'])
+            ->get();
+
+        $results = [];
+        foreach ($accounts as $account) {
+            try {
+                $synced = match (strtolower($account->marketplace)) {
+                    'wb'   => $bridge->syncFromWildberries($account),
+                    'ozon' => $bridge->syncFromOzon($account),
+                    default => 0,
+                };
+                $results[] = ['account' => $account->name, 'marketplace' => $account->marketplace, 'synced' => $synced];
+            } catch (\Exception $e) {
+                $results[] = ['account' => $account->name, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()];
+            }
+        }
+
+        return response()->json(['success' => true, 'results' => $results]);
+    })->name('marketplace.bridge-sync');
+
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);
     })->name('marketplace.show');

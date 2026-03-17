@@ -32,6 +32,14 @@
             </div>
             <div class="flex items-center gap-3">
                 <span x-show="lastSync" class="text-xs text-gray-400" x-text="'Обновлено: ' + lastSync"></span>
+                <button @click="runBridgeSync()" :disabled="bridgeSyncing"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 border border-indigo-600 rounded-xl text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                        title="Скопировать товары WB/Ozon в общую таблицу остатков">
+                    <svg class="w-4 h-4" :class="bridgeSyncing && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+                    </svg>
+                    <span x-text="bridgeSyncing ? 'Синхронизация...' : 'Синхр. WB/Ozon'"></span>
+                </button>
                 <button @click="fetchData()" :disabled="loading"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50">
                     <svg class="w-4 h-4" :class="loading && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -515,11 +523,39 @@ function marketplaceStocks() {
             { value: 'normal', label: 'Норма (5+)' },
         ],
 
+        bridgeSyncing: false,
+
         // Развёртывание вариантов
         expandedRows: {},
         toggleExpand(id) { this.expandedRows[id] = !this.expandedRows[id]; },
 
         init() { this.fetchData(); },
+
+        async runBridgeSync() {
+            if (this.bridgeSyncing) return;
+            this.bridgeSyncing = true;
+            try {
+                const res = await fetch('/marketplace/bridge-sync', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const total = (data.results || []).reduce((s, r) => s + (r.synced || 0), 0);
+                    alert('Синхронизация завершена. Скопировано товаров: ' + total);
+                    this.fetchData();
+                } else {
+                    alert('Ошибка синхронизации');
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            } finally {
+                this.bridgeSyncing = false;
+            }
+        },
 
         async fetchData() {
             if (this.abortController) this.abortController.abort();
