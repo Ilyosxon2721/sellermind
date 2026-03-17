@@ -182,13 +182,12 @@
                                                                 </template>
                                                             </td>
                                                             <td class="px-4 py-2.5">
-                                                                <input type="number"
-                                                                       step="0.01"
-                                                                       min="0"
+                                                                <input type="text"
+                                                                       inputmode="decimal"
                                                                        class="w-28 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                                                                        :value="changes[variant.id]?.purchase_price ?? variant.purchase_price ?? ''"
                                                                        :placeholder="variant.purchase_price ? variant.purchase_price : '0.00'"
-                                                                       @input="trackChange(variant.id, 'purchase_price', parseFloat($event.target.value) || 0)">
+                                                                       @input="trackChange(variant.id, 'purchase_price', $event.target.value)">
                                                             </td>
                                                             <td class="px-4 py-2.5">
                                                                 <select class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -333,10 +332,10 @@
                             </template>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <input type="number" step="0.01" min="0"
+                            <input type="text" inputmode="decimal"
                                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
                                    :placeholder="variant.purchase_price || '0.00'"
-                                   @input="trackChange(variant.id, 'purchase_price', parseFloat($event.target.value) || 0)">
+                                   @input="trackChange(variant.id, 'purchase_price', $event.target.value)">
                             <select class="border border-gray-300 rounded-lg px-2 py-2 text-sm"
                                     :value="variant.purchase_price_currency || 'UZS'"
                                     @change="trackChange(variant.id, 'purchase_price_currency', $event.target.value)">
@@ -451,9 +450,20 @@ function purchasePricesPage() {
             }
         },
 
+        /**
+         * Нормализовать цену: запятую в точку, парсинг в число
+         */
+        _parsePrice(val) {
+            if (typeof val === 'number') return val;
+            return parseFloat(String(val).replace(',', '.')) || 0;
+        },
+
         async saveVariant(variantId) {
-            const change = this.changes[variantId];
+            const change = { ...this.changes[variantId] };
             if (!change) return;
+            if (change.purchase_price !== undefined) {
+                change.purchase_price = this._parsePrice(change.purchase_price);
+            }
 
             this.saving = true;
             try {
@@ -478,7 +488,13 @@ function purchasePricesPage() {
             this.saving = true;
             try {
                 const resp = await window.api.post('/products/purchase-prices/bulk', {
-                    variants: entries.map(([id, data]) => ({ id: parseInt(id), ...data }))
+                    variants: entries.map(([id, data]) => {
+                        const item = { id: parseInt(id), ...data };
+                        if (item.purchase_price !== undefined) {
+                            item.purchase_price = this._parsePrice(item.purchase_price);
+                        }
+                        return item;
+                    })
                 });
                 if (resp.data?.variants) {
                     resp.data.variants.forEach(v => this._patchLocalVariant(v));
