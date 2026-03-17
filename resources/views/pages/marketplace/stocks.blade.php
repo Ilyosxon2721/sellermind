@@ -220,12 +220,8 @@
                                 </td>
                                 <td class="px-4 py-3 text-center text-sm">
                                     <button @click="openCostModal(item)" class="cursor-pointer hover:opacity-80 transition">
-                                        <template x-if="item.cost_price">
-                                            <span class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
-                                        </template>
-                                        <template x-if="!item.cost_price">
-                                            <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
-                                        </template>
+                                        <span x-show="item.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
+                                        <span x-show="!item.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
                                     </button>
                                 </td>
                                 <td class="px-4 py-3 text-center">
@@ -349,12 +345,8 @@
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <span class="text-xs text-gray-400">Стоим:</span>
-                                    <template x-if="item.cost_price">
-                                        <span class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
-                                    </template>
-                                    <template x-if="!item.cost_price">
-                                        <button @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
-                                    </template>
+                                    <span x-show="item.cost_price" class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
+                                    <button x-show="!item.cost_price" @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
                                 </div>
                             </div>
                         </div>
@@ -377,8 +369,8 @@
     </div>
 
     <!-- Модалка: указать себестоимость -->
-    <div x-show="costModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-         @click.self="costModal = false" style="display:none">
+    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+         @click.self="costModal = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
