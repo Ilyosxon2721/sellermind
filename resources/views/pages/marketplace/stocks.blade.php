@@ -570,11 +570,7 @@ function marketplaceStocks() {
 
         fmtMoney(val) {
             if (!val && val !== 0) return '—';
-            const num = Number(val);
-            if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace('.0', '') + ' млрд';
-            if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.0', '') + ' млн';
-            if (num >= 1_000) return Math.round(num).toLocaleString('ru-RU') + ' сум';
-            return num.toFixed(0) + ' сум';
+            return Math.round(Number(val)).toLocaleString('ru-RU') + ' сум';
         },
 
         stockValue(item) {
