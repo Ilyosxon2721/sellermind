@@ -438,22 +438,28 @@ document.addEventListener('alpine:init', () => {
             if (!this.product || !this.price) return;
             this.saving = true;
             try {
-                const res = await fetch('/marketplace/stocks/cost-price', {
+                const isVariant = !!this.product._variant_id;
+                const url = isVariant
+                    ? '/marketplace/stocks/variant-cost-price'
+                    : '/marketplace/stocks/cost-price';
+                const body = isVariant
+                    ? { variant_id: this.product._variant_id, purchase_price: parseFloat(this.price), purchase_price_currency: this.currency }
+                    : { product_id: this.product.id, purchase_price: parseFloat(this.price), purchase_price_currency: this.currency };
+
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: JSON.stringify({
-                        product_id: this.product.id,
-                        purchase_price: parseFloat(this.price),
-                        purchase_price_currency: this.currency,
-                    }),
+                    body: JSON.stringify(body),
                 });
                 const data = await res.json();
                 if (data.success) {
                     if (this._callback) this._callback(data);
                     this.open = false;
+                } else {
+                    console.error('Save failed:', data);
                 }
             } catch (e) {
                 console.error('Failed to save cost price:', e);
@@ -657,12 +663,22 @@ function marketplaceStocks() {
         openCostModal(item) {
             this.$store.costModal.show(item, (data) => {
                 const idx = this.products.findIndex(p => p.id === item.id);
-                if (idx !== -1) {
+                if (idx === -1) return;
+
+                if (item._variant_id) {
+                    // Обновить вариант локально без перезагрузки
+                    const vIdx = this.products[idx].variants?.findIndex(v => v.variant_id === item._variant_id);
+                    if (vIdx !== undefined && vIdx !== -1) {
+                        this.products[idx].variants[vIdx].cost_price = data.cost_price;
+                        this.products[idx].variants[vIdx].purchase_price = data.purchase_price;
+                        this.products[idx].variants[vIdx].purchase_price_currency = data.purchase_price_currency;
+                    }
+                } else {
+                    // Обновить товар локально без перезагрузки
                     this.products[idx].cost_price = data.cost_price;
                     this.products[idx].purchase_price = data.purchase_price;
                     this.products[idx].purchase_price_currency = data.purchase_price_currency;
                 }
-                this.fetchData();
             });
         },
     };
