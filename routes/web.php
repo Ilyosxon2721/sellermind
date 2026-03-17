@@ -396,12 +396,16 @@ Route::middleware('auth.any')->group(function () {
         $user = auth()->user();
         $companyId = $user->company_id;
 
-        // Получить все активные Uzum аккаунты компании
-        $accounts = \App\Models\MarketplaceAccount::where('company_id', $companyId)
-            ->where('marketplace', 'uzum')
-            ->where('is_active', true)
-            ->get(['id', 'name']);
+        // Получить все активные аккаунты компании (все маркетплейсы)
+        $accountsQuery = \App\Models\MarketplaceAccount::where('company_id', $companyId)
+            ->where('is_active', true);
 
+        // Фильтр по маркетплейсу
+        if ($marketplace = $request->get('marketplace')) {
+            $accountsQuery->where('marketplace', $marketplace);
+        }
+
+        $accounts = $accountsQuery->get(['id', 'name', 'marketplace']);
         $accountIds = $accounts->pluck('id')->toArray();
 
         if (empty($accountIds)) {
@@ -410,7 +414,7 @@ Route::middleware('auth.any')->group(function () {
                 'shops' => [],
                 'accounts' => $accounts,
                 'pagination' => ['total' => 0, 'per_page' => 50, 'current_page' => 1, 'last_page' => 1],
-                'summary' => ['total_fbs' => 0, 'total_fbo' => 0, 'total_additional' => 0, 'total_sold' => 0, 'total_returned' => 0, 'total_products' => 0, 'zero_stock_count' => 0, 'low_stock_count' => 0],
+                'summary' => ['total_fbs' => 0, 'total_fbo' => 0, 'total_additional' => 0, 'total_sold' => 0, 'total_returned' => 0, 'total_products' => 0, 'zero_stock_count' => 0, 'low_stock_count' => 0, 'total_fbs_value' => 0, 'total_fbo_value' => 0, 'total_stock_value' => 0],
             ]);
         }
 
@@ -418,7 +422,7 @@ Route::middleware('auth.any')->group(function () {
             ->select([
                 'id', 'marketplace_account_id', 'title', 'preview_image', 'external_product_id',
                 'shop_id', 'status', 'stock_fbs', 'stock_fbo', 'stock_additional',
-                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_at',
+                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_price', 'last_synced_at',
             ]);
 
         // Фильтр по аккаунту
@@ -459,8 +463,10 @@ Route::middleware('auth.any')->group(function () {
         // Сортировка
         $sortBy = $request->get('sort_by', 'title');
         $sortDir = $request->get('sort_dir', 'asc');
-        $allowedSorts = ['title', 'stock_fbs', 'stock_fbo', 'quantity_sold', 'quantity_returned', 'last_synced_at'];
-        if (in_array($sortBy, $allowedSorts)) {
+        $allowedSorts = ['title', 'stock_fbs', 'stock_fbo', 'quantity_sold', 'quantity_returned', 'last_synced_at', 'last_synced_price', 'stock_value'];
+        if ($sortBy === 'stock_value') {
+            $query->orderByRaw('COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0) + COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0) '.($sortDir === 'desc' ? 'DESC' : 'ASC'));
+        } elseif (in_array($sortBy, $allowedSorts)) {
             $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
         }
 
@@ -486,6 +492,9 @@ Route::middleware('auth.any')->group(function () {
                     $q2->where('stock_fbo', '>', 0)->where('stock_fbo', '<', 5);
                 });
             })->count(),
+            'total_fbs_value' => (float) (clone $summaryQuery)->selectRaw('SUM(COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0)) as val')->value('val'),
+            'total_fbo_value' => (float) (clone $summaryQuery)->selectRaw('SUM(COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0)) as val')->value('val'),
+            'total_stock_value' => (float) (clone $summaryQuery)->selectRaw('SUM((COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE(last_synced_price, 0)) as val')->value('val'),
         ];
 
         $products = $query->paginate((int) $request->get('per_page', 50));
