@@ -306,6 +306,49 @@
     </div>
     </div>
     </div>
+
+    <!-- Модалка: указать себестоимость (browser) -->
+    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+         @click.self="costModal = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
+                <button @click="costModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4 truncate" x-text="costProduct?.title"></p>
+            <div class="flex gap-2 mb-4">
+                <div class="flex-1">
+                    <label class="text-xs text-gray-500 mb-1 block">Цена</label>
+                    <input x-ref="costInput" type="number" min="0" step="100"
+                           x-model="costPrice"
+                           @keydown.enter="saveCostPrice"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="0">
+                </div>
+                <div class="w-24">
+                    <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
+                    <select x-model="costCurrency"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="UZS">UZS</option>
+                        <option value="USD">USD</option>
+                        <option value="RUB">RUB</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="costModal = false"
+                        class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button @click="saveCostPrice" :disabled="costSaving || !costPrice"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!costSaving">Сохранить</span>
+                    <span x-show="costSaving">Сохранение...</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- PWA MODE --}}
