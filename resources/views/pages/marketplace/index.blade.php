@@ -774,7 +774,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Webhook Modal -->
 <div x-show="showWebhookModal" x-cloak
@@ -901,6 +900,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script>
