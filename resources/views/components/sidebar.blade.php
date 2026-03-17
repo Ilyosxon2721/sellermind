@@ -139,6 +139,17 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.marketplace') }}</span>
         </a>
 
+        {{-- Marketplace Stocks --}}
+        <a href="/marketplace-stocks"
+           class="flex items-center rounded-lg transition {{ request()->is('marketplace-stocks') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Остатки МП' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Остатки МП</span>
+        </a>
+
         {{-- Sales --}}
         <a href="/sales"
            class="flex items-center rounded-lg transition {{ request()->is('sales*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"

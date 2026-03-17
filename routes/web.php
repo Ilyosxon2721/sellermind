@@ -322,6 +322,10 @@ Route::middleware('auth.any')->group(function () {
         return view('inventory.index');
     })->name('inventory.index');
 
+    Route::get('/marketplace-stocks', function () {
+        return view('pages.marketplace-stocks');
+    })->name('marketplace-stocks');
+
     Route::get('/replenishment', function () {
         return view('replenishment.index');
     })->name('replenishment.index');
