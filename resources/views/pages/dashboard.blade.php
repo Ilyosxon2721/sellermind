@@ -121,25 +121,6 @@
                             <p class="text-sm text-gray-500" x-text="stats.transit_count + ' в пути, ' + stats.awaiting_count + ' в ПВЗ'"></p>
                         </x-ui.card>
 
-                        {{-- Products Card --}}
-                        <x-ui.card padding="default" hover="true" @click="window.location.href='/products'" class="cursor-pointer">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.products') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.products_count">0</p>
-                            <p class="text-sm text-blue-600 font-medium flex items-center">
-                                {{ __('dashboard.open') }}
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </p>
-                        </x-ui.card>
-
                         {{-- Warehouse Value Card --}}
                         <x-ui.card padding="default" hover="true" @click="window.location.href='/inventory'" class="cursor-pointer">
                             <div class="flex items-center justify-between mb-4">
