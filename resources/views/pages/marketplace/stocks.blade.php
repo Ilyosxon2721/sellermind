@@ -4,7 +4,24 @@
 <style>[x-cloak] { display: none !important; }</style>
 
 {{-- BROWSER MODE --}}
-<div class="browser-only" x-data="marketplaceStocks()" x-cloak>
+<div x-data="marketplaceStocks()" class="browser-only flex h-screen bg-gray-50" x-cloak
+     :class="{
+         'flex-row': $store.ui.navPosition === 'left',
+         'flex-row-reverse': $store.ui.navPosition === 'right'
+     }">
+
+    <template x-if="$store.ui.navPosition === 'left' || $store.ui.navPosition === 'right'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 flex flex-col overflow-hidden"
+         :class="{ 'pb-20': $store.ui.navPosition === 'bottom', 'pt-20': $store.ui.navPosition === 'top' }">
+
+    <template x-if="$store.ui.navPosition === 'top' || $store.ui.navPosition === 'bottom'">
+        <x-sidebar />
+    </template>
+
+    <div class="flex-1 overflow-y-auto">
     <div class="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
 
         {{-- Header --}}
@@ -251,6 +268,9 @@
             </div>
         </div>
     </div>
+    </div>{{-- /max-w --}}
+    </div>{{-- /overflow-y-auto --}}
+    </div>{{-- /flex-col --}}
 </div>
 
 {{-- PWA MODE --}}
