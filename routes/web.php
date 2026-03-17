@@ -161,6 +161,13 @@ Route::middleware('auth.any')->group(function () {
 
     Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
 
+    // Комплекты
+    Route::prefix('bundles')->name('web.bundles.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Web\Products\BundleWebController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Web\Products\BundleWebController::class, 'create'])->name('create');
+        Route::get('/{id}/edit', [\App\Http\Controllers\Web\Products\BundleWebController::class, 'edit'])->name('edit');
+    });
+
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
         Route::get('/purchase-prices', function () {

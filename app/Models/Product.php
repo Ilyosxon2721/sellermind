@@ -30,6 +30,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $package_height_mm
  * @property bool $is_active
  * @property bool $is_archived
+ * @property bool $is_bundle
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductBundleItem> $bundleItems
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductVariant> $variants
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductOption> $options
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ProductImage> $images
@@ -60,6 +62,7 @@ class Product extends Model
         'package_height_mm',
         'is_active',
         'is_archived',
+        'is_bundle',
         'risment_product_id',
         'created_by',
         'updated_by',
@@ -74,6 +77,7 @@ class Product extends Model
             'package_height_mm' => 'integer',
             'is_active' => 'boolean',
             'is_archived' => 'boolean',
+            'is_bundle' => 'boolean',
         ];
     }
 
@@ -122,8 +126,117 @@ class Product extends Model
         return $this->hasMany(ProductChannelSetting::class);
     }
 
+    /**
+     * Компоненты комплекта (только для is_bundle=true)
+     */
+    public function bundleItems(): HasMany
+    {
+        return $this->hasMany(ProductBundleItem::class, 'bundle_product_id');
+    }
+
+    /**
+     * Рассчитать доступный остаток комплекта
+     * Остаток = min(stock_компонента / количество_в_комплекте) по всем компонентам
+     */
+    public function getBundleStock(): int
+    {
+        if (! $this->is_bundle) {
+            return 0;
+        }
+
+        $items = $this->bundleItems()->with('componentVariant')->get();
+
+        if ($items->isEmpty()) {
+            return 0;
+        }
+
+        $minKits = PHP_INT_MAX;
+
+        foreach ($items as $item) {
+            $stock = $item->componentVariant->getCurrentStock();
+            $kits = $item->quantity > 0 ? intdiv($stock, $item->quantity) : 0;
+            $minKits = min($minKits, $kits);
+        }
+
+        return $minKits === PHP_INT_MAX ? 0 : $minKits;
+    }
+
+    /**
+     * Списать компоненты комплекта при продаже
+     *
+     * @param int $bundleQty Количество проданных комплектов
+     * @return array Результаты списания по каждому компоненту
+     */
+    public function deductBundleStock(int $bundleQty): array
+    {
+        if (! $this->is_bundle || $bundleQty <= 0) {
+            return [];
+        }
+
+        $results = [];
+        $items = $this->bundleItems()->with('componentVariant')->get();
+
+        foreach ($items as $item) {
+            $deductQty = $item->quantity * $bundleQty;
+            $variant = $item->componentVariant;
+            $oldStock = $variant->getCurrentStock();
+            $variant->decrementStock($deductQty);
+            $results[] = [
+                'variant_id' => $variant->id,
+                'sku' => $variant->sku,
+                'deducted' => $deductQty,
+                'old_stock' => $oldStock,
+                'new_stock' => $variant->getCurrentStock(),
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Вернуть компоненты комплекта при отмене продажи
+     *
+     * @param int $bundleQty Количество возвращённых комплектов
+     * @return array Результаты возврата
+     */
+    public function returnBundleStock(int $bundleQty): array
+    {
+        if (! $this->is_bundle || $bundleQty <= 0) {
+            return [];
+        }
+
+        $results = [];
+        $items = $this->bundleItems()->with('componentVariant')->get();
+
+        foreach ($items as $item) {
+            $returnQty = $item->quantity * $bundleQty;
+            $variant = $item->componentVariant;
+            $oldStock = $variant->getCurrentStock();
+            $variant->incrementStock($returnQty);
+            $results[] = [
+                'variant_id' => $variant->id,
+                'sku' => $variant->sku,
+                'returned' => $returnQty,
+                'old_stock' => $oldStock,
+                'new_stock' => $variant->getCurrentStock(),
+            ];
+        }
+
+        return $results;
+    }
+
     public function scopeForCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('company_id', $companyId);
+    }
+
+    public function scopeBundles(Builder $query): Builder
+    {
+        return $query->where('is_bundle', true);
+    }
+
+    public function scopeNotBundles(Builder $query): Builder
+    {
+        return $query->where('is_bundle', false);
     }
 }

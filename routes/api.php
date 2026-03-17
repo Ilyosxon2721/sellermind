@@ -272,6 +272,19 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouse/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
+    // Bundles (комплекты) — до products чтобы /bundles не перехватывались {product}
+    Route::prefix('bundles')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\BundleController::class, 'index']);
+        Route::get('/search-variants', [\App\Http\Controllers\Api\BundleController::class, 'searchVariants']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\BundleController::class, 'show']);
+        Route::middleware('company.owner')->group(function () {
+            Route::post('/', [\App\Http\Controllers\Api\BundleController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\BundleController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\BundleController::class, 'destroy']);
+            Route::post('/{id}/deduct-stock', [\App\Http\Controllers\Api\BundleController::class, 'deductStock']);
+        });
+    });
+
     // Products
     // IMPORTANT: upload-image and purchase-prices must be before apiResource to avoid being caught by {product} param
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
