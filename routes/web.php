@@ -423,11 +423,49 @@ Route::middleware('auth.any')->group(function () {
             ]);
         }
 
+        // Себестоимость: карта marketplace_product_id => cost_price в UZS
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+        $costPriceMap = [];
+
+        // 1. Из variant_marketplace_links → product_variants (приоритет)
+        $links = \DB::table('variant_marketplace_links as vml')
+            ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+            ->whereIn('vml.marketplace_account_id', $accountIds)
+            ->select('vml.marketplace_product_id', 'pv.purchase_price', 'pv.purchase_price_currency')
+            ->get();
+        foreach ($links as $link) {
+            $price = (float) ($link->purchase_price ?? 0);
+            if ($price > 0) {
+                $currency = $link->purchase_price_currency ?? 'UZS';
+                $costPriceMap[$link->marketplace_product_id] = $currency === 'UZS'
+                    ? $price
+                    : $financeSettings->convertToBase($price, $currency);
+            }
+        }
+
+        // 2. Fallback: из marketplace_products.purchase_price (для товаров без связи)
+        $directPrices = \DB::table('marketplace_products')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereNotNull('purchase_price')
+            ->where('purchase_price', '>', 0)
+            ->select('id', 'purchase_price', 'purchase_price_currency')
+            ->get();
+        foreach ($directPrices as $dp) {
+            if (!isset($costPriceMap[$dp->id])) {
+                $price = (float) $dp->purchase_price;
+                $currency = $dp->purchase_price_currency ?? 'UZS';
+                $costPriceMap[$dp->id] = $currency === 'UZS'
+                    ? $price
+                    : $financeSettings->convertToBase($price, $currency);
+            }
+        }
+
         $query = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
             ->select([
                 'id', 'marketplace_account_id', 'title', 'preview_image', 'external_product_id',
                 'shop_id', 'status', 'stock_fbs', 'stock_fbo', 'stock_additional',
-                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_price', 'last_synced_at',
+                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_price',
+                'purchase_price', 'purchase_price_currency', 'last_synced_at',
             ]);
 
         // Фильтр по аккаунту
@@ -470,17 +508,18 @@ Route::middleware('auth.any')->group(function () {
         $sortDir = $request->get('sort_dir', 'asc');
         $allowedSorts = ['title', 'stock_fbs', 'stock_fbo', 'quantity_sold', 'quantity_returned', 'last_synced_at', 'last_synced_price', 'stock_value'];
         if ($sortBy === 'stock_value') {
-            $query->orderByRaw('COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0) + COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0) '.($sortDir === 'desc' ? 'DESC' : 'ASC'));
+            $query->orderByRaw('(COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE((SELECT pv.purchase_price FROM variant_marketplace_links vml JOIN product_variants pv ON pv.id = vml.product_variant_id WHERE vml.marketplace_product_id = marketplace_products.id LIMIT 1), 0) '.($sortDir === 'desc' ? 'DESC' : 'ASC'));
         } elseif (in_array($sortBy, $allowedSorts)) {
             $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
         }
 
-        // Summary — один SQL запрос вместо 11
-        $summaryQuery = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds);
+        // Summary
+        $summaryBase = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds);
         if ($accountId) {
-            $summaryQuery->where('marketplace_account_id', (int) $accountId);
+            $summaryBase->where('marketplace_account_id', (int) $accountId);
         }
-        $raw = $summaryQuery->selectRaw('
+        // Счётчики — SQL
+        $raw = (clone $summaryBase)->selectRaw('
             COALESCE(SUM(stock_fbs), 0) as total_fbs,
             COALESCE(SUM(stock_fbo), 0) as total_fbo,
             COALESCE(SUM(stock_additional), 0) as total_additional,
@@ -488,11 +527,19 @@ Route::middleware('auth.any')->group(function () {
             COALESCE(SUM(quantity_returned), 0) as total_returned,
             COUNT(*) as total_products,
             SUM(CASE WHEN COALESCE(stock_fbs, 0) = 0 OR COALESCE(stock_fbo, 0) = 0 THEN 1 ELSE 0 END) as zero_stock_count,
-            SUM(CASE WHEN (stock_fbs > 0 AND stock_fbs < 5) OR (stock_fbo > 0 AND stock_fbo < 5) THEN 1 ELSE 0 END) as low_stock_count,
-            COALESCE(SUM(COALESCE(stock_fbs, 0) * COALESCE(last_synced_price, 0)), 0) as total_fbs_value,
-            COALESCE(SUM(COALESCE(stock_fbo, 0) * COALESCE(last_synced_price, 0)), 0) as total_fbo_value,
-            COALESCE(SUM((COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE(last_synced_price, 0)), 0) as total_stock_value
+            SUM(CASE WHEN (stock_fbs > 0 AND stock_fbs < 5) OR (stock_fbo > 0 AND stock_fbo < 5) THEN 1 ELSE 0 END) as low_stock_count
         ')->first();
+
+        // Стоимость остатков по себестоимости — PHP (для конвертации валют)
+        $stockRows = (clone $summaryBase)->select('id', 'stock_fbs', 'stock_fbo')->get();
+        $totalFbsValue = 0;
+        $totalFboValue = 0;
+        foreach ($stockRows as $row) {
+            $cp = $costPriceMap[$row->id] ?? 0;
+            $totalFbsValue += ($row->stock_fbs ?? 0) * $cp;
+            $totalFboValue += ($row->stock_fbo ?? 0) * $cp;
+        }
+
         $summary = [
             'total_fbs' => (int) $raw->total_fbs,
             'total_fbo' => (int) $raw->total_fbo,
@@ -502,12 +549,18 @@ Route::middleware('auth.any')->group(function () {
             'total_products' => (int) $raw->total_products,
             'zero_stock_count' => (int) $raw->zero_stock_count,
             'low_stock_count' => (int) $raw->low_stock_count,
-            'total_fbs_value' => (float) $raw->total_fbs_value,
-            'total_fbo_value' => (float) $raw->total_fbo_value,
-            'total_stock_value' => (float) $raw->total_stock_value,
+            'total_fbs_value' => $totalFbsValue,
+            'total_fbo_value' => $totalFboValue,
+            'total_stock_value' => $totalFbsValue + $totalFboValue,
         ];
 
         $products = $query->paginate((int) $request->get('per_page', 50));
+
+        // Добавить себестоимость к каждому товару
+        $products->getCollection()->transform(function ($product) use ($costPriceMap) {
+            $product->cost_price = $costPriceMap[$product->id] ?? 0;
+            return $product;
+        });
 
         // Магазины для фильтра
         $shops = \App\Models\MarketplaceShop::whereIn('marketplace_account_id', $accountIds)
@@ -526,6 +579,40 @@ Route::middleware('auth.any')->group(function () {
             'summary' => $summary,
         ]);
     })->name('marketplace.stocks.json');
+
+    // Сохранить себестоимость товара
+    Route::post('/marketplace/stocks/cost-price', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'product_id' => 'required|integer',
+            'purchase_price' => 'required|numeric|min:0',
+            'purchase_price_currency' => 'nullable|string|in:UZS,USD,RUB,EUR',
+        ]);
+
+        $user = auth()->user();
+        $product = \App\Models\MarketplaceProduct::where('id', $request->product_id)
+            ->whereHas('account', fn ($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $product->update([
+            'purchase_price' => $request->purchase_price,
+            'purchase_price_currency' => $request->purchase_price_currency ?? 'UZS',
+        ]);
+
+        // Вернуть себестоимость в UZS
+        $price = (float) $request->purchase_price;
+        $currency = $request->purchase_price_currency ?? 'UZS';
+        if ($currency !== 'UZS' && $price > 0) {
+            $settings = \App\Models\Finance\FinanceSettings::getForCompany($user->company_id);
+            $price = $settings->convertToBase($price, $currency);
+        }
+
+        return response()->json([
+            'success' => true,
+            'cost_price' => $price,
+            'purchase_price' => (float) $request->purchase_price,
+            'purchase_price_currency' => $currency,
+        ]);
+    })->name('marketplace.stocks.cost-price');
 
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);
