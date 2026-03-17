@@ -356,6 +356,30 @@ class DashboardController extends Controller
         $monthPotentialRevenue = $monthTransitAmount + $monthAwaitingAmount;
         $monthConfirmedRevenue = $monthSalesAmount;
 
+        // ========== ОБЩИЙ ПОТЕНЦИАЛЬНЫЙ ДОХОД (ВСЕ заказы в транзите + ПВЗ, без фильтра по дате) ==========
+        $uzumAllTransitTiyin = (float) (clone $uzumTransit)->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $wbAllTransitRub = (float) (clone $wbTransit)->selectRaw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total')->value('total');
+        $ozonAllTransitRub = (float) (clone $ozonTransit)->sum('total_price');
+        $ymAllTransitRub = (float) (clone $ymTransit)->sum('total_price');
+        $uzumAllAwaitingTiyin = (float) (clone $uzumAwaitingPickup)->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $wbAllAwaitingRub = (float) (clone $wbAwaitingPickup)->selectRaw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total')->value('total');
+        $ozonAllAwaitingRub = (float) (clone $ozonAwaitingPickup)->sum('total_price');
+        $ymAllAwaitingRub = (float) (clone $ymAwaitingPickup)->sum('total_price');
+
+        $totalPotentialRevenue = ($uzumAllTransitTiyin + $uzumAllAwaitingTiyin) / 100
+            + $this->currencyService->convertFromRub($wbAllTransitRub + $wbAllAwaitingRub)
+            + $this->currencyService->convertFromRub($ozonAllTransitRub + $ozonAllAwaitingRub)
+            + $this->currencyService->convertFromRub($ymAllTransitRub + $ymAllAwaitingRub);
+
+        $totalTransitCount = (int) ((clone $uzumTransit)->sum('amount')
+            + (clone $wbTransit)->count()
+            + (clone $ozonTransit)->count()
+            + (clone $ymTransit)->count());
+        $totalAwaitingCount = (int) ((clone $uzumAwaitingPickup)->sum('amount')
+            + (clone $wbAwaitingPickup)->count()
+            + (clone $ozonAwaitingPickup)->count()
+            + (clone $ymAwaitingPickup)->count());
+
         // ========== ГРАФИК ПО ДНЯМ - только ПРОДАЖИ (завершённые) ==========
         $uzumDailySales = UzumFinanceOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
             ->whereDate('order_date', '>=', $weekAgo)
@@ -625,6 +649,11 @@ class DashboardController extends Controller
             'confirmed_revenue' => (float) $weekConfirmedRevenue,
             'potential_revenue_month' => (float) $monthPotentialRevenue,
             'confirmed_revenue_month' => (float) $monthConfirmedRevenue,
+
+            // Общий потенциальный доход (ВСЕ заказы, без фильтра по дате)
+            'total_potential_revenue' => (float) $totalPotentialRevenue,
+            'total_transit_count' => $totalTransitCount,
+            'total_awaiting_count' => $totalAwaitingCount,
 
             'chart_labels' => $chartLabels,
             'chart_data' => $chartData,
@@ -1038,6 +1067,10 @@ class DashboardController extends Controller
                     'potential_revenue_today' => $salesData['potential_revenue_today'],
                     'potential_revenue_week' => $salesData['potential_revenue'],
                     'potential_revenue_month' => $salesData['potential_revenue_month'],
+                    // Все текущие заказы в транзите + ПВЗ (без фильтра по дате)
+                    'total_potential_revenue' => $salesData['total_potential_revenue'],
+                    'total_transit_count' => $salesData['total_transit_count'],
+                    'total_awaiting_count' => $salesData['total_awaiting_count'],
                     'products_total' => $productsData['total'],
                     'products_active' => $productsData['active'],
                     'warehouse_value' => $warehouseData['total_value'],
