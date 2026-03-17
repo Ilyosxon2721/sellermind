@@ -180,7 +180,7 @@
                             </th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">МП</th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('last_synced_price')">
-                                <span class="inline-flex items-center gap-1">Цена <span x-show="sortBy === 'last_synced_price'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
+                                <span class="inline-flex items-center gap-1">Себест. <span x-show="sortBy === 'last_synced_price'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
                             </th>
                             <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-900 select-none" @click="applySort('stock_fbs')">
                                 <span class="inline-flex items-center gap-1">FBS <span x-show="sortBy === 'stock_fbs'" x-text="sortDir === 'asc' ? '▲' : '▼'" class="text-blue-600"></span></span>
@@ -218,7 +218,16 @@
                                 <td class="px-4 py-3">
                                     <span class="text-xs px-2 py-1 rounded-lg font-medium" :class="mpBadge(item)" x-text="mpLabel(item)"></span>
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm text-gray-700" x-text="item.last_synced_price ? fmtMoney(item.last_synced_price) : '—'"></td>
+                                <td class="px-4 py-3 text-center text-sm">
+                                    <button @click="openCostModal(item)" class="cursor-pointer hover:opacity-80 transition">
+                                        <template x-if="item.cost_price">
+                                            <span class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
+                                        </template>
+                                        <template x-if="!item.cost_price">
+                                            <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
+                                        </template>
+                                    </button>
+                                </td>
                                 <td class="px-4 py-3 text-center">
                                     <span :class="stockClass(item.stock_fbs)" x-text="item.stock_fbs ?? '—'"></span>
                                 </td>
@@ -340,7 +349,12 @@
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <span class="text-xs text-gray-400">Стоим:</span>
-                                    <span class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
+                                    <template x-if="item.cost_price">
+                                        <span class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
+                                    </template>
+                                    <template x-if="!item.cost_price">
+                                        <button @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -359,6 +373,49 @@
             <span class="px-4 py-2 text-sm text-gray-500" x-text="pagination.current_page + ' / ' + pagination.last_page"></span>
             <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
                     class="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-30">&rarr;</button>
+        </div>
+    </div>
+
+    <!-- Модалка: указать себестоимость -->
+    <div x-show="costModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+         @click.self="costModal = false" style="display:none">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
+                <button @click="costModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4 truncate" x-text="costProduct?.title"></p>
+            <div class="flex gap-2 mb-4">
+                <div class="flex-1">
+                    <label class="text-xs text-gray-500 mb-1 block">Цена</label>
+                    <input x-ref="costInput" type="number" min="0" step="100"
+                           x-model="costPrice"
+                           @keydown.enter="saveCostPrice"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="0">
+                </div>
+                <div class="w-24">
+                    <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
+                    <select x-model="costCurrency"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="UZS">UZS</option>
+                        <option value="USD">USD</option>
+                        <option value="RUB">RUB</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="costModal = false"
+                        class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button @click="saveCostPrice" :disabled="costSaving || !costPrice"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!costSaving">Сохранить</span>
+                    <span x-show="costSaving">Сохранение...</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -389,6 +446,13 @@ function marketplaceStocks() {
             { value: 'low', label: 'Низкий (<5)' },
             { value: 'normal', label: 'Норма (5+)' },
         ],
+
+        // Модалка себестоимости
+        costModal: false,
+        costProduct: null,
+        costPrice: '',
+        costCurrency: 'UZS',
+        costSaving: false,
 
         init() { this.fetchData(); },
 
@@ -514,7 +578,7 @@ function marketplaceStocks() {
 
         stockValue(item) {
             const qty = (item.stock_fbs ?? 0) + (item.stock_fbo ?? 0);
-            const price = item.last_synced_price ?? 0;
+            const price = item.cost_price ?? 0;
             if (!qty || !price) return '—';
             return this.fmtMoney(qty * price);
         },
@@ -552,6 +616,46 @@ function marketplaceStocks() {
             if (!dateStr) return '—';
             const d = new Date(dateStr);
             return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        },
+
+        openCostModal(item) {
+            this.costProduct = item;
+            this.costPrice = item.purchase_price || '';
+            this.costCurrency = item.purchase_price_currency || 'UZS';
+            this.costModal = true;
+            this.$nextTick(() => this.$refs.costInput?.focus());
+        },
+
+        async saveCostPrice() {
+            if (!this.costProduct || !this.costPrice) return;
+            this.costSaving = true;
+            try {
+                const res = await fetch('/marketplace/stocks/cost-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: JSON.stringify({
+                        product_id: this.costProduct.id,
+                        purchase_price: parseFloat(this.costPrice),
+                        purchase_price_currency: this.costCurrency,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Обновить товар в списке
+                    const idx = this.products.findIndex(p => p.id === this.costProduct.id);
+                    if (idx !== -1) {
+                        this.products[idx].cost_price = data.cost_price;
+                        this.products[idx].purchase_price = data.purchase_price;
+                        this.products[idx].purchase_price_currency = data.purchase_price_currency;
+                    }
+                    this.costModal = false;
+                    // Обновить summary
+                    this.fetchData();
+                }
+            } catch (e) {
+                console.error('Failed to save cost price:', e);
+            }
+            this.costSaving = false;
         },
     };
 }

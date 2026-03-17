@@ -30,6 +30,8 @@ class MarketplaceProduct extends Model
         'preview_image',
         'raw_payload',
         'last_synced_price',
+        'purchase_price',
+        'purchase_price_currency',
         'last_synced_stock',
         'stock_fbs',
         'stock_fbo',
@@ -44,6 +46,7 @@ class MarketplaceProduct extends Model
     {
         return [
             'last_synced_price' => 'float',
+            'purchase_price' => 'decimal:2',
             'last_synced_stock' => 'integer',
             'stock_fbs' => 'integer',
             'stock_fbo' => 'integer',
