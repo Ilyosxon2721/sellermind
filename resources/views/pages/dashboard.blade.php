@@ -75,8 +75,8 @@
                         </div>
                     </x-ui.alert>
 
-                    {{-- Stats Cards Row 1 (4 cards) --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {{-- Stats Cards Row 1 (5 cards) --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                         {{-- Revenue Card --}}
                         <x-ui.card padding="default" hover="true">
                             <div class="flex items-center justify-between mb-4">
@@ -92,7 +92,7 @@
                             <p class="text-sm text-gray-500" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
                         </x-ui.card>
 
-                        {{-- Orders Today Card --}}
+                        {{-- Orders Card (period-dependent) --}}
                         <x-ui.card padding="default" hover="true">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -100,10 +100,26 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                     </svg>
                                 </div>
+                                <x-ui.badge variant="success" x-text="periodLabel"></x-ui.badge>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.orders_today') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.today_orders">0</p>
-                            <p class="text-sm text-gray-500" x-text="formatMoney(stats.today_revenue)"></p>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1" x-text="ordersLabel">{{ __('dashboard.orders_today') }}</h3>
+                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.total_orders">0</p>
+                            <p class="text-sm text-gray-500" x-text="formatMoney(stats.period_revenue)"></p>
+                        </x-ui.card>
+
+                        {{-- Potential Revenue Card --}}
+                        <x-ui.card padding="default" hover="true">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <x-ui.badge variant="warning" x-text="periodLabel"></x-ui.badge>
+                            </div>
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">В пути / в ПВЗ</h3>
+                            <p class="text-3xl font-bold text-amber-600 mb-2" x-text="formatMoney(stats.potential_revenue)">0 сум</p>
+                            <p class="text-sm text-gray-500">Ожидает выкупа</p>
                         </x-ui.card>
 
                         {{-- Products Card --}}
@@ -516,8 +532,9 @@ function dashboardPage() {
         stats: {
             revenue: 0,
             orders_count: 0,
-            today_orders: 0,
-            today_revenue: 0,
+            total_orders: 0,
+            period_revenue: 0,
+            potential_revenue: 0,
             products_count: 0,
             marketplace_accounts: 0
         },
@@ -566,6 +583,15 @@ function dashboardPage() {
             return labels[this.period] || '7 дней';
         },
 
+        get ordersLabel() {
+            const labels = {
+                today: 'Заказы сегодня',
+                week: 'Заказы за 7 дней',
+                month: 'Заказы за 30 дней'
+            };
+            return labels[this.period] || 'Заказы за 7 дней';
+        },
+
         async init() {
             if (this.$store.auth.isAuthenticated) {
                 await this.$store.auth.ensureCompaniesLoaded();
@@ -602,23 +628,36 @@ function dashboardPage() {
                 if (data.summary) {
                     let revenue = 0;
                     let ordersCount = 0;
+                    let totalOrders = 0;
+                    let periodRevenue = 0;
+                    let potentialRevenue = 0;
 
                     if (this.period === 'today') {
                         revenue = data.summary.sales_today || 0;
                         ordersCount = data.summary.sales_today_count || 0;
+                        totalOrders = data.summary.total_today_count || 0;
+                        periodRevenue = data.summary.sales_today || 0;
+                        potentialRevenue = data.summary.potential_revenue_today || 0;
                     } else if (this.period === 'week') {
                         revenue = data.summary.sales_week || 0;
                         ordersCount = data.summary.sales_week_count || 0;
+                        totalOrders = data.summary.total_week_count || 0;
+                        periodRevenue = data.summary.sales_week || 0;
+                        potentialRevenue = data.summary.potential_revenue_week || 0;
                     } else if (this.period === 'month') {
                         revenue = data.summary.sales_month || 0;
                         ordersCount = data.summary.sales_month_count || 0;
+                        totalOrders = data.summary.total_month_count || 0;
+                        periodRevenue = data.summary.sales_month || 0;
+                        potentialRevenue = data.summary.potential_revenue_month || 0;
                     }
 
                     this.stats = {
                         revenue: revenue,
                         orders_count: ordersCount,
-                        today_orders: data.summary.sales_today_count || 0,
-                        today_revenue: data.summary.sales_today || 0,
+                        total_orders: totalOrders,
+                        period_revenue: periodRevenue,
+                        potential_revenue: potentialRevenue,
                         products_count: data.summary.products_total || 0,
                         marketplace_accounts: data.summary.marketplaces_count || 0
                     };
