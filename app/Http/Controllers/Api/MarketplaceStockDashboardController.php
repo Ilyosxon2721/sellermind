@@ -11,6 +11,7 @@ use App\Models\WildberriesProduct;
 use App\Models\WildberriesStock;
 use App\Models\WildberriesWarehouse;
 use App\Support\ApiResponder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,50 +29,63 @@ final class MarketplaceStockDashboardController extends Controller
      */
     public function summary(Request $request): JsonResponse
     {
-        $companyId = $this->getCompanyId();
+        $emptyResponse = [
+            'total_quantity' => 0,
+            'total_in_transit' => 0,
+            'total_returning' => 0,
+            'warehouses_count' => 0,
+            'products_count' => 0,
+            'out_of_stock_count' => 0,
+            'low_stock_count' => 0,
+            'accounts' => [],
+            'warehouses' => [],
+            'top_products' => [],
+            'low_stock_products' => [],
+        ];
+
+        try {
+            $companyId = $this->getCompanyId();
+        } catch (\Throwable) {
+            return $this->successResponse($emptyResponse);
+        }
 
         $accounts = MarketplaceAccount::where('company_id', $companyId)
             ->where('is_active', true)
             ->get(['id', 'name', 'marketplace']);
 
         if ($accounts->isEmpty()) {
-            return $this->successResponse([
-                'total_quantity' => 0,
-                'total_in_transit' => 0,
-                'total_returning' => 0,
-                'warehouses_count' => 0,
-                'products_count' => 0,
-                'accounts' => [],
-                'warehouses' => [],
-                'top_products' => [],
-                'low_stock_products' => [],
-            ]);
+            return $this->successResponse($emptyResponse);
         }
 
         $accountIds = $accounts->pluck('id');
 
-        // Агрегация по складам
-        $warehouseStats = WildberriesStock::query()
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->join('wildberries_warehouses', 'wildberries_stocks.wildberries_warehouse_id', '=', 'wildberries_warehouses.id')
-            ->select(
-                'wildberries_warehouses.id as warehouse_id',
-                'wildberries_warehouses.warehouse_name',
-                'wildberries_warehouses.warehouse_type',
-                'wildberries_warehouses.marketplace_account_id',
-                DB::raw('SUM(wildberries_stocks.quantity) as total_quantity'),
-                DB::raw('SUM(wildberries_stocks.quantity_full) as total_quantity_full'),
-                DB::raw('SUM(wildberries_stocks.in_way_to_client) as total_in_way_to_client'),
-                DB::raw('SUM(wildberries_stocks.in_way_from_client) as total_in_way_from_client'),
-                DB::raw('COUNT(DISTINCT wildberries_stocks.wildberries_product_id) as products_count'),
-            )
-            ->groupBy(
-                'wildberries_warehouses.id',
-                'wildberries_warehouses.warehouse_name',
-                'wildberries_warehouses.warehouse_type',
-                'wildberries_warehouses.marketplace_account_id',
-            )
-            ->get();
+        try {
+            // Агрегация по складам
+            $warehouseStats = WildberriesStock::query()
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->join('wildberries_warehouses', 'wildberries_stocks.wildberries_warehouse_id', '=', 'wildberries_warehouses.id')
+                ->select(
+                    'wildberries_warehouses.id as warehouse_id',
+                    'wildberries_warehouses.warehouse_name',
+                    'wildberries_warehouses.warehouse_type',
+                    'wildberries_warehouses.marketplace_account_id',
+                    DB::raw('SUM(wildberries_stocks.quantity) as total_quantity'),
+                    DB::raw('SUM(wildberries_stocks.quantity_full) as total_quantity_full'),
+                    DB::raw('SUM(wildberries_stocks.in_way_to_client) as total_in_way_to_client'),
+                    DB::raw('SUM(wildberries_stocks.in_way_from_client) as total_in_way_from_client'),
+                    DB::raw('COUNT(DISTINCT wildberries_stocks.wildberries_product_id) as products_count'),
+                )
+                ->groupBy(
+                    'wildberries_warehouses.id',
+                    'wildberries_warehouses.warehouse_name',
+                    'wildberries_warehouses.warehouse_type',
+                    'wildberries_warehouses.marketplace_account_id',
+                )
+                ->get();
+        } catch (QueryException) {
+            // Таблицы ещё не созданы (миграция не выполнена)
+            return $this->successResponse($emptyResponse);
+        }
 
         // Агрегация по аккаунтам
         $accountStats = $warehouseStats->groupBy('marketplace_account_id')->map(function ($items, $accountId) use ($accounts) {
@@ -193,6 +207,8 @@ final class MarketplaceStockDashboardController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
+        $emptySearch = ['items' => [], 'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 30, 'total' => 0]];
+
         $request->validate([
             'query' => ['nullable', 'string', 'max:255'],
             'account_id' => ['nullable', 'integer'],
@@ -202,7 +218,11 @@ final class MarketplaceStockDashboardController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $companyId = $this->getCompanyId();
+        try {
+            $companyId = $this->getCompanyId();
+        } catch (\Throwable) {
+            return $this->successResponse($emptySearch);
+        }
         $accountIds = MarketplaceAccount::where('company_id', $companyId)
             ->where('is_active', true)
             ->pluck('id');

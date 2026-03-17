@@ -322,10 +322,6 @@ Route::middleware('auth.any')->group(function () {
         return view('inventory.index');
     })->name('inventory.index');
 
-    Route::get('/marketplace-stocks', function () {
-        return view('pages.marketplace-stocks');
-    })->name('marketplace-stocks');
-
     Route::get('/replenishment', function () {
         return view('replenishment.index');
     })->name('replenishment.index');
@@ -384,6 +380,11 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/marketplace-pwa/{accountId}', function ($accountId) {
         return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
     })->name('marketplace.show.pwa');
+
+    // Marketplace stocks dashboard - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/stocks', function () {
+        return view('pages.marketplace-stocks');
+    })->name('marketplace.stocks');
 
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
