@@ -197,25 +197,13 @@
             metrics: {docsTotal: null, docsPosted: null, docsPostedPct: 0, reservations: null, ledger: null, moves: null},
             spark: {reservations: [], ledger: []},
 
-            getAuthHeaders() {
-                const token = localStorage.getItem('_x_auth_token');
-                const parsed = token ? JSON.parse(token) : null;
-                return {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': parsed ? `Bearer ${parsed}` : ''
-                };
-            },
-
             async init() {
                 const from30 = new Date();
                 from30.setDate(from30.getDate() - 30);
-                const qsDocs = new URLSearchParams({from: from30.toISOString().slice(0,10)});
 
                 try {
-                    const docsResp = await fetch(`/api/inventory/documents?${qsDocs.toString()}`, {headers: this.getAuthHeaders()});
-                    const docsJson = await docsResp.json();
-                    const docs = docsJson.data || [];
+                    const docsResp = await window.api.get('/marketplace/inventory/documents', {params: {from: from30.toISOString().slice(0,10)}, silent: true});
+                    const docs = docsResp.data?.data || docsResp.data || [];
                     const posted = docs.filter(d => d.status === 'POSTED').length;
                     this.metrics.docsTotal = docs.length;
                     this.metrics.docsPosted = posted;
@@ -224,9 +212,8 @@
                 } catch(e){console.warn('Docs error:', e);}
 
                 try {
-                    const resResp = await fetch('/api/stock/reservations?status=ACTIVE', {headers: this.getAuthHeaders()});
-                    const resJson = await resResp.json();
-                    const items = resJson.data || [];
+                    const resResp = await window.api.get('/marketplace/stock/reservations', {params: {status: 'ACTIVE'}, silent: true});
+                    const items = resResp.data?.data || resResp.data || [];
                     this.metrics.reservations = items.length;
                     this.spark.reservations = this.buildSpark(items.length, 10);
                 } catch(e){console.warn('Reservations error:', e);}
@@ -234,10 +221,8 @@
                 try {
                     const from7 = new Date();
                     from7.setDate(from7.getDate() - 7);
-                    const qsLedger = new URLSearchParams({from: from7.toISOString().slice(0,10)});
-                    const ledResp = await fetch(`/api/warehouse/ledger?${qsLedger.toString()}`, {headers: this.getAuthHeaders()});
-                    const ledJson = await ledResp.json();
-                    const ledItems = ledJson.data?.data || ledJson.data || [];
+                    const ledResp = await window.api.get('/marketplace/stock/ledger', {params: {from: from7.toISOString().slice(0,10)}, silent: true});
+                    const ledItems = ledResp.data?.data || ledResp.data || [];
                     this.metrics.ledger = ledItems.length;
                     this.spark.ledger = this.buildSpark(ledItems.length, 12);
                 } catch(e){console.warn('Ledger error:', e);}
