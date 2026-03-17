@@ -460,6 +460,27 @@ Route::middleware('auth.any')->group(function () {
             }
         }
 
+        // Карта себестоимостей Uzum по каждому SKU (для точного расчёта сводки)
+        $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
+        // [marketplace_product_id][external_sku_id] => cost_uzs
+        $uzumAllSkuCostMap = [];
+        if (!empty($uzumAccountIds)) {
+            $allUzumLinks = \DB::table('variant_marketplace_links as vml')
+                ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+                ->whereIn('vml.marketplace_account_id', $uzumAccountIds)
+                ->whereNotNull('vml.external_sku_id')
+                ->select('vml.marketplace_product_id', 'vml.external_sku_id', 'pv.purchase_price', 'pv.purchase_price_currency')
+                ->get();
+            foreach ($allUzumLinks as $link) {
+                $price = (float) ($link->purchase_price ?? 0);
+                if ($price > 0) {
+                    $currency = $link->purchase_price_currency ?? 'UZS';
+                    $uzumAllSkuCostMap[$link->marketplace_product_id][$link->external_sku_id] =
+                        $currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency);
+                }
+            }
+        }
+
         $query = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
             ->select([
                 'id', 'marketplace_account_id', 'title', 'preview_image', 'external_product_id',
@@ -530,14 +551,42 @@ Route::middleware('auth.any')->group(function () {
             SUM(CASE WHEN (stock_fbs > 0 AND stock_fbs < 5) OR (stock_fbo > 0 AND stock_fbo < 5) THEN 1 ELSE 0 END) as low_stock_count
         ')->first();
 
-        // Стоимость остатков по себестоимости — PHP (для конвертации валют)
+        // Стоимость остатков — для Uzum с per-SKU ценами считаем точно по каждому SKU
+        // Загружаем skuList только для Uzum-товаров с привязанными локальными вариантами
+        $uzumProductIdsWithLinks = array_keys($uzumAllSkuCostMap);
+        $uzumSkuStockData = [];
+        if (!empty($uzumProductIdsWithLinks)) {
+            $skuStockRows = \DB::table('marketplace_products')
+                ->whereIn('id', $uzumProductIdsWithLinks)
+                ->selectRaw("id, JSON_EXTRACT(raw_payload, '$.skuList') as sku_list")
+                ->get();
+            foreach ($skuStockRows as $row) {
+                $uzumSkuStockData[$row->id] = is_string($row->sku_list)
+                    ? (json_decode($row->sku_list, true) ?? [])
+                    : [];
+            }
+        }
+
         $stockRows = (clone $summaryBase)->select('id', 'stock_fbs', 'stock_fbo')->get();
         $totalFbsValue = 0;
         $totalFboValue = 0;
         foreach ($stockRows as $row) {
-            $cp = $costPriceMap[$row->id] ?? 0;
-            $totalFbsValue += ($row->stock_fbs ?? 0) * $cp;
-            $totalFboValue += ($row->stock_fbo ?? 0) * $cp;
+            if (isset($uzumSkuStockData[$row->id])) {
+                // Uzum: точный расчёт — каждый SKU × его себестоимость
+                $skuCostMap = $uzumAllSkuCostMap[$row->id];
+                $fallbackCp = $costPriceMap[$row->id] ?? 0;
+                foreach ($uzumSkuStockData[$row->id] as $sku) {
+                    $skuId = (string) ($sku['skuId'] ?? '');
+                    $cp = $skuCostMap[$skuId] ?? $fallbackCp;
+                    $totalFbsValue += (int) ($sku['quantityFbs'] ?? 0) * $cp;
+                    $totalFboValue += (int) ($sku['quantityActive'] ?? 0) * $cp;
+                }
+            } else {
+                // Не-Uzum или Uzum без per-SKU связок: цена на уровне товара
+                $cp = $costPriceMap[$row->id] ?? 0;
+                $totalFbsValue += ($row->stock_fbs ?? 0) * $cp;
+                $totalFboValue += ($row->stock_fbo ?? 0) * $cp;
+            }
         }
 
         $summary = [
@@ -568,7 +617,6 @@ Route::middleware('auth.any')->group(function () {
             ->groupBy('marketplace_product_id');
 
         // Варианты Uzum из raw_payload.skuList
-        $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
         $uzumRawData = [];
         // Карта себестоимостей: [marketplace_product_id][external_sku_id] => {variant_id, purchase_price, currency}
         $uzumSkuCostMap = [];
