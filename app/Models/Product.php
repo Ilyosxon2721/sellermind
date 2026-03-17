@@ -135,10 +135,18 @@ class Product extends Model
     }
 
     /**
+     * Accessor для остатка комплекта (используется через append)
+     */
+    public function getBundleStockAttribute(): int
+    {
+        return $this->calculateBundleStock();
+    }
+
+    /**
      * Рассчитать доступный остаток комплекта
      * Остаток = min(stock_компонента / количество_в_комплекте) по всем компонентам
      */
-    public function getBundleStock(): int
+    public function calculateBundleStock(): int
     {
         if (! $this->is_bundle) {
             return 0;

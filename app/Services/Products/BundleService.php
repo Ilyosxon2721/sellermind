@@ -140,9 +140,9 @@ final class BundleService
         $bundles = $query->orderBy('created_at', 'desc')
             ->paginate($filters['per_page'] ?? 20);
 
-        // Добавляем расчёт остатков
+        // Добавляем расчёт остатков в JSON через accessor
         $bundles->getCollection()->each(function (Product $bundle) {
-            $bundle->bundle_stock = $bundle->getBundleStock();
+            $bundle->append('bundle_stock');
         });
 
         return $bundles;
@@ -154,7 +154,7 @@ final class BundleService
     public function getBundleDetail(Product $product): Product
     {
         $product->load(['bundleItems.componentVariant.product', 'mainImage', 'category']);
-        $product->bundle_stock = $product->getBundleStock();
+        $product->append('bundle_stock');
 
         // Добавляем остатки каждого компонента
         foreach ($product->bundleItems as $item) {

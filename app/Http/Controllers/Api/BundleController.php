@@ -146,7 +146,7 @@ final class BundleController extends Controller
         ]);
 
         $qty = (int) $request->input('quantity');
-        $bundleStock = $product->getBundleStock();
+        $bundleStock = $product->calculateBundleStock();
 
         if ($qty > $bundleStock) {
             return response()->json([
@@ -159,7 +159,7 @@ final class BundleController extends Controller
         return response()->json([
             'message' => "Списано {$qty} комплект(ов)",
             'deductions' => $results,
-            'new_bundle_stock' => $product->getBundleStock(),
+            'new_bundle_stock' => $product->calculateBundleStock(),
         ]);
     }
 }
