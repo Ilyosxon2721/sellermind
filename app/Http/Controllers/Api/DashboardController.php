@@ -319,15 +319,31 @@ class DashboardController extends Controller
             + (clone $ymCancelled)->whereDate('created_at_ym', '>=', $weekAgo)->count());
 
         // ========== ВСЕГО ЗАКАЗОВ (для общей статистики) ==========
-        $todayTotalCount = $todaySalesCount
-            + (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
+        $todayTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
             + (clone $wbTransit)->whereDate('order_date', $today)->count()
             + (clone $ozonTransit)->whereDate('created_at_ozon', $today)->count()
-            + (clone $ymTransit)->whereDate('created_at_ym', $today)->count())
-            + (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', $today)->sum('amount')
+            + (clone $ymTransit)->whereDate('created_at_ym', $today)->count());
+        $todayAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', $today)->sum('amount')
             + (clone $wbAwaitingPickup)->whereDate('order_date', $today)->count()
             + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', $today)->count()
             + (clone $ymAwaitingPickup)->whereDate('created_at_ym', $today)->count());
+        $todayTotalCount = $todaySalesCount + $todayTransitCount + $todayAwaitingCount;
+
+        // Today - потенциальный доход (в пути + в ПВЗ)
+        $uzumTodayTransitTiyin = (float) (clone $uzumTransit)->whereDate('order_date', $today)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $wbTodayTransitRub = (float) (clone $wbTransit)->whereDate('order_date', $today)->selectRaw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total')->value('total');
+        $ozonTodayTransitRub = (float) (clone $ozonTransit)->whereDate('created_at_ozon', $today)->sum('total_price');
+        $ymTodayTransitRub = (float) (clone $ymTransit)->whereDate('created_at_ym', $today)->sum('total_price');
+        $uzumTodayAwaitingTiyin = (float) (clone $uzumAwaitingPickup)->whereDate('order_date', $today)
+            ->selectRaw('SUM(sell_price * amount) as total')->value('total');
+        $wbTodayAwaitingRub = (float) (clone $wbAwaitingPickup)->whereDate('order_date', $today)->selectRaw('SUM(COALESCE(for_pay, finished_price, total_price, 0)) as total')->value('total');
+        $ozonTodayAwaitingRub = (float) (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', $today)->sum('total_price');
+        $ymTodayAwaitingRub = (float) (clone $ymAwaitingPickup)->whereDate('created_at_ym', $today)->sum('total_price');
+        $todayPotentialRevenue = ($uzumTodayTransitTiyin + $uzumTodayAwaitingTiyin) / 100
+            + $this->currencyService->convertFromRub($wbTodayTransitRub + $wbTodayAwaitingRub)
+            + $this->currencyService->convertFromRub($ozonTodayTransitRub + $ozonTodayAwaitingRub)
+            + $this->currencyService->convertFromRub($ymTodayTransitRub + $ymTodayAwaitingRub);
 
         $weekTotalCount = $weekSalesCount + $weekTransitCount + $weekAwaitingCount;
         $monthTotalCount = $monthSalesCount + $monthTransitCount + $monthAwaitingCount;
@@ -604,6 +620,7 @@ class DashboardController extends Controller
             'total_month_count' => $monthTotalCount,
 
             // Потенциальный доход (в пути + в ПВЗ) vs Подтверждённый доход (выкуплено)
+            'potential_revenue_today' => (float) $todayPotentialRevenue,
             'potential_revenue' => (float) $weekPotentialRevenue,
             'confirmed_revenue' => (float) $weekConfirmedRevenue,
             'potential_revenue_month' => (float) $monthPotentialRevenue,
@@ -1013,6 +1030,14 @@ class DashboardController extends Controller
                     'sales_week_count' => $salesData['week_count'],
                     'sales_month' => $salesData['month_amount'],
                     'sales_month_count' => $salesData['month_count'],
+                    // Всего заказов (все статусы) за период
+                    'total_today_count' => $salesData['total_today_count'],
+                    'total_week_count' => $salesData['total_week_count'],
+                    'total_month_count' => $salesData['total_month_count'],
+                    // Потенциальный доход (в пути + в ПВЗ) за период
+                    'potential_revenue_today' => $salesData['potential_revenue_today'],
+                    'potential_revenue_week' => $salesData['potential_revenue'],
+                    'potential_revenue_month' => $salesData['potential_revenue_month'],
                     'products_total' => $productsData['total'],
                     'products_active' => $productsData['active'],
                     'warehouse_value' => $warehouseData['total_value'],
