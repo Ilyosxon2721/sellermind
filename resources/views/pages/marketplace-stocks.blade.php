@@ -14,9 +14,16 @@
         {{-- Header --}}
         <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div class="flex items-center justify-between flex-wrap gap-3">
-                <div class="min-w-0">
-                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Остатки на маркетплейсах</h1>
-                    <p class="text-sm text-gray-500">Аналитика остатков на складах маркетплейсов в реальном времени</p>
+                <div class="min-w-0 flex items-center space-x-3">
+                    <a href="/marketplace" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Остатки на маркетплейсах</h1>
+                        <p class="text-sm text-gray-500">Аналитика остатков на складах маркетплейсов в реальном времени</p>
+                    </div>
                 </div>
                 <div class="flex items-center space-x-3">
                     <span x-show="lastUpdated" class="text-xs text-gray-400" x-text="'Обновлено: ' + lastUpdated"></span>
