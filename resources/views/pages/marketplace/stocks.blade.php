@@ -307,47 +307,6 @@
     </div>
     </div>
 
-    <!-- Модалка: указать себестоимость (browser) -->
-    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-         @click.self="costModal = false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
-                <button @click="costModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-            </div>
-            <p class="text-sm text-gray-500 mb-4 truncate" x-text="costProduct?.title"></p>
-            <div class="flex gap-2 mb-4">
-                <div class="flex-1">
-                    <label class="text-xs text-gray-500 mb-1 block">Цена</label>
-                    <input x-ref="costInput" type="number" min="0" step="100"
-                           x-model="costPrice"
-                           @keydown.enter="saveCostPrice"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0">
-                </div>
-                <div class="w-24">
-                    <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
-                    <select x-model="costCurrency"
-                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="UZS">UZS</option>
-                        <option value="USD">USD</option>
-                        <option value="RUB">RUB</option>
-                        <option value="EUR">EUR</option>
-                    </select>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button @click="costModal = false"
-                        class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
-                    Отмена
-                </button>
-                <button @click="saveCostPrice" :disabled="costSaving || !costPrice"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span x-show="!costSaving">Сохранить</span>
-                    <span x-show="costSaving">Сохранение...</span>
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -450,51 +409,60 @@
         </div>
     </div>
 
-    <!-- Модалка: указать себестоимость -->
-    <div x-show="costModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-         @click.self="costModal = false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
-                <button @click="costModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-            </div>
-            <p class="text-sm text-gray-500 mb-4 truncate" x-text="costProduct?.title"></p>
-            <div class="flex gap-2 mb-4">
-                <div class="flex-1">
-                    <label class="text-xs text-gray-500 mb-1 block">Цена</label>
-                    <input x-ref="costInput" type="number" min="0" step="100"
-                           x-model="costPrice"
-                           @keydown.enter="saveCostPrice"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0">
-                </div>
-                <div class="w-24">
-                    <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
-                    <select x-model="costCurrency"
-                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="UZS">UZS</option>
-                        <option value="USD">USD</option>
-                        <option value="RUB">RUB</option>
-                        <option value="EUR">EUR</option>
-                    </select>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button @click="costModal = false"
-                        class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
-                    Отмена
-                </button>
-                <button @click="saveCostPrice" :disabled="costSaving || !costPrice"
-                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span x-show="!costSaving">Сохранить</span>
-                    <span x-show="costSaving">Сохранение...</span>
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 
 <script>
+// Alpine Store для модалки себестоимости — доступен из любого компонента
+document.addEventListener('alpine:init', () => {
+    Alpine.store('costModal', {
+        open: false,
+        product: null,
+        price: '',
+        currency: 'UZS',
+        saving: false,
+        _callback: null,
+
+        show(item, callback) {
+            this.product = item;
+            this.price = item.purchase_price || '';
+            this.currency = item.purchase_price_currency || 'UZS';
+            this.open = true;
+            this._callback = callback || null;
+            this.$nextTick?.(() => document.getElementById('costPriceInput')?.focus());
+        },
+
+        close() { this.open = false; },
+
+        async save() {
+            if (!this.product || !this.price) return;
+            this.saving = true;
+            try {
+                const res = await fetch('/marketplace/stocks/cost-price', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        product_id: this.product.id,
+                        purchase_price: parseFloat(this.price),
+                        purchase_price_currency: this.currency,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (this._callback) this._callback(data);
+                    this.open = false;
+                }
+            } catch (e) {
+                console.error('Failed to save cost price:', e);
+            }
+            this.saving = false;
+        },
+    });
+});
+
 function marketplaceStocks() {
     return {
         loading: true,
@@ -524,13 +492,6 @@ function marketplaceStocks() {
         // Развёртывание вариантов
         expandedRows: {},
         toggleExpand(id) { this.expandedRows[id] = !this.expandedRows[id]; },
-
-        // Модалка себестоимости
-        costModal: false,
-        costProduct: null,
-        costPrice: '',
-        costCurrency: 'UZS',
-        costSaving: false,
 
         init() { this.fetchData(); },
 
@@ -694,45 +655,66 @@ function marketplaceStocks() {
         },
 
         openCostModal(item) {
-            this.costProduct = item;
-            this.costPrice = item.purchase_price || '';
-            this.costCurrency = item.purchase_price_currency || 'UZS';
-            this.costModal = true;
-            this.$nextTick(() => this.$refs.costInput?.focus());
-        },
-
-        async saveCostPrice() {
-            if (!this.costProduct || !this.costPrice) return;
-            this.costSaving = true;
-            try {
-                const res = await fetch('/marketplace/stocks/cost-price', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                    body: JSON.stringify({
-                        product_id: this.costProduct.id,
-                        purchase_price: parseFloat(this.costPrice),
-                        purchase_price_currency: this.costCurrency,
-                    }),
-                });
-                const data = await res.json();
-                if (data.success) {
-                    // Обновить товар в списке
-                    const idx = this.products.findIndex(p => p.id === this.costProduct.id);
-                    if (idx !== -1) {
-                        this.products[idx].cost_price = data.cost_price;
-                        this.products[idx].purchase_price = data.purchase_price;
-                        this.products[idx].purchase_price_currency = data.purchase_price_currency;
-                    }
-                    this.costModal = false;
-                    // Обновить summary
-                    this.fetchData();
+            this.$store.costModal.show(item, (data) => {
+                const idx = this.products.findIndex(p => p.id === item.id);
+                if (idx !== -1) {
+                    this.products[idx].cost_price = data.cost_price;
+                    this.products[idx].purchase_price = data.purchase_price;
+                    this.products[idx].purchase_price_currency = data.purchase_price_currency;
                 }
-            } catch (e) {
-                console.error('Failed to save cost price:', e);
-            }
-            this.costSaving = false;
+                this.fetchData();
+            });
         },
     };
 }
 </script>
+
+{{-- Глобальная модалка себестоимости — вне любых x-data, использует Alpine Store --}}
+<div x-data="{ get m() { return $store.costModal } }"
+     x-show="$store.costModal.open"
+     x-cloak
+     class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+     @click.self="$store.costModal.close()"
+     @keydown.escape.window="$store.costModal.close()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" @click.stop>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900">Себестоимость товара</h3>
+            <button @click="$store.costModal.close()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <p class="text-sm text-gray-500 mb-4 truncate" x-text="$store.costModal.product?.title"></p>
+        <div class="flex gap-2 mb-4">
+            <div class="flex-1">
+                <label class="text-xs text-gray-500 mb-1 block">Цена</label>
+                <input id="costPriceInput" type="number" min="0" step="100"
+                       x-model="$store.costModal.price"
+                       @keydown.enter="$store.costModal.save()"
+                       x-effect="if ($store.costModal.open) $nextTick(() => $el.focus())"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="0">
+            </div>
+            <div class="w-24">
+                <label class="text-xs text-gray-500 mb-1 block">Валюта</label>
+                <select x-model="$store.costModal.currency"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="UZS">UZS</option>
+                    <option value="USD">USD</option>
+                    <option value="RUB">RUB</option>
+                    <option value="EUR">EUR</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button @click="$store.costModal.close()"
+                    class="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+                Отмена
+            </button>
+            <button @click="$store.costModal.save()"
+                    :disabled="$store.costModal.saving || !$store.costModal.price"
+                    class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-show="!$store.costModal.saving">Сохранить</span>
+                <span x-show="$store.costModal.saving">Сохранение...</span>
+            </button>
+        </div>
+    </div>
+</div>
 @endsection
