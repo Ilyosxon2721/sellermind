@@ -130,8 +130,33 @@ class SalesManagementController extends Controller
             ], 422);
         }
 
+        // Валидация остатков: нельзя продать больше чем есть на складе
+        $validated = $validator->validated();
+        $warehouseId = $validated['warehouse_id'] ?? null;
+        if ($warehouseId) {
+            $stockErrors = [];
+            foreach ($validated['items'] as $i => $item) {
+                if (! empty($item['product_variant_id'])) {
+                    $sku = \App\Models\Warehouse\Sku::where('product_variant_id', $item['product_variant_id'])->first();
+                    if ($sku) {
+                        $available = app(\App\Services\Warehouse\StockBalanceService::class)
+                            ->available($this->getCompanyId(), $warehouseId, $sku->id);
+                        if ($item['quantity'] > $available) {
+                            $stockErrors["items.{$i}.quantity"] = ["Недостаточно остатков. Доступно: {$available} шт"];
+                        }
+                    }
+                }
+            }
+            if (! empty($stockErrors)) {
+                return response()->json([
+                    'message' => 'Недостаточно остатков на складе',
+                    'errors' => $stockErrors,
+                ], 422);
+            }
+        }
+
         try {
-            $sale = $this->saleService->createSale($validator->validated());
+            $sale = $this->saleService->createSale($validated);
 
             return response()->json([
                 'message' => 'Sale created successfully',
@@ -291,6 +316,38 @@ class SalesManagementController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to cancel sale',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Вернуть подтверждённую продажу в черновик
+     */
+    public function revertToDraft(Request $request, int $id): JsonResponse
+    {
+        $companyId = $this->getCompanyId();
+
+        $sale = Sale::query()
+            ->byCompany($companyId)
+            ->findOrFail($id);
+
+        if ($sale->status !== 'confirmed') {
+            return response()->json([
+                'message' => 'Only confirmed sales can be reverted to draft',
+            ], 403);
+        }
+
+        try {
+            $sale = $this->saleService->revertToDraft($sale);
+
+            return response()->json([
+                'message' => 'Sale reverted to draft successfully',
+                'data' => $sale,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to revert sale to draft',
                 'error' => $e->getMessage(),
             ], 500);
         }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\Telegram\OrderMessageBuilder;
+use App\Telegram\TelegramRateLimitException;
 use App\Telegram\TelegramService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -27,12 +28,14 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
 
     public int $tries = 3;
 
+    public int $maxExceptions = 3;
+
     public array $backoff = [30, 60, 120];
 
     /**
-     * Уникальность джоба в очереди — 5 минут
+     * Уникальность job в очереди — 1 час
      */
-    public int $uniqueFor = 300;
+    public int $uniqueFor = 3600;
 
     public function __construct(
         private readonly Model $order,
@@ -53,6 +56,13 @@ final class SendTelegramOrderNotification implements ShouldQueue, ShouldBeUnique
                 'status' => $this->status,
             ]);
 
+        // Дедупликация на уровне отправки — не отправлять повторно 24 часа
+        $dedupKey = 'tg_sent:' . get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId;
+        if (Cache::has($dedupKey)) {
+            Log::debug('Telegram order notification skipped (already sent)', [
+                'order_id' => $this->order->id,
+                'chat_id' => $this->chatId,
+            ]);
             return;
         }
 

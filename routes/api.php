@@ -111,6 +111,7 @@ Route::middleware(['web', 'auth.any'])->group(function () {
         Route::post('/{id}/confirm', [\App\Http\Controllers\Api\SalesManagementController::class, 'confirm']);
         Route::post('/{id}/complete', [\App\Http\Controllers\Api\SalesManagementController::class, 'complete']);
         Route::post('/{id}/cancel', [\App\Http\Controllers\Api\SalesManagementController::class, 'cancel']);
+        Route::post('/{id}/revert-draft', [\App\Http\Controllers\Api\SalesManagementController::class, 'revertToDraft']);
         Route::post('/{id}/ship', [\App\Http\Controllers\Api\SalesManagementController::class, 'ship']);
         Route::get('/{id}/reservations', [\App\Http\Controllers\Api\SalesManagementController::class, 'getReservations']);
         Route::post('/{id}/items', [\App\Http\Controllers\Api\SalesManagementController::class, 'addItem']);
@@ -272,9 +273,13 @@ Route::middleware('auth.any')->group(function () {
     Route::post('warehouses/{id}/default', [\App\Http\Controllers\Api\Warehouse\WarehouseManageController::class, 'makeDefault']);
 
     // Products
-    // IMPORTANT: upload-image must be before apiResource to avoid being caught by {product} param
-    // Uses web middleware for session-based auth from product edit page
+    // IMPORTANT: upload-image and purchase-prices must be before apiResource to avoid being caught by {product} param
     Route::post('products/upload-image', [ProductImageController::class, 'uploadTemp'])->middleware('web');
+
+    // Себестоимость товаров (до apiResource чтобы не перехватывалось {product})
+    Route::get('products/purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
+    Route::post('products/purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
+    Route::patch('products/variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
 
     Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
@@ -286,13 +291,6 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products/{product}/publish', [ProductController::class, 'publish']);
         Route::post('products/{product}/publish/{channel}', [ProductController::class, 'publishChannel']);
         Route::get('products/{product}/price-history', [ProductController::class, 'priceHistory']);
-    });
-
-    // Себестоимость товаров
-    Route::prefix('products')->group(function () {
-        Route::get('purchase-prices', [\App\Http\Controllers\Api\PurchasePriceController::class, 'index']);
-        Route::post('purchase-prices/bulk', [\App\Http\Controllers\Api\PurchasePriceController::class, 'bulkUpdate']);
-        Route::patch('variants/{variantId}/purchase-price', [\App\Http\Controllers\Api\PurchasePriceController::class, 'updateVariant']);
     });
 
     // Product Bulk Operations — только owner
@@ -1038,7 +1036,6 @@ Route::prefix('v1/integration')->middleware('risment.auth')->group(function () {
     Route::delete('webhooks/{id}', [WebhookController::class, 'destroy']);
     Route::post('webhooks/{id}/test', [WebhookController::class, 'test']);
 });
-
 
 // ── Marketplace Event Webhooks (public, no auth, IP-checked) ──
 Route::prefix('webhook')->group(function () {

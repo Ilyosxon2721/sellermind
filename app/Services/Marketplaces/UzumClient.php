@@ -6,6 +6,7 @@ namespace App\Services\Marketplaces;
 
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceShop;
+use App\Services\Uzum\Api\UzumEndpoints;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -45,8 +46,8 @@ final class UzumClient implements MarketplaceClientInterface
             do {
                 $response = $this->request(
                     $account,
-                    'GET',
-                    "/v1/product/shop/{$shopId}",
+                    UzumEndpoints::PRODUCT_LIST['method'],
+                    UzumEndpoints::buildPath(UzumEndpoints::PRODUCT_LIST, ['shopId' => $shopId]),
                     [
                         'page' => $page,
                         'size' => $pageSize,
@@ -316,7 +317,7 @@ final class UzumClient implements MarketplaceClientInterface
      */
     public function fetchShops(MarketplaceAccount $account): array
     {
-        $response = $this->request($account, 'GET', '/v1/shops');
+        $response = $this->request($account, UzumEndpoints::SHOPS_LIST['method'], UzumEndpoints::SHOPS_LIST['path']);
 
         // Uzum API returns shops in payload array
         return $response['payload'] ?? $response ?? [];
@@ -455,7 +456,7 @@ final class UzumClient implements MarketplaceClientInterface
         $lastError = null;
 
         // GET /v1/shops - легковесный endpoint для проверки
-        $paths = ['/v1/shops'];
+        $paths = [UzumEndpoints::SHOPS_LIST['path']];
 
         foreach ($paths as $path) {
             try {
@@ -538,8 +539,8 @@ final class UzumClient implements MarketplaceClientInterface
                     // Обновляем существующий товар
                     $response = $this->request(
                         $account,
-                        'PUT',
-                        "/v1/product/{$marketplaceProduct->external_product_id}",
+                        UzumEndpoints::PRODUCT_UPDATE['method'],
+                        UzumEndpoints::buildPath(UzumEndpoints::PRODUCT_UPDATE, ['productId' => $marketplaceProduct->external_product_id]),
                         [],
                         $uzumData
                     );
@@ -547,8 +548,8 @@ final class UzumClient implements MarketplaceClientInterface
                     // Создаём новый товар
                     $response = $this->request(
                         $account,
-                        'POST',
-                        '/v1/product/import',
+                        UzumEndpoints::PRODUCT_IMPORT['method'],
+                        UzumEndpoints::PRODUCT_IMPORT['path'],
                         [],
                         $uzumData
                     );
@@ -702,8 +703,8 @@ final class UzumClient implements MarketplaceClientInterface
 
                 $response = $this->request(
                     $account,
-                    'PUT',
-                    '/v2/fbs/sku/price',
+                    UzumEndpoints::FBS_PRICE_UPDATE['method'],
+                    UzumEndpoints::FBS_PRICE_UPDATE['path'],
                     [],
                     [
                         'skuPriceList' => [
@@ -763,7 +764,7 @@ final class UzumClient implements MarketplaceClientInterface
         }
 
         // Uzum API v2 endpoint for stock updates
-        $path = '/v2/fbs/sku/stocks';
+        $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
 
         $requestData = [
             'skuAmountList' => [
@@ -879,7 +880,7 @@ final class UzumClient implements MarketplaceClientInterface
         // Загружаем нужные статусы (или все основные)
         $statuses = $this->externalStatusesFromInternal($internalStatuses);
 
-        $path = '/v2/fbs/orders';
+        $path = UzumEndpoints::FBS_ORDERS_LIST['path'];
 
         Log::info('Uzum fetchOrdersByStatuses starting', [
             'account_id' => $account->id,
@@ -1025,7 +1026,7 @@ final class UzumClient implements MarketplaceClientInterface
             $size = 'LARGE';
         }
 
-        $path = "/v1/fbs/order/{$orderId}/labels/print";
+        $path = UzumEndpoints::buildPath(UzumEndpoints::FBS_ORDER_LABEL, ['orderId' => $orderId]);
         $response = $this->request($account, 'GET', $path, ['size' => $size]);
         $doc = $response['payload']['document'] ?? null;
         if (! $doc) {
@@ -1044,8 +1045,8 @@ final class UzumClient implements MarketplaceClientInterface
      */
     public function confirmOrder(MarketplaceAccount $account, string $orderId): ?array
     {
-        $path = "/v1/fbs/order/{$orderId}/confirm";
-        $response = $this->request($account, 'POST', $path);
+        $path = UzumEndpoints::buildPath(UzumEndpoints::FBS_ORDER_CONFIRM, ['orderId' => $orderId]);
+        $response = $this->request($account, UzumEndpoints::FBS_ORDER_CONFIRM['method'], $path);
 
         Log::info('Uzum confirmOrder raw response', [
             'order_id' => $orderId,
@@ -1081,8 +1082,8 @@ final class UzumClient implements MarketplaceClientInterface
      */
     public function cancelOrder(MarketplaceAccount $account, string $orderId): ?array
     {
-        $path = "/v1/fbs/order/{$orderId}/cancel";
-        $response = $this->request($account, 'POST', $path);
+        $path = UzumEndpoints::buildPath(UzumEndpoints::FBS_ORDER_CANCEL, ['orderId' => $orderId]);
+        $response = $this->request($account, UzumEndpoints::FBS_ORDER_CANCEL['method'], $path);
 
         Log::info('Uzum cancelOrder raw response', [
             'order_id' => $orderId,
@@ -1509,7 +1510,7 @@ final class UzumClient implements MarketplaceClientInterface
                     $query['dateTo'] = $dateToMs;
                 }
 
-                $response = $this->request($account, 'GET', '/v1/finance/orders', $query);
+                $response = $this->request($account, UzumEndpoints::FINANCE_ORDERS['method'], UzumEndpoints::FINANCE_ORDERS['path'], $query);
 
                 $items = $response['orderItems'] ?? [];
                 $total = $response['totalElements'] ?? 0;
@@ -1729,7 +1730,7 @@ final class UzumClient implements MarketplaceClientInterface
                     $query['dateTo'] = $dateToMs;
                 }
 
-                $response = $this->request($account, 'GET', '/v1/finance/expenses', $query);
+                $response = $this->request($account, UzumEndpoints::FINANCE_EXPENSES['method'], UzumEndpoints::FINANCE_EXPENSES['path'], $query);
 
                 // API returns: { payload: { payments: [...] } }
                 $payload = $response['payload'] ?? $response;

@@ -647,31 +647,40 @@ class MarketplaceAccount extends Model
     }
 
     /**
-     * Build Uzum auth headers from stored credentials
+     * Заголовки авторизации для Uzum OpenAPI (заказы, товары, остатки, цены)
+     * Использует api_key (Ключ API из кабинета Uzum)
      */
     public function getUzumAuthHeaders(): array
     {
-        // Accessors already decrypt tokens, no need to decrypt again
-        $token = $this->uzum_access_token ?? $this->api_key;
+        $token = $this->api_key;
 
         if (! $token) {
             return [];
         }
 
-        $header = config('uzum.auth.header', 'Authorization');
-        // OAuth2 JWT-токены (начинаются с eyJ) требуют Bearer-префикс.
-        // Для обычных API-ключей используем значение из конфига.
-        $prefix = trim(config('uzum.auth.prefix', ''));
-        if ($prefix === '' && $token && str_starts_with($token, 'eyJ')) {
-            $prefix = 'Bearer';
-        }
-        $value = $prefix !== '' ? trim($prefix.' '.$token) : $token;
-
-        // Отдаем сразу оба заголовка: Authorization и X-API-KEY,
-        // чтобы исключить проблемы с ожиданиями на стороне API.
+        // Uzum OpenAPI: токен передаётся в Authorization без префикса
         return [
-            $header => $value,
-            'X-API-KEY' => $value,
+            'Authorization' => $token,
+        ];
+    }
+
+    /**
+     * Заголовки авторизации для Uzum Seller Panel (отзывы)
+     * Использует uzum_access_token (OAuth2 токен)
+     */
+    public function getUzumOAuthHeaders(): array
+    {
+        $token = $this->uzum_access_token;
+
+        if (! $token) {
+            return [];
+        }
+
+        $prefix = str_starts_with($token, 'eyJ') ? 'Bearer' : '';
+        $value = $prefix !== '' ? trim($prefix . ' ' . $token) : $token;
+
+        return [
+            'Authorization' => $value,
         ];
     }
 

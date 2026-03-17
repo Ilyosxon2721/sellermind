@@ -55,7 +55,17 @@
       "Bash(grep -E \"\\\\.\\(php|blade\\\\.php|js\\)$\")",
       "Bash(grep -E \"\\\\.php$\")",
       "Bash(grep -l \"marketplace_accounts\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*.php)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "WebFetch(domain:api-seller.uzum.uz)",
+      "Bash(grep -n \"class.*OrderController\\\\|function.*order\" /Applications/MAMP/htdocs/sellermind-ai/app/Http/Controllers/Web/*.php)",
+      "Bash(grep -A 200 \"function up\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*marketplace_accounts*)",
+      "Bash(grep -E \"\\\\.\\(blade|js\\)$\")",
+      "WebFetch(domain:seller-docs.uzum.uz)",
+      "Bash(grep -r \"$store\\\\.pwa\\\\|pwa-mode\\\\|pwa_mode\" /Applications/MAMP/htdocs/sellermind-ai/resources --include=\"*.blade.php\" --include=\"*.js\")",
+      "Bash(grep -l \"offline\\\\|cache\\\\|service.*worker\" /Applications/MAMP/htdocs/sellermind-ai/resources/js/*.js)",
+      "Bash(find /Applications/MAMP/htdocs/sellermind-ai/app -type f \\\\\\(-name *pwa* -o -name *offline* \\\\\\))",
+      "Bash(grep -r \"pwa\\\\|PWA\\\\|offline\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
+      "Bash(grep -l \"\\\\.pwa-mode\\\\|pwa-only\\\\|pwa-content\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/**/*.blade.php)"
     ]
   }
 }

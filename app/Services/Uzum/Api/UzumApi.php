@@ -56,7 +56,12 @@ final class UzumApi
         $url = UzumEndpoints::buildUrl($endpoint, $params);
         $desc = $endpoint['desc'] ?? $url;
 
-        $authHeaders = $this->account->getUzumAuthHeaders();
+        // OAuth-эндпоинты (отзывы) используют uzum_access_token, остальные — api_key
+        $authType = $endpoint['auth'] ?? 'api_key';
+        $authHeaders = $authType === 'oauth'
+            ? $this->account->getUzumOAuthHeaders()
+            : $this->account->getUzumAuthHeaders();
+
         $headers = array_merge([
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
@@ -67,6 +72,7 @@ final class UzumApi
             'method' => $method,
             'url' => $url,
             'desc' => $desc,
+            'auth_type' => $authType,
             'query' => $this->sanitize($query),
         ]);
 
@@ -341,7 +347,11 @@ final class UzumApi
         $url = UzumEndpoints::buildUrl($endpoint, $params);
         $desc = $endpoint['desc'] ?? $url;
 
-        $authHeaders = $this->account->getUzumAuthHeaders();
+        $authType = $endpoint['auth'] ?? 'api_key';
+        $authHeaders = $authType === 'oauth'
+            ? $this->account->getUzumOAuthHeaders()
+            : $this->account->getUzumAuthHeaders();
+
         $headers = array_merge([
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',

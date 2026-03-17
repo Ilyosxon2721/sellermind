@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 
 final class DeduplicationService
 {
-    private int $cacheTtlMinutes = 10;
+    private int $cacheTtlMinutes = 1440; // 24 часа
 
     /**
      * Проверить является ли событие дубликатом

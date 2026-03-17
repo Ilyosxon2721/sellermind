@@ -8,6 +8,7 @@ use App\Enums\EventType;
 use App\Models\MarketplaceEvent;
 use App\Models\OfflineSale;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -49,12 +50,23 @@ final class TelegramNotificationService
 
         $chatId = (string) $user->telegram_id;
 
+        // Дедупликация: не отправлять повторно для того же события (24 часа)
+        $dedupKey = "tg_event:{$event->marketplace->value}:{$event->entity_id}:{$event->event_type->value}:{$chatId}";
+        if (Cache::has($dedupKey)) {
+            Log::debug('TelegramNotificationService: skipped duplicate', [
+                'event_uuid' => $event->uuid,
+                'entity_id' => $event->entity_id,
+            ]);
+            return;
+        }
+
         $message = $this->buildMessage($event);
         if (! $message) {
             return;
         }
 
         $this->send($chatId, $message);
+        Cache::put($dedupKey, true, 86400);
     }
 
     /**

@@ -106,18 +106,18 @@ class StockController extends Controller
             $balance = $balances[$sku->id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
             $cost = $costs[$sku->id] ?? ['total_cost' => 0, 'unit_cost' => 0];
 
-            // Get unit cost: prefer ledger cost, fallback to ProductVariant.purchase_price (конвертированная в UZS)
-            $unitCost = $cost['unit_cost'] ?? 0;
-            if ($unitCost == 0 && $sku->productVariant?->purchase_price) {
+            // Get unit cost: приоритет — purchase_price варианта (актуальная), fallback — ledger cost
+            $unitCost = 0;
+            if ($sku->productVariant?->purchase_price > 0) {
                 $unitCost = $sku->productVariant->getPurchasePriceInBase();
             }
-
-            // Calculate total cost using the determined unit cost
-            $onHand = $balance['on_hand'] ?? 0;
-            $totalCost = $cost['total_cost'] ?? 0;
-            if ($totalCost == 0 && $unitCost > 0 && $onHand > 0) {
-                $totalCost = $unitCost * $onHand;
+            if ($unitCost == 0) {
+                $unitCost = $cost['unit_cost'] ?? 0;
             }
+
+            // Сумма = себестоимость × количество на складе
+            $onHand = $balance['on_hand'] ?? 0;
+            $totalCost = $unitCost * $onHand;
 
             // Get image URL (variant image first, then product image)
             $imageUrl = null;
