@@ -168,11 +168,28 @@ final class MarketplaceProductsBridgeService
     /**
      * Загрузить остатки WB, сгруппированные по nm_id с разбивкой FBS/FBO.
      *
+     * Основа — stock_total из wildberries_products (обновляется при каждом синке остатков).
+     * FBS/FBO разбивка — из wildberries_stocks по типу склада (если доступна).
+     * Если wildberries_stocks суммарно даёт 0, но stock_total > 0 — доверяем stock_total (FBS).
+     *
      * @return array<int, array{fbs: int, fbo: int, total: int}>
      */
     private function loadWbStocksByNmId(int $accountId): array
     {
-        $rows = DB::table('wildberries_stocks as ws')
+        // Шаг 1: Получаем stock_total из wildberries_products (самый надёжный источник)
+        $totalsRaw = DB::table('wildberries_products')
+            ->where('marketplace_account_id', $accountId)
+            ->select('nm_id', DB::raw('SUM(stock_total) as total'))
+            ->groupBy('nm_id')
+            ->get();
+
+        $stockTotals = [];
+        foreach ($totalsRaw as $row) {
+            $stockTotals[(int) $row->nm_id] = (int) $row->total;
+        }
+
+        // Шаг 2: FBS/FBO разбивка из wildberries_stocks (если доступна)
+        $splitRows = DB::table('wildberries_stocks as ws')
             ->join('wildberries_products as wp', 'wp.id', '=', 'ws.wildberries_product_id')
             ->leftJoin('wildberries_warehouses as wh', 'wh.id', '=', 'ws.wildberries_warehouse_id')
             ->where('ws.marketplace_account_id', $accountId)
@@ -182,42 +199,33 @@ final class MarketplaceProductsBridgeService
                 DB::raw('SUM(ws.quantity) as qty')
             )
             ->groupBy('wp.nm_id', 'wh.warehouse_type')
-            ->get();
+            ->get()
+            ->groupBy('nm_id');
 
         $result = [];
 
-        foreach ($rows as $row) {
-            $nmId = (int) $row->nm_id;
-
-            if (! isset($result[$nmId])) {
-                $result[$nmId] = ['fbs' => 0, 'fbo' => 0, 'total' => 0];
-            }
-
-            $qty = (int) $row->qty;
-            $type = strtoupper($row->warehouse_type ?? '');
-
-            if ($type === 'FBO') {
-                $result[$nmId]['fbo'] += $qty;
+        foreach ($stockTotals as $nmId => $stockTotal) {
+            if ($splitRows->has($nmId)) {
+                // Считаем FBS/FBO по типу склада
+                $fbs = 0;
+                $fbo = 0;
+                foreach ($splitRows[$nmId] as $split) {
+                    $type = strtoupper($split->warehouse_type ?? '');
+                    $qty  = (int) $split->qty;
+                    if ($type === 'FBO') {
+                        $fbo += $qty;
+                    } else {
+                        $fbs += $qty;
+                    }
+                }
+                // Если warehouse_stocks суммарно 0 но stock_total > 0 — доверяем stock_total
+                if ($fbs + $fbo === 0 && $stockTotal > 0) {
+                    $fbs = $stockTotal;
+                }
+                $result[$nmId] = ['fbs' => $fbs, 'fbo' => $fbo, 'total' => max($stockTotal, $fbs + $fbo)];
             } else {
-                // FBS или без типа — считаем как FBS (склад продавца)
-                $result[$nmId]['fbs'] += $qty;
-            }
-
-            $result[$nmId]['total'] += $qty;
-        }
-
-        // Если warehouse данных нет — берём stock_total из wildberries_products
-        if (empty($result)) {
-            $totals = DB::table('wildberries_products')
-                ->where('marketplace_account_id', $accountId)
-                ->select('nm_id', DB::raw('SUM(stock_total) as total'))
-                ->groupBy('nm_id')
-                ->get();
-
-            foreach ($totals as $row) {
-                $nmId = (int) $row->nm_id;
-                $total = (int) $row->total;
-                $result[$nmId] = ['fbs' => $total, 'fbo' => 0, 'total' => $total];
+                // Нет warehouse_stocks — весь stock_total считаем FBS (WB основная модель)
+                $result[$nmId] = ['fbs' => $stockTotal, 'fbo' => 0, 'total' => $stockTotal];
             }
         }
 
