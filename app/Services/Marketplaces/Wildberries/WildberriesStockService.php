@@ -213,32 +213,47 @@ class WildberriesStockService
 
     /**
      * Переклассифицировать типы складов.
-     * FBS склады определяются по Marketplace API (/api/v3/warehouses), все остальные — FBO.
+     * Проверяем ВСЕ склады маркетплейса:
+     * - /api/v3/offices — склады WB (FBO)
+     * - /api/v3/warehouses — склады продавца (FBS)
      */
     protected function reclassifyWarehouseTypes(MarketplaceAccount $account): void
     {
         try {
+            // Получить ВСЕ склады WB (FBO)
+            $fboOffices = $this->getOffices($account);
+            $fboNames = collect($fboOffices)->pluck('name')->filter()->all();
+
+            // Получить склады продавца (FBS)
             $fbsWarehouses = $this->getWarehouses($account);
             $fbsNames = collect($fbsWarehouses)->pluck('name')->filter()->all();
 
-            // Все склады аккаунта → FBO
-            WildberriesWarehouse::where('marketplace_account_id', $account->id)
-                ->where('warehouse_type', '!=', 'FBO')
-                ->update(['warehouse_type' => 'FBO']);
+            // Классифицировать склады по совпадению имён
+            $allWarehouses = WildberriesWarehouse::where('marketplace_account_id', $account->id)->get();
 
-            // Склады из Marketplace API → FBS
-            if (! empty($fbsNames)) {
-                WildberriesWarehouse::where('marketplace_account_id', $account->id)
-                    ->whereIn('warehouse_name', $fbsNames)
-                    ->update(['warehouse_type' => 'FBS']);
+            foreach ($allWarehouses as $warehouse) {
+                $name = $warehouse->warehouse_name;
+                $newType = 'FBO'; // По умолчанию FBO
+
+                if (in_array($name, $fbsNames, true)) {
+                    $newType = 'FBS';
+                } elseif (! empty($fboNames) && in_array($name, $fboNames, true)) {
+                    $newType = 'FBO';
+                }
+
+                if ($warehouse->warehouse_type !== $newType) {
+                    $warehouse->update(['warehouse_type' => $newType]);
+                }
             }
 
             Log::info('WB warehouse types reclassified', [
                 'account_id' => $account->id,
-                'fbs_names' => $fbsNames,
+                'fbo_offices_count' => count($fboNames),
+                'fbs_warehouses_count' => count($fbsNames),
+                'total_warehouses' => $allWarehouses->count(),
             ]);
         } catch (\Exception $e) {
-            // При ошибке API — все склады в FBO (безопаснее)
+            // При ошибке — все склады в FBO (безопаснее)
             WildberriesWarehouse::where('marketplace_account_id', $account->id)
                 ->where('warehouse_type', '!=', 'FBO')
                 ->update(['warehouse_type' => 'FBO']);
@@ -247,6 +262,31 @@ class WildberriesStockService
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Получить список всех складов WB (FBO) из Marketplace API
+     * GET /api/v3/offices
+     */
+    public function getOffices(MarketplaceAccount $account): array
+    {
+        try {
+            $offices = $this->getHttpClient($account)->get('marketplace', '/api/v3/offices');
+
+            Log::info('WB getOffices: API response', [
+                'account_id' => $account->id,
+                'offices_count' => is_array($offices) ? count($offices) : 0,
+            ]);
+
+            return is_array($offices) ? $offices : [];
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB offices', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
         }
     }
 
