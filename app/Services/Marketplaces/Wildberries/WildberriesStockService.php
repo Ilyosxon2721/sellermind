@@ -90,11 +90,8 @@ class WildberriesStockService
                 }
             }
 
-            // Исправить тип складов: склады из Statistics API без warehouse_id — это FBO
-            WildberriesWarehouse::where('marketplace_account_id', $account->id)
-                ->whereNull('warehouse_id')
-                ->where('warehouse_type', '!=', 'FBO')
-                ->update(['warehouse_type' => 'FBO']);
+            // Переклассифицировать склады: FBS определяем по Marketplace API, остальные — FBO
+            $this->reclassifyWarehouseTypes($account);
 
             // After syncing WB stocks, align to local products
             $productsLinkedToLocal = $this->syncLocalProductsFromStocks($account);
@@ -212,6 +209,45 @@ class WildberriesStockService
             'product_updated' => $productUpdated,
             'stock' => $stock,
         ];
+    }
+
+    /**
+     * Переклассифицировать типы складов.
+     * FBS склады определяются по Marketplace API (/api/v3/warehouses), все остальные — FBO.
+     */
+    protected function reclassifyWarehouseTypes(MarketplaceAccount $account): void
+    {
+        try {
+            $fbsWarehouses = $this->getWarehouses($account);
+            $fbsNames = collect($fbsWarehouses)->pluck('name')->filter()->all();
+
+            // Все склады аккаунта → FBO
+            WildberriesWarehouse::where('marketplace_account_id', $account->id)
+                ->where('warehouse_type', '!=', 'FBO')
+                ->update(['warehouse_type' => 'FBO']);
+
+            // Склады из Marketplace API → FBS
+            if (! empty($fbsNames)) {
+                WildberriesWarehouse::where('marketplace_account_id', $account->id)
+                    ->whereIn('warehouse_name', $fbsNames)
+                    ->update(['warehouse_type' => 'FBS']);
+            }
+
+            Log::info('WB warehouse types reclassified', [
+                'account_id' => $account->id,
+                'fbs_names' => $fbsNames,
+            ]);
+        } catch (\Exception $e) {
+            // При ошибке API — все склады в FBO (безопаснее)
+            WildberriesWarehouse::where('marketplace_account_id', $account->id)
+                ->where('warehouse_type', '!=', 'FBO')
+                ->update(['warehouse_type' => 'FBO']);
+
+            Log::warning('WB warehouse reclassify fallback to FBO', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
