@@ -169,17 +169,32 @@ class WildberriesStockService
 
         // If product doesn't exist, create a minimal record
         if (! $product) {
+            // Составить название из доступных полей Statistics API
+            $brand = $stockData['brand'] ?? null;
+            $subject = $stockData['subject'] ?? null;
+            $title = trim(($brand ? $brand . ' ' : '') . ($subject ?: '')) ?: null;
+
             $product = WildberriesProduct::create([
                 'marketplace_account_id' => $account->id,
                 'nm_id' => $nmId,
                 'barcode' => $barcode,
+                'title' => $title,
                 'supplier_article' => $stockData['supplierArticle'] ?? null,
-                'brand' => $stockData['brand'] ?? null,
-                'subject_name' => $stockData['subject'] ?? null,
+                'brand' => $brand,
+                'subject_name' => $subject,
                 'tech_size' => $stockData['techSize'] ?? null,
                 'is_active' => true,
             ]);
             $productUpdated = true;
+        } elseif (empty($product->title)) {
+            // Заполнить название для существующих товаров без title
+            $brand = $stockData['brand'] ?? $product->brand;
+            $subject = $stockData['subject'] ?? $product->subject_name;
+            $title = trim(($brand ? $brand . ' ' : '') . ($subject ?: '')) ?: null;
+
+            if ($title) {
+                $product->update(['title' => $title]);
+            }
         }
 
         // Update or create stock record
