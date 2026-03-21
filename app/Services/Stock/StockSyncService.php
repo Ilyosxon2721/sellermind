@@ -9,6 +9,7 @@ use App\Models\VariantMarketplaceLink;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
+use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -236,7 +237,7 @@ class StockSyncService
     }
 
     /**
-     * Синхронизация остатков в Uzum
+     * Синхронизация остатков в Uzum через новый UzumApiManager (StockPlugin)
      */
     protected function syncToUzum(MarketplaceAccount $account, VariantMarketplaceLink $link, int $stock): array
     {
@@ -246,31 +247,38 @@ class StockSyncService
             throw new \RuntimeException('Не найден связанный MarketplaceProduct для Uzum');
         }
 
-        // For Uzum, we need both the product ID and the SKU ID for SKU-level stock updates
-        $productId = $mpProduct->external_product_id;
         $skuId = $link->external_sku_id;
 
-        if (! $productId) {
-            throw new \RuntimeException('Не указан external_product_id для товара Uzum');
-        }
-
-        // Если external_sku_id не указан, пробуем найти его из skuList
+        // Если external_sku_id не указан, пробуем найти из skuList
         if (! $skuId) {
             $skuId = $this->findUzumSkuId($link, $mpProduct);
         }
 
         if (! $skuId) {
-            throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Невозможно синхронизировать остаток на уровне SKU.');
+            throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Перепривяжите товар.');
+        }
+
+        // Ищем barcode из raw_payload.skuList (Uzum требует для валидации)
+        $barcode = null;
+        foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                break;
+            }
         }
 
         Log::info('Uzum stock sync', [
             'link_id' => $link->id,
-            'product_id' => $productId,
             'sku_id' => $skuId,
+            'barcode' => $barcode,
             'stock' => $stock,
         ]);
 
-        return $this->uzumClient->updateStock($account, $productId, $skuId, $stock);
+        // Используем новый UzumApiManager (StockPlugin) — тот же путь что orders/reviews
+        $uzum = new UzumApiManager($account);
+        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode);
+
+        return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
     }
 
     /**
