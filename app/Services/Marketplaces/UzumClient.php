@@ -762,34 +762,15 @@ final class UzumClient implements MarketplaceClientInterface
      */
     public function updateStock(MarketplaceAccount $account, string $productId, string $skuId, int $stock): array
     {
-        // Get SKU details from database to fill required fields
-        $marketplaceProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
-            ->where('external_product_id', $productId)
-            ->first();
-
-        $skuData = null;
-        if ($marketplaceProduct && ! empty($marketplaceProduct->raw_payload['skuList'])) {
-            foreach ($marketplaceProduct->raw_payload['skuList'] as $sku) {
-                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                    $skuData = $sku;
-                    break;
-                }
-            }
-        }
-
-        // Uzum API v2 endpoint for stock updates
+        // Uzum API v2: POST /v2/fbs/sku/stocks
+        // Официальный формат: только skuId и amount (без лишних полей)
         $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
 
         $requestData = [
             'skuAmountList' => [
                 [
                     'skuId' => (int) $skuId,
-                    'skuTitle' => $skuData['skuTitle'] ?? $skuData['skuFullTitle'] ?? '',
-                    'productTitle' => $marketplaceProduct->title ?? '',
-                    'barcode' => $skuData['barcode'] ?? '',
                     'amount' => $stock,
-                    'fbsLinked' => true,
-                    'dbsLinked' => false,
                 ],
             ],
         ];

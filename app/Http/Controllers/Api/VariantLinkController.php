@@ -216,35 +216,46 @@ class VariantLinkController extends Controller
     {
         $this->authorizeAccount($request, $account);
 
-        $link = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
-            ->where('marketplace_account_id', $account->id) // Prevent ID collision with other marketplaces
+        // Загружаем ВСЕ активные связи для продукта (Uzum может иметь несколько SKU)
+        $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
+            ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
             ->where('sync_stock_enabled', true)
-            ->with('variant')
-            ->first();
+            ->with(['variant', 'marketplaceProduct'])
+            ->get();
 
-        if (! $link) {
+        if ($links->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Нет активной связи для синхронизации',
             ], 404);
         }
 
-        try {
-            $result = $this->stockSyncService->syncLinkStock($link);
+        $synced = 0;
+        $errors = [];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Остаток синхронизирован',
-                'stock' => $link->getCurrentStock(),
-                'result' => $result,
-            ]);
-        } catch (\Exception $e) {
+        foreach ($links as $link) {
+            try {
+                $this->stockSyncService->syncLinkStock($link);
+                $synced++;
+            } catch (\Exception $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        if ($synced === 0) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => implode('; ', $errors),
             ], 400);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Синхронизировано: {$synced} из {$links->count()}",
+            'synced' => $synced,
+            'errors' => $errors,
+        ]);
     }
 
     /**
