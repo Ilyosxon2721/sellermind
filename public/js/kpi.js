@@ -48,7 +48,7 @@ function kpiPage(config) {
         async api(url, method, body) {
             method = method || 'GET';
             body = body || null;
-            var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content } };
+            var opts = { method: method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content } };
             if (body) opts.body = JSON.stringify(body);
             var res = await fetch('/api/' + url, opts);
             if (!res.ok) {
