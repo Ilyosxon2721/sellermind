@@ -35,6 +35,7 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
         $account = MarketplaceAccount::find($this->account->id);
         if (! $account || ! $account->is_active) {
             $this->markSyncCompleted('failed', 'Аккаунт неактивен или не найден');
+
             return;
         }
 
@@ -42,7 +43,7 @@ class SyncMarketplaceOrdersJob implements ShouldQueue
             $syncService->syncOrders($account, $this->from, $this->to, $this->statuses);
             $this->markSyncCompleted('completed', 'Синхронизация заказов завершена');
         } catch (\Throwable $e) {
-            $this->markSyncCompleted('failed', 'Ошибка: ' . mb_substr($e->getMessage(), 0, 200));
+            $this->markSyncCompleted('failed', 'Ошибка: '.mb_substr($e->getMessage(), 0, 200));
             throw $e;
         }
     }

@@ -813,7 +813,7 @@ class MarketplaceOrderController extends Controller
                 return response()->json(['message' => 'Размер этикетки должен быть LARGE или BIG'], 422);
             }
 
-            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService;
 
             $stickers = [];
 
@@ -879,7 +879,7 @@ class MarketplaceOrderController extends Controller
         }
 
         try {
-            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService;
             $syncService->confirmOrder($account, (int) $order->external_order_id);
 
             return response()->json([
@@ -946,7 +946,7 @@ class MarketplaceOrderController extends Controller
         try {
             if ($marketplace === 'uzum') {
                 // Отмена заказа Uzum через новый сервис
-                $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+                $syncService = new \App\Services\Uzum\UzumOrderSyncService;
                 $syncService->cancelOrder($account, (int) $order->external_order_id);
             } else {
                 // Отмена заказа WB

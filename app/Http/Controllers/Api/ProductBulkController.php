@@ -86,7 +86,7 @@ class ProductBulkController extends Controller
             'Опции варианта',
         ];
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Товары');
 

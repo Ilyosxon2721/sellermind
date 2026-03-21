@@ -268,6 +268,6 @@ final class UzumEndpoints
         $base = rtrim(self::getBaseUrl($endpoint), '/');
         $path = self::buildPath($endpoint, $params);
 
-        return $base . '/' . ltrim($path, '/');
+        return $base.'/'.ltrim($path, '/');
     }
 }

@@ -51,8 +51,8 @@ final class UzumAiReplyService
         $systemPrompt = "Ты — ассистент по ответам на отзывы на маркетплейсе Uzum Market. {$toneInstructions} Ответ 1-3 предложения, до 500 символов. Не используй 'уважаемый', не давай ложных обещаний.";
 
         $userPrompt = "Напиши ответ на {$ratingText} отзыв (оценка: {$rating}/5)."
-            . ($productName ? " Товар: {$productName}." : '')
-            . ($reviewText ? " Текст: {$reviewText}" : ' Без текста.');
+            .($productName ? " Товар: {$productName}." : '')
+            .($reviewText ? " Текст: {$reviewText}" : ' Без текста.');
 
         try {
             $response = Http::withHeaders([

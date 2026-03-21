@@ -69,9 +69,17 @@ class SalesManagementController extends Controller
             $query->search($this->escapeLike($search));
         }
 
-        // Сортировка
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
+        // Сортировка (allowlist для защиты от SQL-инъекции)
+        $allowedSorts = [
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'amount' => 'amount',
+            'status' => 'status',
+            'type' => 'type',
+            'sale_number' => 'sale_number',
+        ];
+        $sortBy = $allowedSorts[$request->get('sort_by', 'created_at')] ?? 'created_at';
+        $sortOrder = $request->get('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
         // Пагинация

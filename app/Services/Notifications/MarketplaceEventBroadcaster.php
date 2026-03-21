@@ -30,7 +30,7 @@ final class MarketplaceEventBroadcaster
         } catch (\Throwable $e) {
             // Не падаем если WebSocket недоступен
             Log::warning('WebSocket broadcast failed', [
-                'uuid'  => $event->uuid,
+                'uuid' => $event->uuid,
                 'error' => $e->getMessage(),
             ]);
         }

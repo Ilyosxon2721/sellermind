@@ -31,7 +31,7 @@ class TelegramChannel
 
         // Дедупликация: пропустить если такое уведомление уже отправлялось
         if (method_exists($notification, 'deduplicationKey')) {
-            $dedupKey = 'tg_dedup:' . $notifiable->id . ':' . $notification->deduplicationKey();
+            $dedupKey = 'tg_dedup:'.$notifiable->id.':'.$notification->deduplicationKey();
             $ttl = method_exists($notification, 'deduplicationTtl')
                 ? $notification->deduplicationTtl()
                 : 86400; // 24 часа по умолчанию
@@ -41,6 +41,7 @@ class TelegramChannel
                     'user_id' => $notifiable->id,
                     'key' => $dedupKey,
                 ]);
+
                 return;
             }
 
@@ -48,10 +49,11 @@ class TelegramChannel
         }
 
         // Rate limiting: не более 60 уведомлений в час на пользователя
-        $rateLimitKey = 'tg_rate:' . $notifiable->id;
+        $rateLimitKey = 'tg_rate:'.$notifiable->id;
         $count = (int) Cache::get($rateLimitKey, 0);
         if ($count >= 60) {
             Log::warning('Telegram rate limit reached', ['user_id' => $notifiable->id]);
+
             return;
         }
         Cache::put($rateLimitKey, $count + 1, 3600);

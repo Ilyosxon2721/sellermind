@@ -7,7 +7,6 @@ namespace App\Services\Uzum;
 use App\Models\MarketplaceAccount;
 use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class UzumAutoReviewService
 {
@@ -15,7 +14,7 @@ final class UzumAutoReviewService
 
     public function __construct()
     {
-        $this->aiService = new UzumAiReplyService();
+        $this->aiService = new UzumAiReplyService;
     }
 
     /**

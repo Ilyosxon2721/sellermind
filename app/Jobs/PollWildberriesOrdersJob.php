@@ -26,7 +26,8 @@ final class PollWildberriesOrdersJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 30;
-    public int $tries   = 1;
+
+    public int $tries = 1;
 
     public function handle(
         PollingLockManager $lockManager,
@@ -90,7 +91,7 @@ final class PollWildberriesOrdersJob implements ShouldQueue
         }
 
         foreach ($orders as $order) {
-            $orderId    = (string) $order['id'];
+            $orderId = (string) $order['id'];
             $externalId = "wb_order_{$orderId}_new";
 
             if ($dedup->isDuplicate(MarketplaceType::WILDBERRIES, $externalId)) {
@@ -114,11 +115,11 @@ final class PollWildberriesOrdersJob implements ShouldQueue
 
         $lastOrder = end($orders);
         $state->update([
-            'last_cursor'        => (string) $lastOrder['id'],
-            'last_poll_at'       => now(),
+            'last_cursor' => (string) $lastOrder['id'],
+            'last_poll_at' => now(),
             'consecutive_errors' => 0,
         ]);
 
-        Log::info('WB polling: found ' . count($orders) . " new orders for store {$account->id}");
+        Log::info('WB polling: found '.count($orders)." new orders for store {$account->id}");
     }
 }

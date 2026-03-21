@@ -34,8 +34,8 @@ final class OzonWebhookController extends Controller
         $verificationTypes = ['TYPE_PING', 'EMPTY_SIGN', 'INVALID_SIGN', 'WRONG_PUSH_TYPE', 'WRONG_BODY', 'EMPTY_BODY'];
         if (in_array($payload['message_type'] ?? null, $verificationTypes, true)) {
             return response()->json([
-                'name'    => 'SellerMind',
-                'time'    => $payload['time'] ?? now()->toISOString(),
+                'name' => 'SellerMind',
+                'time' => $payload['time'] ?? now()->toISOString(),
                 'version' => '1.0',
             ], 200);
         }
@@ -49,11 +49,11 @@ final class OzonWebhookController extends Controller
             return response()->json(['status' => 'not_found'], 404);
         }
 
-        $messageType  = $payload['message_type'] ?? 'unknown';
+        $messageType = $payload['message_type'] ?? 'unknown';
         $postingNumber = $payload['posting_number'] ?? null;
-        $changedAt    = $payload['changed_at'] ?? now()->toISOString();
+        $changedAt = $payload['changed_at'] ?? now()->toISOString();
 
-        $externalId = md5($messageType . $postingNumber . $changedAt);
+        $externalId = md5($messageType.$postingNumber.$changedAt);
 
         if ($this->dedup->isDuplicate(MarketplaceType::OZON, $externalId)) {
             return response()->json(['status' => 'duplicate'], 200);
@@ -68,7 +68,7 @@ final class OzonWebhookController extends Controller
             rawPayload: $payload,
             externalId: $externalId,
             metadata: [
-                'ip'         => $request->ip(),
+                'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ],
         );
@@ -78,9 +78,9 @@ final class OzonWebhookController extends Controller
         $config->recordEvent();
 
         Log::info('Ozon webhook received', [
-            'message_type'   => $messageType,
+            'message_type' => $messageType,
             'posting_number' => $postingNumber,
-            'store_id'       => $config->store_id,
+            'store_id' => $config->store_id,
         ]);
 
         return response()->json(['status' => 'ok'], 200);
@@ -89,13 +89,13 @@ final class OzonWebhookController extends Controller
     private function mapEventType(string $ozonType): EventType
     {
         return match ($ozonType) {
-            'TYPE_NEW_POSTING'       => EventType::ORDER_CREATED,
+            'TYPE_NEW_POSTING' => EventType::ORDER_CREATED,
             'TYPE_POSTING_CANCELLED' => EventType::ORDER_CANCELLED,
-            'TYPE_NEW_MESSAGE'       => EventType::CHAT_MESSAGE_CREATED,
-            'TYPE_UPDATE_MESSAGE'    => EventType::CHAT_MESSAGE_UPDATED,
-            'TYPE_MESSAGE_READ'      => EventType::CHAT_MESSAGE_READ,
-            'TYPE_CHAT_CLOSED'       => EventType::CHAT_CLOSED,
-            default                  => EventType::ORDER_UPDATED,
+            'TYPE_NEW_MESSAGE' => EventType::CHAT_MESSAGE_CREATED,
+            'TYPE_UPDATE_MESSAGE' => EventType::CHAT_MESSAGE_UPDATED,
+            'TYPE_MESSAGE_READ' => EventType::CHAT_MESSAGE_READ,
+            'TYPE_CHAT_CLOSED' => EventType::CHAT_CLOSED,
+            default => EventType::ORDER_UPDATED,
         };
     }
 
@@ -104,7 +104,7 @@ final class OzonWebhookController extends Controller
         return match (true) {
             str_contains($ozonType, 'MESSAGE'),
             str_contains($ozonType, 'CHAT') => EntityType::CHAT,
-            default                         => EntityType::ORDER,
+            default => EntityType::ORDER,
         };
     }
 }

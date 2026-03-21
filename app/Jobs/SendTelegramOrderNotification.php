@@ -70,6 +70,6 @@ final class SendTelegramOrderNotification implements ShouldQueue
      */
     public function uniqueId(): string
     {
-        return get_class($this->order) . ':' . $this->order->id . ':' . $this->chatId;
+        return get_class($this->order).':'.$this->order->id.':'.$this->chatId;
     }
 }

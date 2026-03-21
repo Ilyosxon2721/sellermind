@@ -26,7 +26,8 @@ final class PollUzumOrdersJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 30;
-    public int $tries   = 1;
+
+    public int $tries = 1;
 
     /**
      * Статусы заказов для поллинга (OpenAPI v2)
@@ -57,6 +58,7 @@ final class PollUzumOrdersJob implements ShouldQueue
                 $headers = $account->getUzumAuthHeaders();
                 if (empty($headers)) {
                     Log::warning("Uzum polling: no auth token for store {$state->store_id}");
+
                     continue;
                 }
 
@@ -88,18 +90,19 @@ final class PollUzumOrdersJob implements ShouldQueue
         foreach (self::POLL_STATUSES as $status) {
             $response = Http::timeout(15)
                 ->withHeaders(array_merge($headers, [
-                    'Accept'       => 'application/json',
+                    'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ]))
                 ->get("{$baseUrl}/v2/fbs/orders", [
-                    'status'  => $status,
-                    'size'    => 50,
-                    'page'    => 0,
+                    'status' => $status,
+                    'size' => 50,
+                    'page' => 0,
                 ]);
 
             if ($response->status() === 429) {
                 Log::warning("Uzum polling: rate limited for store {$account->id}, status {$status}");
                 usleep(500_000);
+
                 continue;
             }
 
@@ -110,7 +113,7 @@ final class PollUzumOrdersJob implements ShouldQueue
             $orders = $response->json('payload.orders', $response->json('orders', []));
 
             foreach ($orders as $order) {
-                $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
+                $orderId = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
                 $externalId = "uzum_order_{$orderId}";
 
                 if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
@@ -137,7 +140,7 @@ final class PollUzumOrdersJob implements ShouldQueue
         }
 
         $state->update([
-            'last_poll_at'       => now(),
+            'last_poll_at' => now(),
             'consecutive_errors' => 0,
         ]);
 
