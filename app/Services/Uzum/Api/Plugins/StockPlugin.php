@@ -39,20 +39,25 @@ final class StockPlugin
 
     /**
      * Обновить остаток одного SKU
-     * Uzum требует fbsLinked/dbsLinked для прохождения schema validation
+     * Uzum требует ВСЕ поля: skuId, skuTitle, productTitle, barcode, amount, fbsLinked, dbsLinked
      */
-    public function updateOne(int $skuId, int $amount, ?string $barcode = null, bool $fbs = true, bool $dbs = false): array
-    {
-        $item = [
+    public function updateOne(
+        int $skuId,
+        int $amount,
+        string $barcode,
+        string $skuTitle,
+        string $productTitle,
+        bool $fbs = true,
+        bool $dbs = false,
+    ): array {
+        return $this->update([[
             'skuId' => $skuId,
+            'skuTitle' => $skuTitle,
+            'productTitle' => $productTitle,
+            'barcode' => $barcode,
             'amount' => $amount,
             'fbsLinked' => $fbs,
             'dbsLinked' => $dbs,
-        ];
-        if ($barcode) {
-            $item['barcode'] = $barcode;
-        }
-
-        return $this->update([$item]);
+        ]]);
     }
 }
