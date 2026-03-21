@@ -45,10 +45,19 @@ function kpiPage(config) {
             return { id: null, name: '', is_default: false, tiers: [] };
         },
 
+        getToken() {
+            var t = localStorage.getItem('_x_auth_token');
+            if (t) try { return JSON.parse(t); } catch(e) { return t; }
+            return null;
+        },
+
         async api(url, method, body) {
             method = method || 'GET';
             body = body || null;
-            var opts = { method: method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content } };
+            var token = this.getToken();
+            var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            var opts = { method: method, credentials: 'include', headers: headers };
             if (body) opts.body = JSON.stringify(body);
             var res = await fetch('/api/' + url, opts);
             if (!res.ok) {
