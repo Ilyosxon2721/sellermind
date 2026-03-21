@@ -153,7 +153,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function integrationLinkPage() {
     return {
         linkToken: '',

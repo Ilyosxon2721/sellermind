@@ -202,7 +202,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function writeOffsPage() {
         const reasons = @json($reasons);
 

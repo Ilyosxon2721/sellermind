@@ -182,7 +182,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inReceiptsPage() {
         return {
             filters: {

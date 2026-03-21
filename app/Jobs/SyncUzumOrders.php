@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\HandlesMarketplaceRateLimiting;
 use App\Models\MarketplaceAccount;
-use App\Services\Marketplaces\MarketplaceSyncService;
 use App\Services\Uzum\UzumOrderSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -87,7 +86,7 @@ class SyncUzumOrders implements ShouldBeUnique, ShouldQueue
         ]);
 
         try {
-            $syncService = new UzumOrderSyncService();
+            $syncService = new UzumOrderSyncService;
             $stats = $syncService->sync($account, daysBack: 30);
 
             Log::info('SyncUzumOrders completed', [

@@ -243,6 +243,11 @@ class UzumSyncExpenses extends Command
         try {
             return Carbon::parse($timestamp);
         } catch (\Exception $e) {
+            Log::debug('Не удалось распарсить timestamp расходов', [
+                'timestamp' => $timestamp,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }

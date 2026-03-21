@@ -622,7 +622,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumReviewsPage() {
     return {
         accountId: @js($accountId),

@@ -160,7 +160,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function warehousesPage() {
         return {
             items: [],

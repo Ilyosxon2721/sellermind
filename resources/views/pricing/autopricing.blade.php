@@ -318,7 +318,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function autopricingPagePwa() {
         return {
             policies: [],
@@ -421,7 +421,7 @@
     }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function autopricingPage() {
         return {
             policies: [],

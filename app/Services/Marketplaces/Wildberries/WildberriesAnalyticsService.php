@@ -402,6 +402,7 @@ class WildberriesAnalyticsService
         try {
             $dashboard['sales_funnel'] = $this->getSalesFunnel($account, $dateFrom, $dateTo);
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения воронки продаж WB', ['account_id' => $account->id, 'error' => $e->getMessage()]);
             $dashboard['sales_funnel'] = ['error' => $e->getMessage()];
         }
 
@@ -409,6 +410,7 @@ class WildberriesAnalyticsService
         try {
             $dashboard['stocks'] = $this->getStocksReportGroups($account, $dateFrom, $dateTo);
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения отчёта по остаткам WB', ['account_id' => $account->id, 'error' => $e->getMessage()]);
             $dashboard['stocks'] = ['error' => $e->getMessage()];
         }
 
@@ -416,6 +418,7 @@ class WildberriesAnalyticsService
         try {
             $dashboard['antifraud'] = $this->getAntifraudDetails($account, $dateFrom, $dateTo);
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения данных антифрода WB', ['account_id' => $account->id, 'error' => $e->getMessage()]);
             $dashboard['antifraud'] = ['error' => $e->getMessage()];
         }
 
@@ -425,6 +428,7 @@ class WildberriesAnalyticsService
             $dashboard['shadowed_products'] = $this->getShadowedProducts($account);
             $dashboard['incorrect_attachments'] = $this->getIncorrectAttachments($account, $dateFrom, $dateTo);
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения проблем с товарами WB', ['account_id' => $account->id, 'error' => $e->getMessage()]);
             $dashboard['product_issues'] = ['error' => $e->getMessage()];
         }
 

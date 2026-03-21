@@ -124,7 +124,7 @@ final class UzumReviewController extends Controller
         return response()->json([
             'has_token' => ! empty($token),
             'token_length' => $token ? strlen($token) : 0,
-            'token_start' => $token ? substr($token, 0, 30) . '...' : null,
+            'token_start' => $token ? substr($token, 0, 30).'...' : null,
             'is_jwt' => $token && str_starts_with($token, 'eyJ'),
             'has_refresh' => ! empty($account->uzum_refresh_token),
             'expires_at' => $account->uzum_token_expires_at,
@@ -270,7 +270,7 @@ final class UzumReviewController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка отправки ответа: ' . $e->getMessage(),
+                'message' => 'Ошибка отправки ответа: '.$e->getMessage(),
             ], 502);
         }
     }
@@ -332,7 +332,7 @@ final class UzumReviewController extends Controller
         }
 
         // Генерация через AI-сервис
-        $aiService = new UzumAiReplyService();
+        $aiService = new UzumAiReplyService;
 
         if (! $aiService->isConfigured() && ! (empty(trim($reviewText)) && $rating >= 4)) {
             return response()->json(['message' => 'AI не настроен.'], 500);

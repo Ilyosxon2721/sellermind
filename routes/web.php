@@ -467,23 +467,6 @@ Route::middleware('auth.any')->group(function () {
             }
         }
 
-        // 2. Fallback: из marketplace_products.purchase_price (для товаров без связи)
-        $directPrices = \DB::table('marketplace_products')
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->whereNotNull('purchase_price')
-            ->where('purchase_price', '>', 0)
-            ->select('id', 'purchase_price', 'purchase_price_currency')
-            ->get();
-        foreach ($directPrices as $dp) {
-            if (!isset($costPriceMap[$dp->id])) {
-                $price = (float) $dp->purchase_price;
-                $currency = $dp->purchase_price_currency ?? 'UZS';
-                $costPriceMap[$dp->id] = $currency === 'UZS'
-                    ? $price
-                    : $financeSettings->convertToBase($price, $currency);
-            }
-        }
-
         // Карта себестоимостей Uzum по каждому SKU (для точного расчёта сводки)
         $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
         // [marketplace_product_id][external_sku_id] => cost_uzs
@@ -719,16 +702,13 @@ Route::middleware('auth.any')->group(function () {
         // Добавить себестоимость и варианты к каждому товару
         $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings, $uzumAccountIds, $uzumRawData, $uzumSkuCostMap) {
             $product->cost_price = $costPriceMap[$product->id] ?? 0;
-            $productFallbackCostUzs = $product->cost_price;
-            $productPurchasePrice = (float) ($product->purchase_price ?? 0);
-            $productPurchaseCurrency = $product->purchase_price_currency ?? 'UZS';
             $isUzum = in_array($product->marketplace_account_id, $uzumAccountIds);
 
             if ($isUzum && isset($uzumRawData[$product->id]) && !empty($uzumRawData[$product->id])) {
                 // Uzum: варианты из raw_payload.skuList с себестоимостью из связанного локального варианта
                 $skuLinks = $uzumSkuCostMap[$product->id] ?? [];
                 $product->variants = collect($uzumRawData[$product->id])
-                    ->map(function ($sku) use ($skuLinks, $productFallbackCostUzs, $productPurchasePrice, $productPurchaseCurrency, $financeSettings) {
+                    ->map(function ($sku) use ($skuLinks, $financeSettings) {
                         $skuId = (string) ($sku['skuId'] ?? '');
                         $link = $skuLinks[$skuId] ?? null;
 
@@ -739,10 +719,10 @@ Route::middleware('auth.any')->group(function () {
                             $skuCostUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
                             $linkedVariantId = $link['variant_id'];
                         } else {
-                            // Fallback: себестоимость с уровня товара
-                            $pp = $productPurchasePrice;
-                            $pc = $productPurchaseCurrency;
-                            $skuCostUzs = $productFallbackCostUzs;
+                            // Нет привязки к внутреннему товару — не показываем себестоимость
+                            $pp = 0;
+                            $pc = 'UZS';
+                            $skuCostUzs = 0;
                             $linkedVariantId = null;
                         }
 

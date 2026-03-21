@@ -305,7 +305,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function documentsPage() {
         return {
             filters: { warehouse_id: '{{ $selectedWarehouseId }}', type: '', status: '' },

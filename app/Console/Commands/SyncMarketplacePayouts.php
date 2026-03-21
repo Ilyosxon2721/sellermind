@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Company;
 use App\Services\Finance\MarketplacePayoutSyncService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SyncMarketplacePayouts extends Command
 {
@@ -66,6 +67,10 @@ class SyncMarketplacePayouts extends Command
 
             } catch (\Exception $e) {
                 $this->error("Ошибка: {$e->getMessage()}");
+                Log::error('Ошибка синхронизации выплат маркетплейса', [
+                    'company_id' => $company->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $totalResults['errors']++;
             }
 

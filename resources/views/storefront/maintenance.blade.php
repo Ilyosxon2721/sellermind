@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $store->name ?? 'Магазин' }} - На обслуживании</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Inter:400,500,600,700&display=swap" rel="stylesheet">
     @if(isset($store) && $store->favicon)

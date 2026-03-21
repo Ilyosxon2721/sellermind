@@ -388,7 +388,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function marketplaceStocksDashboard() {
     return {
         loading: false,

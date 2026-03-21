@@ -6,6 +6,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\VpcSession;
 use App\Services\Agent\Contracts\AgentToolInterface;
 use App\Services\Vpc\VpcCommandClient;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Tool for logging into marketplace accounts via VPC browser.
@@ -109,6 +110,12 @@ class MarketplaceLoginTool implements AgentToolInterface
         try {
             return $this->performLogin($session, $account, $marketplace);
         } catch (\Exception $e) {
+            Log::warning('Ошибка авторизации на маркетплейсе через VPC', [
+                'marketplace' => $marketplace,
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'error' => $e->getMessage(),

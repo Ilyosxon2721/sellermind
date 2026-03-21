@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Marketplace\UpdateOzonSettingsRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonWarehouse;
 use App\Services\Marketplaces\MarketplaceHttpClient;
@@ -54,7 +55,7 @@ class OzonSettingsController extends Controller
     /**
      * Update Ozon account credentials and settings
      */
-    public function update(Request $request, MarketplaceAccount $account): JsonResponse
+    public function update(UpdateOzonSettingsRequest $request, MarketplaceAccount $account): JsonResponse
     {
         \Log::info('Ozon Settings Update Request', [
             'account_id' => $account->id,
@@ -71,14 +72,7 @@ class OzonSettingsController extends Controller
             return response()->json(['message' => 'Аккаунт не является Ozon.'], 400);
         }
 
-        $validated = $request->validate([
-            'client_id' => ['nullable', 'string', 'max:255'],
-            'api_key' => ['nullable', 'string', 'max:4000'],
-            'stock_sync_mode' => ['nullable', 'in:basic,aggregated'],
-            'warehouse_id' => ['nullable', 'string'], // Ozon warehouse ID (for basic mode)
-            'source_warehouse_ids' => ['nullable', 'array'], // Local warehouse IDs (for aggregated mode)
-            'source_warehouse_ids.*' => ['integer'],
-        ]);
+        $validated = $request->validated();
 
         // Update credentials in dedicated database fields
         if (array_key_exists('client_id', $validated)) {

@@ -212,7 +212,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function writeOffCreatePage() {
         return {
             error: '',

@@ -113,7 +113,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function agentTaskShowPage(taskId) {
     return {
         taskId: taskId,

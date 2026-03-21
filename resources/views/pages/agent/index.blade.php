@@ -154,7 +154,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function agentTasksPage() {
     return {
         tasks: [],

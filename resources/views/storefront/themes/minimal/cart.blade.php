@@ -199,7 +199,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function minimalCartPage() {
         return {
             loading: true,

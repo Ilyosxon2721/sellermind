@@ -394,7 +394,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function telegramSettings() {
     return {
         connected: false,

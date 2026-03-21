@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
+use App\Http\Requests\StoreCounterpartyRequest;
+use App\Http\Requests\UpdateCounterpartyRequest;
 use App\Models\Counterparty;
 use App\Models\CounterpartyContract;
 use App\Services\CounterpartyService;
@@ -75,32 +77,9 @@ class CounterpartyController extends Controller
     /**
      * Create counterparty
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreCounterpartyRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'type' => 'required|in:individual,legal',
-            'name' => 'required|string|max:255',
-            'short_name' => 'nullable|string|max:100',
-            'inn' => 'nullable|string|max:20',
-            'kpp' => 'nullable|string|max:20',
-            'ogrn' => 'nullable|string|max:20',
-            'okpo' => 'nullable|string|max:20',
-            'phone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:100',
-            'website' => 'nullable|url|max:255',
-            'legal_address' => 'nullable|string|max:500',
-            'actual_address' => 'nullable|string|max:500',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_bik' => 'nullable|string|max:20',
-            'bank_account' => 'nullable|string|max:30',
-            'bank_corr_account' => 'nullable|string|max:30',
-            'contact_person' => 'nullable|string|max:100',
-            'contact_phone' => 'nullable|string|max:50',
-            'contact_position' => 'nullable|string|max:100',
-            'is_supplier' => 'boolean',
-            'is_customer' => 'boolean',
-            'notes' => 'nullable|string|max:2000',
-        ]);
+        $validated = $request->validated();
 
         $counterparty = $this->counterpartyService->createCounterparty($validated, $this->getCompanyId());
 
@@ -114,36 +93,12 @@ class CounterpartyController extends Controller
     /**
      * Update counterparty
      */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateCounterpartyRequest $request, int $id): JsonResponse
     {
         $companyId = $this->getCompanyId();
         $counterparty = Counterparty::byCompany($companyId)->findOrFail($id);
 
-        $validated = $request->validate([
-            'type' => 'in:individual,legal',
-            'name' => 'string|max:255',
-            'short_name' => 'nullable|string|max:100',
-            'inn' => 'nullable|string|max:20',
-            'kpp' => 'nullable|string|max:20',
-            'ogrn' => 'nullable|string|max:20',
-            'okpo' => 'nullable|string|max:20',
-            'phone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|max:100',
-            'website' => 'nullable|url|max:255',
-            'legal_address' => 'nullable|string|max:500',
-            'actual_address' => 'nullable|string|max:500',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_bik' => 'nullable|string|max:20',
-            'bank_account' => 'nullable|string|max:30',
-            'bank_corr_account' => 'nullable|string|max:30',
-            'contact_person' => 'nullable|string|max:100',
-            'contact_phone' => 'nullable|string|max:50',
-            'contact_position' => 'nullable|string|max:100',
-            'is_active' => 'boolean',
-            'is_supplier' => 'boolean',
-            'is_customer' => 'boolean',
-            'notes' => 'nullable|string|max:2000',
-        ]);
+        $validated = $request->validated();
 
         $counterparty = $this->counterpartyService->updateCounterparty($counterparty, $validated);
 

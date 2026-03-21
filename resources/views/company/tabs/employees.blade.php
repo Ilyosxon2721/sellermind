@@ -217,7 +217,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function employeesTab() {
     return {
         companies: [],

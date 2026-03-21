@@ -16,7 +16,7 @@ final class UzumAutoReviewService
 
     public function __construct()
     {
-        $this->aiService = new UzumAiReplyService();
+        $this->aiService = new UzumAiReplyService;
     }
 
     /**

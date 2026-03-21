@@ -27,7 +27,7 @@ final class VerifyOzonWebhookIp
         }
 
         $clientIp = $request->ip();
-        $ranges   = $this->allowedRanges;
+        $ranges = $this->allowedRanges;
 
         $extra = config('marketplace.ozon.webhook_ip_whitelist', '');
         if ($extra) {
@@ -52,7 +52,7 @@ final class VerifyOzonWebhookIp
         }
 
         [$subnet, $mask] = explode('/', $range, 2);
-        $ipLong     = ip2long($ip);
+        $ipLong = ip2long($ip);
         $subnetLong = ip2long($subnet);
 
         if ($ipLong === false || $subnetLong === false) {

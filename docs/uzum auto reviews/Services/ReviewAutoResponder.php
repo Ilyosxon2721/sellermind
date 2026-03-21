@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\UzumShop;
 use App\Models\ReviewReplyLog;
+use App\Models\UzumShop;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -11,8 +11,11 @@ use Illuminate\Support\Str;
 class ReviewAutoResponder
 {
     protected UzumSellerApi $api;
+
     protected string $aiProvider;
+
     protected string $aiApiKey;
+
     protected string $aiModel;
 
     public function __construct(UzumSellerApi $api)
@@ -38,10 +41,10 @@ class ReviewAutoResponder
                 size: 20
             );
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 Log::error('ReviewAutoResponder: ошибка получения отзывов', [
                     'shop_id' => $shop->uzum_shop_id,
-                    'error'   => $result['error'] ?? 'unknown',
+                    'error' => $result['error'] ?? 'unknown',
                 ]);
                 break;
             }
@@ -54,7 +57,9 @@ class ReviewAutoResponder
                 return ($review['replyStatus'] ?? null) === null;
             });
 
-            if (empty($reviews)) break;
+            if (empty($reviews)) {
+                break;
+            }
 
             foreach ($reviews as $review) {
                 $stats['processed']++;
@@ -64,7 +69,7 @@ class ReviewAutoResponder
                 match ($replyResult) {
                     'replied' => $stats['replied']++,
                     'skipped' => $stats['skipped']++,
-                    'error'   => $stats['errors']++,
+                    'error' => $stats['errors']++,
                 };
 
                 // Пауза между ответами
@@ -73,9 +78,11 @@ class ReviewAutoResponder
 
             $page++;
 
-            if ($page > 10) break;
+            if ($page > 10) {
+                break;
+            }
 
-        } while (!empty($reviews));
+        } while (! empty($reviews));
 
         return $stats;
     }
@@ -86,23 +93,24 @@ class ReviewAutoResponder
     protected function processReview(array $review, UzumShop $shop): string
     {
         // Реальная структура полей из Uzum Seller API
-        $reviewId    = $review['reviewId'] ?? null;
-        $rating      = $review['rating'] ?? 0;
-        $text        = $review['content'] ?? '';
-        $pros        = $review['pros'] ?? '';
-        $cons        = $review['cons'] ?? '';
-        $authorName  = $review['customerName'] ?? 'Покупатель';
+        $reviewId = $review['reviewId'] ?? null;
+        $rating = $review['rating'] ?? 0;
+        $text = $review['content'] ?? '';
+        $pros = $review['pros'] ?? '';
+        $cons = $review['cons'] ?? '';
+        $authorName = $review['customerName'] ?? 'Покупатель';
         $productName = $review['product']['productTitle'] ?? '';
-        $skuTitle    = $review['product']['skuTitle'] ?? '';
-        $anonymous   = $review['anonymous'] ?? false;
+        $skuTitle = $review['product']['skuTitle'] ?? '';
+        $anonymous = $review['anonymous'] ?? false;
 
         // Объединяем текст отзыва из всех полей
         $fullReviewText = collect([$text, $pros ? "Плюсы: {$pros}" : '', $cons ? "Минусы: {$cons}" : ''])
             ->filter()
             ->implode(' | ');
 
-        if (!$reviewId) {
+        if (! $reviewId) {
             Log::warning('ReviewAutoResponder: нет ID отзыва', ['review' => $review]);
+
             return 'skipped';
         }
 
@@ -120,7 +128,7 @@ class ReviewAutoResponder
             $replyText = $this->generateAiReply($review, $shop);
         }
 
-        if (!$replyText) {
+        if (! $replyText) {
             return 'error';
         }
 
@@ -129,15 +137,15 @@ class ReviewAutoResponder
 
         // Логируем
         ReviewReplyLog::create([
-            'uzum_shop_id'   => $shop->uzum_shop_id,
+            'uzum_shop_id' => $shop->uzum_shop_id,
             'uzum_review_id' => $reviewId,
-            'rating'         => $rating,
-            'review_text'    => Str::limit($fullReviewText, 1000),
-            'reply_text'     => $replyText,
-            'product_name'   => Str::limit($productName ?: $skuTitle, 255),
-            'status'         => $sendResult['success'] ? 'sent' : 'failed',
-            'error_message'  => $sendResult['success'] ? null : ($sendResult['error'] ?? null),
-            'replied_at'     => $sendResult['success'] ? now() : null,
+            'rating' => $rating,
+            'review_text' => Str::limit($fullReviewText, 1000),
+            'reply_text' => $replyText,
+            'product_name' => Str::limit($productName ?: $skuTitle, 255),
+            'status' => $sendResult['success'] ? 'sent' : 'failed',
+            'error_message' => $sendResult['success'] ? null : ($sendResult['error'] ?? null),
+            'replied_at' => $sendResult['success'] ? now() : null,
         ]);
 
         return $sendResult['success'] ? 'replied' : 'error';
@@ -148,13 +156,13 @@ class ReviewAutoResponder
      */
     protected function generateAiReply(array $review, UzumShop $shop): ?string
     {
-        $rating      = $review['rating'] ?? 0;
-        $text        = $review['content'] ?? '';
-        $pros        = $review['pros'] ?? '';
-        $cons        = $review['cons'] ?? '';
-        $authorName  = $review['customerName'] ?? 'Покупатель';
+        $rating = $review['rating'] ?? 0;
+        $text = $review['content'] ?? '';
+        $pros = $review['pros'] ?? '';
+        $cons = $review['cons'] ?? '';
+        $authorName = $review['customerName'] ?? 'Покупатель';
         $productName = $review['product']['productTitle'] ?? '';
-        $skuTitle    = $review['product']['skuTitle'] ?? '';
+        $skuTitle = $review['product']['skuTitle'] ?? '';
         $characteristics = $review['characteristics'] ?? [];
 
         $systemPrompt = $this->buildSystemPrompt($shop);
@@ -163,13 +171,14 @@ class ReviewAutoResponder
         try {
             return match ($this->aiProvider) {
                 'anthropic' => $this->callAnthropic($systemPrompt, $userPrompt),
-                'openai'    => $this->callOpenAi($systemPrompt, $userPrompt),
-                default     => $this->callAnthropic($systemPrompt, $userPrompt),
+                'openai' => $this->callOpenAi($systemPrompt, $userPrompt),
+                default => $this->callAnthropic($systemPrompt, $userPrompt),
             };
         } catch (\Throwable $e) {
             Log::error('ReviewAutoResponder: ошибка ИИ', [
                 'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -224,7 +233,7 @@ PROMPT;
             $rating >= 4 => '⭐⭐⭐⭐ (хорошо)',
             $rating >= 3 => '⭐⭐⭐ (нормально)',
             $rating >= 2 => '⭐⭐ (плохо)',
-            default      => '⭐ (очень плохо)',
+            default => '⭐ (очень плохо)',
         };
 
         $prompt = "Напиши ответ на отзыв:\n";
@@ -232,26 +241,28 @@ PROMPT;
 
         if ($productName) {
             $prompt .= "Товар: {$productName}";
-            if ($skuTitle) $prompt .= " ({$skuTitle})";
+            if ($skuTitle) {
+                $prompt .= " ({$skuTitle})";
+            }
             $prompt .= "\n";
         }
 
-        if (!empty($characteristics)) {
+        if (! empty($characteristics)) {
             $chars = collect($characteristics)
-                ->map(fn ($c) => ($c['characteristic'] ?? '') . ': ' . ($c['characteristicValue'] ?? ''))
+                ->map(fn ($c) => ($c['characteristic'] ?? '').': '.($c['characteristicValue'] ?? ''))
                 ->implode(', ');
             $prompt .= "Характеристики: {$chars}\n";
         }
 
-        if (!empty(trim($text))) {
+        if (! empty(trim($text))) {
             $prompt .= "Текст отзыва: {$text}\n";
         }
 
-        if (!empty(trim($pros))) {
+        if (! empty(trim($pros))) {
             $prompt .= "Плюсы (указал покупатель): {$pros}\n";
         }
 
-        if (!empty(trim($cons))) {
+        if (! empty(trim($cons))) {
             $prompt .= "Минусы (указал покупатель): {$cons}\n";
         }
 
@@ -270,14 +281,14 @@ PROMPT;
     protected function callAnthropic(string $system, string $user): ?string
     {
         $response = Http::withHeaders([
-            'x-api-key'         => $this->aiApiKey,
+            'x-api-key' => $this->aiApiKey,
             'anthropic-version' => '2023-06-01',
-            'Content-Type'      => 'application/json',
+            'Content-Type' => 'application/json',
         ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-            'model'      => $this->aiModel,
+            'model' => $this->aiModel,
             'max_tokens' => 300,
-            'system'     => $system,
-            'messages'   => [
+            'system' => $system,
+            'messages' => [
                 ['role' => 'user', 'content' => $user],
             ],
         ]);
@@ -288,7 +299,7 @@ PROMPT;
 
         Log::error('Anthropic API error', [
             'status' => $response->status(),
-            'body'   => $response->body(),
+            'body' => $response->body(),
         ]);
 
         return null;
@@ -301,11 +312,11 @@ PROMPT;
     {
         $response = Http::withHeaders([
             'Authorization' => "Bearer {$this->aiApiKey}",
-            'Content-Type'  => 'application/json',
+            'Content-Type' => 'application/json',
         ])->timeout(30)->post('https://api.openai.com/v1/chat/completions', [
-            'model'      => $this->aiModel,
+            'model' => $this->aiModel,
             'max_tokens' => 300,
-            'messages'   => [
+            'messages' => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => $user],
             ],
@@ -317,7 +328,7 @@ PROMPT;
 
         Log::error('OpenAI API error', [
             'status' => $response->status(),
-            'body'   => $response->body(),
+            'body' => $response->body(),
         ]);
 
         return null;
@@ -329,11 +340,11 @@ PROMPT;
     protected function getQuickThankYou(int $rating, string $authorName, UzumShop $shop): string
     {
         $templates = [
-            "Спасибо за оценку! Рады, что вам понравилось. Ждём вас снова! 🙏",
-            "Благодарим за покупку и высокую оценку! Будем рады видеть вас снова.",
-            "Спасибо за отзыв! Приятно знать, что всё понравилось. До новых покупок!",
-            "Большое спасибо за оценку! Ваша поддержка очень мотивирует нас 💪",
-            "Благодарим за отзыв! Надеемся, товар приносит радость. Ждём вас снова!",
+            'Спасибо за оценку! Рады, что вам понравилось. Ждём вас снова! 🙏',
+            'Благодарим за покупку и высокую оценку! Будем рады видеть вас снова.',
+            'Спасибо за отзыв! Приятно знать, что всё понравилось. До новых покупок!',
+            'Большое спасибо за оценку! Ваша поддержка очень мотивирует нас 💪',
+            'Благодарим за отзыв! Надеемся, товар приносит радость. Ждём вас снова!',
         ];
 
         return $templates[array_rand($templates)];

@@ -209,7 +209,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inEditPage(docId) {
         return {
             doc: null,

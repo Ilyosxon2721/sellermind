@@ -2,19 +2,20 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Http\Client\Response;
-use Illuminate\Http\Client\RequestException;
 
 class UzumSellerApi
 {
     protected string $baseUrl;
+
     protected string $token;
+
     protected int $timeout;
 
-    public function __construct(string $token = null)
+    public function __construct(?string $token = null)
     {
         $this->baseUrl = config('uzum.api_base_url', 'https://api-seller.uzum.uz/api/seller-openapi');
         $this->token = $token ?? config('uzum.api_token', '');
@@ -59,14 +60,20 @@ class UzumSellerApi
     ): array {
         $params = [
             'shopIds' => $shopIds,
-            'status'  => $status,
-            'page'    => $page,
-            'size'    => $size,
+            'status' => $status,
+            'page' => $page,
+            'size' => $size,
         ];
 
-        if ($scheme) $params['scheme'] = $scheme;
-        if ($dateFrom) $params['dateFrom'] = $dateFrom;
-        if ($dateTo) $params['dateTo'] = $dateTo;
+        if ($scheme) {
+            $params['scheme'] = $scheme;
+        }
+        if ($dateFrom) {
+            $params['dateFrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $params['dateTo'] = $dateTo;
+        }
 
         return $this->get('/v2/fbs/orders', $params);
     }
@@ -84,9 +91,15 @@ class UzumSellerApi
             'status' => $status,
         ];
 
-        if (!empty($shopIds)) $params['shopIds'] = $shopIds;
-        if ($dateFrom) $params['dateFrom'] = $dateFrom;
-        if ($dateTo) $params['dateTo'] = $dateTo;
+        if (! empty($shopIds)) {
+            $params['shopIds'] = $shopIds;
+        }
+        if ($dateFrom) {
+            $params['dateFrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $params['dateTo'] = $dateTo;
+        }
 
         return $this->get('/v2/fbs/orders/count', $params);
     }
@@ -116,7 +129,9 @@ class UzumSellerApi
             'reason' => $reason,
         ];
 
-        if ($comment) $body['comment'] = $comment;
+        if ($comment) {
+            $body['comment'] = $comment;
+        }
 
         return $this->post("/v1/fbs/order/{$orderId}/cancel", $body);
     }
@@ -176,8 +191,12 @@ class UzumSellerApi
     ): array {
         $params = compact('page', 'size', 'filter', 'sortBy', 'order');
 
-        if ($searchQuery) $params['searchQuery'] = $searchQuery;
-        if ($productRank) $params['productRank'] = $productRank;
+        if ($searchQuery) {
+            $params['searchQuery'] = $searchQuery;
+        }
+        if ($productRank) {
+            $params['productRank'] = $productRank;
+        }
 
         return $this->get("/v1/product/shop/{$shopId}", $params);
     }
@@ -208,14 +227,20 @@ class UzumSellerApi
     ): array {
         $params = [
             'shopIds' => $shopIds,
-            'page'    => $page,
-            'size'    => $size,
-            'group'   => $group,
+            'page' => $page,
+            'size' => $size,
+            'group' => $group,
         ];
 
-        if ($dateFrom) $params['dateFrom'] = $dateFrom;
-        if ($dateTo) $params['dateTo'] = $dateTo;
-        if ($statuses) $params['statuses'] = $statuses;
+        if ($dateFrom) {
+            $params['dateFrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $params['dateTo'] = $dateTo;
+        }
+        if ($statuses) {
+            $params['statuses'] = $statuses;
+        }
 
         return $this->get('/v1/finance/orders', $params);
     }
@@ -233,10 +258,18 @@ class UzumSellerApi
     ): array {
         $params = compact('page', 'size');
 
-        if ($shopIds) $params['shopIds'] = $shopIds;
-        if ($dateFrom) $params['dateFrom'] = $dateFrom;
-        if ($dateTo) $params['dateTo'] = $dateTo;
-        if ($sources) $params['sources'] = $sources;
+        if ($shopIds) {
+            $params['shopIds'] = $shopIds;
+        }
+        if ($dateFrom) {
+            $params['dateFrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $params['dateTo'] = $dateTo;
+        }
+        if ($sources) {
+            $params['sources'] = $sources;
+        }
 
         return $this->get('/v1/finance/expenses', $params);
     }
@@ -253,7 +286,9 @@ class UzumSellerApi
     public function getReturns(?int $returnId = null, int $page = 0, int $size = 50): array
     {
         $params = compact('page', 'size');
-        if ($returnId) $params['returnId'] = $returnId;
+        if ($returnId) {
+            $params['returnId'] = $returnId;
+        }
 
         return $this->get('/v1/return', $params);
     }
@@ -266,8 +301,8 @@ class UzumSellerApi
     {
         return $this->get('/v1/fbs/invoice', [
             'statuses' => $statuses,
-            'page'     => $page,
-            'size'     => $size,
+            'page' => $page,
+            'size' => $size,
         ]);
     }
 
@@ -338,7 +373,7 @@ class UzumSellerApi
             body: [
                 [
                     'reviewId' => $reviewId,
-                    'content'  => $text,
+                    'content' => $text,
                 ],
             ],
             baseUrl: 'https://api-seller.uzum.uz'
@@ -348,7 +383,7 @@ class UzumSellerApi
     /**
      * Ответить на несколько отзывов сразу (batch)
      *
-     * @param array $replies [ ['reviewId' => 123, 'content' => 'Спасибо!'], ... ]
+     * @param  array  $replies  [ ['reviewId' => 123, 'content' => 'Спасибо!'], ... ]
      */
     public function replyToReviewsBatch(array $replies): array
     {
@@ -380,13 +415,13 @@ class UzumSellerApi
      */
     protected function postWithQueryParams(string $fullUrl, array $queryParams, array|object $body): array
     {
-        $url = $fullUrl . '?' . http_build_query($queryParams);
+        $url = $fullUrl.'?'.http_build_query($queryParams);
 
         try {
             $request = Http::withHeaders([
                 'Authorization' => "Bearer {$this->token}",
-                'Accept'        => 'application/json',
-                'Content-Type'  => 'application/json',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
             ])->timeout($this->timeout);
 
             $response = $request->post($url, $body);
@@ -396,34 +431,34 @@ class UzumSellerApi
             if ($response->successful()) {
                 return [
                     'success' => true,
-                    'data'    => $response->json(),
-                    'status'  => $response->status(),
+                    'data' => $response->json(),
+                    'status' => $response->status(),
                 ];
             }
 
             Log::warning('Uzum API error', [
-                'url'    => $url,
+                'url' => $url,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'error'   => $response->json('message', 'Unknown error'),
-                'code'    => $response->json('code', null),
-                'status'  => $response->status(),
+                'error' => $response->json('message', 'Unknown error'),
+                'code' => $response->json('code', null),
+                'status' => $response->status(),
             ];
 
         } catch (RequestException $e) {
             Log::error('Uzum API request exception', [
-                'url'     => $url,
+                'url' => $url,
                 'message' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
-                'status'  => $e->getCode(),
+                'error' => $e->getMessage(),
+                'status' => $e->getCode(),
             ];
         }
     }
@@ -438,18 +473,18 @@ class UzumSellerApi
         // Поддержка абсолютных URL (для review endpoints)
         $url = str_starts_with($path, 'http')
             ? $path
-            : ($baseUrl ?? $this->baseUrl) . $path;
+            : ($baseUrl ?? $this->baseUrl).$path;
 
         try {
             $request = Http::withHeaders([
                 'Authorization' => "Bearer {$this->token}",
-                'Accept'        => 'application/json',
-                'Content-Type'  => 'application/json',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
             ])->timeout($this->timeout);
 
             /** @var Response $response */
             $response = match ($method) {
-                'GET'  => $request->get($url, $params),
+                'GET' => $request->get($url, $params),
                 'POST' => $request->post($url, $body),
                 default => throw new \InvalidArgumentException("Unsupported method: {$method}"),
             };
@@ -460,34 +495,34 @@ class UzumSellerApi
             if ($response->successful()) {
                 return [
                     'success' => true,
-                    'data'    => $response->json(),
-                    'status'  => $response->status(),
+                    'data' => $response->json(),
+                    'status' => $response->status(),
                 ];
             }
 
             Log::warning('Uzum API error', [
-                'path'   => $path,
+                'path' => $path,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'error'   => $response->json('message', 'Unknown error'),
-                'code'    => $response->json('code', null),
-                'status'  => $response->status(),
+                'error' => $response->json('message', 'Unknown error'),
+                'code' => $response->json('code', null),
+                'status' => $response->status(),
             ];
 
         } catch (RequestException $e) {
             Log::error('Uzum API request exception', [
-                'path'    => $path,
+                'path' => $path,
                 'message' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
-                'status'  => $e->getCode(),
+                'error' => $e->getMessage(),
+                'status' => $e->getCode(),
             ];
         }
     }
@@ -499,7 +534,7 @@ class UzumSellerApi
 
         if ($remaining !== null && (int) $remaining < 5) {
             Log::warning("Uzum API rate limit low: {$path}", [
-                'remaining'     => $remaining,
+                'remaining' => $remaining,
                 'remaining_day' => $perDay,
             ]);
         }

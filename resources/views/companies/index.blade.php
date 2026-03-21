@@ -172,7 +172,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function companiesPage() {
     return {
         companies: [],

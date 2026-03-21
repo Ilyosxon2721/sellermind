@@ -230,8 +230,8 @@
 
 </div>
 
-<script src="/js/product-bulk.js"></script>
-<script>
+<script nonce="{{ $cspNonce ?? '' }}" src="/js/product-bulk.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function productPage() {
         return {
             // Bulk operations functionality

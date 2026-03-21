@@ -301,7 +301,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function bannersManager(storeId) {
     return {
         storeId,

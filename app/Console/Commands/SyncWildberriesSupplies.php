@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\SyncWildberriesSupplies as SyncWildberriesSuppliesJob;
 use App\Models\MarketplaceAccount;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SyncWildberriesSupplies extends Command
 {
@@ -42,6 +43,10 @@ class SyncWildberriesSupplies extends Command
                 $this->info("✓ Job dispatched for account #{$account->id}");
             } catch (\Exception $e) {
                 $this->error("✗ Failed to dispatch job for account #{$account->id}: {$e->getMessage()}");
+                Log::error('Ошибка запуска синхронизации поставок WB', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

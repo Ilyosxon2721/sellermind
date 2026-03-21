@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\UzumShop;
 use App\Models\OrderConfirmLog;
+use App\Models\UzumShop;
 use App\Services\UzumSellerApi;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +17,7 @@ class AutoConfirmFbsOrders implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 10;
 
     public function handle(): void
@@ -28,6 +29,7 @@ class AutoConfirmFbsOrders implements ShouldQueue
 
         if ($shops->isEmpty()) {
             Log::info('AutoConfirm: нет магазинов с включённым авто-подтверждением');
+
             return;
         }
 
@@ -61,7 +63,7 @@ class AutoConfirmFbsOrders implements ShouldQueue
                 size: 50
             );
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 Log::error('AutoConfirm: ошибка получения заказов', [
                     'error' => $result['error'] ?? 'unknown',
                 ]);
@@ -77,7 +79,9 @@ class AutoConfirmFbsOrders implements ShouldQueue
             foreach ($orders as $order) {
                 $orderId = $order['id'] ?? null;
 
-                if (!$orderId) continue;
+                if (! $orderId) {
+                    continue;
+                }
 
                 $confirmResult = $this->confirmOrder($api, $orderId, $shops);
 
@@ -94,14 +98,16 @@ class AutoConfirmFbsOrders implements ShouldQueue
             $page++;
 
             // Защита от бесконечного цикла
-            if ($page > 20) break;
+            if ($page > 20) {
+                break;
+            }
 
-        } while (!empty($orders));
+        } while (! empty($orders));
 
         Log::info('AutoConfirm: завершено', [
             'confirmed' => $totalConfirmed,
-            'failed'    => $totalFailed,
-            'shop_ids'  => $shopIds,
+            'failed' => $totalFailed,
+            'shop_ids' => $shopIds,
         ]);
     }
 
@@ -112,10 +118,10 @@ class AutoConfirmFbsOrders implements ShouldQueue
         // Логируем в БД
         OrderConfirmLog::create([
             'uzum_order_id' => $orderId,
-            'status'        => $result['success'] ? 'confirmed' : 'failed',
+            'status' => $result['success'] ? 'confirmed' : 'failed',
             'error_message' => $result['success'] ? null : ($result['error'] ?? 'Unknown error'),
-            'error_code'    => $result['code'] ?? null,
-            'confirmed_at'  => $result['success'] ? now() : null,
+            'error_code' => $result['code'] ?? null,
+            'confirmed_at' => $result['success'] ? now() : null,
         ]);
 
         if ($result['success']) {
@@ -135,7 +141,7 @@ class AutoConfirmFbsOrders implements ShouldQueue
             } else {
                 Log::error("AutoConfirm: заказ #{$orderId} — ошибка", [
                     'error' => $result['error'] ?? 'unknown',
-                    'code'  => $errorCode,
+                    'code' => $errorCode,
                 ]);
             }
         }

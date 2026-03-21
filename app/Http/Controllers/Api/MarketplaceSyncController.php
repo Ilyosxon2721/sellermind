@@ -15,6 +15,7 @@ use App\Services\Marketplaces\MarketplaceSyncService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MarketplaceSyncController extends Controller
 {
@@ -52,6 +53,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации цен', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -89,6 +92,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации остатков', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -126,6 +131,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации товаров', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -171,6 +178,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации заказов', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -206,6 +215,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации поставок', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,

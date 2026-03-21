@@ -1,11 +1,12 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
 
 parameters:
     paths:
         - app/
 
-    level: 0
+    level: 4
 
     tmpDir: storage/framework/phpstan
 
@@ -23,7 +24,9 @@ parameters:
     ignoreErrors:
         - '#Unsafe usage of new static#'
         - '#Called .env. outside of the config directory#'
-        - '#Class App\Models\MarketplaceOrder not found#'
-        - '#Class App\Models\MarketplaceOrderItem not found#'
-        - '#Class App\Models\Finance\CashMovement not found#'
-        - '#Class App\Models\Warehouse not found#'
+        - '#Class App\\Models\\MarketplaceOrder not found#'
+        - '#Class App\\Models\\MarketplaceOrderItem not found#'
+        - '#Class App\\Models\\Finance\\CashMovement not found#'
+        - '#Class App\\Models\\Warehouse not found#'
+
+    reportUnmatchedIgnoredErrors: false

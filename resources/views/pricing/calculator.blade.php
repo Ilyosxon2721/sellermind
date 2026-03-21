@@ -599,7 +599,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function pricingCalculatorCore() {
         return {
             // Form

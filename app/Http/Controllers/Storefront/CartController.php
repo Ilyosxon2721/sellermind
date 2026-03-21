@@ -14,6 +14,7 @@ use App\Support\ApiResponder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Корзина покупателя (сессионная) — Blade-страница + API-эндпоинты
@@ -425,8 +426,11 @@ final class CartController extends Controller
             StoreAnalytics::where('store_id', $store->id)
                 ->where('date', $today)
                 ->increment('cart_additions');
-        } catch (\Throwable) {
-            // Не прерываем пользовательский флоу при ошибке аналитики
+        } catch (\Throwable $e) {
+            Log::debug('Ошибка трекинга добавления в корзину', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

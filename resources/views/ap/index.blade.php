@@ -530,7 +530,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function apPagePwa() {
     const suppliers = @json($suppliers);
     return {
@@ -618,7 +618,7 @@ function apPagePwa() {
 }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function apPage() {
     return {
         activeTab: 'invoices',

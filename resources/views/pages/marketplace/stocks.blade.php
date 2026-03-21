@@ -241,10 +241,15 @@
                                     <span class="text-xs px-2 py-1 rounded-lg font-medium" :class="mpBadge(item)" x-text="mpLabel(item)"></span>
                                 </td>
                                 <td class="px-4 py-3 text-center text-sm">
-                                    <button @click="openCostModal(item)" class="cursor-pointer hover:opacity-80 transition">
-                                        <span x-show="item.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
-                                        <span x-show="!item.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
-                                    </button>
+                                    <template x-if="item.variants && item.variants.length > 0">
+                                        <button @click="openCostModal(item)" class="cursor-pointer hover:opacity-80 transition">
+                                            <span x-show="item.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(item.cost_price)"></span>
+                                            <span x-show="!item.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
+                                        </button>
+                                    </template>
+                                    <template x-if="!item.variants || item.variants.length === 0">
+                                        <span class="text-xs text-gray-400">—</span>
+                                    </template>
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                     <span :class="stockClass(item.stock_fbs)" x-text="item.stock_fbs ?? '—'"></span>
@@ -275,10 +280,15 @@
                                             <div class="text-xs text-gray-400 font-mono mt-0.5" x-text="v.sku"></div>
                                         </td>
                                         <td class="px-4 py-2 text-center text-sm">
-                                            <button @click="openCostModal({...item, purchase_price: v.purchase_price, purchase_price_currency: v.purchase_price_currency, cost_price: v.cost_price, _variant_id: v.variant_id, _sku_id: v.sku_id, title: (item.title || '') + ' — ' + (v.option_values_summary || v.sku)})" class="cursor-pointer hover:opacity-80 transition">
-                                                <span x-show="v.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(v.cost_price)"></span>
-                                                <span x-show="!v.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
-                                            </button>
+                                            <template x-if="v.variant_id">
+                                                <button @click="openCostModal({...item, purchase_price: v.purchase_price, purchase_price_currency: v.purchase_price_currency, cost_price: v.cost_price, _variant_id: v.variant_id, _sku_id: v.sku_id, title: (item.title || '') + ' — ' + (v.option_values_summary || v.sku)})" class="cursor-pointer hover:opacity-80 transition">
+                                                    <span x-show="v.cost_price" class="text-gray-700 underline decoration-dashed decoration-gray-300" x-text="fmtMoney(v.cost_price)"></span>
+                                                    <span x-show="!v.cost_price" class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Указать</span>
+                                                </button>
+                                            </template>
+                                            <template x-if="!v.variant_id">
+                                                <span class="text-xs text-gray-400">—</span>
+                                            </template>
                                         </td>
                                         <td class="px-4 py-2 text-center">
                                             <span x-show="v.stock_fbs !== null" :class="stockClass(v.stock_fbs)" x-text="v.stock_fbs"></span>
@@ -414,8 +424,15 @@
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <span class="text-xs text-gray-400">Стоим:</span>
-                                    <span x-show="item.cost_price" class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
-                                    <button x-show="!item.cost_price" @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
+                                    <template x-if="item.variants && item.variants.length > 0">
+                                        <span>
+                                            <span x-show="item.cost_price" class="text-xs font-medium text-green-700" x-text="stockValue(item)"></span>
+                                            <button x-show="!item.cost_price" @click="openCostModal(item)" class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">Указать</button>
+                                        </span>
+                                    </template>
+                                    <template x-if="!item.variants || item.variants.length === 0">
+                                        <span class="text-xs text-gray-400">—</span>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -440,7 +457,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Alpine Store для модалки себестоимости — доступен из любого компонента
 document.addEventListener('alpine:init', () => {
     Alpine.store('costModal', {

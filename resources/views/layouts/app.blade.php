@@ -58,7 +58,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Initialize Alpine store with server-side auth data or check localStorage -->
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         document.addEventListener('alpine:init', async () => {
             // Initialize auth store with server data
             const authStore = Alpine.store('auth');

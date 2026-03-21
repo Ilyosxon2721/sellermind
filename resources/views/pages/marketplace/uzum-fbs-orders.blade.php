@@ -659,7 +659,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
     ->values();
 @endphp
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumOrdersPage() {
     return {
         orders: [],

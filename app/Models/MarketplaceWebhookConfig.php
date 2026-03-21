@@ -19,14 +19,14 @@ final class MarketplaceWebhookConfig extends Model
     ];
 
     protected $casts = [
-        'marketplace'      => MarketplaceType::class,
-        'is_active'        => 'boolean',
+        'marketplace' => MarketplaceType::class,
+        'is_active' => 'boolean',
         'last_received_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
-        static::creating(function (self $model) {
+        self::creating(function (self $model) {
             if (empty($model->webhook_uuid)) {
                 $model->webhook_uuid = Str::uuid()->toString();
             }

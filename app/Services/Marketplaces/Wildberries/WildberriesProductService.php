@@ -64,6 +64,10 @@ class WildberriesProductService
                         $updated += $result['updated'];
                         $synced++;
                     } catch (\Exception $e) {
+                        Log::warning('Ошибка обработки товара WB при синхронизации', [
+                            'nm_id' => $cardData['nmID'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
                         $errors[] = [
                             'nm_id' => $cardData['nmID'] ?? 'unknown',
                             'error' => $e->getMessage(),
@@ -338,30 +342,53 @@ class WildberriesProductService
     }
 
     /**
-     * Create a new product card on WB
+     * Создать новую карточку товара на WB.
      *
-     * @param  array  $cardData  Card data according to WB API format
-     * @return array API response
+     * ВНИМАНИЕ: Метод реализован частично. Отправляет данные напрямую в API без
+     * валидации, трансформации и обработки ошибок. Не используйте в продакшене
+     * без доработки.
+     *
+     * TODO: Реализовать полную логику создания карточки:
+     *   - Валидация обязательных полей (vendorCode, characteristics, sizes с skus)
+     *   - Трансформация данных в формат WB API
+     *   - Обработка ошибок и повторные попытки
+     *   - Логирование результата
+     *
+     * @param  array  $cardData  Данные карточки в формате WB API
+     * @return array Ответ API
      */
     public function createProductCard(MarketplaceAccount $account, array $cardData): array
     {
-        // TODO: Implement full card creation logic
-        // POST /content/v2/cards/upload
-        // Requires: vendorCode, characteristics, sizes with skus
+        Log::warning('WildberriesProductService::createProductCard() вызван без полной реализации', [
+            'account_id' => $account->id,
+            'card_data_keys' => array_keys($cardData),
+        ]);
 
         return $this->getHttpClient($account)->post('content', '/content/v2/cards/upload', [$cardData]);
     }
 
     /**
-     * Update existing product card on WB
+     * Обновить существующую карточку товара на WB.
      *
-     * @param  array  $cardData  Card data with nmID
-     * @return array API response
+     * ВНИМАНИЕ: Метод реализован частично. Отправляет данные напрямую в API без
+     * валидации, трансформации и обработки ошибок. Не используйте в продакшене
+     * без доработки.
+     *
+     * TODO: Реализовать полную логику обновления карточки:
+     *   - Валидация наличия nmID
+     *   - Мерж существующих данных с обновлениями
+     *   - Обработка ошибок и повторные попытки
+     *   - Логирование результата
+     *
+     * @param  array  $cardData  Данные карточки с обязательным полем nmID
+     * @return array Ответ API
      */
     public function updateProductCard(MarketplaceAccount $account, array $cardData): array
     {
-        // TODO: Implement full card update logic
-        // POST /content/v2/cards/update
+        Log::warning('WildberriesProductService::updateProductCard() вызван без полной реализации', [
+            'account_id' => $account->id,
+            'card_data_keys' => array_keys($cardData),
+        ]);
 
         return $this->getHttpClient($account)->post('content', '/content/v2/cards/update', [$cardData]);
     }

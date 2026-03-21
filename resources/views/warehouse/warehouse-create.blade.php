@@ -142,7 +142,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function warehouseCreatePage() {
         return {
             saving: false,

@@ -100,6 +100,10 @@ class WildberriesOrderService
 
                     $synced++;
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка обработки нового заказа WB', [
+                        'order_id' => $orderData['id'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ]);
                     $errors[] = [
                         'order_id' => $orderData['id'] ?? 'unknown',
                         'error' => $e->getMessage(),
@@ -222,6 +226,10 @@ class WildberriesOrderService
 
                         $synced++;
                     } catch (\Exception $e) {
+                        Log::warning('Ошибка обработки заказа WB при полной синхронизации', [
+                            'order_id' => $orderData['id'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
                         $errors[] = [
                             'order_id' => $orderData['id'] ?? 'unknown',
                             'error' => $e->getMessage(),
@@ -385,6 +393,10 @@ class WildberriesOrderService
 
                     $synced++;
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка обработки заказа WB (statistics)', [
+                        'srid' => $orderData['srid'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ]);
                     $errors[] = [
                         'srid' => $orderData['srid'] ?? 'unknown',
                         'error' => $e->getMessage(),
@@ -1365,6 +1377,11 @@ class WildberriesOrderService
 
                     $synced++;
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка обработки заказа WB из поставки', [
+                        'order_id' => $orderData['id'] ?? 'unknown',
+                        'supply_id' => $supplyId,
+                        'error' => $e->getMessage(),
+                    ]);
                     $errors[] = [
                         'order_id' => $orderData['id'] ?? 'unknown',
                         'error' => $e->getMessage(),

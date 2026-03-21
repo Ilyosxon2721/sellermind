@@ -1032,7 +1032,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProductsPage() {
     return {
         products: [],
@@ -2015,7 +2015,7 @@ function wbProductsPage() {
 }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProductsPWA() {
     return {
         products: [],

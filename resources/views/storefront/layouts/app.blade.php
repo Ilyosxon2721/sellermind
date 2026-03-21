@@ -31,13 +31,13 @@
 
     <link rel="canonical" href="{{ url()->current() }}">
 
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script nonce="{{ $cspNonce ?? '' }}" defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family={{ urlencode($store->theme->heading_font ?? 'Inter') }}:400,500,600,700|{{ urlencode($store->theme->body_font ?? 'Inter') }}:400,500,600,700&display=swap" rel="stylesheet">
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         tailwind.config = {
             theme: {
                 extend: {
@@ -199,7 +199,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         function toastNotification() {
             return {
                 visible: false,

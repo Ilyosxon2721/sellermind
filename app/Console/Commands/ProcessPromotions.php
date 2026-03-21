@@ -7,6 +7,7 @@ use App\Models\Promotion;
 use App\Notifications\PromotionExpiringNotification;
 use App\Services\PromotionService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class ProcessPromotions extends Command
 {
@@ -117,6 +118,10 @@ class ProcessPromotions extends Command
                 }
             } catch (\Exception $e) {
                 $this->error("  ❌ Failed to create promotion: {$e->getMessage()}");
+                Log::warning('Не удалось создать автоматическую акцию', [
+                    'company_id' => $company->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -165,6 +170,11 @@ class ProcessPromotions extends Command
                 $this->line("  ✅ Notification sent to {$owner->name}");
             } catch (\Exception $e) {
                 $this->error("  ❌ Failed to send notification: {$e->getMessage()}");
+                Log::warning('Не удалось отправить уведомление об истечении акции', [
+                    'promotion_id' => $promotion->id,
+                    'user_id' => $owner->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

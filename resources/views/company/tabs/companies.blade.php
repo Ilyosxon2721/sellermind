@@ -142,7 +142,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function companiesTab() {
     return {
         companies: [],

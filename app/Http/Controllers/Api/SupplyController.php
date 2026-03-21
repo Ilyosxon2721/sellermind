@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSupplyRequest;
+use App\Http\Requests\UpdateSupplyRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\Supply;
 use App\Models\WbOrder;
@@ -94,15 +96,9 @@ class SupplyController extends Controller
     /**
      * Создать новую поставку
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreSupplyRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-            'company_id' => ['required', 'exists:companies,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'external_supply_id' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         if (! $request->user()->hasCompanyAccess($request->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -200,7 +196,7 @@ class SupplyController extends Controller
     /**
      * Обновить поставку
      */
-    public function update(Request $request, Supply $supply): JsonResponse
+    public function update(UpdateSupplyRequest $request, Supply $supply): JsonResponse
     {
         if (! $request->user()->hasCompanyAccess($supply->account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -210,11 +206,7 @@ class SupplyController extends Controller
             return response()->json(['message' => 'Поставка не может быть отредактирована.'], 422);
         }
 
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['sometimes', 'in:draft,in_assembly,ready,sent,delivered,cancelled'],
-        ]);
+        $validated = $request->validated();
 
         $supply->update($validated);
 

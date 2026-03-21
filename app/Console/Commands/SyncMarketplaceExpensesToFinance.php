@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Company;
 use App\Services\Finance\MarketplaceExpensesSyncService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SyncMarketplaceExpensesToFinance extends Command
 {
@@ -101,6 +102,11 @@ class SyncMarketplaceExpensesToFinance extends Command
                 }
             } catch (\Exception $e) {
                 $this->error("  Error: {$e->getMessage()}");
+                Log::error('Ошибка синхронизации расходов маркетплейса в финансы', [
+                    'company_id' => $company->id,
+                    'marketplace' => $marketplace,
+                    'error' => $e->getMessage(),
+                ]);
                 $totalErrors++;
             }
         }

@@ -201,7 +201,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function analyticsPage() {
     return {
         loading: false,

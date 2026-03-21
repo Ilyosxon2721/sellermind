@@ -62,9 +62,8 @@ class TaxCalculation extends Model
         'due_date' => 'date',
     ];
 
-    protected $appends = [
-        'due_date_formatted',
-    ];
+    // Убрано из $appends — форматирование даты выполняется в контроллере/API Resource при необходимости
+    // protected $appends = ['due_date_formatted'];
 
     public function company(): BelongsTo
     {

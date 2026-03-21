@@ -188,7 +188,7 @@
         <p>{{ now()->format('d.m.Y H:i:s') }}</p>
     </div>
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         window.onload = function() {
             window.print();
         }

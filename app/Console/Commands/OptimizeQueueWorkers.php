@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\Process\Process;
 
 class OptimizeQueueWorkers extends Command
 {
@@ -116,9 +117,10 @@ class OptimizeQueueWorkers extends Command
      */
     protected function getCurrentWorkers(): int
     {
-        exec('ps aux | grep "queue:work" | grep -v grep | wc -l', $output);
+        $process = Process::fromShellCommandline('ps aux | grep "queue:work" | grep -v grep | wc -l');
+        $process->run();
 
-        return (int) trim($output[0]);
+        return (int) trim($process->getOutput());
     }
 
     /**
@@ -216,20 +218,23 @@ class OptimizeQueueWorkers extends Command
 
         $this->info("🚀 Перезапуск воркеров ({$count})...");
 
-        exec("bash {$scriptPath} {$count} 2>&1", $output, $returnCode);
+        $process = new Process(['bash', $scriptPath, (string) $count]);
+        $process->setTimeout(120);
+        $process->run();
 
-        if ($returnCode === 0) {
+        if ($process->isSuccessful()) {
             $this->info('✅ Воркеры успешно перезапущены!');
             $this->newLine();
 
-            // Показываем вывод скрипта
-            foreach ($output as $line) {
-                $this->line($line);
+            $output = trim($process->getOutput());
+            if ($output !== '') {
+                $this->line($output);
             }
         } else {
             $this->error('❌ Ошибка при запуске воркеров');
-            foreach ($output as $line) {
-                $this->error($line);
+            $errorOutput = trim($process->getErrorOutput() ?: $process->getOutput());
+            if ($errorOutput !== '') {
+                $this->error($errorOutput);
             }
         }
     }

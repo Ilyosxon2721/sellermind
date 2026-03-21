@@ -83,7 +83,7 @@ final class UzumApi
         // Выполнение запроса
         $requestUrl = $url;
         if ($method === 'GET' && ! empty($query)) {
-            $requestUrl .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+            $requestUrl .= '?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
 
         $response = match ($method) {
@@ -138,7 +138,7 @@ final class UzumApi
         array $body = [],
         int $ttl = 300,
     ): array {
-        $cacheKey = 'uzum:' . $this->account->id . ':' . md5(json_encode([
+        $cacheKey = 'uzum:'.$this->account->id.':'.md5(json_encode([
             $endpoint['path'] ?? '',
             $params,
             $query,
@@ -156,12 +156,12 @@ final class UzumApi
     public function flushCache(): void
     {
         // Удаляем кэш по паттерну uzum:{accountId}:*
-        $pattern = 'uzum:' . $this->account->id . ':*';
+        $pattern = 'uzum:'.$this->account->id.':*';
 
         try {
             $redis = Cache::getStore()->getRedis();
-            $prefix = config('cache.prefix', '') . ':';
-            $keys = $redis->keys($prefix . $pattern);
+            $prefix = config('cache.prefix', '').':';
+            $keys = $redis->keys($prefix.$pattern);
             if (! empty($keys)) {
                 $redis->del($keys);
             }
@@ -363,7 +363,7 @@ final class UzumApi
 
         $requestUrl = $url;
         if ($method === 'GET' && ! empty($query)) {
-            $requestUrl .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+            $requestUrl .= '?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
 
         $response = match ($method) {
@@ -403,12 +403,12 @@ final class UzumApi
         ]);
 
         $message = match (true) {
-            $status === 400 => 'Неверные параметры запроса: ' . ($errorInfo['message'] ?? $rawBody),
+            $status === 400 => 'Неверные параметры запроса: '.($errorInfo['message'] ?? $rawBody),
             $status === 401 => 'Неверный токен. Проверьте API-ключ в настройках.',
             $status === 403 => 'Доступ запрещён. Проверьте права токена.',
             $status === 429 => 'Слишком много запросов. Подождите минуту.',
             $status >= 500 => 'Сервер Uzum временно недоступен. Попробуйте позже.',
-            default => "Ошибка API ({$status}): " . mb_substr($rawBody, 0, 200),
+            default => "Ошибка API ({$status}): ".mb_substr($rawBody, 0, 200),
         };
 
         throw new \RuntimeException($message);

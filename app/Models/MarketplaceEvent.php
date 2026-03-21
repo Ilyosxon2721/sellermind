@@ -21,19 +21,19 @@ final class MarketplaceEvent extends Model
     ];
 
     protected $casts = [
-        'payload'         => 'array',
+        'payload' => 'array',
         'normalized_data' => 'array',
-        'metadata'        => 'array',
-        'processed_at'    => 'datetime',
-        'marketplace'     => MarketplaceType::class,
-        'event_type'      => EventType::class,
-        'status'          => EventStatus::class,
-        'entity_type'     => EntityType::class,
+        'metadata' => 'array',
+        'processed_at' => 'datetime',
+        'marketplace' => MarketplaceType::class,
+        'event_type' => EventType::class,
+        'status' => EventStatus::class,
+        'entity_type' => EntityType::class,
     ];
 
     protected static function booted(): void
     {
-        static::creating(function (self $model) {
+        self::creating(function (self $model) {
             if (empty($model->uuid)) {
                 $model->uuid = Str::uuid()->toString();
             }
@@ -51,7 +51,7 @@ final class MarketplaceEvent extends Model
     public function markProcessed(): void
     {
         $this->update([
-            'status'       => EventStatus::PROCESSED,
+            'status' => EventStatus::PROCESSED,
             'processed_at' => now(),
         ]);
     }
@@ -62,7 +62,7 @@ final class MarketplaceEvent extends Model
     public function markFailed(string $error): void
     {
         $this->update([
-            'status'        => EventStatus::FAILED,
+            'status' => EventStatus::FAILED,
             'error_message' => $error,
         ]);
     }

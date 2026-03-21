@@ -1,5 +1,5 @@
 {{-- Marketplace Auth Helper - Include this in marketplace pages for consistent token handling --}}
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Universal token getter for marketplace pages
 window.getMarketplaceToken = function() {
     // Try Alpine store first (if Alpine is loaded)

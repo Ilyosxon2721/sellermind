@@ -3,6 +3,7 @@
 namespace App\Services\Warehouse;
 
 use App\Models\CompanySetting;
+use App\Models\Warehouse\StockLedger;
 use App\Models\Warehouse\StockReservation;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -55,7 +56,25 @@ class ReservationService
 
     public function consume(int $reservationId, int $companyId): StockReservation
     {
-        return $this->updateStatus($reservationId, $companyId, StockReservation::STATUS_CONSUMED);
+        return DB::transaction(function () use ($reservationId, $companyId) {
+            $reservation = $this->updateStatus($reservationId, $companyId, StockReservation::STATUS_CONSUMED);
+
+            // Физическое списание со склада
+            StockLedger::create([
+                'company_id'    => $companyId,
+                'warehouse_id'  => $reservation->warehouse_id,
+                'sku_id'        => $reservation->sku_id,
+                'occurred_at'   => now(),
+                'qty_delta'     => -abs($reservation->qty),
+                'cost_delta'    => 0,
+                'currency_code' => 'UZS',
+                'source_type'   => 'RESERVATION',
+                'source_id'     => $reservation->id,
+                'created_by'    => $reservation->created_by,
+            ]);
+
+            return $reservation;
+        });
     }
 
     protected function updateStatus(int $reservationId, int $companyId, string $status): StockReservation

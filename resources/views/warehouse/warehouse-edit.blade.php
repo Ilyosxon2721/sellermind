@@ -151,7 +151,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function warehouseEditPage() {
         return {
             warehouseId: {{ $warehouseId }},

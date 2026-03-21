@@ -335,7 +335,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function catalogManager(storeId) {
     return {
         storeId,

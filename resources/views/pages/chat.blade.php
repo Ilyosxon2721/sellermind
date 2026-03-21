@@ -121,7 +121,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function chatPage() {
     return {
         message: '',

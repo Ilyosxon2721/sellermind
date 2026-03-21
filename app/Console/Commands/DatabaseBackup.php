@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Process;
 
 class DatabaseBackup extends Command
 {
@@ -81,6 +83,9 @@ class DatabaseBackup extends Command
 
         } catch (\Exception $e) {
             $this->error("Backup failed: {$e->getMessage()}");
+            Log::error('Ошибка создания резервной копии БД', [
+                'error' => $e->getMessage(),
+            ]);
 
             return self::FAILURE;
         }
@@ -92,26 +97,28 @@ class DatabaseBackup extends Command
     protected function backupMysql(array $database, string $path): void
     {
         $host = $database['host'] ?? '127.0.0.1';
-        $port = $database['port'] ?? 3306;
+        $port = (string) ($database['port'] ?? 3306);
         $dbName = $database['database'];
         $username = $database['username'];
         $password = $database['password'] ?? '';
 
-        $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s %s %s > %s',
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($username),
-            $password ? '--password='.escapeshellarg($password) : '',
-            escapeshellarg($dbName),
-            escapeshellarg($path)
-        );
+        $command = ['mysqldump', '--host='.$host, '--port='.$port, '--user='.$username];
 
-        exec($command, $output, $returnVar);
-
-        if ($returnVar !== 0) {
-            throw new \Exception('MySQL backup failed');
+        if ($password !== '') {
+            $command[] = '--password='.$password;
         }
+
+        $command[] = $dbName;
+
+        $process = new Process($command);
+        $process->setTimeout(600);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \Exception('MySQL backup failed: '.$process->getErrorOutput());
+        }
+
+        file_put_contents($path, $process->getOutput());
     }
 
     /**
@@ -120,26 +127,24 @@ class DatabaseBackup extends Command
     protected function backupPostgres(array $database, string $path): void
     {
         $host = $database['host'] ?? '127.0.0.1';
-        $port = $database['port'] ?? 5432;
+        $port = (string) ($database['port'] ?? 5432);
         $dbName = $database['database'];
         $username = $database['username'];
         $password = $database['password'] ?? '';
 
-        $command = sprintf(
-            'PGPASSWORD=%s pg_dump --host=%s --port=%s --username=%s --dbname=%s > %s',
-            escapeshellarg($password),
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($username),
-            escapeshellarg($dbName),
-            escapeshellarg($path)
-        );
+        $process = new Process([
+            'pg_dump', '--host='.$host, '--port='.$port,
+            '--username='.$username, '--dbname='.$dbName,
+        ]);
+        $process->setEnv(['PGPASSWORD' => $password]);
+        $process->setTimeout(600);
+        $process->run();
 
-        exec($command, $output, $returnVar);
-
-        if ($returnVar !== 0) {
-            throw new \Exception('PostgreSQL backup failed');
+        if (! $process->isSuccessful()) {
+            throw new \Exception('PostgreSQL backup failed: '.$process->getErrorOutput());
         }
+
+        file_put_contents($path, $process->getOutput());
     }
 
     /**

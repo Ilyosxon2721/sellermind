@@ -192,7 +192,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function writeOffEditPage(docId) {
         return {
             doc: null,

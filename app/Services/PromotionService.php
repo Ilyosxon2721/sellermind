@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\Promotion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PromotionService
 {
@@ -162,6 +163,7 @@ class PromotionService
             return $promotion;
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка создания автоматической акции', ['error' => $e->getMessage()]);
             throw $e;
         }
     }

@@ -562,7 +562,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumProducts(accountId) {
     return {
         accountId,
@@ -1065,7 +1065,7 @@ function uzumProducts(accountId) {
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumProductsPwa(accountId) {
     return {
         accountId,

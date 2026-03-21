@@ -21,6 +21,7 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -34,7 +35,7 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
         TelegramNotificationService $telegram,
     ): void {
         $this->event->update([
-            'status'   => EventStatus::PROCESSING->value,
+            'status' => EventStatus::PROCESSING->value,
             'attempts' => $this->attempts(),
         ]);
 
@@ -60,13 +61,13 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
             $this->event->markProcessed();
 
             Log::info('Marketplace event processed', [
-                'uuid'        => $this->event->uuid,
+                'uuid' => $this->event->uuid,
                 'marketplace' => $this->event->marketplace->value,
-                'event_type'  => $this->event->event_type->value,
+                'event_type' => $this->event->event_type->value,
             ]);
         } catch (\Throwable $e) {
             $this->event->update([
-                'status'        => EventStatus::FAILED->value,
+                'status' => EventStatus::FAILED->value,
                 'error_message' => $e->getMessage(),
             ]);
             throw $e;
@@ -81,14 +82,13 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         $this->event->update([
-            'status'        => EventStatus::FAILED->value,
+            'status' => EventStatus::FAILED->value,
             'error_message' => $exception->getMessage(),
         ]);
 
         Log::error('Marketplace event failed after all retries', [
-            'uuid'  => $this->event->uuid,
+            'uuid' => $this->event->uuid,
             'error' => $exception->getMessage(),
         ]);
     }
-
 }

@@ -9,6 +9,7 @@ use App\Models\MarketplaceSyncLog;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesProductService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class WildberriesSyncProducts extends Command
 {
@@ -133,6 +134,11 @@ class WildberriesSyncProducts extends Command
                 ]);
 
                 $this->error("Ошибка синхронизации: {$e->getMessage()} (аккаунт {$account->name})");
+                Log::error('Ошибка синхронизации товаров WB', [
+                    'account_id' => $account->id,
+                    'account_name' => $account->name,
+                    'error' => $e->getMessage(),
+                ]);
 
                 // Переходим к следующему аккаунту, не падаем целиком
                 continue;

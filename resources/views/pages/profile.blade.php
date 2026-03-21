@@ -100,7 +100,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function profilePage() {
     return {
         form: { name: '', email: '', phone: '' },

@@ -1256,7 +1256,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbOrdersPage() {
     return {
         orders: [],

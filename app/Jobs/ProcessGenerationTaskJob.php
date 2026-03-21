@@ -125,6 +125,10 @@ class ProcessGenerationTaskJob implements ShouldQueue
                 }
 
             } catch (\Exception $e) {
+                Log::warning('Ошибка генерации описания товара', [
+                    'description_id' => $descriptionId,
+                    'error' => $e->getMessage(),
+                ]);
                 $results[] = ['id' => $descriptionId, 'success' => false, 'error' => $e->getMessage()];
             }
 
@@ -183,6 +187,10 @@ class ProcessGenerationTaskJob implements ShouldQueue
                 $results[] = ['product_id' => $product->id, 'success' => true, 'images' => count($images)];
 
             } catch (\Exception $e) {
+                Log::warning('Ошибка генерации изображения товара', [
+                    'product_id' => $productData['id'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
                 $results[] = ['product_id' => $productData['id'] ?? null, 'success' => false, 'error' => $e->getMessage()];
             }
 

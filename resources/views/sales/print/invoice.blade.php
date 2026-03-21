@@ -317,7 +317,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         window.onload = function() {
             window.print();
         }
