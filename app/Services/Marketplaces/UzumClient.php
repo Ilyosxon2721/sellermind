@@ -802,7 +802,7 @@ final class UzumClient implements MarketplaceClientInterface
                 'error' => $e->getMessage(),
             ]);
 
-            throw new \RuntimeException($e->getMessage());
+            throw new \RuntimeException("[skuId={$skuId}, amount={$stock}] " . $e->getMessage());
         }
     }
 
@@ -1319,7 +1319,7 @@ final class UzumClient implements MarketplaceClientInterface
 
         // Ошибки по HTTP статусу
         $statusMessages = [
-            400 => 'Неверный запрос. Проверьте данные и попробуйте снова.',
+            400 => $errorInfo ? "400: {$errorInfo}" : 'Неверный запрос: ' . mb_substr($rawBody ?? '', 0, 300),
             401 => 'Ошибка авторизации. Проверьте токен API в настройках Uzum.',
             404 => 'Ресурс не найден. Возможно, неверный ID или токен.',
             500 => 'Ошибка сервера Uzum. Попробуйте позже.',
