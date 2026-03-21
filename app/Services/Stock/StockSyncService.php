@@ -249,7 +249,6 @@ class StockSyncService
 
         $skuId = $link->external_sku_id;
 
-        // Если external_sku_id не указан, пробуем найти из skuList
         if (! $skuId) {
             $skuId = $this->findUzumSkuId($link, $mpProduct);
         }
@@ -258,12 +257,30 @@ class StockSyncService
             throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Перепривяжите товар.');
         }
 
-        // Ищем barcode из raw_payload.skuList (Uzum требует для валидации)
+        $uzum = new UzumApiManager($account);
+
+        // GET текущих остатков от Uzum — получаем точный barcode для валидации
         $barcode = null;
-        foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
-            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
-                break;
+        try {
+            $currentStocks = $uzum->stocks()->get();
+            Log::info('Uzum GET stocks response keys', ['keys' => array_keys($currentStocks), 'first_item' => $currentStocks[array_key_first($currentStocks)] ?? null]);
+            $skuList = $currentStocks['skuAmountList'] ?? $currentStocks['payload']['skuAmountList'] ?? $currentStocks;
+            if (is_array($skuList)) {
+                foreach ($skuList as $sku) {
+                    if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                        $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                        break;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Если GET не удался — пробуем barcode из raw_payload
+            Log::warning('Uzum GET stocks failed, fallback to raw_payload', ['error' => $e->getMessage()]);
+            foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
+                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                    $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                    break;
+                }
             }
         }
 
@@ -274,8 +291,6 @@ class StockSyncService
             'stock' => $stock,
         ]);
 
-        // Используем новый UzumApiManager (StockPlugin) — тот же путь что orders/reviews
-        $uzum = new UzumApiManager($account);
         $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode);
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
