@@ -1459,6 +1459,96 @@ parameters:
 			path: app/Http/Controllers/Api/MarketplaceProductController.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$products_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$total_in_way_from_client\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$total_in_way_to_client\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$total_quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$total_quantity_full\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$warehouse_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$warehouse_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WildberriesStock\:\:\$warehouse_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$marketplace\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Part \$search \(Symfony\\Component\\HttpFoundation\\InputBag\<string\>\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 5
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>marketplace" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/MarketplaceStockDashboardController.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2419,6 +2509,24 @@ parameters:
 			path: app/Http/Controllers/Store/StoreCatalogController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$mainImage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Store/StoreCatalogController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Store/StoreCatalogController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variants\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Store/StoreCatalogController.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2449,8 +2557,26 @@ parameters:
 			path: app/Http/Controllers/Store/StoreThemeController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variants\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Storefront/CartController.php
+
+		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:resolvedTemplate\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Storefront/CartController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>option_values_summary" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Storefront/CartController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>sku" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Storefront/CartController.php
 
@@ -2461,27 +2587,81 @@ parameters:
 			path: app/Http/Controllers/Storefront/CartController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$category_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Storefront/CatalogController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$mainImage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Storefront/CatalogController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variants\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Storefront/CatalogController.php
+
+		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:resolvedTemplate\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: app/Http/Controllers/Storefront/CatalogController.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Storefront/CatalogController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Storefront/CatalogController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Storefront/CheckoutController.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$price\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
+			path: app/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variants\.$#'
+			identifier: property.notFound
+			count: 3
 			path: app/Http/Controllers/Storefront/CheckoutController.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isFreeFor\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: app/Http/Controllers/Storefront/CheckoutController.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:resolvedTemplate\(\)\.$#'
 			identifier: method.notFound
 			count: 2
+			path: app/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>option_values_summary" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>sku" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
 			path: app/Http/Controllers/Storefront/CheckoutController.php
 
 		-
@@ -2499,7 +2679,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:resolvedTemplate\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 3
 			path: app/Http/Controllers/Storefront/StorefrontController.php
 
 		-
@@ -3459,7 +3639,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 4
 			path: app/Jobs/SendTelegramOrderNotification.php
 
 		-
@@ -3823,6 +4003,18 @@ parameters:
 			path: app/Models/Pricing/MarketplaceCommission.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$componentVariant\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Models/Product.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Models/Product.php
+
+		-
 			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\PushSubscription\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
 			identifier: property.phpDocType
 			count: 1
@@ -3913,8 +4105,14 @@ parameters:
 			path: app/Models/Store/StoreProduct.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$price\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variants\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Models/Store/StoreProduct.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>price_default" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/Store/StoreProduct.php
 
@@ -4699,6 +4897,12 @@ parameters:
 			path: app/Services/Marketplaces/MarketplaceInsightsService.php
 
 		-
+			message: '#^Right side of && is always false\.$#'
+			identifier: booleanAnd.rightAlwaysFalse
+			count: 1
+			path: app/Services/Marketplaces/MarketplaceProductsBridgeService.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount\.$#'
 			identifier: property.notFound
 			count: 4
@@ -5091,13 +5295,13 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 2
+			count: 3
 			path: app/Services/Marketplaces/Wildberries/WildberriesStockService.php
 
 		-
 			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
+			count: 2
 			path: app/Services/Marketplaces/Wildberries/WildberriesStockService.php
 
 		-
@@ -5275,6 +5479,18 @@ parameters:
 			path: app/Services/ProductCardService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\ProductBundleItem\:\:\$available_kits\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Products/BundleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductBundleItem\:\:\$component_stock\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Products/BundleService.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 8
@@ -5445,7 +5661,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company_id\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Services/SaleReservationService.php
 
 		-
@@ -5473,12 +5689,6 @@ parameters:
 			path: app/Services/SaleReservationService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$stock_default\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SaleReservationService.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:decrementStock\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -5487,6 +5697,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:incrementStock\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: app/Services/SaleReservationService.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: app/Services/SaleReservationService.php
 
