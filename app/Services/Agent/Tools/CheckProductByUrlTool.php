@@ -8,8 +8,12 @@ use App\Services\Vpc\VpcCommandClient;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Tool for checking marketplace product pages by URL.
- * Opens the product page in VPC browser and extracts information.
+ * Инструмент для проверки страниц товаров маркетплейсов по URL.
+ * Открывает страницу товара в VPC-браузере и извлекает информацию.
+ *
+ * @deprecated Модуль VPC не реализован — все действия записываются в БД, но реально не выполняются.
+ *             Скриншоты и извлечённые данные всегда null. Зависит от VpcCommandClient (также заглушка).
+ *             Не использовать в продакшене до интеграции с реальной VM.
  */
 class CheckProductByUrlTool implements AgentToolInterface
 {
@@ -156,6 +160,10 @@ class CheckProductByUrlTool implements AgentToolInterface
         return null;
     }
 
+    /**
+     * @deprecated Заглушка — все действия записываются в БД, но не выполняются в реальном браузере.
+     *             Скриншоты и данные товара всегда null.
+     */
     private function checkProduct(
         VpcSession $session,
         string $url,
@@ -164,14 +172,17 @@ class CheckProductByUrlTool implements AgentToolInterface
         bool $extractInfo,
         bool $scrollFullPage
     ): array {
+        Log::warning('CheckProductByUrlTool::checkProduct() — модуль VPC не реализован, данные не извлекаются', [
+            'session_id' => $session->id,
+            'url' => $url,
+            'marketplace' => $marketplace,
+        ]);
+
         $actions = [];
 
         // Step 1: Navigate to product page
         $navAction = $this->vpcClient->openUrl($session, 'agent', $url);
         $actions[] = ['type' => 'navigate', 'action_id' => $navAction->id];
-
-        // Step 2: Wait for page load (simulated)
-        // TODO: Real implementation would wait for specific elements
 
         // Step 3: Optionally scroll to load all content
         if ($scrollFullPage) {

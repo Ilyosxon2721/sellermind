@@ -1017,22 +1017,24 @@ final class UzumClient implements MarketplaceClientInterface
         return $orders;
     }
 
+    /**
+     * Получить информацию о товаре Uzum по внешнему ID.
+     *
+     * @deprecated Метод не реализован. Требуется интеграция с GET /v1/products/{id}.
+     *
+     * @throws \RuntimeException всегда, так как метод не реализован
+     */
     public function getProductInfo(MarketplaceAccount $account, string $externalId): ?array
     {
-        // TODO: Implement Uzum product info fetch
-        //
-        // GET /v1/products/{id}
+        Log::warning('UzumClient::getProductInfo() вызван, но не реализован', [
+            'account_id' => $account->id,
+            'external_id' => $externalId,
+        ]);
 
-        try {
-            return null;
-        } catch (\Exception $e) {
-            Log::warning('Ошибка получения информации о товаре Uzum', [
-                'external_id' => $externalId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
+        throw new \RuntimeException(
+            'UzumClient::getProductInfo() не реализован. '
+            .'Требуется интеграция с Uzum Seller API: GET /v1/products/{id}.'
+        );
     }
 
     /**

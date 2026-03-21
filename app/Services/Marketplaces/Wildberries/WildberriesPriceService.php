@@ -303,14 +303,26 @@ class WildberriesPriceService
     }
 
     /**
-     * Set discount for specific products
+     * Установить скидки для конкретных товаров.
      *
-     * @param  array  $discountData  Array of ['nmId' => int, 'discount' => int]
+     * ВНИМАНИЕ: Метод не реализован корректно. Сейчас делегирует вызов в pushPrices(),
+     * который работает с ценами, а не со скидками. WB API имеет отдельный эндпоинт
+     * для управления скидками.
+     *
+     * TODO: Реализовать через правильный WB API эндпоинт для скидок:
+     *   - Использовать корректный API для discount (не price upload)
+     *   - Валидация: discount должен быть 0-99
+     *   - Обработка ошибок
+     *
+     * @param  array  $discountData  Массив ['nmId' => int, 'discount' => int]
+     * @return array Результат операции
      */
     public function setDiscounts(MarketplaceAccount $account, array $discountData): array
     {
-        // TODO: Implement using the appropriate WB API endpoint
-        // This is a placeholder for discount-specific logic
+        Log::warning('WildberriesPriceService::setDiscounts() использует pushPrices() как заглушку — скидки не применяются корректно', [
+            'account_id' => $account->id,
+            'discount_items_count' => count($discountData),
+        ]);
 
         return $this->pushPrices($account, $discountData);
     }

@@ -6,9 +6,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Requests\Analytics\SalesAnalyticsRequest;
 use App\Services\SalesAnalyticsService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class SalesAnalyticsController extends Controller
@@ -23,14 +23,10 @@ class SalesAnalyticsController extends Controller
      * Получить сводку продаж за период.
      * Результат кэшируется на 30 минут (планировщик обновляет кэш каждый час).
      */
-    public function overview(Request $request): JsonResponse
+    public function overview(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
 
         $cacheKey = "sales_analytics_{$companyId}_{$period}";
         $overview = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($companyId, $period) {
@@ -41,16 +37,12 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get sales by day for charts.
+     * Получить продажи по дням для графиков
      */
-    public function salesByDay(Request $request): JsonResponse
+    public function salesByDay(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
 
         $data = $this->analyticsService->getSalesByDay($companyId, $period);
 
@@ -58,18 +50,13 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get top selling products.
+     * Получить топ продаваемых товаров
      */
-    public function topProducts(Request $request): JsonResponse
+    public function topProducts(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
-        $limit = $validated['limit'] ?? 10;
+        $period = $request->getPeriod();
+        $limit = $request->getLimit();
 
         $products = $this->analyticsService->getTopProducts($companyId, $period, $limit);
 
@@ -77,18 +64,13 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get worst selling products (flop).
+     * Получить худшие по продажам товары
      */
-    public function flopProducts(Request $request): JsonResponse
+    public function flopProducts(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
-        $limit = $validated['limit'] ?? 10;
+        $period = $request->getPeriod();
+        $limit = $request->getLimit();
 
         $products = $this->analyticsService->getFlopProducts($companyId, $period, $limit);
 
@@ -96,16 +78,12 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get sales by category.
+     * Получить продажи по категориям
      */
-    public function salesByCategory(Request $request): JsonResponse
+    public function salesByCategory(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
 
         $data = $this->analyticsService->getSalesByCategory($companyId, $period);
 
@@ -113,16 +91,12 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get sales by marketplace.
+     * Получить продажи по маркетплейсам
      */
-    public function salesByMarketplace(Request $request): JsonResponse
+    public function salesByMarketplace(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
 
         $data = $this->analyticsService->getSalesByMarketplace($companyId, $period);
 
@@ -130,15 +104,11 @@ class SalesAnalyticsController extends Controller
     }
 
     /**
-     * Get product performance.
+     * Получить показатели эффективности товара
      */
-    public function productPerformance(Request $request, int $productId): JsonResponse
+    public function productPerformance(SalesAnalyticsRequest $request, int $productId): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
 
         $performance = $this->analyticsService->getProductPerformance($productId, $period);
 
@@ -149,14 +119,10 @@ class SalesAnalyticsController extends Controller
      * Получить полный дашборд аналитики.
      * Каждый блок кэшируется независимо на 30 минут.
      */
-    public function dashboard(Request $request): JsonResponse
+    public function dashboard(SalesAnalyticsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
-        ]);
-
         $companyId = $this->getCompanyId();
-        $period = $validated['period'] ?? '30days';
+        $period = $request->getPeriod();
         $ttl = now()->addMinutes(30);
 
         $data = [

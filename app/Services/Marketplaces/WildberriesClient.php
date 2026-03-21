@@ -971,22 +971,24 @@ final class WildberriesClient implements MarketplaceClientInterface
         }
     }
 
+    /**
+     * Получить информацию о товаре WB по внешнему ID.
+     *
+     * @deprecated Метод не реализован. Требуется интеграция с GET /content/v2/get/cards/list (filter by nmId).
+     *
+     * @throws \RuntimeException всегда, так как метод не реализован
+     */
     public function getProductInfo(MarketplaceAccount $account, string $externalId): ?array
     {
-        // TODO: Implement WB product info fetch
-        //
-        // GET /content/v2/get/cards/list with filter by nmId
+        \Log::warning('WildberriesClient::getProductInfo() вызван, но не реализован', [
+            'account_id' => $account->id,
+            'external_id' => $externalId,
+        ]);
 
-        try {
-            return null;
-        } catch (\Exception $e) {
-            \Log::warning('Ошибка получения информации о товаре WB', [
-                'external_id' => $externalId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
+        throw new \RuntimeException(
+            'WildberriesClient::getProductInfo() не реализован. '
+            .'Требуется интеграция с WB Content API v2: GET /content/v2/get/cards/list с фильтром по nmId.'
+        );
     }
 
     /**

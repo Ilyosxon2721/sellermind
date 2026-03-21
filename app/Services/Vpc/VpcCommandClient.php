@@ -9,13 +9,19 @@ use App\Models\VpcSession;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Клиент для отправки команд в VPC-сессию.
+ *
+ * @deprecated Модуль VPC не реализован — все команды записываются в БД, но не отправляются в реальную VM.
+ *             Все методы (openUrl, click, type, scroll и т.д.) являются заглушками.
+ */
 class VpcCommandClient
 {
     /**
      * Общий метод отправки команды в VPC.
-     * ВНИМАНИЕ: здесь пока только ЗАГЛУШКА.
      *
-     * TODO: заменить на реальный HTTP/WebSocket-вызов менеджеру VM.
+     * @deprecated Заглушка — команда записывается в БД (VpcAction), но не отправляется в реальную VM.
+     *             Требуется интеграция с HTTP/WebSocket менеджером VM.
      */
     public function sendCommand(VpcSession $session, string $source, string $actionType, array $payload = []): VpcAction
     {
@@ -31,42 +37,13 @@ class VpcCommandClient
         // 2. Обновляем время активности сессии
         $session->update(['last_activity_at' => now()]);
 
-        // 3. Если endpoint не задан — ничего не делаем (заглушка)
-        if (empty($session->endpoint)) {
-            Log::info('VPC Command (stub mode)', [
-                'session_id' => $session->id,
-                'action_type' => $actionType,
-                'payload' => $payload,
-            ]);
-
-            // TODO: интеграция с реальным VPC-менеджером
-            return $action;
-        }
-
-        // 4. Отправка команды во внешнюю систему
-        // TODO: Раскомментировать и настроить при интеграции с реальной VM
-        /*
-        try {
-            $response = Http::timeout(30)->post($session->endpoint . '/command', [
-                'action_type' => $actionType,
-                'payload' => $payload,
-                'token' => $session->display_token,
-            ]);
-
-            if ($response->failed()) {
-                Log::error('VPC Command failed', [
-                    'session_id' => $session->id,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('VPC Command exception', [
-                'session_id' => $session->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-        */
+        // Заглушка: команда НЕ отправляется в реальную VM, только записывается в БД
+        Log::warning('VpcCommandClient::sendCommand() — команда записана в БД, но не отправлена в VM (модуль VPC не реализован)', [
+            'session_id' => $session->id,
+            'action_type' => $actionType,
+            'has_endpoint' => ! empty($session->endpoint),
+            'payload' => $payload,
+        ]);
 
         return $action;
     }

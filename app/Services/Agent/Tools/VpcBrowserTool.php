@@ -8,8 +8,12 @@ use App\Services\Vpc\VpcCommandClient;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Tool for controlling browser in VPC session.
- * Allows agent to navigate, click, type, scroll, and take screenshots.
+ * Инструмент для управления браузером в VPC-сессии.
+ * Позволяет агенту навигировать, кликать, печатать, скроллить и делать скриншоты.
+ *
+ * @deprecated Модуль VPC не реализован — все действия записываются в БД, но реально не выполняются.
+ *             Скриншоты, содержимое страниц и результаты действий всегда возвращают null/пустые значения.
+ *             Не использовать в продакшене до интеграции с реальной VM.
  */
 class VpcBrowserTool implements AgentToolInterface
 {
@@ -233,16 +237,23 @@ class VpcBrowserTool implements AgentToolInterface
         ];
     }
 
+    /**
+     * @deprecated Заглушка — screenshot_url всегда null, реальный скриншот не создаётся
+     */
     private function screenshot(VpcSession $session): array
     {
         $action = $this->vpcClient->screenshot($session, 'agent');
 
-        // TODO: Return actual screenshot URL when VM integration is ready
+        Log::warning('VpcBrowserTool::screenshot() — скриншот не создаётся, модуль VPC не реализован', [
+            'session_id' => $session->id,
+            'action_id' => $action->id,
+        ]);
+
         return [
             'success' => true,
-            'message' => 'Screenshot taken',
+            'message' => 'Screenshot requested (VPC module not implemented — no actual screenshot)',
             'action_id' => $action->id,
-            'screenshot_url' => null, // Will be populated when real VM returns screenshot
+            'screenshot_url' => null,
         ];
     }
 
@@ -262,16 +273,23 @@ class VpcBrowserTool implements AgentToolInterface
         ];
     }
 
+    /**
+     * @deprecated Заглушка — content всегда null, реальное извлечение контента не выполняется
+     */
     private function getPageContent(VpcSession $session): array
     {
-        // TODO: Implement actual page content extraction via VM
         $action = $this->vpcClient->sendCommand($session, 'agent', 'get_page_content', []);
+
+        Log::warning('VpcBrowserTool::getPageContent() — контент не извлекается, модуль VPC не реализован', [
+            'session_id' => $session->id,
+            'action_id' => $action->id,
+        ]);
 
         return [
             'success' => true,
-            'message' => 'Page content extraction requested',
+            'message' => 'Page content extraction requested (VPC module not implemented — no actual content)',
             'action_id' => $action->id,
-            'content' => null, // Will be populated when real VM returns content
+            'content' => null,
         ];
     }
 }
