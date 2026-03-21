@@ -298,7 +298,7 @@
         Документ сформирован в системе SellerMind {{ now()->format('d.m.Y H:i:s') }}
     </div>
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         window.onload = function() {
             window.print();
         }

@@ -292,7 +292,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function inventoryPage() {
     return {
         loading: false,

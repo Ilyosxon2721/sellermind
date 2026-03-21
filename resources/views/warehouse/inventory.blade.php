@@ -189,7 +189,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inventoryPage() {
         return {
             filters: {

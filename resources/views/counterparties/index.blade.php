@@ -477,7 +477,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function counterpartiesPage() {
     return {
         loading: false,

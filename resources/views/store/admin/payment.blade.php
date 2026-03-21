@@ -263,7 +263,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function paymentManager(storeId) {
     return {
         storeId,

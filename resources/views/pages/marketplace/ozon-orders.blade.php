@@ -393,7 +393,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ozonOrdersPage() {
     return {
         orders: [],

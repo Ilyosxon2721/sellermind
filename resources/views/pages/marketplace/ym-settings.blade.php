@@ -368,7 +368,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ymSettingsPage() {
     return {
         activeTab: 'api',

@@ -159,7 +159,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function passesManager(accountId) {
     return {
         accountId: accountId,

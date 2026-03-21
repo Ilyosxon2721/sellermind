@@ -473,7 +473,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function importModal() {
     return {
         isOpen: false,

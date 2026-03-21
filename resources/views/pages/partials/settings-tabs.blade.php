@@ -387,7 +387,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function currencySettings() {
     return {
         currencyForm: {

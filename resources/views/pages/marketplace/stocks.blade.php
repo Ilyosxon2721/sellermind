@@ -457,7 +457,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Alpine Store для модалки себестоимости — доступен из любого компонента
 document.addEventListener('alpine:init', () => {
     Alpine.store('costModal', {

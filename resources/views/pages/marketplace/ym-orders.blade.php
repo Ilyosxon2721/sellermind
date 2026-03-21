@@ -476,7 +476,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ymOrdersPage() {
     return {
         orders: [],

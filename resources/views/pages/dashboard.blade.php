@@ -505,7 +505,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function dashboardPage() {
     return {
         loading: false,

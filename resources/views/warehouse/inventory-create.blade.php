@@ -281,7 +281,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inventoryCreatePage() {
         return {
             error: '',

@@ -297,7 +297,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function groceryCatalogPage() {
         return {
             filtersOpen: false,

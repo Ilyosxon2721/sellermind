@@ -461,7 +461,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function orderDetails() {
     return {
         orderId: '{{ $orderId }}',

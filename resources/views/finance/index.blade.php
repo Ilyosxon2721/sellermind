@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 @endpush
 
 @section('content')
@@ -2677,7 +2677,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function financePagePwa() {
     return {
         activeTab: 'overview',
@@ -2761,7 +2761,7 @@ function financePagePwa() {
 }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function financePage() {
     return {
         activeTab: 'overview',

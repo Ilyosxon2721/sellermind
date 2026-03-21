@@ -195,7 +195,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function suppliesManager(accountId) {
     return {
         accountId: accountId,

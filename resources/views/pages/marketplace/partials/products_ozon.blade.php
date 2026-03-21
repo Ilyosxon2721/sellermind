@@ -520,7 +520,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ozonProducts(accountId) {
     return {
         accountId: accountId,
@@ -1040,7 +1040,7 @@ function ozonProducts(accountId) {
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ozonProductsPwa(accountId) {
     return {
         accountId,

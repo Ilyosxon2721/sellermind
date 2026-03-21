@@ -163,7 +163,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function deliveryManager(storeId) {
     return {
         storeId,

@@ -241,7 +241,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function balancePage() {
         return {
             warehouseId: '{{ $selectedWarehouseId }}',

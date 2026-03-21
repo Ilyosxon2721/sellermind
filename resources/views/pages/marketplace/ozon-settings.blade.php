@@ -346,7 +346,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ozonSettingsPage() {
     return {
         account: null,

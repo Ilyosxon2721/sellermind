@@ -234,7 +234,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inventoryEditPage(docId) {
         return {
             doc: null,

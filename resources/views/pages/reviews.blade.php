@@ -349,7 +349,7 @@
 [x-cloak] { display: none !important; }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function reviewsPage() {
     return {
         reviews: [],

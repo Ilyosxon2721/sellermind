@@ -1,5 +1,5 @@
 {{-- Wishlist Manager — глобальный Alpine store для избранного --}}
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     document.addEventListener('alpine:init', () => {
         Alpine.store('wishlist', {
             items: [],

@@ -265,7 +265,7 @@
     </section>
 @endif
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function minimalBannerCarousel() {
         return {
             current: 0,

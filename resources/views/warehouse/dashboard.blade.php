@@ -191,7 +191,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function warehouseDashboard() {
         return {
             metrics: {docsTotal: null, docsPosted: null, docsPostedPct: 0, reservations: null, ledger: null, moves: null},

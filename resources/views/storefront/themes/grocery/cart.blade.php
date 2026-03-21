@@ -217,7 +217,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function groceryCartPage() {
         return {
             loading: true,

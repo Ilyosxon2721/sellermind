@@ -78,7 +78,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function companyProfilePage() {
     return {
         activeTab: 'companies',

@@ -261,7 +261,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function reservationsPage() {
         return {
             filters: { warehouse_id: '{{ $selectedWarehouseId }}', status: 'ACTIVE', reason: '' },

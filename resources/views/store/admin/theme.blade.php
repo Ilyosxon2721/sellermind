@@ -276,7 +276,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function themeEditor(storeId) {
     return {
         storeId,

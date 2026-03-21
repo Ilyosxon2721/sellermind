@@ -258,7 +258,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function storesDashboard() {
     return {
         stores: [],

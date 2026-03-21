@@ -128,7 +128,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function quickViewModal() {
         return {
             visible: false,

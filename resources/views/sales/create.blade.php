@@ -414,7 +414,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function saleCreatePage() {
     // Helper function to get headers with CSRF token and Bearer token
     const getHeaders = () => {

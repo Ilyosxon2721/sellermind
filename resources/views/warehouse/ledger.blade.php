@@ -210,7 +210,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function ledgerPage() {
         return {
             filters: {

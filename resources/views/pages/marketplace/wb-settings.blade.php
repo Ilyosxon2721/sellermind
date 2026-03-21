@@ -671,7 +671,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbSettingsPage() {
     return {
         activeTab: 'api',

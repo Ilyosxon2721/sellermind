@@ -461,7 +461,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProducts(accountId) {
     return {
         accountId: accountId,
@@ -1144,7 +1144,7 @@ function wbProducts(accountId) {
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProductsPwa(accountId) {
     return {
         accountId,

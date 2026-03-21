@@ -164,7 +164,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function integrationsPage() {
     return {
         rismentConnected: @json(!empty($rismentLink)),

@@ -624,7 +624,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // PWA Settings Page (enhanced version with native design)
 function settingsPagePwa() {
     return {

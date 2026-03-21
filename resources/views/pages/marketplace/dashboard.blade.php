@@ -305,9 +305,9 @@
 </div>
 
 <!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function marketplaceDashboard() {
     return {
         loading: false,

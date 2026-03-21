@@ -196,7 +196,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function bundlesList() {
     return {
         bundles: [],
