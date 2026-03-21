@@ -259,39 +259,53 @@ class StockSyncService
 
         $uzum = new UzumApiManager($account);
 
-        // GET текущих остатков от Uzum — получаем точный barcode для валидации
+        // Ищем barcode и skuTitle из raw_payload (самый надёжный источник)
         $barcode = null;
-        try {
-            $currentStocks = $uzum->stocks()->get();
-            Log::info('Uzum GET stocks response keys', ['keys' => array_keys($currentStocks), 'first_item' => $currentStocks[array_key_first($currentStocks)] ?? null]);
-            $skuList = $currentStocks['skuAmountList'] ?? $currentStocks['payload']['skuAmountList'] ?? $currentStocks;
-            if (is_array($skuList)) {
-                foreach ($skuList as $sku) {
-                    if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                        $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
-                        break;
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            // Если GET не удался — пробуем barcode из raw_payload
-            Log::warning('Uzum GET stocks failed, fallback to raw_payload', ['error' => $e->getMessage()]);
-            foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
-                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                    $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
-                    break;
-                }
+        $skuTitle = null;
+        foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                $skuTitle = $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null;
+                break;
             }
         }
 
-        Log::info('Uzum stock sync', [
+        // Если не нашли в raw_payload — GET текущих остатков от Uzum
+        if (! $barcode || ! $skuTitle) {
+            try {
+                $currentStocks = $uzum->stocks()->get();
+                $skuListFromApi = $currentStocks['skuAmountList'] ?? $currentStocks['payload']['skuAmountList'] ?? [];
+                if (is_array($skuListFromApi)) {
+                    foreach ($skuListFromApi as $sku) {
+                        if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                            $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
+                            $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        if (! $barcode) {
+            throw new \RuntimeException("Не найден barcode для SKU {$skuId}. Обновите данные товара из маркетплейса.");
+        }
+
+        $productTitle = $mpProduct->title ?? '';
+        $skuTitle = $skuTitle ?? $productTitle;
+
+        Log::error('DEBUG Uzum syncToUzum', [
             'link_id' => $link->id,
             'sku_id' => $skuId,
             'barcode' => $barcode,
+            'sku_title' => $skuTitle,
+            'product_title' => $productTitle,
             'stock' => $stock,
         ]);
 
-        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode);
+        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle);
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
     }
