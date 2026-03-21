@@ -326,9 +326,11 @@ class StockSyncService
             'full_response' => $result,
         ]);
 
-        // SKU не в FBS системе → пробуем через продуктовый API (PUT /v1/product/{productId})
         if ($updatedRecords === 0) {
-            return $this->syncToUzumViaProductUpdate($uzum, $mpProduct, $skuId, $stock);
+            throw new \RuntimeException(
+                "SKU {$skuId} не зарегистрирован в системе FBS/DBS Uzum. " .
+                "Зайдите в кабинет продавца Uzum и активируйте DBS для этого товара, затем повторите синхронизацию."
+            );
         }
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
