@@ -283,9 +283,10 @@ class StockSyncService
                     if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                         $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                         $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                        // Берём реальные fbsLinked/dbsLinked из Uzum
-                        $fbsLinked = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : true;
-                        $dbsLinked = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : true;
+                        // Если stock > 0 — всегда включаем fbsLinked=true чтобы реактивировать
+                        // RUN_OUT товары (у которых Uzum обнулил fbsLinked/dbsLinked)
+                        $fbsLinked = $stock > 0 ? true : (isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : false);
+                        $dbsLinked = $stock > 0 ? true : (isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : false);
                         break;
                     }
                 }
