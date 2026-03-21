@@ -8,11 +8,15 @@ use App\Models\Finance\FinanceSettings;
 use App\Models\Finance\FinanceTransaction;
 use App\Models\Finance\SalaryCalculation;
 use App\Models\Finance\SalaryItem;
+use App\Services\Kpi\KpiCalculationService;
 use Illuminate\Support\Facades\DB;
 
 class SalaryCalculationService
 {
-    public function __construct(protected TransactionService $transactionService) {}
+    public function __construct(
+        protected TransactionService $transactionService,
+        protected KpiCalculationService $kpiService,
+    ) {}
 
     public function calculate(int $companyId, int $year, int $month): SalaryCalculation
     {
@@ -53,7 +57,10 @@ class SalaryCalculationService
                     continue; // Пропускаем уже оплаченных
                 }
 
-                $grossAmount = $employee->base_salary;
+                // KPI бонус из всех сфер сотрудника за период
+                $kpiBonus = $this->kpiService->getEmployeeTotalBonus($employee->id, $year, $month);
+
+                $grossAmount = $employee->base_salary + $kpiBonus;
 
                 // Расчёт налогов (примерные ставки для Узбекистана)
                 $taxAmount = $grossAmount * 0.12; // НДФЛ 12%
@@ -65,7 +72,7 @@ class SalaryCalculationService
                     'salary_calculation_id' => $calculation->id,
                     'employee_id' => $employee->id,
                     'base_amount' => $employee->base_salary,
-                    'bonuses' => 0,
+                    'bonuses' => $kpiBonus,
                     'overtime' => 0,
                     'gross_amount' => $grossAmount,
                     'tax_amount' => $taxAmount,
