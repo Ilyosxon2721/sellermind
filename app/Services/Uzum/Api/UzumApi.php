@@ -74,6 +74,7 @@ final class UzumApi
             'desc' => $desc,
             'auth_type' => $authType,
             'query' => $this->sanitize($query),
+            'body' => $method !== 'GET' ? $body : null,
         ]);
 
         $client = Http::timeout($this->timeout)
