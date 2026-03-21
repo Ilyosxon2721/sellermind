@@ -118,6 +118,7 @@ class DebugUzumStockSync extends Command
                     $skuTitle = $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null;
                     $this->line('  Найден в raw_payload: skuTitle=' . ($skuTitle ?? 'NULL') . ', barcode=' . ($barcode ?? 'NULL'));
                     $this->line('  Все поля SKU: ' . implode(', ', array_keys($sku)));
+                    $this->line('  quantityFbs=' . ($sku['quantityFbs'] ?? 'нет') . ', quantityActive=' . ($sku['quantityActive'] ?? 'нет') . ', status=' . ($sku['status'] ?? 'нет') . ', blocked=' . json_encode($sku['blocked'] ?? null) . ', archived=' . json_encode($sku['archived'] ?? null));
                     break;
                 }
             }

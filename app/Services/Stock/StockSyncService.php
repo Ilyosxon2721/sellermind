@@ -326,11 +326,87 @@ class StockSyncService
             'full_response' => $result,
         ]);
 
+        // SKU не в FBS системе → пробуем через продуктовый API (PUT /v1/product/{productId})
         if ($updatedRecords === 0) {
-            throw new \RuntimeException("Uzum принял запрос, но не обновил остаток (updatedRecords=0). Возможно, товар в статусе RUN_OUT или SKU не активен в FBS.");
+            return $this->syncToUzumViaProductUpdate($uzum, $mpProduct, $skuId, $stock);
         }
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
+    }
+
+    /**
+     * Обновить остаток через продуктовый API Uzum (PUT /v1/product/{productId})
+     * Используется когда SKU не зарегистрирован в FBS/DBS системе.
+     * Обновляет quantityFbs в skuList продукта.
+     */
+    protected function syncToUzumViaProductUpdate(
+        UzumApiManager $uzum,
+        $mpProduct,
+        string $skuId,
+        int $stock,
+    ): array {
+        $productId = $mpProduct->external_product_id;
+        $rawPayload = $mpProduct->raw_payload ?? [];
+        $skuList = $rawPayload['skuList'] ?? [];
+
+        if (empty($skuList)) {
+            throw new \RuntimeException("Нет данных skuList в raw_payload для продукта {$productId}. Обновите каталог из Uzum.");
+        }
+
+        // Обновляем quantityFbs для нужного SKU
+        $found = false;
+        foreach ($skuList as &$sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === $skuId) {
+                $sku['quantityFbs'] = $stock;
+                $found = true;
+                break;
+            }
+        }
+        unset($sku);
+
+        if (! $found) {
+            throw new \RuntimeException("SKU {$skuId} не найден в данных продукта {$productId}.");
+        }
+
+        // Строим минимальный payload для PUT /v1/product/{productId}
+        $payload = [
+            'shopId' => (int) ($mpProduct->shop_id ?? 0),
+            'title' => $rawPayload['title'] ?? $mpProduct->title ?? '',
+            'description' => $rawPayload['description'] ?? '',
+            'brand' => $rawPayload['brand'] ?? '',
+            'vendorCode' => $rawPayload['vendorCode'] ?? $rawPayload['sellerItemCode'] ?? '',
+            'categoryId' => (int) ($rawPayload['categoryId'] ?? $rawPayload['category']['id'] ?? 0),
+            'skuList' => array_map(fn ($s) => [
+                'skuId' => $s['skuId'] ?? null,
+                'skuTitle' => $s['skuTitle'] ?? '',
+                'article' => $s['article'] ?? $s['sellerItemCode'] ?? '',
+                'barcode' => $s['barcode'] ?? '',
+                'price' => (int) ($s['price'] ?? $s['marketPrice'] ?? 0),
+                'quantityFbs' => (int) ($s['quantityFbs'] ?? 0),
+                'characteristics' => $s['characteristics'] ?? $s['characteristicsList'] ?? [],
+            ], $skuList),
+        ];
+
+        Log::error('DEBUG Uzum syncToUzumViaProductUpdate', [
+            'product_id' => $productId,
+            'sku_id' => $skuId,
+            'stock' => $stock,
+            'payload_preview' => ['shopId' => $payload['shopId'], 'title' => $payload['title'], 'sku_count' => count($payload['skuList'])],
+        ]);
+
+        $result = $uzum->api()->call(
+            \App\Services\Uzum\Api\UzumEndpoints::PRODUCT_UPDATE,
+            params: ['productId' => $productId],
+            body: $payload,
+        );
+
+        Log::error('DEBUG Uzum productUpdate response', [
+            'product_id' => $productId,
+            'sku_id' => $skuId,
+            'response' => $result,
+        ]);
+
+        return ['success' => true, 'method' => 'product_update', 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
     }
 
     /**
