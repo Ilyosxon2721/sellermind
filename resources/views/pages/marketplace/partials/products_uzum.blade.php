@@ -474,39 +474,53 @@
                                                         </div>
                                                     </div>
                                                     <!-- FBS/DBS схемы -->
-                                                    <div class="px-4 py-2 border-t border-gray-100" x-show="skuSchemes[String(sku.skuId)]">
+                                                    <!-- FBS/DBS схемы — всегда видны -->
+                                                    <div class="px-4 py-2 border-t border-gray-100">
                                                         <div class="flex items-center justify-between">
                                                             <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Схема продаж</span>
                                                             <div class="flex items-center gap-2">
+                                                                <!-- Загрузка -->
+                                                                <template x-if="skuSchemesLoading">
+                                                                    <span class="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                        <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                        Загрузка...
+                                                                    </span>
+                                                                </template>
+                                                                <!-- Не в FBS/DBS системе -->
+                                                                <template x-if="!skuSchemesLoading && !skuSchemes[String(sku.skuId)]">
+                                                                    <span class="text-[10px] text-gray-400 italic">Не подключён к FBS/DBS</span>
+                                                                </template>
                                                                 <!-- FBS toggle -->
-                                                                <template x-if="skuSchemes[String(sku.skuId)]">
+                                                                <template x-if="!skuSchemesLoading && skuSchemes[String(sku.skuId)]">
                                                                     <button
                                                                         @click.stop="toggleScheme(sku.skuId, 'fbs')"
                                                                         :disabled="!skuSchemes[String(sku.skuId)]?.fbsAllowed || togglingScheme === sku.skuId + '_fbs'"
                                                                         :class="skuSchemes[String(sku.skuId)]?.fbsLinked
                                                                             ? 'bg-green-500 text-white border-green-500'
-                                                                            : (skuSchemes[String(sku.skuId)]?.fbsAllowed ? 'bg-white text-gray-500 border-gray-300 hover:border-green-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60')"
-                                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all"
+                                                                            : (skuSchemes[String(sku.skuId)]?.fbsAllowed ? 'bg-white text-gray-600 border-gray-300 hover:border-green-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50')"
+                                                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all"
                                                                         :title="!skuSchemes[String(sku.skuId)]?.fbsAllowed ? 'FBS не разрешён для этого SKU' : (skuSchemes[String(sku.skuId)]?.fbsLinked ? 'Отключить FBS' : 'Включить FBS')"
                                                                     >
-                                                                        <svg x-show="togglingScheme === sku.skuId + '_fbs'" class="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                                                        <svg x-show="togglingScheme !== sku.skuId + '_fbs'" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="skuSchemes[String(sku.skuId)]?.fbsLinked ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'"/></svg>
+                                                                        <svg x-show="togglingScheme === sku.skuId + '_fbs'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_fbs' && skuSchemes[String(sku.skuId)]?.fbsLinked" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_fbs' && !skuSchemes[String(sku.skuId)]?.fbsLinked" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                                                         FBS
                                                                     </button>
                                                                 </template>
                                                                 <!-- DBS toggle -->
-                                                                <template x-if="skuSchemes[String(sku.skuId)]">
+                                                                <template x-if="!skuSchemesLoading && skuSchemes[String(sku.skuId)]">
                                                                     <button
                                                                         @click.stop="toggleScheme(sku.skuId, 'dbs')"
                                                                         :disabled="!skuSchemes[String(sku.skuId)]?.dbsAllowed || togglingScheme === sku.skuId + '_dbs'"
                                                                         :class="skuSchemes[String(sku.skuId)]?.dbsLinked
                                                                             ? 'bg-purple-500 text-white border-purple-500'
-                                                                            : (skuSchemes[String(sku.skuId)]?.dbsAllowed ? 'bg-white text-gray-500 border-gray-300 hover:border-purple-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60')"
-                                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all"
+                                                                            : (skuSchemes[String(sku.skuId)]?.dbsAllowed ? 'bg-white text-gray-600 border-gray-300 hover:border-purple-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50')"
+                                                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all"
                                                                         :title="!skuSchemes[String(sku.skuId)]?.dbsAllowed ? 'DBS не разрешён для этого SKU' : (skuSchemes[String(sku.skuId)]?.dbsLinked ? 'Отключить DBS' : 'Включить DBS')"
                                                                     >
-                                                                        <svg x-show="togglingScheme === sku.skuId + '_dbs'" class="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                                                        <svg x-show="togglingScheme !== sku.skuId + '_dbs'" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="skuSchemes[String(sku.skuId)]?.dbsLinked ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'"/></svg>
+                                                                        <svg x-show="togglingScheme === sku.skuId + '_dbs'" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_dbs' && skuSchemes[String(sku.skuId)]?.dbsLinked" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_dbs' && !skuSchemes[String(sku.skuId)]?.dbsLinked" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                                                         DBS
                                                                     </button>
                                                                 </template>
@@ -637,6 +651,7 @@ function uzumProducts(accountId) {
         searchingVariants: false,
         syncingStock: null,
         skuSchemes: {},
+        skuSchemesLoading: false,
         togglingScheme: null,
 
         getToken() {
@@ -785,14 +800,15 @@ function uzumProducts(accountId) {
         },
         openDetail(item) {
             this.selected = item; this.detailOpen = true; this.galleryIndex = 0; this.copiedField = null;
-            this.skuLinks = []; this.skuSchemes = {}; this.loadProductLinks(); this.loadSkuSchemes();
+            this.skuLinks = []; this.skuSchemes = {}; this.skuSchemesLoading = true; this.loadProductLinks(); this.loadSkuSchemes();
             if (!item.raw_payload) this.loadRaw(item.id);
         },
         async loadSkuSchemes() {
+            this.skuSchemesLoading = true;
             try {
                 const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
                 if (r.ok) { this.skuSchemes = (await r.json()).schemes || {}; }
-            } catch {}
+            } catch {} finally { this.skuSchemesLoading = false; }
         },
         async toggleScheme(skuId, type) {
             const key = String(skuId);
