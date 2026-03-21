@@ -34,12 +34,37 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
+                    <!-- Синхронизация остатков -->
+                    <button @click="syncAllStocks"
+                            :disabled="stocksSyncing"
+                            class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                            :class="stocksSyncing
+                                ? 'bg-purple-100 text-purple-400 cursor-not-allowed border border-purple-200'
+                                : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm border border-purple-600'">
+                        <svg class="w-4 h-4 mr-2" :class="stocksSyncing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+                        </svg>
+                        <span x-text="stocksSyncing ? 'Синхронизация...' : 'Синх. остатки'"></span>
+                    </button>
                     <button @click="loadProducts" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
                         Обновить
                     </button>
+                </div>
+
+                <!-- Уведомление о синхронизации остатков -->
+                <div x-show="stocksSyncMessage"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:leave="transition ease-in duration-150"
+                     class="fixed top-4 right-4 z-50 max-w-sm px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center space-x-2"
+                     :class="stocksSyncError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path x-show="!stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        <path x-show="stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <span x-text="stocksSyncMessage"></span>
                 </div>
             </div>
 
@@ -650,6 +675,9 @@ function uzumProducts(accountId) {
         variantSearchResults: [],
         searchingVariants: false,
         syncingStock: null,
+        stocksSyncing: false,
+        stocksSyncMessage: '',
+        stocksSyncError: false,
         skuSchemes: {},
         skuSchemesLoading: false,
         togglingScheme: null,
@@ -692,6 +720,30 @@ function uzumProducts(accountId) {
                 this.calcSummary();
             } catch (e) { console.error('Failed to load products', e); }
             finally { this.loading = false; }
+        },
+        async syncAllStocks() {
+            if (this.stocksSyncing) return;
+            this.stocksSyncing = true;
+            this.stocksSyncMessage = '';
+            this.stocksSyncError = false;
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    credentials: 'include',
+                    body: JSON.stringify({ async: true }),
+                });
+                const data = await this.safeJson(res);
+                if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
+                this.stocksSyncMessage = data.message || 'Синхронизация остатков запущена';
+                this.stocksSyncError = false;
+            } catch (e) {
+                this.stocksSyncMessage = e.message || 'Ошибка синхронизации';
+                this.stocksSyncError = true;
+            } finally {
+                this.stocksSyncing = false;
+                setTimeout(() => { this.stocksSyncMessage = ''; }, 5000);
+            }
         },
         applyFilter() {
             const term = this.search.toLowerCase();
@@ -886,12 +938,29 @@ function uzumProducts(accountId) {
 {{-- PWA MODE --}}
 <div class="pwa-only min-h-screen" x-data="uzumProductsPwa({{ (int) $accountId }})" style="background: #f2f2f7;">
     <x-pwa-header title="Товары Uzum" :backUrl="'/marketplace/' . $accountId">
+        <button @click="syncAllStocks()" :disabled="stocksSyncing" class="native-header-btn" title="Синхронизировать остатки">
+            <svg class="w-6 h-6" :class="stocksSyncing ? 'animate-spin text-purple-500' : 'text-purple-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+            </svg>
+        </button>
         <button @click="loadProducts()" class="native-header-btn" onclick="if(window.haptic) window.haptic.light()">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
         </button>
     </x-pwa-header>
+
+    <!-- Уведомление о синхронизации (PWA) -->
+    <div x-show="stocksSyncMessage"
+         x-transition
+         class="fixed top-16 left-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center space-x-2"
+         :class="stocksSyncError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path x-show="!stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            <path x-show="stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        <span x-text="stocksSyncMessage"></span>
+    </div>
 
     <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
           x-pull-to-refresh="loadProducts">
@@ -1175,6 +1244,9 @@ function uzumProductsPwa(accountId) {
         copiedField: null,
         galleryIndex: 0,
         touchStartX: 0,
+        stocksSyncing: false,
+        stocksSyncMessage: '',
+        stocksSyncError: false,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1204,6 +1276,30 @@ function uzumProductsPwa(accountId) {
                 this.applyFilter(); this.calcSummary();
             } catch (e) { console.error('Failed to load products', e); }
             finally { this.loading = false; }
+        },
+        async syncAllStocks() {
+            if (this.stocksSyncing) return;
+            this.stocksSyncing = true;
+            this.stocksSyncMessage = '';
+            this.stocksSyncError = false;
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    credentials: 'include',
+                    body: JSON.stringify({ async: true }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
+                this.stocksSyncMessage = data.message || 'Синхронизация остатков запущена';
+                this.stocksSyncError = false;
+            } catch (e) {
+                this.stocksSyncMessage = e.message || 'Ошибка синхронизации';
+                this.stocksSyncError = true;
+            } finally {
+                this.stocksSyncing = false;
+                setTimeout(() => { this.stocksSyncMessage = ''; }, 5000);
+            }
         },
         applyFilter() {
             const term = this.search.toLowerCase();
