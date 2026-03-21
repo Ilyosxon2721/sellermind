@@ -9,6 +9,7 @@ use App\Jobs\Marketplace\SyncMarketplaceOrdersJob;
 use App\Jobs\Marketplace\SyncMarketplacePricesJob;
 use App\Jobs\Marketplace\SyncMarketplaceProductsJob;
 use App\Jobs\Marketplace\SyncMarketplaceStocksJob;
+use App\Jobs\Marketplace\SyncUzumStocksJob;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceSyncLog;
@@ -76,8 +77,14 @@ class MarketplaceSyncController extends Controller
         ]);
 
         if ($request->boolean('async', true)) {
-            SyncMarketplaceStocksJob::dispatch($account, $request->product_ids)
-                ->onConnection($this->asyncConnection());
+            $connection = $this->asyncConnection();
+
+            // Uzum: отдельный job через StockSyncService (корректные fbsLinked/dbsLinked)
+            if ($account->isUzum()) {
+                SyncUzumStocksJob::dispatch($account)->onConnection($connection);
+            } else {
+                SyncMarketplaceStocksJob::dispatch($account, $request->product_ids)->onConnection($connection);
+            }
 
             return response()->json([
                 'message' => 'Синхронизация остатков запущена в фоновом режиме.',
