@@ -17,6 +17,8 @@ use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Services\Marketplaces\Wildberries\WildberriesPriceService;
 use App\Services\Marketplaces\Wildberries\WildberriesProductService;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
+use App\Models\VariantMarketplaceLink;
+use App\Services\Stock\StockSyncService;
 use App\Services\Uzum\UzumOrderSyncService;
 use Carbon\Carbon;
 use DateTimeInterface;
@@ -181,6 +183,46 @@ class MarketplaceSyncService
                 $log->markAsSuccess(
                     "WB stocks synced: {$result['synced']} items, warehouses created: {$result['warehouses_created']}, product updates: {$result['products_updated']}"
                 );
+
+                return;
+            }
+
+            // Uzum: используем StockSyncService (корректные fbsLinked/dbsLinked + все 7 полей)
+            if ($account->isUzum()) {
+                $syncService = app(StockSyncService::class);
+
+                $links = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
+                    ->where('marketplace_code', 'uzum')
+                    ->where('is_active', true)
+                    ->where('sync_stock_enabled', true)
+                    ->whereNotNull('external_sku_id')
+                    ->with(['variant', 'marketplaceProduct', 'account'])
+                    ->get();
+
+                $synced = 0;
+                $skipped = 0;
+                $errors = 0;
+
+                foreach ($links as $link) {
+                    try {
+                        $syncService->syncLinkStock($link);
+                        $synced++;
+                    } catch (\RuntimeException $e) {
+                        if (str_contains($e->getMessage(), 'не подключён к FBS/DBS')) {
+                            $skipped++;
+                        } else {
+                            $errors++;
+                            Log::warning('Uzum stock sync error', ['sku_id' => $link->external_sku_id, 'error' => $e->getMessage()]);
+                        }
+                    } catch (Throwable $e) {
+                        $errors++;
+                        Log::error('Uzum stock sync failed', ['sku_id' => $link->external_sku_id, 'error' => $e->getMessage()]);
+                    }
+
+                    usleep(300000); // 300ms между запросами
+                }
+
+                $log->markAsSuccess("Uzum stocks: синхронизировано {$synced}, пропущено {$skipped}, ошибок {$errors}");
 
                 return;
             }

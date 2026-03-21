@@ -11,6 +11,7 @@ use App\Jobs\Marketplace\SyncMarketplaceProductsJob;
 use App\Jobs\Marketplace\SyncMarketplaceStocksJob;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceSyncLog;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -242,6 +243,43 @@ class MarketplaceSyncController extends Controller
         return response()->json([
             'message' => 'Полная синхронизация запущена.',
             'queued' => true,
+        ]);
+    }
+
+    /**
+     * Статус последней синхронизации по типу (stocks/prices/products/orders)
+     */
+    public function syncStatus(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $type = $request->query('type', 'stocks');
+
+        $log = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
+            ->where('type', $type)
+            ->latest('started_at')
+            ->first();
+
+        if (! $log) {
+            return response()->json(['status' => null]);
+        }
+
+        $duration = null;
+        if ($log->started_at && $log->finished_at) {
+            $duration = $log->finished_at->diffInSeconds($log->started_at);
+        } elseif ($log->started_at && $log->status === MarketplaceSyncLog::STATUS_RUNNING) {
+            $duration = now()->diffInSeconds($log->started_at);
+        }
+
+        return response()->json([
+            'status'     => $log->status,
+            'message'    => $log->message,
+            'started_at' => $log->started_at?->toISOString(),
+            'finished_at'=> $log->finished_at?->toISOString(),
+            'duration'   => $duration,
+            'is_running' => $log->status === MarketplaceSyncLog::STATUS_RUNNING,
         ]);
     }
 

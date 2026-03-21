@@ -440,6 +440,7 @@ Route::middleware('auth.any')->group(function () {
         // Sync operations
         Route::post('accounts/{account}/sync/prices', [MarketplaceSyncController::class, 'syncPrices']);
         Route::post('accounts/{account}/sync/stocks', [MarketplaceSyncController::class, 'syncStocks']);
+        Route::get('accounts/{account}/sync/status', [MarketplaceSyncController::class, 'syncStatus']);
         Route::post('accounts/{account}/sync/products', [MarketplaceSyncController::class, 'syncProducts']);
         Route::post('accounts/{account}/sync/orders', [MarketplaceSyncController::class, 'syncOrders']);
         Route::post('accounts/{account}/sync/supplies', [MarketplaceSyncController::class, 'syncSupplies']);

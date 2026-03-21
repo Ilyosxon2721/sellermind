@@ -54,17 +54,43 @@
                     </button>
                 </div>
 
-                <!-- Уведомление о синхронизации остатков -->
-                <div x-show="stocksSyncMessage"
+                <!-- Статус синхронизации остатков -->
+                <div x-show="stocksStatus"
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:leave="transition ease-in duration-150"
-                     class="fixed top-4 right-4 z-50 max-w-sm px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center space-x-2"
-                     :class="stocksSyncError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path x-show="!stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        <path x-show="stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                    <span x-text="stocksSyncMessage"></span>
+                     class="fixed top-4 right-4 z-50 w-80 rounded-xl shadow-lg border text-sm overflow-hidden"
+                     :class="{
+                         'bg-blue-50 border-blue-200': stocksStatus === 'running',
+                         'bg-green-50 border-green-200': stocksStatus === 'success',
+                         'bg-red-50 border-red-200': stocksStatus === 'error',
+                     }">
+                    <div class="px-4 py-3 flex items-start space-x-3">
+                        <!-- Иконка статуса -->
+                        <div class="flex-shrink-0 mt-0.5">
+                            <svg x-show="stocksStatus === 'running'" class="w-5 h-5 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <svg x-show="stocksStatus === 'success'" class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <svg x-show="stocksStatus === 'error'" class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium"
+                               :class="{'text-blue-700': stocksStatus === 'running', 'text-green-700': stocksStatus === 'success', 'text-red-700': stocksStatus === 'error'}"
+                               x-text="stocksStatus === 'running' ? 'Синхронизация остатков...' : stocksStatus === 'success' ? 'Синхронизация завершена' : 'Ошибка синхронизации'">
+                            </p>
+                            <p class="text-xs mt-0.5 text-gray-500" x-show="stocksStatusMessage" x-text="stocksStatusMessage"></p>
+                            <p class="text-xs mt-0.5 text-gray-400" x-show="stocksStatusDuration" x-text="'Время: ' + stocksStatusDuration + ' сек'"></p>
+                        </div>
+                        <button @click="stocksStatus = null" class="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -676,8 +702,10 @@ function uzumProducts(accountId) {
         searchingVariants: false,
         syncingStock: null,
         stocksSyncing: false,
-        stocksSyncMessage: '',
-        stocksSyncError: false,
+        stocksStatus: null,       // null | 'running' | 'success' | 'error'
+        stocksStatusMessage: '',
+        stocksStatusDuration: null,
+        _stocksPollTimer: null,
         skuSchemes: {},
         skuSchemesLoading: false,
         togglingScheme: null,
@@ -724,8 +752,10 @@ function uzumProducts(accountId) {
         async syncAllStocks() {
             if (this.stocksSyncing) return;
             this.stocksSyncing = true;
-            this.stocksSyncMessage = '';
-            this.stocksSyncError = false;
+            this.stocksStatus = 'running';
+            this.stocksStatusMessage = '';
+            this.stocksStatusDuration = null;
+            clearInterval(this._stocksPollTimer);
             try {
                 const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
                     method: 'POST',
@@ -735,14 +765,34 @@ function uzumProducts(accountId) {
                 });
                 const data = await this.safeJson(res);
                 if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
-                this.stocksSyncMessage = data.message || 'Синхронизация остатков запущена';
-                this.stocksSyncError = false;
+                // Запускаем polling каждые 3 секунды
+                this._stocksPollTimer = setInterval(() => this.pollStocksStatus(), 3000);
             } catch (e) {
-                this.stocksSyncMessage = e.message || 'Ошибка синхронизации';
-                this.stocksSyncError = true;
-            } finally {
+                this.stocksStatus = 'error';
+                this.stocksStatusMessage = e.message || 'Не удалось запустить синхронизацию';
                 this.stocksSyncing = false;
-                setTimeout(() => { this.stocksSyncMessage = ''; }, 5000);
+            }
+        },
+        async pollStocksStatus() {
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks`, {
+                    headers: this.getHeaders(),
+                    credentials: 'include',
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.status) return;
+                this.stocksStatus = data.is_running ? 'running' : data.status;
+                this.stocksStatusMessage = data.message || '';
+                this.stocksStatusDuration = data.duration;
+                if (!data.is_running) {
+                    clearInterval(this._stocksPollTimer);
+                    this.stocksSyncing = false;
+                    // Скрыть через 8 секунд после завершения
+                    setTimeout(() => { this.stocksStatus = null; }, 8000);
+                }
+            } catch (e) {
+                // Игнорируем ошибки polling
             }
         },
         applyFilter() {
@@ -950,16 +1000,36 @@ function uzumProducts(accountId) {
         </button>
     </x-pwa-header>
 
-    <!-- Уведомление о синхронизации (PWA) -->
-    <div x-show="stocksSyncMessage"
+    <!-- Статус синхронизации (PWA) -->
+    <div x-show="stocksStatus"
          x-transition
-         class="fixed top-16 left-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center space-x-2"
-         :class="stocksSyncError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'">
-        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path x-show="!stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            <path x-show="stocksSyncError" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+         class="fixed top-14 left-3 right-3 z-50 px-4 py-3 rounded-xl shadow-lg text-sm border flex items-start space-x-3"
+         :class="{
+             'bg-blue-50 border-blue-200': stocksStatus === 'running',
+             'bg-green-50 border-green-200': stocksStatus === 'success',
+             'bg-red-50 border-red-200': stocksStatus === 'error',
+         }">
+        <svg x-show="stocksStatus === 'running'" class="w-5 h-5 text-blue-500 animate-spin flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
-        <span x-text="stocksSyncMessage"></span>
+        <svg x-show="stocksStatus === 'success'" class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <svg x-show="stocksStatus === 'error'" class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        <div class="flex-1 min-w-0">
+            <p class="font-medium"
+               :class="{'text-blue-700': stocksStatus === 'running', 'text-green-700': stocksStatus === 'success', 'text-red-700': stocksStatus === 'error'}"
+               x-text="stocksStatus === 'running' ? 'Синхронизация остатков...' : stocksStatus === 'success' ? 'Готово' : 'Ошибка'">
+            </p>
+            <p class="text-xs text-gray-500 mt-0.5" x-show="stocksStatusMessage" x-text="stocksStatusMessage"></p>
+        </div>
+        <button @click="stocksStatus = null; clearInterval(_stocksPollTimer); stocksSyncing = false" class="text-gray-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
     </div>
 
     <main class="native-scroll" style="padding-top: calc(44px + env(safe-area-inset-top, 0px)); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); min-height: 100vh;"
@@ -1245,8 +1315,10 @@ function uzumProductsPwa(accountId) {
         galleryIndex: 0,
         touchStartX: 0,
         stocksSyncing: false,
-        stocksSyncMessage: '',
-        stocksSyncError: false,
+        stocksStatus: null,
+        stocksStatusMessage: '',
+        stocksStatusDuration: null,
+        _stocksPollTimer: null,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1280,8 +1352,10 @@ function uzumProductsPwa(accountId) {
         async syncAllStocks() {
             if (this.stocksSyncing) return;
             this.stocksSyncing = true;
-            this.stocksSyncMessage = '';
-            this.stocksSyncError = false;
+            this.stocksStatus = 'running';
+            this.stocksStatusMessage = '';
+            this.stocksStatusDuration = null;
+            clearInterval(this._stocksPollTimer);
             try {
                 const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
                     method: 'POST',
@@ -1291,15 +1365,31 @@ function uzumProductsPwa(accountId) {
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
-                this.stocksSyncMessage = data.message || 'Синхронизация остатков запущена';
-                this.stocksSyncError = false;
+                this._stocksPollTimer = setInterval(() => this.pollStocksStatus(), 3000);
             } catch (e) {
-                this.stocksSyncMessage = e.message || 'Ошибка синхронизации';
-                this.stocksSyncError = true;
-            } finally {
+                this.stocksStatus = 'error';
+                this.stocksStatusMessage = e.message || 'Не удалось запустить синхронизацию';
                 this.stocksSyncing = false;
-                setTimeout(() => { this.stocksSyncMessage = ''; }, 5000);
             }
+        },
+        async pollStocksStatus() {
+            try {
+                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks`, {
+                    headers: this.getHeaders(),
+                    credentials: 'include',
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.status) return;
+                this.stocksStatus = data.is_running ? 'running' : data.status;
+                this.stocksStatusMessage = data.message || '';
+                this.stocksStatusDuration = data.duration;
+                if (!data.is_running) {
+                    clearInterval(this._stocksPollTimer);
+                    this.stocksSyncing = false;
+                    setTimeout(() => { this.stocksStatus = null; }, 8000);
+                }
+            } catch (e) {}
         },
         applyFilter() {
             const term = this.search.toLowerCase();
