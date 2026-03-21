@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -333,6 +335,9 @@
                             $mainImage = $product->mainImage;
                             $displayName = $storeProduct->getDisplayName();
                             $displayPrice = $storeProduct->getDisplayPrice();
+                            $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                            $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                            $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                         @endphp
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-[var(--primary)] transition-colors group">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -351,9 +356,24 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-2 left-2 px-2 py-0.5 bg-gray-900 text-white text-xs rounded font-mono uppercase tracking-wider">HIT</span>
-                                    @endif
+                                    <div class="absolute top-2 left-2 flex flex-col gap-0.5">
+                                        @if($hasDiscount)
+                                            <span class="px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded font-mono font-semibold">-{{ $discountPercent }}%</span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-2 py-0.5 bg-gray-900 text-white text-xs rounded font-mono uppercase tracking-wider">HIT</span>
+                                        @endif
+                                    </div>
+
+                                    {{-- Quick View + Wishlist --}}
+                                    <div class="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button @click.prevent.stop="$dispatch('quick-view', { id: {{ $storeProduct->id }}, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, oldPrice: {{ $hasDiscount ? (float)$oldPrice : 'null' }}, image: '{{ $mainImage?->url }}', slug: '{{ $store->slug }}', stock: 99 })" class="w-7 h-7 rounded bg-white/90 flex items-center justify-center text-gray-500 hover:text-gray-900 shadow-sm" title="Быстрый просмотр">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <button @click.prevent.stop="$store.wishlist?.toggle({ id: {{ $storeProduct->id }}, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, oldPrice: {{ $hasDiscount ? (float)$oldPrice : 'null' }}, image: '{{ $mainImage?->url }}', url: '/store/{{ $store->slug }}/product/{{ $storeProduct->id }}' })" class="w-7 h-7 rounded bg-white/90 flex items-center justify-center transition-colors shadow-sm" :class="$store.wishlist?.has({{ $storeProduct->id }}) ? 'text-red-500' : 'text-gray-500 hover:text-red-500'" title="В избранное">
+                                            <svg class="w-3.5 h-3.5" :fill="$store.wishlist?.has({{ $storeProduct->id }}) ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </a>
                             <div class="p-3 border-t border-gray-100">
@@ -364,9 +384,17 @@
                                     <p class="text-xs text-gray-400 font-mono mt-0.5">{{ $product->article }}</p>
                                 @endif
                                 <div class="flex items-center justify-between mt-2">
-                                    <span class="text-base font-bold font-mono" style="color: var(--primary);">
-                                        {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                                    </span>
+                                    <div>
+                                        <span class="text-base font-bold font-mono" style="color: var(--primary);">
+                                            {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
+                                        </span>
+                                        @if($hasDiscount)
+                                            <div class="flex items-center gap-1.5 mt-0.5">
+                                                <span class="text-xs text-gray-400 line-through font-mono">{{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}</span>
+                                                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-mono rounded font-semibold">-{{ $discountPercent }}%</span>
+                                            </div>
+                                        @endif
+                                    </div>
                                     @if($store->theme->show_add_to_cart ?? true)
                                         <button
                                             @click="addToCart({{ $storeProduct->id }})"
@@ -401,6 +429,9 @@
                             $mainImage = $product->mainImage;
                             $displayName = $storeProduct->getDisplayName();
                             $displayPrice = $storeProduct->getDisplayPrice();
+                            $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                            $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                            $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                         @endphp
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-[var(--primary)] transition-colors group flex">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="shrink-0 w-24 sm:w-32">
@@ -419,9 +450,14 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-1 left-1 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded font-mono uppercase">HIT</span>
-                                    @endif
+                                    <div class="absolute top-1 left-1 flex flex-col gap-0.5">
+                                        @if($hasDiscount)
+                                            <span class="px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded font-mono font-semibold">-{{ $discountPercent }}%</span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded font-mono uppercase">HIT</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </a>
                             <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
@@ -434,9 +470,17 @@
                                     @endif
                                 </div>
                                 <div class="flex items-center justify-between mt-2">
-                                    <span class="text-base font-bold font-mono" style="color: var(--primary);">
-                                        {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
-                                    </span>
+                                    <div>
+                                        <span class="text-base font-bold font-mono" style="color: var(--primary);">
+                                            {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
+                                        </span>
+                                        @if($hasDiscount)
+                                            <div class="flex items-center gap-1.5 mt-0.5">
+                                                <span class="text-xs text-gray-400 line-through font-mono">{{ number_format($oldPrice, 0, '.', ' ') }} {{ $currency }}</span>
+                                                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-mono rounded font-semibold">-{{ $discountPercent }}%</span>
+                                            </div>
+                                        @endif
+                                    </div>
                                     @if($store->theme->show_add_to_cart ?? true)
                                         <button
                                             @click="addToCart({{ $storeProduct->id }})"

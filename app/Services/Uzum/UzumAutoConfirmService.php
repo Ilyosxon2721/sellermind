@@ -48,6 +48,8 @@ final class UzumAutoConfirmService
         foreach ($orders as $order) {
             $orderId = $order['id'] ?? null;
             if (! $orderId) {
+                $stats['skipped']++;
+
                 continue;
             }
 
@@ -61,7 +63,6 @@ final class UzumAutoConfirmService
             } catch (\Throwable $e) {
                 $errorMessage = $e->getMessage();
                 $errorCode = $e->getCode() ?: null;
-                Log::warning("UzumAutoConfirm: ошибка подтверждения заказа #{$orderId}", ['error' => $e->getMessage()]);
             }
 
             DB::table('uzum_order_confirm_logs')->insert([

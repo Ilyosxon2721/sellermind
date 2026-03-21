@@ -31,8 +31,9 @@ class UzumAutoProcess extends Command
             $this->info('✅ Job AutoReplyReviews добавлен в очередь');
         }
 
-        if (!$runAll && !$this->option('confirm') && !$this->option('reviews')) {
+        if (! $runAll && ! $this->option('confirm') && ! $this->option('reviews')) {
             $this->warn('Укажи опцию: --confirm, --reviews или --all');
+
             return self::FAILURE;
         }
 

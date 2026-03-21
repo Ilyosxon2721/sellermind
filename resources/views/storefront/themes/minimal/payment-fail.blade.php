@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Ошибка оплаты — ' . $store->name)
+
 @section('content')
 <div class="min-h-[60vh] flex items-center justify-center px-4">
     <div class="text-center max-w-sm">

@@ -5,15 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $store->meta_title ?? $store->name }}</title>
-    <meta name="description" content="{{ $store->meta_description ?? $store->description }}">
+    <title>@yield('page_title', $store->meta_title ?? $store->name)</title>
+    <meta name="description" content="@yield('meta_description', $store->meta_description ?? $store->description)">
     @if($store->meta_keywords)
         <meta name="keywords" content="{{ $store->meta_keywords }}">
     @endif
 
+    {{-- Open Graph --}}
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    <meta property="og:title" content="@yield('page_title', $store->meta_title ?? $store->name)">
+    <meta property="og:description" content="@yield('meta_description', $store->meta_description ?? $store->description)">
+    @hasSection('og_image')
+        <meta property="og:image" content="@yield('og_image')">
+    @elseif($store->logo)
+        <meta property="og:image" content="{{ Str::startsWith($store->logo, 'http') ? $store->logo : asset('storage/' . $store->logo) }}">
+    @endif
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="{{ $store->name }}">
+
+    @yield('meta')
+
     @if($store->favicon)
         <link rel="icon" href="{{ asset('storage/' . $store->favicon) }}" type="image/x-icon">
     @endif
+
+    <link rel="canonical" href="{{ url()->current() }}">
 
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -48,6 +64,8 @@
             --footer-text: {{ $store->theme->footer_text_color ?? '#FFFFFF' }};
         }
 
+        html { scroll-behavior: smooth; }
+
         body {
             font-family: '{{ $store->theme->body_font ?? 'Inter' }}', sans-serif;
             color: var(--text);
@@ -61,7 +79,7 @@
         .btn-primary {
             background: var(--primary);
             color: #fff;
-            transition: filter 0.2s;
+            transition: filter 0.2s, box-shadow 0.2s;
         }
         .btn-primary:hover {
             filter: brightness(0.9);
@@ -85,6 +103,17 @@
             filter: brightness(0.9);
         }
 
+        .btn-outline-primary {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .btn-outline-primary:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
         .text-theme-primary { color: var(--primary); }
         .bg-theme-primary { background: var(--primary); }
         .border-theme-primary { border-color: var(--primary); }
@@ -95,10 +124,32 @@
         .text-theme-accent { color: var(--accent); }
         .bg-theme-accent { background: var(--accent); }
 
+        .ring-theme-primary { --tw-ring-color: var(--primary); }
+        .accent-theme { accent-color: var(--primary); }
+
         [x-cloak] { display: none !important; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        @keyframes checkmark {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-checkmark {
+            animation: checkmark 0.5s ease-out forwards;
+        }
 
         {{ $store->theme->custom_css ?? '' }}
     </style>
+
+    @stack('structured_data')
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
@@ -109,6 +160,12 @@
     </main>
 
     @include('storefront.components.footer', ['store' => $store])
+
+    {{-- Глобальные компоненты --}}
+    @include('storefront.components.wishlist-manager', ['store' => $store])
+    @include('storefront.components.quick-view-modal', ['store' => $store])
+    @include('storefront.components.lightbox')
+    @include('storefront.components.buy-one-click', ['store' => $store])
 
     {{-- Глобальное уведомление (toast) --}}
     <div

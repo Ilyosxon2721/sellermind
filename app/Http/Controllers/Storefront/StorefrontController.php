@@ -30,6 +30,7 @@ final class StorefrontController extends Controller
                 'activeBanners',
                 'visibleCategories.category',
                 'featuredProducts.product.mainImage',
+                'featuredProducts.product.variants:id,product_id,price_default,old_price_default',
             ])
             ->firstOrFail();
 
@@ -62,6 +63,21 @@ final class StorefrontController extends Controller
         $template = $store->theme?->resolvedTemplate() ?? 'default';
 
         return view("storefront.themes.{$template}.page", compact('store', 'page'));
+    }
+
+    /**
+     * Страница избранного (Wishlist)
+     *
+     * GET /store/{slug}/wishlist
+     */
+    public function wishlist(string $slug): View
+    {
+        $store = $this->getPublishedStore($slug);
+        $template = $store->theme?->resolvedTemplate() ?? 'default';
+
+        $this->trackPageView($store);
+
+        return view('storefront.wishlist', compact('store'));
     }
 
     /**

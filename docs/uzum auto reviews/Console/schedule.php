@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Schedule;
 use App\Jobs\AutoConfirmFbsOrders;
 use App\Jobs\AutoReplyReviews;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +15,7 @@ use App\Jobs\AutoReplyReviews;
 */
 
 // Авто-подтверждение заказов — каждые 15 минут
-Schedule::job(new AutoConfirmFbsOrders())
+Schedule::job(new AutoConfirmFbsOrders)
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->onOneServer()
@@ -23,7 +23,7 @@ Schedule::job(new AutoConfirmFbsOrders())
     ->when(fn () => config('uzum.auto_confirm.enabled', false));
 
 // Авто-ответ на отзывы — каждые 30 минут
-Schedule::job(new AutoReplyReviews())
+Schedule::job(new AutoReplyReviews)
     ->everyThirtyMinutes()
     ->withoutOverlapping()
     ->onOneServer()

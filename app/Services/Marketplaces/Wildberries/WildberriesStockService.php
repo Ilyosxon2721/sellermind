@@ -94,6 +94,9 @@ class WildberriesStockService
                 }
             }
 
+            // Переклассифицировать склады: FBS определяем по Marketplace API, остальные — FBO
+            $this->reclassifyWarehouseTypes($account);
+
             // After syncing WB stocks, align to local products
             $productsLinkedToLocal = $this->syncLocalProductsFromStocks($account);
 
@@ -140,7 +143,7 @@ class WildberriesStockService
                 'warehouse_name' => $warehouseName,
             ],
             [
-                'warehouse_type' => $stockData['isSupply'] ?? false ? 'FBS' : 'FBO',
+                'warehouse_type' => 'FBO',
                 'is_active' => true,
             ]
         );
@@ -213,14 +216,94 @@ class WildberriesStockService
     }
 
     /**
+     * Переклассифицировать типы складов.
+     * Проверяем ВСЕ склады маркетплейса:
+     * - /api/v3/offices — склады WB (FBO)
+     * - /api/v3/warehouses — склады продавца (FBS)
+     */
+    protected function reclassifyWarehouseTypes(MarketplaceAccount $account): void
+    {
+        try {
+            // Получить ВСЕ склады WB (FBO)
+            $fboOffices = $this->getOffices($account);
+            $fboNames = collect($fboOffices)->pluck('name')->filter()->all();
+
+            // Получить склады продавца (FBS)
+            $fbsWarehouses = $this->getWarehouses($account);
+            $fbsNames = collect($fbsWarehouses)->pluck('name')->filter()->all();
+
+            // Классифицировать склады по совпадению имён
+            $allWarehouses = WildberriesWarehouse::where('marketplace_account_id', $account->id)->get();
+
+            foreach ($allWarehouses as $warehouse) {
+                $name = $warehouse->warehouse_name;
+                $newType = 'FBO'; // По умолчанию FBO
+
+                if (in_array($name, $fbsNames, true)) {
+                    $newType = 'FBS';
+                } elseif (! empty($fboNames) && in_array($name, $fboNames, true)) {
+                    $newType = 'FBO';
+                }
+
+                if ($warehouse->warehouse_type !== $newType) {
+                    $warehouse->update(['warehouse_type' => $newType]);
+                }
+            }
+
+            Log::info('WB warehouse types reclassified', [
+                'account_id' => $account->id,
+                'fbo_offices_count' => count($fboNames),
+                'fbs_warehouses_count' => count($fbsNames),
+                'total_warehouses' => $allWarehouses->count(),
+            ]);
+        } catch (\Exception $e) {
+            // При ошибке — все склады в FBO (безопаснее)
+            WildberriesWarehouse::where('marketplace_account_id', $account->id)
+                ->where('warehouse_type', '!=', 'FBO')
+                ->update(['warehouse_type' => 'FBO']);
+
+            Log::warning('WB warehouse reclassify fallback to FBO', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Получить список всех складов WB (FBO) из Marketplace API
+     * GET /api/v3/offices
+     */
+    public function getOffices(MarketplaceAccount $account): array
+    {
+        try {
+            $offices = $this->getHttpClient($account)->get('marketplace', '/api/v3/offices');
+
+            Log::info('WB getOffices: API response', [
+                'account_id' => $account->id,
+                'offices_count' => is_array($offices) ? count($offices) : 0,
+            ]);
+
+            return is_array($offices) ? $offices : [];
+        } catch (\Exception $e) {
+            Log::error('Failed to get WB offices', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
      * Align stocks with local products (Sellermind AI) via MarketplaceProduct links.
      * Maps by external_product_id (nmID) and updates MarketplaceProduct + Product.stock_quantity.
      */
     public function syncLocalProductsFromStocks(MarketplaceAccount $account): int
     {
-        // Map nmID => stock_total from WB products
+        // Map nmID => WB product with stocks+warehouse info
         $wbProducts = WildberriesProduct::where('marketplace_account_id', $account->id)
-            ->get(['nm_id', 'stock_total'])
+            ->with(['stocks.warehouse'])
+            ->get()
             ->keyBy('nm_id');
 
         if ($wbProducts->isEmpty()) {
@@ -241,11 +324,29 @@ class WildberriesStockService
                 continue;
             }
 
-            $stockTotal = (int) ($wbProducts[$nmId]->stock_total ?? 0);
+            $wbProduct = $wbProducts[$nmId];
+            $stockTotal = (int) ($wbProduct->stock_total ?? 0);
 
-            // Update marketplace_product cached stock
+            // Рассчитать FBS/FBO остатки по типу склада
+            $stockFbs = 0;
+            $stockFbo = 0;
+
+            foreach ($wbProduct->stocks as $stock) {
+                $qty = (int) ($stock->quantity_full ?? 0);
+                $warehouseType = strtoupper($stock->warehouse->warehouse_type ?? 'FBO');
+
+                if ($warehouseType === 'FBS') {
+                    $stockFbs += $qty;
+                } else {
+                    $stockFbo += $qty;
+                }
+            }
+
+            // Update marketplace_product cached stock with FBS/FBO split
             $mp->update([
                 'last_synced_stock' => $stockTotal,
+                'stock_fbs' => $stockFbs,
+                'stock_fbo' => $stockFbo,
                 'last_synced_at' => now(),
             ]);
 

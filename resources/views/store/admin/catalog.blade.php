@@ -81,7 +81,8 @@
                                     <tr>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Фото</th>
                                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Название</th>
-                                        <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Своя цена</th>
+                                        <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Цена</th>
+                                        <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Старая цена</th>
                                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Видимый</th>
                                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Рекомендуемый</th>
                                         <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Действия</th>
@@ -90,7 +91,7 @@
                                 <tbody class="divide-y divide-gray-100">
                                     <template x-if="products.length === 0">
                                         <tr>
-                                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                                 Нет товаров в каталоге. Нажмите "Добавить товары".
                                             </td>
                                         </tr>
@@ -113,6 +114,12 @@
                                                        @change="updateProduct(p.id, { custom_price: $event.target.value })"
                                                        class="border border-gray-200 rounded-lg text-sm text-right px-3 py-1.5 w-28 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                        placeholder="Цена">
+                                            </td>
+                                            <td class="px-6 py-3 text-right">
+                                                <input type="number" :value="p.custom_old_price" step="0.01"
+                                                       @change="updateProduct(p.id, { custom_old_price: $event.target.value })"
+                                                       class="border border-gray-200 rounded-lg text-sm text-right px-3 py-1.5 w-28 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                       placeholder="Старая цена">
                                             </td>
                                             <td class="px-6 py-3 text-center">
                                                 <button @click="toggleProductField(p, 'is_visible')"

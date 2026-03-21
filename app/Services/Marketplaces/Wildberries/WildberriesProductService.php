@@ -105,6 +105,15 @@ class WildberriesProductService
             'errors' => count($errors),
         ]);
 
+        // Копируем результаты в общую таблицу marketplace_products
+        try {
+            $bridge = new \App\Services\Marketplaces\MarketplaceProductsBridgeService;
+            $bridgeSynced = $bridge->syncFromWildberries($account);
+            Log::info('WB bridge sync done', ['account_id' => $account->id, 'bridged' => $bridgeSynced]);
+        } catch (\Exception $e) {
+            Log::error('WB bridge sync failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+        }
+
         return [
             'synced' => $synced,
             'created' => $created,

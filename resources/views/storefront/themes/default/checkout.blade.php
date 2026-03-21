@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Оформление заказа — ' . $store->name)
+
 @section('content')
 @php
     $currency = $store->currency ?? 'сум';
@@ -58,7 +60,7 @@
                                 class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-colors"
                                 :class="errors.customer_phone ? 'border-red-300 bg-red-50' : 'border-gray-200'"
                                 style="--tw-ring-color: var(--primary);"
-                                placeholder="+998 XX XXX XX XX"
+                                placeholder="Номер телефона"
                             >
                             <p x-show="errors.customer_phone" x-text="errors.customer_phone" class="mt-1 text-xs text-red-500"></p>
                         </div>
@@ -86,7 +88,7 @@
                             @foreach($deliveryMethods as $method)
                                 <label
                                     class="flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200"
-                                    :class="form.delivery_method_id === {{ $method->id }} ? 'border-(--primary) bg-blue-50/30' : 'border-gray-100 hover:border-gray-200'"
+                                    :class="form.delivery_method_id === {{ $method->id }} ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'"
                                 >
                                     <input
                                         type="radio"
@@ -94,7 +96,7 @@
                                         value="{{ $method->id }}"
                                         x-model.number="form.delivery_method_id"
                                         @change="deliveryPrice = {{ (float)$method->price }}; recalculate()"
-                                        class="mt-0.5 accent-(--primary)"
+                                        class="mt-0.5 accent-theme"
                                     >
                                     <div class="flex-1">
                                         <div class="flex items-center justify-between">
@@ -171,14 +173,14 @@
                             @foreach($paymentMethods as $method)
                                 <label
                                     class="flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200"
-                                    :class="form.payment_method_id === {{ $method->id }} ? 'border-(--primary) bg-blue-50/30' : 'border-gray-100 hover:border-gray-200'"
+                                    :class="form.payment_method_id === {{ $method->id }} ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'"
                                 >
                                     <input
                                         type="radio"
                                         name="payment_method"
                                         value="{{ $method->id }}"
                                         x-model.number="form.payment_method_id"
-                                        class="mt-0.5 accent-(--primary)"
+                                        class="mt-0.5 accent-theme"
                                     >
                                     <div>
                                         <span class="text-sm font-medium text-gray-900">{{ $method->name }}</span>

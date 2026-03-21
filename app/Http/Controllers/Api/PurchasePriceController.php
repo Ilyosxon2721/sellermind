@@ -136,7 +136,8 @@ final class PurchasePriceController extends Controller
         ]);
 
         $companyId = $request->user()->company_id;
-        $updated = 0;
+        $financeSettings = FinanceSettings::getForCompany($companyId);
+        $updatedVariants = [];
 
         foreach ($validated['variants'] as $data) {
             $variant = ProductVariant::where('id', $data['id'])
@@ -145,10 +146,19 @@ final class PurchasePriceController extends Controller
 
             if ($variant) {
                 $variant->update(Arr::only($data, ['purchase_price', 'purchase_price_currency']));
-                $updated++;
+                $updatedVariants[] = [
+                    'id' => $variant->id,
+                    'purchase_price' => (float) $variant->purchase_price,
+                    'purchase_price_currency' => $variant->purchase_price_currency,
+                    'purchase_price_base' => $variant->getPurchasePriceInBase($financeSettings),
+                ];
             }
         }
 
-        return response()->json(['success' => true, 'updated' => $updated]);
+        return response()->json([
+            'success' => true,
+            'updated' => count($updatedVariants),
+            'variants' => $updatedVariants,
+        ]);
     }
 }

@@ -20,6 +20,7 @@ class StoreProduct extends Model
         'custom_name',
         'custom_description',
         'custom_price',
+        'custom_old_price',
         'is_visible',
         'is_featured',
         'position',
@@ -29,6 +30,7 @@ class StoreProduct extends Model
         'is_visible' => 'boolean',
         'is_featured' => 'boolean',
         'custom_price' => 'decimal:2',
+        'custom_old_price' => 'decimal:2',
         'position' => 'integer',
     ];
 
@@ -59,10 +61,14 @@ class StoreProduct extends Model
     }
 
     /**
-     * Получить отображаемую цену товара (кастомную или оригинальную)
+     * Получить отображаемую цену товара (кастомную или из варианта)
      */
     public function getDisplayPrice(): float
     {
-        return (float) ($this->custom_price ?: $this->product->price);
+        if ($this->custom_price > 0) {
+            return (float) $this->custom_price;
+        }
+
+        return (float) ($this->product?->variants?->first()?->price_default ?? 0);
     }
 }

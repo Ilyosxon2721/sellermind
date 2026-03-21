@@ -75,132 +75,134 @@
                         </div>
                     </x-ui.alert>
 
-                    {{-- Stats Cards Row 1 (4 cards) --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {{-- Stats Cards Row 1 --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                         {{-- Revenue Card --}}
-                        <x-ui.card padding="default" hover="true">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-500 p-5 hover:shadow-md transition-shadow">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-500">{{ __('dashboard.revenue') }}</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1 truncate" x-text="formatMoney(stats.revenue)">0 сум</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
+                                </div>
+                                <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                 </div>
-                                <x-ui.badge variant="primary" x-text="periodLabel"></x-ui.badge>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.revenue') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(stats.revenue)">0 сум</p>
-                            <p class="text-sm text-gray-500" x-text="stats.orders_count + ' {{ __('dashboard.orders') }}'"></p>
-                        </x-ui.card>
+                        </div>
 
-                        {{-- Orders Today Card --}}
-                        <x-ui.card padding="default" hover="true">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {{-- Orders Card --}}
+                        <div class="bg-white rounded-xl border border-gray-200 border-l-4 border-l-emerald-500 p-5 hover:shadow-md transition-shadow">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-500" x-text="ordersLabel">{{ __('dashboard.orders_today') }}</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1" x-text="stats.total_orders">0</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-text="formatMoney(stats.period_revenue)"></p>
+                                </div>
+                                <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.orders_today') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.today_orders">0</p>
-                            <p class="text-sm text-gray-500" x-text="formatMoney(stats.today_revenue)"></p>
-                        </x-ui.card>
+                        </div>
 
-                        {{-- Products Card --}}
-                        <x-ui.card padding="default" hover="true" @click="window.location.href='/products'" class="cursor-pointer">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        {{-- Potential Revenue Card --}}
+                        <div class="bg-white rounded-xl border border-gray-200 border-l-4 border-l-amber-500 p-5 hover:shadow-md transition-shadow">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-500">{{ __('dashboard.potential_revenue') }}</p>
+                                    <p class="text-2xl font-bold text-amber-600 mt-1 truncate" x-text="formatMoney(stats.potential_revenue)">0 сум</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-text="stats.transit_count + ' в пути, ' + stats.awaiting_count + ' в ПВЗ'"></p>
+                                </div>
+                                <div class="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.products') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="stats.products_count">0</p>
-                            <p class="text-sm text-blue-600 font-medium flex items-center">
-                                {{ __('dashboard.open') }}
-                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </p>
-                        </x-ui.card>
+                        </div>
 
                         {{-- Warehouse Value Card --}}
-                        <x-ui.card padding="default" hover="true" @click="window.location.href='/inventory'" class="cursor-pointer">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-white rounded-xl border border-gray-200 border-l-4 border-l-teal-500 p-5 hover:shadow-md transition-shadow cursor-pointer" @click="window.location.href='/inventory'">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-500">{{ __('dashboard.warehouse') }}</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1 truncate" x-text="formatMoney(warehouse.total_value)">0 сум</p>
+                                    <p class="text-sm text-gray-400 mt-1" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
+                                </div>
+                                <div class="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                                    <svg class="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                     </svg>
                                 </div>
                             </div>
-                            <h3 class="text-sm font-medium text-gray-500 mb-1">{{ __('dashboard.warehouse') }}</h3>
-                            <p class="text-3xl font-bold text-gray-900 mb-2" x-text="formatMoney(warehouse.total_value)">0 сум</p>
-                            <p class="text-sm text-gray-500" x-text="warehouse.total_items + ' {{ __('dashboard.positions') }}'"></p>
-                        </x-ui.card>
+                        </div>
                     </div>
 
-                    {{-- Stats Cards Row 2 (4 smaller cards) --}}
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {{-- Stats Cards Row 2 --}}
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {{-- Marketplaces --}}
-                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/marketplaces'" class="cursor-pointer">
+                        <div class="bg-gradient-to-br from-orange-50 to-white rounded-xl border border-orange-100 p-4 hover:shadow-md hover:border-orange-200 transition-all cursor-pointer" @click="window.location.href='/marketplaces'">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <div class="w-11 h-11 bg-orange-100 rounded-xl flex items-center justify-center">
                                     <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="stats.marketplace_accounts">0</p>
-                                    <p class="text-xs text-gray-500">{{ __('dashboard.marketplaces') }}</p>
+                                    <p class="text-xl font-bold text-gray-900" x-text="stats.marketplace_accounts">0</p>
+                                    <p class="text-xs font-medium text-gray-500">{{ __('dashboard.marketplaces') }}</p>
                                 </div>
                             </div>
-                        </x-ui.card>
+                        </div>
 
                         {{-- Reviews --}}
-                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/reviews'" class="cursor-pointer">
+                        <div class="bg-gradient-to-br from-yellow-50 to-white rounded-xl border border-yellow-100 p-4 hover:shadow-md hover:border-yellow-200 transition-all cursor-pointer" @click="window.location.href='/reviews'">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <div class="w-11 h-11 bg-yellow-100 rounded-xl flex items-center justify-center">
                                     <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="reviews.pending_response || 0">0</p>
-                                    <p class="text-xs text-gray-500">{{ __('dashboard.new_reviews') }}</p>
+                                    <p class="text-xl font-bold text-gray-900" x-text="reviews.pending_response || 0">0</p>
+                                    <p class="text-xs font-medium text-gray-500">{{ __('dashboard.new_reviews') }}</p>
                                 </div>
                             </div>
-                        </x-ui.card>
+                        </div>
 
                         {{-- Supplies --}}
-                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/supplies'" class="cursor-pointer">
+                        <div class="bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-100 p-4 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer" @click="window.location.href='/supplies'">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <div class="w-11 h-11 bg-indigo-100 rounded-xl flex items-center justify-center">
                                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="supplies.active_count || 0">0</p>
-                                    <p class="text-xs text-gray-500">{{ __('dashboard.supplies_in_transit') }}</p>
+                                    <p class="text-xl font-bold text-gray-900" x-text="supplies.active_count || 0">0</p>
+                                    <p class="text-xs font-medium text-gray-500">{{ __('dashboard.supplies_in_transit') }}</p>
                                 </div>
                             </div>
-                        </x-ui.card>
+                        </div>
 
                         {{-- AI Tasks --}}
-                        <x-ui.card padding="sm" hover="true" @click="window.location.href='/ai'" class="cursor-pointer">
+                        <div class="bg-gradient-to-br from-pink-50 to-white rounded-xl border border-pink-100 p-4 hover:shadow-md hover:border-pink-200 transition-all cursor-pointer" @click="window.location.href='/ai'">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                                <div class="w-11 h-11 bg-pink-100 rounded-xl flex items-center justify-center">
                                     <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-2xl font-bold text-gray-900" x-text="ai.running_tasks || 0">0</p>
-                                    <p class="text-xs text-gray-500">{{ __('dashboard.ai_tasks') }}</p>
+                                    <p class="text-xl font-bold text-gray-900" x-text="ai.running_tasks || 0">0</p>
+                                    <p class="text-xs font-medium text-gray-500">{{ __('dashboard.ai_tasks') }}</p>
                                 </div>
                             </div>
-                        </x-ui.card>
+                        </div>
                     </div>
 
                     {{-- Two Column Layout --}}
@@ -516,8 +518,11 @@ function dashboardPage() {
         stats: {
             revenue: 0,
             orders_count: 0,
-            today_orders: 0,
-            today_revenue: 0,
+            total_orders: 0,
+            period_revenue: 0,
+            potential_revenue: 0,
+            transit_count: 0,
+            awaiting_count: 0,
             products_count: 0,
             marketplace_accounts: 0
         },
@@ -566,6 +571,15 @@ function dashboardPage() {
             return labels[this.period] || '7 дней';
         },
 
+        get ordersLabel() {
+            const labels = {
+                today: 'Заказы сегодня',
+                week: 'Заказы за 7 дней',
+                month: 'Заказы за 30 дней'
+            };
+            return labels[this.period] || 'Заказы за 7 дней';
+        },
+
         async init() {
             if (this.$store.auth.isAuthenticated) {
                 await this.$store.auth.ensureCompaniesLoaded();
@@ -602,23 +616,38 @@ function dashboardPage() {
                 if (data.summary) {
                     let revenue = 0;
                     let ordersCount = 0;
+                    let totalOrders = 0;
+                    let periodRevenue = 0;
+                    let potentialRevenue = 0;
+
+                    // Потенциальный доход — все текущие заказы в транзите/ПВЗ (без фильтра по дате)
+                    potentialRevenue = data.summary.total_potential_revenue || 0;
 
                     if (this.period === 'today') {
                         revenue = data.summary.sales_today || 0;
                         ordersCount = data.summary.sales_today_count || 0;
+                        totalOrders = data.summary.total_today_count || 0;
+                        periodRevenue = data.summary.sales_today || 0;
                     } else if (this.period === 'week') {
                         revenue = data.summary.sales_week || 0;
                         ordersCount = data.summary.sales_week_count || 0;
+                        totalOrders = data.summary.total_week_count || 0;
+                        periodRevenue = data.summary.sales_week || 0;
                     } else if (this.period === 'month') {
                         revenue = data.summary.sales_month || 0;
                         ordersCount = data.summary.sales_month_count || 0;
+                        totalOrders = data.summary.total_month_count || 0;
+                        periodRevenue = data.summary.sales_month || 0;
                     }
 
                     this.stats = {
                         revenue: revenue,
                         orders_count: ordersCount,
-                        today_orders: data.summary.sales_today_count || 0,
-                        today_revenue: data.summary.sales_today || 0,
+                        total_orders: totalOrders,
+                        period_revenue: periodRevenue,
+                        potential_revenue: potentialRevenue,
+                        transit_count: data.summary.total_transit_count || 0,
+                        awaiting_count: data.summary.total_awaiting_count || 0,
                         products_count: data.summary.products_total || 0,
                         marketplace_accounts: data.summary.marketplaces_count || 0
                     };

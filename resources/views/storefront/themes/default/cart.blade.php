@@ -1,8 +1,11 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Корзина — ' . $store->name)
+
 @section('content')
 @php
     $currency = $store->currency ?? 'сум';
+    $freeDeliveryFrom = $store->activeDeliveryMethods->whereNotNull('free_from')->min('free_from');
 @endphp
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -110,7 +113,34 @@
             {{-- Итого --}}
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-2xl p-6 shadow-sm sticky top-28 space-y-5">
-                    <h3 class="font-semibold text-lg">Итого</h3>
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-lg">Итого</h3>
+                        <button
+                            @click="if (confirm('Очистить корзину?')) clearCart()"
+                            class="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                            Очистить
+                        </button>
+                    </div>
+
+                    {{-- Бесплатная доставка --}}
+                    @if($freeDeliveryFrom)
+                        <div x-show="subtotal > 0 && subtotal < {{ (float)$freeDeliveryFrom }}">
+                            <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                                <span>До бесплатной доставки</span>
+                                <span class="font-medium" x-text="formatPrice({{ (float)$freeDeliveryFrom }} - subtotal) + ' {{ $currency }}'"></span>
+                            </div>
+                            <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500" style="background: var(--primary);" :style="{ width: Math.min(100, (subtotal / {{ (float)$freeDeliveryFrom }}) * 100) + '%' }"></div>
+                            </div>
+                        </div>
+                        <div x-show="subtotal >= {{ (float)$freeDeliveryFrom }}" class="flex items-center gap-2 text-xs text-green-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Бесплатная доставка!
+                        </div>
+                    @endif
 
                     {{-- Промокод --}}
                     <div>
@@ -325,6 +355,30 @@
                     this.promoError = 'Ошибка соединения';
                 } finally {
                     this.promoLoading = false;
+                }
+            },
+
+            async clearCart() {
+                try {
+                    const slug = '{{ $store->slug }}';
+                    const response = await fetch(`/store/${slug}/api/cart/clear`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        },
+                    });
+                    if (response.ok) {
+                        this.items = [];
+                        this.subtotal = 0;
+                        this.discount = 0;
+                        this.total = 0;
+                        this.promoApplied = false;
+                        this.promocode = '';
+                        window.dispatchEvent(new CustomEvent('cart-updated'));
+                    }
+                } catch (e) {
+                    // Ignore
                 }
             },
 

@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 trait NotifiesMarketplaceOrder
 {
     /**
-     * Отправить уведомление о новом заказе с маркетплейса.
+     * Отправить уведомление о новом заказе с маркетплейса (старая система через $user->notify).
+     * Используется только для записи в БД уведомлений — Telegram отправляется через notifySubscribers.
      */
     protected function notifyNewMarketplaceOrder(
         Model $order,
@@ -24,12 +25,12 @@ trait NotifiesMarketplaceOrder
         string $currency,
     ): void {
         try {
-            // Дедупликация: не отправлять повторно для того же заказа (10 мин кэш)
+            // Дедупликация: не отправлять повторно для того же заказа (24 часа кэш)
             $cacheKey = "notify:new:{$marketplace}:{$orderNumber}";
             if (Cache::has($cacheKey)) {
                 return;
             }
-            Cache::put($cacheKey, true, 600);
+            Cache::put($cacheKey, true, 86400);
 
             $account = $order->account;
             if (! $account) {
@@ -67,17 +68,17 @@ trait NotifiesMarketplaceOrder
 
     /**
      * Отправить уведомления подписчикам TelegramSubscription (новая система).
-     * Работает параллельно со старой системой $user->notify().
+     * Включает статус в дедупликацию чтобы не спамить одним статусом.
      */
     protected function notifySubscribers(Model $order, string $marketplace, string $status): void
     {
         try {
-            // Дедупликация: не отправлять повторно для того же заказа+статуса (10 мин кэш)
+            // Дедупликация: не отправлять повторно для того же заказа+статуса (24 часа кэш)
             $cacheKey = "notify:sub:{$marketplace}:{$order->id}:{$status}";
             if (Cache::has($cacheKey)) {
                 return;
             }
-            Cache::put($cacheKey, true, 600);
+            Cache::put($cacheKey, true, 86400);
 
             $account = $order->account;
             if (! $account) {
@@ -105,7 +106,7 @@ trait NotifiesMarketplaceOrder
                     continue;
                 }
 
-                SendTelegramOrderNotification::dispatch($order, $subscription->chat_id);
+                SendTelegramOrderNotification::dispatch($order, $subscription->chat_id, $status);
             }
         } catch (\Exception $e) {
             Log::error('Failed to notify subscribers', [

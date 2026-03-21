@@ -1,5 +1,7 @@
 ﻿@extends('storefront.layouts.app')
 
+@section('page_title', 'Каталог — ' . $store->name)
+
 @section('content')
 @php
     $theme = $store->theme;
@@ -286,6 +288,9 @@
                             $mainImage = $product->mainImage;
                             $displayName = $storeProduct->getDisplayName();
                             $displayPrice = $storeProduct->getDisplayPrice();
+                            $oldPrice = $storeProduct->custom_old_price ?: (($storeProduct->custom_price && $product->variants->isNotEmpty()) ? $product->variants->first()?->price_default : null);
+                            $hasDiscount = $oldPrice && (float)$oldPrice > $displayPrice;
+                            $discountPercent = $hasDiscount ? round((1 - $displayPrice / (float)$oldPrice) * 100) : 0;
                         @endphp
                         <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
                             <a href="/store/{{ $store->slug }}/product/{{ $storeProduct->id }}" class="block">
@@ -304,11 +309,28 @@
                                             </svg>
                                         </div>
                                     @endif
-                                    @if($storeProduct->is_featured)
-                                        <span class="absolute top-3 left-3 px-3 py-1.5 rounded-xl text-xs font-semibold text-white tracking-wide" style="background: var(--accent);">
-                                            Хит
-                                        </span>
-                                    @endif
+                                    <div class="absolute top-3 left-3 flex flex-col gap-1">
+                                        @if($hasDiscount)
+                                            <span class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-500 text-white">
+                                                -{{ $discountPercent }}%
+                                            </span>
+                                        @endif
+                                        @if($storeProduct->is_featured && !$hasDiscount)
+                                            <span class="px-3 py-1.5 rounded-xl text-xs font-semibold text-white tracking-wide" style="background: var(--accent);">
+                                                Хит
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    {{-- Quick View + Wishlist --}}
+                                    <div class="absolute top-3 right-3 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <button @click.prevent.stop="$dispatch('quick-view', { id: {{ $storeProduct->id }}, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, oldPrice: {{ $hasDiscount ? (float)$oldPrice : 'null' }}, image: '{{ $mainImage?->url }}', slug: '{{ $store->slug }}', stock: {{ $totalStock ?? 99 }} })" class="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:bg-white hover:text-gray-900 transition-colors shadow-sm" title="Быстрый просмотр">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <button @click.prevent.stop="$store.wishlist?.toggle({ id: {{ $storeProduct->id }}, name: '{{ addslashes($displayName) }}', price: {{ $displayPrice }}, oldPrice: {{ $hasDiscount ? (float)$oldPrice : 'null' }}, image: '{{ $mainImage?->url }}', url: '/store/{{ $store->slug }}/product/{{ $storeProduct->id }}' })" class="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center transition-colors shadow-sm" :class="$store.wishlist?.has({{ $storeProduct->id }}) ? 'text-red-500' : 'text-gray-600 hover:text-red-500'" title="В избранное">
+                                            <svg class="w-4 h-4" :fill="$store.wishlist?.has({{ $storeProduct->id }}) ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </a>
 
@@ -318,10 +340,15 @@
                                         {{ $displayName }}
                                     </h3>
                                 </a>
-                                <div class="mt-2.5">
+                                <div class="mt-2.5 flex items-baseline gap-2 flex-wrap">
                                     <span class="text-lg font-bold" style="color: var(--primary);">
                                         {{ number_format($displayPrice, 0, '.', ' ') }} {{ $currency }}
                                     </span>
+                                    @if($hasDiscount)
+                                        <span class="text-xs text-gray-300 line-through">
+                                            {{ number_format((float)$oldPrice, 0, '.', ' ') }} {{ $currency }}
+                                        </span>
+                                    @endif
                                 </div>
 
                                 @if($store->theme->show_add_to_cart ?? true)

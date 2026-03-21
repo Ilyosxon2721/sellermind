@@ -9,6 +9,7 @@ use App\Models\Store\Store;
 use App\Models\Store\StoreAnalytics;
 use App\Models\Store\StoreProduct;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -53,12 +54,15 @@ final class CatalogController extends Controller
             });
         }
 
-        // Фильтр по цене
+        // Фильтр по цене (через custom_price или price_default первого варианта)
         if ($priceMin = $request->input('price_min')) {
             $query->where(function ($q) use ($priceMin) {
                 $q->where('custom_price', '>=', (float) $priceMin)
-                    ->orWhereHas('product', function ($pq) use ($priceMin) {
-                        $pq->where('price', '>=', (float) $priceMin);
+                    ->orWhere(function ($q2) use ($priceMin) {
+                        $q2->whereNull('custom_price')
+                            ->whereHas('product.variants', function ($vq) use ($priceMin) {
+                                $vq->where('price_default', '>=', (float) $priceMin);
+                            });
                     });
             });
         }
@@ -68,8 +72,8 @@ final class CatalogController extends Controller
                 $q->where('custom_price', '<=', (float) $priceMax)
                     ->orWhere(function ($q2) use ($priceMax) {
                         $q2->whereNull('custom_price')
-                            ->whereHas('product', function ($pq) use ($priceMax) {
-                                $pq->where('price', '<=', (float) $priceMax);
+                            ->whereHas('product.variants', function ($vq) use ($priceMax) {
+                                $vq->where('price_default', '<=', (float) $priceMax);
                             });
                     });
             });
@@ -115,16 +119,127 @@ final class CatalogController extends Controller
             ->with([
                 'product.mainImage',
                 'product.images',
-                'product.variants',
-                'product.options',
+                'product.variants' => fn ($q) => $q->where('is_active', true)->where('is_deleted', false),
+                'product.variants.optionValues.option',
+                'product.options.values',
             ])
             ->firstOrFail();
+
+        // Подготовить JSON-данные вариантов для Alpine.js
+        $variantsJson = $this->buildVariantsJson($storeProduct);
+
+        // Похожие товары: по той же категории, иначе — рандомные из магазина
+        $categoryId = $storeProduct->product?->category_id;
+
+        $relatedQuery = StoreProduct::where('store_id', $store->id)
+            ->where('is_visible', true)
+            ->where('id', '!=', $storeProduct->id)
+            ->with(['product.mainImage', 'product.variants']);
+
+        if ($categoryId) {
+            $relatedQuery->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));
+        }
+
+        $relatedProducts = $relatedQuery->inRandomOrder()->limit(8)->get();
+
+        // Если по категории ничего не найдено — берём рандомные товары из магазина
+        if ($relatedProducts->isEmpty()) {
+            $relatedProducts = StoreProduct::where('store_id', $store->id)
+                ->where('is_visible', true)
+                ->where('id', '!=', $storeProduct->id)
+                ->with(['product.mainImage', 'product.variants'])
+                ->inRandomOrder()
+                ->limit(8)
+                ->get();
+        }
 
         $this->trackPageView($store);
 
         $template = $store->theme?->resolvedTemplate() ?? 'default';
 
-        return view("storefront.themes.{$template}.product", compact('store', 'storeProduct'));
+        return view("storefront.themes.{$template}.product", compact('store', 'storeProduct', 'variantsJson', 'relatedProducts'));
+    }
+
+    /**
+     * Сформировать JSON-структуру вариантов товара для фронтенда
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildVariantsJson(StoreProduct $storeProduct): array
+    {
+        $product = $storeProduct->product;
+
+        if ($product->variants->isEmpty()) {
+            return [];
+        }
+
+        return $product->variants->map(function ($variant) {
+            $optionValues = $variant->optionValues->map(function ($ov) {
+                return [
+                    'option_id'   => $ov->product_option_id,
+                    'option_name' => $ov->option?->name ?? '',
+                    'option_code' => $ov->option?->code ?? '',
+                    'value_id'    => $ov->id,
+                    'value'       => $ov->value,
+                    'color_hex'   => $ov->color_hex,
+                ];
+            })->values()->all();
+
+            return [
+                'id'                  => $variant->id,
+                'sku'                 => $variant->sku,
+                'name'                => $variant->option_values_summary ?: $variant->sku,
+                'price'               => (float) ($variant->price_default ?? 0),
+                'old_price'           => $variant->old_price_default ? (float) $variant->old_price_default : null,
+                'stock'               => $variant->stock_default ?? 0,
+                'option_values'       => $optionValues,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Автодополнение поиска — возвращает JSON с результатами
+     *
+     * GET /store/{slug}/api/search?q=...
+     */
+    public function search(string $slug, Request $request): JsonResponse
+    {
+        $query = trim((string) $request->input('q', ''));
+
+        if (mb_strlen($query) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $store = $this->getPublishedStore($slug);
+
+        $escaped = $this->escapeLike($query);
+
+        $storeProducts = StoreProduct::where('store_id', $store->id)
+            ->where('is_visible', true)
+            ->where(function ($q) use ($escaped) {
+                $q->where('custom_name', 'like', "%{$escaped}%")
+                    ->orWhereHas('product', function ($pq) use ($escaped) {
+                        $pq->where('name', 'like', "%{$escaped}%")
+                            ->orWhere('article', 'like', "%{$escaped}%");
+                    });
+            })
+            ->with(['product.mainImage', 'product.variants'])
+            ->limit(6)
+            ->get();
+
+        $results = $storeProducts->map(function (StoreProduct $sp) use ($slug): array {
+            $image = $sp->product?->mainImage?->url;
+
+            return [
+                'id'    => $sp->id,
+                'name'  => $sp->getDisplayName(),
+                'price' => $sp->getDisplayPrice(),
+                'image' => $image,
+                'url'   => "/store/{$slug}/product/{$sp->id}",
+            ];
+        });
+
+        return response()->json(['results' => $results]);
     }
 
     /**
@@ -137,6 +252,14 @@ final class CatalogController extends Controller
             ->where('is_published', true)
             ->with('theme')
             ->firstOrFail();
+    }
+
+    /**
+     * Экранирование спецсимволов LIKE
+     */
+    protected function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
     /**

@@ -51,7 +51,13 @@ class SaleReservationService
                 }
 
                 try {
-                    $this->reserveItem($sale, $item);
+                    // Проверяем, является ли товар комплектом
+                    $variant = \App\Models\ProductVariant::with('product.bundleItems.componentVariant')->find($item->product_variant_id);
+                    if ($variant && $variant->product && $variant->product->is_bundle) {
+                        $this->reserveBundleItem($sale, $item, $variant->product);
+                    } else {
+                        $this->reserveItem($sale, $item);
+                    }
                     $results['success']++;
                 } catch (\Exception $e) {
                     $results['failed']++;
@@ -167,6 +173,88 @@ class SaleReservationService
     }
 
     /**
+     * Зарезервировать компоненты комплекта
+     * При продаже комплекта списываются все входящие в него товары
+     */
+    protected function reserveBundleItem(Sale $sale, SaleItem $item, \App\Models\Product $bundleProduct): void
+    {
+        $bundleQty = (int) $item->quantity;
+        $reservationIds = [];
+
+        foreach ($bundleProduct->bundleItems as $bundleItem) {
+            $componentVariant = $bundleItem->componentVariant;
+            $componentQty = $bundleItem->quantity * $bundleQty;
+
+            $warehouseSku = \App\Models\Warehouse\Sku::where('product_variant_id', $componentVariant->id)->first();
+            if (! $warehouseSku) {
+                throw new \Exception("Компонент комплекта '{$componentVariant->sku}' не зарегистрирован на складе");
+            }
+
+            $availableStock = $this->getAvailableStock($componentVariant, $sale->warehouse_id);
+            if ($availableStock < $componentQty) {
+                throw new \Exception(
+                    "Недостаточно компонента '{$componentVariant->sku}' для комплекта. Доступно: {$availableStock}, требуется: {$componentQty}"
+                );
+            }
+
+            // Списание через ledger
+            StockLedger::create([
+                'company_id' => $sale->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $sale->warehouse_id,
+                'sku_id' => $warehouseSku->id,
+                'qty_delta' => -$componentQty,
+                'cost_delta' => -($componentVariant->getPurchasePriceInBase() * $componentQty),
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => Sale::class,
+                'source_id' => $sale->id,
+                'created_by' => auth()->id(),
+            ]);
+
+            // Резерв для отслеживания
+            $reservation = StockReservation::create([
+                'company_id' => $sale->company_id,
+                'warehouse_id' => $sale->warehouse_id,
+                'sku_id' => $warehouseSku->id,
+                'qty' => $componentQty,
+                'status' => StockReservation::STATUS_ACTIVE,
+                'reason' => "Комплект: {$bundleProduct->name}",
+                'source_type' => Sale::class,
+                'source_id' => $sale->id,
+                'expires_at' => null,
+                'created_by' => auth()->id(),
+            ]);
+
+            $reservationIds[] = $reservation->id;
+
+            // Обновляем stock_default и синхронизируем с маркетплейсами
+            $componentVariant->decrementStock($componentQty);
+            $this->stockSyncService->syncVariantStock($componentVariant);
+        }
+
+        // Обновляем SaleItem
+        $item->update([
+            'stock_deducted' => true,
+            'stock_deducted_at' => now(),
+            'metadata' => array_merge($item->metadata ?? [], [
+                'is_bundle' => true,
+                'bundle_product_id' => $bundleProduct->id,
+                'reservation_ids' => $reservationIds,
+                'warehouse_id' => $sale->warehouse_id,
+            ]),
+        ]);
+
+        Log::info('Bundle stock reserved for sale', [
+            'sale_id' => $sale->id,
+            'item_id' => $item->id,
+            'bundle_id' => $bundleProduct->id,
+            'bundle_qty' => $bundleQty,
+            'components_count' => $bundleProduct->bundleItems->count(),
+        ]);
+    }
+
+    /**
      * Отгрузить товары (перевести резерв в потребление)
      *
      * @param  array|null  $itemIds  Конкретные позиции для отгрузки (null = все)
@@ -234,25 +322,33 @@ class SaleReservationService
      */
     protected function shipItem(Sale $sale, SaleItem $item): void
     {
-        $reservationId = $item->metadata['reservation_id'] ?? null;
+        $isBundle = $item->metadata['is_bundle'] ?? false;
 
-        if (! $reservationId) {
-            throw new \Exception('Резерв не найден для позиции');
+        if ($isBundle) {
+            // Комплект: несколько резервов
+            $reservationIds = $item->metadata['reservation_ids'] ?? [];
+            if (empty($reservationIds)) {
+                throw new \Exception('Резервы комплекта не найдены');
+            }
+            foreach ($reservationIds as $rid) {
+                $reservation = StockReservation::find($rid);
+                if ($reservation) {
+                    $reservation->update(['status' => StockReservation::STATUS_CONSUMED]);
+                }
+            }
+        } else {
+            // Обычный товар: один резерв
+            $reservationId = $item->metadata['reservation_id'] ?? null;
+            if (! $reservationId) {
+                throw new \Exception('Резерв не найден для позиции');
+            }
+            $reservation = StockReservation::find($reservationId);
+            if (! $reservation) {
+                throw new \Exception("Резерв #{$reservationId} не найден");
+            }
+            $reservation->update(['status' => StockReservation::STATUS_CONSUMED]);
         }
 
-        $reservation = StockReservation::find($reservationId);
-
-        if (! $reservation) {
-            throw new \Exception("Резерв #{$reservationId} не найден");
-        }
-
-        // Переводим резерв в статус CONSUMED (потреблён)
-        // Ledger entry уже был создан при резервировании
-        $reservation->update([
-            'status' => StockReservation::STATUS_CONSUMED,
-        ]);
-
-        // Обновляем metadata в item
         $item->update([
             'metadata' => array_merge($item->metadata ?? [], [
                 'shipped' => true,
@@ -264,6 +360,7 @@ class SaleReservationService
             'sale_id' => $sale->id,
             'item_id' => $item->id,
             'quantity' => $item->quantity,
+            'is_bundle' => $isBundle,
         ]);
     }
 
@@ -331,51 +428,14 @@ class SaleReservationService
      */
     protected function cancelItemReservation(SaleItem $item): void
     {
-        $reservationId = $item->metadata['reservation_id'] ?? null;
-        $warehouseSkuId = $item->metadata['warehouse_sku_id'] ?? null;
+        $isBundle = $item->metadata['is_bundle'] ?? false;
         $warehouseId = $item->metadata['warehouse_id'] ?? null;
 
-        if ($reservationId) {
-            $reservation = StockReservation::find($reservationId);
-
-            if ($reservation) {
-                $reservation->update([
-                    'status' => StockReservation::STATUS_CANCELLED,
-                ]);
-            }
+        if ($isBundle) {
+            $this->cancelBundleReservation($item, $warehouseId);
+        } else {
+            $this->cancelRegularReservation($item, $warehouseId);
         }
-
-        // Возвращаем остаток в ProductVariant (для маркетплейсов)
-        if ($item->productVariant) {
-            $item->productVariant->incrementStock((int) $item->quantity);
-
-            // Синхронизируем обновлённые остатки с маркетплейсами
-            $this->stockSyncService->syncVariantStock($item->productVariant);
-        }
-
-        // Возвращаем товар в stock_ledger (положительный entry)
-        if ($warehouseSkuId && $warehouseId) {
-            StockLedger::create([
-                'company_id' => $item->sale->company_id,
-                'occurred_at' => now(),
-                'warehouse_id' => $warehouseId,
-                'sku_id' => $warehouseSkuId,
-                'qty_delta' => $item->quantity, // Положительное = возврат
-                'cost_delta' => ($item->cost_price ?? 0) * $item->quantity,
-                'document_id' => null,
-                'document_line_id' => null,
-                'source_type' => Sale::class,
-                'source_id' => $item->sale_id,
-                'created_by' => auth()->id(),
-            ]);
-        }
-
-        Log::info('Stock returned on cancellation', [
-            'item_id' => $item->id,
-            'variant_id' => $item->product_variant_id,
-            'quantity' => $item->quantity,
-            'new_stock' => $item->productVariant?->stock_default,
-        ]);
 
         // Обновляем item
         $item->update([
@@ -389,7 +449,103 @@ class SaleReservationService
 
         Log::info('Reservation cancelled for sale item', [
             'item_id' => $item->id,
-            'reservation_id' => $reservationId,
+            'is_bundle' => $isBundle,
+        ]);
+    }
+
+    /**
+     * Отменить резерв обычного товара
+     */
+    protected function cancelRegularReservation(SaleItem $item, ?int $warehouseId): void
+    {
+        $reservationId = $item->metadata['reservation_id'] ?? null;
+        $warehouseSkuId = $item->metadata['warehouse_sku_id'] ?? null;
+
+        if ($reservationId) {
+            $reservation = StockReservation::find($reservationId);
+            if ($reservation) {
+                $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
+            }
+        }
+
+        if ($item->productVariant) {
+            $item->productVariant->incrementStock((int) $item->quantity);
+            $this->stockSyncService->syncVariantStock($item->productVariant);
+        }
+
+        if ($warehouseSkuId && $warehouseId) {
+            StockLedger::create([
+                'company_id' => $item->sale->company_id,
+                'occurred_at' => now(),
+                'warehouse_id' => $warehouseId,
+                'sku_id' => $warehouseSkuId,
+                'qty_delta' => $item->quantity,
+                'cost_delta' => ($item->cost_price ?? 0) * $item->quantity,
+                'document_id' => null,
+                'document_line_id' => null,
+                'source_type' => Sale::class,
+                'source_id' => $item->sale_id,
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        Log::info('Stock returned on cancellation', [
+            'item_id' => $item->id,
+            'variant_id' => $item->product_variant_id,
+            'quantity' => $item->quantity,
+        ]);
+    }
+
+    /**
+     * Отменить резервы комплекта — возвращаем все компоненты
+     */
+    protected function cancelBundleReservation(SaleItem $item, ?int $warehouseId): void
+    {
+        $reservationIds = $item->metadata['reservation_ids'] ?? [];
+        $bundleProductId = $item->metadata['bundle_product_id'] ?? null;
+
+        // Отменяем все резервы компонентов
+        foreach ($reservationIds as $rid) {
+            $reservation = StockReservation::find($rid);
+            if ($reservation) {
+                $reservation->update(['status' => StockReservation::STATUS_CANCELLED]);
+
+                // Возвращаем в ledger
+                if ($warehouseId) {
+                    StockLedger::create([
+                        'company_id' => $item->sale->company_id,
+                        'occurred_at' => now(),
+                        'warehouse_id' => $warehouseId,
+                        'sku_id' => $reservation->sku_id,
+                        'qty_delta' => $reservation->qty,
+                        'cost_delta' => 0,
+                        'document_id' => null,
+                        'document_line_id' => null,
+                        'source_type' => Sale::class,
+                        'source_id' => $item->sale_id,
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+            }
+        }
+
+        // Возвращаем остатки компонентов
+        if ($bundleProductId) {
+            $bundleProduct = \App\Models\Product::with('bundleItems.componentVariant')->find($bundleProductId);
+            if ($bundleProduct) {
+                $bundleQty = (int) $item->quantity;
+                foreach ($bundleProduct->bundleItems as $bundleItem) {
+                    $componentQty = $bundleItem->quantity * $bundleQty;
+                    $bundleItem->componentVariant->incrementStock($componentQty);
+                    $this->stockSyncService->syncVariantStock($bundleItem->componentVariant);
+                }
+            }
+        }
+
+        Log::info('Bundle stock returned on cancellation', [
+            'item_id' => $item->id,
+            'bundle_product_id' => $bundleProductId,
+            'reservations_cancelled' => count($reservationIds),
         ]);
     }
 

@@ -165,19 +165,19 @@
 
                 {{-- Навигация (desktop) --}}
                 <nav class="hidden lg:flex items-center gap-6 mx-8">
-                    <a href="/store/{{ $store->slug }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                    <a href="/store/{{ $store->slug }}" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug) && !request()->is('store/' . $store->slug . '/*') ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}" @if(request()->is('store/' . $store->slug) && !request()->is('store/' . $store->slug . '/*')) style="border-bottom: 2px solid var(--primary); padding-bottom: 2px;" @endif>
                         Главная
                     </a>
-                    <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                    <a href="/store/{{ $store->slug }}/catalog" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug . '/catalog*') ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}" @if(request()->is('store/' . $store->slug . '/catalog*')) style="border-bottom: 2px solid var(--primary); padding-bottom: 2px;" @endif>
                         Каталог
                     </a>
                     @foreach($menuCategories as $cat)
-                        <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                        <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="text-sm font-medium transition-opacity {{ request('category') == $cat->id ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}">
                             {{ $cat->custom_name ?: $cat->category->name }}
                         </a>
                     @endforeach
                     @foreach($menuPages as $page)
-                        <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="text-sm font-medium hover:opacity-75 transition-opacity">
+                        <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="text-sm font-medium transition-opacity {{ request()->is('store/' . $store->slug . '/page/' . $page->slug) ? 'opacity-100' : 'opacity-70 hover:opacity-100' }}">
                             {{ $page->title }}
                         </a>
                     @endforeach
@@ -192,6 +192,20 @@
                             </svg>
                         </button>
                     @endif
+
+                    {{-- Избранное --}}
+                    <a href="/store/{{ $store->slug }}/wishlist" class="relative p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Избранное">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                        <span
+                            x-show="$store.wishlist && $store.wishlist.count > 0"
+                            x-text="$store.wishlist?.count || 0"
+                            class="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-xs flex items-center justify-center font-bold"
+                            style="background: var(--accent);"
+                        ></span>
+                    </a>
+
                     @if($showCart)
                         <a href="/store/{{ $store->slug }}/cart" class="relative p-2 rounded-full hover:bg-black/5 transition-colors" aria-label="Корзина">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +234,7 @@
         @endif
     </div>
 
-    {{-- Поиск (выпадающий) --}}
+    {{-- Поиск с автодополнением --}}
     <div
         x-show="searchOpen"
         x-transition:enter="transition ease-out duration-200"
@@ -232,26 +246,121 @@
         x-cloak
         class="border-t border-gray-100"
         style="background: var(--header-bg);"
+        @keydown.escape.window="searchOpen = false; searchQuery = ''; searchResults = [];"
     >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <form action="/store/{{ $store->slug }}/catalog" method="GET" class="flex items-center gap-3">
+            <form action="/store/{{ $store->slug }}/catalog" method="GET" class="flex items-center gap-3" @submit="searchOpen = false; searchResults = [];">
                 <div class="flex-1 relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                    {{-- Иконка поиска / спиннер --}}
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg x-show="!searchLoading" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <svg x-show="searchLoading" x-cloak class="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+
+                    {{-- Поле ввода --}}
                     <input
                         type="search"
                         name="search"
                         x-ref="searchInput"
+                        x-model="searchQuery"
+                        @input="fetchSearchResults()"
+                        @focus="searchQuery.length >= 2 && fetchSearchResults()"
                         placeholder="Поиск товаров..."
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                        autocomplete="off"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:border-transparent text-sm bg-white text-gray-900"
                         style="--tw-ring-color: var(--primary);"
                     >
+
+                    {{-- Выпадающий список результатов --}}
+                    <div
+                        x-show="searchResults.length > 0 || (searchQuery.length >= 2 && !searchLoading && searchFetched)"
+                        x-cloak
+                        @click.outside="searchResults = []; searchFetched = false;"
+                        class="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                        style="max-height: 400px; overflow-y: auto;"
+                    >
+                        {{-- Результаты --}}
+                        <template x-if="searchResults.length > 0">
+                            <div>
+                                <template x-for="item in searchResults" :key="item.id">
+                                    <a
+                                        :href="item.url"
+                                        class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                                        @click="searchOpen = false; searchResults = []; searchQuery = '';"
+                                    >
+                                        {{-- Картинка товара --}}
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                            <img
+                                                x-show="item.image"
+                                                :src="item.image"
+                                                :alt="item.name"
+                                                class="w-full h-full object-cover"
+                                                @@error="$el.style.display='none'"
+                                            >
+                                            <div x-show="!item.image" class="w-full h-full flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        {{-- Название + цена --}}
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 truncate" x-text="item.name"></p>
+                                            <p class="text-xs text-gray-500" x-text="item.price > 0 ? formatPrice(item.price) : 'Цена не указана'"></p>
+                                        </div>
+
+                                        {{-- Стрелка --}}
+                                        <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
+                                </template>
+
+                                {{-- Ссылка «Показать все результаты» --}}
+                                <a
+                                    :href="`/store/{{ $store->slug }}/catalog?search=${encodeURIComponent(searchQuery)}`"
+                                    class="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium hover:bg-gray-50 transition-colors"
+                                    style="color: var(--primary);"
+                                    @click="searchOpen = false; searchResults = [];"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    Показать все результаты
+                                </a>
+                            </div>
+                        </template>
+
+                        {{-- Ничего не найдено --}}
+                        <template x-if="searchResults.length === 0 && searchQuery.length >= 2 && !searchLoading && searchFetched">
+                            <div class="px-4 py-6 text-center">
+                                <svg class="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <p class="text-sm text-gray-500">По запросу «<span x-text="searchQuery"></span>» ничего не найдено</p>
+                                <a
+                                    :href="`/store/{{ $store->slug }}/catalog?search=${encodeURIComponent(searchQuery)}`"
+                                    class="inline-block mt-2 text-xs font-medium"
+                                    style="color: var(--primary);"
+                                    @click="searchOpen = false; searchResults = [];"
+                                >
+                                    Поиск по каталогу →
+                                </a>
+                            </div>
+                        </template>
+                    </div>
                 </div>
-                <button type="submit" class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium">
+
+                <button type="submit" class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium shrink-0">
                     Найти
                 </button>
-                <button type="button" @click="searchOpen = false" class="p-2 rounded-full hover:bg-black/5 transition-colors">
+                <button type="button" @click="searchOpen = false; searchQuery = ''; searchResults = [];" class="p-2 rounded-full hover:bg-black/5 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -275,22 +384,50 @@
         style="background: var(--header-bg);"
     >
         <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
-            <a href="/store/{{ $store->slug }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+            <a href="/store/{{ $store->slug }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
                 Главная
             </a>
-            <a href="/store/{{ $store->slug }}/catalog" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+            <a href="/store/{{ $store->slug }}/catalog" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
                 Каталог
             </a>
             @foreach($menuCategories as $cat)
-                <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <a href="/store/{{ $store->slug }}/catalog?category={{ $cat->id }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
                     {{ $cat->custom_name ?: $cat->category->name }}
                 </a>
             @endforeach
             @foreach($menuPages as $page)
-                <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="block px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                <a href="/store/{{ $store->slug }}/page/{{ $page->slug }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-4.5 h-4.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
                     {{ $page->title }}
                 </a>
             @endforeach
+
+            {{-- Избранное (мобильное меню) --}}
+            <div class="pt-2 border-t border-gray-100 mt-2">
+                <a href="/store/{{ $store->slug }}/wishlist" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                    Избранное
+                    <span
+                        x-show="$store.wishlist && $store.wishlist.count > 0"
+                        x-text="'(' + ($store.wishlist?.count || 0) + ')'"
+                        class="font-bold"
+                        style="color: var(--primary);"
+                    ></span>
+                </a>
+            </div>
 
             @if($showCart)
                 <div class="pt-2 border-t border-gray-100 mt-2">
@@ -330,6 +467,13 @@
             searchOpen: false,
             cartCount: 0,
 
+            // Поиск с автодополнением
+            searchQuery: '',
+            searchResults: [],
+            searchLoading: false,
+            searchFetched: false,
+            _searchTimer: null,
+
             init() {
                 this.fetchCartCount();
 
@@ -344,7 +488,64 @@
                     this.$nextTick(() => {
                         this.$refs.searchInput?.focus();
                     });
+                } else {
+                    this.searchQuery = '';
+                    this.searchResults = [];
+                    this.searchFetched = false;
                 }
+            },
+
+            /**
+             * Запрос автодополнения к API с debounce 300ms
+             */
+            fetchSearchResults() {
+                clearTimeout(this._searchTimer);
+
+                if (this.searchQuery.length < 2) {
+                    this.searchResults = [];
+                    this.searchFetched = false;
+                    this.searchLoading = false;
+                    return;
+                }
+
+                this._searchTimer = setTimeout(async () => {
+                    this.searchLoading = true;
+                    this.searchFetched = false;
+
+                    try {
+                        const slug = '{{ $store->slug }}';
+                        const url = `/store/${slug}/api/search?q=${encodeURIComponent(this.searchQuery)}`;
+                        const response = await fetch(url, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.searchResults = data.results || [];
+                        } else {
+                            this.searchResults = [];
+                        }
+                    } catch (e) {
+                        this.searchResults = [];
+                    } finally {
+                        this.searchLoading = false;
+                        this.searchFetched = true;
+                    }
+                }, 300);
+            },
+
+            /**
+             * Форматирование цены с разделителями
+             */
+            formatPrice(price) {
+                if (!price || price <= 0) return 'Цена не указана';
+                return new Intl.NumberFormat('ru-RU', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                }).format(price) + ' сум';
             },
 
             async fetchCartCount() {

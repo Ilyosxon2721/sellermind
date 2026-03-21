@@ -514,6 +514,29 @@
             ensureChannelVariant(channelCode, variant) { let row = this.channelVariants.find(cv => (cv.channel_code === channelCode || cv.channel_id === channelCode) && ((variant.id && cv.product_variant_id === variant.id) || (!variant.id && cv.variant_sku === variant.sku))); if (!row) { row = {channel_code: channelCode, product_variant_id: variant.id, variant_sku: variant.sku, status: 'draft'}; this.channelVariants.push(row); } return row; },
             channelVariantValue(channelCode, variant, field) { const row = this.ensureChannelVariant(channelCode, variant); if (row[field] === undefined) row[field] = field === 'status' ? 'draft' : null; return {get value() { return row[field]; }, set value(v) { row[field] = v; }}; },
             copyBasePrices(channelCode) { this.variants.forEach(variant => { const row = this.ensureChannelVariant(channelCode, variant); row.price = variant.price_default; row.old_price = variant.old_price_default; }); },
+
+            // Массовое заполнение цен
+            showBulkPrices: false,
+            bulkPriceDefault: '',
+            bulkOldPriceDefault: '',
+            bulkPurchasePrice: '',
+            bulkPurchaseCurrency: '',
+            applyBulkPrices() {
+                this.variants.forEach(variant => {
+                    if (this.bulkPriceDefault !== '' && this.bulkPriceDefault !== null) {
+                        variant.price_default = parseFloat(this.bulkPriceDefault);
+                    }
+                    if (this.bulkOldPriceDefault !== '' && this.bulkOldPriceDefault !== null) {
+                        variant.old_price_default = parseFloat(this.bulkOldPriceDefault);
+                    }
+                    if (this.bulkPurchasePrice !== '' && this.bulkPurchasePrice !== null) {
+                        variant.purchase_price = parseFloat(this.bulkPurchasePrice);
+                    }
+                    if (this.bulkPurchaseCurrency !== '') {
+                        variant.purchase_price_currency = this.bulkPurchaseCurrency;
+                    }
+                });
+            },
             submit(alsoPublish = false) {
                 // Serialize hidden inputs
                 this.$refs.optionsInput.value = JSON.stringify(this.options);
@@ -1241,7 +1264,65 @@
                 <!-- Step 6: Prices -->
                 <section x-show="step === 6" class="space-y-6">
                     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Базовые цены</h2>
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-lg font-semibold text-gray-900">Базовые цены</h2>
+                            <button type="button" @click="showBulkPrices = !showBulkPrices"
+                                    class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+                                    :class="showBulkPrices ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                                <span class="flex items-center space-x-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <span>Массовое заполнение</span>
+                                </span>
+                            </button>
+                        </div>
+
+                        {{-- Панель массового редактирования --}}
+                        <div x-show="showBulkPrices" x-transition x-cloak
+                             class="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-sm font-medium text-orange-800">Заполните нужные поля и нажмите «Применить» — значения будут установлены для всех вариантов</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Цена ({{ $currency ?? 'UZS' }})</label>
+                                    <input type="number" step="0.01" min="0" x-model="bulkPriceDefault"
+                                           class="w-full border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                                           placeholder="—">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Старая цена ({{ $currency ?? 'UZS' }})</label>
+                                    <input type="number" step="0.01" min="0" x-model="bulkOldPriceDefault"
+                                           class="w-full border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                                           placeholder="—">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Закупка</label>
+                                    <input type="number" step="0.01" min="0" x-model="bulkPurchasePrice"
+                                           class="w-full border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                                           placeholder="—">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Валюта закупки</label>
+                                    <select x-model="bulkPurchaseCurrency"
+                                            class="w-full border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400">
+                                        <option value="">— не менять —</option>
+                                        <option value="UZS">UZS</option>
+                                        <option value="USD">USD</option>
+                                        <option value="RUB">RUB</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="KZT">KZT</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-end">
+                                    <button type="button" @click="applyBulkPrices()"
+                                            class="w-full px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors">
+                                        Применить ко всем
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm">
                                 <thead><tr class="text-left text-xs text-gray-500 bg-gray-50"><th class="px-3 py-2 rounded-l-lg">Вариант</th><th class="px-3 py-2">Цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Старая цена ({{ $currency ?? 'UZS' }})</th><th class="px-3 py-2">Закупка</th><th class="px-3 py-2 rounded-r-lg">Валюта закупки</th></tr></thead>

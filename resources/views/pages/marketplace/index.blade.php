@@ -187,6 +187,14 @@
                     <p class="text-gray-500 text-sm mt-1">{{ __('marketplace.subtitle') }}</p>
                 </div>
                 <div class="flex items-center space-x-3">
+                    <!-- Navigation Links -->
+                    <a href="/marketplace/stocks"
+                       class="hidden md:inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                        </svg>
+                        <span>Остатки МП</span>
+                    </a>
                     <!-- Quick Stats -->
                     <div class="hidden md:flex items-center space-x-4 bg-gray-50 px-4 py-2 rounded-xl">
                         <div class="flex items-center space-x-2">
@@ -774,7 +782,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Webhook Modal -->
 <div x-show="showWebhookModal" x-cloak
@@ -901,6 +908,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script>

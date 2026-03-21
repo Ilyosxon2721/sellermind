@@ -29,13 +29,13 @@ class UzumShop extends Model
 
     protected $casts = [
         'auto_confirm_enabled' => 'boolean',
-        'auto_reply_enabled'   => 'boolean',
-        'api_token'            => 'encrypted',
-        'session_token'        => 'encrypted',
-        'refresh_token'        => 'encrypted',
-        'seller_email'         => 'encrypted',
-        'seller_password'      => 'encrypted',
-        'token_expires_at'     => 'datetime',
+        'auto_reply_enabled' => 'boolean',
+        'api_token' => 'encrypted',
+        'session_token' => 'encrypted',
+        'refresh_token' => 'encrypted',
+        'seller_email' => 'encrypted',
+        'seller_password' => 'encrypted',
+        'token_expires_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -221,6 +221,118 @@ final class CheckoutController extends Controller
     }
 
     /**
+     * Быстрый заказ (Купить в 1 клик) — без выбора доставки и оплаты
+     *
+     * POST /store/{slug}/api/quick-order
+     */
+    public function quickOrder(string $slug, Request $request): JsonResponse
+    {
+        $store = $this->getPublishedStore($slug, [
+            'activeDeliveryMethods',
+            'activePaymentMethods',
+        ]);
+
+        $data = $request->validate([
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_phone' => ['required', 'string', 'max:50'],
+            'customer_note' => ['nullable', 'string', 'max:1000'],
+            'product_id' => ['required', 'integer'],
+            'variant_id' => ['nullable', 'integer'],
+            'quantity' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $quantity = (int) ($data['quantity'] ?? 1);
+
+        // Проверяем товар
+        $storeProduct = \App\Models\Store\StoreProduct::where('store_id', $store->id)
+            ->where('id', $data['product_id'])
+            ->where('is_visible', true)
+            ->with(['product.mainImage', 'product.variants'])
+            ->first();
+
+        if (! $storeProduct) {
+            return $this->errorResponse('Товар не найден', 'product_not_found', 'product_id', 404);
+        }
+
+        // Определяем вариант и цену
+        $variant = null;
+        if (! empty($data['variant_id'])) {
+            $variant = $storeProduct->product->variants
+                ->where('id', $data['variant_id'])
+                ->where('is_active', true)
+                ->first();
+        } elseif ($storeProduct->product->variants->isNotEmpty()) {
+            $variant = $storeProduct->product->variants->where('is_active', true)->first();
+        }
+
+        $price = $variant
+            ? (float) ($variant->price_default ?? $storeProduct->getDisplayPrice())
+            : $storeProduct->getDisplayPrice();
+
+        $variantLabel = $variant?->option_values_summary ?? $variant?->sku ?? null;
+        $itemName = $storeProduct->getDisplayName() . ($variantLabel ? " ({$variantLabel})" : '');
+        $subtotal = round($price * $quantity, 2);
+
+        // Берём первый доступный метод доставки и оплаты
+        $deliveryMethod = $store->activeDeliveryMethods->first();
+        $paymentMethod = $store->activePaymentMethods->first();
+
+        $deliveryPrice = $deliveryMethod
+            ? ($deliveryMethod->isFreeFor($subtotal) ? 0.0 : (float) $deliveryMethod->price)
+            : 0.0;
+
+        $total = round($subtotal + $deliveryPrice, 2);
+
+        // Создаём заказ
+        $order = DB::transaction(function () use ($store, $data, $storeProduct, $variant, $itemName, $price, $quantity, $subtotal, $deliveryPrice, $total, $deliveryMethod, $paymentMethod) {
+            $order = StoreOrder::create([
+                'store_id' => $store->id,
+                'customer_name' => $data['customer_name'],
+                'customer_phone' => $data['customer_phone'],
+                'delivery_method_id' => $deliveryMethod?->id,
+                'delivery_price' => $deliveryPrice,
+                'payment_method_id' => $paymentMethod?->id,
+                'payment_status' => StoreOrder::PAYMENT_PENDING,
+                'subtotal' => $subtotal,
+                'discount' => 0,
+                'total' => $total,
+                'status' => StoreOrder::STATUS_NEW,
+                'customer_note' => $data['customer_note'] ?? 'Быстрый заказ (1 клик)',
+            ]);
+
+            StoreOrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $storeProduct->id,
+                'variant_id' => $variant?->id,
+                'name' => $itemName,
+                'price' => $price,
+                'quantity' => $quantity,
+                'total' => $subtotal,
+            ]);
+
+            return $order;
+        });
+
+        $this->trackOrderCompleted($store, $total);
+
+        try {
+            $storeOrderService = app(\App\Services\Store\StoreOrderService::class);
+            $storeOrderService->syncOrderToSale($order);
+            $storeOrderService->notifyStoreOwner($order);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Quick order integration failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $this->successResponse(
+            $order->load('items'),
+            ['message' => 'Заказ успешно создан']
+        );
+    }
+
+    /**
      * Страница статуса заказа
      *
      * GET /store/{slug}/order/{orderNumber}

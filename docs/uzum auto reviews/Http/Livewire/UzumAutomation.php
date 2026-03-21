@@ -2,11 +2,11 @@
 
 namespace App\Http\Livewire;
 
-use App\Models\UzumShop;
-use App\Models\OrderConfirmLog;
-use App\Models\ReviewReplyLog;
 use App\Jobs\AutoConfirmFbsOrders;
 use App\Jobs\AutoReplyReviews;
+use App\Models\OrderConfirmLog;
+use App\Models\ReviewReplyLog;
+use App\Models\UzumShop;
 use App\Services\UzumSellerApi;
 use App\Services\UzumSellerAuth;
 use Livewire\Component;
@@ -18,25 +18,36 @@ class UzumAutomation extends Component
 
     // ─── Настройки магазина ───
     public ?int $shopId = null;
+
     public bool $autoConfirmEnabled = false;
+
     public bool $autoReplyEnabled = false;
+
     public string $reviewTone = 'friendly';
+
     public string $apiToken = '';
 
     // ─── Seller Login ───
     public string $sellerEmail = '';
+
     public string $sellerPassword = '';
+
     public bool $showSellerLogin = false;
+
     public bool $sellerConnected = false;
+
     public string $sellerLoginError = '';
 
     // ─── UI state ───
     public string $activeTab = 'orders'; // orders | reviews | logs
+
     public bool $showTokenInput = false;
 
     // ─── Статистика ───
     public int $pendingOrdersCount = 0;
+
     public int $todayConfirmed = 0;
+
     public int $todayReplied = 0;
 
     public function mount(): void
@@ -48,7 +59,7 @@ class UzumAutomation extends Component
             $this->autoConfirmEnabled = $shop->auto_confirm_enabled;
             $this->autoReplyEnabled = $shop->auto_reply_enabled;
             $this->reviewTone = $shop->review_tone ?? 'friendly';
-            $this->sellerConnected = !empty($shop->session_token) || !empty($shop->seller_email);
+            $this->sellerConnected = ! empty($shop->session_token) || ! empty($shop->seller_email);
             $this->loadStats();
         }
     }
@@ -61,22 +72,24 @@ class UzumAutomation extends Component
 
         if (empty($this->sellerEmail) || empty($this->sellerPassword)) {
             $this->sellerLoginError = 'Введи email и пароль';
+
             return;
         }
 
         $shop = $this->getCurrentShop();
-        if (!$shop) {
+        if (! $shop) {
             $this->sellerLoginError = 'Магазин не найден';
+
             return;
         }
 
-        $auth = new UzumSellerAuth();
+        $auth = new UzumSellerAuth;
         $result = $auth->loginAndSave($shop, $this->sellerEmail, $this->sellerPassword);
 
         if ($result['success']) {
             // Сохраняем credentials для авто-ре-логина
             $shop->update([
-                'seller_email'    => $this->sellerEmail,
+                'seller_email' => $this->sellerEmail,
                 'seller_password' => $this->sellerPassword,
             ]);
 
@@ -94,14 +107,16 @@ class UzumAutomation extends Component
     public function disconnectSeller(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
         $shop->update([
-            'session_token'    => null,
-            'refresh_token'    => null,
+            'session_token' => null,
+            'refresh_token' => null,
             'token_expires_at' => null,
-            'seller_email'     => null,
-            'seller_password'  => null,
+            'seller_email' => null,
+            'seller_password' => null,
             'auto_reply_enabled' => false,
         ]);
 
@@ -114,7 +129,9 @@ class UzumAutomation extends Component
     public function loadStats(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
         // Количество подтверждённых сегодня
         $this->todayConfirmed = OrderConfirmLog::where('status', 'confirmed')
@@ -150,9 +167,11 @@ class UzumAutomation extends Component
     public function toggleAutoConfirm(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
-        $this->autoConfirmEnabled = !$this->autoConfirmEnabled;
+        $this->autoConfirmEnabled = ! $this->autoConfirmEnabled;
         $shop->update(['auto_confirm_enabled' => $this->autoConfirmEnabled]);
 
         $this->dispatch('notify', [
@@ -165,9 +184,11 @@ class UzumAutomation extends Component
     public function toggleAutoReply(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
-        $this->autoReplyEnabled = !$this->autoReplyEnabled;
+        $this->autoReplyEnabled = ! $this->autoReplyEnabled;
         $shop->update(['auto_reply_enabled' => $this->autoReplyEnabled]);
 
         $this->dispatch('notify', [
@@ -180,7 +201,9 @@ class UzumAutomation extends Component
     public function updateTone(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
         $shop->update(['review_tone' => $this->reviewTone]);
 
@@ -190,7 +213,9 @@ class UzumAutomation extends Component
     public function saveToken(): void
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return;
+        if (! $shop) {
+            return;
+        }
 
         $shop->update(['api_token' => $this->apiToken]);
         $this->showTokenInput = false;
@@ -234,7 +259,9 @@ class UzumAutomation extends Component
     public function getReplyLogsProperty()
     {
         $shop = $this->getCurrentShop();
-        if (!$shop) return collect();
+        if (! $shop) {
+            return collect();
+        }
 
         return ReviewReplyLog::where('uzum_shop_id', $shop->uzum_shop_id)
             ->latest()

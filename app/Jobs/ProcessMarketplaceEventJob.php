@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 final class ProcessMarketplaceEventJob implements ShouldQueue
@@ -42,8 +43,20 @@ final class ProcessMarketplaceEventJob implements ShouldQueue
             // Broadcast через WebSocket
             $broadcaster->broadcast($this->event);
 
-            // Telegram уведомление
-            $telegram->notify($this->event);
+            // Telegram уведомление — дедупликация через Redis (30 минут)
+            $dedupKey = 'tg_event:' . $this->event->marketplace->value
+                . ':' . $this->event->entity_id
+                . ':' . $this->event->event_type->value;
+
+            if (! Cache::has($dedupKey)) {
+                $telegram->notify($this->event);
+                Cache::put($dedupKey, true, now()->addMinutes(30));
+            } else {
+                Log::debug('ProcessMarketplaceEventJob: Telegram notification deduplicated', [
+                    'uuid' => $this->event->uuid,
+                    'entity_id' => $this->event->entity_id,
+                ]);
+            }
 
             $this->event->markProcessed();
 

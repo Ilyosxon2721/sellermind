@@ -103,6 +103,7 @@
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Категория</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Себестоимость</th>
                     <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Варианты</th>
+                    <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Остаток</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Каналы</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Обновлено</th>
                     <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"></th>
@@ -151,6 +152,10 @@
                         <td class="px-6 py-4 text-center">
                             <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">{{ $product->variants_count }}</span>
                         </td>
+                        <td class="px-6 py-4 text-center">
+                            @php $stock = (int) ($product->total_stock ?? 0); @endphp
+                            <span class="px-3 py-1 rounded-full text-sm font-medium {{ $stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500' }}">{{ $stock }}</span>
+                        </td>
                         <td class="px-6 py-4">
                             <div class="flex gap-1.5">
                                 @foreach(['WB' => 'WB', 'OZON' => 'Ozon', 'YM' => 'YM', 'UZUM' => 'Uzum'] as $code => $label)
@@ -185,7 +190,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="10" class="px-6 py-12 text-center">
                             <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             </div>

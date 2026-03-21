@@ -1,5 +1,7 @@
 @extends('storefront.layouts.app')
 
+@section('page_title', 'Оформление заказа — ' . $store->name)
+
 @section('content')
 @php
     $currency = $store->currency ?? 'сум';
@@ -56,7 +58,7 @@
                                 x-model="form.customer_phone"
                                 class="w-full px-4 py-2.5 rounded border text-sm focus:outline-none transition-colors"
                                 :class="errors.customer_phone ? 'border-red-300' : 'border-gray-200 focus:border-gray-400'"
-                                placeholder="+998 XX XXX XX XX"
+                                placeholder="Номер телефона"
                             >
                             <p x-show="errors.customer_phone" x-text="errors.customer_phone" class="mt-1 text-xs text-red-500"></p>
                         </div>
