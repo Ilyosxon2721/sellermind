@@ -259,9 +259,11 @@ class StockSyncService
 
         $uzum = new UzumApiManager($account);
 
-        // Ищем barcode и skuTitle из raw_payload (самый надёжный источник)
+        // Ищем barcode, skuTitle и fbsLinked/dbsLinked из raw_payload
         $barcode = null;
         $skuTitle = null;
+        $fbsLinked = true;
+        $dbsLinked = true;
         foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
             if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                 $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
@@ -270,23 +272,26 @@ class StockSyncService
             }
         }
 
-        // Если не нашли в raw_payload — GET текущих остатков от Uzum
-        if (! $barcode || ! $skuTitle) {
-            try {
-                $currentStocks = $uzum->stocks()->get();
-                $skuListFromApi = $currentStocks['skuAmountList'] ?? $currentStocks['payload']['skuAmountList'] ?? [];
-                if (is_array($skuListFromApi)) {
-                    foreach ($skuListFromApi as $sku) {
-                        if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                            $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
-                            $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                            break;
-                        }
+        // GET текущих остатков от Uzum — получаем fbsLinked/dbsLinked для этого SKU
+        try {
+            $currentStocks = $uzum->stocks()->get();
+            $skuListFromApi = $currentStocks['skuAmountList']
+                ?? $currentStocks['payload']['skuAmountList']
+                ?? [];
+            if (is_array($skuListFromApi)) {
+                foreach ($skuListFromApi as $sku) {
+                    if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                        $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
+                        $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
+                        // Берём реальные fbsLinked/dbsLinked из Uzum
+                        $fbsLinked = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : true;
+                        $dbsLinked = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : true;
+                        break;
                     }
                 }
-            } catch (\Exception $e) {
-                Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
             }
+        } catch (\Exception $e) {
+            Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
         }
 
         if (! $barcode) {
@@ -302,10 +307,12 @@ class StockSyncService
             'barcode' => $barcode,
             'sku_title' => $skuTitle,
             'product_title' => $productTitle,
+            'fbs_linked' => $fbsLinked,
+            'dbs_linked' => $dbsLinked,
             'stock' => $stock,
         ]);
 
-        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle);
+        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $fbsLinked, $dbsLinked);
 
         // Uzum возвращает updatedRecords=0 когда товар в статусе RUN_OUT или SKU не активен
         $updatedRecords = $result['payload']['updatedRecords']
