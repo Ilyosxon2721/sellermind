@@ -74,8 +74,11 @@ final class UzumApi
             'desc' => $desc,
             'auth_type' => $authType,
             'query' => $this->sanitize($query),
-            'body' => $method !== 'GET' ? $body : null,
         ]);
+        // TEMP DEBUG: логируем body на error уровне чтобы увидеть запрос
+        if ($method !== 'GET') {
+            Log::error('DEBUG Uzum request body', ['body' => $body, 'url' => $url]);
+        }
 
         $client = Http::timeout($this->timeout)
             ->withOptions(['verify' => $this->verifySsl])
