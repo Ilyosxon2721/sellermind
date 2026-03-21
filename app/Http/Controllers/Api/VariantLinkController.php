@@ -221,7 +221,7 @@ class VariantLinkController extends Controller
             ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
             ->where('sync_stock_enabled', true)
-            ->with(['variant', 'marketplaceProduct'])
+            ->with(['variant', 'marketplaceProduct', 'account'])
             ->get();
 
         if ($links->isEmpty()) {
