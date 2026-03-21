@@ -815,7 +815,7 @@ final class UzumClient implements MarketplaceClientInterface
                 'error' => $e->getMessage(),
             ]);
 
-            throw new \RuntimeException('Не удалось обновить остаток товара. Попробуйте позже или проверьте настройки API.');
+            throw new \RuntimeException($e->getMessage());
         }
     }
 
