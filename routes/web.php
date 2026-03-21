@@ -4,53 +4,22 @@ use App\Http\Controllers\MarketplaceSyncLogController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\VpcControlApiController;
 use App\Http\Controllers\VpcSessionController;
+use App\Http\Controllers\Web\LandingController;
+use App\Http\Controllers\Web\MarketplaceWebController;
+use App\Http\Controllers\Web\PageController;
 use App\Http\Controllers\Web\Products\ProductWebController;
 use App\Http\Controllers\Web\Warehouse\WarehouseController;
-// VPC Sessions - DISABLED: Module not complete, enable via VPC_ENABLED=true in .env
-use App\Models\AP\Supplier;
 use Illuminate\Support\Facades\Route;
 
 // Localized Landing Pages
-Route::get('/uz', function (Illuminate\Http\Request $request) {
-    App::setLocale('uz');
-    $plans = \App\Models\Plan::where('is_active', true)
-        ->orderBy('sort_order')
-        ->get();
-
-    return view('welcome', compact('plans'));
-})->name('home.uz');
-
-Route::get('/ru', function (Illuminate\Http\Request $request) {
-    App::setLocale('ru');
-    $plans = \App\Models\Plan::where('is_active', true)
-        ->orderBy('sort_order')
-        ->get();
-
-    return view('welcome', compact('plans'));
-})->name('home.ru');
-
-Route::get('/en', function (Illuminate\Http\Request $request) {
-    App::setLocale('en');
-    $plans = \App\Models\Plan::where('is_active', true)
-        ->orderBy('sort_order')
-        ->get();
-
-    return view('welcome', compact('plans'));
-})->name('home.en');
+Route::get('/uz', [LandingController::class, 'home'])->defaults('locale', 'uz')->name('home.uz');
+Route::get('/ru', [LandingController::class, 'home'])->defaults('locale', 'ru')->name('home.ru');
+Route::get('/en', [LandingController::class, 'home'])->defaults('locale', 'en')->name('home.en');
 
 // Localized auth routes
 Route::prefix('{locale}')->whereIn('locale', ['uz', 'ru', 'en'])->group(function () {
-    Route::get('/login', function ($locale) {
-        App::setLocale($locale);
-
-        return view('pages.login');
-    })->name('login.localized');
-
-    Route::get('/register', function ($locale) {
-        App::setLocale($locale);
-
-        return view('pages.register');
-    })->name('register.localized');
+    Route::get('/login', [LandingController::class, 'login'])->name('login.localized');
+    Route::get('/register', [LandingController::class, 'register'])->name('register.localized');
 });
 
 // Root redirect to Russian
@@ -62,13 +31,8 @@ Route::get('/', function (Illuminate\Http\Request $request) {
     return redirect('/ru');
 })->name('home');
 
-Route::get('/login', function () {
-    return view('pages.login');
-})->name('login');
-
-Route::get('/register', function () {
-    return view('pages.register');
-})->name('register');
+Route::view('/login', 'pages.login')->name('login');
+Route::view('/register', 'pages.register')->name('register');
 
 // Health check for PWA offline detection
 Route::get('/api/health', function () {
@@ -76,9 +40,7 @@ Route::get('/api/health', function () {
 });
 
 // Offline page for PWA
-Route::get('/offline', function () {
-    return view('offline');
-})->name('offline');
+Route::view('/offline', 'offline')->name('offline');
 
 // Auth API routes (in web.php for proper session cookie handling)
 // These MUST be in web.php, not api.php, for session cookies to work correctly
@@ -89,25 +51,12 @@ Route::prefix('api/auth')->middleware('throttle:auth')->group(function () {
 
 // App pages - Dashboard is the main page after login (protected by auth middleware)
 Route::middleware('auth.any')->group(function () {
-    Route::get('/home', function () {
-        return redirect()->route('dashboard');
-    });
+    Route::redirect('/home', '/dashboard');
 
-    Route::get('/dashboard', function () {
-        return view('pages.dashboard');
-    })->name('dashboard');
-
-    Route::get('/chat', function () {
-        return view('pages.chat');
-    })->name('chat');
-
-    Route::get('/settings', function () {
-        return view('pages.settings');
-    })->name('settings');
-
-    Route::get('/profile', function () {
-        return view('pages.profile');
-    })->name('profile');
+    Route::view('/dashboard', 'pages.dashboard')->name('dashboard');
+    Route::view('/chat', 'pages.chat')->name('chat');
+    Route::view('/settings', 'pages.settings')->name('settings');
+    Route::view('/profile', 'pages.profile')->name('profile');
 
     // Integrations
     Route::get('/integrations', [\App\Http\Controllers\Web\IntegrationController::class, 'index'])
@@ -116,56 +65,28 @@ Route::middleware('auth.any')->group(function () {
         ->name('integrations.risment');
 
     // RISMENT Integration Link page (legacy redirect)
-    Route::get('/integration/risment', function () {
-        return redirect()->route('integrations.risment');
-    })->name('integration.risment');
+    Route::redirect('/integration/risment', '/integrations/risment')->name('integration.risment');
 
-    Route::get('/promotions', function () {
-        return view('pages.promotions');
-    })->name('promotions');
-
-    Route::get('/analytics', function () {
-        return view('pages.analytics');
-    })->name('analytics');
+    Route::view('/promotions', 'pages.promotions')->name('promotions');
+    Route::view('/analytics', 'pages.analytics')->name('analytics');
 
     // Analytics sub-pages
     Route::prefix('analytics')->name('analytics.')->group(function () {
-        Route::get('/revenue', function () {
-            return view('pages.analytics');
-        })->name('revenue');
-
-        Route::get('/products', function () {
-            return view('pages.analytics');
-        })->name('products');
-
-        Route::get('/abc', function () {
-            return view('pages.analytics');
-        })->name('abc');
-
-        Route::get('/pnl', function () {
-            return view('pages.analytics');
-        })->name('pnl');
-
-        Route::get('/stock', function () {
-            return view('pages.analytics');
-        })->name('stock');
-
-        Route::get('/funnel', function () {
-            return view('pages.analytics');
-        })->name('funnel');
+        Route::view('/revenue', 'pages.analytics')->name('revenue');
+        Route::view('/products', 'pages.analytics')->name('products');
+        Route::view('/abc', 'pages.analytics')->name('abc');
+        Route::view('/pnl', 'pages.analytics')->name('pnl');
+        Route::view('/stock', 'pages.analytics')->name('stock');
+        Route::view('/funnel', 'pages.analytics')->name('funnel');
     });
 
-    Route::get('/reviews', function () {
-        return view('pages.reviews');
-    })->name('reviews');
+    Route::view('/reviews', 'pages.reviews')->name('reviews');
 
     Route::get('/products/categories', [\App\Http\Controllers\Web\CategoryController::class, 'index'])->name('web.categories.index');
 
     Route::prefix('products')->name('web.products.')->group(function () {
         Route::get('/', [ProductWebController::class, 'index'])->name('index');
-        Route::get('/purchase-prices', function () {
-            return view('products.purchase-prices');
-        })->name('purchase-prices');
+        Route::view('/purchase-prices', 'products.purchase-prices')->name('purchase-prices');
         Route::get('/create', [ProductWebController::class, 'create'])->name('create');
         Route::get('/{product}/edit', [ProductWebController::class, 'edit'])->name('edit');
 
@@ -191,20 +112,12 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('in.create');
         Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('warehouses');
-        Route::get('/create', function () {
-            return view('warehouse.warehouse-create');
-        })->name('warehouse.create');
-        Route::get('/{id}/edit', function ($id) {
-            return view('warehouse.warehouse-edit', ['warehouseId' => $id]);
-        })->name('warehouse.edit');
+        Route::get('/create', [PageController::class, 'warehouseCreate'])->name('warehouse.create');
+        Route::get('/{id}/edit', [PageController::class, 'warehouseEdit'])->name('warehouse.edit');
         Route::get('/documents', [WarehouseController::class, 'documents'])->name('documents');
         Route::get('/documents/{id}', [WarehouseController::class, 'document'])->name('documents.show');
         Route::get('/reservations', [WarehouseController::class, 'reservations'])->name('reservations');
-        Route::get('/ledger', function () {
-            $controller = app(WarehouseController::class);
-
-            return $controller->ledger(request());
-        })->name('ledger');
+        Route::get('/ledger', [WarehouseController::class, 'ledger'])->name('ledger');
 
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
@@ -234,20 +147,12 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/in/create', [WarehouseController::class, 'createReceipt'])->name('cabinet.warehouse.in.create');
         Route::get('/in/{id}/edit', [WarehouseController::class, 'editReceipt'])->name('cabinet.warehouse.in.edit');
         Route::get('/list', [WarehouseController::class, 'warehouses'])->name('cabinet.warehouse.warehouses');
-        Route::get('/create', function () {
-            return view('warehouse.warehouse-create');
-        })->name('cabinet.warehouse.create');
-        Route::get('/{id}/edit', function ($id) {
-            return view('warehouse.warehouse-edit', ['warehouseId' => $id]);
-        })->name('cabinet.warehouse.edit');
+        Route::get('/create', [PageController::class, 'warehouseCreate'])->name('cabinet.warehouse.create');
+        Route::get('/{id}/edit', [PageController::class, 'warehouseEdit'])->name('cabinet.warehouse.edit');
         Route::get('/documents', [WarehouseController::class, 'documents'])->name('cabinet.warehouse.documents');
         Route::get('/documents/{id}', [WarehouseController::class, 'document'])->name('cabinet.warehouse.documents.show');
         Route::get('/reservations', [WarehouseController::class, 'reservations'])->name('cabinet.warehouse.reservations');
-        Route::get('/ledger', function () {
-            $controller = app(WarehouseController::class);
-
-            return $controller->ledger(request());
-        })->name('cabinet.warehouse.ledger');
+        Route::get('/ledger', [WarehouseController::class, 'ledger'])->name('cabinet.warehouse.ledger');
 
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('cabinet.warehouse.write-offs');
@@ -256,123 +161,51 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/inventory/{id}/edit', [WarehouseController::class, 'editInventory'])->name('cabinet.warehouse.inventory.edit');
     });
 
-    Route::get('/tasks', function () {
-        return view('pages.tasks');
-    })->name('tasks');
+    Route::view('/tasks', 'pages.tasks')->name('tasks');
 
     // PWA-optimized tasks
-    Route::get('/tasks-pwa', function () {
-        return view('pages.tasks-pwa');
-    })->name('tasks.pwa');
+    Route::view('/tasks-pwa', 'pages.tasks-pwa')->name('tasks.pwa');
 
     // Agent Mode
-    Route::get('/agent', function () {
-        return view('pages.agent.index');
-    })->name('agent.index');
+    Route::view('/agent', 'pages.agent.index')->name('agent.index');
+    Route::view('/agent/create', 'pages.agent.create')->name('agent.create');
+    Route::get('/agent/{taskId}', [PageController::class, 'agentShow'])->name('agent.show');
+    Route::get('/agent/run/{runId}', [PageController::class, 'agentRun'])->name('agent.run');
 
-    Route::get('/agent/create', function () {
-        return view('pages.agent.create');
-    })->name('agent.create');
-
-    Route::get('/agent/{taskId}', function ($taskId) {
-        return view('pages.agent.show', ['taskId' => $taskId]);
-    })->name('agent.show');
-
-    Route::get('/agent/run/{runId}', function ($runId) {
-        return view('pages.agent.run', ['runId' => $runId]);
-    })->name('agent.run');
-
-    Route::get('/sales', function () {
-        return view('sales.index');
-    })->name('sales.index');
-
-    Route::get('/sales/create', function () {
-        return view('sales.create');
-    })->name('sales.create');
-
-    Route::get('/sales/{id}', function ($id) {
-        return view('sales.show', ['orderId' => $id]);
-    })->name('sales.show');
+    Route::view('/sales', 'sales.index')->name('sales.index');
+    Route::view('/sales/create', 'sales.create')->name('sales.create');
+    Route::get('/sales/{id}', [PageController::class, 'salesShow'])->name('sales.show');
 
     // Sale print routes
     Route::get('/sales/{sale}/print/receipt', [\App\Http\Controllers\SalePrintController::class, 'receipt'])->name('sales.print.receipt');
     Route::get('/sales/{sale}/print/invoice', [\App\Http\Controllers\SalePrintController::class, 'invoice'])->name('sales.print.invoice');
     Route::get('/sales/{sale}/print/waybill', [\App\Http\Controllers\SalePrintController::class, 'waybill'])->name('sales.print.waybill');
 
-    Route::get('/companies', function () {
-        return view('companies.index');
-    })->name('companies.index');
+    Route::view('/companies', 'companies.index')->name('companies.index');
+    Route::view('/company/profile', 'company.profile')->name('company.profile');
+    Route::view('/counterparties', 'counterparties.index')->name('counterparties.index');
+    Route::view('/inventory', 'inventory.index')->name('inventory.index');
+    Route::view('/replenishment', 'replenishment.index')->name('replenishment.index');
 
-    Route::get('/company/profile', function () {
-        return view('company.profile');
-    })->name('company.profile');
+    Route::get('/ap', [PageController::class, 'accountsPayable'])->name('ap.index');
 
-    Route::get('/counterparties', function () {
-        return view('counterparties.index');
-    })->name('counterparties.index');
+    Route::view('/finance', 'finance.index')->name('finance.index');
+    Route::view('/debts', 'debts.index')->name('debts.index');
+    Route::get('/debts/{id}', [PageController::class, 'debtsShow'])->name('debts.show');
 
-    Route::get('/inventory', function () {
-        return view('inventory.index');
-    })->name('inventory.index');
-
-    Route::get('/replenishment', function () {
-        return view('replenishment.index');
-    })->name('replenishment.index');
-
-    Route::get('/ap', function () {
-        $companyId = auth()->user()?->company_id ?? \App\Models\Company::query()->value('id');
-        $suppliers = Supplier::query()
-            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        return view('ap.index', [
-            'suppliers' => $suppliers,
-        ]);
-    })->name('ap.index');
-
-    Route::get('/finance', function () {
-        return view('finance.index');
-    })->name('finance.index');
-
-    Route::get('/debts', function () {
-        return view('debts.index');
-    })->name('debts.index');
-
-    Route::get('/debts/{id}', function ($id) {
-        return view('debts.show', ['debtId' => $id]);
-    })->name('debts.show');
-
-    Route::get('/pricing', function () {
-        return view('pricing.index');
-    })->name('pricing.index');
-
-    Route::get('/pricing/autopricing', function () {
-        return view('pricing.autopricing');
-    })->name('pricing.autopricing');
-
-    Route::get('/pricing/calculator', function () {
-        return view('pricing.calculator');
-    })->name('pricing.calculator');
+    Route::view('/pricing', 'pricing.index')->name('pricing.index');
+    Route::view('/pricing/autopricing', 'pricing.autopricing')->name('pricing.autopricing');
+    Route::view('/pricing/calculator', 'pricing.calculator')->name('pricing.calculator');
 
     // Subscription Plans (Public - can be accessed without auth)
-    Route::get('/plans', function () {
-        return view('plans.index');
-    })->withoutMiddleware('auth')->name('plans.index');
+    Route::view('/plans', 'plans.index')->withoutMiddleware('auth')->name('plans.index');
 
     // Marketplace Module
-    Route::get('/marketplace', function () {
-        return view('pages.marketplace.index');
-    })->name('marketplace.index');
+    Route::view('/marketplace', 'pages.marketplace.index')->name('marketplace.index');
 
     // PWA-optimized marketplace pages
-    Route::get('/marketplace-pwa', function () {
-        return view('pages.marketplace.index-pwa');
-    })->name('marketplace.pwa');
-
-    Route::get('/marketplace-pwa/{accountId}', function ($accountId) {
-        return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
-    })->name('marketplace.show.pwa');
+    Route::view('/marketplace-pwa', 'pages.marketplace.index-pwa')->name('marketplace.pwa');
+    Route::get('/marketplace-pwa/{accountId}', [PageController::class, 'marketplacePwaShow'])->name('marketplace.show.pwa');
 
     // Marketplace sync logs (admin) - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/sync-logs', [MarketplaceSyncLogController::class, 'index'])
@@ -380,299 +213,62 @@ Route::middleware('auth.any')->group(function () {
     Route::get('/marketplace/sync-logs/json', [MarketplaceSyncLogController::class, 'json'])
         ->name('marketplace.sync-logs.json');
 
-    Route::get('/marketplace/{accountId}', function ($accountId) {
-        return view('pages.marketplace.show', ['accountId' => $accountId]);
-    })->name('marketplace.show');
-
-    Route::get('/marketplace/{accountId}/products', function ($accountId) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-
-        return view('pages.marketplace.products', [
-            'accountId' => $accountId,
-            'accountMarketplace' => $account->marketplace,
-            'accountName' => $account->name,
-        ]);
-    })->name('marketplace.products');
+    Route::get('/marketplace/{accountId}', [PageController::class, 'marketplaceShow'])->name('marketplace.show');
+    Route::get('/marketplace/{accountId}/products', [MarketplaceWebController::class, 'products'])->name('marketplace.products');
 
     // JSON для UI (чтение из БД без повторной синхронизации)
-    Route::get('/marketplace/{accountId}/products/json', function (\Illuminate\Http\Request $request, $accountId) {
-        $perPage = (int) $request->get('per_page', 50);
-        $perPage = max(1, min($perPage, 100));
-        $search = $request->get('search', '');
-        $shopId = $request->get('shop_id', '');
-
-        $query = \App\Models\MarketplaceProduct::where('marketplace_account_id', $accountId)
-            ->select([
-                'id',
-                'marketplace_account_id',
-                'product_id',
-                'external_product_id',
-                'external_offer_id',
-                'external_sku',
-                'status',
-                'shop_id',
-                'title',
-                'category',
-                'preview_image',
-                'last_synced_price',
-                'last_synced_stock',
-                'last_synced_at',
-                'updated_at',
-                'created_at',
-            ]);
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('external_offer_id', 'like', "%{$search}%")
-                    ->orWhere('external_sku', 'like', "%{$search}%");
-            });
-        }
-
-        if ($shopId) {
-            $query->where('shop_id', $shopId);
-        }
-
-        $products = $query->orderByDesc('id')->paginate($perPage);
-
-        // Get linked variants for these products
-        $productIds = collect($products->items())->pluck('id')->toArray();
-        $links = \App\Models\VariantMarketplaceLink::whereIn('marketplace_product_id', $productIds)
-            ->where('is_active', true)
-            ->with(['variant:id,sku,stock_default,option_values_summary', 'variant.product:id,name'])
-            ->get()
-            ->keyBy('marketplace_product_id');
-
-        // Map products with linked variant info
-        $productsWithLinks = collect($products->items())->map(function ($product) use ($links) {
-            $arr = $product->toArray();
-            $link = $links->get($product->id);
-            if ($link && $link->variant) {
-                $arr['linked_variant'] = [
-                    'id' => $link->variant->id,
-                    'sku' => $link->variant->sku,
-                    'name' => $link->variant->product?->name,
-                    'stock' => $link->variant->stock_default,
-                    'options' => $link->variant->option_values_summary,
-                ];
-            }
-
-            return $arr;
-        })->values();
-
-        // Shops lookup (name by external_id)
-        $shops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->get(['external_id', 'name']);
-
-        return response()->json([
-            'products' => $productsWithLinks,
-            'shops' => $shops,
-            'pagination' => [
-                'total' => $products->total(),
-                'per_page' => $products->perPage(),
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-            ],
-        ]);
-    })->name('marketplace.products.json');
+    Route::get('/marketplace/{accountId}/products/json', [MarketplaceWebController::class, 'productsJson'])->name('marketplace.products.json');
 
     // Деталь продукта с raw_payload по ID
-    Route::get('/marketplace/{accountId}/products/{productId}/json', function (\Illuminate\Http\Request $request, $accountId, $productId) {
-        $product = \App\Models\MarketplaceProduct::where('marketplace_account_id', $accountId)
-            ->findOrFail($productId);
-
-        return response()->json([
-            'product' => $product->only([
-                'id',
-                'marketplace_account_id',
-                'product_id',
-                'external_product_id',
-                'external_offer_id',
-                'external_sku',
-                'status',
-                'shop_id',
-                'title',
-                'category',
-                'preview_image',
-                'last_synced_price',
-                'last_synced_stock',
-                'last_synced_at',
-                'updated_at',
-                'created_at',
-                'raw_payload',
-            ]),
-        ]);
-    })->name('marketplace.products.show.json');
+    Route::get('/marketplace/{accountId}/products/{productId}/json', [MarketplaceWebController::class, 'productJson'])->name('marketplace.products.show.json');
 
     // Generic orders route - redirects to marketplace-specific page
-    Route::get('/marketplace/{accountId}/orders', function ($accountId) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-
-        // Redirect to marketplace-specific orders page
-        return match ($account->marketplace) {
-            'wb' => redirect()->route('marketplace.wb-orders', $accountId),
-            'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
-            'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
-            'ym' => redirect()->route('marketplace.ym-orders', $accountId),
-            default => abort(404, 'Unsupported marketplace'),
-        };
-    })->name('marketplace.orders');
+    Route::get('/marketplace/{accountId}/orders', [MarketplaceWebController::class, 'orders'])->name('marketplace.orders');
 
     // Explicit URL by marketplace - redirects to dedicated page
-    Route::get('/marketplace/{accountId}/{marketplace}/orders', function ($accountId, $marketplace) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-        if (strtolower($marketplace) !== strtolower($account->marketplace)) {
-            abort(404);
-        }
+    Route::get('/marketplace/{accountId}/{marketplace}/orders', [MarketplaceWebController::class, 'ordersSpecific'])->name('marketplace.orders.specific');
 
-        return match ($account->marketplace) {
-            'wb' => redirect()->route('marketplace.wb-orders', $accountId),
-            'uzum' => redirect()->route('marketplace.uzum-orders', $accountId),
-            'ozon' => redirect()->route('marketplace.ozon-orders', $accountId),
-            'ym' => redirect()->route('marketplace.ym-orders', $accountId),
-            default => abort(404, 'Unsupported marketplace'),
-        };
-    })->name('marketplace.orders.specific');
-
-    Route::get('/marketplace/{accountId}/supplies', function ($accountId) {
-        return view('pages.marketplace.supplies', ['accountId' => $accountId]);
-    })->name('marketplace.supplies');
-
-    Route::get('/marketplace/{accountId}/passes', function ($accountId) {
-        return view('pages.marketplace.passes', ['accountId' => $accountId]);
-    })->name('marketplace.passes');
+    Route::get('/marketplace/{accountId}/supplies', [MarketplaceWebController::class, 'supplies'])->name('marketplace.supplies');
+    Route::get('/marketplace/{accountId}/passes', [MarketplaceWebController::class, 'passes'])->name('marketplace.passes');
 
     // Wildberries Settings
-    Route::get('/marketplace/{accountId}/wb-settings', function ($accountId) {
-        return view('pages.marketplace.wb-settings', ['accountId' => $accountId]);
-    })->name('marketplace.wb-settings');
+    Route::get('/marketplace/{accountId}/wb-settings', [MarketplaceWebController::class, 'wbSettings'])->name('marketplace.wb-settings');
 
     // Wildberries Products (cards)
-    Route::get('/marketplace/{accountId}/wb-products', function ($accountId) {
-        return view('pages.marketplace.wb-products', ['accountId' => $accountId]);
-    })->name('marketplace.wb-products');
+    Route::get('/marketplace/{accountId}/wb-products', [MarketplaceWebController::class, 'wbProducts'])->name('marketplace.wb-products');
 
     // Wildberries FBS Orders (new dedicated page)
-    Route::get('/marketplace/{accountId}/wb-orders', function ($accountId) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-
-        return view('pages.marketplace.wb-orders', [
-            'accountId' => $accountId,
-            'accountName' => $account->name,
-        ]);
-    })->name('marketplace.wb-orders');
+    Route::get('/marketplace/{accountId}/wb-orders', [MarketplaceWebController::class, 'wbOrders'])->name('marketplace.wb-orders');
 
     // Uzum Settings
-    Route::get('/marketplace/{accountId}/uzum-settings', function ($accountId) {
-        return view('pages.marketplace.uzum-settings', ['accountId' => $accountId]);
-    })->name('marketplace.uzum-settings');
+    Route::get('/marketplace/{accountId}/uzum-settings', [MarketplaceWebController::class, 'uzumSettings'])->name('marketplace.uzum-settings');
 
     // Yandex Market Settings
-    Route::get('/marketplace/{accountId}/ym-settings', function ($accountId) {
-        return view('pages.marketplace.ym-settings', ['accountId' => $accountId]);
-    })->name('marketplace.ym-settings');
+    Route::get('/marketplace/{accountId}/ym-settings', [MarketplaceWebController::class, 'ymSettings'])->name('marketplace.ym-settings');
 
     // Yandex Market Orders
-    Route::get('/marketplace/{accountId}/ym-orders', function ($accountId) {
-        return view('pages.marketplace.ym-orders', ['accountId' => $accountId]);
-    })->name('marketplace.ym-orders');
+    Route::get('/marketplace/{accountId}/ym-orders', [MarketplaceWebController::class, 'ymOrders'])->name('marketplace.ym-orders');
 
     // Yandex Market Orders JSON
-    Route::get('/marketplace/{accountId}/ym-orders/json', function (\Illuminate\Http\Request $request, $accountId) {
-        $query = \App\Models\YandexMarketOrder::where('marketplace_account_id', $accountId);
-
-        if ($status = $request->input('status')) {
-            $query->where('status', $status);
-        }
-
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('order_id', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_phone', 'like', "%{$search}%");
-            });
-        }
-
-        $orders = $query->orderBy('created_at_ym', 'desc')
-            ->paginate($request->input('per_page', 20));
-
-        return response()->json([
-            'orders' => $orders->items(),
-            'pagination' => [
-                'total' => $orders->total(),
-                'per_page' => $orders->perPage(),
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-            ],
-        ]);
-    })->name('marketplace.ym-orders.json');
+    Route::get('/marketplace/{accountId}/ym-orders/json', [MarketplaceWebController::class, 'ymOrdersJson'])->name('marketplace.ym-orders.json');
 
     // Uzum FBS Orders (new dedicated page with brand design)
-    Route::get('/marketplace/{accountId}/uzum-orders', function ($accountId) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-        $uzumShops = \App\Models\MarketplaceShop::where('marketplace_account_id', $accountId)
-            ->orderBy('name')
-            ->get(['id', 'external_id', 'name']);
-
-        return view('pages.marketplace.uzum-fbs-orders', [
-            'accountId' => $accountId,
-            'accountName' => $account->name,
-            'uzumShops' => $uzumShops,
-        ]);
-    })->name('marketplace.uzum-orders');
+    Route::get('/marketplace/{accountId}/uzum-orders', [MarketplaceWebController::class, 'uzumOrders'])->name('marketplace.uzum-orders');
 
     // Uzum Reviews
-    Route::get('/marketplace/{accountId}/uzum-reviews', function ($accountId) {
-        $account = \App\Models\MarketplaceAccount::findOrFail($accountId);
-        return view('pages.marketplace.uzum-reviews', [
-            'accountId' => $accountId,
-            'accountName' => $account->name,
-        ]);
-    })->name('marketplace.uzum-reviews');
+    Route::get('/marketplace/{accountId}/uzum-reviews', [MarketplaceWebController::class, 'uzumReviews'])->name('marketplace.uzum-reviews');
 
     // Ozon Settings
-    Route::get('/marketplace/{accountId}/ozon-settings', function ($accountId) {
-        return view('pages.marketplace.ozon-settings', ['accountId' => $accountId]);
-    })->name('marketplace.ozon-settings');
+    Route::get('/marketplace/{accountId}/ozon-settings', [MarketplaceWebController::class, 'ozonSettings'])->name('marketplace.ozon-settings');
 
     // Ozon Products
-    Route::get('/marketplace/{accountId}/ozon-products', function ($accountId) {
-        return view('pages.marketplace.partials.products_ozon', ['accountId' => $accountId]);
-    })->name('marketplace.ozon-products');
+    Route::get('/marketplace/{accountId}/ozon-products', [MarketplaceWebController::class, 'ozonProducts'])->name('marketplace.ozon-products');
 
     // Ozon Orders
-    Route::get('/marketplace/{accountId}/ozon-orders', function ($accountId) {
-        return view('pages.marketplace.ozon-orders', ['accountId' => $accountId]);
-    })->name('marketplace.ozon-orders');
+    Route::get('/marketplace/{accountId}/ozon-orders', [MarketplaceWebController::class, 'ozonOrders'])->name('marketplace.ozon-orders');
 
     // Ozon Orders JSON API
-    Route::get('/marketplace/{accountId}/ozon-orders/json', function (\Illuminate\Http\Request $request, $accountId) {
-        $query = \App\Models\OzonOrder::where('marketplace_account_id', $accountId);
-
-        if ($status = $request->input('status')) {
-            $query->where('status', $status);
-        }
-
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('posting_number', 'like', "%{$search}%")
-                    ->orWhere('order_id', 'like', "%{$search}%");
-            });
-        }
-
-        $orders = $query->orderBy('created_at_ozon', 'desc')
-            ->paginate($request->input('per_page', 20));
-
-        return response()->json([
-            'orders' => $orders->items(),
-            'pagination' => [
-                'total' => $orders->total(),
-                'per_page' => $orders->perPage(),
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-            ],
-        ]);
-    })->name('marketplace.ozon-orders.json');
+    Route::get('/marketplace/{accountId}/ozon-orders/json', [MarketplaceWebController::class, 'ozonOrdersJson'])->name('marketplace.ozon-orders.json');
 
     if (env('VPC_ENABLED', false)) {
         Route::get('/vpc-sessions', [VpcSessionController::class, 'index'])->name('vpc_sessions.index');
@@ -707,45 +303,16 @@ Route::middleware('auth.any')->group(function () {
         ->name('payment.renew');
     // Store Builder — Admin pages
     Route::prefix('my-store')->name('store.')->group(function () {
-        Route::get('/', function () {
-            return view('store.admin.dashboard');
-        })->name('dashboard');
-
-        Route::get('/{storeId}/theme', function ($storeId) {
-            return view('store.admin.theme', ['storeId' => $storeId]);
-        })->name('theme');
-
-        Route::get('/{storeId}/catalog', function ($storeId) {
-            return view('store.admin.catalog', ['storeId' => $storeId]);
-        })->name('catalog');
-
-        Route::get('/{storeId}/delivery', function ($storeId) {
-            return view('store.admin.delivery', ['storeId' => $storeId]);
-        })->name('delivery');
-
-        Route::get('/{storeId}/payment', function ($storeId) {
-            return view('store.admin.payment', ['storeId' => $storeId]);
-        })->name('payment');
-
-        Route::get('/{storeId}/orders', function ($storeId) {
-            return view('store.admin.orders', ['storeId' => $storeId]);
-        })->name('orders');
-
-        Route::get('/{storeId}/orders/{orderId}', function ($storeId, $orderId) {
-            return view('store.admin.order-show', ['storeId' => $storeId, 'orderId' => $orderId]);
-        })->name('orders.show');
-
-        Route::get('/{storeId}/pages', function ($storeId) {
-            return view('store.admin.pages', ['storeId' => $storeId]);
-        })->name('pages');
-
-        Route::get('/{storeId}/analytics', function ($storeId) {
-            return view('store.admin.analytics', ['storeId' => $storeId]);
-        })->name('analytics');
-
-        Route::get('/{storeId}/banners', function ($storeId) {
-            return view('store.admin.banners', ['storeId' => $storeId]);
-        })->name('banners');
+        Route::view('/', 'store.admin.dashboard')->name('dashboard');
+        Route::get('/{storeId}/theme', [PageController::class, 'storeTheme'])->name('theme');
+        Route::get('/{storeId}/catalog', [PageController::class, 'storeCatalog'])->name('catalog');
+        Route::get('/{storeId}/delivery', [PageController::class, 'storeDelivery'])->name('delivery');
+        Route::get('/{storeId}/payment', [PageController::class, 'storePayment'])->name('payment');
+        Route::get('/{storeId}/orders', [PageController::class, 'storeOrders'])->name('orders');
+        Route::get('/{storeId}/orders/{orderId}', [PageController::class, 'storeOrderShow'])->name('orders.show');
+        Route::get('/{storeId}/pages', [PageController::class, 'storePages'])->name('pages');
+        Route::get('/{storeId}/analytics', [PageController::class, 'storeAnalytics'])->name('analytics');
+        Route::get('/{storeId}/banners', [PageController::class, 'storeBanners'])->name('banners');
     });
 }); // End of auth middleware group
 

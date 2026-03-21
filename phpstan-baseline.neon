@@ -2521,6 +2521,42 @@ parameters:
 			path: app/Http/Controllers/Web/IntegrationLinkController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Web/MarketplaceWebController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$option_values_summary\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Web/MarketplaceWebController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Web/MarketplaceWebController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sku\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Web/MarketplaceWebController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$stock_default\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Web/MarketplaceWebController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>company_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Web/PageController.php
+
+		-
 			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{id\: int, attribute_id\: int, product_variant_id\: int, value_string\: string\|null, value_number\: float\|null, value_json\: array\|null\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, attribute_id\: int, product_variant_id\: int, value_string\: string\|null, value_number\: float\|null, value_json\: array\|null\}\>\.$#'
 			identifier: return.type
 			count: 1
