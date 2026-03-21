@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\Warehouse\StockLedger;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FixStockLedgerCosts extends Command
 {
@@ -140,7 +141,7 @@ class FixStockLedgerCosts extends Command
                 $row['entry_id'],
                 $row['sku_id'],
                 $row['qty'],
-                number_format($row['purchase_price'], 2) . ' ' . $row['purchase_currency'],
+                number_format($row['purchase_price'], 2).' '.$row['purchase_currency'],
                 number_format($row['old_cost'], 2),
                 number_format($row['new_cost'], 0),
                 $row['variant_sku'],
@@ -201,6 +202,10 @@ class FixStockLedgerCosts extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error('Error: '.$e->getMessage());
+            Log::error('Ошибка исправления себестоимости в stock_ledger', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
 
             return 1;
         }

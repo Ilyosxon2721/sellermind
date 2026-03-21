@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -216,6 +217,11 @@ class AuthController extends Controller
 
         } catch (\Exception $e) {
             \DB::rollBack();
+            Log::error('Ошибка регистрации клиента', [
+                'email' => $validated['email'] ?? null,
+                'company_name' => $validated['company_name'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,

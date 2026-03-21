@@ -64,6 +64,10 @@ class WildberriesProductService
                         $updated += $result['updated'];
                         $synced++;
                     } catch (\Exception $e) {
+                        Log::warning('Ошибка обработки товара WB при синхронизации', [
+                            'nm_id' => $cardData['nmID'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
                         $errors[] = [
                             'nm_id' => $cardData['nmID'] ?? 'unknown',
                             'error' => $e->getMessage(),

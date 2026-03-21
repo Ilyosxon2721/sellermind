@@ -10,7 +10,7 @@ use App\Models\WbOrder;
 use App\Models\YandexMarketOrder;
 use App\Services\CurrencyConversionService;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Сборка красивых HTML-сообщений для Telegram-уведомлений о заказах.
@@ -145,7 +145,7 @@ final class OrderMessageBuilder
         // Uzum
         $uzum = $this->queryDailyByMarketplace(UzumOrder::class, $accountIds, 'total_amount', 'ordered_at');
         if ($uzum['orders'] > 0) {
-            $lines[] = "🟣 Uzum Market";
+            $lines[] = '🟣 Uzum Market';
             $lines[] = "   Заказов: {$uzum['orders']} · Выручка: {$this->formatMoney($uzum['revenue'])} сум";
             $lines[] = '';
             $totalOrders += $uzum['orders'];
@@ -206,7 +206,7 @@ final class OrderMessageBuilder
             'text' => implode("\n", $lines),
             'reply_markup' => [
                 'inline_keyboard' => [[
-                    ['text' => '📊 Открыть дашборд', 'url' => config('app.url') . '/analytics'],
+                    ['text' => '📊 Открыть дашборд', 'url' => config('app.url').'/analytics'],
                 ]],
             ],
         ];
@@ -442,9 +442,9 @@ final class OrderMessageBuilder
                 'ym', 'yandex_market' => "/marketplace/{$accountId}/ym-orders",
                 default => '/orders',
             };
-            $url = $baseUrl . $mpRoute;
+            $url = $baseUrl.$mpRoute;
         } else {
-            $url = $baseUrl . '/orders';
+            $url = $baseUrl.'/orders';
         }
 
         return [
@@ -469,6 +469,12 @@ final class OrderMessageBuilder
 
             return $converter->convert($amount, $currencyCode, 'UZS');
         } catch (\Exception $e) {
+            Log::warning('Ошибка конвертации валюты в UZS', [
+                'amount' => $amount,
+                'currency' => $currencyCode,
+                'error' => $e->getMessage(),
+            ]);
+
             // Фоллбэк: вернуть оригинальную сумму
             return $amount;
         }

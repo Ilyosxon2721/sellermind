@@ -80,6 +80,7 @@ class MarketplaceAccountController extends Controller
         try {
             return $this->processStoreRequest($request);
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            \Log::error('Дублирование маркетплейс-аккаунта при создании', ['company_id' => $request->company_id, 'marketplace' => $request->marketplace, 'error' => $e->getMessage()]);
             // Duplicate entry - account already exists
             $marketplaceLabel = MarketplaceAccount::getMarketplaceLabels()[$request->marketplace] ?? $request->marketplace;
 
@@ -369,6 +370,8 @@ class MarketplaceAccountController extends Controller
                 'message' => "Аккаунт {$accountName} успешно удалён.",
             ]);
         } catch (\Exception $e) {
+            \Log::error('Ошибка удаления маркетплейс-аккаунта', ['account_id' => $account->id, 'account_name' => $accountName, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Не удалось удалить аккаунт: '.$e->getMessage(),
             ], 500);
@@ -510,6 +513,8 @@ class MarketplaceAccountController extends Controller
         try {
             return $account->orders()->count();
         } catch (\Throwable $e) {
+            \Log::error('Ошибка подсчёта заказов маркетплейс-аккаунта', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             // Table may not exist or other error
             return 0;
         }

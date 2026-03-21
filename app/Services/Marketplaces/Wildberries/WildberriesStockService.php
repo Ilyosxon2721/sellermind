@@ -83,6 +83,10 @@ class WildberriesStockService
 
                     $synced++;
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка синхронизации остатка товара WB', [
+                        'nm_id' => $stockData['nmId'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ]);
                     $errors[] = [
                         'nm_id' => $stockData['nmId'] ?? 'unknown',
                         'error' => $e->getMessage(),
@@ -519,6 +523,10 @@ class WildberriesStockService
                         $created++;
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка обработки склада WB', [
+                        'warehouse_name' => $name,
+                        'error' => $e->getMessage(),
+                    ]);
                     $errors[] = "Error processing warehouse '{$name}': ".$e->getMessage();
                 }
             }

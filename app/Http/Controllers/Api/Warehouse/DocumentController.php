@@ -11,6 +11,7 @@ use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DocumentController extends Controller
 {
@@ -85,6 +86,8 @@ class DocumentController extends Controller
             } catch (\Illuminate\Database\QueryException $e) {
                 $attempts++;
                 if ($attempts >= 3 || ! str_contains($e->getMessage(), 'Duplicate entry')) {
+                    Log::error('Ошибка создания складского документа', ['type' => $data['type'], 'warehouse_id' => $data['warehouse_id'], 'attempt' => $attempts, 'error' => $e->getMessage()]);
+
                     return $this->errorResponse('Ошибка создания документа: '.$e->getMessage(), 'create_failed', null, 422);
                 }
             }
@@ -220,6 +223,8 @@ class DocumentController extends Controller
 
             return $this->successResponse($result);
         } catch (\Throwable $e) {
+            Log::error('Ошибка проведения складского документа', ['document_id' => $id, 'company_id' => $companyId, 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'post_failed', null, 422);
         }
     }
@@ -368,6 +373,8 @@ class DocumentController extends Controller
 
             return $this->successResponse($doc);
         } catch (\Throwable $e) {
+            Log::error('Ошибка сторнирования складского документа', ['document_id' => $id, 'company_id' => $companyId, 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'reverse_failed', null, 422);
         }
     }

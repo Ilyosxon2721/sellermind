@@ -13,6 +13,7 @@ use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CashAccountController extends Controller
 {
@@ -239,6 +240,7 @@ class CashAccountController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка перевода между счетами', ['from_account_id' => $data['from_account_id'], 'to_account_id' => $data['to_account_id'], 'amount' => $data['amount'], 'error' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
@@ -380,6 +382,7 @@ class CashAccountController extends Controller
             return $this->successResponse($transaction->load(['category', 'counterparty', 'employee']));
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка создания финансовой транзакции', ['account_id' => $accountId, 'type' => $type, 'amount' => $data['amount'] ?? null, 'error' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
@@ -413,6 +416,8 @@ class CashAccountController extends Controller
                 'result' => $result,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка синхронизации выплат маркетплейсов', ['company_id' => $companyId, 'marketplace' => $data['marketplace'] ?? 'all', 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
     }

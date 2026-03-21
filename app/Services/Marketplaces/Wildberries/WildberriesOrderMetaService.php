@@ -306,6 +306,11 @@ class WildberriesOrderMetaService
                     'type' => $type,
                 ];
             } catch (\Exception $e) {
+                Log::warning('Ошибка привязки метаданных к заказу WB', [
+                    'order_id' => $orderId,
+                    'type' => $type,
+                    'error' => $e->getMessage(),
+                ]);
                 $results[] = [
                     'order_id' => $orderId,
                     'success' => false,

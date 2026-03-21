@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PromotionController extends Controller
 {
@@ -152,6 +153,10 @@ class PromotionController extends Controller
             return response()->json($promotion, 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка создания акции', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json(['error' => $e->getMessage()], 500);
         }

@@ -9,6 +9,7 @@ use App\Models\OzonOrder;
 use App\Services\Marketplaces\OzonClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Контроллер для управления заказами OZON
@@ -139,6 +140,8 @@ class OzonOrderController extends Controller
                 'order' => $order->fresh(),
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка отмены заказа Ozon', ['account_id' => $account->id, 'posting_number' => $order->posting_number, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при отмене заказа: '.$e->getMessage(),
@@ -162,6 +165,8 @@ class OzonOrderController extends Controller
                 'reasons' => $reasons,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка получения причин отмены Ozon', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка получения причин отмены: '.$e->getMessage(),
@@ -204,6 +209,8 @@ class OzonOrderController extends Controller
                 'order' => $order->fresh(),
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка отгрузки заказа Ozon', ['account_id' => $account->id, 'posting_number' => $order->posting_number, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при отправке заказа: '.$e->getMessage(),
@@ -235,6 +242,8 @@ class OzonOrderController extends Controller
                 'filename' => "label_{$order->posting_number}.pdf",
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка получения этикетки Ozon', ['account_id' => $account->id, 'posting_number' => $order->posting_number, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при получении этикетки: '.$e->getMessage(),
@@ -277,6 +286,8 @@ class OzonOrderController extends Controller
                 'filename' => 'labels_'.date('Ymd_His').'.pdf',
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка массовой печати этикеток Ozon', ['account_id' => $account->id, 'order_ids' => $request->order_ids, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при получении этикеток: '.$e->getMessage(),

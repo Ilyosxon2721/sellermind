@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class DatabaseBackup extends Command
 {
@@ -81,6 +82,9 @@ class DatabaseBackup extends Command
 
         } catch (\Exception $e) {
             $this->error("Backup failed: {$e->getMessage()}");
+            Log::error('Ошибка создания резервной копии БД', [
+                'error' => $e->getMessage(),
+            ]);
 
             return self::FAILURE;
         }

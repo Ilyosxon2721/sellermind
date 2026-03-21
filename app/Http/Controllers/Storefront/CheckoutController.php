@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Оформление заказа — страница чекаута и создание заказа
@@ -286,8 +287,11 @@ final class CheckoutController extends Controller
             StoreAnalytics::where('store_id', $store->id)
                 ->where('date', $today)
                 ->increment('revenue', $total);
-        } catch (\Throwable) {
-            // Не прерываем пользовательский флоу при ошибке аналитики
+        } catch (\Throwable $e) {
+            Log::debug('Ошибка трекинга завершённого заказа', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

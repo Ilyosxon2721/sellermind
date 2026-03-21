@@ -5,6 +5,7 @@ namespace App\Services\Agent\Tools;
 use App\Models\VpcSession;
 use App\Services\Agent\Contracts\AgentToolInterface;
 use App\Services\Vpc\VpcCommandClient;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Tool for checking marketplace product pages by URL.
@@ -112,6 +113,12 @@ class CheckProductByUrlTool implements AgentToolInterface
         try {
             return $this->checkProduct($session, $url, $marketplace, $takeScreenshot, $extractInfo, $scrollFullPage);
         } catch (\Exception $e) {
+            Log::warning('Ошибка проверки товара по URL через VPC', [
+                'url' => $url,
+                'marketplace' => $marketplace,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'error' => $e->getMessage(),

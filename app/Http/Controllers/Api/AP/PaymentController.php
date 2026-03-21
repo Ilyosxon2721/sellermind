@@ -8,6 +8,7 @@ use App\Services\AP\PaymentService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -109,6 +110,8 @@ class PaymentController extends Controller
 
             return $this->successResponse($payment);
         } catch (\Throwable $e) {
+            Log::error('Ошибка проведения платежа поставщику', ['payment_id' => $id, 'company_id' => $companyId, 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'post_failed', null, 422);
         }
     }
@@ -124,6 +127,8 @@ class PaymentController extends Controller
 
             return $this->successResponse($payment);
         } catch (\Throwable $e) {
+            Log::error('Ошибка сторнирования платежа поставщику', ['payment_id' => $id, 'company_id' => $companyId, 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'reverse_failed', null, 422);
         }
     }

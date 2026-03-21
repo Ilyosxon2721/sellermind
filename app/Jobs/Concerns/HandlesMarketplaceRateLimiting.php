@@ -152,7 +152,10 @@ trait HandlesMarketplaceRateLimiting
 
                     return max(0, $retryDate->getTimestamp() - time());
                 } catch (\Exception $e) {
-                    // Игнорируем ошибки парсинга
+                    Log::debug('Ошибка парсинга Retry-After заголовка', [
+                        'retry_after' => $retryAfter,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }

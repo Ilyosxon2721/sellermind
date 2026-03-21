@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 class HealthCheckController extends Controller
@@ -43,6 +44,7 @@ class HealthCheckController extends Controller
                 'name' => DB::connection()->getDatabaseName(),
             ];
         } catch (\Exception $e) {
+            Log::error('Health check: база данных недоступна', ['error' => $e->getMessage()]);
             $health['status'] = 'unhealthy';
             $health['checks']['database'] = [
                 'status' => 'unhealthy',
@@ -57,6 +59,7 @@ class HealthCheckController extends Controller
                 'status' => 'healthy',
             ];
         } catch (\Exception $e) {
+            Log::error('Health check: Redis недоступен', ['error' => $e->getMessage()]);
             $health['status'] = 'degraded';
             $health['checks']['redis'] = [
                 'status' => 'unhealthy',
@@ -76,6 +79,7 @@ class HealthCheckController extends Controller
                 'driver' => config('cache.default'),
             ];
         } catch (\Exception $e) {
+            Log::error('Health check: кэш недоступен', ['driver' => config('cache.default'), 'error' => $e->getMessage()]);
             $health['status'] = 'degraded';
             $health['checks']['cache'] = [
                 'status' => 'unhealthy',
@@ -90,6 +94,7 @@ class HealthCheckController extends Controller
                 'driver' => config('queue.default'),
             ];
         } catch (\Exception $e) {
+            Log::error('Health check: очередь недоступна', ['driver' => config('queue.default'), 'error' => $e->getMessage()]);
             $health['status'] = 'degraded';
             $health['checks']['queue'] = [
                 'status' => 'unhealthy',

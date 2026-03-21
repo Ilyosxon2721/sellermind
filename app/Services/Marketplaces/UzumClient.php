@@ -1012,6 +1012,11 @@ final class UzumClient implements MarketplaceClientInterface
         try {
             return null;
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения информации о товаре Uzum', [
+                'external_id' => $externalId,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }

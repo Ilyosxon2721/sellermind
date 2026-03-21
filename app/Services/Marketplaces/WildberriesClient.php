@@ -53,6 +53,12 @@ final class WildberriesClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             $duration = (int) round((microtime(true) - $startTime) * 1000);
 
+            \Log::warning('WB ping failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+                'response_time_ms' => $duration,
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
@@ -74,6 +80,11 @@ final class WildberriesClient implements MarketplaceClientInterface
                 'data' => $response,
             ];
         } catch (\Exception $e) {
+            \Log::warning('Проверка подключения к WB failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка подключения: '.$e->getMessage(),
@@ -116,6 +127,10 @@ final class WildberriesClient implements MarketplaceClientInterface
                     $toCreate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
                 }
             } catch (\Exception $e) {
+                \Log::warning('Ошибка маппинга товара WB при синхронизации', [
+                    'product_id' => $marketplaceProduct->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
             }
         }
@@ -965,6 +980,11 @@ final class WildberriesClient implements MarketplaceClientInterface
         try {
             return null;
         } catch (\Exception $e) {
+            \Log::warning('Ошибка получения информации о товаре WB', [
+                'external_id' => $externalId,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }

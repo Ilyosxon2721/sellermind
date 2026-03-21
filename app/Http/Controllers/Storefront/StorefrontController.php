@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Store\Store;
 use App\Models\Store\StoreAnalytics;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Публичная витрина магазина — главная страница, статические страницы
@@ -95,8 +96,11 @@ final class StorefrontController extends Controller
             StoreAnalytics::where('store_id', $store->id)
                 ->where('date', $today)
                 ->increment('page_views');
-        } catch (\Throwable) {
-            // Не прерываем пользовательский флоу при ошибке аналитики
+        } catch (\Throwable $e) {
+            Log::debug('Ошибка трекинга визита витрины', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -116,8 +120,11 @@ final class StorefrontController extends Controller
             StoreAnalytics::where('store_id', $store->id)
                 ->where('date', $today)
                 ->increment('page_views');
-        } catch (\Throwable) {
-            // Не прерываем пользовательский флоу при ошибке аналитики
+        } catch (\Throwable $e) {
+            Log::debug('Ошибка трекинга просмотра страницы витрины', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

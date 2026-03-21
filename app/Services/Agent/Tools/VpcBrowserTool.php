@@ -5,6 +5,7 @@ namespace App\Services\Agent\Tools;
 use App\Models\VpcSession;
 use App\Services\Agent\Contracts\AgentToolInterface;
 use App\Services\Vpc\VpcCommandClient;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Tool for controlling browser in VPC session.
@@ -128,6 +129,12 @@ class VpcBrowserTool implements AgentToolInterface
                 default => ['success' => false, 'error' => "Unknown action: {$action}"],
             };
         } catch (\Exception $e) {
+            Log::warning('Ошибка выполнения действия VPC браузера', [
+                'action' => $action,
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'error' => $e->getMessage(),

@@ -70,6 +70,10 @@ class WildberriesPriceService
                         $this->updateProductPrice($account, $good);
                         $synced++;
                     } catch (\Exception $e) {
+                        Log::warning('Ошибка обновления цены товара WB', [
+                            'nm_id' => $good['nmID'] ?? 'unknown',
+                            'error' => $e->getMessage(),
+                        ]);
                         $errors[] = [
                             'nm_id' => $good['nmID'] ?? 'unknown',
                             'error' => $e->getMessage(),
