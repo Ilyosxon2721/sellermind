@@ -88,31 +88,31 @@ function kpiPage(config) {
         // Загрузка данных
         async loadDashboard() {
             try {
-                var res = await this.api('kpi/dashboard?year=' + this.year + '&month=' + this.month);
+                var res = await this.api('finance/kpi/dashboard?year=' + this.year + '&month=' + this.month);
                 this.dashboard = res.data ?? res;
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadPlans() {
             try {
-                var res = await this.api('kpi/plans?year=' + this.year + '&month=' + this.month);
+                var res = await this.api('finance/kpi/plans?year=' + this.year + '&month=' + this.month);
                 this.plans = res.data ?? [];
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadSpheres() {
             try {
-                var res = await this.api('kpi/spheres');
+                var res = await this.api('finance/kpi/spheres');
                 this.spheres = res.data ?? [];
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadScales() {
             try {
-                var res = await this.api('kpi/bonus-scales');
+                var res = await this.api('finance/kpi/bonus-scales');
                 this.scales = res.data ?? [];
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadEmployees() {
             try {
-                var res = await this.api('employees');
+                var res = await this.api('finance/employees');
                 this.employees = res.data ?? [];
             } catch (e) { /* сотрудники могут быть не доступны */ }
         },
@@ -121,7 +121,7 @@ function kpiPage(config) {
         async calculateAll() {
             this.calculating = true;
             try {
-                await this.api('kpi/plans/calculate', 'POST', { year: parseInt(this.year), month: parseInt(this.month) });
+                await this.api('finance/kpi/plans/calculate', 'POST', { year: parseInt(this.year), month: parseInt(this.month) });
                 this.notify('KPI рассчитаны');
                 await this.loadDashboard();
                 if (this.tab === 'plans') await this.loadPlans();
@@ -137,9 +137,9 @@ function kpiPage(config) {
         async savePlan() {
             try {
                 if (this.planForm.id) {
-                    await this.api('kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
+                    await this.api('finance/kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
                 } else {
-                    await this.api('kpi/plans', 'POST', this.planForm);
+                    await this.api('finance/kpi/plans', 'POST', this.planForm);
                 }
                 this.showPlanModal = false;
                 this.notify('План сохранён');
@@ -148,7 +148,7 @@ function kpiPage(config) {
         },
         async approvePlan(id) {
             try {
-                await this.api('kpi/plans/' + id + '/approve', 'POST');
+                await this.api('finance/kpi/plans/' + id + '/approve', 'POST');
                 this.notify('План утверждён');
                 await this.loadPlans();
                 await this.loadDashboard();
@@ -157,7 +157,7 @@ function kpiPage(config) {
         async deletePlan(id) {
             if (!confirm('Удалить план?')) return;
             try {
-                await this.api('kpi/plans/' + id, 'DELETE');
+                await this.api('finance/kpi/plans/' + id, 'DELETE');
                 this.notify('План удалён');
                 await this.loadPlans();
             } catch (e) { this.notify(e.message, 'error'); }
@@ -175,9 +175,9 @@ function kpiPage(config) {
         async saveSphere() {
             try {
                 if (this.sphereForm.id) {
-                    await this.api('kpi/spheres/' + this.sphereForm.id, 'PUT', this.sphereForm);
+                    await this.api('finance/kpi/spheres/' + this.sphereForm.id, 'PUT', this.sphereForm);
                 } else {
-                    await this.api('kpi/spheres', 'POST', this.sphereForm);
+                    await this.api('finance/kpi/spheres', 'POST', this.sphereForm);
                 }
                 this.showSphereModal = false;
                 this.notify('Сфера сохранена');
@@ -187,7 +187,7 @@ function kpiPage(config) {
         async deleteSphere(id) {
             if (!confirm('Удалить сферу?')) return;
             try {
-                await this.api('kpi/spheres/' + id, 'DELETE');
+                await this.api('finance/kpi/spheres/' + id, 'DELETE');
                 this.notify('Сфера удалена');
                 await this.loadSpheres();
             } catch (e) { this.notify(e.message, 'error'); }
@@ -208,9 +208,9 @@ function kpiPage(config) {
         async saveScale() {
             try {
                 if (this.scaleForm.id) {
-                    await this.api('kpi/bonus-scales/' + this.scaleForm.id, 'PUT', this.scaleForm);
+                    await this.api('finance/kpi/bonus-scales/' + this.scaleForm.id, 'PUT', this.scaleForm);
                 } else {
-                    await this.api('kpi/bonus-scales', 'POST', this.scaleForm);
+                    await this.api('finance/kpi/bonus-scales', 'POST', this.scaleForm);
                 }
                 this.showScaleModal = false;
                 this.notify('Шкала сохранена');
@@ -220,7 +220,7 @@ function kpiPage(config) {
         async deleteScale(id) {
             if (!confirm('Удалить шкалу?')) return;
             try {
-                await this.api('kpi/bonus-scales/' + id, 'DELETE');
+                await this.api('finance/kpi/bonus-scales/' + id, 'DELETE');
                 this.notify('Шкала удалена');
                 await this.loadScales();
             } catch (e) { this.notify(e.message, 'error'); }
