@@ -342,6 +342,10 @@ Route::middleware('auth.any')->group(function () {
         return view('finance.index');
     })->name('finance.index');
 
+    Route::get('/kpi', function () {
+        return view('pages.kpi.index');
+    })->name('kpi.index');
+
     Route::get('/debts', function () {
         return view('debts.index');
     })->name('debts.index');
