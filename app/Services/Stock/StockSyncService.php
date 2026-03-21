@@ -272,7 +272,8 @@ class StockSyncService
             }
         }
 
-        // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed для этого SKU
+        // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
+        $skuFoundInApi = false;
         try {
             $currentStocks = $uzum->stocks()->get();
             $skuListFromApi = $currentStocks['skuAmountList']
@@ -281,6 +282,7 @@ class StockSyncService
             if (is_array($skuListFromApi)) {
                 foreach ($skuListFromApi as $sku) {
                     if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                        $skuFoundInApi = true;
                         $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                         $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
                         // fbsAllowed/dbsAllowed — что разрешено для товара (FBS или DBS)
@@ -297,6 +299,14 @@ class StockSyncService
             }
         } catch (\Exception $e) {
             Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
+        }
+
+        // SKU не найден в FBS/DBS системе — синхронизация невозможна
+        if (! $skuFoundInApi) {
+            throw new \RuntimeException(
+                "SKU {$skuId} не подключён к FBS/DBS в Uzum. " .
+                "Активируйте схему продаж для этого товара в кабинете Uzum."
+            );
         }
 
         if (! $barcode) {
