@@ -763,17 +763,29 @@ final class UzumClient implements MarketplaceClientInterface
     public function updateStock(MarketplaceAccount $account, string $productId, string $skuId, int $stock): array
     {
         // Uzum API v2: POST /v2/fbs/sku/stocks
-        // Официальный формат: только skuId и amount (без лишних полей)
+        // Uzum требует barcode для валидации — берём из raw_payload.skuList
         $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
 
-        $requestData = [
-            'skuAmountList' => [
-                [
-                    'skuId' => (int) $skuId,
-                    'amount' => $stock,
-                ],
-            ],
-        ];
+        $barcode = null;
+        $mpProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->where('external_product_id', $productId)
+            ->value('raw_payload');
+
+        if ($mpProduct && ! empty($mpProduct['skuList'])) {
+            foreach ($mpProduct['skuList'] as $sku) {
+                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                    $barcode = $sku['barcode'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $item = ['skuId' => (int) $skuId, 'amount' => $stock];
+        if ($barcode) {
+            $item['barcode'] = (string) $barcode;
+        }
+
+        $requestData = ['skuAmountList' => [$item]];
 
         try {
             $response = $this->request($account, 'POST', $path, [], $requestData);
