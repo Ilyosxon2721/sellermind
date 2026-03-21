@@ -257,13 +257,22 @@ class MarketplaceSyncController extends Controller
 
         $type = $request->query('type', 'stocks');
 
-        $log = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
-            ->where('type', $type)
-            ->latest('started_at')
-            ->first();
+        // since — unix timestamp (мс) момента нажатия кнопки
+        // Если передан, возвращаем только логи строго позже этого момента
+        $sinceMs = $request->query('since');
+        $query = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
+            ->where('type', $type);
 
+        if ($sinceMs) {
+            $sinceCarbon = \Carbon\Carbon::createFromTimestampMs((int) $sinceMs);
+            $query->where('started_at', '>=', $sinceCarbon);
+        }
+
+        $log = $query->latest('started_at')->first();
+
+        // Нет лога после since — job ещё не начался, считаем pending
         if (! $log) {
-            return response()->json(['status' => null]);
+            return response()->json(['status' => 'pending', 'is_running' => true]);
         }
 
         $duration = null;

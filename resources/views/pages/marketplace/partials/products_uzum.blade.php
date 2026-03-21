@@ -702,10 +702,11 @@ function uzumProducts(accountId) {
         searchingVariants: false,
         syncingStock: null,
         stocksSyncing: false,
-        stocksStatus: null,       // null | 'running' | 'success' | 'error'
+        stocksStatus: null,
         stocksStatusMessage: '',
         stocksStatusDuration: null,
         _stocksPollTimer: null,
+        _stocksSince: null,
         skuSchemes: {},
         skuSchemesLoading: false,
         togglingScheme: null,
@@ -755,6 +756,7 @@ function uzumProducts(accountId) {
             this.stocksStatus = 'running';
             this.stocksStatusMessage = '';
             this.stocksStatusDuration = null;
+            this._stocksSince = Date.now();
             clearInterval(this._stocksPollTimer);
             try {
                 const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
@@ -765,7 +767,6 @@ function uzumProducts(accountId) {
                 });
                 const data = await this.safeJson(res);
                 if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
-                // Запускаем polling каждые 3 секунды
                 this._stocksPollTimer = setInterval(() => this.pollStocksStatus(), 3000);
             } catch (e) {
                 this.stocksStatus = 'error';
@@ -775,25 +776,19 @@ function uzumProducts(accountId) {
         },
         async pollStocksStatus() {
             try {
-                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks`, {
-                    headers: this.getHeaders(),
-                    credentials: 'include',
-                });
+                const url = `/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks&since=${this._stocksSince}`;
+                const res = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
                 if (!res.ok) return;
                 const data = await res.json();
-                if (!data.status) return;
-                this.stocksStatus = data.is_running ? 'running' : data.status;
+                this.stocksStatus = data.is_running ? 'running' : (data.status || 'running');
                 this.stocksStatusMessage = data.message || '';
                 this.stocksStatusDuration = data.duration;
                 if (!data.is_running) {
                     clearInterval(this._stocksPollTimer);
                     this.stocksSyncing = false;
-                    // Скрыть через 8 секунд после завершения
                     setTimeout(() => { this.stocksStatus = null; }, 8000);
                 }
-            } catch (e) {
-                // Игнорируем ошибки polling
-            }
+            } catch (e) {}
         },
         applyFilter() {
             const term = this.search.toLowerCase();
@@ -1319,6 +1314,7 @@ function uzumProductsPwa(accountId) {
         stocksStatusMessage: '',
         stocksStatusDuration: null,
         _stocksPollTimer: null,
+        _stocksSince: null,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1355,6 +1351,7 @@ function uzumProductsPwa(accountId) {
             this.stocksStatus = 'running';
             this.stocksStatusMessage = '';
             this.stocksStatusDuration = null;
+            this._stocksSince = Date.now();
             clearInterval(this._stocksPollTimer);
             try {
                 const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/stocks`, {
@@ -1374,14 +1371,11 @@ function uzumProductsPwa(accountId) {
         },
         async pollStocksStatus() {
             try {
-                const res = await fetch(`/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks`, {
-                    headers: this.getHeaders(),
-                    credentials: 'include',
-                });
+                const url = `/api/marketplace/accounts/${this.accountId}/sync/status?type=stocks&since=${this._stocksSince}`;
+                const res = await fetch(url, { headers: this.getHeaders(), credentials: 'include' });
                 if (!res.ok) return;
                 const data = await res.json();
-                if (!data.status) return;
-                this.stocksStatus = data.is_running ? 'running' : data.status;
+                this.stocksStatus = data.is_running ? 'running' : (data.status || 'running');
                 this.stocksStatusMessage = data.message || '';
                 this.stocksStatusDuration = data.duration;
                 if (!data.is_running) {
