@@ -56,30 +56,35 @@ class DebugUzumStockSync extends Command
         }
 
         // --- Шаг 1: Показываем текущие остатки от Uzum ---
-        $this->line('<fg=cyan>══ Шаг 1: GET /v2/fbs/sku/stocks (текущие остатки в Uzum) ══</>');
+        $this->line('══ Шаг 1: GET /v2/fbs/sku/stocks (текущие остатки в Uzum) ══');
         $uzum = new UzumApiManager($account);
+        $skuListFromApi = [];
         try {
             $currentStocks = $uzum->stocks()->get();
+            $this->line('Ключи корневого ответа: ' . implode(', ', array_keys($currentStocks)));
+            $this->line('Полный ответ GET:');
+            $this->line(json_encode($currentStocks, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
             $skuListFromApi = $currentStocks['skuAmountList']
                 ?? $currentStocks['payload']['skuAmountList']
                 ?? $currentStocks['data']
-                ?? $currentStocks;
+                ?? [];
 
             if (is_array($skuListFromApi) && ! empty($skuListFromApi)) {
-                $this->line('Ключи ответа: ' . implode(', ', array_keys($currentStocks)));
-                $this->line('Количество SKU в ответе: ' . count($skuListFromApi));
-                // Показываем первые 3 записи
-                foreach (array_slice($skuListFromApi, 0, 3) as $sku) {
-                    $this->line('  SKU ' . ($sku['skuId'] ?? '?') . ': amount=' . ($sku['amount'] ?? '?') . ', barcode=' . ($sku['barcode'] ?? '?') . ', skuTitle=' . ($sku['skuTitle'] ?? '?'));
+                $this->info('Найдено SKU в GET ответе: ' . count($skuListFromApi));
+                foreach ($skuListFromApi as $sku) {
+                    $this->line('  skuId=' . ($sku['skuId'] ?? '?')
+                        . ' barcode=' . ($sku['barcode'] ?? '?')
+                        . ' amount=' . ($sku['amount'] ?? '?')
+                        . ' fbsLinked=' . json_encode($sku['fbsLinked'] ?? null)
+                        . ' dbsLinked=' . json_encode($sku['dbsLinked'] ?? null));
                 }
             } else {
-                $this->warn('GET stocks вернул пустой или неожиданный ответ:');
-                $this->line(json_encode($currentStocks, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                $this->warn('GET stocks вернул ПУСТОЙ список SKU!');
+                $this->warn('Это значит что SKU не зарегистрированы для FBS/DBS в Uzum.');
             }
         } catch (\Exception $e) {
             $this->error('GET stocks ошибка: ' . $e->getMessage());
-            $currentStocks = [];
-            $skuListFromApi = [];
         }
         $this->newLine();
 
