@@ -107,7 +107,7 @@ final class UzumEndpoints
 
     // ─── FBS/DBS ОСТАТКИ ───────────────────────────────────────
     public const FBS_STOCKS_GET = [
-        'method' => 'GET',
+        'method' => 'POST',
         'path' => '/v2/fbs/sku/stocks',
         'desc' => 'Получить доступные остатки FBS и DBS',
     ];

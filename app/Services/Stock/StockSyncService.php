@@ -283,10 +283,17 @@ class StockSyncService
                     if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                         $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                         $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                        // Если stock > 0 — всегда включаем fbsLinked=true чтобы реактивировать
-                        // RUN_OUT товары (у которых Uzum обнулил fbsLinked/dbsLinked)
-                        $fbsLinked = $stock > 0 ? true : (isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : false);
-                        $dbsLinked = $stock > 0 ? true : (isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : false);
+                        $apiFbs = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : null;
+                        $apiDbs = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : null;
+                        // Если оба false (RUN_OUT) и нужно выставить остаток > 0 — реактивируем оба
+                        // Если один из них true — сохраняем режим (DBS-only или FBS-only)
+                        if ($stock > 0 && $apiFbs === false && $apiDbs === false) {
+                            $fbsLinked = true;
+                            $dbsLinked = true;
+                        } else {
+                            $fbsLinked = $apiFbs ?? true;
+                            $dbsLinked = $apiDbs ?? true;
+                        }
                         break;
                     }
                 }
@@ -313,24 +320,37 @@ class StockSyncService
             'stock' => $stock,
         ]);
 
-        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $fbsLinked, $dbsLinked);
+        // Перебираем варианты fbsLinked/dbsLinked — Uzum требует точное совпадение с настройкой товара
+        $attempts = [
+            [$fbsLinked, $dbsLinked],   // 1. значения из GET (или дефолт)
+            [true,  true],              // 2. оба включены
+            [false, true],              // 3. только DBS
+            [true,  false],             // 4. только FBS
+        ];
 
-        // Uzum возвращает updatedRecords=0 когда товар в статусе RUN_OUT или SKU не активен
-        $updatedRecords = $result['payload']['updatedRecords']
-            ?? $result['updatedRecords']
-            ?? null;
+        $updatedRecords = 0;
+        $result = [];
 
-        Log::error('DEBUG Uzum updateOne response', [
-            'link_id' => $link->id,
-            'sku_id' => $skuId,
-            'updated_records' => $updatedRecords,
-            'full_response' => $result,
-        ]);
+        foreach ($attempts as [$tryFbs, $tryDbs]) {
+            $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $tryFbs, $tryDbs);
+            $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
+
+            Log::error('DEBUG Uzum updateOne attempt', [
+                'link_id' => $link->id,
+                'sku_id' => $skuId,
+                'fbs' => $tryFbs, 'dbs' => $tryDbs,
+                'updated_records' => $updatedRecords,
+            ]);
+
+            if ($updatedRecords > 0) {
+                break;
+            }
+        }
 
         if ($updatedRecords === 0) {
             throw new \RuntimeException(
-                "SKU {$skuId} не зарегистрирован в системе FBS/DBS Uzum. " .
-                "Зайдите в кабинет продавца Uzum и активируйте DBS для этого товара, затем повторите синхронизацию."
+                "Uzum не обновил остаток для SKU {$skuId} (updatedRecords=0). " .
+                "Проверьте статус товара в кабинете Uzum — возможно он заблокирован или архивирован."
             );
         }
 
