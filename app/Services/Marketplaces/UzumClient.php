@@ -767,22 +767,23 @@ final class UzumClient implements MarketplaceClientInterface
         $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
 
         $barcode = null;
+        // Используем ->first() чтобы получить модель с правильным Eloquent-кастингом
+        // value() возвращает сырую JSON-строку без декодирования
         $mpProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
             ->where('external_product_id', $productId)
-            ->value('raw_payload');
+            ->first();
 
-        if ($mpProduct && ! empty($mpProduct['skuList'])) {
-            foreach ($mpProduct['skuList'] as $sku) {
-                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                    $barcode = $sku['barcode'] ?? null;
-                    break;
-                }
+        $skuList = $mpProduct?->raw_payload['skuList'] ?? [];
+        foreach ($skuList as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                break;
             }
         }
 
         $item = ['skuId' => (int) $skuId, 'amount' => $stock];
         if ($barcode) {
-            $item['barcode'] = (string) $barcode;
+            $item['barcode'] = $barcode;
         }
 
         $requestData = ['skuAmountList' => [$item]];
