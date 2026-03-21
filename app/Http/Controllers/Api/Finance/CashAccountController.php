@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finance\CashAccountRequest;
+use App\Http\Requests\Finance\TransferFundsRequest;
 use App\Models\Finance\CashAccount;
 use App\Models\Finance\CashTransaction;
 use App\Models\Finance\MarketplacePayout;
@@ -167,20 +168,14 @@ class CashAccountController extends Controller
     /**
      * Перевод между счетами
      */
-    public function transfer(Request $request)
+    public function transfer(TransferFundsRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'from_account_id' => ['required', 'exists:cash_accounts,id'],
-            'to_account_id' => ['required', 'exists:cash_accounts,id', 'different:from_account_id'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'description' => ['nullable', 'string'],
-            'transaction_date' => ['nullable', 'date'],
-        ]);
+        $data = $request->validated();
 
         $fromAccount = CashAccount::byCompany($companyId)->findOrFail($data['from_account_id']);
         $toAccount = CashAccount::byCompany($companyId)->findOrFail($data['to_account_id']);

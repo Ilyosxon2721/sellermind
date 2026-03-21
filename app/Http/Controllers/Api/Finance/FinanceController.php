@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\CreateFinanceCategoryRequest;
+use App\Http\Requests\Finance\UpdateFinanceSettingsRequest;
 use App\Models\AP\SupplierInvoice;
 use App\Models\Company;
 use App\Models\Finance\FinanceCategory;
@@ -969,18 +971,14 @@ class FinanceController extends Controller
         return $this->successResponse($query->get());
     }
 
-    public function storeCategory(Request $request)
+    public function storeCategory(CreateFinanceCategoryRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:income,expense,both'],
-            'parent_id' => ['nullable', 'integer', 'exists:finance_categories,id'],
-        ]);
+        $data = $request->validated();
 
         // Check if category with same name exists for this company
         $existing = FinanceCategory::where('company_id', $companyId)
@@ -1018,24 +1016,14 @@ class FinanceController extends Controller
         return $this->successResponse($settings);
     }
 
-    public function updateSettings(Request $request)
+    public function updateSettings(UpdateFinanceSettingsRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'base_currency_code' => ['nullable', 'string', 'max:8'],
-            'usd_rate' => ['nullable', 'numeric', 'min:0'],
-            'rub_rate' => ['nullable', 'numeric', 'min:0'],
-            'eur_rate' => ['nullable', 'numeric', 'min:0'],
-            'tax_system' => ['nullable', 'in:simplified,general,both'],
-            'vat_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'income_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'social_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'auto_import_marketplace_fees' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validated();
 
         $settings = FinanceSettings::getForCompany($companyId);
 

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePromotionRequest;
+use App\Http\Requests\UpdatePromotionRequest;
 use App\Models\Promotion;
 use App\Services\PromotionService;
 use Illuminate\Http\JsonResponse;
@@ -84,7 +86,7 @@ class PromotionController extends Controller
     /**
      * Create a new promotion.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StorePromotionRequest $request): JsonResponse
     {
         $companyId = $request->input('company_id') ?? Auth::user()->companies()->first()?->id;
 
@@ -94,17 +96,7 @@ class PromotionController extends Controller
 
         $this->authorizeCompanyAccess($companyId);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|in:percentage,fixed_amount',
-            'discount_value' => 'required|numeric|min:0',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'is_active' => 'sometimes|boolean',
-            'product_variant_ids' => 'required|array|min:1',
-            'product_variant_ids.*' => 'exists:product_variants,id',
-        ]);
+        $validated = $request->validated();
 
         DB::beginTransaction();
 
@@ -165,19 +157,11 @@ class PromotionController extends Controller
     /**
      * Update a promotion.
      */
-    public function update(Request $request, Promotion $promotion): JsonResponse
+    public function update(UpdatePromotionRequest $request, Promotion $promotion): JsonResponse
     {
         $this->authorizeCompanyAccess($promotion->company_id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'sometimes|in:percentage,fixed_amount',
-            'discount_value' => 'sometimes|numeric|min:0',
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after:start_date',
-            'is_active' => 'sometimes|boolean',
-        ]);
+        $validated = $request->validated();
 
         $promotion->update($validated);
 

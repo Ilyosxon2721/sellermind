@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Http\Requests\Warehouse\AddDocumentLinesRequest;
+use App\Http\Requests\Warehouse\CreateDocumentRequest;
+use App\Http\Requests\Warehouse\UpdateDocumentCostsRequest;
 use App\Models\Warehouse\InventoryDocument;
 use App\Models\Warehouse\InventoryDocumentLine;
 use App\Models\Warehouse\Unit;
@@ -48,17 +51,9 @@ class DocumentController extends Controller
         return $this->successResponse($query->limit(200)->get());
     }
 
-    public function store(Request $request)
+    public function store(CreateDocumentRequest $request)
     {
-        $data = $request->validate([
-            'doc_no' => ['nullable', 'string'],
-            'type' => ['required', 'string'],
-            'warehouse_id' => ['required', 'integer'],
-            'warehouse_to_id' => ['nullable', 'integer'],
-            'comment' => ['nullable', 'string'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
-            'source_doc_no' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
         $companyId = $this->getCompanyId();
         $userId = Auth::id();
         if (! $companyId) {
@@ -96,7 +91,7 @@ class DocumentController extends Controller
         return $this->successResponse($doc);
     }
 
-    public function addLines($id, Request $request)
+    public function addLines($id, AddDocumentLinesRequest $request)
     {
         $companyId = $this->getCompanyId();
         if (! $companyId) {
@@ -107,18 +102,7 @@ class DocumentController extends Controller
             return $this->errorResponse('Document not in DRAFT', 'invalid_state', null, 422);
         }
 
-        $lines = $request->validate([
-            'lines' => ['required', 'array'],
-            'lines.*.sku_id' => ['required', 'integer', 'exists:skus,id'],
-            'lines.*.qty' => ['required', 'numeric', 'min:0.001'],
-            'lines.*.unit_id' => ['required', 'integer'],
-            'lines.*.unit_cost' => ['nullable', 'numeric'],
-            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
-            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
-            'lines.*.counted_qty' => ['nullable', 'numeric'],
-            'lines.*.location_id' => ['nullable', 'integer'],
-            'lines.*.location_to_id' => ['nullable', 'integer'],
-        ])['lines'];
+        $lines = $request->validated()['lines'];
 
         DB::transaction(function () use ($doc, $lines, $companyId) {
             $doc->lines()->delete();
@@ -232,7 +216,7 @@ class DocumentController extends Controller
     /**
      * Обновить себестоимость строк оприходования (только DRAFT + IN)
      */
-    public function updateLineCosts($id, Request $request)
+    public function updateLineCosts($id, UpdateDocumentCostsRequest $request)
     {
         $companyId = $this->getCompanyId();
         if (! $companyId) {
@@ -249,13 +233,7 @@ class DocumentController extends Controller
             return $this->errorResponse('Редактирование доступно только для черновиков', 'invalid_state', null, 422);
         }
 
-        $data = $request->validate([
-            'lines' => ['required', 'array', 'min:1'],
-            'lines.*.id' => ['required', 'integer'],
-            'lines.*.unit_cost' => ['required', 'numeric', 'min:0'],
-            'lines.*.currency_code' => ['nullable', 'string', 'max:3'],
-            'lines.*.exchange_rate' => ['nullable', 'numeric', 'min:0.0001'],
-        ]);
+        $data = $request->validated();
 
         $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
 

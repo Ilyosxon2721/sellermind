@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LinkVariantRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\ProductVariant;
@@ -24,17 +25,11 @@ class VariantLinkController extends Controller
     /**
      * Привязать вариант товара к карточке на маркетплейсе
      */
-    public function linkVariant(Request $request, MarketplaceAccount $account, int $marketplaceProductId): JsonResponse
+    public function linkVariant(LinkVariantRequest $request, MarketplaceAccount $account, int $marketplaceProductId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
 
-        $validated = $request->validate([
-            'product_variant_id' => 'required|integer|exists:product_variants,id',
-            'external_sku_id' => 'nullable|string', // For Uzum SKU-level linking
-            'marketplace_barcode' => 'nullable|string', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
-            'sync_stock_enabled' => 'boolean',
-            'sync_price_enabled' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $variant = ProductVariant::where('company_id', $account->company_id)
             ->findOrFail($validated['product_variant_id']);

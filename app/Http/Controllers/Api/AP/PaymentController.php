@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\AP;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AP\AllocatePaymentRequest;
+use App\Http\Requests\AP\StoreApPaymentRequest;
 use App\Models\AP\SupplierPayment;
 use App\Services\AP\PaymentService;
 use App\Support\ApiResponder;
@@ -55,13 +57,13 @@ class PaymentController extends Controller
         return $this->successResponse($payment);
     }
 
-    public function store(Request $request)
+    public function store(StoreApPaymentRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['company_id'] = $companyId;
         $data['created_by'] = Auth::id();
         $payment = $this->service->create($data);
@@ -69,30 +71,26 @@ class PaymentController extends Controller
         return $this->successResponse($payment);
     }
 
-    public function update($id, Request $request)
+    public function update($id, StoreApPaymentRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $payment = $this->service->updateDraft($id, $companyId, $data);
 
         return $this->successResponse($payment);
     }
 
-    public function allocations($id, Request $request)
+    public function allocations($id, AllocatePaymentRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $allocs = $request->validate([
-            'allocations' => ['required', 'array'],
-            'allocations.*.invoice_id' => ['required', 'integer'],
-            'allocations.*.amount' => ['required', 'numeric'],
-        ])['allocations'];
+        $allocs = $request->validated()['allocations'];
 
         $payment = $this->service->setAllocations($id, $companyId, $allocs);
 
@@ -131,21 +129,5 @@ class PaymentController extends Controller
 
             return $this->errorResponse($e->getMessage(), 'reverse_failed', null, 422);
         }
-    }
-
-    protected function validateData(Request $request): array
-    {
-        return $request->validate([
-            'supplier_id' => ['required', 'integer'],
-            'payment_no' => ['required', 'string'],
-            'status' => ['nullable', 'string'],
-            'paid_at' => ['required', 'date'],
-            'currency_code' => ['nullable', 'string'],
-            'exchange_rate' => ['nullable', 'numeric'],
-            'amount_total' => ['required', 'numeric'],
-            'method' => ['nullable', 'string'],
-            'reference' => ['nullable', 'string'],
-            'comment' => ['nullable', 'string'],
-        ]);
     }
 }

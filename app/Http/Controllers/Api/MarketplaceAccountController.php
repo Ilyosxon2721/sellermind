@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Marketplace\StoreMarketplaceAccountRequest;
+use App\Http\Requests\Marketplace\UpdateSyncSettingsRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceSyncLog;
 use App\Services\Marketplaces\MarketplaceSyncService;
@@ -49,34 +51,8 @@ class MarketplaceAccountController extends Controller
             ->header('Expires', '0');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreMarketplaceAccountRequest $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'company_id' => ['required', 'exists:companies,id'],
-                'marketplace' => ['required', 'string', 'in:uzum,wb,ozon,ym'],
-                'name' => ['nullable', 'string', 'max:255'],
-                'credentials' => ['required', 'array'],
-                'account_id' => ['nullable', 'exists:marketplace_accounts,id'], // Для обновления существующего аккаунта
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Ошибка валидации данных',
-                'errors' => $e->errors(),
-                'error' => implode(', ', array_map(fn ($errors) => implode(', ', $errors), $e->errors())),
-            ], 422);
-        } catch (\Exception $e) {
-            \Log::error('MarketplaceAccountController@store validation error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'message' => 'Ошибка при создании аккаунта',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-
         try {
             return $this->processStoreRequest($request);
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
@@ -1494,18 +1470,13 @@ class MarketplaceAccountController extends Controller
     /**
      * Update sync settings for a marketplace account
      */
-    public function updateSyncSettings(Request $request, MarketplaceAccount $account): JsonResponse
+    public function updateSyncSettings(UpdateSyncSettingsRequest $request, MarketplaceAccount $account): JsonResponse
     {
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        $validated = $request->validate([
-            'sync_settings' => ['required', 'array'],
-            'sync_settings.stock_sync_enabled' => ['boolean'],
-            'sync_settings.auto_sync_stock_on_link' => ['boolean'],
-            'sync_settings.auto_sync_stock_on_change' => ['boolean'],
-        ]);
+        $validated = $request->validated();
 
         $currentSettings = $account->sync_settings ?? [];
         $newSettings = array_merge($currentSettings, $validated['sync_settings']);
