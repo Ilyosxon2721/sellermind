@@ -797,15 +797,28 @@ final class UzumClient implements MarketplaceClientInterface
         try {
             $response = $this->request($account, 'POST', $path, [], $requestData);
 
-            Log::info('Uzum stock update successful', [
-                'product_id' => $productId,
-                'sku_id' => $skuId,
-                'stock' => $stock,
-                'response' => $response,
-            ]);
+            $updatedRecords = $response['payload']['updatedRecords'] ?? null;
+
+            // Uzum возвращает updatedRecords=0 когда товар в статусе RUN_OUT или API отклонил обновление
+            if ($updatedRecords === 0) {
+                Log::warning('Uzum stock update accepted but not applied (updatedRecords=0). Product may be RUN_OUT.', [
+                    'product_id' => $productId,
+                    'sku_id' => $skuId,
+                    'stock' => $stock,
+                    'response' => $response,
+                ]);
+            } else {
+                Log::info('Uzum stock update successful', [
+                    'product_id' => $productId,
+                    'sku_id' => $skuId,
+                    'stock' => $stock,
+                    'response' => $response,
+                ]);
+            }
 
             return [
-                'success' => true,
+                'success' => $updatedRecords !== 0,
+                'actually_updated' => $updatedRecords > 0,
                 'stock' => $stock,
                 'sku_id' => $skuId,
                 'product_id' => $productId,
