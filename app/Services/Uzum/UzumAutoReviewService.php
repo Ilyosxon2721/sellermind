@@ -7,6 +7,8 @@ namespace App\Services\Uzum;
 use App\Models\MarketplaceAccount;
 use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 final class UzumAutoReviewService
 {
@@ -28,6 +30,13 @@ final class UzumAutoReviewService
 
         $uzum = new UzumApiManager($account);
 
+        $token = $account->uzum_access_token ?? '';
+        if (empty($token)) {
+            Log::warning("UzumAutoReview: нет токена для аккаунта {$account->id}");
+
+            return $stats;
+        }
+
         $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
 
         $page = 0;
@@ -40,6 +49,7 @@ final class UzumAutoReviewService
             $response = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post($url, (object) []);
 
             if (! $response->successful()) {
+                Log::warning("UzumAutoReview: ошибка API ({$response->status()}) для аккаунта {$account->id}");
                 break;
             }
 
@@ -52,7 +62,7 @@ final class UzumAutoReviewService
 
             foreach ($unanswered as $review) {
                 $stats['processed']++;
-                $result = $this->processReview($review, $account, $uzum);
+                $result = $this->processReview($review, $account, $uzum, $authValue);
                 $stats[$result]++;
                 usleep(500_000); // Пауза 0.5 сек между запросами
             }
@@ -69,7 +79,7 @@ final class UzumAutoReviewService
     /**
      * Обработать один отзыв: сгенерировать и отправить ответ
      */
-    private function processReview(array $review, MarketplaceAccount $account, UzumApiManager $uzum): string
+    private function processReview(array $review, MarketplaceAccount $account, UzumApiManager $uzum, string $authValue): string
     {
         $reviewId = $review['reviewId'] ?? null;
         if (! $reviewId) {
@@ -107,17 +117,27 @@ final class UzumAutoReviewService
         );
 
         if (! $replyText) {
-            return 'error';
+            return 'errors';
         }
 
         // Отправляем ответ на отзыв
-        $authValue = str_starts_with($token, 'eyJ') ? "Bearer {$token}" : $token;
-        $sendResponse = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post(
-            'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
-            [['reviewId' => $reviewId, 'content' => $replyText]]
-        );
+        $success = false;
+        $errorMessage = null;
 
-        $status = $sendResponse->successful() ? 'sent' : 'failed';
+        try {
+            $sendResponse = Http::withHeaders(['Authorization' => $authValue])->timeout(30)->post(
+                'https://api-seller.uzum.uz/api/seller/product-reviews/reply/create',
+                [['reviewId' => $reviewId, 'content' => $replyText]]
+            );
+
+            $success = $sendResponse->successful();
+            if (! $success) {
+                $errorMessage = "HTTP {$sendResponse->status()}: ".mb_substr($sendResponse->body(), 0, 500);
+            }
+        } catch (\Throwable $e) {
+            $errorMessage = $e->getMessage();
+            Log::error("UzumAutoReview: ошибка отправки ответа на отзыв {$reviewId}: {$errorMessage}");
+        }
 
         DB::table('uzum_review_reply_logs')->insert([
             'marketplace_account_id' => $account->id,
@@ -133,6 +153,6 @@ final class UzumAutoReviewService
             'updated_at' => now(),
         ]);
 
-        return $success ? 'replied' : 'error';
+        return $success ? 'replied' : 'errors';
     }
 }

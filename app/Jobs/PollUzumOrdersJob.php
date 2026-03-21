@@ -25,14 +25,38 @@ final class PollUzumOrdersJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 30;
-
-    public int $tries = 1;
+    public int $timeout = 60;
+    public int $tries   = 1;
 
     /**
      * Статусы заказов для поллинга (OpenAPI v2)
+     * Включены все активные статусы для полного отслеживания
      */
-    private const POLL_STATUSES = ['CREATED', 'PACKING'];
+    private const POLL_STATUSES = [
+        'CREATED',
+        'PACKING',
+        'PENDING_DELIVERY',
+        'DELIVERING',
+        'ACCEPTED_AT_DP',
+        'DELIVERED_TO_CUSTOMER_DELIVERY_POINT',
+    ];
+
+    /**
+     * Маппинг статусов Uzum → тип события
+     */
+    private const STATUS_EVENT_MAP = [
+        'CREATED'                              => EventType::ORDER_CREATED,
+        'PACKING'                              => EventType::ORDER_STATUS_CHANGED,
+        'PENDING_DELIVERY'                     => EventType::ORDER_STATUS_CHANGED,
+        'DELIVERING'                           => EventType::ORDER_STATUS_CHANGED,
+        'ACCEPTED_AT_DP'                       => EventType::ORDER_STATUS_CHANGED,
+        'DELIVERED_TO_CUSTOMER_DELIVERY_POINT' => EventType::ORDER_STATUS_CHANGED,
+    ];
+
+    /**
+     * Максимальное количество страниц для одного статуса
+     */
+    private const MAX_PAGES = 5;
 
     public function handle(
         PollingLockManager $lockManager,
@@ -88,52 +112,63 @@ final class PollUzumOrdersJob implements ShouldQueue
         $baseUrl = config('uzum.base_url', 'https://api-seller.uzum.uz/api/seller-openapi');
 
         foreach (self::POLL_STATUSES as $status) {
-            $response = Http::timeout(15)
-                ->withHeaders(array_merge($headers, [
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ]))
-                ->get("{$baseUrl}/v2/fbs/orders", [
-                    'status' => $status,
-                    'size' => 50,
-                    'page' => 0,
-                ]);
+            $page = 0;
 
-            if ($response->status() === 429) {
-                Log::warning("Uzum polling: rate limited for store {$account->id}, status {$status}");
-                usleep(500_000);
+            do {
+                $response = Http::timeout(15)
+                    ->withHeaders(array_merge($headers, [
+                        'Accept'       => 'application/json',
+                        'Content-Type' => 'application/json',
+                    ]))
+                    ->get("{$baseUrl}/v2/fbs/orders", [
+                        'status' => $status,
+                        'size'   => 50,
+                        'page'   => $page,
+                    ]);
 
-                continue;
-            }
-
-            if (! $response->successful()) {
-                throw new \RuntimeException("Uzum API error: {$response->status()} for status {$status}");
-            }
-
-            $orders = $response->json('payload.orders', $response->json('orders', []));
-
-            foreach ($orders as $order) {
-                $orderId = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
-                $externalId = "uzum_order_{$orderId}";
-
-                if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
-                    continue;
+                if ($response->status() === 429) {
+                    Log::warning("Uzum polling: rate limited for store {$account->id}, status {$status}");
+                    usleep(1_000_000); // Пауза 1 сек при rate limit
+                    break; // Переходим к следующему статусу
                 }
 
-                $data = new MarketplaceEventData(
-                    marketplace: MarketplaceType::UZUM,
-                    eventType: EventType::ORDER_CREATED,
-                    entityType: EntityType::ORDER,
-                    entityId: $orderId,
-                    storeId: $account->id,
-                    rawPayload: $order,
-                    externalId: $externalId,
-                );
+                if (! $response->successful()) {
+                    throw new \RuntimeException("Uzum API error: {$response->status()} for status {$status}");
+                }
 
-                $event = $eventStore->create($data);
-                ProcessMarketplaceEventJob::dispatch($event)->onQueue('marketplace-events');
-                $dedup->markProcessed(MarketplaceType::UZUM, $externalId);
-            }
+                $orders = $response->json('payload.orders', $response->json('orders', []));
+
+                foreach ($orders as $order) {
+                    $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
+                    $externalId = "uzum_order_{$orderId}_{$status}";
+
+                    if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
+                        continue;
+                    }
+
+                    $eventType = self::STATUS_EVENT_MAP[$status] ?? EventType::ORDER_STATUS_CHANGED;
+
+                    $data = new MarketplaceEventData(
+                        marketplace: MarketplaceType::UZUM,
+                        eventType: $eventType,
+                        entityType: EntityType::ORDER,
+                        entityId: $orderId,
+                        storeId: $account->id,
+                        rawPayload: $order,
+                        externalId: $externalId,
+                    );
+
+                    $event = $eventStore->create($data);
+                    ProcessMarketplaceEventJob::dispatch($event)->onQueue('marketplace-events');
+                    $dedup->markProcessed(MarketplaceType::UZUM, $externalId);
+                }
+
+                $page++;
+
+                // Пауза между страницами
+                usleep(300_000);
+
+            } while (count($orders) >= 50 && $page < self::MAX_PAGES);
 
             // Пауза между статусами для rate-limiting
             usleep(300_000);
