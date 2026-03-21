@@ -338,7 +338,8 @@
                     }
                     const newItems = json.data?.items || [];
                     if (isBackgroundRefresh && window.SmartRefresh) {
-                        this.items = window.SmartRefresh.merge(this.items, newItems, 'sku_id');
+                        const result = window.SmartRefresh.merge(this.items, newItems, 'sku_id');
+                        this.items = result.merged;
                         window.SmartRefresh.clearAnimations(this.items, 1500);
                     } else {
                         this.items = newItems;
