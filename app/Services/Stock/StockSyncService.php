@@ -307,7 +307,23 @@ class StockSyncService
 
         $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle);
 
-        return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
+        // Uzum возвращает updatedRecords=0 когда товар в статусе RUN_OUT или SKU не активен
+        $updatedRecords = $result['payload']['updatedRecords']
+            ?? $result['updatedRecords']
+            ?? null;
+
+        Log::error('DEBUG Uzum updateOne response', [
+            'link_id' => $link->id,
+            'sku_id' => $skuId,
+            'updated_records' => $updatedRecords,
+            'full_response' => $result,
+        ]);
+
+        if ($updatedRecords === 0) {
+            throw new \RuntimeException("Uzum принял запрос, но не обновил остаток (updatedRecords=0). Возможно, товар в статусе RUN_OUT или SKU не активен в FBS.");
+        }
+
+        return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
     }
 
     /**
