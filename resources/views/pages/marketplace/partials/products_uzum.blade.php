@@ -473,6 +473,46 @@
                                                             <div class="text-center px-1.5 py-1 bg-yellow-50 rounded" x-show="(sku.quantityPending ?? 0) > 0"><p class="font-bold text-yellow-700" x-text="sku.quantityPending ?? 0"></p><p class="text-yellow-600">Ожидание</p></div>
                                                         </div>
                                                     </div>
+                                                    <!-- FBS/DBS схемы -->
+                                                    <div class="px-4 py-2 border-t border-gray-100" x-show="skuSchemes[String(sku.skuId)]">
+                                                        <div class="flex items-center justify-between">
+                                                            <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Схема продаж</span>
+                                                            <div class="flex items-center gap-2">
+                                                                <!-- FBS toggle -->
+                                                                <template x-if="skuSchemes[String(sku.skuId)]">
+                                                                    <button
+                                                                        @click.stop="toggleScheme(sku.skuId, 'fbs')"
+                                                                        :disabled="!skuSchemes[String(sku.skuId)]?.fbsAllowed || togglingScheme === sku.skuId + '_fbs'"
+                                                                        :class="skuSchemes[String(sku.skuId)]?.fbsLinked
+                                                                            ? 'bg-green-500 text-white border-green-500'
+                                                                            : (skuSchemes[String(sku.skuId)]?.fbsAllowed ? 'bg-white text-gray-500 border-gray-300 hover:border-green-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60')"
+                                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all"
+                                                                        :title="!skuSchemes[String(sku.skuId)]?.fbsAllowed ? 'FBS не разрешён для этого SKU' : (skuSchemes[String(sku.skuId)]?.fbsLinked ? 'Отключить FBS' : 'Включить FBS')"
+                                                                    >
+                                                                        <svg x-show="togglingScheme === sku.skuId + '_fbs'" class="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_fbs'" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="skuSchemes[String(sku.skuId)]?.fbsLinked ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'"/></svg>
+                                                                        FBS
+                                                                    </button>
+                                                                </template>
+                                                                <!-- DBS toggle -->
+                                                                <template x-if="skuSchemes[String(sku.skuId)]">
+                                                                    <button
+                                                                        @click.stop="toggleScheme(sku.skuId, 'dbs')"
+                                                                        :disabled="!skuSchemes[String(sku.skuId)]?.dbsAllowed || togglingScheme === sku.skuId + '_dbs'"
+                                                                        :class="skuSchemes[String(sku.skuId)]?.dbsLinked
+                                                                            ? 'bg-purple-500 text-white border-purple-500'
+                                                                            : (skuSchemes[String(sku.skuId)]?.dbsAllowed ? 'bg-white text-gray-500 border-gray-300 hover:border-purple-400' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60')"
+                                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold transition-all"
+                                                                        :title="!skuSchemes[String(sku.skuId)]?.dbsAllowed ? 'DBS не разрешён для этого SKU' : (skuSchemes[String(sku.skuId)]?.dbsLinked ? 'Отключить DBS' : 'Включить DBS')"
+                                                                    >
+                                                                        <svg x-show="togglingScheme === sku.skuId + '_dbs'" class="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                                        <svg x-show="togglingScheme !== sku.skuId + '_dbs'" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="skuSchemes[String(sku.skuId)]?.dbsLinked ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'"/></svg>
+                                                                        DBS
+                                                                    </button>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <!-- SKU characteristics -->
                                                     <template x-if="sku.characteristicsList && sku.characteristicsList.length">
                                                         <div class="px-4 py-2 border-t border-gray-100 text-xs text-gray-600">
@@ -596,6 +636,8 @@ function uzumProducts(accountId) {
         variantSearchResults: [],
         searchingVariants: false,
         syncingStock: null,
+        skuSchemes: {},
+        togglingScheme: null,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -743,8 +785,34 @@ function uzumProducts(accountId) {
         },
         openDetail(item) {
             this.selected = item; this.detailOpen = true; this.galleryIndex = 0; this.copiedField = null;
-            this.skuLinks = []; this.loadProductLinks();
+            this.skuLinks = []; this.skuSchemes = {}; this.loadProductLinks(); this.loadSkuSchemes();
             if (!item.raw_payload) this.loadRaw(item.id);
+        },
+        async loadSkuSchemes() {
+            try {
+                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
+                if (r.ok) { this.skuSchemes = (await r.json()).schemes || {}; }
+            } catch {}
+        },
+        async toggleScheme(skuId, type) {
+            const key = String(skuId);
+            const scheme = this.skuSchemes[key];
+            if (!scheme) return;
+            const newFbs = type === 'fbs' ? !scheme.fbsLinked : scheme.fbsLinked;
+            const newDbs = type === 'dbs' ? !scheme.dbsLinked : scheme.dbsLinked;
+            this.togglingScheme = skuId + '_' + type;
+            try {
+                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/${skuId}`, {
+                    method: 'POST', headers: this.getHeaders(), credentials: 'include',
+                    body: JSON.stringify({ fbsLinked: newFbs, dbsLinked: newDbs }),
+                });
+                const data = await r.json();
+                if (r.ok) {
+                    this.skuSchemes = { ...this.skuSchemes, [key]: { ...scheme, fbsLinked: newFbs, dbsLinked: newDbs } };
+                } else {
+                    alert(data.message || 'Ошибка изменения схемы');
+                }
+            } catch { alert('Ошибка соединения'); } finally { this.togglingScheme = null; }
         },
         async loadRaw(id) {
             try {

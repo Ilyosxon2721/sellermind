@@ -623,6 +623,8 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
             Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
             Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
+            Route::get('accounts/{account}/sku-schemes', [UzumSettingsController::class, 'skuSchemes']);
+            Route::post('accounts/{account}/sku-schemes/{skuId}', [UzumSettingsController::class, 'updateSkuScheme']);
         });
 
         // Yandex Market
