@@ -31,12 +31,21 @@
         <main class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
             <!-- Filters -->
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Склад</label>
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="warehouseId">
                             @foreach($warehouses as $wh)
                                 <option value="{{ $wh->id }}" @selected($wh->id === $selectedWarehouseId)>{{ $wh->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Категория</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" x-model="categoryId">
+                            <option value="">Все категории</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -46,7 +55,7 @@
                     </div>
                     <div class="flex items-end">
                         <button class="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 font-medium" @click="load()">
-                            Загрузить
+                            Найти
                         </button>
                     </div>
                 </div>
@@ -128,7 +137,7 @@
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 </div>
                                 <div class="text-gray-500 mb-2">Нет данных</div>
-                                <div class="text-sm text-gray-400">Нажмите «Загрузить» для получения остатков</div>
+                                <div class="text-sm text-gray-400">Измените фильтры для поиска остатков</div>
                             </td></tr>
                         </template>
                         <template x-for="row in items" :key="row.sku_id">
@@ -177,9 +186,16 @@
 
                 <!-- Pagination -->
                 <div x-show="pagination.last_page > 1" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                    <div class="text-sm text-gray-600">
-                        Показано <span class="font-medium" x-text="items.length"></span> из <span class="font-medium" x-text="pagination.total"></span> позиций
-                        (стр. <span x-text="pagination.current_page"></span> из <span x-text="pagination.last_page"></span>)
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-600">
+                            Показано <span class="font-medium" x-text="items.length"></span> из <span class="font-medium" x-text="pagination.total"></span> позиций
+                            (стр. <span x-text="pagination.current_page"></span> из <span x-text="pagination.last_page"></span>)
+                        </div>
+                        <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" x-model="pagination.per_page" @change="load()">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                     <div class="flex items-center space-x-2">
                         <button @click="goToPage(1)" :disabled="pagination.current_page === 1"
@@ -229,18 +245,19 @@
     function balancePage() {
         return {
             warehouseId: '{{ $selectedWarehouseId }}',
+            categoryId: '',
             query: '',
             error: '',
             loading: false,
             items: [],
-            pagination: { total: 0, per_page: 30, current_page: 1, last_page: 1 },
+            pagination: { total: 0, per_page: 50, current_page: 1, last_page: 1 },
             toast: { show: false, message: '', type: 'success' },
             summary: { total_quantity: 0, total_cost: 0 },
             summaryLoading: false,
             autoRefreshInterval: null,
 
             init() {
-                this.loadSummary();
+                this.load();
                 this.autoRefreshInterval = setInterval(() => {
                     this.load(false);
                 }, 60000);
@@ -325,6 +342,7 @@
                     const params = new URLSearchParams({
                         warehouse_id: this.warehouseId,
                         query: this.query,
+                        category_id: this.categoryId,
                         page: this.pagination.current_page,
                         per_page: this.pagination.per_page
                     });
@@ -348,7 +366,7 @@
                     if (pag) {
                         this.pagination = {
                             total: pag.total || 0,
-                            per_page: pag.per_page || 30,
+                            per_page: pag.per_page || 50,
                             current_page: pag.current_page || 1,
                             last_page: pag.last_page || 1
                         };
@@ -413,10 +431,19 @@
                     </select>
                 </div>
                 <div>
+                    <label class="native-caption">Категория</label>
+                    <select class="native-input mt-1" x-model="categoryId">
+                        <option value="">Все категории</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
                     <label class="native-caption">Поиск SKU / штрихкода</label>
                     <input type="text" class="native-input mt-1" placeholder="Введите SKU..." x-model="query" @keydown.enter.prevent="load()">
                 </div>
-                <button class="native-btn w-full" @click="load()">Загрузить</button>
+                <button class="native-btn w-full" @click="load()">Найти</button>
                 <template x-if="error">
                     <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="error"></div>
                 </template>
@@ -458,7 +485,7 @@
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 </div>
                 <p class="native-body font-semibold mb-2">Нет данных</p>
-                <p class="native-caption">Нажмите «Загрузить»</p>
+                <p class="native-caption">Измените фильтры для поиска остатков</p>
             </div>
         </div>
 
@@ -502,18 +529,28 @@
             </template>
 
             {{-- PWA Pagination --}}
-            <div x-show="pagination.last_page > 1" class="native-card flex items-center justify-between">
-                <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page === 1"
-                        class="px-4 py-2 rounded-lg text-sm font-medium"
-                        :class="pagination.current_page === 1 ? 'text-gray-400' : 'text-blue-600'">
-                    ← Назад
-                </button>
-                <span class="text-sm text-gray-600" x-text="pagination.current_page + ' / ' + pagination.last_page"></span>
-                <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page === pagination.last_page"
-                        class="px-4 py-2 rounded-lg text-sm font-medium"
-                        :class="pagination.current_page === pagination.last_page ? 'text-gray-400' : 'text-blue-600'">
-                    Далее →
-                </button>
+            <div x-show="pagination.last_page > 1" class="native-card space-y-3">
+                <div class="flex items-center justify-between">
+                    <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page === 1"
+                            class="px-4 py-2 rounded-lg text-sm font-medium"
+                            :class="pagination.current_page === 1 ? 'text-gray-400' : 'text-blue-600'">
+                        ← Назад
+                    </button>
+                    <span class="text-sm text-gray-600" x-text="pagination.current_page + ' / ' + pagination.last_page"></span>
+                    <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page === pagination.last_page"
+                            class="px-4 py-2 rounded-lg text-sm font-medium"
+                            :class="pagination.current_page === pagination.last_page ? 'text-gray-400' : 'text-blue-600'">
+                        Далее →
+                    </button>
+                </div>
+                <div class="flex items-center justify-center space-x-3">
+                    <span class="text-sm text-gray-500">На странице:</span>
+                    <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" x-model="pagination.per_page" @change="load()">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
             </div>
         </div>
 

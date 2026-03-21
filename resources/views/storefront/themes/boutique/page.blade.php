@@ -28,7 +28,7 @@
             prose-table:text-sm
             prose-blockquote:border-l-4 prose-blockquote:rounded-r-2xl prose-blockquote:bg-gray-50 prose-blockquote:py-2 prose-blockquote:px-4
         " style="--tw-prose-links: var(--primary); --tw-prose-quote-borders: var(--primary);">
-            {!! $page->content !!}
+            {!! strip_tags($page->content, '<h1><h2><h3><h4><h5><h6><p><br><a><img><ul><ol><li><table><thead><tbody><tr><th><td><strong><b><em><i><u><s><blockquote><pre><code><hr><div><span><figure><figcaption><sub><sup>') !!}
         </div>
     </article>
 </div>

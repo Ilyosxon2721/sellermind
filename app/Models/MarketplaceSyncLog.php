@@ -39,7 +39,8 @@ class MarketplaceSyncLog extends Model
         'response_payload',
     ];
 
-    protected $appends = ['duration', 'status_label', 'type_label'];
+    // Убрано из $appends — вычисляется в контроллере/API Resource при необходимости
+    // protected $appends = ['duration', 'status_label', 'type_label'];
 
     protected function casts(): array
     {

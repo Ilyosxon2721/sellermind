@@ -37,7 +37,7 @@
                 prose-code:py-0.5
                 prose-code:rounded
             " style="--tw-prose-links: var(--primary);">
-                {!! $page->content !!}
+                {!! strip_tags($page->content, '<h1><h2><h3><h4><h5><h6><p><br><a><img><ul><ol><li><table><thead><tbody><tr><th><td><strong><b><em><i><u><s><blockquote><pre><code><hr><div><span><figure><figcaption><sub><sup>') !!}
             </div>
         </div>
     </article>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasCompanyScope;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Models\Warehouse\Warehouse;
 use App\Models\Warehouse\WriteOffReason;
@@ -26,9 +27,15 @@ class WarehouseController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $categories = ProductCategory::query()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('warehouse.balance', [
             'warehouses' => $warehouses,
             'selectedWarehouseId' => $warehouses->first()?->id,
+            'categories' => $categories,
         ]);
     }
 
@@ -145,9 +152,15 @@ class WarehouseController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $categories = ProductCategory::query()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('warehouse.ledger', [
             'warehouses' => $warehouses,
             'selectedWarehouseId' => $warehouses->first()?->id,
+            'categories' => $categories,
         ]);
     }
 
