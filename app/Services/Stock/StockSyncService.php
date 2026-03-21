@@ -272,7 +272,7 @@ class StockSyncService
             }
         }
 
-        // GET текущих остатков от Uzum — получаем fbsLinked/dbsLinked для этого SKU
+        // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed для этого SKU
         try {
             $currentStocks = $uzum->stocks()->get();
             $skuListFromApi = $currentStocks['skuAmountList']
@@ -283,16 +283,13 @@ class StockSyncService
                     if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
                         $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
                         $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
-                        $apiFbs = isset($sku['fbsLinked']) ? (bool) $sku['fbsLinked'] : null;
-                        $apiDbs = isset($sku['dbsLinked']) ? (bool) $sku['dbsLinked'] : null;
-                        // Если оба false (RUN_OUT) и нужно выставить остаток > 0 — реактивируем оба
-                        // Если один из них true — сохраняем режим (DBS-only или FBS-only)
-                        if ($stock > 0 && $apiFbs === false && $apiDbs === false) {
-                            $fbsLinked = true;
-                            $dbsLinked = true;
-                        } else {
-                            $fbsLinked = $apiFbs ?? true;
-                            $dbsLinked = $apiDbs ?? true;
+                        // fbsAllowed/dbsAllowed — что разрешено для товара (FBS или DBS)
+                        // Используем Allowed, а не Linked: Linked может быть false даже если Allowed=true
+                        $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
+                        $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
+                        if ($fbsAllowed !== null || $dbsAllowed !== null) {
+                            $fbsLinked = $fbsAllowed ?? true;
+                            $dbsLinked = $dbsAllowed ?? true;
                         }
                         break;
                     }
@@ -309,43 +306,8 @@ class StockSyncService
         $productTitle = $mpProduct->title ?? '';
         $skuTitle = $skuTitle ?? $productTitle;
 
-        Log::error('DEBUG Uzum syncToUzum', [
-            'link_id' => $link->id,
-            'sku_id' => $skuId,
-            'barcode' => $barcode,
-            'sku_title' => $skuTitle,
-            'product_title' => $productTitle,
-            'fbs_linked' => $fbsLinked,
-            'dbs_linked' => $dbsLinked,
-            'stock' => $stock,
-        ]);
-
-        // Перебираем варианты fbsLinked/dbsLinked — Uzum требует точное совпадение с настройкой товара
-        $attempts = [
-            [$fbsLinked, $dbsLinked],   // 1. значения из GET (или дефолт)
-            [true,  true],              // 2. оба включены
-            [false, true],              // 3. только DBS
-            [true,  false],             // 4. только FBS
-        ];
-
-        $updatedRecords = 0;
-        $result = [];
-
-        foreach ($attempts as [$tryFbs, $tryDbs]) {
-            $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $tryFbs, $tryDbs);
-            $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
-
-            Log::error('DEBUG Uzum updateOne attempt', [
-                'link_id' => $link->id,
-                'sku_id' => $skuId,
-                'fbs' => $tryFbs, 'dbs' => $tryDbs,
-                'updated_records' => $updatedRecords,
-            ]);
-
-            if ($updatedRecords > 0) {
-                break;
-            }
-        }
+        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $fbsLinked, $dbsLinked);
+        $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
         if ($updatedRecords === 0) {
             throw new \RuntimeException(
