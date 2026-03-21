@@ -491,9 +491,9 @@ function kpiPage() {
         showScaleModal: false,
 
         // Формы
-        planForm: this.emptyPlanForm(),
-        sphereForm: this.emptySphereForm(),
-        scaleForm: this.emptyScaleForm(),
+        planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
+        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', is_active: true },
+        scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
         // Уведомления
         notification: { show: false, message: '', type: 'success' },
