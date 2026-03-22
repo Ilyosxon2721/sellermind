@@ -37,6 +37,7 @@ final class SalesSphere extends Model
         'icon',
         'marketplace_account_id',
         'marketplace_account_ids',
+        'offline_sale_types',
         'is_active',
         'sort_order',
     ];
@@ -47,6 +48,7 @@ final class SalesSphere extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
             'marketplace_account_ids' => 'array',
+            'offline_sale_types' => 'array',
         ];
     }
 
@@ -71,6 +73,22 @@ final class SalesSphere extends Model
     public function hasMarketplaceLink(): bool
     {
         return ! empty($this->marketplace_account_ids) || $this->marketplace_account_id !== null;
+    }
+
+    /**
+     * Привязана ли сфера к типам ручных продаж (retail, wholesale, direct)
+     */
+    public function hasOfflineSaleLink(): bool
+    {
+        return ! empty($this->offline_sale_types);
+    }
+
+    /**
+     * Получить привязанные типы ручных продаж
+     */
+    public function getOfflineSaleTypes(): array
+    {
+        return $this->offline_sale_types ?? [];
     }
 
     /**

@@ -25,7 +25,7 @@ function kpiPage(config) {
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
         aiSuggesting: false,
         aiReasoning: '',
-        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], is_active: true },
+        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true },
         scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
         // Уведомления
@@ -43,7 +43,7 @@ function kpiPage(config) {
             return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
         },
         emptySphereForm() {
-            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], is_active: true };
+            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true };
         },
         emptyScaleForm() {
             return { id: null, name: '', is_default: false, tiers: [] };
@@ -216,7 +216,8 @@ function kpiPage(config) {
         },
         editSphere(s) {
             this.sphereForm = Object.assign({}, s, {
-                marketplace_account_ids: (s.marketplace_account_ids || []).map(function(id) { return parseInt(id); })
+                marketplace_account_ids: (s.marketplace_account_ids || []).map(function(id) { return parseInt(id); }),
+                offline_sale_types: (s.offline_sale_types || []).slice()
             });
             this.showSphereModal = true;
         },
@@ -229,6 +230,16 @@ function kpiPage(config) {
                 ids.splice(idx, 1);
             }
             this.sphereForm.marketplace_account_ids = ids.slice();
+        },
+        toggleOfflineSaleType(type) {
+            var types = this.sphereForm.offline_sale_types || [];
+            var idx = types.indexOf(type);
+            if (idx === -1) {
+                types.push(type);
+            } else {
+                types.splice(idx, 1);
+            }
+            this.sphereForm.offline_sale_types = types.slice();
         },
         async saveSphere() {
             try {

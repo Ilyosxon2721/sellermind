@@ -62,6 +62,8 @@ final class SalesSphereController extends Controller
             'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
             'marketplace_account_ids' => 'nullable|array',
             'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
+            'offline_sale_types' => 'nullable|array',
+            'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
@@ -113,6 +115,8 @@ final class SalesSphereController extends Controller
             'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
             'marketplace_account_ids' => 'nullable|array',
             'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
+            'offline_sale_types' => 'nullable|array',
+            'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
