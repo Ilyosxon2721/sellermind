@@ -39,11 +39,8 @@ Route::middleware(['auth:sanctum', 'verified'])
         Route::get('/market-overview', [AnalyticsController::class, 'marketOverview'])
             ->name('market-overview');
 
-        // Экспорт аналитики
-        Route::get('/export', [AnalyticsController::class, 'export'])
-            ->name('export');
-
-        // Healthcheck и метрики
-        Route::get('/health', [AnalyticsController::class, 'healthcheck'])
-            ->name('health');
+        // Управление отслеживаемыми товарами (#073-#075)
+        Route::get('/tracked', [AnalyticsController::class, 'tracked'])->name('tracked.index');
+        Route::post('/tracked', [AnalyticsController::class, 'addTracked'])->name('tracked.store');
+        Route::delete('/tracked/{productId}', [AnalyticsController::class, 'removeTracked'])->name('tracked.destroy');
     });

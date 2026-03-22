@@ -419,3 +419,73 @@ Schedule::job(new \App\Modules\UzumAnalytics\Jobs\SyncCategoriesJob)
         \Log::error('[UzumAnalytics] Categories sync job failed');
     })
     ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
+
+// Uzum Analytics: Снепшоты отслеживаемых товаров 4 раза в сутки (ТЗ #073)
+// 00:00, 06:00, 12:00, 18:00 UTC+5 (Ташкент)
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6; // rate limit: 10 товаров/мин = 6 сек между запросами
+            });
+    });
+})
+    ->at('00:00')->daily()
+    ->name('uzum-analytics:crawl-products-00')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('06:00')->daily()
+    ->name('uzum-analytics:crawl-products-06')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('12:00')->daily()
+    ->name('uzum-analytics:crawl-products-12')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('18:00')->daily()
+    ->name('uzum-analytics:crawl-products-18')
+    ->withoutOverlapping(30);
