@@ -15,6 +15,8 @@ function kpiPage(config) {
         employees: [],
         marketplaceAccounts: [],
         calculating: false,
+        chartData: [],
+        chart: null,
 
         // Модалки
         showPlanModal: false,
@@ -37,6 +39,7 @@ function kpiPage(config) {
             this.loadScales();
             this.loadEmployees();
             this.loadMarketplaceAccounts();
+            this.loadChartData(6);
         },
 
         emptyPlanForm() {
@@ -134,6 +137,14 @@ function kpiPage(config) {
                 var res = await this.api('finance/kpi/marketplace-accounts');
                 this.marketplaceAccounts = res.data ?? [];
             } catch (e) { /* маркетплейсы могут быть не доступны */ }
+        },
+        async loadChartData(months) {
+            months = months || 6;
+            try {
+                var res = await this.api('finance/kpi/chart-data?months=' + months);
+                this.chartData = (res.data ?? res).data ?? [];
+                this.renderChart();
+            } catch (e) { console.error('Chart load error:', e); }
         },
 
         // Расчёт KPI
@@ -293,6 +304,121 @@ function kpiPage(config) {
                 this.notify('Шкала удалена');
                 await this.loadScales();
             } catch (e) { this.notify(e.message, 'error'); }
+        },
+
+        // График KPI
+        renderChart() {
+            if (!window.Chart) {
+                console.warn('Chart.js не загружен');
+                return;
+            }
+            var canvas = document.getElementById('kpiChart');
+            if (!canvas) return;
+
+            var ctx = canvas.getContext('2d');
+            var self = this;
+
+            // Уничтожаем предыдущий график
+            if (this.chart) {
+                this.chart.destroy();
+            }
+
+            var labels = this.chartData.map(function(d) {
+                return self.monthName(d.month) + ' ' + d.year;
+            });
+            var achievements = this.chartData.map(function(d) { return d.avg_achievement; });
+            var bonuses = this.chartData.map(function(d) { return d.total_bonus; });
+
+            this.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Средний % выполнения',
+                            data: achievements,
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.3,
+                            yAxisID: 'y',
+                            fill: true,
+                        },
+                        {
+                            label: 'Бонусы (сум)',
+                            data: bonuses,
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                            fill: true,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    var label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (context.datasetIndex === 0) {
+                                            label += context.parsed.y.toFixed(1) + '%';
+                                        } else {
+                                            label += context.parsed.y.toLocaleString('ru-RU') + ' сум';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '% выполнения'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Бонусы (сум)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('ru-RU');
+                                }
+                            }
+                        },
+                    }
+                }
+            });
         },
     };
 }

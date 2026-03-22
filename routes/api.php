@@ -909,6 +909,7 @@ Route::middleware('auth.any')->group(function () {
         // KPI — планы, сферы продаж, шкалы бонусов
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
+            Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
 
             // Маркетплейс-аккаунты для привязки
             Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);

@@ -259,11 +259,92 @@ final class KpiPlanController extends Controller
             return $this->successResponse($suggestion);
         } catch (\Exception $e) {
             return $this->errorResponse(
-                'Не удалось получить ИИ-рекомендацию: ' . $e->getMessage(),
+                'Не удалось получить ИИ-рекомендацию: '.$e->getMessage(),
                 'ai_error',
                 null,
                 500
             );
         }
+    }
+
+    /**
+     * Исторические данные KPI для графиков (последние N месяцев)
+     */
+    public function chartData(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $validated = $request->validate([
+            'months' => 'sometimes|integer|min:3|max:24',
+            'employee_id' => 'sometimes|integer|exists:employees,id',
+            'sphere_id' => 'sometimes|integer|exists:kpi_sales_spheres,id',
+        ]);
+
+        $months = $validated['months'] ?? 6;
+        $employeeId = $validated['employee_id'] ?? null;
+        $sphereId = $validated['sphere_id'] ?? null;
+
+        // Получаем данные за последние N месяцев
+        $endDate = now();
+        $startDate = now()->subMonths($months);
+
+        $query = KpiPlan::byCompany($companyId)
+            ->with(['employee', 'salesSphere'])
+            ->where('period_year', '>=', $startDate->year)
+            ->where(function ($q) use ($startDate) {
+                $q->where('period_year', '>', $startDate->year)
+                    ->orWhere(function ($q2) use ($startDate) {
+                        $q2->where('period_year', '=', $startDate->year)
+                            ->where('period_month', '>=', $startDate->month);
+                    });
+            })
+            ->where(function ($q) use ($endDate) {
+                $q->where('period_year', '<', $endDate->year)
+                    ->orWhere(function ($q2) use ($endDate) {
+                        $q2->where('period_year', '=', $endDate->year)
+                            ->where('period_month', '<=', $endDate->month);
+                    });
+            })
+            ->orderBy('period_year')
+            ->orderBy('period_month');
+
+        if ($employeeId) {
+            $query->forEmployee($employeeId);
+        }
+
+        if ($sphereId) {
+            $query->where('kpi_sales_sphere_id', $sphereId);
+        }
+
+        $plans = $query->get();
+
+        // Группируем по периодам
+        $grouped = $plans->groupBy(function ($plan) {
+            return $plan->period_year.'-'.str_pad((string) $plan->period_month, 2, '0', STR_PAD_LEFT);
+        });
+
+        $chartData = [];
+        foreach ($grouped as $period => $periodPlans) {
+            [$year, $month] = explode('-', $period);
+            $avgAchievement = $periodPlans->avg('achievement_percent') ?? 0;
+            $totalBonus = $periodPlans->sum('bonus_amount') ?? 0;
+            $totalRevenue = $periodPlans->sum('actual_revenue') ?? 0;
+            $planCount = $periodPlans->count();
+
+            $chartData[] = [
+                'period' => $period,
+                'year' => (int) $year,
+                'month' => (int) $month,
+                'avg_achievement' => round($avgAchievement, 1),
+                'total_bonus' => $totalBonus,
+                'total_revenue' => $totalRevenue,
+                'plan_count' => $planCount,
+            ];
+        }
+
+        return $this->successResponse([
+            'data' => $chartData,
+            'months' => $months,
+        ]);
     }
 }

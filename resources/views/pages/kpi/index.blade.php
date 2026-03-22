@@ -91,6 +91,24 @@
                         </div>
                     </div>
 
+                    {{-- График KPI за последние месяцы --}}
+                    <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">{{ __('kpi.dashboard.chart_title') }}</h3>
+                            <select @change="loadChartData($event.target.value)" class="rounded-lg border-gray-300 text-sm">
+                                <option value="3">3 месяца</option>
+                                <option value="6" selected>6 месяцев</option>
+                                <option value="12">12 месяцев</option>
+                            </select>
+                        </div>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="kpiChart"></canvas>
+                        </div>
+                        <div x-show="chartData.length === 0" class="text-center text-gray-400 py-12">
+                            Нет данных для отображения
+                        </div>
+                    </div>
+
                     {{-- Кнопка рассчитать --}}
                     <div class="flex justify-end mb-4">
                         <button @click="calculateAll()" :disabled="calculating"
@@ -525,6 +543,7 @@
     </div>
 </div>
 
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/js/kpi.js"></script>
 
 @endsection
