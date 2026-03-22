@@ -8,8 +8,6 @@ use App\Models\AIUsageLog;
 use App\Models\Finance\Employee;
 use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
-use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Services\AI\AiProviderService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -128,42 +126,149 @@ final class KpiAiService
                 $monthData['margin'] = $existingPlan->actual_margin;
                 $monthData['orders'] = $existingPlan->actual_orders;
             } elseif ($sphere && $sphere->hasMarketplaceLink()) {
-                // Собираем из Sales по всем привязанным аккаунтам
+                // Читаем напрямую из таблиц заказов маркетплейсов
                 $accountIds = $sphere->getLinkedAccountIds();
+                $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
 
-                $salesData = Sale::where('company_id', $companyId)
-                    ->where('type', 'marketplace')
-                    ->whereIn('status', ['confirmed', 'completed'])
-                    ->whereBetween('created_at', [$periodStart, $periodEnd])
-                    ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                        $query->whereIn('marketplace_account_id', $accountIds);
-                    })
-                    ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
-                    ->first();
-
-                $monthData['revenue'] = (float) ($salesData->total_revenue ?? 0);
-                $monthData['orders'] = (int) ($salesData->total_orders ?? 0);
-
-                // Маржа
-                $marginData = SaleItem::whereHas('sale', function ($q) use ($companyId, $accountIds, $periodStart, $periodEnd) {
-                    $q->where('company_id', $companyId)
-                        ->where('type', 'marketplace')
-                        ->whereIn('status', ['confirmed', 'completed'])
-                        ->whereBetween('created_at', [$periodStart, $periodEnd])
-                        ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                            $query->whereIn('marketplace_account_id', $accountIds);
-                        });
-                })
-                    ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
-                    ->first();
-
-                $monthData['margin'] = max(0, (float) (($marginData->total_sales ?? 0) - ($marginData->total_cost ?? 0)));
+                $monthData['revenue'] = $marketplaceData['revenue'];
+                $monthData['margin'] = $marketplaceData['margin'];
+                $monthData['orders'] = $marketplaceData['orders'];
             }
 
             $history[] = $monthData;
         }
 
         return $history;
+    }
+
+    /**
+     * Собрать данные продаж напрямую из таблиц маркетплейсов
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectMarketplaceData(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $totalRevenue = 0;
+        $totalMargin = 0;
+        $totalOrders = 0;
+
+        foreach ($accountIds as $accountId) {
+            $account = \App\Models\MarketplaceAccount::find($accountId);
+            if (! $account) {
+                continue;
+            }
+
+            // Определяем тип маркетплейса и читаем из соответствующей таблицы
+            $data = match ($account->marketplace) {
+                'uzum' => $this->collectUzumData($accountId, $periodStart, $periodEnd),
+                'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
+                'ozon' => $this->collectOzonData($accountId, $periodStart, $periodEnd),
+                'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
+                default => ['revenue' => 0, 'margin' => 0, 'orders' => 0],
+            };
+
+            $totalRevenue += $data['revenue'];
+            $totalMargin += $data['margin'];
+            $totalOrders += $data['orders'];
+        }
+
+        return [
+            'revenue' => $totalRevenue,
+            'margin' => $totalMargin,
+            'orders' => $totalOrders,
+        ];
+    }
+
+    /**
+     * Собрать данные из Uzum заказов
+     */
+    private function collectUzumData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        // Uzum статусы: issued = доставлено, accepted_uzum = принято
+        $orders = \App\Models\UzumOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['issued', 'accepted_uzum'])
+            ->whereBetween('ordered_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_amount), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи требует связи с Products через barcode/sku
+        // Пока возвращаем 0, можно добавить позже
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Wildberries заказов
+     */
+    private function collectWildberriesData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\WildberriesOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['confirmed', 'completed'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(DISTINCT order_id) as total_orders,
+                COALESCE(SUM(total_price), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Ozon заказов
+     */
+    private function collectOzonData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\OzonOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['confirmed', 'completed'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_price), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Yandex Market заказов
+     */
+    private function collectYandexMarketData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\YandexMarketOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status', ['PROCESSING', 'DELIVERY', 'DELIVERED'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total), 0) as total_revenue
+            ')
+            ->first();
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0, // TODO: добавить расчёт маржи для YM
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
     }
 
     /**

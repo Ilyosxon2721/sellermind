@@ -62,9 +62,12 @@ final class TestKpiAi extends Command
         $startTime = microtime(true);
 
         try {
+            // Найти любого пользователя компании для логирования
+            $userId = \App\Models\User::where('company_id', $companyId)->value('id') ?? 1;
+
             $suggestion = $aiService->suggestPlan(
                 $companyId,
-                1, // user_id (для теста)
+                $userId,
                 $employee->id,
                 $sphere->id,
                 now()->addMonth()->year,
