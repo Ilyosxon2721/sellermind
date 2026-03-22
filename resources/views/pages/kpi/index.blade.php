@@ -222,7 +222,7 @@
                                         </div>
                                         <div>
                                             <h3 class="font-semibold text-gray-900" x-text="s.name"></h3>
-                                            <p class="text-xs text-gray-500" x-text="s.description || '{{ __('kpi.spheres.no_marketplace') }}'"></p>
+                                            <p class="text-xs text-gray-500" x-text="s.marketplace_account ? s.marketplace_account.name + ' (' + s.marketplace_account.marketplace + ')' : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
                                         </div>
                                     </div>
                                     <span class="w-2.5 h-2.5 rounded-full mt-1" :class="s.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
@@ -393,6 +393,16 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.description') }}</label>
                         <input type="text" x-model="sphereForm.description" class="w-full rounded-lg border-gray-300 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.marketplace') }}</label>
+                        <select x-model="sphereForm.marketplace_account_id" class="w-full rounded-lg border-gray-300 text-sm">
+                            <option value="">{{ __('kpi.spheres.no_marketplace') }}</option>
+                            <template x-for="ma in marketplaceAccounts" :key="ma.id">
+                                <option :value="ma.id" x-text="ma.name + ' (' + ma.marketplace + ')'"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">Привязка к маркетплейсу позволит автоматически собирать данные</p>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
