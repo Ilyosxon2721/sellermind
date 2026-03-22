@@ -230,22 +230,11 @@ test(promotions): добавить тесты для SmartPromotionService
 ### НЕ ДЕЛАЙ без разрешения:
 1. `php artisan migrate:fresh` — удалит все данные
 2. `rm -rf` — удаление файлов
-3. `git push` — ЗАПРЕЩЕНО! Forge авто-деплоит
-4. Изменения в `.env.production`
-5. Изменения в платёжных модулях
+3. Изменения в `.env.production`
+4. Изменения в платёжных модулях
 
-### ⚠️ ВАЖНО: GIT PUSH ЗАПРЕЩЁН
-Claude Code только коммитит локально. Push делает человек после проверки:
-```bash
-# Claude делает:
-git add -A
-git commit -m "feat: ..."
-
-# Человек проверяет и пушит:
-git log --oneline -5  # посмотреть коммиты
-php artisan test      # прогнать тесты
-git push origin develop  # только после проверки!
-```
+### Git Push
+Claude Code может делать `git push` после коммита.
 
 ### ВСЕГДА ДЕЛАЙ:
 1. Запускай тесты перед коммитом

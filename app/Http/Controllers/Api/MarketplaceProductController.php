@@ -293,11 +293,13 @@ class MarketplaceProductController extends Controller
         $language = $request->input('language', 'ru');
         $raw = $marketplaceProduct->raw_payload ?? [];
 
+        $marketplace = $account->marketplace ?? 'unknown';
+
         $context = array_filter([
             'title'           => $marketplaceProduct->title,
             'category'        => $marketplaceProduct->category,
-            'brand'           => $raw['brand'] ?? null,
-            'vendor_code'     => $raw['vendorCode'] ?? null,
+            'brand'           => $raw['brand'] ?? $raw['brandName'] ?? null,
+            'vendor_code'     => $raw['vendorCode'] ?? $raw['vendor_code'] ?? $raw['offer_id'] ?? null,
             'description'     => $raw['description'] ?? null,
             'characteristics' => $raw['characteristics'] ?? $raw['attributes'] ?? null,
         ]);
@@ -305,7 +307,7 @@ class MarketplaceProductController extends Controller
         try {
             $result = app(AIService::class)->generateProductTexts(
                 $context,
-                'uzum',
+                $marketplace,
                 $language,
                 $account->company_id,
                 $request->user()->id

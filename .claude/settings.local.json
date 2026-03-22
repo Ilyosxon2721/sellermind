@@ -65,7 +65,25 @@
       "Bash(grep -l \"offline\\\\|cache\\\\|service.*worker\" /Applications/MAMP/htdocs/sellermind-ai/resources/js/*.js)",
       "Bash(find /Applications/MAMP/htdocs/sellermind-ai/app -type f \\\\\\(-name *pwa* -o -name *offline* \\\\\\))",
       "Bash(grep -r \"pwa\\\\|PWA\\\\|offline\" /Applications/MAMP/htdocs/sellermind-ai/app --include=*.php)",
-      "Bash(grep -l \"\\\\.pwa-mode\\\\|pwa-only\\\\|pwa-content\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/**/*.blade.php)"
+      "Bash(grep -l \"\\\\.pwa-mode\\\\|pwa-only\\\\|pwa-content\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/**/*.blade.php)",
+      "Bash(grep -l \"Schedule\" /Applications/MAMP/htdocs/sellermind-ai/app/Providers/*.php)",
+      "Bash(git checkout:*)",
+      "Bash(brew list:*)",
+      "Bash(brew install:*)",
+      "Bash(gh auth:*)",
+      "Bash(grep -n \"protected $table\" /Applications/MAMP/htdocs/sellermind-ai/app/Models/WildberriesProduct.php /Applications/MAMP/htdocs/sellermind-ai/app/Models/MarketplaceProduct.php)",
+      "Bash(grep -n \"table\\\\|protected $table\" /Applications/MAMP/htdocs/sellermind-ai/app/Models/WildberriesProduct.php /Applications/MAMP/htdocs/sellermind-ai/app/Models/OzonProduct.php /Applications/MAMP/htdocs/sellermind-ai/app/Models/MarketplaceProduct.php)",
+      "Bash(grep -n \"protected $table\\\\|class WildberriesProduct\\\\|class OzonProduct\" /Applications/MAMP/htdocs/sellermind-ai/app/Models/WildberriesProduct.php /Applications/MAMP/htdocs/sellermind-ai/app/Models/OzonProduct.php)",
+      "Bash(grep -n \"stock_fbs\\\\|stock_fbo\\\\|quantity_sold\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*marketplace_products*)",
+      "Bash(grep -r \"variant_mp_sku_unique\\\\|marketplace_product_id.*external_sku_id\" /Applications/MAMP/htdocs/sellermind-ai/database/migrations/*.php)",
+      "Bash(git merge:*)",
+      "Bash(sed -i '' '1020d' /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_uzum.blade.php)",
+      "Bash(sed -i '' '1020s/.*/            this.seoLoading = true; this.seoBothMode = false; this.titleApplied = false;\\\\n            this.seoResult = null;/' /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_uzum.blade.php)",
+      "Bash(grep -n \"^</div>$\\\\|^@endsection\\\\|function wbProducts\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_wb.blade.php)",
+      "Bash(grep -n \"^</div>$\\\\|^@endsection\\\\|function ozonProducts\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)",
+      "Bash(grep -n \"^</script>$\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_wb.blade.php)",
+      "Bash(grep -n \"^</script>$\\\\|^@endsection\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)",
+      "Bash(head -5 grep -n \"getHeaders\\\\|safeJson\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)"
     ]
   }
 }
