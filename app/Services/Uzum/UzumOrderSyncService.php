@@ -88,21 +88,26 @@ final class UzumOrderSyncService
 
         $allStatuses = array_keys(self::STATUS_MAP);
 
-        foreach ($allStatuses as $apiStatus) {
-            $isActive = in_array($apiStatus, self::ACTIVE_STATUSES);
-            $isExtended = in_array($apiStatus, self::EXTENDED_WINDOW_STATUSES);
+        // Синхронизируем FBS и DBS отдельно — передаём scheme явно,
+        // чтобы не зависеть от того, возвращает ли API поле scheme в теле ответа
+        foreach (['FBS', 'DBS'] as $scheme) {
+            foreach ($allStatuses as $apiStatus) {
+                $isActive = in_array($apiStatus, self::ACTIVE_STATUSES);
+                $isExtended = in_array($apiStatus, self::EXTENDED_WINDOW_STATUSES);
 
-            foreach ($shopIds as $shopId) {
-                try {
-                    $this->syncStatusForShop(
-                        $uzum, $account, (string) $shopId, $apiStatus,
-                        $isActive, $isExtended, $fromMs, $extendedFromMs, $stats
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning("UzumOrderSync: ошибка статуса {$apiStatus} магазина {$shopId}", [
-                        'account_id' => $account->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                foreach ($shopIds as $shopId) {
+                    try {
+                        $this->syncStatusForShop(
+                            $uzum, $account, (string) $shopId, $apiStatus,
+                            $isActive, $isExtended, $fromMs, $extendedFromMs, $stats,
+                            $scheme,
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning("UzumOrderSync: ошибка статуса {$apiStatus} схема {$scheme} магазина {$shopId}", [
+                            'account_id' => $account->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
         }
@@ -125,6 +130,7 @@ final class UzumOrderSyncService
         int $fromMs,
         int $extendedFromMs,
         array &$stats,
+        string $scheme = 'FBS',
     ): void {
         $page = 0;
         $size = 50;
@@ -135,6 +141,7 @@ final class UzumOrderSyncService
                 query: [
                     'shopIds' => $shopId,
                     'status' => $apiStatus,
+                    'scheme' => $scheme,
                     'page' => $page,
                     'size' => $size,
                 ],
@@ -166,6 +173,9 @@ final class UzumOrderSyncService
 
                 try {
                     $mapped = $this->mapOrderData($orderData);
+                    // Принудительно ставим delivery_type из параметра запроса —
+                    // надёжнее, чем полагаться на поле scheme в теле ответа API
+                    $mapped['delivery_type'] = $scheme;
                     $result = $this->persistOrder($account, $mapped);
                     $stats[$result]++;
                 } catch (\Throwable $e) {
@@ -314,7 +324,8 @@ final class UzumOrderSyncService
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            'delivery_type' => strtoupper($orderData['scheme'] ?? $orderData['deliveryType'] ?? 'FBS'),
+            // Приоритет: явный _delivery_scheme (из polling) → поле scheme → поле deliveryType → FBS по умолчанию
+            'delivery_type' => strtoupper($orderData['_delivery_scheme'] ?? $orderData['scheme'] ?? $orderData['deliveryType'] ?? 'FBS'),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
