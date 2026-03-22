@@ -1471,8 +1471,10 @@ final class UzumClient implements MarketplaceClientInterface
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Тип доставки (FBS/FBO/DBS)
-            'delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? $orderData['deliveryType'] ?? ''),
+            // Тип доставки (FBS/FBO/DBS) — null если схема не известна из ответа API
+            'delivery_type' => $deliveryType ?? (isset($orderData['scheme'])
+                ? strtoupper($orderData['scheme'])
+                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null)),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,

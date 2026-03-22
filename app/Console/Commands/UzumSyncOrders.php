@@ -108,7 +108,8 @@ class UzumSyncOrders extends Command
                     [
                         'status' => $orderData['status'] ?? 'unknown',
                         'status_normalized' => $orderData['status_normalized'] ?? null,
-                        'delivery_type' => $orderData['delivery_type'] ?? null,
+                        // Сохранить существующий delivery_type если новый неизвестен (API не вернул scheme)
+                        'delivery_type' => ($orderData['delivery_type'] ?: null) ?? ($existingOrder?->delivery_type ?? 'FBS'),
                         'shop_id' => $orderData['shop_id'] ?? $orderData['raw_payload']['shopId'] ?? null,
                         'customer_name' => $orderData['customer_name'] ?? null,
                         'customer_phone' => $orderData['customer_phone'] ?? null,
