@@ -390,3 +390,22 @@ Schedule::command('telegram:daily-summary')
     ->withoutOverlapping()
     ->name('telegram:daily-summary')
     ->appendOutputTo(storage_path('logs/telegram-daily-summary.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Uzum Analytics Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Automated tasks for Uzum Market competitive analytics module
+|
+*/
+
+// Uzum Analytics: Обновление пула JWT токенов каждые 5 минут
+Schedule::job(new \App\Modules\UzumAnalytics\Jobs\RefreshTokenPoolJob)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->name('uzum-analytics:refresh-tokens')
+    ->onFailure(function () {
+        \Log::error('[UzumAnalytics] Token refresh job failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
