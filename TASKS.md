@@ -160,12 +160,9 @@
 - [x] #079 **[FEATURE]** Графики Chart.js — ✅ 2026-03-23 (в рамках #078)
 - [x] #080 **[FEATURE]** Фильтры и таблицы — ✅ 2026-03-23 (в рамках #078)
 
-- [ ] #081 **[FEATURE]** Экспорт аналитики в CSV/Excel
-  - **Где:** AnalyticsController::export()
-  - **Endpoint:** GET /api/analytics/uzum/export
-  - **Форматы:** CSV, XLSX (Laravel Excel)
-  - **Данные:** История цен, список конкурентов, статистика категорий
-  - **Зависит от:** #077 (API endpoints)
+- [x] #081 **[FEATURE]** Экспорт аналитики в CSV — ✅ 2026-03-23
+  - GET /api/analytics/uzum/export?type=tracked|snapshots&days=N
+  - UTF-8 BOM, кнопка в дашборде
 
 #### 📊 Uzum Analytics - Дополнительно
 
@@ -182,7 +179,8 @@
   - `php artisan uzum:check-api-structure`
   - Scheduler: Daily at 09:00, алерт в Telegram при изменении полей
 
-- [ ] #085 **[DOCS]** Документация модуля Uzum Analytics
+- [x] #085 **[DOCS]** Документация модуля Uzum Analytics — ✅ 2026-03-23
+  - `docs/UZUM_ANALYTICS_GUIDE.md`
 
 - [x] #086 **[FEATURE]** Healthcheck и метрики краулера — ✅ 2026-03-23
   - GET /api/analytics/uzum/health
@@ -328,8 +326,8 @@
 ```
 Всего задач:     71
 В работе:        0
-В очереди:       27 (Uzum Analytics Module)
-Выполнено:       44 ✅
+В очереди:       2 (Uzum: #060 юрконсультация, #061 выделенный IP — блокируют продакшн)
+Выполнено:       69 ✅
 Заблокировано:   0
 ```
 
