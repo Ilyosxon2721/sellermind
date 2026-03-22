@@ -301,7 +301,7 @@
                                 <p class="text-sm text-gray-500 mt-0.5" x-text="selected?.category || ''"></p>
                             </div>
                             <div class="flex items-center space-x-1 ml-3">
-                                <button @click="seoModalOpen = true"
+                                <button @click="seoModalOpen = true; seoResult = null; seocopied = null"
                                         class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all shadow-sm"
                                         title="AI SEO оптимизация карточки">
                                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
