@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['auth:sanctum', 'verified'])
+Route::middleware(['web', 'auth:sanctum'])
     ->prefix('api/analytics/uzum')
     ->name('api.analytics.uzum.')
     ->group(function () {
@@ -46,6 +46,9 @@ Route::middleware(['auth:sanctum', 'verified'])
 
         // Healthcheck краулера (#086)
         Route::get('/health', [AnalyticsController::class, 'healthcheck'])->name('health');
+
+        // AI-анализ рынка
+        Route::get('/ai-insights', [AnalyticsController::class, 'aiInsights'])->name('ai-insights');
 
         // Экспорт CSV (#081)
         Route::get('/export', [AnalyticsController::class, 'export'])->name('export');

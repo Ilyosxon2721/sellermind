@@ -12,9 +12,11 @@ use App\Modules\UzumAnalytics\Models\UzumToken;
 use App\Modules\UzumAnalytics\Models\UzumTrackedProduct;
 use App\Modules\UzumAnalytics\Repositories\AnalyticsRepository;
 use App\Modules\UzumAnalytics\Services\CircuitBreaker;
+use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -204,6 +206,86 @@ final class AnalyticsController extends Controller
             'tracked_products'  => UzumTrackedProduct::count(),
             'feature_enabled'   => (bool) config('uzum-crawler.features.enabled'),
         ]);
+    }
+
+    /**
+     * AI-анализ рынка на основе данных отслеживаемых товаров
+     */
+    public function aiInsights(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id ?? $request->get('company_id');
+        $cacheKey  = "uzum_ai_insights_{$companyId}";
+
+        if ($cached = Cache::get($cacheKey)) {
+            return response()->json($cached);
+        }
+
+        $tracked = UzumTrackedProduct::where('company_id', $companyId)
+            ->orderByDesc('last_scraped_at')
+            ->get();
+
+        if ($tracked->isEmpty()) {
+            return response()->json([
+                'insights'     => null,
+                'message'      => 'Добавьте товары для мониторинга, чтобы получить AI-анализ.',
+                'generated_at' => null,
+            ]);
+        }
+
+        // Собираем данные о ценах за 7 дней
+        $productsData = $tracked->map(function (UzumTrackedProduct $item): array {
+            $history = $this->repository->getPriceHistory($item->product_id, 7);
+            $prices  = $history->map(fn ($h) => (float) $h->price)->values()->toArray();
+
+            $changePct = null;
+            if (count($prices) >= 2 && $prices[0] > 0) {
+                $changePct = round(($prices[count($prices) - 1] - $prices[0]) / $prices[0] * 100, 1);
+            }
+
+            return [
+                'title'         => $item->title ?? "Товар #{$item->product_id}",
+                'shop'          => $item->shop_slug ?? 'неизвестно',
+                'current_price' => (float) $item->last_price,
+                'change_pct_7d' => $changePct,
+            ];
+        })->toArray();
+
+        // Формируем промпт
+        $lines = array_map(function (array $p): string {
+            $price  = number_format($p['current_price'], 0, '.', ' ');
+            $change = $p['change_pct_7d'] !== null
+                ? ($p['change_pct_7d'] >= 0 ? "+{$p['change_pct_7d']}%" : "{$p['change_pct_7d']}%")
+                : 'нет истории';
+
+            return "• «{$p['title']}» (магазин: {$p['shop']}): цена {$price} сум, изменение за 7 дней: {$change}";
+        }, $productsData);
+
+        $count  = count($productsData);
+        $prompt = "Ты — аналитик маркетплейса Uzum Market. Проанализируй ценовые данные конкурентов и дай рекомендации продавцу.\n\n"
+            . "Отслеживаемые товары конкурентов ({$count} шт.):\n"
+            . implode("\n", $lines) . "\n\n"
+            . "Дай анализ в трёх блоках:\n"
+            . "**Ситуация на рынке** — 2-3 предложения о текущих тенденциях.\n"
+            . "**Рекомендации** — конкретные действия (ценообразование, акции, стратегия).\n"
+            . "**Прогноз** — что ожидать на следующей неделе.\n\n"
+            . "Пиши конкретно, используй цифры из данных. Ответ на русском.";
+
+        $aiService = app(AIService::class);
+        $insights  = $aiService->generateChatResponse([], $prompt, [
+            'model'      => 'fast',
+            'company_id' => $companyId,
+            'user_id'    => $request->user()?->id,
+        ]);
+
+        $result = [
+            'insights'       => $insights,
+            'generated_at'   => now()->toIso8601String(),
+            'products_count' => $tracked->count(),
+        ];
+
+        Cache::put($cacheKey, $result, now()->addHour());
+
+        return response()->json($result);
     }
 
     /**

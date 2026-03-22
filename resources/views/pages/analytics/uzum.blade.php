@@ -32,6 +32,13 @@
                         </svg>
                         <span>CSV</span>
                     </a>
+                    <button @click="loadAiInsights()" :disabled="aiLoading"
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center space-x-2">
+                        <svg class="w-4 h-4" :class="aiLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        <span x-text="aiLoading ? 'Анализ...' : 'AI Анализ'"></span>
+                    </button>
                     <button @click="loadData()" :disabled="loading"
                             class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2">
                         <svg class="w-4 h-4" :class="loading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,6 +100,35 @@
                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Последний снепшот</p>
                         <p class="mt-2 text-lg font-bold text-gray-900" x-text="overview.last_snapshot ?? '—'"></p>
                         <p class="mt-1 text-xs text-gray-500">Следующий в 18:00</p>
+                    </div>
+                </div>
+
+                {{-- AI Insights Panel --}}
+                <div x-show="aiInsights !== null || aiLoading" class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200 mb-6">
+                    <div class="px-6 py-4 border-b border-purple-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                            <h2 class="font-semibold text-purple-900">AI Анализ рынка</h2>
+                            <span x-show="aiGeneratedAt" class="text-xs text-purple-500"
+                                  x-text="aiGeneratedAt ? '(обновлено ' + formatDate(aiGeneratedAt) + ')' : ''"></span>
+                        </div>
+                        <button @click="aiInsights = null; aiGeneratedAt = null" class="p-1 text-purple-400 hover:text-purple-600" title="Скрыть">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="aiLoading" class="px-6 py-10 text-center">
+                        <svg class="w-8 h-8 mx-auto animate-spin text-purple-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <p class="text-sm text-purple-600 font-medium">AI анализирует данные...</p>
+                        <p class="text-xs text-purple-400 mt-1">Это может занять 10–20 секунд</p>
+                    </div>
+                    <div x-show="!aiLoading && aiInsights" class="px-6 py-5">
+                        <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed whitespace-pre-wrap" x-text="aiInsights"></div>
                     </div>
                 </div>
 
@@ -383,6 +419,9 @@ function uzumAnalytics() {
         loadingCategories: false,
         loadingHistory: false,
         addingProduct: false,
+        aiLoading: false,
+        aiInsights: null,
+        aiGeneratedAt: null,
 
         overviewProducts: [],
         trackedProducts: [],
@@ -527,6 +566,28 @@ function uzumAnalytics() {
                 this.overview.total_tracked = this.overviewProducts.length;
             } catch (e) {
                 this.showToast('Ошибка удаления', 'error');
+            }
+        },
+
+        async loadAiInsights() {
+            this.aiLoading = true;
+            this.aiInsights = null;
+            try {
+                const res = await fetch('/api/analytics/uzum/ai-insights', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.insights) {
+                    this.aiInsights = data.insights;
+                    this.aiGeneratedAt = data.generated_at;
+                } else {
+                    this.showToast(data.message || 'Добавьте товары для получения AI-анализа', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка AI анализа: ' + e.message, 'error');
+            } finally {
+                this.aiLoading = false;
             }
         },
 
