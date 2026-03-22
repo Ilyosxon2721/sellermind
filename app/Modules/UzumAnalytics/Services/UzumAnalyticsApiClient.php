@@ -90,6 +90,19 @@ final class UzumAnalyticsApiClient
     }
 
     /**
+     * Получить корневые категории (для синхронизации дерева)
+     */
+    public function getRootCategories(): array
+    {
+        return $this->cachedRequest('root_categories', function (): array {
+            $this->rateLimiter->throttle('category');
+
+            // ТЗ: GET /main/root-categories
+            return $this->request('GET', '/main/root-categories');
+        });
+    }
+
+    /**
      * Поиск товаров
      */
     public function searchProducts(string $query, int $page = 0): array

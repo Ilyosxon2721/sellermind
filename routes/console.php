@@ -409,3 +409,13 @@ Schedule::job(new \App\Modules\UzumAnalytics\Jobs\RefreshTokenPoolJob)
         \Log::error('[UzumAnalytics] Token refresh job failed');
     })
     ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
+
+// Uzum Analytics: Синхронизация дерева категорий 1 раз в сутки (ТЗ #071)
+Schedule::job(new \App\Modules\UzumAnalytics\Jobs\SyncCategoriesJob)
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->name('uzum-analytics:sync-categories')
+    ->onFailure(function () {
+        \Log::error('[UzumAnalytics] Categories sync job failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
