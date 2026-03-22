@@ -427,6 +427,17 @@
                                     <p x-show="returnRate(selected) !== '-'" class="text-[10px] font-bold text-red-700 mt-0.5" x-text="returnRate(selected)"></p>
                                 </div>
                             </div>
+                            <!-- Прогноз остатков -->
+                            <template x-if="selected && stockForecast[selected.id] !== undefined">
+                                <div class="mt-2 flex items-center space-x-2 text-xs">
+                                    <span class="text-gray-500">Прогноз FBS:</span>
+                                    <span class="font-bold px-2 py-0.5 rounded-full"
+                                          :class="stockForecast[selected.id] >= 9999 ? 'bg-gray-100 text-gray-500' : stockForecast[selected.id] < 7 ? 'bg-red-100 text-red-700' : stockForecast[selected.id] < 14 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
+                                          x-text="stockForecast[selected.id] >= 9999 ? '∞ дней' : stockForecast[selected.id] + ' дней'">
+                                    </span>
+                                    <span class="text-gray-400" x-show="stockForecast[selected.id] < 9999">при текущем темпе продаж</span>
+                                </div>
+                            </template>
                         </div>
 
                         <!-- Product info from raw_payload -->
