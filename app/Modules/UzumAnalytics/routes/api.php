@@ -43,4 +43,10 @@ Route::middleware(['auth:sanctum', 'verified'])
         Route::get('/tracked', [AnalyticsController::class, 'tracked'])->name('tracked.index');
         Route::post('/tracked', [AnalyticsController::class, 'addTracked'])->name('tracked.store');
         Route::delete('/tracked/{productId}', [AnalyticsController::class, 'removeTracked'])->name('tracked.destroy');
+
+        // Healthcheck краулера (#086)
+        Route::get('/health', [AnalyticsController::class, 'healthcheck'])->name('health');
+
+        // Экспорт CSV (#081)
+        Route::get('/export', [AnalyticsController::class, 'export'])->name('export');
     });

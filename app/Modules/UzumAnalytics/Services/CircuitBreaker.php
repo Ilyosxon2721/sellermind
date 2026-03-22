@@ -103,6 +103,23 @@ final class CircuitBreaker
     }
 
     /**
+     * Текущий статус для healthcheck
+     */
+    public function getStatus(): array
+    {
+        $state = $this->getState();
+
+        return [
+            'status'               => $state['status'] ?? 'closed',
+            'consecutive_failures' => $state['consecutive_failures'] ?? 0,
+            'failures_in_window'   => count($state['failures'] ?? []),
+            'pause_until'          => isset($state['pause_until']) && $state['pause_until']
+                ? date('Y-m-d H:i:s', $state['pause_until'])
+                : null,
+        ];
+    }
+
+    /**
      * Принудительно закрыть цепь (сброс)
      */
     public function reset(): void

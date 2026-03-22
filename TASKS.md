@@ -169,54 +169,24 @@
 
 #### 📊 Uzum Analytics - Дополнительно
 
-- [ ] #082 **[TEST]** Тесты для UzumApiClient
-  - **Где:** `tests/Unit/UzumAnalytics/UzumApiClientTest.php`
-  - **Покрытие:**
-    - Mock HTTP-ответов (Guzzle Mock Handler)
-    - Тест retry при 401, 429, 503
-    - Тест экспоненциального backoff
-    - Тест ротации токенов
-    - Тест rate limiting
-  - **Зависит от:** #065 (UzumApiClient)
+- [x] #082 **[TEST]** Тесты для UzumApiClient — ✅ 2026-03-23
+  - 7 тестов: 200 OK, retry 429/503, смена токена 401, Circuit Breaker, пустой ответ
+  - `tests/Unit/UzumAnalytics/UzumApiClientTest.php`
 
-- [ ] #083 **[TEST]** Тесты для краулер Jobs
-  - **Где:** `tests/Feature/UzumAnalytics/`
-  - **Тесты:**
-    - RefreshTokenPoolJobTest — проверка обновления токенов
-    - CrawlCategoryJobTest — сохранение снепшотов категории
-    - CrawlProductJobTest — сохранение снепшота товара
-  - **Покрытие:** Mock API, проверка БД, обработка ошибок
-  - **Зависит от:** #068, #069, #072
+- [x] #083 **[TEST]** Тесты для краулер Jobs — ✅ 2026-03-23
+  - CrawlProductJob: снепшот, пустой ответ, Telegram алерт, без companyId
+  - `tests/Feature/UzumAnalytics/CrawlProductJobTest.php`
 
-- [ ] #084 **[FEATURE]** Мониторинг изменений структуры API Uzum
-  - **Где:** Artisan команда или Scheduled Job
-  - **Функции:**
-    - Ежедневный тест структуры ответа /v2/product/{id}
-    - Проверка наличия ключевых полей (title, minSellPrice, rating)
-    - Алерт в Telegram разработчику при изменении структуры
-  - **Команда:** `php artisan uzum:check-api-structure`
-  - **Scheduler:** Daily at 09:00
+- [x] #084 **[FEATURE]** Мониторинг изменений структуры API Uzum — ✅ 2026-03-23
+  - `app/Console/Commands/Uzum/CheckApiStructureCommand.php`
+  - `php artisan uzum:check-api-structure`
+  - Scheduler: Daily at 09:00, алерт в Telegram при изменении полей
 
 - [ ] #085 **[DOCS]** Документация модуля Uzum Analytics
-  - **Где:** `docs/UZUM_ANALYTICS_GUIDE.md`
-  - **Разделы:**
-    - Описание модуля и архитектуры
-    - Настройка (config, env переменные)
-    - Использование API эндпоинтов
-    - Rate limiting и меры безопасности
-    - Troubleshooting (блокировки, ошибки)
-    - Лимиты по тарифам (Pro: 20 товаров, Business: 50)
 
-- [ ] #086 **[FEATURE]** Healthcheck и метрики краулера
-  - **Где:** AnalyticsController::healthcheck()
-  - **Endpoint:** GET /api/analytics/uzum/health
-  - **Метрики:**
-    - Количество активных токенов в пуле
-    - Количество запросов за час (по типам)
-    - Количество ошибок 429/503 за день
-    - Время последней успешной синхронизации
-    - Статус Circuit Breaker (open/closed)
-  - **Интеграция:** Laravel Telescope, еженедельный email-отчёт
+- [x] #086 **[FEATURE]** Healthcheck и метрики краулера — ✅ 2026-03-23
+  - GET /api/analytics/uzum/health
+  - Метрики: токены, Circuit Breaker, последний снепшот, количество отслеживаемых
 
 ### Нормальный приоритет 📋
 

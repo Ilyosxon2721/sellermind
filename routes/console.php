@@ -489,3 +489,9 @@ Schedule::call(function () {
     ->at('18:00')->daily()
     ->name('uzum-analytics:crawl-products-18')
     ->withoutOverlapping(30);
+
+// Ежедневная проверка структуры Uzum API (#084)
+Schedule::command('uzum:check-api-structure')
+    ->dailyAt('09:00')
+    ->name('uzum-analytics:check-api-structure')
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
