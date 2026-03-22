@@ -7,12 +7,7 @@
 
 ## 🔴 В работе (In Progress)
 
-- [x] #062 **[FEATURE]** Создать структуру модуля UzumAnalytics — ✅ 2026-03-23
-  - Создана структура директорий app/Modules/UzumAnalytics/
-  - Обновлён config/uzum-crawler.php с полной конфигурацией
-  - Создан UzumAnalyticsServiceProvider
-  - Зарегистрирован в bootstrap/providers.php
-  - Созданы routes/api.php с заглушками endpoints
+<!-- Claude: перемести сюда задачу когда начинаешь работу -->
 
 ---
 
@@ -74,56 +69,6 @@
 - [x] #045 **[STYLE]** Страница ошибки 500 - светлая тема вместо тёмной — ✅ 2026-02-01 (commit: 1bceae6)
 
 ### Высокий приоритет ⚡
-
-#### 📊 Uzum Analytics - Этап 1: Фундамент (1 неделя)
-
-- [ ] #063 **[FEATURE]** Миграции БД для Uzum Analytics
-  - **Где:** `database/migrations/`
-  - **Таблицы:**
-    - `uzum_products_snapshots` (снепшоты цен/рейтингов)
-    - `uzum_categories` (дерево категорий)
-    - `uzum_token_pool` (пул JWT токенов)
-  - **Индексы:** product_id, category_id, shop_slug, scraped_at
-  - **Партиционирование:** uzum_products_snapshots по месяцам (для производительности)
-
-- [ ] #064 **[FEATURE]** TokenRefreshService — управление пулом токенов
-  - **Где:** `app/Modules/UzumAnalytics/Services/TokenRefreshService.php`
-  - **Функции:**
-    - Получение анонимного JWT от uzum.uz (GET с User-Agent браузера)
-    - Хранение в Redis (TTL 12 минут)
-    - Пул минимум 3 токена одновременно
-    - Автообновление за 2 минуты до истечения
-    - Round-robin ротация (max 8 запросов на токен)
-  - **Модель:** UzumToken (таблица uzum_token_pool)
-
-- [ ] #065 **[FEATURE]** UzumApiClient — HTTP клиент с retry и backoff
-  - **Где:** `app/Modules/UzumAnalytics/Services/UzumApiClient.php`
-  - **Функции:**
-    - Методы: getProduct(), getCategory(), getShop(), searchProducts()
-    - Автоматическая подстановка токена из пула
-    - Retry при 401 (смена токена), 429, 503
-    - Экспоненциальный backoff: 30с → 60с → 120с → пауза
-    - Кэширование ответов в Redis (30 минут)
-    - User-Agent rotation (пул из 5+ браузеров)
-  - **Зависит от:** #064 (TokenRefreshService)
-
-- [ ] #066 **[FEATURE]** Rate Limiting механизм
-  - **Где:** UzumApiClient middleware
-  - **Лимиты (из config/uzum-crawler.php):**
-    - Карточка товара: max 10/мин (задержка 6 сек)
-    - Список категории (GraphQL): max 5/мин (задержка 12 сек)
-    - Данные магазина: max 8/мин (задержка 8 сек)
-    - Обновление токена: max 2/мин (задержка 30 сек)
-  - **Механизм:** Redis incr с TTL, случайные задержки base_delay × (1 + random(0, 0.5))
-  - **Зависит от:** #065 (UzumApiClient)
-
-- [ ] #067 **[FEATURE]** Circuit Breaker при ошибках
-  - **Где:** UzumApiClient
-  - **Правила:**
-    - При 5 ошибках 429/503 за 10 минут → пауза краулера на 1 час
-    - Алерт в Telegram разработчику при 3+ последовательных ошибках 429
-    - Лог всех запросов (статус, время, эндпоинт) в Laravel Telescope
-  - **Зависит от:** #065 (UzumApiClient)
 
 #### 📊 Uzum Analytics - Этап 2: Краулер категорий (1 неделя)
 
@@ -462,6 +407,33 @@
 ## ✅ Выполнено (Done)
 
 <!-- Claude: перемести сюда задачу после успешного коммита -->
+
+### Март 2026
+
+#### 📊 Uzum Analytics - Этап 1: Фундамент
+
+- [x] #062 **[FEATURE]** Создать структуру модуля UzumAnalytics — ✅ 2026-03-23 (commit: 540b330)
+  - Создана структура директорий app/Modules/UzumAnalytics/
+  - Обновлён config/uzum-crawler.php с полной конфигурацией
+  - Создан UzumAnalyticsServiceProvider
+  - Зарегистрирован в bootstrap/providers.php
+  - Созданы routes/api.php с заглушками endpoints
+
+- [x] #063 **[FEATURE]** Миграции БД для Uzum Analytics — ✅ 2026-03-23 (commit: 0856bb4)
+  - Миграции: uzum_products_snapshots, uzum_categories, uzum_token_pool
+  - Модели: UzumProductSnapshot, UzumCategory, UzumToken
+
+- [x] #064 **[FEATURE]** TokenRefreshService — управление пулом токенов — ✅ 2026-03-23 (commit: 540b330)
+  - Round-robin ротация, автообновление за 2 мин до истечения
+
+- [x] #065 **[FEATURE]** UzumApiClient — HTTP клиент с retry и backoff — ✅ 2026-03-23 (commit: 540b330)
+  - Retry при 401/429/503, экспоненциальный backoff
+
+- [x] #066 **[FEATURE]** Rate Limiting механизм — ✅ 2026-03-23 (commit: 540b330)
+  - Redis rate limiter с jitter
+
+- [x] #067 **[FEATURE]** Circuit Breaker при ошибках — ✅ 2026-03-23 (commit: 540b330)
+  - 5 ошибок → пауза 1 час, Telegram алерты
 
 ### Февраль 2026
 
