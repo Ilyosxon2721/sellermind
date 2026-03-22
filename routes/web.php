@@ -153,6 +153,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/funnel', function () {
             return view('pages.analytics');
         })->name('funnel');
+
+        Route::get('/uzum', function () {
+            return view('pages.analytics.uzum');
+        })->name('uzum');
     });
 
     Route::get('/reviews', function () {

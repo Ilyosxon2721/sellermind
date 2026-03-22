@@ -103,20 +103,28 @@ final class UzumAnalyticsApiClient
     }
 
     /**
-     * Поиск товаров
+     * Поиск товаров по тексту (GraphQL makeSearch)
      */
     public function searchProducts(string $query, int $page = 0): array
     {
-        $cacheKey = "search:' . md5($query) . ':p{$page}";
+        $cacheKey = 'search:' . md5($query) . ":p{$page}";
 
         return $this->cachedRequest($cacheKey, function () use ($query, $page): array {
-            $this->rateLimiter->throttle('product');
+            $this->rateLimiter->throttle('category');
 
-            return $this->request('GET', '/api/search', [
-                'text'   => $query,
-                'offset' => $page * 48,
-                'limit'  => 48,
-            ]);
+            $graphqlUrl = config('uzum-crawler.api.graphql_url', 'https://graphql.uzum.uz');
+
+            return $this->requestUrl('POST', $graphqlUrl, [
+                'query'     => $this->categoryGraphqlQuery(),
+                'variables' => [
+                    'categoryId' => null,
+                    'showAdultContent' => true,
+                    'searchText' => $query,
+                    'offset'     => $page * 48,
+                    'limit'      => 48,
+                    'sort'       => 'BY_REVIEWS_COUNT_DESC',
+                ],
+            ], graphql: true);
         });
     }
 
@@ -212,7 +220,7 @@ final class UzumAnalyticsApiClient
         }
 
         $this->circuitBreaker->recordFailure();
-        throw $lastException ?? new \RuntimeException("UzumCrawler: все попытки исчерпаны для {$path}");
+        throw $lastException ?? new \RuntimeException("UzumCrawler: все попытки исчерпаны для {$url}");
     }
 
     /**

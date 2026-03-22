@@ -6,15 +6,18 @@ declare(strict_types=1);
 // Конфигурация краулера/аналитики Uzum
 
 return [
-    // API endpoints (из ТЗ: api.umarket.uz / graphql.umarket.uz)
+    // API endpoints (подтверждено через DevTools браузера uzum.uz)
     'api' => [
-        'rest_base_url' => env('UZUM_REST_API_URL', 'https://api.umarket.uz/api'),
-        'graphql_url'   => env('UZUM_GRAPHQL_URL', 'https://graphql.umarket.uz'),
+        'rest_base_url' => env('UZUM_REST_API_URL', 'https://api.uzum.uz/api'),
+        'graphql_url'   => env('UZUM_GRAPHQL_URL', 'https://graphql.uzum.uz'),
         'timeout'       => env('UZUM_API_TIMEOUT', 30),
     ],
 
     // Базовый URL (backward compatibility)
-    'base_url' => env('UZUM_CRAWLER_BASE_URL', 'https://api.umarket.uz'),
+    'base_url' => env('UZUM_CRAWLER_BASE_URL', 'https://api.uzum.uz'),
+
+    // Сервер аутентификации (выдаёт анонимный JWT)
+    'auth_server' => env('UZUM_AUTH_SERVER', 'https://id.uzum.uz'),
 
     // Rate limits (запросов в минуту)
     'rate_limits' => [
@@ -75,10 +78,9 @@ return [
     ],
 
     // URL для получения анонимного JWT.
-    // Токен выдаётся браузеру при первом открытии uzum.uz — анонимный, без аккаунта.
-    // Точный эндпоинт нужно уточнить через DevTools браузера (Network → XHR).
-    // Обычно это GET /api/auth/token или подобный на api.umarket.uz.
-    'token_url' => env('UZUM_CRAWLER_TOKEN_URL', 'https://api.umarket.uz/api/auth/token'),
+    // POST /api/auth/token — подтверждено через DevTools браузера.
+    // Токен хранится в localStorage["auth_sdk_access_token"], выдаётся id.uzum.uz.
+    'token_url' => env('UZUM_CRAWLER_TOKEN_URL', 'https://api.uzum.uz/api/auth/token'),
 
     // Telegram чат для алертов краулера (отдельный от основного)
     'telegram_chat_id' => env('UZUM_CRAWLER_TELEGRAM_CHAT_ID', null),

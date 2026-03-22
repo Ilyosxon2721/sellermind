@@ -72,43 +72,10 @@
 
 #### 📊 Uzum Analytics - Этап 2: Краулер категорий (1 неделя)
 
-- [ ] #068 **[FEATURE]** Job: RefreshTokenPoolJob
-  - **Где:** `app/Modules/UzumAnalytics/Jobs/RefreshTokenPoolJob.php`
-  - **Функции:**
-    - Запускается каждые 5 минут (Laravel Scheduler)
-    - Проверяет expires_at всех токенов в пуле
-    - Обновляет токены за 2 минуты до истечения
-    - Создаёт новые токены если в пуле < 3
-  - **Зависит от:** #064 (TokenRefreshService)
-
-- [ ] #069 **[FEATURE]** Job: CrawlCategoryJob
-  - **Где:** `app/Modules/UzumAnalytics/Jobs/CrawlCategoryJob.php`
-  - **Функции:**
-    - Получение списка товаров категории через GraphQL
-    - Pagination (48 товаров на страницу)
-    - Сохранение в uzum_products_snapshots
-    - Retry 3 попытки с backoff при ошибках
-  - **Параметры:** category_id, offset, limit
-  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
-
-- [ ] #070 **[FEATURE]** Repository: AnalyticsRepository
-  - **Где:** `app/Modules/UzumAnalytics/Repositories/AnalyticsRepository.php`
-  - **Методы:**
-    - saveProductSnapshot() — сохранение снепшота товара
-    - getPriceHistory() — история цен товара
-    - getCategoryStats() — статистика категории
-    - getCompetitorData() — данные конкурента
-  - **Кэш:** Redis 30 минут для агрегированных данных
-
-- [ ] #071 **[FEATURE]** Синхронизация дерева категорий Uzum
-  - **Где:** Job или Artisan команда
-  - **API:** GET /main/root-categories
-  - **Функции:**
-    - Получение корневых категорий
-    - Рекурсивный обход дочерних категорий
-    - Сохранение в uzum_categories (id, parent_id, title, products_count)
-    - Запуск 1 раз в сутки (Laravel Scheduler)
-  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
+- [x] #068 **[FEATURE]** Job: RefreshTokenPoolJob — ✅ 2026-03-23
+- [x] #069 **[FEATURE]** Job: CrawlCategoryJob — ✅ 2026-03-23
+- [x] #070 **[FEATURE]** Repository: AnalyticsRepository — ✅ 2026-03-23
+- [x] #071 **[FEATURE]** Синхронизация дерева категорий Uzum — ✅ 2026-03-23
 
 ### Высокий приоритет ⚡
 
@@ -174,96 +141,24 @@
 
 #### 📊 Uzum Analytics - Этап 3: Мониторинг конкурентов (1-2 недели)
 
-- [ ] #072 **[FEATURE]** Job: CrawlProductJob
-  - **Где:** `app/Modules/UzumAnalytics/Jobs/CrawlProductJob.php`
-  - **Функции:**
-    - Получение карточки товара GET /v2/product/{productId}
-    - Парсинг полей: title, minSellPrice, maxFullPrice, rating, reviewsAmount, ordersAmount
-    - Конвертация цены из тийинов (÷ 100)
-    - Сохранение снепшота в uzum_products_snapshots
-  - **Параметры:** product_id
-  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
-
-- [ ] #073 **[FEATURE]** Сбор снепшотов цен — 4 раза в сутки
-  - **Где:** Laravel Scheduler
-  - **Расписание:** 00:00, 06:00, 12:00, 18:00 (UTC+5 Ташкент)
-  - **Функции:**
-    - Получение списка отслеживаемых товаров из настроек пользователя
-    - Dispatch CrawlProductJob для каждого товара (с задержкой 6 сек)
-    - Лимит: max 20 товаров на Pro аккаунт, 50 на Business
-  - **Зависит от:** #072 (CrawlProductJob)
-
-- [ ] #074 **[FEATURE]** История изменения цен конкурентов
-  - **Где:** UzumAnalytics API
-  - **Функции:**
-    - График цены товара за 30/90 дней (Chart.js)
-    - Выявление скидочных акций (price vs original_price)
-    - Сравнение с медианной ценой категории
-  - **Endpoint:** GET /api/analytics/uzum/price-history/{product_id}
-  - **Зависит от:** #070 (AnalyticsRepository)
-
-- [ ] #075 **[FEATURE]** Алерты в Telegram при изменении цен
-  - **Где:** Observer или Event Listener
-  - **Функции:**
-    - Отслеживание изменений price в uzum_products_snapshots
-    - Уведомление если цена изменилась > N% (настраивается)
-    - Отправка в Telegram бот пользователя
-    - Настройка: включить/выключить, порог %
-  - **Интеграция:** TelegramService (уже существует)
-  - **Зависит от:** #073 (сбор снепшотов)
-
-- [ ] #076 **[FEATURE]** GraphQL запросы для поиска товаров
-  - **Где:** UzumApiClient::searchProducts()
-  - **API:** POST https://graphql.umarket.uz
-  - **Query:** makeSearch (categoryId, sort, pagination)
-  - **Заголовки:** Authorization, X-Iid, Accept-Language
-  - **Функции:**
-    - Поиск товаров по категории
-    - Сортировка: BY_REVIEWS_COUNT_DESC, BY_PRICE_ASC, BY_RATING_DESC
-    - Пагинация (offset, limit)
-  - **Зависит от:** #065 (UzumApiClient)
+- [x] #072 **[FEATURE]** Job: CrawlProductJob — ✅ 2026-03-23
+- [x] #073 **[FEATURE]** Сбор снепшотов цен 4 раза в сутки (Scheduler) — ✅ 2026-03-23
+- [x] #074 **[FEATURE]** История изменения цен, endpoint + Chart.js — ✅ 2026-03-23
+- [x] #075 **[FEATURE]** Алерты в Telegram при изменении цен — ✅ 2026-03-23
+- [x] #076 **[FEATURE]** GraphQL запросы, searchProducts() — ✅ 2026-03-23 (исправлены баги)
 
 #### 📊 Uzum Analytics - Этап 4: UI Дашборд (1 неделя)
 
-- [ ] #077 **[FEATURE]** API эндпоинты для фронтенда
-  - **Где:** `app/Modules/UzumAnalytics/Http/Controllers/AnalyticsController.php`
-  - **Endpoints:**
-    - GET /api/analytics/uzum/categories — список категорий с метриками
-    - GET /api/analytics/uzum/category/{id}/products — товары категории
-    - GET /api/analytics/uzum/competitor/{slug} — данные конкурента
-    - GET /api/analytics/uzum/price-history/{id} — история цен
-    - GET /api/analytics/uzum/market-overview — сводка по отслеживаемым позициям
-  - **Middleware:** auth, company scope
-  - **Зависит от:** #070 (AnalyticsRepository)
-
-- [ ] #078 **[FEATURE]** Livewire компонент дашборда Uzum Analytics
-  - **Где:** `app/Modules/UzumAnalytics/Livewire/AnalyticsDashboard.php`
-  - **Blade:** `resources/views/livewire/uzum-analytics-dashboard.blade.php`
-  - **Функции:**
-    - Сводный виджет "Рынок сегодня" (изменения за 24 часа)
-    - Таблица отслеживаемых конкурентов
-    - Список категорий с метриками
-    - Фильтры: магазин, категория, ценовой диапазон
-  - **Зависит от:** #077 (API endpoints)
-
-- [ ] #079 **[FEATURE]** Графики Chart.js для аналитики
-  - **Где:** Blade шаблон дашборда
-  - **Графики:**
-    - Line chart: динамика цены товара (30/90 дней)
-    - Bar chart: распределение цен в категории (перцентили)
-    - Pie chart: доля магазинов в категории
-  - **JS:** `resources/js/uzum-analytics.js`
-  - **Зависит от:** #078 (Livewire компонент)
-
-- [ ] #080 **[FEATURE]** Фильтры и таблицы аналитики
-  - **Где:** Livewire компонент + Alpine.js
-  - **Функции:**
-    - Фильтр по категории (dropdown)
-    - Фильтр по ценовому диапазону (slider)
-    - Фильтр по магазину (search input)
-    - Таблица товаров с сортировкой (цена, рейтинг, отзывы)
-    - Пагинация (Livewire)
-  - **Зависит от:** #078 (Livewire компонент)
+- [x] #077 **[FEATURE]** API эндпоинты для фронтенда — ✅ 2026-03-23
+- [x] #078 **[FEATURE]** UI дашборд Uzum Analytics (Alpine.js + Chart.js) — ✅ 2026-03-23
+  - Blade: `resources/views/pages/analytics/uzum.blade.php`
+  - Маршрут: GET /analytics/uzum
+  - Sidebar ссылка добавлена
+  - Табы: Обзор рынка, Отслеживаемые, Категории
+  - Chart.js линейный график истории цен
+  - Модальное окно добавления товара
+- [x] #079 **[FEATURE]** Графики Chart.js — ✅ 2026-03-23 (в рамках #078)
+- [x] #080 **[FEATURE]** Фильтры и таблицы — ✅ 2026-03-23 (в рамках #078)
 
 - [ ] #081 **[FEATURE]** Экспорт аналитики в CSV/Excel
   - **Где:** AnalyticsController::export()

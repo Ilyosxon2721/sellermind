@@ -272,6 +272,17 @@
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">KPI</span>
         </a>
 
+        {{-- Uzum Analytics --}}
+        <a href="/analytics/uzum"
+           class="flex items-center rounded-lg transition {{ request()->is('analytics/uzum*') ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Аналитика Uzum' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Аналитика Uzum</span>
+        </a>
+
         {{-- Debts --}}
         <a href="/debts"
            class="flex items-center rounded-lg transition {{ request()->is('debts*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"

@@ -26,15 +26,15 @@ final class TokenRefreshService
     }
 
     /**
-     * Получить активный токен (round-robin, наименьший request_count)
+     * Получить активный токен (round-robin, наименьший requests_count)
      */
     public function getToken(): ?UzumToken
     {
         $maxRequests = $this->config['max_requests'];
 
         $token = UzumToken::active()
-            ->where('request_count', '<', $maxRequests)
-            ->orderBy('request_count')
+            ->where('requests_count', '<', $maxRequests)
+            ->orderBy('requests_count')
             ->first();
 
         if ($token) {
@@ -98,9 +98,10 @@ final class TokenRefreshService
                 'Accept-Language' => 'ru-RU,ru;q=0.9,uz;q=0.8',
                 'Origin'          => 'https://uzum.uz',
                 'Referer'         => 'https://uzum.uz/',
+                'Content-Type'    => 'application/json',
             ])
                 ->timeout(15)
-                ->get(config('uzum-crawler.token_url'));
+                ->post(config('uzum-crawler.token_url'), []);
 
             if (! $response->successful()) {
                 Log::warning('UzumCrawler: не удалось получить токен', [
@@ -127,10 +128,10 @@ final class TokenRefreshService
             }
 
             return UzumToken::create([
-                'token'         => $jwt,
-                'expires_at'    => now()->addMinutes($this->config['ttl_minutes']),
-                'request_count' => 0,
-                'is_active'     => true,
+                'token'          => $jwt,
+                'expires_at'     => now()->addMinutes($this->config['ttl_minutes']),
+                'requests_count' => 0,
+                'is_active'      => true,
             ]);
         } catch (\Throwable $e) {
             Log::error('UzumCrawler: ошибка получения токена', [

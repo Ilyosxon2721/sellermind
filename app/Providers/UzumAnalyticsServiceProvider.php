@@ -36,6 +36,9 @@ final class UzumAnalyticsServiceProvider extends ServiceProvider
         // Загрузка миграций из поддиректории
         $this->loadMigrationsFrom(database_path('migrations/uzum_analytics'));
 
+        // Загрузка API маршрутов модуля
+        $this->loadRoutesFrom(base_path('app/Modules/UzumAnalytics/routes/api.php'));
+
         $this->publishes([
             base_path('config/uzum-crawler.php') => config_path('uzum-crawler.php'),
         ], 'uzum-crawler-config');
