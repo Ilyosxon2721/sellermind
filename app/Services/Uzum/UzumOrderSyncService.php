@@ -191,9 +191,20 @@ final class UzumOrderSyncService
         $uzum = new UzumApiManager($account);
         $result = $uzum->orders()->confirm($orderId);
 
-        // Обновить в БД
-        $mapped = $this->mapOrderData($result);
-        $this->persistOrder($account, $mapped);
+        // confirm возвращает простой ответ, не полный объект заказа —
+        // получаем детали отдельно и обновляем БД
+        try {
+            $detail = $uzum->orders()->detail($orderId);
+            if (!empty($detail) && isset($detail['id'])) {
+                $mapped = $this->mapOrderData($detail);
+                $this->persistOrder($account, $mapped);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('confirmOrder: не удалось обновить статус заказа в БД', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $result;
     }
@@ -206,8 +217,19 @@ final class UzumOrderSyncService
         $uzum = new UzumApiManager($account);
         $result = $uzum->orders()->cancel($orderId);
 
-        $mapped = $this->mapOrderData($result);
-        $this->persistOrder($account, $mapped);
+        // cancel тоже возвращает простой ответ — получаем детали отдельно
+        try {
+            $detail = $uzum->orders()->detail($orderId);
+            if (!empty($detail) && isset($detail['id'])) {
+                $mapped = $this->mapOrderData($detail);
+                $this->persistOrder($account, $mapped);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('cancelOrder: не удалось обновить статус заказа в БД', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $result;
     }
