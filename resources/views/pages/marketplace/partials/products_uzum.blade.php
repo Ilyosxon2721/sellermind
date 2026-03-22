@@ -265,7 +265,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-12 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                            <img :src="item.preview_image || placeholder" @error="$event.target.src = placeholder" class="w-full h-full object-cover" :alt="item.title || 'preview'">
+                                            <img :src="item.preview_image || placeholder" x-on:error="$event.target.src = placeholder" class="w-full h-full object-cover" :alt="item.title || 'preview'">
                                         </div>
                                         <div class="min-w-0">
                                             <p class="text-sm font-medium text-gray-900 line-clamp-1" x-text="item.title || 'Без названия'"></p>
@@ -377,7 +377,7 @@
                         <div class="flex space-x-4">
                             <div class="flex-shrink-0" style="width: 160px;">
                                 <div class="relative w-full h-48 bg-gray-100 rounded-xl overflow-hidden border group">
-                                    <img :src="getProductImages(selected)[galleryIndex] || placeholder" @error="$event.target.src = placeholder" class="w-full h-full object-cover transition-opacity duration-200">
+                                    <img :src="getProductImages(selected)[galleryIndex] || placeholder" x-on:error="$event.target.src = placeholder" class="w-full h-full object-cover transition-opacity duration-200">
                                     <button x-show="getProductImages(selected).length > 1 && galleryIndex > 0" @click.stop="galleryIndex--" class="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                                     </button>
@@ -1745,7 +1745,7 @@ function uzumProducts(accountId) {
                 <div class="native-card native-pressable" :class="rowClass(item)" @click="openDetail(item)">
                     <div class="flex space-x-3">
                         <div class="w-16 h-20 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                            <img :src="item.preview_image || 'https://placehold.co/120x160?text=IMG'" @error="$event.target.src = 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover" :alt="item.title">
+                            <img :src="item.preview_image || 'https://placehold.co/120x160?text=IMG'" x-on:error="$event.target.src = 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover" :alt="item.title">
                         </div>
                         <div class="flex-1 min-w-0">
                             <h3 class="native-body font-semibold line-clamp-2 text-sm" x-text="item.title || 'Без названия'"></h3>
@@ -1806,7 +1806,7 @@ function uzumProducts(accountId) {
                 {{-- Image Gallery --}}
                 <div class="space-y-3">
                     <div class="relative w-full h-56 bg-gray-100 rounded-2xl overflow-hidden" @touchstart="touchStartX = $event.changedTouches[0].screenX" @touchend="const diff = touchStartX - $event.changedTouches[0].screenX; const imgs = getProductImages(selected); if(Math.abs(diff)>50){if(diff>0 && galleryIndex < imgs.length-1) galleryIndex++; else if(diff<0 && galleryIndex>0) galleryIndex--;}">
-                        <img :src="getProductImages(selected)[galleryIndex] || 'https://placehold.co/120x160?text=IMG'" @error="$event.target.src = 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover">
+                        <img :src="getProductImages(selected)[galleryIndex] || 'https://placehold.co/120x160?text=IMG'" x-on:error="$event.target.src = 'https://placehold.co/120x160?text=IMG'" class="w-full h-full object-cover">
                         <button x-show="getProductImages(selected).length > 1 && galleryIndex > 0" @click.stop="galleryIndex--" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 backdrop-blur-sm text-white rounded-full flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                         </button>
