@@ -33,6 +33,9 @@ final class UzumAnalyticsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Загрузка миграций из поддиректории
+        $this->loadMigrationsFrom(database_path('migrations/uzum_analytics'));
+
         $this->publishes([
             base_path('config/uzum-crawler.php') => config_path('uzum-crawler.php'),
         ], 'uzum-crawler-config');

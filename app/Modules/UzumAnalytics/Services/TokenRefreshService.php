@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 namespace App\Modules\UzumAnalytics\Services;
 
-use App\Models\UzumToken;
+use App\Modules\UzumAnalytics\Models\UzumToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -56,7 +56,7 @@ final class TokenRefreshService
         UzumToken::where('expires_at', '<', now())->update(['is_active' => false]);
 
         // Деактивировать переполненные токены
-        UzumToken::where('request_count', '>=', $this->config['max_requests'])
+        UzumToken::where('requests_count', '>=', $this->config['max_requests'])
             ->where('is_active', true)
             ->update(['is_active' => false]);
 
