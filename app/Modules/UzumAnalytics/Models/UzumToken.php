@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $is_active
  * @property int $requests_count
  */
-final class UzumToken extends Model
+class UzumToken extends Model
 {
     protected $table = 'uzum_token_pool';
 

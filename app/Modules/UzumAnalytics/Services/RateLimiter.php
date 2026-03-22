@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Redis;
  * Использует Redis INCR + EXPIRE для подсчёта запросов в минуту.
  * Добавляет случайный jitter к задержке чтобы избежать синхронных волн.
  */
-final class RateLimiter
+class RateLimiter
 {
     private readonly array $config;
 

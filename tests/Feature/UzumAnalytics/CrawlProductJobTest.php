@@ -143,7 +143,7 @@ class CrawlProductJobTest extends TestCase
         $telegram->shouldReceive('isConfigured')->andReturn(true);
         $telegram->shouldReceive('sendMessage')->once();
 
-        $company->update(['settings->telegram_chat_id' => '123456']);
+        $company->update(['settings' => array_merge($company->settings ?? [], ['telegram_chat_id' => '123456'])]);
 
         $job = new CrawlProductJob($productId, $companyId);
         $job->handle($apiClient, $repository, $telegram);
@@ -185,6 +185,9 @@ class CrawlProductJobTest extends TestCase
 
         $job = new CrawlProductJob($productId, $companyId);
         $job->handle($apiClient, $repository, $telegram);
+
+        // Снепшот сохранён — алерт не должен был отправиться
+        $this->assertDatabaseHas('uzum_products_snapshots', ['product_id' => $productId]);
     }
 
     /**

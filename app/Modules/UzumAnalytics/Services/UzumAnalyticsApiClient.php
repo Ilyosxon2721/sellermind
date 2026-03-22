@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  *  - Circuit Breaker — защита от перегрузки
  *  - Кэширование ответов в Redis на 30 минут
  */
-final class UzumAnalyticsApiClient
+class UzumAnalyticsApiClient
 {
     private readonly string $baseUrl;
 

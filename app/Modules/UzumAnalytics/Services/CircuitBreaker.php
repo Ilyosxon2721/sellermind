@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Redis;
  *  - OPEN: пауза (5 ошибок за 10 мин → пауза на 1 час)
  *  - Автоматически переходит в CLOSED через pause_minutes
  */
-final class CircuitBreaker
+class CircuitBreaker
 {
     private readonly array $config;
 

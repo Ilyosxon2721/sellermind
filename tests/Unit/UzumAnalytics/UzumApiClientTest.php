@@ -38,34 +38,34 @@ class UzumApiClientTest extends TestCase
 
         // Нулевые задержки для тестов
         config([
-            'uzum-crawler.api.rest_base_url'   => 'https://api.uzum.uz/api',
-            'uzum-crawler.api.graphql_url'      => 'https://graphql.uzum.uz',
-            'uzum-crawler.cache_ttl_minutes'    => 0, // без кэша
-            'uzum-crawler.redis_prefix'         => 'test:uzum:',
-            'uzum-crawler.retry.max_attempts'   => 3,
+            'uzum-crawler.api.rest_base_url'    => 'https://api.uzum.uz/api',
+            'uzum-crawler.api.graphql_url'       => 'https://graphql.uzum.uz',
+            'uzum-crawler.cache_ttl_minutes'     => 0, // без кэша
+            'uzum-crawler.redis_prefix'          => 'test:uzum:',
+            'uzum-crawler.retry.max_attempts'    => 3,
             'uzum-crawler.retry.backoff_seconds' => [0, 0, 0], // мгновенно
             'uzum-crawler.user_agents'           => ['TestAgent/1.0'],
         ]);
 
         // Мок TokenRefreshService — всегда возвращает фейковый токен
-        $fakeToken          = Mockery::mock(UzumToken::class)->makePartial();
-        $fakeToken->token   = 'fake-jwt-token';
-        $fakeToken->iid     = 'fake-uuid';
-        $fakeToken->shouldReceive('update')->andReturnNull();
-        $fakeToken->shouldReceive('incrementRequests')->andReturnNull();
+        $fakeToken                 = Mockery::mock(UzumToken::class)->makePartial();
+        $fakeToken->token          = 'fake-jwt-token';
+        $fakeToken->iid            = 'fake-uuid';
+        $fakeToken->shouldReceive('update')->andReturnNull()->byDefault();
+        $fakeToken->shouldReceive('incrementRequests')->andReturnNull()->byDefault();
 
         $this->tokenService = Mockery::mock(TokenRefreshService::class);
-        $this->tokenService->shouldReceive('getToken')->andReturn($fakeToken);
+        $this->tokenService->shouldReceive('getToken')->andReturn($fakeToken)->byDefault();
 
         // Мок RateLimiter — мгновенный throttle
         $this->rateLimiter = Mockery::mock(RateLimiter::class);
-        $this->rateLimiter->shouldReceive('throttle')->andReturnNull();
+        $this->rateLimiter->shouldReceive('throttle')->andReturnNull()->byDefault();
 
         // Circuit Breaker с закрытой цепью
         $this->circuitBreaker = Mockery::mock(CircuitBreaker::class);
-        $this->circuitBreaker->shouldReceive('isOpen')->andReturn(false);
-        $this->circuitBreaker->shouldReceive('recordSuccess')->andReturnNull();
-        $this->circuitBreaker->shouldReceive('recordFailure')->andReturnNull();
+        $this->circuitBreaker->shouldReceive('isOpen')->andReturn(false)->byDefault();
+        $this->circuitBreaker->shouldReceive('recordSuccess')->andReturnNull()->byDefault();
+        $this->circuitBreaker->shouldReceive('recordFailure')->andReturnNull()->byDefault();
 
         Log::shouldReceive('channel')->andReturnSelf()->zeroOrMoreTimes();
         Log::shouldReceive('info')->zeroOrMoreTimes();
@@ -114,12 +114,13 @@ class UzumApiClientTest extends TestCase
 
         Http::fake(function () use (&$calls) {
             $calls++;
+
             return $calls === 1
                 ? Http::response('Too Many Requests', 429)
                 : Http::response(['product' => ['id' => 1]], 200);
         });
 
-        $this->circuitBreaker->shouldReceive('recordFailure')->once();
+        $this->circuitBreaker->shouldReceive('recordFailure')->once()->andReturnNull();
 
         $client = $this->makeClient();
         $result = $client->getProduct(1);
@@ -137,12 +138,13 @@ class UzumApiClientTest extends TestCase
 
         Http::fake(function () use (&$calls) {
             $calls++;
+
             return $calls === 1
                 ? Http::response('Service Unavailable', 503)
                 : Http::response(['product' => ['id' => 5]], 200);
         });
 
-        $this->circuitBreaker->shouldReceive('recordFailure')->once();
+        $this->circuitBreaker->shouldReceive('recordFailure')->once()->andReturnNull();
 
         $client = $this->makeClient();
         $result = $client->getProduct(5);
@@ -152,14 +154,15 @@ class UzumApiClientTest extends TestCase
     }
 
     /**
-     * 401 → токен деактивируется, следующая попытка с новым токеном
+     * 401 → токен деактивируется на каждой попытке
      */
     public function test_deactivates_token_on_401(): void
     {
-        $fakeToken = Mockery::mock(UzumToken::class)->makePartial();
+        $fakeToken        = Mockery::mock(UzumToken::class)->makePartial();
         $fakeToken->token = 'expired-token';
         $fakeToken->iid   = 'some-uuid';
-        $fakeToken->shouldReceive('update')->once()->with(['is_active' => false]);
+        // 3 попытки — на каждой токен деактивируется
+        $fakeToken->shouldReceive('update')->times(3)->with(['is_active' => false]);
         $fakeToken->shouldReceive('incrementRequests')->andReturnNull();
 
         $this->tokenService->shouldReceive('getToken')->andReturn($fakeToken);
@@ -175,9 +178,6 @@ class UzumApiClientTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $client->getProduct(999);
-
-        // Токен должен деактивироваться столько раз, сколько было попыток
-        $this->assertEquals(3, $calls);
     }
 
     /**
@@ -187,16 +187,12 @@ class UzumApiClientTest extends TestCase
     {
         $this->circuitBreaker->shouldReceive('isOpen')->andReturn(true);
 
-        Http::fake([]); // Не должно быть запросов
-
         $client = $this->makeClient();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Circuit Breaker/');
 
         $client->getProduct(42);
-
-        Http::assertNothingSent();
     }
 
     /**

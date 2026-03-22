@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * Поддерживает минимальный размер пула, round-robin ротацию,
  * автообновление истекающих токенов.
  */
-final class TokenRefreshService
+class TokenRefreshService
 {
     private readonly array $config;
 

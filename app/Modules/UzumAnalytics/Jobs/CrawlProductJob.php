@@ -62,7 +62,7 @@ final class CrawlProductJob implements ShouldQueue
 
         // Алерт только если это отслеживаемый товар конкретной компании
         if ($this->companyId) {
-            $this->checkPriceAlert($snapshot->price, $snapshot->title, $telegram);
+            $this->checkPriceAlert((float) $snapshot->price, $snapshot->title, $telegram);
         }
     }
 
