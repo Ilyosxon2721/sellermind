@@ -1235,6 +1235,11 @@
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                         <span>Расход</span>
                                     </button>
+                                    <button class="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-medium flex items-center space-x-1"
+                                            @click="openEditEmployeeModal(emp)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        <span>Редактировать</span>
+                                    </button>
                                     <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium flex items-center space-x-1"
                                             @click="openEmployeeHistoryModal(emp)">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -2006,6 +2011,70 @@
                 <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="createEmployee()" :disabled="savingEmployee">
                     <svg x-show="savingEmployee" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <span x-text="savingEmployee ? 'Сохранение...' : 'Сохранить'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div x-show="showEditEmployeeForm" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="showEditEmployeeForm = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-6" @click.stop>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Редактировать сотрудника</h3>
+                <button class="text-gray-400 hover:text-gray-600" @click="showEditEmployeeForm = false"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Фамилия <span class="text-red-500">*</span></label>
+                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.last_name" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Имя <span class="text-red-500">*</span></label>
+                        <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.first_name" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Отчество</label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.middle_name" placeholder="Необязательно">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                        <input type="tel" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.phone" placeholder="+998 90 123 45 67">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.email" placeholder="employee@company.com">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Должность</label>
+                    <input class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.position" placeholder="Менеджер, Продавец и т.д.">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Зарплата <span class="text-red-500">*</span></label>
+                        <input type="number" step="0.01" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.base_salary" placeholder="0" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Дата найма</label>
+                        <input type="date" class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.hire_date">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+                    <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5" x-model="editEmployeeForm.is_active">
+                        <option :value="true">Активен</option>
+                        <option :value="false">Неактивен</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl" @click="showEditEmployeeForm = false" :disabled="savingEmployee">Отмена</button>
+                <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed" @click="updateEmployee()" :disabled="savingEmployee">
+                    <svg x-show="savingEmployee" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span x-text="savingEmployee ? 'Сохранение...' : 'Сохранить изменения'"></span>
                 </button>
             </div>
         </div>
@@ -2805,6 +2874,7 @@ function financePage() {
         showDebtPaymentForm: false,
         savingDebtPayment: false,
         showEmployeeForm: false,
+        showEditEmployeeForm: false,
         savingEmployee: false,
         showCalculateSalaryForm: false,
         showCalculateTaxForm: false,
@@ -2840,6 +2910,7 @@ function financePage() {
         debtForm: { type: 'payable', original_amount: '', debt_date: '', description: '', due_date: '' },
         debtPaymentForm: { amount: '', payment_date: new Date().toISOString().slice(0,10), payment_method: 'cash' },
         employeeForm: { first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '' },
+        editEmployeeForm: { id: null, first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '', is_active: true },
         salaryCalcForm: { year: new Date().getFullYear(), month: new Date().getMonth() + 1 },
         taxCalcForm: { tax_type: 'simplified', period_type: 'month', year: new Date().getFullYear(), month: new Date().getMonth() + 1, quarter: 1 },
         paySalaryForm: { amount: '', payment_date: '', description: '', payment_method: 'cash' },
@@ -3777,6 +3848,53 @@ function financePage() {
                 this.showToast('Сотрудник добавлен');
                 this.loadEmployees();
             } catch (e) { this.showToast(e.message, 'error'); } finally { this.savingEmployee = false; }
+        },
+
+        // Open edit employee modal with employee data
+        openEditEmployeeModal(emp) {
+            this.editEmployeeForm = {
+                id: emp.id,
+                first_name: emp.first_name || '',
+                last_name: emp.last_name || '',
+                middle_name: emp.middle_name || '',
+                phone: emp.phone || '',
+                email: emp.email || '',
+                position: emp.position || '',
+                base_salary: emp.base_salary || '',
+                hire_date: emp.hire_date || '',
+                is_active: emp.is_active !== undefined ? emp.is_active : true
+            };
+            this.showEditEmployeeForm = true;
+        },
+
+        // Update employee
+        async updateEmployee() {
+            if (this.savingEmployee) return;
+            if (!this.editEmployeeForm.id) {
+                this.showToast('Ошибка: ID сотрудника не найден', 'error');
+                return;
+            }
+
+            this.savingEmployee = true;
+            try {
+                const { id, ...updateData } = this.editEmployeeForm;
+                const resp = await fetch(`/api/finance/employees/${id}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(updateData)
+                });
+                const json = await resp.json();
+                if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка обновления');
+
+                this.showEditEmployeeForm = false;
+                this.editEmployeeForm = { id: null, first_name: '', last_name: '', middle_name: '', position: '', base_salary: '', hire_date: '', phone: '', email: '', is_active: true };
+                this.showToast('Данные сотрудника обновлены');
+                this.loadEmployees();
+            } catch (e) {
+                this.showToast(e.message, 'error');
+            } finally {
+                this.savingEmployee = false;
+            }
         },
 
         // Employee action modal openers
