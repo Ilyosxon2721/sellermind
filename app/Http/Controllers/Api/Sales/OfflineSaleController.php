@@ -198,11 +198,10 @@ class OfflineSaleController extends Controller
             return $this->errorResponse('Sale must be confirmed or shipped', 'invalid_state', null, 422);
         }
 
+        // Обновляем статус - Observer автоматически обработает остатки
         $sale->update([
             'status' => OfflineSale::STATUS_DELIVERED,
             'delivered_date' => now(),
-            'stock_status' => 'sold',
-            'stock_sold_at' => now(),
         ]);
 
         return $this->successResponse($sale->fresh());
@@ -221,10 +220,9 @@ class OfflineSaleController extends Controller
             return $this->errorResponse('Sale already cancelled', 'invalid_state', null, 422);
         }
 
+        // Обновляем статус - Observer автоматически обработает возврат остатков
         $sale->update([
             'status' => OfflineSale::STATUS_CANCELLED,
-            'stock_status' => 'released',
-            'stock_released_at' => now(),
         ]);
 
         return $this->successResponse($sale->fresh());
