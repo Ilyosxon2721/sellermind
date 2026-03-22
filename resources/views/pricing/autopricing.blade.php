@@ -142,7 +142,7 @@
                                 <td class="px-6 py-4 text-sm text-right font-bold text-indigo-600" x-text="format(pr.proposed_price)"></td>
                                 <td class="px-6 py-4 text-sm text-right" :class="pr.delta_amount >= 0 ? 'text-green-600' : 'text-red-600'" x-text="format(pr.delta_amount) + ' (' + (pr.delta_percent*100).toFixed(1) + '%)'"></td>
                                 <td class="px-6 py-4">
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium" :class="statusClass(pr.status)" x-text="pr.status"></span>
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium" :class="statusClass(pr.status)" x-text="statusLabel(pr.status)"></span>
                                 </td>
                                 <td class="px-6 py-4 text-xs text-gray-600 max-w-xs">
                                     <template x-for="r in (pr.reasons_json || [])" :key="r.rule">
@@ -150,11 +150,11 @@
                                     </template>
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-2">
-                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors" @click="approve(pr.id)" :disabled="pr.status !== 'NEW'">
-                                        Approve
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors disabled:opacity-40" @click="approve(pr.id)" :disabled="pr.status !== 'NEW'">
+                                        Одобрить
                                     </button>
-                                    <button class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs transition-colors" @click="reject(pr.id)" :disabled="pr.status !== 'NEW'">
-                                        Reject
+                                    <button class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs transition-colors disabled:opacity-40" @click="reject(pr.id)" :disabled="pr.status !== 'NEW'">
+                                        Отклонить
                                     </button>
                                 </td>
                             </tr>
@@ -446,6 +446,11 @@
                     'bg-red-100 text-red-700': st === 'REJECTED' || st === 'FAILED',
                     'bg-gray-100 text-gray-700': st === 'SKIPPED',
                 };
+            },
+
+            statusLabel(st) {
+                const map = { NEW: 'Новое', APPROVED: 'Одобрено', APPLIED: 'Применено', REJECTED: 'Отклонено', FAILED: 'Ошибка', SKIPPED: 'Пропущено' };
+                return map[st] || st;
             },
 
             getAuthHeaders() {
