@@ -1,17 +1,38 @@
 # SellerMind - Задачи (Аудит 2026-02-01)
 
-> Последнее обновление: 2026-02-01 (полный аудит проекта)
+> Последнее обновление: 2026-03-23 (добавлен модуль Uzum Analytics — 27 задач)
 > Исполнитель: Claude Code Autopilot
 
 ---
 
 ## 🔴 В работе (In Progress)
 
-<!-- Claude: перемести сюда задачу когда начинаешь работу -->
+- [x] #062 **[FEATURE]** Создать структуру модуля UzumAnalytics — ✅ 2026-03-23
+  - Создана структура директорий app/Modules/UzumAnalytics/
+  - Обновлён config/uzum-crawler.php с полной конфигурацией
+  - Создан UzumAnalyticsServiceProvider
+  - Зарегистрирован в bootstrap/providers.php
+  - Созданы routes/api.php с заглушками endpoints
 
 ---
 
 ## 🟡 Очередь (Queue)
+
+### Критический приоритет 🔥
+
+#### 📊 Uzum Analytics Module (Новый модуль)
+
+- [ ] #060 **[SECURITY]** Юридическая консультация по использованию неофициального API Uzum
+  - **Проблема:** Модуль использует неофициальный API — может нарушать ToS Uzum
+  - **Риск:** Претензии или судебные иски от Uzum
+  - **Решение:** Получить юрконсультацию по законодательству РУз, подготовить disclaimer для клиентов
+  - **Блокирует:** Запуск модуля в продакшн
+
+- [ ] #061 **[SECURITY]** Выделенный IP/прокси для краулера Uzum
+  - **Проблема:** Краулер не должен работать с основного IP сервера
+  - **Риск:** Блокировка IP → недоступность всего SellerMind
+  - **Решение:** Настроить выделенный сервер или прокси-ротацию
+  - **Где:** Инфраструктура, Laravel Forge
 
 ### Критический приоритет 🔥
 
@@ -51,6 +72,98 @@
 - [x] #044 **[BUG]** Перевести 'STATUS' на 'Статус' в таблице долгов — ✅ 2026-02-01 (commit: c92484b)
 
 - [x] #045 **[STYLE]** Страница ошибки 500 - светлая тема вместо тёмной — ✅ 2026-02-01 (commit: 1bceae6)
+
+### Высокий приоритет ⚡
+
+#### 📊 Uzum Analytics - Этап 1: Фундамент (1 неделя)
+
+- [ ] #063 **[FEATURE]** Миграции БД для Uzum Analytics
+  - **Где:** `database/migrations/`
+  - **Таблицы:**
+    - `uzum_products_snapshots` (снепшоты цен/рейтингов)
+    - `uzum_categories` (дерево категорий)
+    - `uzum_token_pool` (пул JWT токенов)
+  - **Индексы:** product_id, category_id, shop_slug, scraped_at
+  - **Партиционирование:** uzum_products_snapshots по месяцам (для производительности)
+
+- [ ] #064 **[FEATURE]** TokenRefreshService — управление пулом токенов
+  - **Где:** `app/Modules/UzumAnalytics/Services/TokenRefreshService.php`
+  - **Функции:**
+    - Получение анонимного JWT от uzum.uz (GET с User-Agent браузера)
+    - Хранение в Redis (TTL 12 минут)
+    - Пул минимум 3 токена одновременно
+    - Автообновление за 2 минуты до истечения
+    - Round-robin ротация (max 8 запросов на токен)
+  - **Модель:** UzumToken (таблица uzum_token_pool)
+
+- [ ] #065 **[FEATURE]** UzumApiClient — HTTP клиент с retry и backoff
+  - **Где:** `app/Modules/UzumAnalytics/Services/UzumApiClient.php`
+  - **Функции:**
+    - Методы: getProduct(), getCategory(), getShop(), searchProducts()
+    - Автоматическая подстановка токена из пула
+    - Retry при 401 (смена токена), 429, 503
+    - Экспоненциальный backoff: 30с → 60с → 120с → пауза
+    - Кэширование ответов в Redis (30 минут)
+    - User-Agent rotation (пул из 5+ браузеров)
+  - **Зависит от:** #064 (TokenRefreshService)
+
+- [ ] #066 **[FEATURE]** Rate Limiting механизм
+  - **Где:** UzumApiClient middleware
+  - **Лимиты (из config/uzum-crawler.php):**
+    - Карточка товара: max 10/мин (задержка 6 сек)
+    - Список категории (GraphQL): max 5/мин (задержка 12 сек)
+    - Данные магазина: max 8/мин (задержка 8 сек)
+    - Обновление токена: max 2/мин (задержка 30 сек)
+  - **Механизм:** Redis incr с TTL, случайные задержки base_delay × (1 + random(0, 0.5))
+  - **Зависит от:** #065 (UzumApiClient)
+
+- [ ] #067 **[FEATURE]** Circuit Breaker при ошибках
+  - **Где:** UzumApiClient
+  - **Правила:**
+    - При 5 ошибках 429/503 за 10 минут → пауза краулера на 1 час
+    - Алерт в Telegram разработчику при 3+ последовательных ошибках 429
+    - Лог всех запросов (статус, время, эндпоинт) в Laravel Telescope
+  - **Зависит от:** #065 (UzumApiClient)
+
+#### 📊 Uzum Analytics - Этап 2: Краулер категорий (1 неделя)
+
+- [ ] #068 **[FEATURE]** Job: RefreshTokenPoolJob
+  - **Где:** `app/Modules/UzumAnalytics/Jobs/RefreshTokenPoolJob.php`
+  - **Функции:**
+    - Запускается каждые 5 минут (Laravel Scheduler)
+    - Проверяет expires_at всех токенов в пуле
+    - Обновляет токены за 2 минуты до истечения
+    - Создаёт новые токены если в пуле < 3
+  - **Зависит от:** #064 (TokenRefreshService)
+
+- [ ] #069 **[FEATURE]** Job: CrawlCategoryJob
+  - **Где:** `app/Modules/UzumAnalytics/Jobs/CrawlCategoryJob.php`
+  - **Функции:**
+    - Получение списка товаров категории через GraphQL
+    - Pagination (48 товаров на страницу)
+    - Сохранение в uzum_products_snapshots
+    - Retry 3 попытки с backoff при ошибках
+  - **Параметры:** category_id, offset, limit
+  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
+
+- [ ] #070 **[FEATURE]** Repository: AnalyticsRepository
+  - **Где:** `app/Modules/UzumAnalytics/Repositories/AnalyticsRepository.php`
+  - **Методы:**
+    - saveProductSnapshot() — сохранение снепшота товара
+    - getPriceHistory() — история цен товара
+    - getCategoryStats() — статистика категории
+    - getCompetitorData() — данные конкурента
+  - **Кэш:** Redis 30 минут для агрегированных данных
+
+- [ ] #071 **[FEATURE]** Синхронизация дерева категорий Uzum
+  - **Где:** Job или Artisan команда
+  - **API:** GET /main/root-categories
+  - **Функции:**
+    - Получение корневых категорий
+    - Рекурсивный обход дочерних категорий
+    - Сохранение в uzum_categories (id, parent_id, title, products_count)
+    - Запуск 1 раз в сутки (Laravel Scheduler)
+  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
 
 ### Высокий приоритет ⚡
 
@@ -111,6 +224,159 @@
 - [x] #005 **[FEATURE]** Импорт товаров из Excel
   - **Где:** `POST /api/products/import`
   - **Решение:** Валидация + Drag & drop UI
+
+### Нормальный приоритет 📋
+
+#### 📊 Uzum Analytics - Этап 3: Мониторинг конкурентов (1-2 недели)
+
+- [ ] #072 **[FEATURE]** Job: CrawlProductJob
+  - **Где:** `app/Modules/UzumAnalytics/Jobs/CrawlProductJob.php`
+  - **Функции:**
+    - Получение карточки товара GET /v2/product/{productId}
+    - Парсинг полей: title, minSellPrice, maxFullPrice, rating, reviewsAmount, ordersAmount
+    - Конвертация цены из тийинов (÷ 100)
+    - Сохранение снепшота в uzum_products_snapshots
+  - **Параметры:** product_id
+  - **Зависит от:** #065 (UzumApiClient), #070 (AnalyticsRepository)
+
+- [ ] #073 **[FEATURE]** Сбор снепшотов цен — 4 раза в сутки
+  - **Где:** Laravel Scheduler
+  - **Расписание:** 00:00, 06:00, 12:00, 18:00 (UTC+5 Ташкент)
+  - **Функции:**
+    - Получение списка отслеживаемых товаров из настроек пользователя
+    - Dispatch CrawlProductJob для каждого товара (с задержкой 6 сек)
+    - Лимит: max 20 товаров на Pro аккаунт, 50 на Business
+  - **Зависит от:** #072 (CrawlProductJob)
+
+- [ ] #074 **[FEATURE]** История изменения цен конкурентов
+  - **Где:** UzumAnalytics API
+  - **Функции:**
+    - График цены товара за 30/90 дней (Chart.js)
+    - Выявление скидочных акций (price vs original_price)
+    - Сравнение с медианной ценой категории
+  - **Endpoint:** GET /api/analytics/uzum/price-history/{product_id}
+  - **Зависит от:** #070 (AnalyticsRepository)
+
+- [ ] #075 **[FEATURE]** Алерты в Telegram при изменении цен
+  - **Где:** Observer или Event Listener
+  - **Функции:**
+    - Отслеживание изменений price в uzum_products_snapshots
+    - Уведомление если цена изменилась > N% (настраивается)
+    - Отправка в Telegram бот пользователя
+    - Настройка: включить/выключить, порог %
+  - **Интеграция:** TelegramService (уже существует)
+  - **Зависит от:** #073 (сбор снепшотов)
+
+- [ ] #076 **[FEATURE]** GraphQL запросы для поиска товаров
+  - **Где:** UzumApiClient::searchProducts()
+  - **API:** POST https://graphql.umarket.uz
+  - **Query:** makeSearch (categoryId, sort, pagination)
+  - **Заголовки:** Authorization, X-Iid, Accept-Language
+  - **Функции:**
+    - Поиск товаров по категории
+    - Сортировка: BY_REVIEWS_COUNT_DESC, BY_PRICE_ASC, BY_RATING_DESC
+    - Пагинация (offset, limit)
+  - **Зависит от:** #065 (UzumApiClient)
+
+#### 📊 Uzum Analytics - Этап 4: UI Дашборд (1 неделя)
+
+- [ ] #077 **[FEATURE]** API эндпоинты для фронтенда
+  - **Где:** `app/Modules/UzumAnalytics/Http/Controllers/AnalyticsController.php`
+  - **Endpoints:**
+    - GET /api/analytics/uzum/categories — список категорий с метриками
+    - GET /api/analytics/uzum/category/{id}/products — товары категории
+    - GET /api/analytics/uzum/competitor/{slug} — данные конкурента
+    - GET /api/analytics/uzum/price-history/{id} — история цен
+    - GET /api/analytics/uzum/market-overview — сводка по отслеживаемым позициям
+  - **Middleware:** auth, company scope
+  - **Зависит от:** #070 (AnalyticsRepository)
+
+- [ ] #078 **[FEATURE]** Livewire компонент дашборда Uzum Analytics
+  - **Где:** `app/Modules/UzumAnalytics/Livewire/AnalyticsDashboard.php`
+  - **Blade:** `resources/views/livewire/uzum-analytics-dashboard.blade.php`
+  - **Функции:**
+    - Сводный виджет "Рынок сегодня" (изменения за 24 часа)
+    - Таблица отслеживаемых конкурентов
+    - Список категорий с метриками
+    - Фильтры: магазин, категория, ценовой диапазон
+  - **Зависит от:** #077 (API endpoints)
+
+- [ ] #079 **[FEATURE]** Графики Chart.js для аналитики
+  - **Где:** Blade шаблон дашборда
+  - **Графики:**
+    - Line chart: динамика цены товара (30/90 дней)
+    - Bar chart: распределение цен в категории (перцентили)
+    - Pie chart: доля магазинов в категории
+  - **JS:** `resources/js/uzum-analytics.js`
+  - **Зависит от:** #078 (Livewire компонент)
+
+- [ ] #080 **[FEATURE]** Фильтры и таблицы аналитики
+  - **Где:** Livewire компонент + Alpine.js
+  - **Функции:**
+    - Фильтр по категории (dropdown)
+    - Фильтр по ценовому диапазону (slider)
+    - Фильтр по магазину (search input)
+    - Таблица товаров с сортировкой (цена, рейтинг, отзывы)
+    - Пагинация (Livewire)
+  - **Зависит от:** #078 (Livewire компонент)
+
+- [ ] #081 **[FEATURE]** Экспорт аналитики в CSV/Excel
+  - **Где:** AnalyticsController::export()
+  - **Endpoint:** GET /api/analytics/uzum/export
+  - **Форматы:** CSV, XLSX (Laravel Excel)
+  - **Данные:** История цен, список конкурентов, статистика категорий
+  - **Зависит от:** #077 (API endpoints)
+
+#### 📊 Uzum Analytics - Дополнительно
+
+- [ ] #082 **[TEST]** Тесты для UzumApiClient
+  - **Где:** `tests/Unit/UzumAnalytics/UzumApiClientTest.php`
+  - **Покрытие:**
+    - Mock HTTP-ответов (Guzzle Mock Handler)
+    - Тест retry при 401, 429, 503
+    - Тест экспоненциального backoff
+    - Тест ротации токенов
+    - Тест rate limiting
+  - **Зависит от:** #065 (UzumApiClient)
+
+- [ ] #083 **[TEST]** Тесты для краулер Jobs
+  - **Где:** `tests/Feature/UzumAnalytics/`
+  - **Тесты:**
+    - RefreshTokenPoolJobTest — проверка обновления токенов
+    - CrawlCategoryJobTest — сохранение снепшотов категории
+    - CrawlProductJobTest — сохранение снепшота товара
+  - **Покрытие:** Mock API, проверка БД, обработка ошибок
+  - **Зависит от:** #068, #069, #072
+
+- [ ] #084 **[FEATURE]** Мониторинг изменений структуры API Uzum
+  - **Где:** Artisan команда или Scheduled Job
+  - **Функции:**
+    - Ежедневный тест структуры ответа /v2/product/{id}
+    - Проверка наличия ключевых полей (title, minSellPrice, rating)
+    - Алерт в Telegram разработчику при изменении структуры
+  - **Команда:** `php artisan uzum:check-api-structure`
+  - **Scheduler:** Daily at 09:00
+
+- [ ] #085 **[DOCS]** Документация модуля Uzum Analytics
+  - **Где:** `docs/UZUM_ANALYTICS_GUIDE.md`
+  - **Разделы:**
+    - Описание модуля и архитектуры
+    - Настройка (config, env переменные)
+    - Использование API эндпоинтов
+    - Rate limiting и меры безопасности
+    - Troubleshooting (блокировки, ошибки)
+    - Лимиты по тарифам (Pro: 20 товаров, Business: 50)
+
+- [ ] #086 **[FEATURE]** Healthcheck и метрики краулера
+  - **Где:** AnalyticsController::healthcheck()
+  - **Endpoint:** GET /api/analytics/uzum/health
+  - **Метрики:**
+    - Количество активных токенов в пуле
+    - Количество запросов за час (по типам)
+    - Количество ошибок 429/503 за день
+    - Время последней успешной синхронизации
+    - Статус Circuit Breaker (open/closed)
+  - **Интеграция:** Laravel Telescope, еженедельный email-отчёт
 
 ### Нормальный приоритет 📋
 
@@ -223,9 +489,9 @@
 ## 📊 Статистика
 
 ```
-Всего задач:     44
+Всего задач:     71
 В работе:        0
-В очереди:       0
+В очереди:       27 (Uzum Analytics Module)
 Выполнено:       44 ✅
 Заблокировано:   0
 ```
@@ -233,25 +499,37 @@
 ### По типам:
 
 ```
-[SECURITY]      4 задачи  🔥
+[SECURITY]      6 задач   🔥 (+2 Uzum)
 [BUG]           6 задач
-[FEATURE]       10 задач
+[FEATURE]       33 задачи (+23 Uzum)
 [REFACTOR]      5 задач
 [PERFORMANCE]   1 задача
-[TEST]          4 задачи
+[TEST]          6 задач   (+2 Uzum)
 [CLEANUP]       3 задачи
 [STYLE]         2 задачи
 [IMPROVE]       2 задачи
-[DOCS]          1 задача
+[DOCS]          2 задачи  (+1 Uzum)
 ```
 
 ### По приоритету:
 
 ```
-🔥 Критический:  5 задач (security + критические баги)
-⚡ Высокий:      11 задач (major bugs, stubs, features)
-📋 Нормальный:   12 задач (refactoring, tests, performance)
-📝 Низкий:       9 задач (cleanup, docs, style)
+🔥 Критический:  7 задач  (+2 Uzum: юрконсультация, выделенный IP)
+⚡ Высокий:      21 задача (+10 Uzum: фундамент + краулер)
+📋 Нормальный:   27 задач (+15 Uzum: мониторинг + UI + тесты)
+📝 Низкий:       9 задач
+```
+
+### 📊 Uzum Analytics Module (новый):
+
+```
+Всего задач:     27
+Этап 1 (Фундамент):           7 задач  (#062-#067, #068)
+Этап 2 (Краулер категорий):   3 задачи (#069-#071)
+Этап 3 (Мониторинг):          5 задач  (#072-#076)
+Этап 4 (UI Дашборд):          5 задач  (#077-#081)
+Дополнительно:                5 задач  (#082-#086)
+Безопасность:                 2 задачи (#060-#061)
 ```
 
 ---
