@@ -314,8 +314,11 @@ final class UzumOrderSyncService
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Uzum API возвращает поле scheme: 'FBS'|'DBS' в теле каждого заказа
-            'delivery_type' => strtoupper($orderData['scheme'] ?? $orderData['deliveryType'] ?? 'FBS'),
+            // Uzum API возвращает поле scheme: 'FBS'|'DBS' в теле каждого заказа.
+            // Если поле отсутствует — передаём null, чтобы не перезаписывать существующий delivery_type.
+            'delivery_type' => isset($orderData['scheme'])
+                ? strtoupper($orderData['scheme'])
+                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -348,13 +351,19 @@ final class UzumOrderSyncService
         $orderedAt = $this->parseTimestamp($orderData['ordered_at'] ?? null);
         $deliveredAt = $this->parseTimestamp($orderData['delivered_at'] ?? null);
 
+        // delivery_type: если API явно вернул scheme — используем его.
+        // Если нет (null) — для нового заказа дефолт 'FBS', для существующего — сохраняем текущий.
+        $newDeliveryType = $orderData['delivery_type'] ?? null;
+        $deliveryType = $newDeliveryType
+            ?? ($existingOrder?->delivery_type ?? 'FBS');
+
         $payload = [
             'marketplace_account_id' => $account->id,
             'external_order_id' => $externalOrderId,
             'status' => $orderData['status'] ?? 'new',
             'status_normalized' => $orderData['status_normalized'] ?? $orderData['status'] ?? 'new',
             'uzum_status' => $orderData['uzum_status'] ?? null,
-            'delivery_type' => $orderData['delivery_type'] ?? 'FBS',
+            'delivery_type' => $deliveryType,
             'shop_id' => $orderData['shop_id'] ?? null,
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,
