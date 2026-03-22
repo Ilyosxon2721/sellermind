@@ -263,7 +263,7 @@ final class UzumClient implements MarketplaceClientInterface
                 'status' => $statusValue,
                 'title' => $product['title'] ?? $product['skuTitle'] ?? null,
                 'category' => $product['category'] ?? null,
-                'preview_image' => $product['image'] ?? $product['previewImg'] ?? null,
+                'preview_image' => $this->extractProductImage($product),
                 'last_synced_price' => $price,
                 'last_synced_stock' => $totalStock,
                 'stock_fbs' => $stockFbs,
@@ -281,6 +281,50 @@ final class UzumClient implements MarketplaceClientInterface
             $mp->external_offer_id = (string) $product['skuList'][0]['skuId'];
             $mp->save();
         }
+    }
+
+    /**
+     * Извлечь URL превью изображения из ответа API Uzum.
+     * Пробуем разные поля, т.к. API возвращает их непоследовательно.
+     * Если значение — ID (без http/слэша), конструируем полный URL CDN.
+     */
+    protected function extractProductImage(array $product): ?string
+    {
+        // Прямые поля товара
+        $img = $product['image'] ?? $product['previewImg'] ?? $product['photo']
+            ?? $product['thumbnail'] ?? $product['mainImage'] ?? $product['coverImage']
+            ?? $product['photoUrl'] ?? $product['imageUrl'] ?? null;
+
+        // Из первого SKU
+        if (! $img && ! empty($product['skuList'])) {
+            foreach ($product['skuList'] as $sku) {
+                $img = $sku['image'] ?? $sku['photo'] ?? $sku['skuImage'] ?? $sku['imageUrl'] ?? null;
+                if ($img) break;
+            }
+        }
+
+        // Из массивов фото
+        if (! $img) {
+            foreach (['photos', 'photoGallery', 'images', 'galleryImages'] as $field) {
+                if (! empty($product[$field]) && is_array($product[$field])) {
+                    $first = $product[$field][0];
+                    $img = is_string($first) ? $first : ($first['url'] ?? $first['photo'] ?? $first['src'] ?? null);
+                    if ($img) break;
+                }
+            }
+        }
+
+        if (! $img) {
+            return null;
+        }
+
+        // Если значение похоже на ID (нет http и слэша) — строим CDN URL
+        $img = (string) $img;
+        if (! str_contains($img, '/') && ! str_starts_with($img, 'http')) {
+            $img = "https://images.uzum.uz/{$img}/t_product_540_high.jpg";
+        }
+
+        return $img;
     }
 
     /**
