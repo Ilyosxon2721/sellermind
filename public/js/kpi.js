@@ -13,6 +13,7 @@ function kpiPage(config) {
         spheres: [],
         scales: [],
         employees: [],
+        marketplaceAccounts: [],
         calculating: false,
 
         // Модалки
@@ -22,7 +23,7 @@ function kpiPage(config) {
 
         // Формы
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
-        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', is_active: true },
+        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_id: '', is_active: true },
         scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
         // Уведомления
@@ -33,13 +34,14 @@ function kpiPage(config) {
             this.loadSpheres();
             this.loadScales();
             this.loadEmployees();
+            this.loadMarketplaceAccounts();
         },
 
         emptyPlanForm() {
             return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
         },
         emptySphereForm() {
-            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', is_active: true };
+            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_id: '', is_active: true };
         },
         emptyScaleForm() {
             return { id: null, name: '', is_default: false, tiers: [] };
@@ -125,6 +127,12 @@ function kpiPage(config) {
                 this.employees = res.data ?? [];
             } catch (e) { /* сотрудники могут быть не доступны */ }
         },
+        async loadMarketplaceAccounts() {
+            try {
+                var res = await this.api('marketplaces/accounts');
+                this.marketplaceAccounts = (res.data ?? []).filter(function(a) { return a.is_active; });
+            } catch (e) { /* маркетплейсы могут быть не доступны */ }
+        },
 
         // Расчёт KPI
         async calculateAll() {
@@ -178,7 +186,7 @@ function kpiPage(config) {
             this.showSphereModal = true;
         },
         editSphere(s) {
-            this.sphereForm = Object.assign({}, s);
+            this.sphereForm = Object.assign({}, s, { marketplace_account_id: s.marketplace_account_id || '' });
             this.showSphereModal = true;
         },
         async saveSphere() {
