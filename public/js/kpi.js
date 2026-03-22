@@ -131,8 +131,8 @@ function kpiPage(config) {
         },
         async loadMarketplaceAccounts() {
             try {
-                var res = await this.api('marketplaces/accounts');
-                this.marketplaceAccounts = (res.data ?? []).filter(function(a) { return a.is_active; });
+                var res = await this.api('finance/kpi/marketplace-accounts');
+                this.marketplaceAccounts = res.data ?? [];
             } catch (e) { /* маркетплейсы могут быть не доступны */ }
         },
 

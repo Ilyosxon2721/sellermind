@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kpi\SalesSphere;
+use App\Models\MarketplaceAccount;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -109,5 +110,21 @@ final class SalesSphereController extends Controller
         $sphere->delete();
 
         return $this->successResponse(['message' => 'Сфера удалена']);
+    }
+
+    /**
+     * Список маркетплейс-аккаунтов компании для привязки к сфере
+     */
+    public function marketplaceAccounts(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->select(['id', 'name', 'marketplace'])
+            ->orderBy('name')
+            ->get();
+
+        return $this->successResponse($accounts);
     }
 }

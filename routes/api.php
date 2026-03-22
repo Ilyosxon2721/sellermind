@@ -904,6 +904,9 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
 
+            // Маркетплейс-аккаунты для привязки
+            Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
+
             // Сферы продаж
             Route::get('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'index']);
             Route::post('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'store']);
