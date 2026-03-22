@@ -1082,15 +1082,9 @@ function uzumOrdersPage() {
                 });
 
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.order) {
-                        const idx = this.orders.findIndex(o => o.id === order.id);
-                        if (idx !== -1) {
-                            this.orders[idx] = data.order;
-                        }
-                    }
                     this.showMessage('Заказ подтверждён и переведён в сборку', 'success');
-                    await this.loadStats();
+                    // Перезагружаем список и статистику — заказ уходит из текущей вкладки
+                    await Promise.all([this.loadOrders(), this.loadStats()]);
                 } else {
                     const err = await res.json();
                     this.showMessage(err.message || 'Ошибка подтверждения', 'error');
