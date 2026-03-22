@@ -12,6 +12,7 @@ use App\Modules\UzumAnalytics\Models\UzumToken;
 use App\Modules\UzumAnalytics\Models\UzumTrackedProduct;
 use App\Modules\UzumAnalytics\Repositories\AnalyticsRepository;
 use App\Modules\UzumAnalytics\Services\CircuitBreaker;
+use App\Modules\UzumAnalytics\Services\UzumAnalyticsApiClient;
 use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,7 @@ final class AnalyticsController extends Controller
     public function __construct(
         private readonly AnalyticsRepository $repository,
         private readonly CircuitBreaker $circuitBreaker,
+        private readonly UzumAnalyticsApiClient $apiClient,
     ) {}
 
     /**
@@ -50,12 +52,61 @@ final class AnalyticsController extends Controller
     }
 
     /**
-     * Статистика категории + топ товары
+     * Статистика категории + топ товары + топ продавцы (live данные из Uzum API)
      */
-    public function categoryProducts(Request $request, int $categoryId): JsonResponse
+    public function categoryProducts(Request $request, int $id): JsonResponse
     {
         $days  = (int) $request->get('days', 7);
-        $stats = $this->repository->getCategoryStats($categoryId, $days);
+        $limit = min((int) $request->get('limit', 20), 50);
+        $stats = $this->repository->getCategoryStats($id, $days);
+
+        try {
+            $apiData = $this->apiClient->getCategory($id, 0, 48);
+            $items   = $apiData['data']['makeSearch']['items'] ?? [];
+
+            $products = collect($items)
+                ->map(fn ($item) => $item['catalogCard'] ?? null)
+                ->filter()
+                ->values();
+
+            $topProducts = $products->map(fn ($card) => [
+                'product_id'     => $card['id'],
+                'title'          => $card['title'] ?? '',
+                'shop_slug'      => $card['shop']['slug'] ?? '',
+                'shop_title'     => $card['shop']['title'] ?? $card['shop']['slug'] ?? '',
+                'price'          => (int) ($card['minSellPrice'] ?? 0) / 100,
+                'original_price' => (int) ($card['minFullPrice'] ?? 0) / 100,
+                'rating'         => (float) ($card['rating'] ?? 0),
+                'reviews_count'  => (int) ($card['reviewsCount'] ?? 0),
+                'orders_count'   => (int) ($card['ordersCount'] ?? 0),
+            ])
+                ->sortByDesc('orders_count')
+                ->values()
+                ->take($limit);
+
+            $topSellers = $topProducts
+                ->groupBy('shop_slug')
+                ->map(fn ($shopProducts, $slug) => [
+                    'shop_slug'      => $slug,
+                    'shop_title'     => $shopProducts->first()['shop_title'],
+                    'products_count' => $shopProducts->count(),
+                    'total_orders'   => $shopProducts->sum('orders_count'),
+                    'total_reviews'  => $shopProducts->sum('reviews_count'),
+                    'avg_price'      => (int) round($shopProducts->avg('price')),
+                    'avg_rating'     => round($shopProducts->avg('rating'), 2),
+                ])
+                ->sortByDesc('total_orders')
+                ->values()
+                ->take($limit);
+
+            $stats['top_products']      = $topProducts->toArray();
+            $stats['top_sellers']       = $topSellers->toArray();
+            $stats['total_in_category'] = $apiData['data']['makeSearch']['total'] ?? 0;
+        } catch (\Throwable) {
+            $stats['top_products']      = $stats['top_products'] ?? [];
+            $stats['top_sellers']       = [];
+            $stats['total_in_category'] = 0;
+        }
 
         return response()->json($stats);
     }

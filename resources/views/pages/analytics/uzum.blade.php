@@ -301,7 +301,9 @@
             </div>
 
             {{-- Tab: Categories --}}
-            <div x-show="activeTab === 'categories'">
+            <div x-show="activeTab === 'categories'" class="space-y-4">
+
+                {{-- Список категорий --}}
                 <div class="bg-white rounded-xl border border-gray-200">
                     <div class="px-6 py-4 border-b border-gray-100">
                         <h2 class="font-semibold text-gray-900">Категории Uzum Market</h2>
@@ -317,6 +319,7 @@
                         <div class="divide-y divide-gray-100">
                             <template x-for="cat in categories" :key="cat.id">
                                 <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                                     :class="selectedCategory && selectedCategory.id === cat.id ? 'bg-blue-50' : ''"
                                      @click="loadCategoryProducts(cat.id, cat.title)">
                                     <div>
                                         <span class="text-sm font-medium text-gray-900" x-text="cat.title"></span>
@@ -330,6 +333,192 @@
                         </div>
                     </template>
                 </div>
+
+                {{-- Детали категории --}}
+                <div x-show="selectedCategory !== null" class="bg-white rounded-xl border border-gray-200">
+
+                    {{-- Заголовок --}}
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="font-semibold text-gray-900" x-text="selectedCategory?.title"></h2>
+                            <p class="text-xs text-gray-500 mt-0.5"
+                               x-text="categoryDetail ? (categoryDetail.total_in_category ? categoryDetail.total_in_category + ' товаров в категории' : '') : ''"></p>
+                        </div>
+                        <button @click="selectedCategory = null; categoryDetail = null" class="p-1 text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Загрузка --}}
+                    <div x-show="loadingCategoryDetail" class="px-6 py-10 text-center text-gray-400">
+                        <svg class="w-7 h-7 mx-auto animate-spin text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Загрузка данных из Uzum...
+                    </div>
+
+                    <div x-show="!loadingCategoryDetail && categoryDetail">
+
+                        {{-- Мини-статистика --}}
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-gray-100">
+                            <div class="px-6 py-4 border-r border-gray-100">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider">Мин. цена</p>
+                                <p class="mt-1 text-lg font-bold text-gray-900"
+                                   x-text="categoryDetail?.min_price ? formatPrice(categoryDetail.min_price) + ' сум' : '—'"></p>
+                            </div>
+                            <div class="px-6 py-4 border-r border-gray-100">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider">Макс. цена</p>
+                                <p class="mt-1 text-lg font-bold text-gray-900"
+                                   x-text="categoryDetail?.max_price ? formatPrice(categoryDetail.max_price) + ' сум' : '—'"></p>
+                            </div>
+                            <div class="px-6 py-4 border-r border-gray-100">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider">Средняя цена</p>
+                                <p class="mt-1 text-lg font-bold text-gray-900"
+                                   x-text="categoryDetail?.avg_price ? formatPrice(categoryDetail.avg_price) + ' сум' : '—'"></p>
+                            </div>
+                            <div class="px-6 py-4">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider">Средний рейтинг</p>
+                                <p class="mt-1 text-lg font-bold text-yellow-500"
+                                   x-text="categoryDetail?.avg_rating ? '★ ' + categoryDetail.avg_rating : '—'"></p>
+                            </div>
+                        </div>
+
+                        {{-- Переключатель вкладок --}}
+                        <div class="flex border-b border-gray-100">
+                            <button @click="categorySubTab = 'products'"
+                                    :class="categorySubTab === 'products' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                                    class="px-6 py-3 text-sm font-medium">
+                                Топ товары
+                                <span class="ml-1 text-xs text-gray-400"
+                                      x-text="categoryDetail?.top_products?.length ? '(' + categoryDetail.top_products.length + ')' : ''"></span>
+                            </button>
+                            <button @click="categorySubTab = 'sellers'"
+                                    :class="categorySubTab === 'sellers' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                                    class="px-6 py-3 text-sm font-medium">
+                                Топ продавцы
+                                <span class="ml-1 text-xs text-gray-400"
+                                      x-text="categoryDetail?.top_sellers?.length ? '(' + categoryDetail.top_sellers.length + ')' : ''"></span>
+                            </button>
+                        </div>
+
+                        {{-- Топ товары --}}
+                        <div x-show="categorySubTab === 'products'">
+                            <template x-if="!categoryDetail?.top_products?.length">
+                                <div class="px-6 py-8 text-center text-gray-500 text-sm">Нет данных о товарах</div>
+                            </template>
+                            <template x-if="categoryDetail?.top_products?.length">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left">#</th>
+                                                <th class="px-4 py-3 text-left">Товар</th>
+                                                <th class="px-4 py-3 text-left">Магазин</th>
+                                                <th class="px-4 py-3 text-right">Цена</th>
+                                                <th class="px-4 py-3 text-right">Заказы</th>
+                                                <th class="px-4 py-3 text-right">Отзывы</th>
+                                                <th class="px-4 py-3 text-right">Рейтинг</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <template x-for="(item, index) in categoryDetail.top_products" :key="item.product_id">
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-4 py-3 text-sm text-gray-400 font-mono" x-text="index + 1"></td>
+                                                    <td class="px-4 py-3">
+                                                        <a :href="'https://uzum.uz/product/' + item.product_id"
+                                                           target="_blank"
+                                                           class="text-sm font-medium text-blue-600 hover:underline line-clamp-2 max-w-xs block"
+                                                           x-text="item.title || ('ID ' + item.product_id)"></a>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="text-sm text-gray-600" x-text="item.shop_title || item.shop_slug || '—'"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm font-semibold text-gray-900"
+                                                              x-text="item.price ? formatPrice(item.price) + ' сум' : '—'"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm font-bold text-blue-600"
+                                                              x-text="item.orders_count ? formatPrice(item.orders_count) : '—'"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm text-gray-600"
+                                                              x-text="item.reviews_count ? formatPrice(item.reviews_count) : '—'"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm text-yellow-500 font-medium"
+                                                              x-text="item.rating ? '★ ' + item.rating : '—'"></span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- Топ продавцы --}}
+                        <div x-show="categorySubTab === 'sellers'">
+                            <template x-if="!categoryDetail?.top_sellers?.length">
+                                <div class="px-6 py-8 text-center text-gray-500 text-sm">Нет данных о продавцах</div>
+                            </template>
+                            <template x-if="categoryDetail?.top_sellers?.length">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left">#</th>
+                                                <th class="px-4 py-3 text-left">Магазин</th>
+                                                <th class="px-4 py-3 text-right">Товаров в топ-48</th>
+                                                <th class="px-4 py-3 text-right">Заказов (сумм)</th>
+                                                <th class="px-4 py-3 text-right">Отзывов</th>
+                                                <th class="px-4 py-3 text-right">Ср. цена</th>
+                                                <th class="px-4 py-3 text-right">Ср. рейтинг</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <template x-for="(seller, index) in categoryDetail.top_sellers" :key="seller.shop_slug">
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-4 py-3 text-sm text-gray-400 font-mono" x-text="index + 1"></td>
+                                                    <td class="px-4 py-3">
+                                                        <a :href="'https://uzum.uz/shop/' + seller.shop_slug"
+                                                           target="_blank"
+                                                           class="text-sm font-medium text-blue-600 hover:underline"
+                                                           x-text="seller.shop_title || seller.shop_slug"></a>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium"
+                                                              x-text="seller.products_count"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm font-bold text-blue-600"
+                                                              x-text="formatPrice(seller.total_orders)"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm text-gray-600"
+                                                              x-text="formatPrice(seller.total_reviews)"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm text-gray-900"
+                                                              x-text="seller.avg_price ? formatPrice(seller.avg_price) + ' сум' : '—'"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <span class="text-sm text-yellow-500"
+                                                              x-text="seller.avg_rating ? '★ ' + seller.avg_rating : '—'"></span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </template>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
 
         </main>
@@ -418,10 +607,14 @@ function uzumAnalytics() {
         loadingTracked: false,
         loadingCategories: false,
         loadingHistory: false,
+        loadingCategoryDetail: false,
         addingProduct: false,
         aiLoading: false,
         aiInsights: null,
         aiGeneratedAt: null,
+        selectedCategory: null,
+        categoryDetail: null,
+        categorySubTab: 'products',
 
         overviewProducts: [],
         trackedProducts: [],
@@ -566,6 +759,30 @@ function uzumAnalytics() {
                 this.overview.total_tracked = this.overviewProducts.length;
             } catch (e) {
                 this.showToast('Ошибка удаления', 'error');
+            }
+        },
+
+        async loadCategoryProducts(categoryId, title) {
+            if (this.selectedCategory?.id === categoryId) {
+                this.selectedCategory = null;
+                this.categoryDetail = null;
+                return;
+            }
+            this.selectedCategory = { id: categoryId, title };
+            this.categoryDetail = null;
+            this.loadingCategoryDetail = true;
+            this.categorySubTab = 'products';
+            try {
+                const res = await fetch(`/api/analytics/uzum/category/${categoryId}/products?days=${this.days}&limit=20`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.categoryDetail = await res.json();
+            } catch (e) {
+                this.showToast('Ошибка загрузки категории: ' + e.message, 'error');
+                this.selectedCategory = null;
+            } finally {
+                this.loadingCategoryDetail = false;
             }
         },
 
