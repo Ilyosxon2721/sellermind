@@ -10,8 +10,8 @@ use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\AI\AiProviderService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,15 +19,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class KpiAiService
 {
-    private string $apiKey;
-
-    private string $baseUrl;
-
-    public function __construct()
-    {
-        $this->apiKey = config('openai.api_key');
-        $this->baseUrl = rtrim(config('openai.api_url', 'https://api.openai.com/v1'), '/');
-    }
+    public function __construct(
+        private readonly AiProviderService $aiProvider
+    ) {}
 
     /**
      * Сгенерировать рекомендации KPI на основе исторических данных
@@ -53,38 +47,52 @@ final class KpiAiService
 
         $prompt = $this->buildPrompt($employee, $sphere, $history, $pastPlans, $year, $month);
 
-        $model = config('openai.models.kpi', 'gpt-5.1');
-
-        $payload = [
-            'model' => $model,
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => $this->getSystemPrompt(),
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt,
-                ],
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => $this->getSystemPrompt(),
             ],
-            'max_completion_tokens' => 2000,
-            'temperature' => 0.3,
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
         ];
 
-        $response = $this->callOpenAI('/chat/completions', $payload);
+        $options = [
+            'temperature' => 0.3,
+            'max_tokens' => 4096,
+            'timeout' => config('ai.timeout.kpi', 90),
+        ];
 
-        $content = $response['choices'][0]['message']['content'] ?? '';
+        // Определяем модель в зависимости от провайдера
+        $provider = config('ai.provider', 'openai');
+        $options['model'] = match ($provider) {
+            'anthropic' => config('anthropic.models.kpi', 'claude-sonnet-4-20250514'),
+            default => config('openai.models.kpi', 'gpt-5.1'),
+        };
 
-        // Логируем использование ИИ
-        AIUsageLog::log(
-            $companyId,
-            $userId,
-            $model.'-kpi',
-            $response['usage']['prompt_tokens'] ?? 0,
-            $response['usage']['completion_tokens'] ?? 0
-        );
+        try {
+            $response = $this->aiProvider->chatCompletion($messages, $options);
 
-        return $this->parseResponse($content, $history);
+            // Логируем использование ИИ
+            AIUsageLog::log(
+                $companyId,
+                $userId,
+                $response['provider'].':'.$response['model'],
+                $response['usage']['prompt_tokens'] ?? 0,
+                $response['usage']['completion_tokens'] ?? 0
+            );
+
+            return $this->parseResponse($response['content'], $history);
+        } catch (\Exception $e) {
+            Log::error('KPI AI Service Error', [
+                'error' => $e->getMessage(),
+                'company_id' => $companyId,
+                'employee_id' => $employeeId,
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
@@ -270,26 +278,6 @@ PROMPT;
         $prompt .= "\nВСЕ СУММЫ указывай в СУМАХ (не в рублях, не в долларах).";
 
         return $prompt;
-    }
-
-    private function callOpenAI(string $endpoint, array $data): array
-    {
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer {$this->apiKey}",
-            'Content-Type' => 'application/json',
-        ])->timeout(60)->post("{$this->baseUrl}{$endpoint}", $data);
-
-        if (! $response->successful()) {
-            Log::error('OpenAI KPI API Error', [
-                'endpoint' => $endpoint,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            throw new \Exception('Ошибка при обращении к ИИ: '.$response->body());
-        }
-
-        return $response->json();
     }
 
     /**
