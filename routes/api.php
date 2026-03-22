@@ -455,6 +455,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products/bulk-link', [MarketplaceProductController::class, 'bulkLink']);
         Route::put('products/{marketplaceProduct}', [MarketplaceProductController::class, 'update']);
         Route::delete('products/{marketplaceProduct}', [MarketplaceProductController::class, 'destroy']);
+        Route::post('products/{marketplaceProduct}/seo-optimize', [MarketplaceProductController::class, 'seoOptimize']);
         Route::get('stock/logs', [\App\Http\Controllers\Api\MarketplaceStockLogController::class, 'index']);
         Route::get('stock/dashboard', [\App\Http\Controllers\Api\MarketplaceStockDashboardController::class, 'summary']);
         Route::get('stock/search', [\App\Http\Controllers\Api\MarketplaceStockDashboardController::class, 'search']);

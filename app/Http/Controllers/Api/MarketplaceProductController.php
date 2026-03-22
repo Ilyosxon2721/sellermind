@@ -15,6 +15,7 @@ use App\Http\Requests\Marketplace\UpdateMarketplaceProductRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\Product;
+use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -275,6 +276,47 @@ class MarketplaceProductController extends Controller
         return response()->json([
             'products' => $products,
         ]);
+    }
+
+    public function seoOptimize(Request $request, MarketplaceProduct $marketplaceProduct): JsonResponse
+    {
+        $account = $marketplaceProduct->account;
+
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $request->validate([
+            'language' => ['nullable', 'string', 'in:ru,uz'],
+        ]);
+
+        $language = $request->input('language', 'ru');
+        $raw = $marketplaceProduct->raw_payload ?? [];
+
+        $context = array_filter([
+            'title'           => $marketplaceProduct->title,
+            'category'        => $marketplaceProduct->category,
+            'brand'           => $raw['brand'] ?? null,
+            'vendor_code'     => $raw['vendorCode'] ?? null,
+            'description'     => $raw['description'] ?? null,
+            'characteristics' => $raw['characteristics'] ?? $raw['attributes'] ?? null,
+        ]);
+
+        try {
+            $result = app(AIService::class)->generateProductTexts(
+                $context,
+                'uzum',
+                $language,
+                $account->company_id,
+                $request->user()->id
+            );
+
+            return response()->json(['result' => $result]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Ошибка AI: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
