@@ -36,6 +36,7 @@ final class SalesSphere extends Model
         'color',
         'icon',
         'marketplace_account_id',
+        'marketplace_account_ids',
         'is_active',
         'sort_order',
     ];
@@ -45,6 +46,7 @@ final class SalesSphere extends Model
         return [
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'marketplace_account_ids' => 'array',
         ];
     }
 
@@ -68,7 +70,37 @@ final class SalesSphere extends Model
      */
     public function hasMarketplaceLink(): bool
     {
-        return $this->marketplace_account_id !== null;
+        return ! empty($this->marketplace_account_ids) || $this->marketplace_account_id !== null;
+    }
+
+    /**
+     * Получить все привязанные ID маркетплейс-аккаунтов
+     */
+    public function getLinkedAccountIds(): array
+    {
+        if (! empty($this->marketplace_account_ids)) {
+            return $this->marketplace_account_ids;
+        }
+
+        if ($this->marketplace_account_id !== null) {
+            return [$this->marketplace_account_id];
+        }
+
+        return [];
+    }
+
+    /**
+     * Загрузить привязанные маркетплейс-аккаунты
+     */
+    public function getLinkedAccounts(): \Illuminate\Database\Eloquent\Collection
+    {
+        $ids = $this->getLinkedAccountIds();
+
+        if (empty($ids)) {
+            return new \Illuminate\Database\Eloquent\Collection();
+        }
+
+        return MarketplaceAccount::whereIn('id', $ids)->get();
     }
 
     public function scopeByCompany($query, int $companyId)

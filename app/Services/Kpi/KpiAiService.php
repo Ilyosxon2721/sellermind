@@ -118,15 +118,15 @@ final class KpiAiService
                 $monthData['margin'] = $existingPlan->actual_margin;
                 $monthData['orders'] = $existingPlan->actual_orders;
             } elseif ($sphere && $sphere->hasMarketplaceLink()) {
-                // Собираем из Sales
-                $accountId = $sphere->marketplace_account_id;
+                // Собираем из Sales по всем привязанным аккаунтам
+                $accountIds = $sphere->getLinkedAccountIds();
 
                 $salesData = Sale::where('company_id', $companyId)
                     ->where('type', 'marketplace')
                     ->whereIn('status', ['confirmed', 'completed'])
                     ->whereBetween('created_at', [$periodStart, $periodEnd])
-                    ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
-                        $query->where('marketplace_account_id', $accountId);
+                    ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
+                        $query->whereIn('marketplace_account_id', $accountIds);
                     })
                     ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
                     ->first();
@@ -135,13 +135,13 @@ final class KpiAiService
                 $monthData['orders'] = (int) ($salesData->total_orders ?? 0);
 
                 // Маржа
-                $marginData = SaleItem::whereHas('sale', function ($q) use ($companyId, $accountId, $periodStart, $periodEnd) {
+                $marginData = SaleItem::whereHas('sale', function ($q) use ($companyId, $accountIds, $periodStart, $periodEnd) {
                     $q->where('company_id', $companyId)
                         ->where('type', 'marketplace')
                         ->whereIn('status', ['confirmed', 'completed'])
                         ->whereBetween('created_at', [$periodStart, $periodEnd])
-                        ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
-                            $query->where('marketplace_account_id', $accountId);
+                        ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
+                            $query->whereIn('marketplace_account_id', $accountIds);
                         });
                 })
                     ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
