@@ -55,6 +55,12 @@
                         </svg>
                         <span x-text="stocksSyncing ? 'Синхронизация...' : 'Синх. остатки'"></span>
                     </button>
+                    <button @click="exportCsv()" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all" title="Экспорт в CSV">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        CSV
+                    </button>
                     <button @click="loadProducts" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -209,6 +215,9 @@
                             <th @click="sortBy('stock_fbs')" class="text-center px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                                 <span class="inline-flex items-center justify-center">FBS<span class="ml-1 text-[10px]" x-show="sortField === 'stock_fbs'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span></span>
                             </th>
+                            <th class="text-center px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider select-none" title="Прогноз: сколько дней хватит остатков FBS при текущем темпе продаж">
+                                <span class="inline-flex items-center justify-center">Дней</span>
+                            </th>
                             <th @click="sortBy('stock_fbo')" class="text-center px-3 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                                 <span class="inline-flex items-center justify-center">FBO<span class="ml-1 text-[10px]" x-show="sortField === 'stock_fbo'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span></span>
                             </th>
@@ -260,6 +269,17 @@
                                 </td>
                                 <td class="px-3 py-3 text-center">
                                     <span class="text-sm font-medium" :class="(item.stock_fbs ?? 0) > 0 ? 'text-green-600' : 'text-gray-400'" x-text="item.stock_fbs ?? 0"></span>
+                                </td>
+                                <td class="px-3 py-3 text-center">
+                                    <template x-if="stockForecast[item.id] !== undefined">
+                                        <span class="inline-flex items-center justify-center w-10 h-6 rounded-full text-xs font-bold"
+                                              :class="stockForecast[item.id] >= 9999 ? 'bg-gray-100 text-gray-400' : stockForecast[item.id] < 7 ? 'bg-red-100 text-red-700' : stockForecast[item.id] < 14 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'"
+                                              x-text="stockForecast[item.id] >= 9999 ? '∞' : stockForecast[item.id]">
+                                        </span>
+                                    </template>
+                                    <template x-if="stockForecast[item.id] === undefined">
+                                        <span class="text-gray-300 text-xs">—</span>
+                                    </template>
                                 </td>
                                 <td class="px-3 py-3 text-center">
                                     <span class="text-sm font-medium" :class="(item.stock_fbo ?? 0) > 0 ? 'text-blue-600' : 'text-gray-400'" x-text="item.stock_fbo ?? 0"></span>
@@ -1045,6 +1065,7 @@ function uzumProducts(accountId) {
         bulkSeoProgress: 0,
         bulkSeoItems: [],
         bulkSeoLanguage: 'ru',
+        stockForecast: {},
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1063,6 +1084,14 @@ function uzumProducts(accountId) {
         async safeJson(res) {
             const text = await res.text();
             try { return JSON.parse(text); } catch { throw new Error('Не JSON ответ'); }
+        },
+        async loadForecast() {
+            try {
+                const res = await fetch(`/api/marketplace/products/stock-forecast?marketplace_account_id=${this.accountId}`, { headers: this.getHeaders(), credentials: 'include' });
+                if (!res.ok) return;
+                const data = await res.json();
+                this.stockForecast = data.forecast || {};
+            } catch {}
         },
         async loadProducts(page = 1) {
             this.loading = true;
@@ -1158,6 +1187,32 @@ function uzumProducts(accountId) {
             }
             this.bulkSeoRunning = false;
             this.bulkSeoDone = true;
+        },
+        exportCsv() {
+            const rows = [["ID","Внешний ID","Название","Категория","Статус","Цена","FBS","FBO","Доп.","Продано","Возвраты","Обновлено"]];
+            for (const p of this.filtered) {
+                rows.push([
+                    p.id,
+                    p.external_product_id || '',
+                    '"' + (p.title || '').replace(/"/g, '""') + '"',
+                    '"' + (p.category || '').replace(/"/g, '""') + '"',
+                    p.status || '',
+                    p.last_synced_price || 0,
+                    p.stock_fbs ?? 0,
+                    p.stock_fbo ?? 0,
+                    p.stock_additional ?? 0,
+                    p.quantity_sold ?? 0,
+                    p.quantity_returned ?? 0,
+                    p.last_synced_at || '',
+                ]);
+            }
+            const csv = rows.map(r => r.join(',')).join('n');
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'uzum-products-' + new Date().toISOString().slice(0,10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
         },
         async runSeoOptimize() {
             if (!this.selected?.id || this.seoLoading) return;
@@ -1413,7 +1468,7 @@ function uzumProducts(accountId) {
                 const data = await r.json(); if (r.ok) { alert(data.message || 'Остатки синхронизированы'); await this.loadProductLinks(); } else { alert(data.message || 'Ошибка синхронизации'); }
             } catch { alert('Ошибка синхронизации'); } finally { this.syncingStock = null; }
         },
-        init() { this.loadProducts(); }
+        init() { this.loadProducts(); this.loadForecast(); }
     }
 }
 </script>

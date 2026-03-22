@@ -322,6 +322,41 @@ class MarketplaceProductController extends Controller
     }
 
     /**
+     * Прогноз остатков: сколько дней хватит FBS-склада при текущем темпе продаж
+     */
+    public function stockForecast(MarketplaceAccountFilterRequest $request): JsonResponse
+    {
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
+
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $products = MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->select(['id', 'stock_fbs', 'quantity_sold'])
+            ->get();
+
+        $forecast = [];
+        foreach ($products as $p) {
+            $stock = (int) ($p->stock_fbs ?? 0);
+            $sold  = (float) ($p->quantity_sold ?? 0);
+
+            // Среднедневные продажи за последние 30 дней
+            $dailyRate = $sold / 30;
+
+            if ($dailyRate <= 0) {
+                $daysLeft = $stock > 0 ? 9999 : 0;
+            } else {
+                $daysLeft = (int) round($stock / $dailyRate);
+            }
+
+            $forecast[$p->id] = $daysLeft;
+        }
+
+        return response()->json(['forecast' => $forecast]);
+    }
+
+    /**
      * Search local products with fuzzy matching (1+ characters)
      */
     public function searchProducts(SearchMarketplaceProductRequest $request): JsonResponse
