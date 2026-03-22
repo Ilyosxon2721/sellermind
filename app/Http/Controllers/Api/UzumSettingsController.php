@@ -346,6 +346,103 @@ class UzumSettingsController extends Controller
         }
     }
 
+    /**
+     * Массовое включение/выключение DBS (и/или FBS) для нескольких SKU
+     * POST /api/uzum/accounts/{account}/sku-schemes/bulk
+     * Body: {dbs: bool, fbs?: bool, sku_ids?: int[]}
+     */
+    public function bulkUpdateSkuSchemes(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        if (! $account->isUzum()) {
+            return response()->json(['message' => 'Аккаунт не является Uzum.'], 400);
+        }
+
+        $validated = $request->validate([
+            'dbs'     => ['required', 'boolean'],
+            'fbs'     => ['sometimes', 'boolean'],
+            'sku_ids' => ['sometimes', 'array'],
+            'sku_ids.*' => ['integer'],
+        ]);
+
+        $targetDbs = $validated['dbs'];
+        $targetFbs = $validated['fbs'] ?? null; // null = не менять
+        $filterIds = isset($validated['sku_ids']) ? array_map('intval', $validated['sku_ids']) : null;
+
+        try {
+            $uzum = new UzumApiManager($account);
+
+            // Получаем все SKU один раз
+            $response = $uzum->stocks()->get();
+            $skuList = $response['skuAmountList'] ?? $response['payload']['skuAmountList'] ?? [];
+
+            $updated = 0;
+            $skipped = 0;
+            $failed  = 0;
+
+            foreach ($skuList as $sku) {
+                $skuId = (int) ($sku['skuId'] ?? 0);
+                if (! $skuId) {
+                    continue;
+                }
+
+                // Если задан список — пропускаем не входящие
+                if ($filterIds !== null && ! in_array($skuId, $filterIds)) {
+                    continue;
+                }
+
+                $dbsAllowed = (bool) ($sku['dbsAllowed'] ?? false);
+                $fbsAllowed = (bool) ($sku['fbsAllowed'] ?? false);
+
+                // Если пытаемся включить DBS, а Uzum не разрешает — пропускаем
+                if ($targetDbs && ! $dbsAllowed) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Если FBS не передан — сохраняем текущее состояние
+                $newFbs = $targetFbs !== null ? $targetFbs : (bool) ($sku['fbsLinked'] ?? false);
+                // Проверка разрешения FBS
+                if ($newFbs && ! $fbsAllowed) {
+                    $newFbs = (bool) ($sku['fbsLinked'] ?? false); // сброс
+                }
+
+                try {
+                    $result = $uzum->stocks()->updateOne(
+                        skuId: $skuId,
+                        amount: (int) ($sku['amount'] ?? 0),
+                        barcode: (string) ($sku['barcode'] ?? ''),
+                        skuTitle: (string) ($sku['skuTitle'] ?? ''),
+                        productTitle: (string) ($sku['productTitle'] ?? ''),
+                        fbs: $newFbs,
+                        dbs: $targetDbs,
+                    );
+                    $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
+                    if ($updatedRecords > 0) {
+                        $updated++;
+                    } else {
+                        $skipped++;
+                    }
+                } catch (\Throwable) {
+                    $failed++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'failed'  => $failed,
+                'dbs'     => $targetDbs,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
     protected function maskToken(?string $token): ?string
     {
         if (! $token) {

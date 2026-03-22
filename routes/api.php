@@ -627,6 +627,7 @@ Route::middleware('auth.any')->group(function () {
             Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
             Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
             Route::get('accounts/{account}/sku-schemes', [UzumSettingsController::class, 'skuSchemes']);
+            Route::post('accounts/{account}/sku-schemes/bulk', [UzumSettingsController::class, 'bulkUpdateSkuSchemes']);
             Route::post('accounts/{account}/sku-schemes/{skuId}', [UzumSettingsController::class, 'updateSkuScheme']);
         });
 

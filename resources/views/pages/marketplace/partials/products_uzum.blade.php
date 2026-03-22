@@ -55,6 +55,22 @@
                         </svg>
                         <span x-text="stocksSyncing ? 'Синхронизация...' : 'Синх. остатки'"></span>
                     </button>
+                    <!-- Глобальный DBS переключатель -->
+                    <template x-if="Object.keys(skuSchemes).length > 0">
+                        <button @click="toggleAllDbs()"
+                                :disabled="allDbsToggling"
+                                class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transition-all"
+                                :class="allDbsState()?.isOn
+                                    ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400 hover:text-purple-600'"
+                                :title="allDbsState()?.isOn ? 'Отключить DBS для всего магазина' : 'Включить DBS для всего магазина'">
+                            <svg x-show="allDbsToggling" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <svg x-show="!allDbsToggling && allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            <svg x-show="!allDbsToggling && !allDbsState()?.isOn" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8M12 8v8"/></svg>
+                            <span>DBS магазин</span>
+                            <span x-show="allDbsState()" class="ml-1.5 text-[10px] opacity-75" x-text="allDbsState()?.enabled + '/' + allDbsState()?.allowed"></span>
+                        </button>
+                    </template>
                     <button @click="exportCsv()" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all" title="Экспорт в CSV">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -517,6 +533,29 @@
                                     <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Описание</h3>
                                     <div class="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 max-h-32 overflow-y-auto" x-html="selected.raw_payload.description"></div>
                                 </div>
+
+                                <!-- DBS переключатель для карточки -->
+                                <template x-if="selected.raw_payload.skuList?.length && !skuSchemesLoading && productDbsState()">
+                                    <div class="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
+                                        <div>
+                                            <p class="text-xs font-semibold text-purple-800">DBS для всех SKU карточки</p>
+                                            <p class="text-[11px] text-purple-600 mt-0.5"
+                                               x-text="productDbsState()?.enabled + ' из ' + productDbsState()?.allowed + ' SKU с DBS'">
+                                            </p>
+                                        </div>
+                                        <button @click="toggleProductDbs()"
+                                                :disabled="productDbsToggling"
+                                                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all"
+                                                :class="productDbsState()?.isOn
+                                                    ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700'
+                                                    : 'bg-white text-purple-700 border-purple-300 hover:bg-purple-50'">
+                                            <svg x-show="productDbsToggling" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            <svg x-show="!productDbsToggling && productDbsState()?.isOn" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <svg x-show="!productDbsToggling && !productDbsState()?.isOn" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span x-text="productDbsState()?.isOn ? 'Отключить DBS' : 'Включить DBS'"></span>
+                                        </button>
+                                    </div>
+                                </template>
 
                                 <!-- SKU List -->
                                 <template x-if="selected.raw_payload.skuList?.length">
@@ -1077,6 +1116,8 @@ function uzumProducts(accountId) {
         bulkSeoItems: [],
         bulkSeoLanguage: 'ru',
         stockForecast: {},
+        productDbsToggling: false,
+        allDbsToggling: false,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1404,12 +1445,12 @@ function uzumProducts(accountId) {
             this.skuLinks = []; this.skuSchemes = {}; this.skuSchemesLoading = true; this.loadProductLinks(); this.loadSkuSchemes();
             if (!item.raw_payload) this.loadRaw(item.id);
         },
-        async loadSkuSchemes() {
-            this.skuSchemesLoading = true;
+        async loadSkuSchemes(showLoading = true) {
+            if (showLoading) this.skuSchemesLoading = true;
             try {
                 const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes`, { headers: this.getHeaders(), credentials: 'include' });
                 if (r.ok) { this.skuSchemes = (await r.json()).schemes || {}; }
-            } catch {} finally { this.skuSchemesLoading = false; }
+            } catch {} finally { if (showLoading) this.skuSchemesLoading = false; }
         },
         async toggleScheme(skuId, type) {
             const key = String(skuId);
@@ -1479,7 +1520,89 @@ function uzumProducts(accountId) {
                 const data = await r.json(); if (r.ok) { alert(data.message || 'Остатки синхронизированы'); await this.loadProductLinks(); } else { alert(data.message || 'Ошибка синхронизации'); }
             } catch { alert('Ошибка синхронизации'); } finally { this.syncingStock = null; }
         },
-        init() { this.loadProducts(); this.loadForecast(); }
+
+        // Текущее состояние DBS для карточки товара (большинство SKU)
+        productDbsState() {
+            const skuList = this.selected?.raw_payload?.skuList || [];
+            if (!skuList.length) return null;
+            let enabledCount = 0, allowedCount = 0;
+            for (const sku of skuList) {
+                const scheme = this.skuSchemes[String(sku.skuId)];
+                if (scheme?.dbsAllowed) { allowedCount++; if (scheme.dbsLinked) enabledCount++; }
+            }
+            if (allowedCount === 0) return null;
+            return { enabled: enabledCount, allowed: allowedCount, isOn: enabledCount > allowedCount / 2 };
+        },
+
+        // Переключить DBS для всех SKU текущей карточки
+        async toggleProductDbs() {
+            if (!this.selected?.raw_payload?.skuList?.length || this.productDbsToggling) return;
+            const state = this.productDbsState();
+            if (!state) return;
+            const newDbs = !state.isOn;
+            const skuIds = (this.selected.raw_payload.skuList || []).map(s => s.skuId).filter(Boolean);
+            this.productDbsToggling = true;
+            try {
+                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                    method: 'POST', headers: this.getHeaders(), credentials: 'include',
+                    body: JSON.stringify({ dbs: newDbs, sku_ids: skuIds }),
+                });
+                const data = await r.json();
+                if (r.ok) {
+                    // Обновляем локальный кэш схем
+                    for (const sku of this.selected.raw_payload.skuList) {
+                        const key = String(sku.skuId);
+                        if (this.skuSchemes[key]?.dbsAllowed) {
+                            this.skuSchemes = { ...this.skuSchemes, [key]: { ...this.skuSchemes[key], dbsLinked: newDbs } };
+                        }
+                    }
+                } else {
+                    alert(data.message || 'Ошибка изменения DBS');
+                }
+            } catch { alert('Ошибка соединения'); }
+            finally { this.productDbsToggling = false; }
+        },
+
+        // Состояние DBS по всем SKU магазина
+        allDbsState() {
+            const keys = Object.keys(this.skuSchemes);
+            if (!keys.length) return null;
+            let enabledCount = 0, allowedCount = 0;
+            for (const key of keys) {
+                const s = this.skuSchemes[key];
+                if (s.dbsAllowed) { allowedCount++; if (s.dbsLinked) enabledCount++; }
+            }
+            if (allowedCount === 0) return null;
+            return { enabled: enabledCount, allowed: allowedCount, isOn: enabledCount > allowedCount / 2 };
+        },
+
+        // Переключить DBS для всего магазина
+        async toggleAllDbs() {
+            if (this.allDbsToggling) return;
+            const state = this.allDbsState();
+            const newDbs = state ? !state.isOn : true;
+            this.allDbsToggling = true;
+            try {
+                const r = await fetch(`/api/uzum/accounts/${this.accountId}/sku-schemes/bulk`, {
+                    method: 'POST', headers: this.getHeaders(), credentials: 'include',
+                    body: JSON.stringify({ dbs: newDbs }),
+                });
+                const data = await r.json();
+                if (r.ok) {
+                    // Обновляем весь кэш схем
+                    const updated = {};
+                    for (const [key, s] of Object.entries(this.skuSchemes)) {
+                        updated[key] = s.dbsAllowed ? { ...s, dbsLinked: newDbs } : s;
+                    }
+                    this.skuSchemes = updated;
+                } else {
+                    alert(data.message || 'Ошибка изменения DBS');
+                }
+            } catch { alert('Ошибка соединения'); }
+            finally { this.allDbsToggling = false; }
+        },
+
+        init() { this.loadProducts(); this.loadForecast(); this.loadSkuSchemes(false); }
     }
 }
 </script>
