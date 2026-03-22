@@ -222,7 +222,7 @@
                                         </div>
                                         <div>
                                             <h3 class="font-semibold text-gray-900" x-text="s.name"></h3>
-                                            <p class="text-xs text-gray-500" x-text="s.marketplace_account ? s.marketplace_account.name + ' (' + s.marketplace_account.marketplace + ')' : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
+                                            <p class="text-xs text-gray-500" x-text="(s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
                                         </div>
                                     </div>
                                     <span class="w-2.5 h-2.5 rounded-full mt-1" :class="s.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>
@@ -416,12 +416,25 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.marketplace') }}</label>
-                        <select x-model="sphereForm.marketplace_account_id" class="w-full rounded-lg border-gray-300 text-sm">
-                            <option value="">{{ __('kpi.spheres.no_marketplace') }}</option>
+                        <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+                            <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
+                                <input type="checkbox"
+                                       :checked="(sphereForm.marketplace_account_ids || []).length === 0"
+                                       @change="sphereForm.marketplace_account_ids = []"
+                                       class="rounded border-gray-300 text-blue-600">
+                                <span class="text-sm text-gray-500">{{ __('kpi.spheres.no_marketplace') }}</span>
+                            </label>
                             <template x-for="ma in marketplaceAccounts" :key="ma.id">
-                                <option :value="ma.id" x-text="ma.name + ' (' + ma.marketplace + ')'"></option>
+                                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox"
+                                           :value="ma.id"
+                                           :checked="(sphereForm.marketplace_account_ids || []).includes(ma.id)"
+                                           @change="toggleMarketplace(ma.id)"
+                                           class="rounded border-gray-300 text-blue-600">
+                                    <span class="text-sm" x-text="ma.name + ' (' + ma.marketplace + ')'"></span>
+                                </label>
                             </template>
-                        </select>
+                        </div>
                         <p class="text-xs text-gray-400 mt-1">Привязка к маркетплейсу позволит автоматически собирать данные</p>
                     </div>
                     <div class="grid grid-cols-2 gap-4">

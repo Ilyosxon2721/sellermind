@@ -35,7 +35,7 @@ final class KpiCalculationService
             ];
         }
 
-        $accountId = $sphere->marketplace_account_id;
+        $accountIds = $sphere->getLinkedAccountIds();
         $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
         $periodEnd = $periodStart->copy()->endOfMonth();
 
@@ -44,8 +44,8 @@ final class KpiCalculationService
             ->where('type', 'marketplace')
             ->whereIn('status', ['confirmed', 'completed'])
             ->whereBetween('created_at', [$periodStart, $periodEnd])
-            ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
-                $query->where('marketplace_account_id', $accountId);
+            ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
+                $query->whereIn('marketplace_account_id', $accountIds);
             })
             ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
             ->first();
@@ -56,7 +56,7 @@ final class KpiCalculationService
         // Если нет данных в Sales, пробуем MarketplacePayout
         if ($revenue == 0) {
             $payoutRevenue = MarketplacePayout::where('company_id', $plan->company_id)
-                ->where('marketplace_account_id', $accountId)
+                ->whereIn('marketplace_account_id', $accountIds)
                 ->where(function ($q) use ($periodStart, $periodEnd) {
                     $q->whereBetween('payout_date', [$periodStart, $periodEnd])
                         ->orWhere(function ($q2) use ($periodStart, $periodEnd) {
@@ -70,13 +70,13 @@ final class KpiCalculationService
         }
 
         // Маржа: выручка - себестоимость из SaleItem
-        $marginData = SaleItem::whereHas('sale', function ($q) use ($plan, $accountId, $periodStart, $periodEnd) {
+        $marginData = SaleItem::whereHas('sale', function ($q) use ($plan, $accountIds, $periodStart, $periodEnd) {
             $q->where('company_id', $plan->company_id)
                 ->where('type', 'marketplace')
                 ->whereIn('status', ['confirmed', 'completed'])
                 ->whereBetween('created_at', [$periodStart, $periodEnd])
-                ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
-                    $query->where('marketplace_account_id', $accountId);
+                ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
+                    $query->whereIn('marketplace_account_id', $accountIds);
                 });
         })
             ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
