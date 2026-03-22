@@ -71,10 +71,19 @@ class AIUsageLog extends Model
 
     private static function estimateCost(string $model, int $tokensInput, int $tokensOutput, int $images): float
     {
+        // Официальные цены OpenAI (на декабрь 2024)
         $rates = [
+            // GPT-4o models
+            'gpt-4o' => ['input' => 0.0025, 'output' => 0.01],
+            'gpt-4o-mini' => ['input' => 0.00015, 'output' => 0.0006],
+            'gpt4o-mini-kpi' => ['input' => 0.00015, 'output' => 0.0006], // KPI использует gpt-4o-mini
+
+            // Legacy naming (backwards compatibility)
             'gpt5-mini' => ['input' => 0.00015, 'output' => 0.0006],
-            'gpt5' => ['input' => 0.01, 'output' => 0.03],
-            'gpt-vision' => ['input' => 0.01, 'output' => 0.03],
+            'gpt5' => ['input' => 0.0025, 'output' => 0.01],
+
+            // Vision & Image
+            'gpt-vision' => ['input' => 0.0025, 'output' => 0.01],
             'image-api' => ['image' => 0.04],
         ];
 
