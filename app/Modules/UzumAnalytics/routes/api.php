@@ -50,6 +50,9 @@ Route::middleware(['web', 'auth:sanctum'])
         // AI-анализ рынка
         Route::get('/ai-insights', [AnalyticsController::class, 'aiInsights'])->name('ai-insights');
 
+        // Синхронизация категорий вручную
+        Route::post('/sync-categories', [AnalyticsController::class, 'syncCategories'])->name('sync-categories');
+
         // Экспорт CSV (#081)
         Route::get('/export', [AnalyticsController::class, 'export'])->name('export');
     });

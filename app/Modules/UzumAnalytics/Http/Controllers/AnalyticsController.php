@@ -340,6 +340,44 @@ final class AnalyticsController extends Controller
     }
 
     /**
+     * Синхронизация категорий вручную (без очереди — выполняется сразу)
+     */
+    public function syncCategories(): JsonResponse
+    {
+        try {
+            $response   = $this->apiClient->getRootCategories();
+            $categories = $response['data']
+                ?? $response['payload']
+                ?? $response['categories']
+                ?? $response;
+
+            if (empty($categories) || ! is_array($categories)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Uzum API вернул пустой список категорий. Возможно, нет активных токенов.',
+                    'raw'     => array_keys($response),
+                ], 422);
+            }
+
+            $this->repository->saveCategories($categories);
+
+            $total = UzumCategory::count();
+
+            return response()->json([
+                'success'         => true,
+                'message'         => "Синхронизировано. В базе {$total} категорий.",
+                'root_count'      => count($categories),
+                'total_in_db'     => $total,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка синхронизации: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Экспорт истории цен в CSV (#081)
      */
     public function export(Request $request): StreamedResponse

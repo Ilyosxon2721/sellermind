@@ -305,8 +305,18 @@
 
                 {{-- Список категорий --}}
                 <div class="bg-white rounded-xl border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-100">
-                        <h2 class="font-semibold text-gray-900">Категории Uzum Market</h2>
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="font-semibold text-gray-900">Категории Uzum Market</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Автосинхронизация ежедневно в 03:00</p>
+                        </div>
+                        <button @click="syncCategories()" :disabled="syncingCategories"
+                                class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 flex items-center space-x-1.5">
+                            <svg class="w-4 h-4" :class="syncingCategories ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span x-text="syncingCategories ? 'Синхронизация...' : 'Синхронизировать'"></span>
+                        </button>
                     </div>
                     <div x-show="loadingCategories" class="px-6 py-8 text-center text-gray-400">Загрузка...</div>
                     <template x-if="!loadingCategories && categories.length === 0">
@@ -608,6 +618,7 @@ function uzumAnalytics() {
         loadingCategories: false,
         loadingHistory: false,
         loadingCategoryDetail: false,
+        syncingCategories: false,
         addingProduct: false,
         aiLoading: false,
         aiInsights: null,
@@ -759,6 +770,30 @@ function uzumAnalytics() {
                 this.overview.total_tracked = this.overviewProducts.length;
             } catch (e) {
                 this.showToast('Ошибка удаления', 'error');
+            }
+        },
+
+        async syncCategories() {
+            this.syncingCategories = true;
+            try {
+                const res = await fetch('/api/analytics/uzum/sync-categories', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message, 'success');
+                    await this.loadCategories();
+                } else {
+                    this.showToast(data.message || 'Ошибка синхронизации', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка: ' + e.message, 'error');
+            } finally {
+                this.syncingCategories = false;
             }
         },
 
