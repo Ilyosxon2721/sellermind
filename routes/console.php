@@ -326,7 +326,7 @@ Schedule::command('marketplace:auto-link --all')
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
 
-// Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
+// Low Stock: Проверка остатков склада и отправка уведомлений (каждый день в 08:00)
 Schedule::command('stock:check-low')
     ->dailyAt('08:00')
     ->name('check-low-stock')
@@ -336,6 +336,19 @@ Schedule::command('stock:check-low')
     })
     ->onFailure(function () {
         \Log::error('Low stock check failed');
+    })
+    ->appendOutputTo(storage_path('logs/low-stock.log'));
+
+// Marketplace FBS Low Stock: Проверка прогноза FBS-остатков (каждый день в 09:00)
+Schedule::command('marketplace:check-fbs-stock --threshold=7')
+    ->dailyAt('09:00')
+    ->name('check-marketplace-fbs-stock')
+    ->withoutOverlapping(15)
+    ->onSuccess(function () {
+        \Log::info('Marketplace FBS stock check completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Marketplace FBS stock check failed');
     })
     ->appendOutputTo(storage_path('logs/low-stock.log'));
 
