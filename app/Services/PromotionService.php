@@ -50,34 +50,79 @@ class PromotionService
     }
 
     /**
-     * Get days since last sale for a variant.
+     * Получить дни с последней продажи варианта.
+     * Ищет по всем таблицам order items (WB, Uzum) через external_offer_id.
      */
     protected function getDaysSinceLastSale(ProductVariant $variant): int
     {
-        // Check marketplace orders
-        $lastSaleDate = DB::table('marketplace_order_items')
-            ->where('product_variant_id', $variant->id)
-            ->max('created_at');
+        $sku = $variant->sku;
 
-        if (! $lastSaleDate) {
-            // If no sales found, assume it's been 365 days
+        if (! $sku) {
             return 365;
         }
 
-        return now()->diffInDays($lastSaleDate);
+        // Uzum order items
+        $uzumLastSale = DB::table('uzum_order_items')
+            ->where('external_offer_id', $sku)
+            ->max('created_at');
+
+        // WB order items (FBS)
+        $wbLastSale = DB::table('wb_order_items')
+            ->where('external_offer_id', $sku)
+            ->max('created_at');
+
+        // WB Statistics API (по supplier_article)
+        $wbStatsLastSale = DB::table('wildberries_orders')
+            ->where('supplier_article', $sku)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->max('order_date');
+
+        $dates = array_filter([$uzumLastSale, $wbLastSale, $wbStatsLastSale]);
+
+        if (empty($dates)) {
+            return 365;
+        }
+
+        $lastSaleDate = max($dates);
+
+        return (int) now()->diffInDays($lastSaleDate);
     }
 
     /**
-     * Calculate turnover rate (sales per day).
+     * Рассчитать скорость оборота (продажи в день).
      */
     protected function calculateTurnoverRate(ProductVariant $variant, int $days = 90): float
     {
-        $salesCount = DB::table('marketplace_order_items')
-            ->where('product_variant_id', $variant->id)
-            ->where('created_at', '>=', now()->subDays($days))
+        $sku = $variant->sku;
+
+        if (! $sku) {
+            return 0.0;
+        }
+
+        $since = now()->subDays($days);
+
+        // Uzum order items
+        $uzumCount = DB::table('uzum_order_items')
+            ->where('external_offer_id', $sku)
+            ->where('created_at', '>=', $since)
             ->sum('quantity');
 
-        return $salesCount / $days;
+        // WB order items (FBS)
+        $wbCount = DB::table('wb_order_items')
+            ->where('external_offer_id', $sku)
+            ->where('created_at', '>=', $since)
+            ->sum('quantity');
+
+        // WB Statistics API
+        $wbStatsCount = DB::table('wildberries_orders')
+            ->where('supplier_article', $sku)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->where('order_date', '>=', $since)
+            ->count();
+
+        return ($uzumCount + $wbCount + $wbStatsCount) / $days;
     }
 
     /**
