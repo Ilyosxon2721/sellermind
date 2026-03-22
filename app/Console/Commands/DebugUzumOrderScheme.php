@@ -18,7 +18,8 @@ class DebugUzumOrderScheme extends Command
     protected $signature = 'uzum:debug-order-scheme
         {accountId : ID аккаунта}
         {--order= : Конкретный внешний ID заказа для проверки raw_payload}
-        {--fix : Исправить delivery_type по результатам API-запроса}';
+        {--fix : Исправить delivery_type из поля scheme в raw_payload (без API)}
+        {--fix-api : Исправить delivery_type по результатам API-запроса}';
 
     protected $description = 'Диагностика определения FBS/DBS схемы заказов Uzum';
 
@@ -33,6 +34,11 @@ class DebugUzumOrderScheme extends Command
         // Если указан конкретный заказ — показать его raw_payload
         if ($orderId = $this->option('order')) {
             return $this->inspectOrder($account, $orderId);
+        }
+
+        // --fix: исправить по raw_payload без API
+        if ($this->option('fix')) {
+            return $this->fixFromRawPayload($account);
         }
 
         // Иначе — показать статистику и проверить API
@@ -74,6 +80,38 @@ class DebugUzumOrderScheme extends Command
         $deliveryInfo = $raw['deliveryInfo'] ?? [];
         if ($deliveryInfo) {
             $this->line("Ключи deliveryInfo: " . implode(', ', array_keys($deliveryInfo)));
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Исправить delivery_type прямо из raw_payload->scheme (без API-запросов)
+     */
+    private function fixFromRawPayload(MarketplaceAccount $account): int
+    {
+        $this->info("Исправление delivery_type из raw_payload для аккаунта #{$account->id}...");
+
+        // MySQL: UPDATE через JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme'))
+        $affected = \Illuminate\Support\Facades\DB::table('uzum_orders')
+            ->where('marketplace_account_id', $account->id)
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')) IS NOT NULL")
+            ->whereRaw("UPPER(delivery_type) != UPPER(JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')))")
+            ->update([
+                'delivery_type' => \Illuminate\Support\Facades\DB::raw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(raw_payload, '$.scheme')))"),
+            ]);
+
+        $this->info("✓ Исправлено {$affected} заказов");
+
+        // Показать итоговую статистику
+        $byType = \App\Models\UzumOrder::where('marketplace_account_id', $account->id)
+            ->selectRaw('delivery_type, COUNT(*) as cnt')
+            ->groupBy('delivery_type')
+            ->pluck('cnt', 'delivery_type');
+
+        $this->line("Итого по типам:");
+        foreach ($byType as $type => $cnt) {
+            $this->line("  {$type}: {$cnt}");
         }
 
         return self::SUCCESS;

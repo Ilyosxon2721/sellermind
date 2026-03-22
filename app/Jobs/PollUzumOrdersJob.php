@@ -111,7 +111,6 @@ final class PollUzumOrdersJob implements ShouldQueue
     ): void {
         $baseUrl = config('uzum.base_url', 'https://api-seller.uzum.uz/api/seller-openapi');
 
-        foreach (['FBS', 'DBS'] as $scheme) {
         foreach (self::POLL_STATUSES as $status) {
             $page = 0;
 
@@ -123,7 +122,6 @@ final class PollUzumOrdersJob implements ShouldQueue
                     ]))
                     ->get("{$baseUrl}/v2/fbs/orders", [
                         'status' => $status,
-                        'scheme' => $scheme,
                         'size'   => 50,
                         'page'   => $page,
                     ]);
@@ -142,17 +140,13 @@ final class PollUzumOrdersJob implements ShouldQueue
 
                 foreach ($orders as $order) {
                     $orderId    = (string) ($order['id'] ?? $order['orderId'] ?? uniqid());
-                    // Включаем scheme в ключ дедупликации — FBS и DBS заказы с одним ID разные
-                    $externalId = "uzum_order_{$orderId}_{$status}_{$scheme}";
+                    $externalId = "uzum_order_{$orderId}_{$status}";
 
                     if ($dedup->isDuplicate(MarketplaceType::UZUM, $externalId)) {
                         continue;
                     }
 
                     $eventType = self::STATUS_EVENT_MAP[$status] ?? EventType::ORDER_STATUS_CHANGED;
-
-                    // Прокидываем scheme в payload чтобы ProcessMarketplaceEventJob мог сохранить delivery_type
-                    $order['_delivery_scheme'] = $scheme;
 
                     $data = new MarketplaceEventData(
                         marketplace: MarketplaceType::UZUM,
@@ -178,8 +172,6 @@ final class PollUzumOrdersJob implements ShouldQueue
 
             // Пауза между статусами для rate-limiting
             usleep(300_000);
-        }
-        // конец foreach scheme
         }
 
         $state->update([
