@@ -6,6 +6,8 @@ namespace App\Services\Kpi;
 
 use App\Models\Finance\MarketplacePayout;
 use App\Models\Kpi\KpiPlan;
+use App\Models\OfflineSale;
+use App\Models\OfflineSaleItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Carbon\Carbon;
@@ -26,7 +28,12 @@ final class KpiCalculationService
     {
         $sphere = $plan->salesSphere;
 
-        // Если сфера не привязана к МП, возвращаем текущие значения (ручной ввод)
+        // Если сфера привязана к типам ручных продаж — автосбор из OfflineSale
+        if ($sphere->hasOfflineSaleLink()) {
+            return $this->collectOfflineSaleActuals($plan, $sphere);
+        }
+
+        // Если сфера не привязана ни к МП, ни к ручным продажам — ручной ввод
         if (! $sphere->hasMarketplaceLink()) {
             return [
                 'revenue' => $plan->actual_revenue,
@@ -83,6 +90,47 @@ final class KpiCalculationService
             ->first();
 
         $margin = (float) (($marginData->total_sales ?? 0) - ($marginData->total_cost ?? 0));
+
+        return [
+            'revenue' => $revenue,
+            'margin' => max(0, $margin),
+            'orders' => $orders,
+        ];
+    }
+
+    /**
+     * Собрать фактические данные из ручных продаж (OfflineSale) по типам
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectOfflineSaleActuals(KpiPlan $plan, \App\Models\Kpi\SalesSphere $sphere): array
+    {
+        $saleTypes = $sphere->getOfflineSaleTypes();
+        $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
+        $periodEnd = $periodStart->copy()->endOfMonth();
+
+        // Оборот и количество заказов из завершённых OfflineSale
+        $salesData = OfflineSale::byCompany($plan->company_id)
+            ->whereIn('sale_type', $saleTypes)
+            ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+            ->whereBetween('sale_date', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
+            ->first();
+
+        $revenue = (float) ($salesData->total_revenue ?? 0);
+        $orders = (int) ($salesData->total_orders ?? 0);
+
+        // Маржа: выручка - себестоимость из OfflineSaleItem
+        $costData = OfflineSaleItem::whereHas('sale', function ($q) use ($plan, $saleTypes, $periodStart, $periodEnd) {
+            $q->where('company_id', $plan->company_id)
+                ->whereIn('sale_type', $saleTypes)
+                ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+                ->whereBetween('sale_date', [$periodStart, $periodEnd]);
+        })
+            ->selectRaw('COALESCE(SUM(line_total), 0) as total_sales, COALESCE(SUM(unit_cost * quantity), 0) as total_cost')
+            ->first();
+
+        $margin = (float) (($costData->total_sales ?? 0) - ($costData->total_cost ?? 0));
 
         return [
             'revenue' => $revenue,
