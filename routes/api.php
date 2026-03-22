@@ -926,6 +926,7 @@ Route::middleware('auth.any')->group(function () {
             Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
             Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
             Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
+            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
         });
     });

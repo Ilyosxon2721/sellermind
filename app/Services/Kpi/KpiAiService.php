@@ -1,0 +1,338 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Kpi;
+
+use App\Models\AIUsageLog;
+use App\Models\Finance\Employee;
+use App\Models\Kpi\KpiPlan;
+use App\Models\Kpi\SalesSphere;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * ИИ-аналитика для рекомендации KPI-планов на основе исторических данных
+ */
+final class KpiAiService
+{
+    private string $apiKey;
+
+    private string $baseUrl;
+
+    public function __construct()
+    {
+        $this->apiKey = config('openai.api_key');
+        $this->baseUrl = rtrim(config('openai.api_url', 'https://api.openai.com/v1'), '/');
+    }
+
+    /**
+     * Сгенерировать рекомендации KPI на основе исторических данных
+     *
+     * @return array{target_revenue: float, target_margin: float, target_orders: int, weight_revenue: int, weight_margin: int, weight_orders: int, reasoning: string}
+     */
+    public function suggestPlan(
+        int $companyId,
+        int $userId,
+        int $employeeId,
+        int $sphereId,
+        int $year,
+        int $month,
+    ): array {
+        $sphere = SalesSphere::byCompany($companyId)->findOrFail($sphereId);
+        $employee = Employee::where('company_id', $companyId)->findOrFail($employeeId);
+
+        // Собрать исторические данные за последние 6 месяцев
+        $history = $this->collectHistory($companyId, $employeeId, $sphereId, $year, $month);
+
+        // Собрать данные по прошлым KPI-планам
+        $pastPlans = $this->collectPastPlans($companyId, $employeeId, $sphereId, $year, $month);
+
+        $prompt = $this->buildPrompt($employee, $sphere, $history, $pastPlans, $year, $month);
+
+        $payload = [
+            'model' => 'gpt-4o-mini',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => $this->getSystemPrompt(),
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $prompt,
+                ],
+            ],
+            'max_completion_tokens' => 2000,
+            'temperature' => 0.3,
+        ];
+
+        $response = $this->callOpenAI('/chat/completions', $payload);
+
+        $content = $response['choices'][0]['message']['content'] ?? '';
+
+        // Логируем использование ИИ
+        AIUsageLog::log(
+            $companyId,
+            $userId,
+            'gpt4o-mini-kpi',
+            $response['usage']['prompt_tokens'] ?? 0,
+            $response['usage']['completion_tokens'] ?? 0
+        );
+
+        return $this->parseResponse($content, $history);
+    }
+
+    /**
+     * Собрать историю продаж за последние 6 месяцев
+     */
+    private function collectHistory(int $companyId, int $employeeId, int $sphereId, int $year, int $month): array
+    {
+        $sphere = SalesSphere::find($sphereId);
+        $history = [];
+
+        for ($i = 1; $i <= 6; $i++) {
+            $date = Carbon::create($year, $month, 1)->subMonths($i);
+            $periodStart = $date->copy()->startOfMonth();
+            $periodEnd = $date->copy()->endOfMonth();
+
+            $monthData = [
+                'year' => $date->year,
+                'month' => $date->month,
+                'revenue' => 0,
+                'margin' => 0,
+                'orders' => 0,
+            ];
+
+            // Проверяем есть ли уже рассчитанный KPI-план за этот период
+            $existingPlan = KpiPlan::byCompany($companyId)
+                ->forEmployee($employeeId)
+                ->forPeriod($date->year, $date->month)
+                ->where('kpi_sales_sphere_id', $sphereId)
+                ->first();
+
+            if ($existingPlan && $existingPlan->actual_revenue > 0) {
+                $monthData['revenue'] = $existingPlan->actual_revenue;
+                $monthData['margin'] = $existingPlan->actual_margin;
+                $monthData['orders'] = $existingPlan->actual_orders;
+            } elseif ($sphere && $sphere->hasMarketplaceLink()) {
+                // Собираем из Sales
+                $accountId = $sphere->marketplace_account_id;
+
+                $salesData = Sale::where('company_id', $companyId)
+                    ->where('type', 'marketplace')
+                    ->whereIn('status', ['confirmed', 'completed'])
+                    ->whereBetween('created_at', [$periodStart, $periodEnd])
+                    ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
+                        $query->where('marketplace_account_id', $accountId);
+                    })
+                    ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
+                    ->first();
+
+                $monthData['revenue'] = (float) ($salesData->total_revenue ?? 0);
+                $monthData['orders'] = (int) ($salesData->total_orders ?? 0);
+
+                // Маржа
+                $marginData = SaleItem::whereHas('sale', function ($q) use ($companyId, $accountId, $periodStart, $periodEnd) {
+                    $q->where('company_id', $companyId)
+                        ->where('type', 'marketplace')
+                        ->whereIn('status', ['confirmed', 'completed'])
+                        ->whereBetween('created_at', [$periodStart, $periodEnd])
+                        ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountId) {
+                            $query->where('marketplace_account_id', $accountId);
+                        });
+                })
+                    ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
+                    ->first();
+
+                $monthData['margin'] = max(0, (float) (($marginData->total_sales ?? 0) - ($marginData->total_cost ?? 0)));
+            }
+
+            $history[] = $monthData;
+        }
+
+        return $history;
+    }
+
+    /**
+     * Собрать прошлые KPI-планы для контекста
+     */
+    private function collectPastPlans(int $companyId, int $employeeId, int $sphereId, int $year, int $month): array
+    {
+        $plans = KpiPlan::byCompany($companyId)
+            ->forEmployee($employeeId)
+            ->where('kpi_sales_sphere_id', $sphereId)
+            ->whereIn('status', [KpiPlan::STATUS_CALCULATED, KpiPlan::STATUS_APPROVED])
+            ->orderByDesc('period_year')
+            ->orderByDesc('period_month')
+            ->limit(6)
+            ->get();
+
+        return $plans->map(fn (KpiPlan $p) => [
+            'year' => $p->period_year,
+            'month' => $p->period_month,
+            'target_revenue' => $p->target_revenue,
+            'target_margin' => $p->target_margin,
+            'target_orders' => $p->target_orders,
+            'actual_revenue' => $p->actual_revenue,
+            'actual_margin' => $p->actual_margin,
+            'actual_orders' => $p->actual_orders,
+            'achievement_percent' => $p->achievement_percent,
+            'weight_revenue' => $p->weight_revenue,
+            'weight_margin' => $p->weight_margin,
+            'weight_orders' => $p->weight_orders,
+        ])->toArray();
+    }
+
+    private function getSystemPrompt(): string
+    {
+        return <<<'PROMPT'
+Ты — ИИ-аналитик KPI для платформы управления продажами на маркетплейсах (Wildberries, Ozon, Uzum, Yandex Market).
+
+Твоя задача — на основе исторических данных продаж рекомендовать оптимальные KPI-планы для сотрудников.
+
+Правила:
+- Анализируй тренды продаж (рост/падение/стагнация)
+- Учитывай сезонность (новогодние праздники, летний спад и т.д.)
+- Целевые показатели должны быть реалистичными но амбициозными (рост 5-15% к среднему)
+- Если данных мало — рекомендуй консервативные цели
+- Веса метрик должны в сумме давать 100
+- Оборот обычно имеет наибольший вес (40-60%), маржа (25-40%), заказы (10-25%)
+
+Ответ строго в формате JSON:
+{
+    "target_revenue": число,
+    "target_margin": число,
+    "target_orders": число,
+    "weight_revenue": число (0-100),
+    "weight_margin": число (0-100),
+    "weight_orders": число (0-100),
+    "reasoning": "Краткое объяснение на русском языке (2-3 предложения)"
+}
+PROMPT;
+    }
+
+    private function buildPrompt(Employee $employee, SalesSphere $sphere, array $history, array $pastPlans, int $year, int $month): string
+    {
+        $monthNames = [1 => 'Январь', 2 => 'Февраль', 3 => 'Март', 4 => 'Апрель', 5 => 'Май', 6 => 'Июнь', 7 => 'Июль', 8 => 'Август', 9 => 'Сентябрь', 10 => 'Октябрь', 11 => 'Ноябрь', 12 => 'Декабрь'];
+
+        $prompt = "Создай KPI-план для сотрудника.\n\n";
+        $prompt .= "Сотрудник: {$employee->name}\n";
+        $prompt .= "Сфера продаж: {$sphere->name}\n";
+        $prompt .= "Маркетплейс: " . ($sphere->hasMarketplaceLink() ? 'Да (автосбор данных)' : 'Нет (ручной ввод)') . "\n";
+        $prompt .= "Период: {$monthNames[$month]} {$year}\n\n";
+
+        // Историческая статистика
+        $prompt .= "Историческая статистика продаж (последние 6 месяцев):\n";
+        $hasData = false;
+        foreach (array_reverse($history) as $h) {
+            $mName = $monthNames[$h['month']] ?? $h['month'];
+            if ($h['revenue'] > 0 || $h['orders'] > 0) {
+                $hasData = true;
+                $prompt .= "- {$mName} {$h['year']}: оборот=" . number_format($h['revenue'], 0, '.', ' ') . ", маржа=" . number_format($h['margin'], 0, '.', ' ') . ", заказов={$h['orders']}\n";
+            } else {
+                $prompt .= "- {$mName} {$h['year']}: нет данных\n";
+            }
+        }
+
+        if (! $hasData) {
+            $prompt .= "\nИсторических данных нет. Предложи начальные консервативные цели.\n";
+        }
+
+        // Прошлые KPI-планы
+        if (! empty($pastPlans)) {
+            $prompt .= "\nПрошлые KPI-планы:\n";
+            foreach ($pastPlans as $p) {
+                $mName = $monthNames[$p['month']] ?? $p['month'];
+                $prompt .= "- {$mName} {$p['year']}: план(оборот={$p['target_revenue']}, маржа={$p['target_margin']}, заказы={$p['target_orders']}) → факт(оборот={$p['actual_revenue']}, маржа={$p['actual_margin']}, заказы={$p['actual_orders']}) → выполнение={$p['achievement_percent']}%\n";
+            }
+        }
+
+        $prompt .= "\nОтветь ТОЛЬКО в формате JSON, без лишнего текста.";
+
+        return $prompt;
+    }
+
+    private function callOpenAI(string $endpoint, array $data): array
+    {
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$this->apiKey}",
+            'Content-Type' => 'application/json',
+        ])->timeout(60)->post("{$this->baseUrl}{$endpoint}", $data);
+
+        if (! $response->successful()) {
+            Log::error('OpenAI KPI API Error', [
+                'endpoint' => $endpoint,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new \Exception('Ошибка при обращении к ИИ: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Распарсить ответ ИИ в структурированный массив
+     */
+    private function parseResponse(string $content, array $history): array
+    {
+        $defaults = $this->calculateDefaults($history);
+
+        if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
+            $decoded = json_decode($matches[0], true);
+            if ($decoded) {
+                return [
+                    'target_revenue' => round((float) ($decoded['target_revenue'] ?? $defaults['target_revenue']), 0),
+                    'target_margin' => round((float) ($decoded['target_margin'] ?? $defaults['target_margin']), 0),
+                    'target_orders' => (int) ($decoded['target_orders'] ?? $defaults['target_orders']),
+                    'weight_revenue' => (int) ($decoded['weight_revenue'] ?? 40),
+                    'weight_margin' => (int) ($decoded['weight_margin'] ?? 40),
+                    'weight_orders' => (int) ($decoded['weight_orders'] ?? 20),
+                    'reasoning' => $decoded['reasoning'] ?? 'Рекомендация на основе анализа исторических данных.',
+                ];
+            }
+        }
+
+        // Fallback — используем средние за последние 3 месяца + 10%
+        return array_merge($defaults, [
+            'reasoning' => 'Не удалось получить ИИ-рекомендацию. Показаны средние значения за последние месяцы с ростом 10%.',
+        ]);
+    }
+
+    /**
+     * Рассчитать дефолтные значения на основе средних
+     */
+    private function calculateDefaults(array $history): array
+    {
+        $withData = array_filter($history, fn ($h) => $h['revenue'] > 0 || $h['orders'] > 0);
+
+        if (empty($withData)) {
+            return [
+                'target_revenue' => 0,
+                'target_margin' => 0,
+                'target_orders' => 0,
+                'weight_revenue' => 40,
+                'weight_margin' => 40,
+                'weight_orders' => 20,
+            ];
+        }
+
+        $count = count($withData);
+        $avgRevenue = array_sum(array_column($withData, 'revenue')) / $count;
+        $avgMargin = array_sum(array_column($withData, 'margin')) / $count;
+        $avgOrders = array_sum(array_column($withData, 'orders')) / $count;
+
+        return [
+            'target_revenue' => round($avgRevenue * 1.1, 0),
+            'target_margin' => round($avgMargin * 1.1, 0),
+            'target_orders' => (int) round($avgOrders * 1.1),
+            'weight_revenue' => 40,
+            'weight_margin' => 40,
+            'weight_orders' => 20,
+        ];
+    }
+}

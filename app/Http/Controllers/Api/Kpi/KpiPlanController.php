@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kpi\KpiPlan;
+use App\Services\Kpi\KpiAiService;
 use App\Services\Kpi\KpiCalculationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,7 @@ final class KpiPlanController extends Controller
 
     public function __construct(
         private readonly KpiCalculationService $kpiService,
+        private readonly KpiAiService $kpiAiService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -227,5 +229,41 @@ final class KpiPlanController extends Controller
         $data = $this->kpiService->getDashboard($companyId, $year, $month);
 
         return $this->successResponse($data);
+    }
+
+    /**
+     * ИИ-рекомендация KPI-плана на основе исторических данных
+     */
+    public function aiSuggest(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $userId = $request->user()->id;
+
+        $validated = $request->validate([
+            'employee_id' => 'required|integer|exists:employees,id',
+            'kpi_sales_sphere_id' => 'required|integer|exists:kpi_sales_spheres,id',
+            'period_year' => 'required|integer|min:2020|max:2100',
+            'period_month' => 'required|integer|min:1|max:12',
+        ]);
+
+        try {
+            $suggestion = $this->kpiAiService->suggestPlan(
+                $companyId,
+                $userId,
+                $validated['employee_id'],
+                $validated['kpi_sales_sphere_id'],
+                $validated['period_year'],
+                $validated['period_month'],
+            );
+
+            return $this->successResponse($suggestion);
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                'Не удалось получить ИИ-рекомендацию: ' . $e->getMessage(),
+                'ai_error',
+                null,
+                500
+            );
+        }
     }
 }

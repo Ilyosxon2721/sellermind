@@ -23,6 +23,8 @@ function kpiPage(config) {
 
         // Формы
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
+        aiSuggesting: false,
+        aiReasoning: '',
         sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_id: '', is_active: true },
         scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
@@ -149,7 +151,34 @@ function kpiPage(config) {
         // CRUD Планы
         openPlanModal() {
             this.planForm = this.emptyPlanForm();
+            this.aiReasoning = '';
             this.showPlanModal = true;
+        },
+        async aiSuggestPlan() {
+            if (!this.planForm.employee_id || !this.planForm.kpi_sales_sphere_id) {
+                this.notify('Выберите сотрудника и сферу продаж', 'error');
+                return;
+            }
+            this.aiSuggesting = true;
+            this.aiReasoning = '';
+            try {
+                var res = await this.api('finance/kpi/plans/ai-suggest', 'POST', {
+                    employee_id: parseInt(this.planForm.employee_id),
+                    kpi_sales_sphere_id: parseInt(this.planForm.kpi_sales_sphere_id),
+                    period_year: parseInt(this.planForm.period_year),
+                    period_month: parseInt(this.planForm.period_month)
+                });
+                var data = res.data ?? res;
+                this.planForm.target_revenue = data.target_revenue ?? 0;
+                this.planForm.target_margin = data.target_margin ?? 0;
+                this.planForm.target_orders = data.target_orders ?? 0;
+                this.planForm.weight_revenue = data.weight_revenue ?? 40;
+                this.planForm.weight_margin = data.weight_margin ?? 40;
+                this.planForm.weight_orders = data.weight_orders ?? 20;
+                this.aiReasoning = data.reasoning ?? '';
+                this.notify('ИИ-рекомендация получена');
+            } catch (e) { this.notify(e.message, 'error'); }
+            this.aiSuggesting = false;
         },
         async savePlan() {
             try {
