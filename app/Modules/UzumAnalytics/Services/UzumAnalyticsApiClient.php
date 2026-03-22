@@ -33,7 +33,7 @@ final class UzumAnalyticsApiClient
         private readonly RateLimiter $rateLimiter,
         private readonly CircuitBreaker $circuitBreaker,
     ) {
-        $this->baseUrl     = rtrim(config('uzum-crawler.base_url', 'https://api.uzum.uz'), '/');
+        $this->baseUrl     = rtrim(config('uzum-crawler.api.rest_base_url', 'https://api.umarket.uz/api'), '/');
         $this->cacheTtl    = (int) config('uzum-crawler.cache_ttl_minutes', 30) * 60;
         $this->retryConfig = config('uzum-crawler.retry', ['max_attempts' => 3, 'backoff_seconds' => [30, 60, 120]]);
     }
@@ -46,7 +46,8 @@ final class UzumAnalyticsApiClient
         return $this->cachedRequest("product:{$productId}", function () use ($productId): array {
             $this->rateLimiter->throttle('product');
 
-            return $this->request('GET', "/api/product/{$productId}");
+            // ТЗ: GET /v2/product/{productId} — цены в тийинах (÷100 = сум)
+            return $this->request('GET', "/v2/product/{$productId}");
         });
     }
 
@@ -60,16 +61,18 @@ final class UzumAnalyticsApiClient
         return $this->cachedRequest($cacheKey, function () use ($categoryId, $page, $size): array {
             $this->rateLimiter->throttle('category');
 
-            // Uzum использует GraphQL для списков категорий
-            return $this->request('POST', '/graphql', [
+            // ТЗ: POST https://graphql.umarket.uz — отдельный хост для GraphQL
+            $graphqlUrl = config('uzum-crawler.api.graphql_url', 'https://graphql.umarket.uz');
+
+            return $this->requestUrl('POST', $graphqlUrl, [
                 'query'     => $this->categoryGraphqlQuery(),
                 'variables' => [
                     'categoryId' => $categoryId,
                     'offset'     => $page * $size,
                     'limit'      => $size,
-                    'sort'       => 'BY_RELEVANCE_DESC',
+                    'sort'       => 'BY_REVIEWS_COUNT_DESC',
                 ],
-            ]);
+            ], graphql: true);
         });
     }
 
@@ -81,7 +84,8 @@ final class UzumAnalyticsApiClient
         return $this->cachedRequest("shop:{$shopSlug}", function () use ($shopSlug): array {
             $this->rateLimiter->throttle('shop');
 
-            return $this->request('GET', "/api/shop/{$shopSlug}");
+            // ТЗ: GET /shop/{shopName}
+            return $this->request('GET', "/shop/{$shopSlug}");
         });
     }
 
@@ -104,38 +108,52 @@ final class UzumAnalyticsApiClient
     }
 
     /**
-     * Базовый HTTP запрос с retry и backoff
+     * Запрос к REST API (путь относительно baseUrl)
      */
     private function request(string $method, string $path, array $payload = []): array
     {
+        return $this->requestUrl($method, $this->baseUrl . $path, $payload);
+    }
+
+    /**
+     * Базовый HTTP запрос с retry и backoff.
+     * graphql=true добавляет X-Iid заголовок (UUID из пула токенов).
+     */
+    private function requestUrl(string $method, string $url, array $payload = [], bool $graphql = false): array
+    {
         if ($this->circuitBreaker->isOpen()) {
-            Log::warning('UzumCrawler: Circuit Breaker открыт, запрос отклонён', ['path' => $path]);
+            Log::warning('UzumCrawler: Circuit Breaker открыт, запрос отклонён', ['url' => $url]);
             throw new \RuntimeException('UzumCrawler: краулер на паузе (Circuit Breaker)');
         }
 
-        $maxAttempts  = $this->retryConfig['max_attempts'];
-        $backoffs     = $this->retryConfig['backoff_seconds'];
+        $maxAttempts   = $this->retryConfig['max_attempts'];
+        $backoffs      = $this->retryConfig['backoff_seconds'];
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
-                $token = $this->tokenService->getToken();
+                $token     = $this->tokenService->getToken();
                 $userAgent = $this->getRandomUserAgent();
 
-                $httpClient = Http::withHeaders([
+                $headers = [
                     'User-Agent'      => $userAgent,
                     'Accept'          => 'application/json',
                     'Accept-Language' => 'ru-RU,ru;q=0.9,uz;q=0.8',
                     'Origin'          => 'https://uzum.uz',
                     'Referer'         => 'https://uzum.uz/',
-                ]);
+                ];
 
-                // Добавить токен если он есть
+                // X-Iid нужен для GraphQL запросов (UUID из записи токена)
+                if ($graphql && $token?->iid) {
+                    $headers['X-Iid'] = $token->iid;
+                }
+
+                $httpClient = Http::withHeaders($headers);
+
                 if ($token) {
                     $httpClient = $httpClient->withToken($token->token);
                 }
 
-                $url      = $this->baseUrl . $path;
                 $response = match (strtoupper($method)) {
                     'GET'  => $httpClient->timeout(30)->get($url, $payload),
                     'POST' => $httpClient->timeout(30)->post($url, $payload),
@@ -145,7 +163,7 @@ final class UzumAnalyticsApiClient
                 if ($response->status() === 401) {
                     // Токен недействителен — деактивировать и повторить
                     $token?->update(['is_active' => false]);
-                    Log::info("UzumCrawler: 401 при запросе {$path}, смена токена");
+                    Log::info("UzumCrawler: 401, смена токена [{$url}]");
                     continue;
                 }
 
@@ -153,7 +171,7 @@ final class UzumAnalyticsApiClient
                     // Rate limit или перегрузка — backoff
                     $this->circuitBreaker->recordFailure();
                     $sleepSec = $backoffs[$attempt - 1] ?? end($backoffs);
-                    Log::warning("UzumCrawler: {$response->status()} при {$path}, backoff {$sleepSec}s");
+                    Log::warning("UzumCrawler: {$response->status()} [{$url}], backoff {$sleepSec}s");
                     sleep($sleepSec);
                     continue;
                 }
@@ -164,11 +182,11 @@ final class UzumAnalyticsApiClient
                     return $response->json() ?? [];
                 }
 
-                Log::warning("UzumCrawler: HTTP {$response->status()} при {$path}");
+                Log::warning("UzumCrawler: HTTP {$response->status()} [{$url}]");
             } catch (\Throwable $e) {
                 $lastException = $e;
                 $this->circuitBreaker->recordFailure();
-                Log::error("UzumCrawler: ошибка запроса {$path}", [
+                Log::error("UzumCrawler: ошибка запроса [{$url}]", [
                     'attempt' => $attempt,
                     'error'   => $e->getMessage(),
                 ]);
