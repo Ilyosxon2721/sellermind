@@ -299,7 +299,27 @@
     <div x-show="showPlanModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showPlanModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4" x-text="planForm.id ? '{{ __('kpi.plans.edit') }}' : '{{ __('kpi.plans.new') }}'"></h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold" x-text="planForm.id ? '{{ __('kpi.plans.edit') }}' : '{{ __('kpi.plans.new') }}'"></h3>
+                    <template x-if="!planForm.id">
+                        <button @click="aiSuggestPlan()" :disabled="aiSuggesting || !planForm.employee_id || !planForm.kpi_sales_sphere_id"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            <svg x-show="!aiSuggesting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <svg x-show="aiSuggesting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            <span x-text="aiSuggesting ? '{{ __('kpi.ai.loading') }}' : '{{ __('kpi.ai.suggest') }}'"></span>
+                        </button>
+                    </template>
+                </div>
+                {{-- ИИ объяснение --}}
+                <div x-show="aiReasoning" x-transition class="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <div>
+                            <p class="text-sm font-medium text-purple-800">{{ __('kpi.ai.recommendation') }}</p>
+                            <p class="text-sm text-purple-700 mt-1" x-text="aiReasoning"></p>
+                        </div>
+                    </div>
+                </div>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.employee') }}</label>

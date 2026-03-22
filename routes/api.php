@@ -910,6 +910,9 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
 
+            // Маркетплейс-аккаунты для привязки
+            Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
+
             // Сферы продаж
             Route::get('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'index']);
             Route::post('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'store']);
@@ -932,6 +935,7 @@ Route::middleware('auth.any')->group(function () {
             Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
             Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
             Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
+            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
         });
     });
