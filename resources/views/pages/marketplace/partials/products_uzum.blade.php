@@ -34,6 +34,15 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
+                    <!-- Bulk AI SEO -->
+                    <button x-show="checkedIds.length > 0"
+                            @click="openBulkSeoModal()"
+                            class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all shadow-sm">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        AI SEO (<span x-text="checkedIds.length"></span>)
+                    </button>
                     <!-- Синхронизация остатков -->
                     <button @click="syncAllStocks"
                             :disabled="stocksSyncing"
@@ -182,6 +191,12 @@
                 <table class="w-full text-sm">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
+                            <th class="px-3 py-3 w-8">
+                                <input type="checkbox" class="rounded border-gray-300 text-purple-600"
+                                       :checked="checkedIds.length > 0 && checkedIds.length === filtered.length"
+                                       :indeterminate="checkedIds.length > 0 && checkedIds.length < filtered.length"
+                                       @change="$event.target.checked ? checkedIds = filtered.map(p => p.id) : checkedIds = []">
+                            </th>
                             <th @click="sortBy('title')" class="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                                 <span class="inline-flex items-center">Товар<span class="ml-1 text-[10px]" x-show="sortField === 'title'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span></span>
                             </th>
@@ -216,7 +231,12 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <template x-for="item in filtered" :key="item.id + '-' + item.external_product_id">
-                            <tr class="cursor-pointer transition-colors hover:bg-purple-50/30" :class="rowClass(item)" @click="openDetail(item)">
+                            <tr class="cursor-pointer transition-colors hover:bg-purple-50/30" :class="[rowClass(item), checkedIds.includes(item.id) ? 'bg-purple-50/50' : '']" @click="openDetail(item)">
+                                <td class="px-3 py-3" @click.stop>
+                                    <input type="checkbox" class="rounded border-gray-300 text-purple-600"
+                                           :checked="checkedIds.includes(item.id)"
+                                           @change="$event.target.checked ? checkedIds.push(item.id) : checkedIds = checkedIds.filter(id => id !== item.id)">
+                                </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-12 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -673,6 +693,89 @@
                     <p x-show="variantSearchQuery && !searchingVariants && variantSearchResults.length === 0" class="text-sm text-gray-500 text-center py-4">Товары не найдены</p>
                 </div>
             </div>
+        <!-- Bulk AI SEO Modal -->
+        <div x-show="bulkSeoOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-linear-to-br from-violet-600 to-purple-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Массовая AI SEO оптимизация</h3>
+                            <p class="text-xs text-gray-500" x-text="'Выбрано товаров: ' + bulkSeoItems.length"></p>
+                        </div>
+                    </div>
+                    <button @click="bulkSeoOpen = false" :disabled="bulkSeoRunning" class="text-gray-400 hover:text-gray-600 disabled:opacity-40 p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600">Язык:</span>
+                        <div class="flex rounded-lg border border-gray-200 overflow-hidden">
+                            <button @click="bulkSeoLanguage = 'ru'" :disabled="bulkSeoRunning"
+                                    class="px-3 py-1.5 text-sm font-medium transition-colors"
+                                    :class="bulkSeoLanguage === 'ru' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">Русский</button>
+                            <button @click="bulkSeoLanguage = 'uz'" :disabled="bulkSeoRunning"
+                                    class="px-3 py-1.5 text-sm font-medium transition-colors border-l border-gray-200"
+                                    :class="bulkSeoLanguage === 'uz' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">O'zbek</button>
+                        </div>
+                    </div>
+                    <button @click="runBulkSeo()" :disabled="bulkSeoRunning || bulkSeoDone"
+                            class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                            :class="bulkSeoRunning ? 'bg-purple-100 text-purple-400 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'">
+                        <svg class="w-4 h-4 mr-2" :class="bulkSeoRunning ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span x-text="bulkSeoRunning ? 'Генерация...' : (bulkSeoDone ? 'Завершено' : 'Запустить')"></span>
+                    </button>
+                </div>
+                <!-- Progress bar -->
+                <div x-show="bulkSeoRunning || bulkSeoDone" class="px-6 pt-3">
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span x-text="bulkSeoProgress + ' / ' + bulkSeoItems.length + ' товаров'"></span>
+                        <span x-text="Math.round(bulkSeoProgress / bulkSeoItems.length * 100) + '%'"></span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-purple-600 rounded-full transition-all duration-300"
+                             :style="'width: ' + Math.round(bulkSeoProgress / bulkSeoItems.length * 100) + '%'"></div>
+                    </div>
+                </div>
+                <!-- Results list -->
+                <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                    <template x-for="item in bulkSeoItems" :key="item.id">
+                        <div class="border rounded-xl p-3 text-sm"
+                             :class="item.status === 'done' ? 'border-green-200 bg-green-50/30' : item.status === 'error' ? 'border-red-200 bg-red-50/30' : item.status === 'running' ? 'border-purple-200 bg-purple-50/30' : 'border-gray-200'">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium text-gray-900 truncate flex-1 mr-2" x-text="item.title"></span>
+                                <div class="flex-shrink-0">
+                                    <svg x-show="item.status === 'running'" class="w-4 h-4 text-purple-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    <svg x-show="item.status === 'done'" class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg x-show="item.status === 'error'" class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    <div x-show="item.status === 'pending'" class="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+                                </div>
+                            </div>
+                            <div x-show="item.result?.title" class="mt-2 space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs font-medium text-gray-700 truncate flex-1" x-text="item.result?.title"></p>
+                                    <button @click="copySeoField(item.result?.title, 'bulk-' + item.id)"
+                                            class="text-purple-600 hover:text-purple-800 ml-2 flex-shrink-0">
+                                        <svg x-show="seocopied !== 'bulk-' + item.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                                        <svg x-show="seocopied === 'bulk-' + item.id" x-transition.opacity class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-gray-500 line-clamp-2" x-text="item.result?.short_description"></p>
+                            </div>
+                            <p x-show="item.error" class="mt-1 text-xs text-red-600" x-text="item.error"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
         <!-- AI SEO Modal -->
         <div x-show="seoModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" @click.outside="seoModalOpen = false">
@@ -935,6 +1038,13 @@ function uzumProducts(accountId) {
         seoBothLoading: false,
         seoResultBoth: { ru: null, uz: null },
         seoBothMode: false,
+        checkedIds: [],
+        bulkSeoOpen: false,
+        bulkSeoRunning: false,
+        bulkSeoDone: false,
+        bulkSeoProgress: 0,
+        bulkSeoItems: [],
+        bulkSeoLanguage: 'ru',
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -1014,6 +1124,40 @@ function uzumProducts(accountId) {
                     setTimeout(() => { this.stocksStatus = null; }, 8000);
                 }
             } catch (e) {}
+        },
+        openBulkSeoModal() {
+            this.bulkSeoItems = this.products
+                .filter(p => this.checkedIds.includes(p.id))
+                .map(p => ({ id: p.id, title: p.title || p.external_product_id || p.id, status: 'pending', result: null, error: null }));
+            this.bulkSeoProgress = 0;
+            this.bulkSeoDone = false;
+            this.bulkSeoRunning = false;
+            this.bulkSeoOpen = true;
+        },
+        async runBulkSeo() {
+            if (this.bulkSeoRunning || !this.bulkSeoItems.length) return;
+            this.bulkSeoRunning = true;
+            this.bulkSeoDone = false;
+            this.bulkSeoProgress = 0;
+            for (let i = 0; i < this.bulkSeoItems.length; i++) {
+                const item = this.bulkSeoItems[i];
+                this.bulkSeoItems[i] = { ...item, status: 'running' };
+                try {
+                    const res = await fetch(`/api/marketplace/products/${item.id}/seo-optimize`, {
+                        method: 'POST', headers: this.getHeaders(), credentials: 'include',
+                        body: JSON.stringify({ language: this.bulkSeoLanguage }),
+                    });
+                    const data = await this.safeJson(res);
+                    if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
+                    this.bulkSeoItems[i] = { ...item, status: 'done', result: data.result };
+                } catch (e) {
+                    this.bulkSeoItems[i] = { ...item, status: 'error', error: e.message };
+                }
+                this.bulkSeoProgress = i + 1;
+                if (i < this.bulkSeoItems.length - 1) await new Promise(r => setTimeout(r, 300));
+            }
+            this.bulkSeoRunning = false;
+            this.bulkSeoDone = true;
         },
         async runSeoOptimize() {
             if (!this.selected?.id || this.seoLoading) return;

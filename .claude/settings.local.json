@@ -83,7 +83,9 @@
       "Bash(grep -n \"^</div>$\\\\|^@endsection\\\\|function ozonProducts\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)",
       "Bash(grep -n \"^</script>$\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_wb.blade.php)",
       "Bash(grep -n \"^</script>$\\\\|^@endsection\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)",
-      "Bash(head -5 grep -n \"getHeaders\\\\|safeJson\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)"
+      "Bash(head -5 grep -n \"getHeaders\\\\|safeJson\" /Applications/MAMP/htdocs/sellermind-ai/resources/views/pages/marketplace/partials/products_ozon.blade.php)",
+      "Bash(grep -rn \"LowStock\\\\|low_stock\\\\|lowStock\" /Applications/MAMP/htdocs/sellermind-ai/app/Jobs/ --include=*.php -l 2)",
+      "Bash(/dev/null grep:*)"
     ]
   }
 }
