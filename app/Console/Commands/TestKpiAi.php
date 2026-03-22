@@ -53,7 +53,7 @@ final class TestKpiAi extends Command
             return 1;
         }
 
-        $this->info("👤 Сотрудник: {$employee->name}");
+        $this->info("👤 Сотрудник: {$employee->full_name}");
         $this->info("📊 Сфера продаж: {$sphere->name}");
         $this->info('📅 Период: '.now()->addMonth()->format('F Y'));
         $this->newLine();
