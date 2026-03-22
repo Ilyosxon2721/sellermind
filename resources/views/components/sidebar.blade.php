@@ -151,6 +151,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.marketplace') }}</span>
                         </a>
+                        <a href="/marketplace/dashboard" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('marketplace/dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Сводный дашборд</span>
+                        </a>
                         <a href="/marketplace/stocks" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('marketplace/stocks') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs">•</span>
                             <span class="text-sm">Остатки МП</span>

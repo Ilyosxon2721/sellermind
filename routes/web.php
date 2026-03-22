@@ -385,6 +385,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
     })->name('marketplace.show.pwa');
 
+    // Сводный дашборд маркетплейсов - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/dashboard', function () {
+        return view('pages.marketplace.dashboard');
+    })->name('marketplace.dashboard');
+
     // Marketplace stocks dashboard - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/stocks', function () {
         return view('pages.marketplace-stocks');
