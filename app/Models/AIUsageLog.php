@@ -71,23 +71,29 @@ class AIUsageLog extends Model
 
     private static function estimateCost(string $model, int $tokensInput, int $tokensOutput, int $images): float
     {
-        // Официальные цены OpenAI (на декабрь 2024)
+        // Официальные цены OpenAI (обновлено: март 2026)
         $rates = [
+            // GPT-5 models (новые)
+            'gpt-5.1' => ['input' => 0.005, 'output' => 0.015],
+            'gpt-5.1-kpi' => ['input' => 0.005, 'output' => 0.015], // KPI использует gpt-5.1
+            'gpt-5' => ['input' => 0.004, 'output' => 0.012],
+
             // GPT-4o models
             'gpt-4o' => ['input' => 0.0025, 'output' => 0.01],
             'gpt-4o-mini' => ['input' => 0.00015, 'output' => 0.0006],
-            'gpt4o-mini-kpi' => ['input' => 0.00015, 'output' => 0.0006], // KPI использует gpt-4o-mini
+            'gpt4o-mini-kpi' => ['input' => 0.00015, 'output' => 0.0006],
 
             // Legacy naming (backwards compatibility)
             'gpt5-mini' => ['input' => 0.00015, 'output' => 0.0006],
-            'gpt5' => ['input' => 0.0025, 'output' => 0.01],
 
             // Vision & Image
             'gpt-vision' => ['input' => 0.0025, 'output' => 0.01],
             'image-api' => ['image' => 0.04],
         ];
 
-        $rate = $rates[$model] ?? ['input' => 0.001, 'output' => 0.002];
+        // Убираем суффикс '-kpi' для поиска базовой модели
+        $baseModel = str_replace('-kpi', '', $model);
+        $rate = $rates[$model] ?? $rates[$baseModel] ?? ['input' => 0.001, 'output' => 0.002];
 
         $cost = 0;
         if (isset($rate['input'])) {

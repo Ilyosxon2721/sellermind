@@ -53,8 +53,10 @@ final class KpiAiService
 
         $prompt = $this->buildPrompt($employee, $sphere, $history, $pastPlans, $year, $month);
 
+        $model = config('openai.models.kpi', 'gpt-5.1');
+
         $payload = [
-            'model' => 'gpt-4o-mini',
+            'model' => $model,
             'messages' => [
                 [
                     'role' => 'system',
@@ -77,7 +79,7 @@ final class KpiAiService
         AIUsageLog::log(
             $companyId,
             $userId,
-            'gpt4o-mini-kpi',
+            $model.'-kpi',
             $response['usage']['prompt_tokens'] ?? 0,
             $response['usage']['completion_tokens'] ?? 0
         );
@@ -189,17 +191,19 @@ final class KpiAiService
     private function getSystemPrompt(): string
     {
         return <<<'PROMPT'
-Ты — ИИ-аналитик KPI для платформы управления продажами на маркетплейсах (Wildberries, Ozon, Uzum, Yandex Market).
+Ты — продвинутый ИИ-аналитик KPI (GPT-5.1) для платформы управления продажами на маркетплейсах (Wildberries, Ozon, Uzum, Yandex Market).
 
-Твоя задача — на основе исторических данных продаж рекомендовать оптимальные KPI-планы для сотрудников.
+Твоя задача — на основе глубокого анализа исторических данных продаж рекомендовать оптимальные KPI-планы для сотрудников.
 
-Правила:
-- Анализируй тренды продаж (рост/падение/стагнация)
-- Учитывай сезонность (новогодние праздники, летний спад и т.д.)
-- Целевые показатели должны быть реалистичными но амбициозными (рост 5-15% к среднему)
-- Если данных мало — рекомендуй консервативные цели
+Правила анализа:
+- Проводи детальный анализ трендов продаж (рост/падение/стагнация, ускорение/замедление)
+- Учитывай сезонность и внешние факторы (праздники, летний спад, экономические условия)
+- Анализируй паттерны выполнения прошлых планов для оценки реалистичности
+- Целевые показатели должны быть амбициозными но достижимыми (рост 5-20% к среднему)
+- Если данных мало — рекомендуй консервативные цели с запасом
 - Веса метрик должны в сумме давать 100
 - Оборот обычно имеет наибольший вес (40-60%), маржа (25-40%), заказы (10-25%)
+- Учитывай специфику сферы продаж и профиль сотрудника
 
 Ответ строго в формате JSON:
 {
@@ -209,7 +213,7 @@ final class KpiAiService
     "weight_revenue": число (0-100),
     "weight_margin": число (0-100),
     "weight_orders": число (0-100),
-    "reasoning": "Краткое объяснение на русском языке (2-3 предложения)"
+    "reasoning": "Подробное объяснение на русском языке (3-4 предложения с обоснованием целей)"
 }
 PROMPT;
     }
@@ -221,7 +225,7 @@ PROMPT;
         $prompt = "Создай KPI-план для сотрудника.\n\n";
         $prompt .= "Сотрудник: {$employee->name}\n";
         $prompt .= "Сфера продаж: {$sphere->name}\n";
-        $prompt .= "Маркетплейс: " . ($sphere->hasMarketplaceLink() ? 'Да (автосбор данных)' : 'Нет (ручной ввод)') . "\n";
+        $prompt .= 'Маркетплейс: '.($sphere->hasMarketplaceLink() ? 'Да (автосбор данных)' : 'Нет (ручной ввод)')."\n";
         $prompt .= "Период: {$monthNames[$month]} {$year}\n\n";
 
         // Историческая статистика
@@ -231,7 +235,7 @@ PROMPT;
             $mName = $monthNames[$h['month']] ?? $h['month'];
             if ($h['revenue'] > 0 || $h['orders'] > 0) {
                 $hasData = true;
-                $prompt .= "- {$mName} {$h['year']}: оборот=" . number_format($h['revenue'], 0, '.', ' ') . ", маржа=" . number_format($h['margin'], 0, '.', ' ') . ", заказов={$h['orders']}\n";
+                $prompt .= "- {$mName} {$h['year']}: оборот=".number_format($h['revenue'], 0, '.', ' ').', маржа='.number_format($h['margin'], 0, '.', ' ').", заказов={$h['orders']}\n";
             } else {
                 $prompt .= "- {$mName} {$h['year']}: нет данных\n";
             }
@@ -269,7 +273,7 @@ PROMPT;
                 'body' => $response->body(),
             ]);
 
-            throw new \Exception('Ошибка при обращении к ИИ: ' . $response->body());
+            throw new \Exception('Ошибка при обращении к ИИ: '.$response->body());
         }
 
         return $response->json();
