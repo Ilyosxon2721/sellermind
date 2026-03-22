@@ -718,6 +718,10 @@
                         </svg>
                         <span x-text="seoLoading ? 'Генерация...' : (seoResult ? 'Сгенерировать снова' : 'Сгенерировать')"></span>
                     </button>
+                    <button @click="runSeoBoth()" :disabled="seoBothLoading || seoLoading" class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border border-purple-300 text-purple-700 hover:bg-purple-50 transition-all ml-2" :class="(seoBothLoading || seoLoading) ? 'opacity-50 cursor-not-allowed' : ''">
+                        <svg class="w-4 h-4 mr-1.5" :class="seoBothLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg>
+                        <span x-text="seoBothLoading ? 'Генерация...' : 'RU + UZ'"></span>
+                    </button>
                 </div>
 
                 <!-- Content -->
@@ -746,6 +750,11 @@
                         </div>
                     </div>
 
+                    <!-- Language tabs for both mode -->
+                    <div x-show="seoBothMode && !seoLoading && (seoResultBoth.ru || seoResultBoth.uz)" class="flex rounded-lg border border-gray-200 overflow-hidden">
+                        <button @click="seoResult = seoResultBoth.ru; seoLanguage = 'ru'; titleApplied = false" class="flex-1 px-3 py-2 text-sm font-medium transition-colors" :class="seoLanguage === 'ru' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">RU Русский</button>
+                        <button @click="seoResult = seoResultBoth.uz; seoLanguage = 'uz'; titleApplied = false" class="flex-1 px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200" :class="seoLanguage === 'uz' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'">UZ O'zbek</button>
+                    </div>
                     <!-- Results -->
                     <template x-if="!seoLoading && seoResult">
                         <div class="space-y-4">
@@ -754,12 +763,17 @@
                                 <div class="flex items-center justify-between mb-1.5">
                                     <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Название</label>
                                     <div class="flex items-center space-x-2">
-                                        <span class="text-xs text-gray-400" x-text="(seoResult.title || '').length + ' симв.'"></span>
+                                        <span class="text-xs font-medium" :class="(seoResult.title || '').length > 100 ? 'text-red-500' : 'text-gray-400'" x-text="(seoResult.title || '').length + '/100 симв.'"></span>
                                         <button @click="copySeoField(seoResult.title, 'title')"
                                                 class="text-xs text-purple-600 hover:text-purple-800 flex items-center space-x-1">
                                             <svg x-show="seocopied !== 'title'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
                                             <svg x-show="seocopied === 'title'" x-transition.opacity class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                             <span x-text="seocopied === 'title' ? 'Скопировано!' : 'Копировать'"></span>
+                                        </button>
+                                        <button @click="applyTitle()" :disabled="titleApplying" class="text-xs text-green-600 hover:text-green-800 flex items-center space-x-1 ml-1">
+                                            <svg x-show="!titleApplied" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <svg x-show="titleApplied" x-transition.opacity class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <span x-text="titleApplying ? 'Применяю...' : (titleApplied ? 'Применено!' : 'Применить')"></span>
                                         </button>
                                     </div>
                                 </div>
@@ -847,6 +861,19 @@
                             </div>
                         </div>
                     </template>
+                    <!-- Generation history -->
+                    <div x-show="seoHistory.length > 1" class="border-t border-gray-100 pt-4">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">История генераций</p>
+                        <div class="space-y-1.5">
+                            <template x-for="(h, i) in seoHistory.slice(1)" :key="i">
+                                <button @click="seoResult = h.result; seoLanguage = h.language; titleApplied = false; seoBothMode = false" class="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-xs">
+                                    <span class="font-medium text-gray-700" x-text="h.language === 'uz' ? 'UZ O''zbek' : 'RU Русский'"></span>
+                                    <span class="text-gray-400 ml-2" x-text="new Date(h.ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})"></span>
+                                    <span class="block text-gray-500 mt-0.5 truncate" x-text="h.result?.title || ''"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -902,6 +929,12 @@ function uzumProducts(accountId) {
         seoResult: null,
         seoLanguage: 'ru',
         seocopied: null,
+        titleApplied: false,
+        titleApplying: false,
+        seoHistory: [],
+        seoBothLoading: false,
+        seoResultBoth: { ru: null, uz: null },
+        seoBothMode: false,
 
         getToken() {
             if (this.$store?.auth?.token) return this.$store.auth.token;
@@ -984,7 +1017,7 @@ function uzumProducts(accountId) {
         },
         async runSeoOptimize() {
             if (!this.selected?.id || this.seoLoading) return;
-            this.seoLoading = true;
+            this.seoLoading = true; this.seoBothMode = false; this.titleApplied = false;
             this.seoResult = null;
             try {
                 const res = await fetch(`/api/marketplace/products/${this.selected.id}/seo-optimize`, {
@@ -996,6 +1029,8 @@ function uzumProducts(accountId) {
                 const data = await this.safeJson(res);
                 if (!res.ok) throw new Error(data.message || `Ошибка ${res.status}`);
                 this.seoResult = data.result;
+                this.seoHistory.unshift({ result: data.result, language: this.seoLanguage, ts: Date.now() });
+                if (this.seoHistory.length > 5) this.seoHistory = this.seoHistory.slice(0, 5);
             } catch (e) {
                 alert(e.message || 'Ошибка AI оптимизации');
             } finally {
@@ -1008,6 +1043,46 @@ function uzumProducts(accountId) {
                 this.seocopied = key;
                 setTimeout(() => { if (this.seocopied === key) this.seocopied = null; }, 2000);
             });
+        },
+        async applyTitle() {
+            if (!this.selected?.id || !this.seoResult?.title || this.titleApplying) return;
+            this.titleApplying = true;
+            try {
+                const res = await fetch(`/api/marketplace/products/${this.selected.id}`, {
+                    method: 'PUT', headers: this.getHeaders(), credentials: 'include',
+                    body: JSON.stringify({ title: this.seoResult.title }),
+                });
+                if (!res.ok) throw new Error('Ошибка обновления');
+                this.selected.title = this.seoResult.title;
+                const idx = this.products.findIndex(p => p.id === this.selected.id);
+                if (idx !== -1) { this.products[idx].title = this.seoResult.title; this.applyFilter(); }
+                this.titleApplied = true;
+                setTimeout(() => { this.titleApplied = false; }, 3000);
+            } catch (e) { alert(e.message || 'Ошибка применения'); }
+            finally { this.titleApplying = false; }
+        },
+        async runSeoBoth() {
+            if (!this.selected?.id || this.seoBothLoading) return;
+            this.seoBothLoading = true;
+            this.seoBothMode = true;
+            this.seoResult = null;
+            this.seoResultBoth = { ru: null, uz: null };
+            this.titleApplied = false;
+            try {
+                const [resRu, resUz] = await Promise.all([
+                    fetch(`/api/marketplace/products/${this.selected.id}/seo-optimize`, { method: 'POST', headers: this.getHeaders(), credentials: 'include', body: JSON.stringify({ language: 'ru' }) }),
+                    fetch(`/api/marketplace/products/${this.selected.id}/seo-optimize`, { method: 'POST', headers: this.getHeaders(), credentials: 'include', body: JSON.stringify({ language: 'uz' }) }),
+                ]);
+                const [dataRu, dataUz] = await Promise.all([this.safeJson(resRu), this.safeJson(resUz)]);
+                this.seoResultBoth.ru = dataRu.result;
+                this.seoResultBoth.uz = dataUz.result;
+                this.seoLanguage = 'ru';
+                this.seoResult = this.seoResultBoth.ru;
+                this.seoHistory.unshift({ result: dataUz.result, language: 'uz', ts: Date.now() });
+                this.seoHistory.unshift({ result: dataRu.result, language: 'ru', ts: Date.now() });
+                if (this.seoHistory.length > 5) this.seoHistory = this.seoHistory.slice(0, 5);
+            } catch (e) { alert(e.message || 'Ошибка генерации'); this.seoBothMode = false; }
+            finally { this.seoBothLoading = false; }
         },
         applyFilter() {
             const term = this.search.toLowerCase();

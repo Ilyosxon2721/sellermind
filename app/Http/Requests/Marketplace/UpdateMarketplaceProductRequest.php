@@ -49,6 +49,7 @@ final class UpdateMarketplaceProductRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'title' => ['nullable', 'string', 'max:255'],
             'external_sku' => ['nullable', 'string', 'max:255'],
             'external_offer_id' => ['nullable', 'string', 'max:255'],
             'external_product_id' => ['nullable', 'string', 'max:255'],
