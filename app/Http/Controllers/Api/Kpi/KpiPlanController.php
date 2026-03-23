@@ -232,6 +232,46 @@ final class KpiPlanController extends Controller
     }
 
     /**
+     * Данные для графика динамики KPI за несколько месяцев
+     */
+    public function chartData(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+        $months = (int) $request->get('months', 6);
+
+        $labels = [];
+        $achievements = [];
+        $bonuses = [];
+
+        $monthNames = [
+            1 => 'Янв', 2 => 'Фев', 3 => 'Мар', 4 => 'Апр',
+            5 => 'Май', 6 => 'Июн', 7 => 'Июл', 8 => 'Авг',
+            9 => 'Сен', 10 => 'Окт', 11 => 'Ноя', 12 => 'Дек',
+        ];
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $year = $date->year;
+            $month = $date->month;
+
+            $plans = KpiPlan::byCompany($companyId)
+                ->forPeriod($year, $month)
+                ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
+                ->get();
+
+            $labels[] = ($monthNames[$month] ?? '') . ' ' . $year;
+            $achievements[] = $plans->count() > 0 ? round($plans->avg('achievement_percent'), 1) : 0;
+            $bonuses[] = round($plans->sum('bonus_amount'), 0);
+        }
+
+        return $this->successResponse([
+            'labels' => $labels,
+            'achievements' => $achievements,
+            'bonuses' => $bonuses,
+        ]);
+    }
+
+    /**
      * ИИ-рекомендация KPI-плана на основе исторических данных
      */
     public function aiSuggest(Request $request): JsonResponse

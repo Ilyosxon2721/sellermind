@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Kpi;
 
-use App\Models\Finance\MarketplacePayout;
 use App\Models\Kpi\KpiPlan;
+use App\Models\Kpi\SalesSphere;
+use App\Models\MarketplaceAccount;
 use App\Models\OfflineSale;
 use App\Models\OfflineSaleItem;
-use App\Models\Sale;
-use App\Models\SaleItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class KpiCalculationService
 {
+    /**
+     * Статусы отменённых заказов (исключаются из расчёта)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     /**
      * Собрать фактические данные по сфере за период
      *
@@ -42,59 +46,162 @@ final class KpiCalculationService
             ];
         }
 
+        // Автосбор из таблиц заказов маркетплейсов
+        return $this->collectMarketplaceActuals($plan, $sphere);
+    }
+
+    /**
+     * Собрать фактические данные из заказов маркетплейсов
+     *
+     * Читает напрямую из таблиц wb_orders, uzum_orders, ozon_orders,
+     * yandex_market_orders, wildberries_orders (Statistics API).
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectMarketplaceActuals(KpiPlan $plan, SalesSphere $sphere): array
+    {
         $accountIds = $sphere->getLinkedAccountIds();
         $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
         $periodEnd = $periodStart->copy()->endOfMonth();
 
-        // Оборот и заказы из таблицы sales через polymorphic marketplace_order
-        $salesData = Sale::where('company_id', $plan->company_id)
-            ->where('type', 'marketplace')
-            ->whereIn('status', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
-            ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                $query->whereIn('marketplace_account_id', $accountIds);
-            })
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
-            ->first();
-
-        $revenue = (float) ($salesData->total_revenue ?? 0);
-        $orders = (int) ($salesData->total_orders ?? 0);
-
-        // Если нет данных в Sales, пробуем MarketplacePayout
-        if ($revenue == 0) {
-            $payoutRevenue = MarketplacePayout::where('company_id', $plan->company_id)
-                ->whereIn('marketplace_account_id', $accountIds)
-                ->where(function ($q) use ($periodStart, $periodEnd) {
-                    $q->whereBetween('payout_date', [$periodStart, $periodEnd])
-                        ->orWhere(function ($q2) use ($periodStart, $periodEnd) {
-                            $q2->where('period_from', '<=', $periodEnd)
-                                ->where('period_to', '>=', $periodStart);
-                        });
-                })
-                ->sum('gross_amount');
-
-            $revenue = (float) $payoutRevenue;
+        if (empty($accountIds)) {
+            return ['revenue' => 0.0, 'margin' => 0.0, 'orders' => 0];
         }
 
-        // Маржа: выручка - себестоимость из SaleItem
-        $marginData = SaleItem::whereHas('sale', function ($q) use ($plan, $accountIds, $periodStart, $periodEnd) {
-            $q->where('company_id', $plan->company_id)
-                ->where('type', 'marketplace')
-                ->whereIn('status', ['confirmed', 'completed'])
-                ->whereBetween('created_at', [$periodStart, $periodEnd])
-                ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                    $query->whereIn('marketplace_account_id', $accountIds);
-                });
-        })
-            ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
-            ->first();
+        // Группируем аккаунты по маркетплейсам
+        $accounts = MarketplaceAccount::whereIn('id', $accountIds)->get();
+        $accountsByMarketplace = $accounts->groupBy('marketplace');
 
-        $margin = (float) (($marginData->total_sales ?? 0) - ($marginData->total_cost ?? 0));
+        $totalRevenue = 0.0;
+        $totalOrders = 0;
+
+        foreach ($accountsByMarketplace as $marketplace => $mpAccounts) {
+            $mpAccountIds = $mpAccounts->pluck('id')->toArray();
+            $stats = $this->getMarketplaceStats($marketplace, $mpAccountIds, $periodStart, $periodEnd);
+            $totalRevenue += $stats['revenue'];
+            $totalOrders += $stats['orders'];
+        }
 
         return [
-            'revenue' => $revenue,
-            'margin' => max(0, $margin),
-            'orders' => $orders,
+            'revenue' => $totalRevenue,
+            'margin' => 0.0, // Маржа недоступна из заказов маркетплейсов (нет себестоимости)
+            'orders' => $totalOrders,
+        ];
+    }
+
+    /**
+     * Получить статистику по конкретному маркетплейсу за период
+     *
+     * @return array{revenue: float, orders: int}
+     */
+    private function getMarketplaceStats(string $marketplace, array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        return match ($marketplace) {
+            'wb', 'wildberries' => $this->getWbStats($accountIds, $periodStart, $periodEnd),
+            'uzum' => $this->getUzumStats($accountIds, $periodStart, $periodEnd),
+            'ozon' => $this->getOzonStats($accountIds, $periodStart, $periodEnd),
+            'ym', 'yandex_market' => $this->getYmStats($accountIds, $periodStart, $periodEnd),
+            default => ['revenue' => 0.0, 'orders' => 0],
+        };
+    }
+
+    /**
+     * Статистика Wildberries из Statistics API (wildberries_orders) + FBS (wb_orders)
+     *
+     * @return array{revenue: float, orders: int}
+     */
+    private function getWbStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        // WB Statistics API — финансовые данные (for_pay = сумма к оплате продавцу)
+        $wbStatsRow = DB::table('wildberries_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$periodStart, $periodEnd])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->selectRaw('COALESCE(SUM(for_pay), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        $statsRevenue = (float) ($wbStatsRow->revenue ?? 0);
+        $statsOrders = (int) ($wbStatsRow->orders ?? 0);
+
+        // Если Statistics API не синхронизировался — берём из FBS заказов (wb_orders)
+        if ($statsRevenue == 0) {
+            $wbFbsRow = DB::table('wb_orders')
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('ordered_at', [$periodStart, $periodEnd])
+                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
+                ->first();
+
+            return [
+                'revenue' => (float) ($wbFbsRow->revenue ?? 0),
+                'orders' => (int) ($wbFbsRow->orders ?? 0),
+            ];
+        }
+
+        return [
+            'revenue' => $statsRevenue,
+            'orders' => $statsOrders,
+        ];
+    }
+
+    /**
+     * Статистика Uzum из uzum_orders
+     *
+     * @return array{revenue: float, orders: int}
+     */
+    private function getUzumStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $row = DB::table('uzum_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        return [
+            'revenue' => (float) ($row->revenue ?? 0),
+            'orders' => (int) ($row->orders ?? 0),
+        ];
+    }
+
+    /**
+     * Статистика Ozon из ozon_orders
+     *
+     * @return array{revenue: float, orders: int}
+     */
+    private function getOzonStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $row = DB::table('ozon_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        return [
+            'revenue' => (float) ($row->revenue ?? 0),
+            'orders' => (int) ($row->orders ?? 0),
+        ];
+    }
+
+    /**
+     * Статистика Yandex Market из yandex_market_orders
+     *
+     * @return array{revenue: float, orders: int}
+     */
+    private function getYmStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $row = DB::table('yandex_market_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        return [
+            'revenue' => (float) ($row->revenue ?? 0),
+            'orders' => (int) ($row->orders ?? 0),
         ];
     }
 
@@ -103,7 +210,7 @@ final class KpiCalculationService
      *
      * @return array{revenue: float, margin: float, orders: int}
      */
-    private function collectOfflineSaleActuals(KpiPlan $plan, \App\Models\Kpi\SalesSphere $sphere): array
+    private function collectOfflineSaleActuals(KpiPlan $plan, SalesSphere $sphere): array
     {
         $saleTypes = $sphere->getOfflineSaleTypes();
         $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
