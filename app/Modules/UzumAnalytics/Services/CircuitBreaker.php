@@ -6,8 +6,8 @@ declare(strict_types=1);
 
 namespace App\Modules\UzumAnalytics\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 
 /**
  * Circuit Breaker — защита от перегрузки API Uzum.
@@ -21,12 +21,12 @@ class CircuitBreaker
 {
     private readonly array $config;
 
-    private readonly string $redisKey;
+    private readonly string $cacheKey;
 
     public function __construct()
     {
         $this->config   = config('uzum-crawler.circuit_breaker');
-        $this->redisKey = $this->config['redis_key'];
+        $this->cacheKey = $this->config['redis_key'];
     }
 
     /**
@@ -136,23 +136,17 @@ class CircuitBreaker
 
     private function getState(): array
     {
-        $raw = Redis::get($this->redisKey);
-        if ($raw === null) {
-            return [
-                'status'               => 'closed',
-                'failures'             => [],
-                'consecutive_failures' => 0,
-                'pause_until'          => null,
-            ];
-        }
-
-        return json_decode($raw, true) ?? [];
+        return Cache::get($this->cacheKey, [
+            'status'               => 'closed',
+            'failures'             => [],
+            'consecutive_failures' => 0,
+            'pause_until'          => null,
+        ]);
     }
 
     private function saveState(array $state): void
     {
-        // Хранить состояние на 24 часа
-        Redis::setex($this->redisKey, 86400, json_encode($state));
+        Cache::put($this->cacheKey, $state, 86400);
     }
 
     /**

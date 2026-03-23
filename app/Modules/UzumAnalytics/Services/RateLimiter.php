@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 namespace App\Modules\UzumAnalytics\Services;
 
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Rate limiter для запросов к публичному API Uzum.
@@ -39,20 +39,16 @@ class RateLimiter
         $jitter   = $this->config['jitter'] ?? 0.5;
 
         // Считаем запросы за последнюю минуту
-        $count = (int) Redis::get($key);
+        $count = (int) Cache::get($key, 0);
 
         if ($count === 0) {
-            // Первый запрос в окне — устанавливаем счётчик с TTL 60 секунд
-            Redis::setex($key, 60, 1);
+            Cache::put($key, 1, 60);
         } elseif ($count >= $limit) {
-            // Лимит исчерпан — спим до следующего окна
-            $ttl = (int) Redis::ttl($key);
-            if ($ttl > 0) {
-                sleep($ttl);
-            }
-            Redis::setex($key, 60, 1);
+            // Лимит исчерпан — ждём новое окно
+            sleep(60);
+            Cache::put($key, 1, 60);
         } else {
-            Redis::incr($key);
+            Cache::put($key, $count + 1, 60);
         }
 
         // Базовая задержка + случайный jitter
@@ -67,7 +63,7 @@ class RateLimiter
     {
         $key   = $this->prefix . $type;
         $limit = $this->config['rate_limits'][$type] ?? 10;
-        $count = (int) Redis::get($key);
+        $count = (int) Cache::get($key, 0);
 
         return $count < $limit;
     }
