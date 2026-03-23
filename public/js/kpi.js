@@ -15,7 +15,7 @@ function kpiPage(config) {
         employees: [],
         marketplaceAccounts: [],
         calculating: false,
-        chartData: [],
+        chartData: { labels: [], achievements: [], bonuses: [] },
         chart: null,
 
         // Модалки
@@ -147,65 +147,9 @@ function kpiPage(config) {
             months = months || 6;
             try {
                 var res = await this.api('finance/kpi/chart-data?months=' + months);
-                this.chartData = (res.data ?? res).data ?? [];
-                this.renderChart();
-            } catch (e) { console.error('Chart load error:', e); }
-        },
-
-        // Данные для графика
-        chartInstance: null,
-        chartData: { labels: [], achievements: [], bonuses: [] },
-
-        async loadChartData() {
-            try {
-                var res = await this.api('finance/kpi/chart-data?months=6');
                 this.chartData = res.data ?? res;
                 this.renderChart();
-            } catch (e) { /* chart data may not be available */ }
-        },
-
-        renderChart() {
-            var canvas = document.getElementById('kpiChart');
-            if (!canvas) return;
-            if (this.chartInstance) this.chartInstance.destroy();
-            var ctx = canvas.getContext('2d');
-            var self = this;
-            this.chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: self.chartData.labels || [],
-                    datasets: [
-                        {
-                            label: 'Выполнение %',
-                            data: self.chartData.achievements || [],
-                            type: 'line',
-                            borderColor: '#3B82F6',
-                            backgroundColor: 'rgba(59,130,246,0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Бонусы',
-                            data: self.chartData.bonuses || [],
-                            backgroundColor: 'rgba(16,185,129,0.7)',
-                            borderRadius: 6,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        y: { position: 'left', title: { display: true, text: '%' }, suggestedMin: 0, suggestedMax: 120 },
-                        y1: { position: 'right', title: { display: true, text: 'Бонус' }, grid: { drawOnChartArea: false }, suggestedMin: 0 }
-                    },
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
+            } catch (e) { console.error('Chart load error:', e); }
         },
 
         // Расчёт KPI
@@ -403,27 +347,19 @@ function kpiPage(config) {
             if (!canvas) return;
 
             var ctx = canvas.getContext('2d');
-            var self = this;
 
-            // Уничтожаем предыдущий график
             if (this.chart) {
                 this.chart.destroy();
             }
 
-            var labels = this.chartData.map(function(d) {
-                return self.monthName(d.month) + ' ' + d.year;
-            });
-            var achievements = this.chartData.map(function(d) { return d.avg_achievement; });
-            var bonuses = this.chartData.map(function(d) { return d.total_bonus; });
-
             this.chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: this.chartData.labels || [],
                     datasets: [
                         {
                             label: 'Средний % выполнения',
-                            data: achievements,
+                            data: this.chartData.achievements || [],
                             borderColor: 'rgb(59, 130, 246)',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             tension: 0.3,
@@ -432,7 +368,7 @@ function kpiPage(config) {
                         },
                         {
                             label: 'Бонусы (сум)',
-                            data: bonuses,
+                            data: this.chartData.bonuses || [],
                             borderColor: 'rgb(34, 197, 94)',
                             backgroundColor: 'rgba(34, 197, 94, 0.1)',
                             tension: 0.3,
@@ -444,21 +380,14 @@ function kpiPage(config) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: {
-                            position: 'top',
-                        },
+                        legend: { position: 'top' },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
                                     var label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
+                                    if (label) label += ': ';
                                     if (context.parsed.y !== null) {
                                         if (context.datasetIndex === 0) {
                                             label += context.parsed.y.toFixed(1) + '%';
@@ -473,35 +402,15 @@ function kpiPage(config) {
                     },
                     scales: {
                         y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: '% выполнения'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
+                            type: 'linear', display: true, position: 'left',
+                            title: { display: true, text: '% выполнения' },
+                            ticks: { callback: function(v) { return v + '%'; } }
                         },
                         y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Бонусы (сум)'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('ru-RU');
-                                }
-                            }
+                            type: 'linear', display: true, position: 'right',
+                            title: { display: true, text: 'Бонусы (сум)' },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: function(v) { return v.toLocaleString('ru-RU'); } }
                         },
                     }
                 }
