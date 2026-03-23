@@ -57,4 +57,8 @@ return [
         'notifications_enabled' => env('TELEGRAM_NOTIFICATIONS_ENABLED', false),
     ],
 
+    'risment' => [
+        'base_url' => env('RISMENT_BASE_URL', 'https://risment.uz'),
+    ],
+
 ];
