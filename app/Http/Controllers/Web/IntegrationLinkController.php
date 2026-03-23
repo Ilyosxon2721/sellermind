@@ -49,24 +49,26 @@ class IntegrationLinkController extends Controller
             ], 422);
         }
 
-        // Deactivate any existing RISMENT links for this company
+        // Деактивировать все старые RISMENT-связки этой компании
         IntegrationLink::where('company_id', $company->id)
             ->where('external_system', 'risment')
             ->where('is_active', true)
             ->update(['is_active' => false]);
 
-        // Create new link
-        $link = IntegrationLink::create([
-            'user_id' => $user->id,
-            'company_id' => $company->id,
-            'external_system' => 'risment',
-            'link_token' => $validated['link_token'],
-            'warehouse_id' => $validated['warehouse_id'] ?? null,
-            'is_active' => true,
-            'linked_at' => now(),
-        ]);
+        // Создать или обновить запись по link_token (unique constraint)
+        $link = IntegrationLink::updateOrCreate(
+            ['link_token' => $validated['link_token']],
+            [
+                'user_id' => $user->id,
+                'company_id' => $company->id,
+                'external_system' => 'risment',
+                'warehouse_id' => $validated['warehouse_id'] ?? null,
+                'is_active' => true,
+                'linked_at' => now(),
+            ]
+        );
 
-        // Подтвердить связку в RISMENT через webhook
+        // Подтвердить связку в RISMENT через webhook (не блокирует сохранение)
         $this->confirmLinkInRisment($link, $user);
 
         return response()->json([
