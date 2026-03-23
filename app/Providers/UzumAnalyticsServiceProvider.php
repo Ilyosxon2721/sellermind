@@ -6,6 +6,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Modules\UzumAnalytics\Console\AddTokenCommand;
+use App\Modules\UzumAnalytics\Console\SyncCategoriesCommand;
 use App\Modules\UzumAnalytics\Services\CircuitBreaker;
 use App\Modules\UzumAnalytics\Services\RateLimiter;
 use App\Modules\UzumAnalytics\Services\TokenRefreshService;
@@ -42,5 +44,9 @@ final class UzumAnalyticsServiceProvider extends ServiceProvider
         $this->publishes([
             base_path('config/uzum-crawler.php') => config_path('uzum-crawler.php'),
         ], 'uzum-crawler-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([AddTokenCommand::class, SyncCategoriesCommand::class]);
+        }
     }
 }
