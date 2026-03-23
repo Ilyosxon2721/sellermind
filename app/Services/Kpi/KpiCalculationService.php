@@ -329,11 +329,11 @@ final class KpiCalculationService
         $totalActualRevenue = $plans->sum('actual_revenue');
 
         return [
-            'employee_count' => $employeeCount,
+            'employees' => $employeeCount,
             'avg_achievement' => $avgAchievement,
             'total_bonus' => $totalBonus,
+            'total_revenue' => $totalActualRevenue,
             'target_revenue' => $totalTargetRevenue,
-            'actual_revenue' => $totalActualRevenue,
             'plans' => $plans,
         ];
     }

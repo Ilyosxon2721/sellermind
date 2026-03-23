@@ -25,7 +25,7 @@
                     <p class="text-sm text-gray-500">{{ __('kpi.subtitle') }}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <select x-model="month" @change="loadDashboard()" class="rounded-lg border-gray-300 text-sm">
+                    <select x-model="month" @change="reloadCurrentTab()" class="rounded-lg border-gray-300 text-sm">
                         <option value="1">Январь</option>
                         <option value="2">Февраль</option>
                         <option value="3">Март</option>
@@ -39,7 +39,7 @@
                         <option value="11">Ноябрь</option>
                         <option value="12">Декабрь</option>
                     </select>
-                    <select x-model="year" @change="loadDashboard()" class="rounded-lg border-gray-300 text-sm">
+                    <select x-model="year" @change="reloadCurrentTab()" class="rounded-lg border-gray-300 text-sm">
                         <template x-for="y in years" :key="y">
                             <option :value="y" x-text="y"></option>
                         </template>
@@ -211,6 +211,9 @@
                                         </td>
                                         <td class="px-4 py-3 text-center">
                                             <div class="flex items-center gap-1 justify-center">
+                                                <template x-if="p.status === 'active'">
+                                                    <button @click="editPlan(p)" class="text-blue-600 hover:text-blue-800 text-xs font-medium">{{ __('kpi.plans.edit') ?? 'Изменить' }}</button>
+                                                </template>
                                                 <template x-if="p.status === 'calculated'">
                                                     <button @click="approvePlan(p.id)" class="text-green-600 hover:text-green-800 text-xs font-medium">{{ __('kpi.plans.approve') }}</button>
                                                 </template>
@@ -403,18 +406,25 @@
                             <input type="number" x-model="planForm.target_orders" class="w-full rounded-lg border-gray-300 text-sm" min="0">
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.weight') }} ({{ __('kpi.plans.revenue') }})</label>
-                            <input type="number" x-model="planForm.weight_revenue" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-700">{{ __('kpi.plans.weight') ?? 'Веса' }}</span>
+                            <span class="text-xs" :class="(parseInt(planForm.weight_revenue || 0) + parseInt(planForm.weight_margin || 0) + parseInt(planForm.weight_orders || 0)) === 100 ? 'text-green-600' : 'text-red-500'"
+                                  x-text="'{{ __('kpi.sum') ?? 'Сумма' }}: ' + (parseInt(planForm.weight_revenue || 0) + parseInt(planForm.weight_margin || 0) + parseInt(planForm.weight_orders || 0)) + '/100'"></span>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.weight') }} ({{ __('kpi.plans.margin') }})</label>
-                            <input type="number" x-model="planForm.weight_margin" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.plans.weight') }} ({{ __('kpi.plans.orders') }})</label>
-                            <input type="number" x-model="planForm.weight_orders" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">{{ __('kpi.plans.revenue') }}</label>
+                                <input type="number" x-model="planForm.weight_revenue" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">{{ __('kpi.plans.margin') }}</label>
+                                <input type="number" x-model="planForm.weight_margin" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">{{ __('kpi.plans.orders') }}</label>
+                                <input type="number" x-model="planForm.weight_orders" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="100">
+                            </div>
                         </div>
                     </div>
                 </div>

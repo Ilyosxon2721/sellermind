@@ -42,6 +42,11 @@ function kpiPage(config) {
             this.loadChartData(6);
         },
 
+        reloadCurrentTab() {
+            if (this.tab === 'dashboard') { this.loadDashboard(); this.loadChartData(); }
+            else if (this.tab === 'plans') this.loadPlans();
+        },
+
         emptyPlanForm() {
             return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
         },
@@ -221,6 +226,25 @@ function kpiPage(config) {
             this.aiReasoning = '';
             this.showPlanModal = true;
         },
+        editPlan(p) {
+            this.planForm = {
+                id: p.id,
+                employee_id: p.employee_id,
+                kpi_sales_sphere_id: p.kpi_sales_sphere_id,
+                kpi_bonus_scale_id: p.kpi_bonus_scale_id,
+                period_year: p.period_year,
+                period_month: p.period_month,
+                target_revenue: p.target_revenue,
+                target_margin: p.target_margin,
+                target_orders: p.target_orders,
+                weight_revenue: p.weight_revenue,
+                weight_margin: p.weight_margin,
+                weight_orders: p.weight_orders,
+                notes: p.notes || ''
+            };
+            this.aiReasoning = '';
+            this.showPlanModal = true;
+        },
         async aiSuggestPlan() {
             if (!this.planForm.employee_id || !this.planForm.kpi_sales_sphere_id) {
                 this.notify('Выберите сотрудника и сферу продаж', 'error');
@@ -248,6 +272,12 @@ function kpiPage(config) {
             this.aiSuggesting = false;
         },
         async savePlan() {
+            // Валидация суммы весов
+            var wSum = parseInt(this.planForm.weight_revenue || 0) + parseInt(this.planForm.weight_margin || 0) + parseInt(this.planForm.weight_orders || 0);
+            if (wSum !== 100) {
+                this.notify('Сумма весов должна быть 100 (сейчас: ' + wSum + ')', 'error');
+                return;
+            }
             try {
                 if (this.planForm.id) {
                     await this.api('finance/kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
@@ -257,6 +287,7 @@ function kpiPage(config) {
                 this.showPlanModal = false;
                 this.notify('План сохранён');
                 await this.loadPlans();
+                await this.loadDashboard();
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async approvePlan(id) {
