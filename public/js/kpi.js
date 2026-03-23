@@ -22,6 +22,8 @@ function kpiPage(config) {
         showPlanModal: false,
         showSphereModal: false,
         showScaleModal: false,
+        showActualsModal: false,
+        actualsForm: { id: null, actual_revenue: 0, actual_margin: 0, actual_orders: 0, employee_name: '', sphere_name: '' },
 
         // Формы
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
@@ -188,6 +190,30 @@ function kpiPage(config) {
             };
             this.aiReasoning = '';
             this.showPlanModal = true;
+        },
+        openActualsModal(p) {
+            this.actualsForm = {
+                id: p.id,
+                actual_revenue: p.actual_revenue || 0,
+                actual_margin: p.actual_margin || 0,
+                actual_orders: p.actual_orders || 0,
+                employee_name: p.employee?.name ?? '—',
+                sphere_name: p.sales_sphere?.name ?? '—'
+            };
+            this.showActualsModal = true;
+        },
+        async saveActuals() {
+            try {
+                await this.api('finance/kpi/plans/' + this.actualsForm.id + '/actuals', 'PUT', {
+                    actual_revenue: parseFloat(this.actualsForm.actual_revenue) || 0,
+                    actual_margin: parseFloat(this.actualsForm.actual_margin) || 0,
+                    actual_orders: parseInt(this.actualsForm.actual_orders) || 0
+                });
+                this.showActualsModal = false;
+                this.notify('Фактические данные сохранены');
+                await this.loadPlans();
+                await this.loadDashboard();
+            } catch (e) { this.notify(e.message, 'error'); }
         },
         async aiSuggestPlan() {
             if (!this.planForm.employee_id || !this.planForm.kpi_sales_sphere_id) {
