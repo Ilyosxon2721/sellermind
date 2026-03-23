@@ -37,6 +37,7 @@ function kpiPage(config) {
             this.loadScales();
             this.loadEmployees();
             this.loadMarketplaceAccounts();
+            this.loadChartData();
         },
 
         emptyPlanForm() {
@@ -134,6 +135,62 @@ function kpiPage(config) {
                 var res = await this.api('finance/kpi/marketplace-accounts');
                 this.marketplaceAccounts = res.data ?? [];
             } catch (e) { /* маркетплейсы могут быть не доступны */ }
+        },
+
+        // Данные для графика
+        chartInstance: null,
+        chartData: { labels: [], achievements: [], bonuses: [] },
+
+        async loadChartData() {
+            try {
+                var res = await this.api('finance/kpi/chart-data?months=6');
+                this.chartData = res.data ?? res;
+                this.renderChart();
+            } catch (e) { /* chart data may not be available */ }
+        },
+
+        renderChart() {
+            var canvas = document.getElementById('kpiChart');
+            if (!canvas) return;
+            if (this.chartInstance) this.chartInstance.destroy();
+            var ctx = canvas.getContext('2d');
+            var self = this;
+            this.chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: self.chartData.labels || [],
+                    datasets: [
+                        {
+                            label: 'Выполнение %',
+                            data: self.chartData.achievements || [],
+                            type: 'line',
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Бонусы',
+                            data: self.chartData.bonuses || [],
+                            backgroundColor: 'rgba(16,185,129,0.7)',
+                            borderRadius: 6,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { position: 'left', title: { display: true, text: '%' }, suggestedMin: 0, suggestedMax: 120 },
+                        y1: { position: 'right', title: { display: true, text: 'Бонус' }, grid: { drawOnChartArea: false }, suggestedMin: 0 }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
         },
 
         // Расчёт KPI

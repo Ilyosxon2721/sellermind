@@ -141,6 +141,14 @@
                             {{ __('kpi.empty_plans') }}
                         </div>
                     </div>
+
+                    {{-- График динамики KPI --}}
+                    <div class="bg-white rounded-xl border border-gray-200 p-5 mt-6">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-4">{{ __('kpi.dashboard.chart_title') ?? 'Динамика выполнения KPI' }}</h3>
+                        <div style="height: 300px;">
+                            <canvas id="kpiChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ============ ПЛАНЫ ============ --}}
@@ -525,6 +533,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/js/kpi.js"></script>
 
 @endsection
