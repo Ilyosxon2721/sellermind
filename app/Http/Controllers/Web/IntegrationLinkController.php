@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\IntegrationLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 
 class IntegrationLinkController extends Controller
 {
@@ -66,8 +66,8 @@ class IntegrationLinkController extends Controller
             'linked_at' => now(),
         ]);
 
-        // Уведомить RISMENT о подтверждении связки через Redis
-        $this->notifyRisment('link.confirm', $link);
+        // Подтвердить связку в RISMENT через webhook
+        $this->confirmLinkInRisment($link, $user);
 
         return response()->json([
             'success' => true,
@@ -141,8 +141,8 @@ class IntegrationLinkController extends Controller
             if ($link) {
                 $link->update(['is_active' => false]);
 
-                // Уведомить RISMENT об отключении связки
-                $this->notifyRisment('link.disconnect', $link);
+                // Уведомить RISMENT об отключении
+                $this->disconnectLinkInRisment($link);
             }
         }
 
@@ -153,31 +153,64 @@ class IntegrationLinkController extends Controller
     }
 
     /**
-     * Отправить уведомление в RISMENT через Redis очередь risment:link
+     * Подтвердить связку в RISMENT через HTTP webhook
+     * POST https://risment.uz/api/integration/sellermind/confirm
      */
-    private function notifyRisment(string $event, IntegrationLink $link): void
+    private function confirmLinkInRisment(IntegrationLink $link, $user): void
     {
+        $baseUrl = config('services.risment.base_url', 'https://risment.uz');
+        $url = rtrim($baseUrl, '/') . '/api/integration/sellermind/confirm';
+
         try {
-            $message = json_encode([
-                'event' => $event,
-                'timestamp' => now()->toIso8601String(),
-                'source' => 'sellermind',
-                'link_token' => $link->link_token,
-                'data' => [
+            $response = Http::timeout(10)
+                ->retry(2, 1000)
+                ->post($url, [
+                    'link_token' => $link->link_token,
+                    'sellermind_user_id' => $user->id,
+                    'sellermind_company_id' => $link->company_id,
+                ]);
+
+            if ($response->successful()) {
+                Log::info('IntegrationLink: RISMENT confirm webhook success', [
                     'company_id' => $link->company_id,
-                    'linked_at' => $link->linked_at?->toIso8601String(),
-                    'warehouse_id' => $link->warehouse_id,
-                ],
-            ], JSON_UNESCAPED_UNICODE);
-
-            Redis::connection('integration')->rpush('risment:link', $message);
-
-            Log::info("IntegrationLink: Pushed {$event} to risment:link", [
+                    'status' => $response->status(),
+                ]);
+            } else {
+                Log::warning('IntegrationLink: RISMENT confirm webhook failed', [
+                    'company_id' => $link->company_id,
+                    'status' => $response->status(),
+                    'body' => mb_substr($response->body(), 0, 500),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('IntegrationLink: RISMENT confirm webhook error', [
                 'company_id' => $link->company_id,
-                'link_token' => mb_substr($link->link_token, 0, 8) . '...',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Уведомить RISMENT об отключении через HTTP webhook
+     * POST https://risment.uz/api/integration/sellermind/disconnect
+     */
+    private function disconnectLinkInRisment(IntegrationLink $link): void
+    {
+        $baseUrl = config('services.risment.base_url', 'https://risment.uz');
+        $url = rtrim($baseUrl, '/') . '/api/integration/sellermind/disconnect';
+
+        try {
+            Http::timeout(10)
+                ->retry(2, 1000)
+                ->post($url, [
+                    'link_token' => $link->link_token,
+                ]);
+
+            Log::info('IntegrationLink: RISMENT disconnect webhook sent', [
+                'company_id' => $link->company_id,
             ]);
         } catch (\Exception $e) {
-            Log::error("IntegrationLink: Failed to notify RISMENT ({$event})", [
+            Log::error('IntegrationLink: RISMENT disconnect webhook error', [
                 'company_id' => $link->company_id,
                 'error' => $e->getMessage(),
             ]);
