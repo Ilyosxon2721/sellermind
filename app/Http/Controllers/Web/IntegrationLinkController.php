@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\IntegrationLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class IntegrationLinkController extends Controller
 {
@@ -63,6 +65,9 @@ class IntegrationLinkController extends Controller
             'is_active' => true,
             'linked_at' => now(),
         ]);
+
+        // Уведомить RISMENT о подтверждении связки через Redis
+        $this->notifyRisment('link.confirm', $link);
 
         return response()->json([
             'success' => true,
@@ -128,15 +133,54 @@ class IntegrationLinkController extends Controller
         $company = $user->companies()->first();
 
         if ($company) {
-            IntegrationLink::where('company_id', $company->id)
+            $link = IntegrationLink::where('company_id', $company->id)
                 ->where('external_system', 'risment')
                 ->where('is_active', true)
-                ->update(['is_active' => false]);
+                ->first();
+
+            if ($link) {
+                $link->update(['is_active' => false]);
+
+                // Уведомить RISMENT об отключении связки
+                $this->notifyRisment('link.disconnect', $link);
+            }
         }
 
         return response()->json([
             'success' => true,
             'message' => 'RISMENT integration disconnected.',
         ]);
+    }
+
+    /**
+     * Отправить уведомление в RISMENT через Redis очередь risment:link
+     */
+    private function notifyRisment(string $event, IntegrationLink $link): void
+    {
+        try {
+            $message = json_encode([
+                'event' => $event,
+                'timestamp' => now()->toIso8601String(),
+                'source' => 'sellermind',
+                'link_token' => $link->link_token,
+                'data' => [
+                    'company_id' => $link->company_id,
+                    'linked_at' => $link->linked_at?->toIso8601String(),
+                    'warehouse_id' => $link->warehouse_id,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+
+            Redis::connection('integration')->rpush('risment:link', $message);
+
+            Log::info("IntegrationLink: Pushed {$event} to risment:link", [
+                'company_id' => $link->company_id,
+                'link_token' => mb_substr($link->link_token, 0, 8) . '...',
+            ]);
+        } catch (\Exception $e) {
+            Log::error("IntegrationLink: Failed to notify RISMENT ({$event})", [
+                'company_id' => $link->company_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
