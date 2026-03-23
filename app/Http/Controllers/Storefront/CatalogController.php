@@ -11,6 +11,7 @@ use App\Models\Store\StoreProduct;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Публичный каталог товаров магазина
@@ -277,8 +278,11 @@ final class CatalogController extends Controller
             StoreAnalytics::where('store_id', $store->id)
                 ->where('date', $today)
                 ->increment('page_views');
-        } catch (\Throwable) {
-            // Не прерываем пользовательский флоу при ошибке аналитики
+        } catch (\Throwable $e) {
+            Log::debug('Ошибка трекинга просмотра страницы каталога', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

@@ -423,7 +423,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function debtShowPage(debtId) {
     return {
         debtId: debtId,

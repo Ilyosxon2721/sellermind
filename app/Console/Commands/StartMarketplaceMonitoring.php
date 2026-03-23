@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\Marketplace\MonitorMarketplaceChangesJob;
 use App\Models\MarketplaceAccount;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class StartMarketplaceMonitoring extends Command
 {
@@ -84,6 +85,11 @@ class StartMarketplaceMonitoring extends Command
                 $successCount++;
             } catch (\Throwable $e) {
                 $this->error("❌ Ошибка при запуске мониторинга для аккаунта {$account->id}: {$e->getMessage()}");
+                Log::error('Ошибка запуска мониторинга маркетплейса', [
+                    'account_id' => $account->id,
+                    'marketplace' => $account->marketplace,
+                    'error' => $e->getMessage(),
+                ]);
                 $failCount++;
             }
         }

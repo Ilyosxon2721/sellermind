@@ -4,8 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\MarketplaceAccount;
 use App\Models\VariantMarketplaceLink;
-use App\Services\Marketplaces\MarketplaceHttpClient;
-use App\Services\Marketplaces\UzumClient;
+use App\Services\Stock\StockSyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +15,7 @@ class UzumSyncStocks extends Command
 
     protected $description = 'Синхронизация остатков Uzum Market (push локальных остатков в Uzum)';
 
-    public function handle(): int
+    public function handle(StockSyncService $syncService): int
     {
         $accountId = $this->option('account');
 
@@ -34,7 +33,7 @@ class UzumSyncStocks extends Command
             $this->info("Аккаунт #{$account->id} ({$account->name})");
 
             try {
-                $this->syncStocks($account);
+                $this->syncStocks($account, $syncService);
             } catch (\Exception $e) {
                 $this->error("Ошибка синхронизации: {$e->getMessage()}");
                 Log::error('Uzum stocks sync failed', [
@@ -49,21 +48,17 @@ class UzumSyncStocks extends Command
         return self::SUCCESS;
     }
 
-    protected function syncStocks(MarketplaceAccount $account): void
+    protected function syncStocks(MarketplaceAccount $account, StockSyncService $syncService): void
     {
-        $httpClient = app(MarketplaceHttpClient::class);
-        $issueDetector = app(\App\Services\Marketplaces\IssueDetectorService::class);
-        $client = new UzumClient($httpClient, $issueDetector);
-
         $this->line('  Начинаем синхронизацию остатков...');
         $startTime = microtime(true);
 
-        // Получить все активные связи для этого аккаунта
         $links = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
             ->where('marketplace_code', 'uzum')
             ->where('is_active', true)
             ->where('sync_stock_enabled', true)
-            ->with(['variant', 'marketplaceProduct'])
+            ->whereNotNull('external_sku_id')
+            ->with(['variant', 'marketplaceProduct', 'account'])
             ->get();
 
         if ($links->isEmpty()) {
@@ -74,70 +69,52 @@ class UzumSyncStocks extends Command
 
         $this->line('  Найдено связей: '.$links->count());
 
-        // Подготовить данные для синхронизации
-        $stocksData = [];
-        foreach ($links as $link) {
-            $stock = $link->getCurrentStock();
-
-            // Для Uzum нужны productId (из MarketplaceProduct) и skuId (из связи)
-            $productId = $link->marketplaceProduct?->external_product_id;
-            $skuId = $link->external_sku_id;
-
-            if (! $productId || ! $skuId) {
-                $this->warn("  Пропуск связи #{$link->id}: отсутствует productId ({$productId}) или skuId ({$skuId})");
-
-                continue;
-            }
-
-            $this->line("    SKU {$skuId} (product {$productId}): остаток {$stock}");
-
-            $stocksData[] = [
-                'productId' => $productId,
-                'skuId' => $skuId,
-                'stock' => max(0, $stock), // Uzum не принимает отрицательные остатки
-            ];
-        }
-
-        if (empty($stocksData)) {
-            $this->warn('  Нет данных для синхронизации');
-
-            return;
-        }
-
         $synced = 0;
         $errors = 0;
+        $skipped = 0;
 
-        // Синхронизируем каждый SKU отдельно через updateStock
-        // Добавляем задержку между запросами чтобы избежать rate limiting от Uzum API
-        foreach ($stocksData as $index => $stockItem) {
+        foreach ($links as $index => $link) {
+            $skuId = $link->external_sku_id;
+            $stock = max(0, $link->getCurrentStock());
+
+            $this->line("    SKU {$skuId}: остаток {$stock}");
+
             try {
-                $client->updateStock(
-                    $account,
-                    (string) $stockItem['productId'],
-                    (string) $stockItem['skuId'],
-                    (int) $stockItem['stock']
-                );
+                $syncService->syncLinkStock($link, $stock);
                 $synced++;
-
-                // Задержка 500ms между запросами для избежания rate limiting
-                if ($index < count($stocksData) - 1) {
-                    usleep(500000); // 500ms
+            } catch (\RuntimeException $e) {
+                // SKU не подключён к FBS/DBS — пропускаем без ошибки
+                if (str_contains($e->getMessage(), 'не подключён к FBS/DBS')) {
+                    $skipped++;
+                    $this->warn("    Пропущен SKU {$skuId}: ".$e->getMessage());
+                } else {
+                    $errors++;
+                    $this->error("    Ошибка SKU {$skuId}: ".$e->getMessage());
+                    Log::error('Failed to sync Uzum stock for SKU', [
+                        'account_id' => $account->id,
+                        'sku_id' => $skuId,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             } catch (\Exception $e) {
                 $errors++;
+                $this->error("    Ошибка SKU {$skuId}: ".$e->getMessage());
                 Log::error('Failed to sync Uzum stock for SKU', [
                     'account_id' => $account->id,
-                    'product_id' => $stockItem['productId'],
-                    'sku_id' => $stockItem['skuId'],
+                    'sku_id' => $skuId,
                     'error' => $e->getMessage(),
                 ]);
-                $this->error("  Ошибка для SKU {$stockItem['skuId']}: ".$e->getMessage());
 
-                // Если rate limit - подождать дольше перед следующим запросом
+                // Rate limit — ждём дольше
                 if (str_contains($e->getMessage(), 'много запросов') || str_contains($e->getMessage(), 'rate') || str_contains($e->getMessage(), 'Подождите')) {
                     $this->warn('    Rate limit, ждём 3 секунды...');
                     sleep(3);
                 }
+            }
+
+            // Задержка 500ms между запросами для избежания rate limiting
+            if ($index < $links->count() - 1) {
+                usleep(500000);
             }
         }
 
@@ -146,6 +123,10 @@ class UzumSyncStocks extends Command
         $this->info("  ✓ Синхронизация завершена за {$duration} сек");
         $this->line("    Синхронизировано: {$synced}");
 
+        if ($skipped > 0) {
+            $this->line("    Пропущено (не в FBS/DBS): {$skipped}");
+        }
+
         if ($errors > 0) {
             $this->warn("    Ошибок: {$errors}");
         }
@@ -153,6 +134,7 @@ class UzumSyncStocks extends Command
         Log::info('Uzum stocks synced', [
             'account_id' => $account->id,
             'synced' => $synced,
+            'skipped' => $skipped,
             'errors' => $errors,
             'duration' => $duration,
         ]);

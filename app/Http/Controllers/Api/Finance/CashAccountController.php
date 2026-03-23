@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finance\CashAccountRequest;
+use App\Http\Requests\Finance\TransferFundsRequest;
 use App\Models\Finance\CashAccount;
 use App\Models\Finance\CashTransaction;
 use App\Models\Finance\MarketplacePayout;
@@ -13,6 +14,7 @@ use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CashAccountController extends Controller
 {
@@ -166,20 +168,14 @@ class CashAccountController extends Controller
     /**
      * Перевод между счетами
      */
-    public function transfer(Request $request)
+    public function transfer(TransferFundsRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'from_account_id' => ['required', 'exists:cash_accounts,id'],
-            'to_account_id' => ['required', 'exists:cash_accounts,id', 'different:from_account_id'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'description' => ['nullable', 'string'],
-            'transaction_date' => ['nullable', 'date'],
-        ]);
+        $data = $request->validated();
 
         $fromAccount = CashAccount::byCompany($companyId)->findOrFail($data['from_account_id']);
         $toAccount = CashAccount::byCompany($companyId)->findOrFail($data['to_account_id']);
@@ -239,6 +235,7 @@ class CashAccountController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка перевода между счетами', ['from_account_id' => $data['from_account_id'], 'to_account_id' => $data['to_account_id'], 'amount' => $data['amount'], 'error' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
@@ -380,6 +377,7 @@ class CashAccountController extends Controller
             return $this->successResponse($transaction->load(['category', 'counterparty', 'employee']));
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка создания финансовой транзакции', ['account_id' => $accountId, 'type' => $type, 'amount' => $data['amount'] ?? null, 'error' => $e->getMessage()]);
 
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
@@ -413,6 +411,8 @@ class CashAccountController extends Controller
                 'result' => $result,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка синхронизации выплат маркетплейсов', ['company_id' => $companyId, 'marketplace' => $data['marketplace'] ?? 'all', 'error' => $e->getMessage()]);
+
             return $this->errorResponse($e->getMessage(), 'error', null, 500);
         }
     }

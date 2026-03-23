@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 {{-- BROWSER MODE --}}
 <div class="browser-only flex h-screen bg-gray-50" x-data="salesPage()"
@@ -693,7 +693,7 @@
     </a>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function salesPage() {
     return {
         loading: false,

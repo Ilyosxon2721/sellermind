@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 class AddSecurityHeaders
@@ -15,6 +16,12 @@ class AddSecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Генерируем CSP nonce до обработки запроса (для Blade шаблонов)
+        $nonce = $this->generateNonce();
+        app()->instance('csp-nonce', $nonce);
+        Vite::useCspNonce($nonce);
+        view()->share('cspNonce', $nonce);
+
         $response = $next($request);
 
         // Prevent clickjacking attacks
@@ -27,7 +34,7 @@ class AddSecurityHeaders
         $response->headers->set('X-XSS-Protection', '1; mode=block');
 
         // Strict Transport Security (HSTS) - Force HTTPS for 1 year
-        if ($request->secure() || env('APP_ENV') === 'production') {
+        if ($request->secure() || config('app.env') === 'production') {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
@@ -38,21 +45,32 @@ class AddSecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
         // Content Security Policy (CSP)
-        if (env('APP_ENV') === 'production') {
+        if (config('app.env') === 'production') {
             $csp = implode('; ', [
                 "default-src 'self'",
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net", // Allow inline scripts for Alpine.js and Chart.js
-                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net", // Allow inline styles for Tailwind and external fonts
+                // Alpine.js requires unsafe-eval for x-data expressions
+                "script-src 'self' 'nonce-{$nonce}' 'unsafe-eval' https://cdn.jsdelivr.net",
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
                 "img-src 'self' data: https:",
-                "font-src 'self' data: https://fonts.bunny.net", // Allow fonts from Bunny Fonts CDN
+                "font-src 'self' data: https://fonts.bunny.net",
                 "connect-src 'self' wss: ws: https:",
+                "object-src 'none'",
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 "form-action 'self'",
+                "upgrade-insecure-requests",
             ]);
             $response->headers->set('Content-Security-Policy', $csp);
         }
 
         return $response;
+    }
+
+    /**
+     * Генерация криптографически безопасного nonce
+     */
+    private function generateNonce(): string
+    {
+        return base64_encode(random_bytes(16));
     }
 }

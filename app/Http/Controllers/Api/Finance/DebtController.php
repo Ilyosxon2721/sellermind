@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\CorrectDebtRequest;
+use App\Http\Requests\Finance\PayDebtRequest;
+use App\Http\Requests\Finance\StoreDebtRequest;
+use App\Http\Requests\Finance\UpdateDebtRequest;
 use App\Models\Counterparty;
 use App\Models\Finance\Employee;
 use App\Models\Finance\FinanceDebt;
@@ -85,14 +89,14 @@ class DebtController extends Controller
         return $this->successResponse($debt);
     }
 
-    public function store(Request $request)
+    public function store(StoreDebtRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['company_id'] = $companyId;
         $data['created_by'] = Auth::id();
         $data['amount_outstanding'] = $data['original_amount'];
@@ -103,7 +107,7 @@ class DebtController extends Controller
         return $this->successResponse($debt->load(['counterparty', 'counterpartyEntity', 'employee']));
     }
 
-    public function update($id, Request $request)
+    public function update($id, UpdateDebtRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -116,23 +120,14 @@ class DebtController extends Controller
             return $this->errorResponse('Cannot edit paid or written off debt', 'invalid_state', null, 422);
         }
 
-        $data = $request->validate([
-            'description' => ['nullable', 'string', 'max:255'],
-            'reference' => ['nullable', 'string', 'max:64'],
-            'due_date' => ['nullable', 'date'],
-            'interest_rate' => ['nullable', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-            'purpose' => ['nullable', 'in:debt,prepayment,advance,loan,other'],
-            'counterparty_entity_id' => ['nullable', 'integer', 'exists:counterparties,id'],
-            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
-        ]);
+        $data = $request->validated();
 
         $debt->update($data);
 
         return $this->successResponse($debt->fresh(['counterparty', 'counterpartyEntity', 'employee']));
     }
 
-    public function addPayment($id, Request $request)
+    public function addPayment($id, PayDebtRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -145,14 +140,7 @@ class DebtController extends Controller
             return $this->errorResponse('Debt is already paid or written off', 'invalid_state', null, 422);
         }
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_date' => ['required', 'date'],
-            'payment_method' => ['nullable', 'in:cash,bank,card'],
-            'reference' => ['nullable', 'string', 'max:64'],
-            'notes' => ['nullable', 'string'],
-            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
-        ]);
+        $data = $request->validated();
 
         if ($data['amount'] > $debt->amount_outstanding) {
             return $this->errorResponse('Payment amount exceeds outstanding debt', 'validation_error', null, 422);
@@ -210,7 +198,7 @@ class DebtController extends Controller
      * Корректировка суммы и валюты долга
      * Доступна даже для частично оплаченных долгов
      */
-    public function updateAmountCurrency($id, Request $request)
+    public function updateAmountCurrency($id, CorrectDebtRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -228,11 +216,7 @@ class DebtController extends Controller
             return $this->errorResponse('Невозможно изменить списанный долг', 'invalid_state', null, 422);
         }
 
-        $data = $request->validate([
-            'original_amount' => ['required', 'numeric', 'min:0.01'],
-            'currency_code' => ['required', 'string', 'max:8'],
-            'correction_reason' => ['nullable', 'string', 'max:500'],
-        ]);
+        $data = $request->validated();
 
         // Новая сумма не может быть меньше уже оплаченной
         if ($data['original_amount'] < $debt->amount_paid) {
@@ -426,26 +410,6 @@ class DebtController extends Controller
                 'receivable' => $debts->where('type', 'receivable')->sum('amount_outstanding'),
                 'payable' => $debts->where('type', 'payable')->sum('amount_outstanding'),
             ],
-        ]);
-    }
-
-    protected function validateData(Request $request): array
-    {
-        return $request->validate([
-            'type' => ['required', 'in:receivable,payable'],
-            'purpose' => ['nullable', 'in:debt,prepayment,advance,loan,other'],
-            'counterparty_id' => ['nullable', 'integer'],
-            'counterparty_entity_id' => ['nullable', 'integer', 'exists:counterparties,id'],
-            'employee_id' => ['nullable', 'integer'],
-            'description' => ['required', 'string', 'max:255'],
-            'reference' => ['nullable', 'string', 'max:64'],
-            'original_amount' => ['required', 'numeric', 'min:0.01'],
-            'currency_code' => ['nullable', 'string', 'max:8'],
-            'debt_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'interest_rate' => ['nullable', 'numeric', 'min:0'],
-            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
-            'notes' => ['nullable', 'string'],
         ]);
     }
 }

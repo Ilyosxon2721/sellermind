@@ -7,16 +7,29 @@ namespace App\Services\Vpc;
 use App\Models\User;
 use App\Models\VpcSession;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Менеджер VPC-сессий.
+ *
+ * @deprecated Модуль VPC не реализован — все методы являются заглушками.
+ *             VM не запускается, endpoint фиктивный. Не использовать в продакшене.
+ */
 class VpcManager
 {
     /**
      * Создать VPC-сессию (БЕЗ реального запуска VM).
      * На этом этапе считаем, что реальная VM будет подниматься внешней системой.
+     *
+     * @deprecated Заглушка — реальная VM не создаётся
      */
     public function createSession(User $user, array $data = []): VpcSession
     {
+        Log::warning('VpcManager::createSession() вызван — модуль VPC не реализован, VM не запускается', [
+            'user_id' => $user->id,
+        ]);
+
         return VpcSession::create([
             'user_id' => $user->id,
             'company_id' => $data['company_id'] ?? null,
@@ -60,13 +73,15 @@ class VpcManager
 
     /**
      * Запустить сессию (симуляция для разработки).
-     * TODO: В продакшене здесь будет вызов внешней системы для запуска VM.
+     *
+     * @deprecated Заглушка — реальная VM не запускается. Endpoint фиктивный (ws://localhost:5900).
+     *             В продакшене требуется интеграция с внешней системой управления VM.
      */
     public function startSession(VpcSession $session): void
     {
-        // TODO: Отправить запрос во внешнюю систему на запуск VM
-        // $response = Http::post('vm-manager.local/api/start', [...]);
-        // $endpoint = $response['endpoint'];
+        Log::warning('VpcManager::startSession() вызван — VM не запускается, endpoint фиктивный', [
+            'session_id' => $session->id,
+        ]);
 
         // Для разработки - сразу помечаем как running с заглушкой endpoint
         $session->update([
@@ -101,12 +116,14 @@ class VpcManager
 
     /**
      * Остановить сессию (логически).
-     * Реальный stop VM будет делать внешняя система.
+     *
+     * @deprecated Заглушка — реальная VM не останавливается. Только обновляется статус в БД.
      */
     public function stopSession(VpcSession $session): void
     {
-        // TODO: Отправить внешней системе команду на остановку VM
-        // Http::post('vm-manager.local/api/stop', ['session_id' => $session->id]);
+        Log::warning('VpcManager::stopSession() вызван — VM не останавливается, только обновление статуса в БД', [
+            'session_id' => $session->id,
+        ]);
 
         $session->update([
             'status' => VpcSession::STATUS_STOPPED,

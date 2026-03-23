@@ -8,6 +8,7 @@ use App\Services\Agent\Tools\EchoTool;
 use App\Services\Agent\Tools\GetProductContextTool;
 use App\Services\Agent\Tools\MarketplaceLoginTool;
 use App\Services\Agent\Tools\VpcBrowserTool;
+use Illuminate\Support\Facades\Log;
 
 class ToolRegistry
 {
@@ -84,6 +85,11 @@ class ToolRegistry
         try {
             return $tool->handle($arguments);
         } catch (\Exception $e) {
+            Log::warning('Ошибка выполнения инструмента агента', [
+                'tool' => $name,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'error' => $e->getMessage(),

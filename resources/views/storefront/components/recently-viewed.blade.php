@@ -48,7 +48,7 @@
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function recentlyViewed() {
         const excludeId = {{ $excludeProductId ?? 'null' }};
         const storageKey = 'recently_viewed_{{ $store->slug }}';

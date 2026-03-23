@@ -1,6 +1,6 @@
 # SellerMind - Задачи (Аудит 2026-02-01)
 
-> Последнее обновление: 2026-02-01 (полный аудит проекта)
+> Последнее обновление: 2026-03-23 (добавлен модуль Uzum Analytics — 27 задач)
 > Исполнитель: Claude Code Autopilot
 
 ---
@@ -12,6 +12,22 @@
 ---
 
 ## 🟡 Очередь (Queue)
+
+### Критический приоритет 🔥
+
+#### 📊 Uzum Analytics Module (Новый модуль)
+
+- [ ] #060 **[SECURITY]** Юридическая консультация по использованию неофициального API Uzum
+  - **Проблема:** Модуль использует неофициальный API — может нарушать ToS Uzum
+  - **Риск:** Претензии или судебные иски от Uzum
+  - **Решение:** Получить юрконсультацию по законодательству РУз, подготовить disclaimer для клиентов
+  - **Блокирует:** Запуск модуля в продакшн
+
+- [ ] #061 **[SECURITY]** Выделенный IP/прокси для краулера Uzum
+  - **Проблема:** Краулер не должен работать с основного IP сервера
+  - **Риск:** Блокировка IP → недоступность всего SellerMind
+  - **Решение:** Настроить выделенный сервер или прокси-ротацию
+  - **Где:** Инфраструктура, Laravel Forge
 
 ### Критический приоритет 🔥
 
@@ -51,6 +67,15 @@
 - [x] #044 **[BUG]** Перевести 'STATUS' на 'Статус' в таблице долгов — ✅ 2026-02-01 (commit: c92484b)
 
 - [x] #045 **[STYLE]** Страница ошибки 500 - светлая тема вместо тёмной — ✅ 2026-02-01 (commit: 1bceae6)
+
+### Высокий приоритет ⚡
+
+#### 📊 Uzum Analytics - Этап 2: Краулер категорий (1 неделя)
+
+- [x] #068 **[FEATURE]** Job: RefreshTokenPoolJob — ✅ 2026-03-23
+- [x] #069 **[FEATURE]** Job: CrawlCategoryJob — ✅ 2026-03-23
+- [x] #070 **[FEATURE]** Repository: AnalyticsRepository — ✅ 2026-03-23
+- [x] #071 **[FEATURE]** Синхронизация дерева категорий Uzum — ✅ 2026-03-23
 
 ### Высокий приоритет ⚡
 
@@ -111,6 +136,55 @@
 - [x] #005 **[FEATURE]** Импорт товаров из Excel
   - **Где:** `POST /api/products/import`
   - **Решение:** Валидация + Drag & drop UI
+
+### Нормальный приоритет 📋
+
+#### 📊 Uzum Analytics - Этап 3: Мониторинг конкурентов (1-2 недели)
+
+- [x] #072 **[FEATURE]** Job: CrawlProductJob — ✅ 2026-03-23
+- [x] #073 **[FEATURE]** Сбор снепшотов цен 4 раза в сутки (Scheduler) — ✅ 2026-03-23
+- [x] #074 **[FEATURE]** История изменения цен, endpoint + Chart.js — ✅ 2026-03-23
+- [x] #075 **[FEATURE]** Алерты в Telegram при изменении цен — ✅ 2026-03-23
+- [x] #076 **[FEATURE]** GraphQL запросы, searchProducts() — ✅ 2026-03-23 (исправлены баги)
+
+#### 📊 Uzum Analytics - Этап 4: UI Дашборд (1 неделя)
+
+- [x] #077 **[FEATURE]** API эндпоинты для фронтенда — ✅ 2026-03-23
+- [x] #078 **[FEATURE]** UI дашборд Uzum Analytics (Alpine.js + Chart.js) — ✅ 2026-03-23
+  - Blade: `resources/views/pages/analytics/uzum.blade.php`
+  - Маршрут: GET /analytics/uzum
+  - Sidebar ссылка добавлена
+  - Табы: Обзор рынка, Отслеживаемые, Категории
+  - Chart.js линейный график истории цен
+  - Модальное окно добавления товара
+- [x] #079 **[FEATURE]** Графики Chart.js — ✅ 2026-03-23 (в рамках #078)
+- [x] #080 **[FEATURE]** Фильтры и таблицы — ✅ 2026-03-23 (в рамках #078)
+
+- [x] #081 **[FEATURE]** Экспорт аналитики в CSV — ✅ 2026-03-23
+  - GET /api/analytics/uzum/export?type=tracked|snapshots&days=N
+  - UTF-8 BOM, кнопка в дашборде
+
+#### 📊 Uzum Analytics - Дополнительно
+
+- [x] #082 **[TEST]** Тесты для UzumApiClient — ✅ 2026-03-23
+  - 7 тестов: 200 OK, retry 429/503, смена токена 401, Circuit Breaker, пустой ответ
+  - `tests/Unit/UzumAnalytics/UzumApiClientTest.php`
+
+- [x] #083 **[TEST]** Тесты для краулер Jobs — ✅ 2026-03-23
+  - CrawlProductJob: снепшот, пустой ответ, Telegram алерт, без companyId
+  - `tests/Feature/UzumAnalytics/CrawlProductJobTest.php`
+
+- [x] #084 **[FEATURE]** Мониторинг изменений структуры API Uzum — ✅ 2026-03-23
+  - `app/Console/Commands/Uzum/CheckApiStructureCommand.php`
+  - `php artisan uzum:check-api-structure`
+  - Scheduler: Daily at 09:00, алерт в Telegram при изменении полей
+
+- [x] #085 **[DOCS]** Документация модуля Uzum Analytics — ✅ 2026-03-23
+  - `docs/UZUM_ANALYTICS_GUIDE.md`
+
+- [x] #086 **[FEATURE]** Healthcheck и метрики краулера — ✅ 2026-03-23
+  - GET /api/analytics/uzum/health
+  - Метрики: токены, Circuit Breaker, последний снепшот, количество отслеживаемых
 
 ### Нормальный приоритет 📋
 
@@ -197,6 +271,33 @@
 
 <!-- Claude: перемести сюда задачу после успешного коммита -->
 
+### Март 2026
+
+#### 📊 Uzum Analytics - Этап 1: Фундамент
+
+- [x] #062 **[FEATURE]** Создать структуру модуля UzumAnalytics — ✅ 2026-03-23 (commit: 540b330)
+  - Создана структура директорий app/Modules/UzumAnalytics/
+  - Обновлён config/uzum-crawler.php с полной конфигурацией
+  - Создан UzumAnalyticsServiceProvider
+  - Зарегистрирован в bootstrap/providers.php
+  - Созданы routes/api.php с заглушками endpoints
+
+- [x] #063 **[FEATURE]** Миграции БД для Uzum Analytics — ✅ 2026-03-23 (commit: 0856bb4)
+  - Миграции: uzum_products_snapshots, uzum_categories, uzum_token_pool
+  - Модели: UzumProductSnapshot, UzumCategory, UzumToken
+
+- [x] #064 **[FEATURE]** TokenRefreshService — управление пулом токенов — ✅ 2026-03-23 (commit: 540b330)
+  - Round-robin ротация, автообновление за 2 мин до истечения
+
+- [x] #065 **[FEATURE]** UzumApiClient — HTTP клиент с retry и backoff — ✅ 2026-03-23 (commit: 540b330)
+  - Retry при 401/429/503, экспоненциальный backoff
+
+- [x] #066 **[FEATURE]** Rate Limiting механизм — ✅ 2026-03-23 (commit: 540b330)
+  - Redis rate limiter с jitter
+
+- [x] #067 **[FEATURE]** Circuit Breaker при ошибках — ✅ 2026-03-23 (commit: 540b330)
+  - 5 ошибок → пауза 1 час, Telegram алерты
+
 ### Февраль 2026
 
 - [x] #015 **[SECURITY]** IDOR в SalesManagementController — доступ к чужим продажам — ✅ 2026-02-01 (commit: 9021457)
@@ -223,35 +324,47 @@
 ## 📊 Статистика
 
 ```
-Всего задач:     44
+Всего задач:     71
 В работе:        0
-В очереди:       0
-Выполнено:       44 ✅
+В очереди:       2 (Uzum: #060 юрконсультация, #061 выделенный IP — блокируют продакшн)
+Выполнено:       69 ✅
 Заблокировано:   0
 ```
 
 ### По типам:
 
 ```
-[SECURITY]      4 задачи  🔥
+[SECURITY]      6 задач   🔥 (+2 Uzum)
 [BUG]           6 задач
-[FEATURE]       10 задач
+[FEATURE]       33 задачи (+23 Uzum)
 [REFACTOR]      5 задач
 [PERFORMANCE]   1 задача
-[TEST]          4 задачи
+[TEST]          6 задач   (+2 Uzum)
 [CLEANUP]       3 задачи
 [STYLE]         2 задачи
 [IMPROVE]       2 задачи
-[DOCS]          1 задача
+[DOCS]          2 задачи  (+1 Uzum)
 ```
 
 ### По приоритету:
 
 ```
-🔥 Критический:  5 задач (security + критические баги)
-⚡ Высокий:      11 задач (major bugs, stubs, features)
-📋 Нормальный:   12 задач (refactoring, tests, performance)
-📝 Низкий:       9 задач (cleanup, docs, style)
+🔥 Критический:  7 задач  (+2 Uzum: юрконсультация, выделенный IP)
+⚡ Высокий:      21 задача (+10 Uzum: фундамент + краулер)
+📋 Нормальный:   27 задач (+15 Uzum: мониторинг + UI + тесты)
+📝 Низкий:       9 задач
+```
+
+### 📊 Uzum Analytics Module (новый):
+
+```
+Всего задач:     27
+Этап 1 (Фундамент):           7 задач  (#062-#067, #068)
+Этап 2 (Краулер категорий):   3 задачи (#069-#071)
+Этап 3 (Мониторинг):          5 задач  (#072-#076)
+Этап 4 (UI Дашборд):          5 задач  (#077-#081)
+Дополнительно:                5 задач  (#082-#086)
+Безопасность:                 2 задачи (#060-#061)
 ```
 
 ---

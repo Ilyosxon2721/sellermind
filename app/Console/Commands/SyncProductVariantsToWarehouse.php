@@ -9,6 +9,7 @@ use App\Models\Warehouse\Unit;
 use App\Models\Warehouse\Warehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SyncProductVariantsToWarehouse extends Command
 {
@@ -150,6 +151,10 @@ class SyncProductVariantsToWarehouse extends Command
             DB::rollBack();
             $this->error('❌ Ошибка: '.$e->getMessage());
             $this->error($e->getTraceAsString());
+            Log::error('Ошибка синхронизации ProductVariants в склад', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
 
             return 1;
         }
@@ -198,7 +203,7 @@ class SyncProductVariantsToWarehouse extends Command
 
             $currency = $variant->purchase_price_currency ?? 'UZS';
             $price = $variant->purchase_price ?? 0;
-            $costInfo = $price > 0 ? ", закупка: {$price} {$currency}/шт (= " . number_format($purchasePriceBase, 0) . " UZS)" : '';
+            $costInfo = $price > 0 ? ", закупка: {$price} {$currency}/шт (= ".number_format($purchasePriceBase, 0).' UZS)' : '';
             $this->line("      ↳ Добавлен остаток {$variant->stock_default} на склад '{$defaultWarehouse->name}'{$costInfo}");
         }
     }

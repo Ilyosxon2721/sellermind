@@ -294,7 +294,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function minimalCheckoutPage() {
         return {
             loading: true,

@@ -6,9 +6,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
+use App\Http\Requests\Marketplace\BulkLinkMarketplaceProductRequest;
+use App\Http\Requests\Marketplace\IndexMarketplaceProductRequest;
+use App\Http\Requests\Marketplace\MarketplaceAccountFilterRequest;
+use App\Http\Requests\Marketplace\SearchMarketplaceProductRequest;
+use App\Http\Requests\Marketplace\StoreMarketplaceProductRequest;
+use App\Http\Requests\Marketplace\UpdateMarketplaceProductRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\Product;
+use App\Services\AIService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,14 +23,9 @@ class MarketplaceProductController extends Controller
 {
     use HasPaginatedResponse;
 
-    public function index(Request $request): JsonResponse
+    public function index(IndexMarketplaceProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-            'status' => ['nullable', 'string'],
-        ]);
-
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -65,16 +67,12 @@ class MarketplaceProductController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreMarketplaceProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-            'product_id' => ['required', 'exists:products,id'],
-            'external_sku' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
-        $product = Product::findOrFail($request->product_id);
+        $account = MarketplaceAccount::findOrFail($validated['marketplace_account_id']);
+        $product = Product::findOrFail($validated['product_id']);
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -96,7 +94,7 @@ class MarketplaceProductController extends Controller
         $mpProduct = MarketplaceProduct::create([
             'marketplace_account_id' => $account->id,
             'product_id' => $product->id,
-            'external_sku' => $request->external_sku ?? $product->sku,
+            'external_sku' => $validated['external_sku'] ?? $product->sku,
             'status' => MarketplaceProduct::STATUS_PENDING,
         ]);
 
@@ -106,7 +104,7 @@ class MarketplaceProductController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, MarketplaceProduct $marketplaceProduct): JsonResponse
+    public function update(UpdateMarketplaceProductRequest $request, MarketplaceProduct $marketplaceProduct): JsonResponse
     {
         $account = $marketplaceProduct->account;
 
@@ -114,36 +112,16 @@ class MarketplaceProductController extends Controller
             return response()->json(['message' => 'Доступ запрещён.'], 403);
         }
 
-        // Нормализуем пустые значения, чтобы валидация не падала на пустых строках
-        foreach (['product_id', 'external_product_id', 'external_offer_id', 'external_sku'] as $field) {
-            if ($request->has($field) && $request->input($field) === '') {
-                $request->merge([$field => null]);
-            }
-        }
+        $validated = $request->validated();
 
-        // Приводим числовые внешние идентификаторы к строке, чтобы не срабатывать правило string
-        foreach (['external_product_id', 'external_offer_id', 'external_sku'] as $field) {
-            if ($request->has($field) && is_numeric($request->input($field))) {
-                $request->merge([$field => (string) $request->input($field)]);
-            }
-        }
-
-        $request->validate([
-            'external_sku' => ['nullable', 'string', 'max:255'],
-            'external_offer_id' => ['nullable', 'string', 'max:255'],
-            'external_product_id' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'string', 'in:pending,active,paused,failed'],
-            'product_id' => ['nullable', 'integer', 'exists:products,id'],
-        ]);
-
-        if ($request->filled('product_id')) {
-            $product = Product::find($request->product_id);
+        if (! empty($validated['product_id'])) {
+            $product = Product::find($validated['product_id']);
             if (! $product || $product->company_id !== $account->company_id) {
                 return response()->json(['message' => 'Товар не принадлежит компании'], 400);
             }
         }
 
-        $payload = $request->only(['external_sku', 'external_offer_id', 'external_product_id', 'status', 'product_id']);
+        $payload = $validated;
 
         // Нормализуем пустые значения
         foreach (['external_sku', 'external_offer_id', 'external_product_id'] as $field) {
@@ -189,15 +167,11 @@ class MarketplaceProductController extends Controller
         ]);
     }
 
-    public function bulkLink(Request $request): JsonResponse
+    public function bulkLink(BulkLinkMarketplaceProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-            'product_ids' => ['required', 'array'],
-            'product_ids.*' => ['exists:products,id'],
-        ]);
+        $validated = $request->validated();
 
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+        $account = MarketplaceAccount::findOrFail($validated['marketplace_account_id']);
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -206,7 +180,7 @@ class MarketplaceProductController extends Controller
         $created = 0;
         $skipped = 0;
 
-        foreach ($request->product_ids as $productId) {
+        foreach ($validated['product_ids'] as $productId) {
             $product = Product::find($productId);
 
             if (! $product || $product->company_id !== $account->company_id) {
@@ -242,13 +216,9 @@ class MarketplaceProductController extends Controller
         ]);
     }
 
-    public function unlinkedProducts(Request $request): JsonResponse
+    public function unlinkedProducts(MarketplaceAccountFilterRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-        ]);
-
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -276,13 +246,9 @@ class MarketplaceProductController extends Controller
     /**
      * Get all local products for this company with info if already linked
      */
-    public function availableProducts(Request $request): JsonResponse
+    public function availableProducts(MarketplaceAccountFilterRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-        ]);
-
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);
@@ -312,17 +278,90 @@ class MarketplaceProductController extends Controller
         ]);
     }
 
+    public function seoOptimize(Request $request, MarketplaceProduct $marketplaceProduct): JsonResponse
+    {
+        $account = $marketplaceProduct->account;
+
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $request->validate([
+            'language' => ['nullable', 'string', 'in:ru,uz'],
+        ]);
+
+        $language = $request->input('language', 'ru');
+        $raw = $marketplaceProduct->raw_payload ?? [];
+
+        $marketplace = $account->marketplace ?? 'unknown';
+
+        $context = array_filter([
+            'title'           => $marketplaceProduct->title,
+            'category'        => $marketplaceProduct->category,
+            'brand'           => $raw['brand'] ?? $raw['brandName'] ?? null,
+            'vendor_code'     => $raw['vendorCode'] ?? $raw['vendor_code'] ?? $raw['offer_id'] ?? null,
+            'description'     => $raw['description'] ?? null,
+            'characteristics' => $raw['characteristics'] ?? $raw['attributes'] ?? null,
+        ]);
+
+        try {
+            $result = app(AIService::class)->generateProductTexts(
+                $context,
+                $marketplace,
+                $language,
+                $account->company_id,
+                $request->user()->id
+            );
+
+            return response()->json(['result' => $result]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Ошибка AI: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Прогноз остатков: сколько дней хватит FBS-склада при текущем темпе продаж
+     */
+    public function stockForecast(MarketplaceAccountFilterRequest $request): JsonResponse
+    {
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
+
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $products = MarketplaceProduct::where('marketplace_account_id', $account->id)
+            ->select(['id', 'stock_fbs', 'quantity_sold'])
+            ->get();
+
+        $forecast = [];
+        foreach ($products as $p) {
+            $stock = (int) ($p->stock_fbs ?? 0);
+            $sold  = (float) ($p->quantity_sold ?? 0);
+
+            // Среднедневные продажи за последние 30 дней
+            $dailyRate = $sold / 30;
+
+            if ($dailyRate <= 0) {
+                $daysLeft = $stock > 0 ? 9999 : 0;
+            } else {
+                $daysLeft = (int) round($stock / $dailyRate);
+            }
+
+            $forecast[$p->id] = $daysLeft;
+        }
+
+        return response()->json(['forecast' => $forecast]);
+    }
+
     /**
      * Search local products with fuzzy matching (1+ characters)
      */
-    public function searchProducts(Request $request): JsonResponse
+    public function searchProducts(SearchMarketplaceProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
-            'query' => ['required', 'string', 'min:1', 'max:255'],
-        ]);
-
-        $account = MarketplaceAccount::findOrFail($request->marketplace_account_id);
+        $account = MarketplaceAccount::findOrFail($request->validated('marketplace_account_id'));
 
         if (! $request->user()->hasCompanyAccess($account->company_id)) {
             return response()->json(['message' => 'Доступ запрещён.'], 403);

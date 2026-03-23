@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finance\CreateFinanceCategoryRequest;
+use App\Http\Requests\Finance\UpdateFinanceSettingsRequest;
 use App\Models\AP\SupplierInvoice;
 use App\Models\Company;
 use App\Models\Finance\FinanceCategory;
@@ -917,6 +919,8 @@ class FinanceController extends Controller
                 'accounts' => $accountsData,
             ];
         } catch (\Exception $e) {
+            Log::error('Ошибка получения баланса денежных счетов', ['company_id' => $companyId, 'error' => $e->getMessage()]);
+
             return ['total' => 0, 'accounts' => []];
         }
     }
@@ -967,18 +971,14 @@ class FinanceController extends Controller
         return $this->successResponse($query->get());
     }
 
-    public function storeCategory(Request $request)
+    public function storeCategory(CreateFinanceCategoryRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:income,expense,both'],
-            'parent_id' => ['nullable', 'integer', 'exists:finance_categories,id'],
-        ]);
+        $data = $request->validated();
 
         // Check if category with same name exists for this company
         $existing = FinanceCategory::where('company_id', $companyId)
@@ -1016,24 +1016,14 @@ class FinanceController extends Controller
         return $this->successResponse($settings);
     }
 
-    public function updateSettings(Request $request)
+    public function updateSettings(UpdateFinanceSettingsRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'base_currency_code' => ['nullable', 'string', 'max:8'],
-            'usd_rate' => ['nullable', 'numeric', 'min:0'],
-            'rub_rate' => ['nullable', 'numeric', 'min:0'],
-            'eur_rate' => ['nullable', 'numeric', 'min:0'],
-            'tax_system' => ['nullable', 'in:simplified,general,both'],
-            'vat_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'income_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'social_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'auto_import_marketplace_fees' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validated();
 
         $settings = FinanceSettings::getForCompany($companyId);
 
@@ -1372,6 +1362,7 @@ class FinanceController extends Controller
                 $ozonTotalExpenses['other'] += $expenses['other'] ?? 0;
                 $ozonTotalExpenses['total'] += $expenses['total'] ?? 0;
             } catch (\Exception $e) {
+                Log::error('Ошибка получения расходов Ozon', ['account_id' => $account->id, 'error' => $e->getMessage()]);
                 if (! isset($result['ozon']['error'])) {
                     $result['ozon'] = ['error' => $e->getMessage()];
                 }
@@ -1466,11 +1457,11 @@ class FinanceController extends Controller
                                 ->whereDate('date_issued', '<=', $to);
                         })
                         // Заказы без date_issued — фильтруем по order_date
-                        ->orWhere(function ($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->whereNull('date_issued')
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
                     });
 
                 // Все заказы
@@ -1520,11 +1511,11 @@ class FinanceController extends Controller
                                 ->whereDate('date_issued', '>=', $from)
                                 ->whereDate('date_issued', '<=', $to);
                         })
-                        ->orWhere(function ($sub) use ($from, $to) {
-                            $sub->whereNull('date_issued')
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->whereNull('date_issued')
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
                     })
                     ->pluck('order_number')
                     ->filter()
@@ -1602,11 +1593,11 @@ class FinanceController extends Controller
                                 ->whereDate('last_change_date', '<=', $to);
                         })
                         // В транзите/отмены → order_date
-                        ->orWhere(function ($sub) use ($from, $to) {
-                            $sub->where('is_realization', false)
-                                ->whereDate('order_date', '>=', $from)
-                                ->whereDate('order_date', '<=', $to);
-                        });
+                            ->orWhere(function ($sub) use ($from, $to) {
+                                $sub->where('is_realization', false)
+                                    ->whereDate('order_date', '>=', $from)
+                                    ->whereDate('order_date', '<=', $to);
+                            });
                     })
                     ->selectRaw("COUNT(*) as cnt, SUM({$amountExpr}) as amount")
                     ->first();
@@ -1669,6 +1660,7 @@ class FinanceController extends Controller
                 $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
             }
         } catch (\Exception $e) {
+            Log::error('Ошибка получения доходов WB', ['company_id' => $companyId, 'error' => $e->getMessage()]);
             $marketplaces['wb'] = ['error' => $e->getMessage()];
         }
 
@@ -1733,6 +1725,7 @@ class FinanceController extends Controller
                 $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
             }
         } catch (\Exception $e) {
+            Log::error('Ошибка получения доходов Ozon', ['company_id' => $companyId, 'error' => $e->getMessage()]);
             $marketplaces['ozon'] = ['error' => $e->getMessage()];
         }
 
@@ -1797,6 +1790,7 @@ class FinanceController extends Controller
                 $totals['cancelled']['amount'] += $cancelledAmountRub * $rubToUzs;
             }
         } catch (\Exception $e) {
+            Log::error('Ошибка получения доходов Yandex Market', ['company_id' => $companyId, 'error' => $e->getMessage()]);
             $marketplaces['yandex'] = ['error' => $e->getMessage()];
         }
 
@@ -1872,6 +1866,7 @@ class FinanceController extends Controller
                 $totals['cancelled']['amount'] += $cancelledAmount;
             }
         } catch (\Exception $e) {
+            Log::error('Ошибка получения данных ручных продаж', ['company_id' => $companyId, 'error' => $e->getMessage()]);
             $marketplaces['offline'] = ['error' => $e->getMessage()];
         }
 
@@ -1940,6 +1935,7 @@ class FinanceController extends Controller
                     'summary' => $summary,
                 ];
             } catch (\Exception $e) {
+                Log::error('Ошибка синхронизации расходов Uzum', ['account_id' => $account->id, 'error' => $e->getMessage()]);
                 $results[] = [
                     'account_id' => $account->id,
                     'account_name' => $account->name,

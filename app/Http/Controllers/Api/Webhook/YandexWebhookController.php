@@ -34,9 +34,9 @@ final class YandexWebhookController extends Controller
         $payload = $request->all();
         if (($payload['notificationType'] ?? $payload['type'] ?? null) === 'PING') {
             return response()->json([
-                'name'    => 'SellerMind',
+                'name' => 'SellerMind',
                 'version' => '1.0.0',
-                'time'    => $payload['time'] ?? now()->toISOString(),
+                'time' => $payload['time'] ?? now()->toISOString(),
             ], 200);
         }
 
@@ -49,33 +49,33 @@ final class YandexWebhookController extends Controller
             return response()->json(['status' => 'not_found'], 404);
         }
 
-        $payload   = $request->all();
+        $payload = $request->all();
         $eventType = $payload['type'] ?? 'unknown';
-        $orderId   = (string) ($payload['order']['id'] ?? $payload['return']['id'] ?? 'unknown');
+        $orderId = (string) ($payload['order']['id'] ?? $payload['return']['id'] ?? 'unknown');
         $updatedAt = $payload['updatedAt'] ?? $payload['createdAt'] ?? now()->toISOString();
 
-        $externalId = md5($eventType . $orderId . $updatedAt);
+        $externalId = md5($eventType.$orderId.$updatedAt);
 
         if ($this->dedup->isDuplicate(MarketplaceType::YANDEX, $externalId)) {
             return response()->json(['status' => 'ok'], 200);
         }
 
         $internalType = match ($eventType) {
-            'ORDER_CREATED'               => EventType::ORDER_CREATED,
-            'ORDER_STATUS_UPDATED'        => EventType::ORDER_STATUS_CHANGED,
-            'ORDER_CANCELLED'             => EventType::ORDER_CANCELLED,
-            'ORDER_UPDATED'               => EventType::ORDER_UPDATED,
-            'ORDER_RETURN_CREATED'        => EventType::RETURN_CREATED,
+            'ORDER_CREATED' => EventType::ORDER_CREATED,
+            'ORDER_STATUS_UPDATED' => EventType::ORDER_STATUS_CHANGED,
+            'ORDER_CANCELLED' => EventType::ORDER_CANCELLED,
+            'ORDER_UPDATED' => EventType::ORDER_UPDATED,
+            'ORDER_RETURN_CREATED' => EventType::RETURN_CREATED,
             'ORDER_RETURN_STATUS_UPDATED' => EventType::RETURN_STATUS_CHANGED,
-            'ORDER_CANCELLATION_REQUEST'  => EventType::ORDER_CANCELLED,
-            'CHAT_MESSAGE_CREATED'        => EventType::CHAT_MESSAGE_CREATED,
-            default                       => EventType::ORDER_UPDATED,
+            'ORDER_CANCELLATION_REQUEST' => EventType::ORDER_CANCELLED,
+            'CHAT_MESSAGE_CREATED' => EventType::CHAT_MESSAGE_CREATED,
+            default => EventType::ORDER_UPDATED,
         };
 
         $entityType = match (true) {
             str_contains($eventType, 'RETURN') => EntityType::RETURN,
-            str_contains($eventType, 'CHAT')   => EntityType::CHAT,
-            default                            => EntityType::ORDER,
+            str_contains($eventType, 'CHAT') => EntityType::CHAT,
+            default => EntityType::ORDER,
         };
 
         $data = new MarketplaceEventData(

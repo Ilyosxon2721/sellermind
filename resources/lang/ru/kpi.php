@@ -20,6 +20,7 @@ return [
         'revenue' => 'Оборот',
         'calculate' => 'Рассчитать KPI',
         'calculating' => 'Расчёт...',
+        'chart_title' => 'Динамика выполнения KPI',
     ],
 
     // Планы

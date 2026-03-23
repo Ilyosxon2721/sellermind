@@ -86,7 +86,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function lightboxViewer() {
         return {
             visible: false,

@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ClientApiController extends Controller
 {
@@ -183,6 +184,11 @@ class ClientApiController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Ошибка создания товара клиента', [
+                'company_id' => $company->id,
+                'product_name' => $validated['name'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,

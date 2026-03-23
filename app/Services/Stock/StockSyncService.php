@@ -9,6 +9,7 @@ use App\Models\VariantMarketplaceLink;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
+use App\Services\Uzum\Api\UzumApiManager;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -236,7 +237,7 @@ class StockSyncService
     }
 
     /**
-     * Синхронизация остатков в Uzum
+     * Синхронизация остатков в Uzum через новый UzumApiManager (StockPlugin)
      */
     protected function syncToUzum(MarketplaceAccount $account, VariantMarketplaceLink $link, int $stock): array
     {
@@ -246,31 +247,161 @@ class StockSyncService
             throw new \RuntimeException('Не найден связанный MarketplaceProduct для Uzum');
         }
 
-        // For Uzum, we need both the product ID and the SKU ID for SKU-level stock updates
-        $productId = $mpProduct->external_product_id;
         $skuId = $link->external_sku_id;
 
-        if (! $productId) {
-            throw new \RuntimeException('Не указан external_product_id для товара Uzum');
-        }
-
-        // Если external_sku_id не указан, пробуем найти его из skuList
         if (! $skuId) {
             $skuId = $this->findUzumSkuId($link, $mpProduct);
         }
 
         if (! $skuId) {
-            throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Невозможно синхронизировать остаток на уровне SKU.');
+            throw new \RuntimeException('Не указан external_sku_id для SKU Uzum. Перепривяжите товар.');
         }
 
-        Log::info('Uzum stock sync', [
-            'link_id' => $link->id,
+        $uzum = new UzumApiManager($account);
+
+        // Ищем barcode, skuTitle и fbsLinked/dbsLinked из raw_payload
+        $barcode = null;
+        $skuTitle = null;
+        $fbsLinked = true;
+        $dbsLinked = true;
+        foreach ($mpProduct->raw_payload['skuList'] ?? [] as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                $skuTitle = $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null;
+                break;
+            }
+        }
+
+        // GET текущих остатков от Uzum — получаем fbsAllowed/dbsAllowed и проверяем регистрацию SKU
+        $skuFoundInApi = false;
+        try {
+            $currentStocks = $uzum->stocks()->get();
+            $skuListFromApi = $currentStocks['skuAmountList']
+                ?? $currentStocks['payload']['skuAmountList']
+                ?? [];
+            if (is_array($skuListFromApi)) {
+                foreach ($skuListFromApi as $sku) {
+                    if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                        $skuFoundInApi = true;
+                        $barcode = $barcode ?? (isset($sku['barcode']) ? (string) $sku['barcode'] : null);
+                        $skuTitle = $skuTitle ?? ($sku['skuTitle'] ?? null);
+                        // fbsAllowed/dbsAllowed — что разрешено для товара (FBS или DBS)
+                        // Используем Allowed, а не Linked: Linked может быть false даже если Allowed=true
+                        $fbsAllowed = isset($sku['fbsAllowed']) ? (bool) $sku['fbsAllowed'] : null;
+                        $dbsAllowed = isset($sku['dbsAllowed']) ? (bool) $sku['dbsAllowed'] : null;
+                        if ($fbsAllowed !== null || $dbsAllowed !== null) {
+                            $fbsLinked = $fbsAllowed ?? true;
+                            $dbsLinked = $dbsAllowed ?? true;
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
+        }
+
+        // SKU не найден в FBS/DBS системе — синхронизация невозможна
+        if (! $skuFoundInApi) {
+            throw new \RuntimeException(
+                "SKU {$skuId} не подключён к FBS/DBS в Uzum. " .
+                "Активируйте схему продаж для этого товара в кабинете Uzum."
+            );
+        }
+
+        if (! $barcode) {
+            throw new \RuntimeException("Не найден barcode для SKU {$skuId}. Обновите данные товара из маркетплейса.");
+        }
+
+        $productTitle = $mpProduct->title ?? '';
+        $skuTitle = $skuTitle ?? $productTitle;
+
+        $result = $uzum->stocks()->updateOne((int) $skuId, $stock, $barcode, $skuTitle, $productTitle, $fbsLinked, $dbsLinked);
+        $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
+
+        if ($updatedRecords === 0) {
+            throw new \RuntimeException(
+                "Uzum не обновил остаток для SKU {$skuId} (updatedRecords=0). " .
+                "Проверьте статус товара в кабинете Uzum — возможно он заблокирован или архивирован."
+            );
+        }
+
+        return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
+    }
+
+    /**
+     * Обновить остаток через продуктовый API Uzum (PUT /v1/product/{productId})
+     * Используется когда SKU не зарегистрирован в FBS/DBS системе.
+     * Обновляет quantityFbs в skuList продукта.
+     */
+    protected function syncToUzumViaProductUpdate(
+        UzumApiManager $uzum,
+        $mpProduct,
+        string $skuId,
+        int $stock,
+    ): array {
+        $productId = $mpProduct->external_product_id;
+        $rawPayload = $mpProduct->raw_payload ?? [];
+        $skuList = $rawPayload['skuList'] ?? [];
+
+        if (empty($skuList)) {
+            throw new \RuntimeException("Нет данных skuList в raw_payload для продукта {$productId}. Обновите каталог из Uzum.");
+        }
+
+        // Обновляем quantityFbs для нужного SKU
+        $found = false;
+        foreach ($skuList as &$sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === $skuId) {
+                $sku['quantityFbs'] = $stock;
+                $found = true;
+                break;
+            }
+        }
+        unset($sku);
+
+        if (! $found) {
+            throw new \RuntimeException("SKU {$skuId} не найден в данных продукта {$productId}.");
+        }
+
+        // Строим минимальный payload для PUT /v1/product/{productId}
+        $payload = [
+            'shopId' => (int) ($mpProduct->shop_id ?? 0),
+            'title' => $rawPayload['title'] ?? $mpProduct->title ?? '',
+            'description' => $rawPayload['description'] ?? '',
+            'brand' => $rawPayload['brand'] ?? '',
+            'vendorCode' => $rawPayload['vendorCode'] ?? $rawPayload['sellerItemCode'] ?? '',
+            'categoryId' => (int) ($rawPayload['categoryId'] ?? $rawPayload['category']['id'] ?? 0),
+            'skuList' => array_map(fn ($s) => [
+                'skuId' => $s['skuId'] ?? null,
+                'skuTitle' => $s['skuTitle'] ?? '',
+                'article' => $s['article'] ?? $s['sellerItemCode'] ?? '',
+                'barcode' => $s['barcode'] ?? '',
+                'price' => (int) ($s['price'] ?? $s['marketPrice'] ?? 0),
+                'quantityFbs' => (int) ($s['quantityFbs'] ?? 0),
+                'characteristics' => $s['characteristics'] ?? $s['characteristicsList'] ?? [],
+            ], $skuList),
+        ];
+
+        Log::error('DEBUG Uzum syncToUzumViaProductUpdate', [
             'product_id' => $productId,
             'sku_id' => $skuId,
             'stock' => $stock,
+            'payload_preview' => ['shopId' => $payload['shopId'], 'title' => $payload['title'], 'sku_count' => count($payload['skuList'])],
         ]);
 
-        return $this->uzumClient->updateStock($account, $productId, $skuId, $stock);
+        $result = $uzum->api()->call(
+            \App\Services\Uzum\Api\UzumEndpoints::PRODUCT_UPDATE,
+            params: ['productId' => $productId],
+            body: $payload,
+        );
+
+        Log::error('DEBUG Uzum productUpdate response', [
+            'product_id' => $productId,
+            'sku_id' => $skuId,
+            'response' => $result,
+        ]);
+
+        return ['success' => true, 'method' => 'product_update', 'sku_id' => $skuId, 'stock' => $stock, 'response' => $result];
     }
 
     /**

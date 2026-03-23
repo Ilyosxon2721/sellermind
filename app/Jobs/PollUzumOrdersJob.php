@@ -82,6 +82,7 @@ final class PollUzumOrdersJob implements ShouldQueue
                 $headers = $account->getUzumAuthHeaders();
                 if (empty($headers)) {
                     Log::warning("Uzum polling: no auth token for store {$state->store_id}");
+
                     continue;
                 }
 
@@ -174,7 +175,7 @@ final class PollUzumOrdersJob implements ShouldQueue
         }
 
         $state->update([
-            'last_poll_at'       => now(),
+            'last_poll_at' => now(),
             'consecutive_errors' => 0,
         ]);
 

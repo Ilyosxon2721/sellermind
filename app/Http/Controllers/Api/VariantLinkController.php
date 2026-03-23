@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LinkVariantRequest;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceProduct;
 use App\Models\ProductVariant;
@@ -24,17 +25,11 @@ class VariantLinkController extends Controller
     /**
      * Привязать вариант товара к карточке на маркетплейсе
      */
-    public function linkVariant(Request $request, MarketplaceAccount $account, int $marketplaceProductId): JsonResponse
+    public function linkVariant(LinkVariantRequest $request, MarketplaceAccount $account, int $marketplaceProductId): JsonResponse
     {
         $this->authorizeAccount($request, $account);
 
-        $validated = $request->validate([
-            'product_variant_id' => 'required|integer|exists:product_variants,id',
-            'external_sku_id' => 'nullable|string', // For Uzum SKU-level linking
-            'marketplace_barcode' => 'nullable|string', // Баркод товара на маркетплейсе (может отличаться от внутреннего)
-            'sync_stock_enabled' => 'boolean',
-            'sync_price_enabled' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $variant = ProductVariant::where('company_id', $account->company_id)
             ->findOrFail($validated['product_variant_id']);
@@ -221,35 +216,46 @@ class VariantLinkController extends Controller
     {
         $this->authorizeAccount($request, $account);
 
-        $link = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
-            ->where('marketplace_account_id', $account->id) // Prevent ID collision with other marketplaces
+        // Загружаем ВСЕ активные связи для продукта (Uzum может иметь несколько SKU)
+        $links = VariantMarketplaceLink::where('marketplace_product_id', $marketplaceProductId)
+            ->where('marketplace_account_id', $account->id)
             ->where('is_active', true)
             ->where('sync_stock_enabled', true)
-            ->with('variant')
-            ->first();
+            ->with(['variant', 'marketplaceProduct', 'account'])
+            ->get();
 
-        if (! $link) {
+        if ($links->isEmpty()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Нет активной связи для синхронизации',
             ], 404);
         }
 
-        try {
-            $result = $this->stockSyncService->syncLinkStock($link);
+        $synced = 0;
+        $errors = [];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Остаток синхронизирован',
-                'stock' => $link->getCurrentStock(),
-                'result' => $result,
-            ]);
-        } catch (\Exception $e) {
+        foreach ($links as $link) {
+            try {
+                $this->stockSyncService->syncLinkStock($link);
+                $synced++;
+            } catch (\Exception $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        if ($synced === 0) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => implode('; ', $errors),
             ], 400);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Синхронизировано: {$synced} из {$links->count()}",
+            'synced' => $synced,
+            'errors' => $errors,
+        ]);
     }
 
     /**

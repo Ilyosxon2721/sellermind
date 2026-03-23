@@ -106,7 +106,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function companyPromptModal() {
     return {
         form: {

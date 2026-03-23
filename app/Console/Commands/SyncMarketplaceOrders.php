@@ -6,6 +6,7 @@ use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SyncMarketplaceOrders extends Command
 {
@@ -83,6 +84,11 @@ class SyncMarketplaceOrders extends Command
 
             } catch (\Exception $e) {
                 $this->error("   ✗ Error: {$e->getMessage()}");
+                Log::error('Ошибка синхронизации заказов маркетплейса', [
+                    'account_id' => $account->id,
+                    'marketplace' => $account->marketplace,
+                    'error' => $e->getMessage(),
+                ]);
                 $errorCount++;
             }
 

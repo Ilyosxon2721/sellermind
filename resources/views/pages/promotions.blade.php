@@ -145,7 +145,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function promotionsPage() {
     return {
         promotions: [],

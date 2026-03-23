@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SyncWildberriesWarehouses extends Command
 {
@@ -81,6 +82,10 @@ class SyncWildberriesWarehouses extends Command
 
             } catch (\Exception $e) {
                 $this->error('   ❌ Failed: '.$e->getMessage());
+                Log::error('Ошибка синхронизации складов WB', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $totalErrors++;
             }
 

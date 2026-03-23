@@ -659,7 +659,7 @@ $__uzumShopsJson = ($uzumShops ?? collect())
     ->values();
 @endphp
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumOrdersPage() {
     return {
         orders: [],
@@ -748,8 +748,18 @@ function uzumOrdersPage() {
                     return scheme === 'DBS' || scheme === 'EDBS';
                 });
             } else if (this.orderMode === 'fbo') {
-                // FBO mode: show orders from Finance API that are FBO type
-                result = (this.fboOrders || []).filter(o => (o.delivery_type || o.deliveryType || '').toUpperCase() === 'FBO');
+                // FBO orders из таблицы uzum_orders (scheme=FBO от Uzum FBS API)
+                const fromTable = (this.orders || []).filter(o => {
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || '').toUpperCase();
+                    return scheme === 'FBO';
+                });
+                // FBO orders из Finance API (не найдены в uzum_orders)
+                const fromFinance = (this.fboOrders || []).filter(o =>
+                    (o.delivery_type || o.deliveryType || '').toUpperCase() === 'FBO'
+                );
+                // Объединяем, убирая дубликаты по external_order_id
+                const seenFboIds = new Set(fromTable.map(o => String(o.external_order_id)));
+                result = [...fromTable, ...fromFinance.filter(o => !seenFboIds.has(String(o.external_order_id)))];
             }
 
             if (!Array.isArray(result)) result = [];
@@ -913,6 +923,12 @@ function uzumOrdersPage() {
                 return scheme.toUpperCase() === 'EDBS';
             });
 
+            // FBO orders from uzum_orders table
+            const fboFromTable = orders.filter(o => {
+                const scheme = o.deliveryType || o.scheme || o.raw_payload?.scheme || '';
+                return scheme.toUpperCase() === 'FBO';
+            });
+
             // Store scheme-based stats
             this.schemeStats = {
                 fbs_count: fbsOrders.length,
@@ -922,6 +938,15 @@ function uzumOrdersPage() {
                 dbs_only_count: dbsOrders.length,
                 edbs_count: edbsOrders.length,
             };
+
+            // Обновить fboStats из таблицы (Finance API перезапишет их при загрузке)
+            if (fboFromTable.length > 0) {
+                this.fboStats = {
+                    ...this.fboStats,
+                    fbo_count: fboFromTable.length,
+                    fbo_amount: fboFromTable.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0),
+                };
+            }
         },
 
         async loadFboOrders() {
@@ -1082,15 +1107,9 @@ function uzumOrdersPage() {
                 });
 
                 if (res.ok) {
-                    const data = await res.json();
-                    if (data.order) {
-                        const idx = this.orders.findIndex(o => o.id === order.id);
-                        if (idx !== -1) {
-                            this.orders[idx] = data.order;
-                        }
-                    }
                     this.showMessage('Заказ подтверждён и переведён в сборку', 'success');
-                    await this.loadStats();
+                    // Перезагружаем список и статистику — заказ уходит из текущей вкладки
+                    await Promise.all([this.loadOrders(), this.loadStats()]);
                 } else {
                     const err = await res.json();
                     this.showMessage(err.message || 'Ошибка подтверждения', 'error');
@@ -1366,7 +1385,17 @@ function uzumOrdersPage() {
 
         getStatusCount(status) {
             if (this.orderMode === 'fbo') {
-                const fboOnlyOrders = (this.fboOrders || []).filter(o => o.deliveryType === 'FBO');
+                // Объединяем FBO из таблицы и Finance API (аналогично filteredOrders)
+                const fromTable = (this.orders || []).filter(o => {
+                    const scheme = (o.delivery_type || o.deliveryType || o.scheme || o.raw_payload?.scheme || '').toUpperCase();
+                    return scheme === 'FBO';
+                });
+                const fromFinance = (this.fboOrders || []).filter(o =>
+                    (o.delivery_type || o.deliveryType || '').toUpperCase() === 'FBO'
+                );
+                const seenFboIds = new Set(fromTable.map(o => String(o.external_order_id)));
+                const fboOnlyOrders = [...fromTable, ...fromFinance.filter(o => !seenFboIds.has(String(o.external_order_id)))];
+
                 if (status === 'all') return fboOnlyOrders.length;
                 const fboStatusMap = {
                     'processing': ['NEW', 'PROCESSING', 'ACCEPTED', 'PACKING', 'IN_TRANSIT'],

@@ -27,7 +27,7 @@ class MarketplaceSyncCompletedNotification extends Notification implements Shoul
      */
     public function deduplicationKey(): string
     {
-        return 'sync_' . $this->marketplace . '_' . date('YmdH');
+        return 'sync_'.$this->marketplace.'_'.date('YmdH');
     }
 
     public function deduplicationTtl(): int

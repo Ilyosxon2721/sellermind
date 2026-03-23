@@ -338,7 +338,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function plansPagePwa() {
     return {
         plans: [],
@@ -386,7 +386,7 @@ function plansPagePwa() {
 }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function plansPage() {
     return {
         plans: [],

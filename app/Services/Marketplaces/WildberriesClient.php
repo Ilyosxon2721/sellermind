@@ -53,6 +53,12 @@ final class WildberriesClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             $duration = (int) round((microtime(true) - $startTime) * 1000);
 
+            \Log::warning('WB ping failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+                'response_time_ms' => $duration,
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
@@ -74,6 +80,11 @@ final class WildberriesClient implements MarketplaceClientInterface
                 'data' => $response,
             ];
         } catch (\Exception $e) {
+            \Log::warning('Проверка подключения к WB failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка подключения: '.$e->getMessage(),
@@ -116,6 +127,10 @@ final class WildberriesClient implements MarketplaceClientInterface
                     $toCreate[] = ['card' => $cardData, 'marketplaceProduct' => $marketplaceProduct];
                 }
             } catch (\Exception $e) {
+                \Log::warning('Ошибка маппинга товара WB при синхронизации', [
+                    'product_id' => $marketplaceProduct->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
             }
         }
@@ -956,17 +971,24 @@ final class WildberriesClient implements MarketplaceClientInterface
         }
     }
 
+    /**
+     * Получить информацию о товаре WB по внешнему ID.
+     *
+     * @deprecated Метод не реализован. Требуется интеграция с GET /content/v2/get/cards/list (filter by nmId).
+     *
+     * @throws \RuntimeException всегда, так как метод не реализован
+     */
     public function getProductInfo(MarketplaceAccount $account, string $externalId): ?array
     {
-        // TODO: Implement WB product info fetch
-        //
-        // GET /content/v2/get/cards/list with filter by nmId
+        \Log::warning('WildberriesClient::getProductInfo() вызван, но не реализован', [
+            'account_id' => $account->id,
+            'external_id' => $externalId,
+        ]);
 
-        try {
-            return null;
-        } catch (\Exception $e) {
-            return null;
-        }
+        throw new \RuntimeException(
+            'WildberriesClient::getProductInfo() не реализован. '
+            .'Требуется интеграция с WB Content API v2: GET /content/v2/get/cards/list с фильтром по nmId.'
+        );
     }
 
     /**

@@ -263,7 +263,7 @@ final class UzumClient implements MarketplaceClientInterface
                 'status' => $statusValue,
                 'title' => $product['title'] ?? $product['skuTitle'] ?? null,
                 'category' => $product['category'] ?? null,
-                'preview_image' => $product['image'] ?? $product['previewImg'] ?? null,
+                'preview_image' => $this->extractProductImage($product),
                 'last_synced_price' => $price,
                 'last_synced_stock' => $totalStock,
                 'stock_fbs' => $stockFbs,
@@ -281,6 +281,50 @@ final class UzumClient implements MarketplaceClientInterface
             $mp->external_offer_id = (string) $product['skuList'][0]['skuId'];
             $mp->save();
         }
+    }
+
+    /**
+     * Извлечь URL превью изображения из ответа API Uzum.
+     * Пробуем разные поля, т.к. API возвращает их непоследовательно.
+     * Если значение — ID (без http/слэша), конструируем полный URL CDN.
+     */
+    protected function extractProductImage(array $product): ?string
+    {
+        // Прямые поля товара
+        $img = $product['image'] ?? $product['previewImg'] ?? $product['photo']
+            ?? $product['thumbnail'] ?? $product['mainImage'] ?? $product['coverImage']
+            ?? $product['photoUrl'] ?? $product['imageUrl'] ?? null;
+
+        // Из первого SKU
+        if (! $img && ! empty($product['skuList'])) {
+            foreach ($product['skuList'] as $sku) {
+                $img = $sku['image'] ?? $sku['photo'] ?? $sku['skuImage'] ?? $sku['imageUrl'] ?? null;
+                if ($img) break;
+            }
+        }
+
+        // Из массивов фото
+        if (! $img) {
+            foreach (['photos', 'photoGallery', 'images', 'galleryImages'] as $field) {
+                if (! empty($product[$field]) && is_array($product[$field])) {
+                    $first = $product[$field][0];
+                    $img = is_string($first) ? $first : ($first['url'] ?? $first['photo'] ?? $first['src'] ?? null);
+                    if ($img) break;
+                }
+            }
+        }
+
+        if (! $img) {
+            return null;
+        }
+
+        // Если значение похоже на ID (нет http и слэша) — строим CDN URL
+        $img = (string) $img;
+        if (! str_contains($img, '/') && ! str_starts_with($img, 'http')) {
+            $img = "https://images.uzum.uz/{$img}/t_product_540_high.jpg";
+        }
+
+        return $img;
     }
 
     /**
@@ -762,50 +806,57 @@ final class UzumClient implements MarketplaceClientInterface
      */
     public function updateStock(MarketplaceAccount $account, string $productId, string $skuId, int $stock): array
     {
-        // Get SKU details from database to fill required fields
-        $marketplaceProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
+        // Uzum API v2: POST /v2/fbs/sku/stocks
+        // Uzum требует barcode для валидации — берём из raw_payload.skuList
+        $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
+
+        $barcode = null;
+        // Используем ->first() чтобы получить модель с правильным Eloquent-кастингом
+        // value() возвращает сырую JSON-строку без декодирования
+        $mpProduct = \App\Models\MarketplaceProduct::where('marketplace_account_id', $account->id)
             ->where('external_product_id', $productId)
             ->first();
 
-        $skuData = null;
-        if ($marketplaceProduct && ! empty($marketplaceProduct->raw_payload['skuList'])) {
-            foreach ($marketplaceProduct->raw_payload['skuList'] as $sku) {
-                if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
-                    $skuData = $sku;
-                    break;
-                }
+        $skuList = $mpProduct?->raw_payload['skuList'] ?? [];
+        foreach ($skuList as $sku) {
+            if (isset($sku['skuId']) && (string) $sku['skuId'] === (string) $skuId) {
+                $barcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                break;
             }
         }
 
-        // Uzum API v2 endpoint for stock updates
-        $path = UzumEndpoints::FBS_STOCKS_UPDATE['path'];
+        $item = ['skuId' => (int) $skuId, 'amount' => $stock];
+        if ($barcode) {
+            $item['barcode'] = $barcode;
+        }
 
-        $requestData = [
-            'skuAmountList' => [
-                [
-                    'skuId' => (int) $skuId,
-                    'skuTitle' => $skuData['skuTitle'] ?? $skuData['skuFullTitle'] ?? '',
-                    'productTitle' => $marketplaceProduct->title ?? '',
-                    'barcode' => $skuData['barcode'] ?? '',
-                    'amount' => $stock,
-                    'fbsLinked' => true,
-                    'dbsLinked' => false,
-                ],
-            ],
-        ];
+        $requestData = ['skuAmountList' => [$item]];
 
         try {
             $response = $this->request($account, 'POST', $path, [], $requestData);
 
-            Log::info('Uzum stock update successful', [
-                'product_id' => $productId,
-                'sku_id' => $skuId,
-                'stock' => $stock,
-                'response' => $response,
-            ]);
+            $updatedRecords = $response['payload']['updatedRecords'] ?? null;
+
+            // Uzum возвращает updatedRecords=0 когда товар в статусе RUN_OUT или API отклонил обновление
+            if ($updatedRecords === 0) {
+                Log::warning('Uzum stock update accepted but not applied (updatedRecords=0). Product may be RUN_OUT.', [
+                    'product_id' => $productId,
+                    'sku_id' => $skuId,
+                    'stock' => $stock,
+                    'response' => $response,
+                ]);
+            } else {
+                Log::info('Uzum stock update successful', [
+                    'product_id' => $productId,
+                    'sku_id' => $skuId,
+                    'stock' => $stock,
+                    'response' => $response,
+                ]);
+            }
 
             return [
-                'success' => true,
+                'success' => $updatedRecords !== 0,
+                'actually_updated' => $updatedRecords > 0,
                 'stock' => $stock,
                 'sku_id' => $skuId,
                 'product_id' => $productId,
@@ -821,7 +872,7 @@ final class UzumClient implements MarketplaceClientInterface
                 'error' => $e->getMessage(),
             ]);
 
-            throw new \RuntimeException('Не удалось обновить остаток товара. Попробуйте позже или проверьте настройки API.');
+            throw new \RuntimeException("[skuId={$skuId}, amount={$stock}] " . $e->getMessage());
         }
     }
 
@@ -1017,17 +1068,24 @@ final class UzumClient implements MarketplaceClientInterface
         return $orders;
     }
 
+    /**
+     * Получить информацию о товаре Uzum по внешнему ID.
+     *
+     * @deprecated Метод не реализован. Требуется интеграция с GET /v1/products/{id}.
+     *
+     * @throws \RuntimeException всегда, так как метод не реализован
+     */
     public function getProductInfo(MarketplaceAccount $account, string $externalId): ?array
     {
-        // TODO: Implement Uzum product info fetch
-        //
-        // GET /v1/products/{id}
+        Log::warning('UzumClient::getProductInfo() вызван, но не реализован', [
+            'account_id' => $account->id,
+            'external_id' => $externalId,
+        ]);
 
-        try {
-            return null;
-        } catch (\Exception $e) {
-            return null;
-        }
+        throw new \RuntimeException(
+            'UzumClient::getProductInfo() не реализован. '
+            .'Требуется интеграция с Uzum Seller API: GET /v1/products/{id}.'
+        );
     }
 
     /**
@@ -1338,7 +1396,7 @@ final class UzumClient implements MarketplaceClientInterface
 
         // Ошибки по HTTP статусу
         $statusMessages = [
-            400 => 'Неверный запрос. Проверьте данные и попробуйте снова.',
+            400 => $errorInfo ? "400: {$errorInfo}" : 'Неверный запрос: ' . mb_substr($rawBody ?? '', 0, 300),
             401 => 'Ошибка авторизации. Проверьте токен API в настройках Uzum.',
             404 => 'Ресурс не найден. Возможно, неверный ID или токен.',
             500 => 'Ошибка сервера Uzum. Попробуйте позже.',
@@ -1413,8 +1471,10 @@ final class UzumClient implements MarketplaceClientInterface
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            // Тип доставки (FBS/FBO/DBS)
-            'delivery_type' => $deliveryType ?? strtolower($orderData['scheme'] ?? $orderData['deliveryType'] ?? ''),
+            // Тип доставки (FBS/FBO/DBS) — null если схема не известна из ответа API
+            'delivery_type' => $deliveryType ?? (isset($orderData['scheme'])
+                ? strtoupper($orderData['scheme'])
+                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null)),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,

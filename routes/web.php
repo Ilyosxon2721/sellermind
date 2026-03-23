@@ -153,6 +153,10 @@ Route::middleware('auth.any')->group(function () {
         Route::get('/funnel', function () {
             return view('pages.analytics');
         })->name('funnel');
+
+        Route::get('/uzum', function () {
+            return view('pages.analytics.uzum');
+        })->name('uzum');
     });
 
     Route::get('/reviews', function () {
@@ -385,6 +389,11 @@ Route::middleware('auth.any')->group(function () {
         return view('pages.marketplace.show-pwa', ['accountId' => $accountId]);
     })->name('marketplace.show.pwa');
 
+    // Сводный дашборд маркетплейсов - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/dashboard', function () {
+        return view('pages.marketplace.dashboard');
+    })->name('marketplace.dashboard');
+
     // Marketplace stocks dashboard - должен быть ПЕРЕД {accountId}
     Route::get('/marketplace/stocks', function () {
         return view('pages.marketplace-stocks');
@@ -395,6 +404,497 @@ Route::middleware('auth.any')->group(function () {
         ->name('marketplace.sync-logs');
     Route::get('/marketplace/sync-logs/json', [MarketplaceSyncLogController::class, 'json'])
         ->name('marketplace.sync-logs.json');
+
+    // Остатки МП - должен быть ПЕРЕД {accountId}
+    Route::get('/marketplace/stocks', function () {
+        return view('pages.marketplace.stocks');
+    })->name('marketplace.stocks');
+
+    Route::get('/marketplace/stocks/json', function (\Illuminate\Http\Request $request) {
+        $user = auth()->user();
+        $companyId = $user->company_id;
+
+        // Получить все активные аккаунты компании (все маркетплейсы)
+        $accountsQuery = \App\Models\MarketplaceAccount::where('company_id', $companyId)
+            ->where('is_active', true);
+
+        // Фильтр по маркетплейсу
+        if ($marketplace = $request->get('marketplace')) {
+            $accountsQuery->where('marketplace', $marketplace);
+        }
+
+        $accounts = $accountsQuery->get(['id', 'name', 'marketplace']);
+        $accountIds = $accounts->pluck('id')->toArray();
+
+        if (empty($accountIds)) {
+            return response()->json([
+                'products' => [],
+                'shops' => [],
+                'accounts' => $accounts,
+                'pagination' => ['total' => 0, 'per_page' => 50, 'current_page' => 1, 'last_page' => 1],
+                'summary' => ['total_fbs' => 0, 'total_fbo' => 0, 'total_additional' => 0, 'total_sold' => 0, 'total_returned' => 0, 'total_products' => 0, 'zero_stock_count' => 0, 'low_stock_count' => 0, 'total_fbs_value' => 0, 'total_fbo_value' => 0, 'total_stock_value' => 0],
+            ]);
+        }
+
+        // Себестоимость: карта marketplace_product_id => cost_price в UZS
+        $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
+        $costPriceMap = [];
+
+        // 1. Из variant_marketplace_links → product_variants
+        // Для товаров с несколькими вариантами: взвешенное среднее по last_stock_synced
+        $links = \DB::table('variant_marketplace_links as vml')
+            ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+            ->whereIn('vml.marketplace_account_id', $accountIds)
+            ->select('vml.marketplace_product_id', 'vml.last_stock_synced', 'pv.purchase_price', 'pv.purchase_price_currency')
+            ->get()
+            ->groupBy('marketplace_product_id');
+        foreach ($links as $productId => $productLinks) {
+            $priced = $productLinks->filter(fn ($l) => (float) ($l->purchase_price ?? 0) > 0);
+            if ($priced->isEmpty()) {
+                continue;
+            }
+            $totalStock = (int) $priced->sum('last_stock_synced');
+            if ($totalStock > 0) {
+                // Взвешенное среднее по остаткам
+                $weightedSum = $priced->sum(function ($l) use ($financeSettings) {
+                    $pp = (float) $l->purchase_price;
+                    $pc = $l->purchase_price_currency ?? 'UZS';
+                    $costUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+
+                    return $costUzs * (int) ($l->last_stock_synced ?? 0);
+                });
+                $costPriceMap[$productId] = $weightedSum / $totalStock;
+            } else {
+                // Нет данных по остаткам — простое среднее
+                $sum = $priced->sum(function ($l) use ($financeSettings) {
+                    $pp = (float) $l->purchase_price;
+                    $pc = $l->purchase_price_currency ?? 'UZS';
+
+                    return $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+                });
+                $costPriceMap[$productId] = $sum / $priced->count();
+            }
+        }
+
+        // Карта себестоимостей Uzum по каждому SKU (для точного расчёта сводки)
+        $uzumAccountIds = $accounts->where('marketplace', 'uzum')->pluck('id')->toArray();
+        // [marketplace_product_id][external_sku_id] => cost_uzs
+        $uzumAllSkuCostMap = [];
+        if (!empty($uzumAccountIds)) {
+            $allUzumLinks = \DB::table('variant_marketplace_links as vml')
+                ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+                ->whereIn('vml.marketplace_account_id', $uzumAccountIds)
+                ->whereNotNull('vml.external_sku_id')
+                ->select('vml.marketplace_product_id', 'vml.external_sku_id', 'pv.purchase_price', 'pv.purchase_price_currency')
+                ->get();
+            foreach ($allUzumLinks as $link) {
+                $price = (float) ($link->purchase_price ?? 0);
+                if ($price > 0) {
+                    $currency = $link->purchase_price_currency ?? 'UZS';
+                    $uzumAllSkuCostMap[$link->marketplace_product_id][$link->external_sku_id] =
+                        $currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency);
+                }
+            }
+        }
+
+        $query = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds)
+            ->select([
+                'id', 'marketplace_account_id', 'title', 'preview_image', 'external_product_id',
+                'shop_id', 'status', 'stock_fbs', 'stock_fbo', 'stock_additional',
+                'quantity_sold', 'quantity_returned', 'last_synced_stock', 'last_synced_price',
+                'purchase_price', 'purchase_price_currency', 'last_synced_at',
+            ]);
+
+        // Фильтр по аккаунту
+        if ($accountId = $request->get('account_id')) {
+            $query->where('marketplace_account_id', (int) $accountId);
+        }
+
+        // Фильтр по магазину
+        if ($shopId = $request->get('shop_id')) {
+            $query->where('shop_id', $shopId);
+        }
+
+        // Поиск
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('external_product_id', 'like', "%{$search}%");
+            });
+        }
+
+        // Фильтр по остаткам
+        $stockFilter = $request->get('stock_filter', 'all');
+        match ($stockFilter) {
+            'zero' => $query->where(function ($q) {
+                $q->where('stock_fbs', 0)->orWhere('stock_fbo', 0)->orWhereNull('stock_fbs')->orWhereNull('stock_fbo');
+            }),
+            'low' => $query->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->where('stock_fbs', '>', 0)->where('stock_fbs', '<', 5);
+                })->orWhere(function ($q2) {
+                    $q2->where('stock_fbo', '>', 0)->where('stock_fbo', '<', 5);
+                });
+            }),
+            'normal' => $query->where('stock_fbs', '>=', 5)->where('stock_fbo', '>=', 5),
+            default => null,
+        };
+
+        // Сортировка
+        $sortBy = $request->get('sort_by', 'title');
+        $sortDir = $request->get('sort_dir', 'asc');
+        $allowedSorts = ['title', 'stock_fbs', 'stock_fbo', 'quantity_sold', 'quantity_returned', 'last_synced_at', 'last_synced_price', 'stock_value'];
+        if ($sortBy === 'stock_value') {
+            $query->orderByRaw('(COALESCE(stock_fbs, 0) + COALESCE(stock_fbo, 0)) * COALESCE((SELECT pv.purchase_price FROM variant_marketplace_links vml JOIN product_variants pv ON pv.id = vml.product_variant_id WHERE vml.marketplace_product_id = marketplace_products.id LIMIT 1), 0) '.($sortDir === 'desc' ? 'DESC' : 'ASC'));
+        } elseif (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
+        }
+
+        // Summary
+        $summaryBase = \App\Models\MarketplaceProduct::whereIn('marketplace_account_id', $accountIds);
+        if ($accountId) {
+            $summaryBase->where('marketplace_account_id', (int) $accountId);
+        }
+        // Счётчики — SQL
+        $raw = (clone $summaryBase)->selectRaw('
+            COALESCE(SUM(stock_fbs), 0) as total_fbs,
+            COALESCE(SUM(stock_fbo), 0) as total_fbo,
+            COALESCE(SUM(stock_additional), 0) as total_additional,
+            COALESCE(SUM(quantity_sold), 0) as total_sold,
+            COALESCE(SUM(quantity_returned), 0) as total_returned,
+            COUNT(*) as total_products,
+            SUM(CASE WHEN COALESCE(stock_fbs, 0) = 0 OR COALESCE(stock_fbo, 0) = 0 THEN 1 ELSE 0 END) as zero_stock_count,
+            SUM(CASE WHEN (stock_fbs > 0 AND stock_fbs < 5) OR (stock_fbo > 0 AND stock_fbo < 5) THEN 1 ELSE 0 END) as low_stock_count
+        ')->first();
+
+        // Стоимость остатков — для Uzum с per-SKU ценами считаем точно по каждому SKU
+        // Загружаем skuList только для Uzum-товаров с привязанными локальными вариантами
+        $uzumProductIdsWithLinks = array_keys($uzumAllSkuCostMap);
+        $uzumSkuStockData = [];
+        if (!empty($uzumProductIdsWithLinks)) {
+            $skuStockRows = \DB::table('marketplace_products')
+                ->whereIn('id', $uzumProductIdsWithLinks)
+                ->selectRaw("id, JSON_EXTRACT(raw_payload, '$.skuList') as sku_list")
+                ->get();
+            foreach ($skuStockRows as $row) {
+                $uzumSkuStockData[$row->id] = is_string($row->sku_list)
+                    ? (json_decode($row->sku_list, true) ?? [])
+                    : [];
+            }
+        }
+
+        // WB/Ozon/YM: per-вариант last_stock_synced × purchase_price (аналогично Uzum SKU)
+        // [product_id] => [[stock, cost_uzs], ...]
+        $nonUzumVariantData = [];
+        $nonUzumAccountIds = array_diff($accountIds, $uzumAccountIds);
+        if (!empty($nonUzumAccountIds)) {
+            $nonUzumAllLinks = \DB::table('variant_marketplace_links as vml')
+                ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+                ->whereIn('vml.marketplace_account_id', $nonUzumAccountIds)
+                ->whereNotNull('pv.purchase_price')
+                ->where('pv.purchase_price', '>', 0)
+                ->whereNotNull('vml.last_stock_synced')
+                ->where('vml.last_stock_synced', '>', 0)
+                ->select('vml.marketplace_product_id', 'vml.last_stock_synced', 'pv.purchase_price', 'pv.purchase_price_currency')
+                ->get();
+            foreach ($nonUzumAllLinks as $link) {
+                $pp = (float) $link->purchase_price;
+                $pc = $link->purchase_price_currency ?? 'UZS';
+                $costUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+                $nonUzumVariantData[$link->marketplace_product_id][] = [
+                    'stock'    => (int) $link->last_stock_synced,
+                    'cost_uzs' => $costUzs,
+                ];
+            }
+        }
+
+        $stockRows = (clone $summaryBase)->select('id', 'stock_fbs', 'stock_fbo')->get();
+        $totalFbsValue = 0;
+        $totalFboValue = 0;
+        foreach ($stockRows as $row) {
+            if (isset($uzumSkuStockData[$row->id])) {
+                // Uzum: точный расчёт — каждый SKU × его себестоимость
+                $skuCostMap = $uzumAllSkuCostMap[$row->id];
+                $fallbackCp = $costPriceMap[$row->id] ?? 0;
+                foreach ($uzumSkuStockData[$row->id] as $sku) {
+                    $skuId = (string) ($sku['skuId'] ?? '');
+                    $cp = $skuCostMap[$skuId] ?? $fallbackCp;
+                    $totalFbsValue += (int) ($sku['quantityFbs'] ?? 0) * $cp;
+                    $totalFboValue += (int) ($sku['quantityActive'] ?? 0) * $cp;
+                }
+            } elseif (isset($nonUzumVariantData[$row->id])) {
+                // WB/Ozon/YM: каждый вариант × его себестоимость, сплит пропорционально FBS/FBO
+                $variantTotal = 0.0;
+                foreach ($nonUzumVariantData[$row->id] as $v) {
+                    $variantTotal += $v['stock'] * $v['cost_uzs'];
+                }
+                $stockFbs = (int) ($row->stock_fbs ?? 0);
+                $stockFbo = (int) ($row->stock_fbo ?? 0);
+                $totalMpStock = $stockFbs + $stockFbo;
+                if ($totalMpStock > 0) {
+                    $totalFbsValue += $variantTotal * $stockFbs / $totalMpStock;
+                    $totalFboValue += $variantTotal * $stockFbo / $totalMpStock;
+                } else {
+                    $totalFbsValue += $variantTotal;
+                }
+            } else {
+                // Fallback: цена на уровне товара (нет per-вариантных данных)
+                $cp = $costPriceMap[$row->id] ?? 0;
+                $totalFbsValue += ($row->stock_fbs ?? 0) * $cp;
+                $totalFboValue += ($row->stock_fbo ?? 0) * $cp;
+            }
+        }
+
+        $summary = [
+            'total_fbs' => (int) $raw->total_fbs,
+            'total_fbo' => (int) $raw->total_fbo,
+            'total_additional' => (int) $raw->total_additional,
+            'total_sold' => (int) $raw->total_sold,
+            'total_returned' => (int) $raw->total_returned,
+            'total_products' => (int) $raw->total_products,
+            'zero_stock_count' => (int) $raw->zero_stock_count,
+            'low_stock_count' => (int) $raw->low_stock_count,
+            'total_fbs_value' => $totalFbsValue,
+            'total_fbo_value' => $totalFboValue,
+            'total_stock_value' => $totalFbsValue + $totalFboValue,
+        ];
+
+        $products = $query->paginate((int) $request->get('per_page', 50));
+
+        // Загрузить варианты для пагинированных товаров
+        $productIds = collect($products->items())->pluck('id')->toArray();
+
+        // Варианты через variant_marketplace_links (для не-Uzum маркетплейсов)
+        $variantsMap = \DB::table('variant_marketplace_links as vml')
+            ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+            ->whereIn('vml.marketplace_product_id', $productIds)
+            ->select(
+                'vml.marketplace_product_id', 'pv.id as variant_id', 'pv.sku',
+                'pv.option_values_summary', 'pv.purchase_price', 'pv.purchase_price_currency',
+                'vml.last_stock_synced', 'vml.last_price_synced'
+            )
+            ->get()
+            ->groupBy('marketplace_product_id');
+
+        // Варианты Uzum из raw_payload.skuList
+        $uzumRawData = [];
+        // Карта себестоимостей: [marketplace_product_id][external_sku_id] => {variant_id, purchase_price, currency}
+        $uzumSkuCostMap = [];
+        if (!empty($uzumAccountIds) && !empty($productIds)) {
+            $uzumRows = \DB::table('marketplace_products')
+                ->whereIn('id', $productIds)
+                ->whereIn('marketplace_account_id', $uzumAccountIds)
+                ->select('id', 'raw_payload')
+                ->get();
+            foreach ($uzumRows as $row) {
+                $payload = is_string($row->raw_payload) ? json_decode($row->raw_payload, true) : [];
+                $uzumRawData[$row->id] = $payload['skuList'] ?? [];
+            }
+
+            // Загрузить связки SKU → локальный вариант с его закупочной ценой
+            $uzumLinks = \DB::table('variant_marketplace_links as vml')
+                ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+                ->whereIn('vml.marketplace_product_id', $productIds)
+                ->whereIn('vml.marketplace_account_id', $uzumAccountIds)
+                ->whereNotNull('vml.external_sku_id')
+                ->select('vml.marketplace_product_id', 'vml.external_sku_id', 'pv.id as variant_id', 'pv.purchase_price', 'pv.purchase_price_currency')
+                ->get();
+            foreach ($uzumLinks as $link) {
+                $uzumSkuCostMap[$link->marketplace_product_id][$link->external_sku_id] = [
+                    'variant_id'               => $link->variant_id,
+                    'purchase_price'           => (float) ($link->purchase_price ?? 0),
+                    'purchase_price_currency'  => $link->purchase_price_currency ?? 'UZS',
+                ];
+            }
+        }
+
+        // Добавить себестоимость и варианты к каждому товару
+        $products->getCollection()->transform(function ($product) use ($costPriceMap, $variantsMap, $financeSettings, $uzumAccountIds, $uzumRawData, $uzumSkuCostMap) {
+            $product->cost_price = $costPriceMap[$product->id] ?? 0;
+            $isUzum = in_array($product->marketplace_account_id, $uzumAccountIds);
+
+            if ($isUzum && isset($uzumRawData[$product->id]) && !empty($uzumRawData[$product->id])) {
+                // Uzum: варианты из raw_payload.skuList с себестоимостью из связанного локального варианта
+                $skuLinks = $uzumSkuCostMap[$product->id] ?? [];
+                $product->variants = collect($uzumRawData[$product->id])
+                    ->map(function ($sku) use ($skuLinks, $financeSettings) {
+                        $skuId = (string) ($sku['skuId'] ?? '');
+                        $link = $skuLinks[$skuId] ?? null;
+
+                        if ($link && $link['purchase_price'] > 0) {
+                            // Себестоимость из привязанного локального варианта
+                            $pp = $link['purchase_price'];
+                            $pc = $link['purchase_price_currency'];
+                            $skuCostUzs = $pc === 'UZS' ? $pp : $financeSettings->convertToBase($pp, $pc);
+                            $linkedVariantId = $link['variant_id'];
+                        } else {
+                            // Нет привязки к внутреннему товару — не показываем себестоимость
+                            $pp = 0;
+                            $pc = 'UZS';
+                            $skuCostUzs = 0;
+                            $linkedVariantId = null;
+                        }
+
+                        return [
+                            'variant_id'            => $linkedVariantId,
+                            'sku_id'                => $skuId,
+                            'sku'                   => (string) ($sku['barcode'] ?? $skuId),
+                            'option_values_summary' => $sku['skuTitle'] ?? $sku['skuFullTitle'] ?? null,
+                            'stock_fbs'             => (int) ($sku['quantityFbs'] ?? 0),
+                            'stock_fbo'             => (int) ($sku['quantityActive'] ?? 0),
+                            'stock_additional'      => (int) ($sku['quantityAdditional'] ?? 0),
+                            'quantity_sold'         => (int) ($sku['quantitySold'] ?? 0),
+                            'quantity_returned'     => (int) ($sku['quantityReturned'] ?? 0),
+                            'price'                 => (float) ($sku['price'] ?? 0),
+                            'purchase_price'        => $pp,
+                            'purchase_price_currency' => $pc,
+                            'cost_price'            => $skuCostUzs,
+                            'is_uzum_sku'           => true,
+                        ];
+                    })->values()->toArray();
+            } else {
+                // Другие маркетплейсы: варианты из variant_marketplace_links
+                $product->variants = ($variantsMap->get($product->id) ?? collect())
+                    ->map(function ($v) use ($financeSettings) {
+                        $price = (float) ($v->purchase_price ?? 0);
+                        $currency = $v->purchase_price_currency ?? 'UZS';
+                        $vCostUzs = $price > 0
+                            ? ($currency === 'UZS' ? $price : $financeSettings->convertToBase($price, $currency))
+                            : 0;
+                        return [
+                            'variant_id'            => $v->variant_id,
+                            'sku_id'                => null,
+                            'sku'                   => $v->sku,
+                            'option_values_summary' => $v->option_values_summary,
+                            'stock_fbs'             => $v->last_stock_synced !== null ? (int) $v->last_stock_synced : null,
+                            'stock_fbo'             => null,
+                            'stock_additional'      => null,
+                            'quantity_sold'         => null,
+                            'quantity_returned'     => null,
+                            'price'                 => $v->last_price_synced !== null ? (float) $v->last_price_synced : null,
+                            'purchase_price'        => $price,
+                            'purchase_price_currency' => $currency,
+                            'cost_price'            => $vCostUzs,
+                            'is_uzum_sku'           => false,
+                        ];
+                    })->values()->toArray();
+            }
+
+            return $product;
+        });
+
+        // Магазины для фильтра
+        $shops = \App\Models\MarketplaceShop::whereIn('marketplace_account_id', $accountIds)
+            ->get(['external_id', 'name', 'marketplace_account_id']);
+
+        return response()->json([
+            'products' => $products->items(),
+            'shops' => $shops,
+            'accounts' => $accounts,
+            'pagination' => [
+                'total' => $products->total(),
+                'per_page' => $products->perPage(),
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+            ],
+            'summary' => $summary,
+        ]);
+    })->name('marketplace.stocks.json');
+
+    // Сохранить себестоимость товара
+    Route::post('/marketplace/stocks/cost-price', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'product_id' => 'required|integer',
+            'purchase_price' => 'required|numeric|min:0',
+            'purchase_price_currency' => 'nullable|string|in:UZS,USD,RUB,EUR',
+        ]);
+
+        $user = auth()->user();
+        $product = \App\Models\MarketplaceProduct::where('id', $request->product_id)
+            ->whereHas('account', fn ($q) => $q->where('company_id', $user->company_id))
+            ->firstOrFail();
+
+        $product->update([
+            'purchase_price' => $request->purchase_price,
+            'purchase_price_currency' => $request->purchase_price_currency ?? 'UZS',
+        ]);
+
+        // Вернуть себестоимость в UZS
+        $price = (float) $request->purchase_price;
+        $currency = $request->purchase_price_currency ?? 'UZS';
+        if ($currency !== 'UZS' && $price > 0) {
+            $settings = \App\Models\Finance\FinanceSettings::getForCompany($user->company_id);
+            $price = $settings->convertToBase($price, $currency);
+        }
+
+        return response()->json([
+            'success' => true,
+            'cost_price' => $price,
+            'purchase_price' => (float) $request->purchase_price,
+            'purchase_price_currency' => $currency,
+        ]);
+    })->name('marketplace.stocks.cost-price');
+
+    // Сохранить себестоимость варианта товара
+    Route::post('/marketplace/stocks/variant-cost-price', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'variant_id' => 'required|integer',
+            'purchase_price' => 'required|numeric|min:0',
+            'purchase_price_currency' => 'nullable|string|in:UZS,USD,RUB,EUR',
+        ]);
+
+        $user = auth()->user();
+        $variant = \App\Models\ProductVariant::where('id', $request->variant_id)
+            ->where('company_id', $user->company_id)
+            ->firstOrFail();
+
+        $variant->update([
+            'purchase_price' => $request->purchase_price,
+            'purchase_price_currency' => $request->purchase_price_currency ?? 'UZS',
+        ]);
+
+        $price = (float) $request->purchase_price;
+        $currency = $request->purchase_price_currency ?? 'UZS';
+        if ($currency !== 'UZS' && $price > 0) {
+            $settings = \App\Models\Finance\FinanceSettings::getForCompany($user->company_id);
+            $price = $settings->convertToBase($price, $currency);
+        }
+
+        return response()->json([
+            'success' => true,
+            'cost_price' => $price,
+            'purchase_price' => (float) $request->purchase_price,
+            'purchase_price_currency' => $currency,
+        ]);
+    })->name('marketplace.stocks.variant-cost-price');
+
+    // Запустить мост-синхронизацию WB/Ozon → marketplace_products
+    Route::post('/marketplace/bridge-sync', function (\Illuminate\Http\Request $request) {
+        $user      = auth()->user();
+        $companyId = $user->company_id;
+        $bridge    = new \App\Services\Marketplaces\MarketplaceProductsBridgeService;
+
+        $accounts = \App\Models\MarketplaceAccount::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('marketplace', ['wb', 'ozon'])
+            ->get();
+
+        $results = [];
+        foreach ($accounts as $account) {
+            try {
+                $synced = match (strtolower($account->marketplace)) {
+                    'wb'   => $bridge->syncFromWildberries($account),
+                    'ozon' => $bridge->syncFromOzon($account),
+                    default => 0,
+                };
+                $results[] = ['account' => $account->name, 'marketplace' => $account->marketplace, 'synced' => $synced];
+            } catch (\Exception $e) {
+                $results[] = ['account' => $account->name, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()];
+            }
+        }
+
+        return response()->json(['success' => true, 'results' => $results]);
+    })->name('marketplace.bridge-sync');
 
     Route::get('/marketplace/{accountId}', function ($accountId) {
         return view('pages.marketplace.show', ['accountId' => $accountId]);
@@ -432,6 +932,11 @@ Route::middleware('auth.any')->group(function () {
                 'preview_image',
                 'last_synced_price',
                 'last_synced_stock',
+                'stock_fbs',
+                'stock_fbo',
+                'stock_additional',
+                'quantity_sold',
+                'quantity_returned',
                 'last_synced_at',
                 'updated_at',
                 'created_at',

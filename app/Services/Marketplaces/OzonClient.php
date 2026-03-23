@@ -53,6 +53,12 @@ final class OzonClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             $duration = (int) round((microtime(true) - $startTime) * 1000);
 
+            \Log::warning('Ozon ping failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+                'response_time_ms' => $duration,
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
@@ -73,6 +79,11 @@ final class OzonClient implements MarketplaceClientInterface
                 'message' => 'Соединение с Ozon успешно установлено',
             ];
         } catch (\Exception $e) {
+            \Log::warning('Проверка подключения к Ozon failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка подключения: '.$e->getMessage(),
@@ -110,6 +121,10 @@ final class OzonClient implements MarketplaceClientInterface
                         $importItems[] = $importItem;
                     }
                 } catch (\Exception $e) {
+                    \Log::warning('Ошибка маппинга товара Ozon при синхронизации', [
+                        'product_id' => $marketplaceProduct->id,
+                        'error' => $e->getMessage(),
+                    ]);
                     $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
                 }
             }
@@ -132,6 +147,11 @@ final class OzonClient implements MarketplaceClientInterface
                     $this->checkImportStatus($account, $taskId, $batch);
                 }
             } catch (\Exception $e) {
+                \Log::error('Ошибка импорта товаров в Ozon API', [
+                    'account_id' => $account->id,
+                    'products_count' => count($importItems),
+                    'error' => $e->getMessage(),
+                ]);
                 foreach ($batch as $marketplaceProduct) {
                     $marketplaceProduct->markAsFailed('API error: '.$e->getMessage());
                 }
@@ -456,6 +476,11 @@ final class OzonClient implements MarketplaceClientInterface
 
             return $response['result'] ?? [];
         } catch (\Exception $e) {
+            \Log::warning('Ошибка получения списка складов Ozon', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [];
         }
     }
@@ -862,6 +887,15 @@ final class OzonClient implements MarketplaceClientInterface
                 'created' => $created,
                 'updated' => $updated,
             ]);
+
+            // Копируем результаты в общую таблицу marketplace_products
+            try {
+                $bridge = new \App\Services\Marketplaces\MarketplaceProductsBridgeService;
+                $bridgeSynced = $bridge->syncFromOzon($account);
+                \Log::info('Ozon bridge sync done', ['account_id' => $account->id, 'bridged' => $bridgeSynced]);
+            } catch (\Exception $e) {
+                \Log::error('Ozon bridge sync failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+            }
 
             return [
                 'synced' => $synced,

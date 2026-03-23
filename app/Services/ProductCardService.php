@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductDescription;
 use App\Models\ProductImage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ProductCardService
 {
@@ -145,6 +146,10 @@ class ProductCardService
                 ]);
 
             } catch (\Exception $e) {
+                Log::warning('Ошибка массовой генерации карточки товара', [
+                    'product_id' => $productData['id'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
                 $results->push([
                     'product_id' => $productData['id'] ?? null,
                     'success' => false,

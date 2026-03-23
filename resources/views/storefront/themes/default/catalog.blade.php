@@ -419,7 +419,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function catalogPage() {
         return {
             filtersOpen: false,

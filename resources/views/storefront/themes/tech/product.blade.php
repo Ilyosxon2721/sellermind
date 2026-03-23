@@ -281,7 +281,7 @@
 
 @include('storefront.components.recently-viewed', ['store' => $store, 'excludeProductId' => $storeProduct->id])
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function productPage() {
         return {
             activeImage: 0,

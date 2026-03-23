@@ -460,7 +460,7 @@
     </div>
 </header>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function storeHeader() {
         return {
             mobileOpen: false,

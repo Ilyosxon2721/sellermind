@@ -1025,7 +1025,7 @@
 }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumSettingsPage() {
     return {
         activeTab: 'api',
@@ -1818,7 +1818,7 @@ function uzumSettingsPage() {
 }
 </style>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function uzumSettingsPWA() {
     return {
         account: null,

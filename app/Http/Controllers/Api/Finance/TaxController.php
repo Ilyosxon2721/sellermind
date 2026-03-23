@@ -37,7 +37,8 @@ class TaxController extends Controller
         $taxes = $query->orderByDesc('period_year')
             ->orderByDesc('period_month')
             ->limit(50)
-            ->get();
+            ->get()
+            ->each->append(['due_date_formatted', 'tax_type_label', 'period_label', 'amount_outstanding']);
 
         return $this->successResponse($taxes);
     }
@@ -52,6 +53,8 @@ class TaxController extends Controller
         $tax = TaxCalculation::byCompany($companyId)
             ->with('transaction')
             ->findOrFail($id);
+
+        $tax->append(['due_date_formatted', 'tax_type_label', 'period_label', 'amount_outstanding']);
 
         return $this->successResponse($tax);
     }
@@ -80,6 +83,8 @@ class TaxController extends Controller
             $data['quarter'] ?? null
         );
 
+        $calculation->append(['due_date_formatted', 'tax_type_label', 'period_label', 'amount_outstanding']);
+
         return $this->successResponse($calculation);
     }
 
@@ -106,8 +111,11 @@ class TaxController extends Controller
 
         $transaction = $this->service->pay($tax, Auth::id(), $paymentDate, $amount);
 
+        $freshTax = $tax->fresh('transaction');
+        $freshTax->append(['due_date_formatted', 'tax_type_label', 'period_label', 'amount_outstanding']);
+
         return $this->successResponse([
-            'tax' => $tax->fresh('transaction'),
+            'tax' => $freshTax,
             'transaction' => $transaction,
         ]);
     }

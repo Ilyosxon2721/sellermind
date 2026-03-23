@@ -79,6 +79,12 @@ final class YandexMarketClient implements MarketplaceClientInterface
         } catch (\Exception $e) {
             $duration = (int) round((microtime(true) - $startTime) * 1000);
 
+            Log::warning('YandexMarket ping failed', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+                'response_time_ms' => $duration,
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),
@@ -377,6 +383,12 @@ final class YandexMarketClient implements MarketplaceClientInterface
                 $page++;
                 $hasMore = count($orderList) === $pageSize;
             } catch (\Exception $e) {
+                Log::warning('Ошибка загрузки заказов YandexMarket', [
+                    'account_id' => $account->id,
+                    'campaign_id' => $campaignId,
+                    'page' => $page,
+                    'error' => $e->getMessage(),
+                ]);
                 // If date range is invalid, try without date filter
                 if ($page === 1 && strpos($e->getMessage(), 'interval') !== false) {
                     return $this->fetchOrdersWithoutDateFilter($account, $campaignId, $fake);
@@ -517,6 +529,10 @@ final class YandexMarketClient implements MarketplaceClientInterface
                 $this->storeOrder($account, $orderData);
                 $synced++;
             } catch (\Exception $e) {
+                Log::warning('Ошибка сохранения заказа YandexMarket', [
+                    'order_id' => $orderData['external_order_id'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
                 $errors[] = [
                     'order_id' => $orderData['external_order_id'] ?? 'unknown',
                     'error' => $e->getMessage(),
@@ -731,6 +747,10 @@ final class YandexMarketClient implements MarketplaceClientInterface
                 $offerMappings[] = $offerData;
                 $productMap[$offerData['offer']['offerId']] = $marketplaceProduct;
             } catch (\Exception $e) {
+                Log::warning('Ошибка маппинга товара YandexMarket при синхронизации', [
+                    'product_id' => $marketplaceProduct->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $marketplaceProduct->markAsFailed('Mapping error: '.$e->getMessage());
             }
         }
@@ -1049,6 +1069,11 @@ final class YandexMarketClient implements MarketplaceClientInterface
 
             return $response['campaign'] ?? null;
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения информации о кампании YandexMarket', [
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }
@@ -1393,6 +1418,12 @@ final class YandexMarketClient implements MarketplaceClientInterface
 
                     return $response['warehouses'] ?? [];
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка получения складов YandexMarket по кампании', [
+                        'account_id' => $account->id,
+                        'campaign_id' => $campaignId,
+                        'error' => $e->getMessage(),
+                    ]);
+
                     return [];
                 }
             }
@@ -1405,6 +1436,12 @@ final class YandexMarketClient implements MarketplaceClientInterface
 
             return $response['result']['warehouses'] ?? [];
         } catch (\Exception $e) {
+            Log::warning('Ошибка получения складов YandexMarket по бизнесу', [
+                'account_id' => $account->id,
+                'business_id' => $businessId,
+                'error' => $e->getMessage(),
+            ]);
+
             return [];
         }
     }

@@ -379,7 +379,7 @@
     <x-mobile-header />
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function purchasePricesPage() {
     return {
         products: [],

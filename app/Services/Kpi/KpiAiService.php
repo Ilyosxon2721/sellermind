@@ -8,10 +8,8 @@ use App\Models\AIUsageLog;
 use App\Models\Finance\Employee;
 use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
-use App\Models\Sale;
-use App\Models\SaleItem;
+use App\Services\AI\AiProviderService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,15 +17,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class KpiAiService
 {
-    private string $apiKey;
-
-    private string $baseUrl;
-
-    public function __construct()
-    {
-        $this->apiKey = config('openai.api_key');
-        $this->baseUrl = rtrim(config('openai.api_url', 'https://api.openai.com/v1'), '/');
-    }
+    public function __construct(
+        private readonly AiProviderService $aiProvider
+    ) {}
 
     /**
      * Сгенерировать рекомендации KPI на основе исторических данных
@@ -53,36 +45,52 @@ final class KpiAiService
 
         $prompt = $this->buildPrompt($employee, $sphere, $history, $pastPlans, $year, $month);
 
-        $payload = [
-            'model' => 'gpt-4o-mini',
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => $this->getSystemPrompt(),
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt,
-                ],
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => $this->getSystemPrompt(),
             ],
-            'max_completion_tokens' => 2000,
-            'temperature' => 0.3,
+            [
+                'role' => 'user',
+                'content' => $prompt,
+            ],
         ];
 
-        $response = $this->callOpenAI('/chat/completions', $payload);
+        $options = [
+            'temperature' => 0.3,
+            'max_tokens' => 4096,
+            'timeout' => config('ai.timeout.kpi', 90),
+        ];
 
-        $content = $response['choices'][0]['message']['content'] ?? '';
+        // Определяем модель в зависимости от провайдера
+        $provider = config('ai.provider', 'openai');
+        $options['model'] = match ($provider) {
+            'anthropic' => config('anthropic.models.kpi', 'claude-sonnet-4-20250514'),
+            default => config('openai.models.kpi', 'gpt-5.1'),
+        };
 
-        // Логируем использование ИИ
-        AIUsageLog::log(
-            $companyId,
-            $userId,
-            'gpt4o-mini-kpi',
-            $response['usage']['prompt_tokens'] ?? 0,
-            $response['usage']['completion_tokens'] ?? 0
-        );
+        try {
+            $response = $this->aiProvider->chatCompletion($messages, $options);
 
-        return $this->parseResponse($content, $history);
+            // Логируем использование ИИ
+            AIUsageLog::log(
+                $companyId,
+                $userId,
+                $response['provider'].':'.$response['model'],
+                $response['usage']['prompt_tokens'] ?? 0,
+                $response['usage']['completion_tokens'] ?? 0
+            );
+
+            return $this->parseResponse($response['content'], $history);
+        } catch (\Exception $e) {
+            Log::error('KPI AI Service Error', [
+                'error' => $e->getMessage(),
+                'company_id' => $companyId,
+                'employee_id' => $employeeId,
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
@@ -118,42 +126,149 @@ final class KpiAiService
                 $monthData['margin'] = $existingPlan->actual_margin;
                 $monthData['orders'] = $existingPlan->actual_orders;
             } elseif ($sphere && $sphere->hasMarketplaceLink()) {
-                // Собираем из Sales по всем привязанным аккаунтам
+                // Читаем напрямую из таблиц заказов маркетплейсов
                 $accountIds = $sphere->getLinkedAccountIds();
+                $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
 
-                $salesData = Sale::where('company_id', $companyId)
-                    ->where('type', 'marketplace')
-                    ->whereIn('status', ['confirmed', 'completed'])
-                    ->whereBetween('created_at', [$periodStart, $periodEnd])
-                    ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                        $query->whereIn('marketplace_account_id', $accountIds);
-                    })
-                    ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
-                    ->first();
-
-                $monthData['revenue'] = (float) ($salesData->total_revenue ?? 0);
-                $monthData['orders'] = (int) ($salesData->total_orders ?? 0);
-
-                // Маржа
-                $marginData = SaleItem::whereHas('sale', function ($q) use ($companyId, $accountIds, $periodStart, $periodEnd) {
-                    $q->where('company_id', $companyId)
-                        ->where('type', 'marketplace')
-                        ->whereIn('status', ['confirmed', 'completed'])
-                        ->whereBetween('created_at', [$periodStart, $periodEnd])
-                        ->whereHasMorph('marketplaceOrder', ['*'], function ($query) use ($accountIds) {
-                            $query->whereIn('marketplace_account_id', $accountIds);
-                        });
-                })
-                    ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COALESCE(SUM(cost_price * quantity), 0) as total_cost')
-                    ->first();
-
-                $monthData['margin'] = max(0, (float) (($marginData->total_sales ?? 0) - ($marginData->total_cost ?? 0)));
+                $monthData['revenue'] = $marketplaceData['revenue'];
+                $monthData['margin'] = $marketplaceData['margin'];
+                $monthData['orders'] = $marketplaceData['orders'];
             }
 
             $history[] = $monthData;
         }
 
         return $history;
+    }
+
+    /**
+     * Собрать данные продаж напрямую из таблиц маркетплейсов
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectMarketplaceData(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $totalRevenue = 0;
+        $totalMargin = 0;
+        $totalOrders = 0;
+
+        foreach ($accountIds as $accountId) {
+            $account = \App\Models\MarketplaceAccount::find($accountId);
+            if (! $account) {
+                continue;
+            }
+
+            // Определяем тип маркетплейса и читаем из соответствующей таблицы
+            $data = match ($account->marketplace) {
+                'uzum' => $this->collectUzumData($accountId, $periodStart, $periodEnd),
+                'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
+                'ozon' => $this->collectOzonData($accountId, $periodStart, $periodEnd),
+                'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
+                default => ['revenue' => 0, 'margin' => 0, 'orders' => 0],
+            };
+
+            $totalRevenue += $data['revenue'];
+            $totalMargin += $data['margin'];
+            $totalOrders += $data['orders'];
+        }
+
+        return [
+            'revenue' => $totalRevenue,
+            'margin' => $totalMargin,
+            'orders' => $totalOrders,
+        ];
+    }
+
+    /**
+     * Собрать данные из Uzum заказов
+     */
+    private function collectUzumData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        // Uzum статусы: issued = доставлено, accepted_uzum = принято
+        $orders = \App\Models\UzumOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['issued', 'accepted_uzum'])
+            ->whereBetween('ordered_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_amount), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи требует связи с Products через barcode/sku
+        // Пока возвращаем 0, можно добавить позже
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Wildberries заказов
+     */
+    private function collectWildberriesData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\WildberriesOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['confirmed', 'completed'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(DISTINCT order_id) as total_orders,
+                COALESCE(SUM(total_price), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Ozon заказов
+     */
+    private function collectOzonData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\OzonOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status_normalized', ['confirmed', 'completed'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_price), 0) as total_revenue
+            ')
+            ->first();
+
+        // TODO: Расчёт маржи
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0,
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать данные из Yandex Market заказов
+     */
+    private function collectYandexMarketData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $orders = \App\Models\YandexMarketOrder::where('marketplace_account_id', $accountId)
+            ->whereIn('status', ['PROCESSING', 'DELIVERY', 'DELIVERED'])
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total), 0) as total_revenue
+            ')
+            ->first();
+
+        return [
+            'revenue' => (float) ($orders->total_revenue ?? 0),
+            'margin' => 0, // TODO: добавить расчёт маржи для YM
+            'orders' => (int) ($orders->total_orders ?? 0),
+        ];
     }
 
     /**
@@ -189,27 +304,37 @@ final class KpiAiService
     private function getSystemPrompt(): string
     {
         return <<<'PROMPT'
-Ты — ИИ-аналитик KPI для платформы управления продажами на маркетплейсах (Wildberries, Ozon, Uzum, Yandex Market).
+Ты — продвинутый ИИ-аналитик KPI (GPT-5.1) для платформы управления продажами на маркетплейсах СНГ (Wildberries, Ozon, Uzum, Yandex Market).
 
-Твоя задача — на основе исторических данных продаж рекомендовать оптимальные KPI-планы для сотрудников.
+ВАЖНО: Компания работает в Узбекистане, все суммы в узбекских сумах (сум, UZS). НИКОГДА не используй рубли, доллары или другие валюты в ответе.
 
-Правила:
-- Анализируй тренды продаж (рост/падение/стагнация)
-- Учитывай сезонность (новогодние праздники, летний спад и т.д.)
-- Целевые показатели должны быть реалистичными но амбициозными (рост 5-15% к среднему)
-- Если данных мало — рекомендуй консервативные цели
+Твоя задача — на основе глубокого анализа исторических данных продаж рекомендовать оптимальные KPI-планы для сотрудников.
+
+Правила анализа:
+- ОБЯЗАТЕЛЬНО анализируй предоставленные исторические данные (если есть)
+- Если исторических данных НЕТ — явно укажи это в reasoning и дай консервативные стартовые цели
+- Если данные ЕСТЬ — проводи детальный анализ трендов (рост/падение/стагнация, ускорение/замедление)
+- Учитывай сезонность и внешние факторы (праздники, Рамадан, экономические условия Узбекистана)
+- Анализируй паттерны выполнения прошлых планов для оценки реалистичности
+- Целевые показатели должны быть амбициозными но достижимыми (рост 5-20% к среднему)
 - Веса метрик должны в сумме давать 100
 - Оборот обычно имеет наибольший вес (40-60%), маржа (25-40%), заказы (10-25%)
+- Учитывай специфику маркетплейса (Uzum, Wildberries и т.д.) и профиль сотрудника
+
+В reasoning ОБЯЗАТЕЛЬНО упоминай:
+- Есть ли исторические данные или их нет
+- На основе чего сделаны рекомендации
+- Все суммы указывай в сумах (сум), а не в рублях
 
 Ответ строго в формате JSON:
 {
-    "target_revenue": число,
-    "target_margin": число,
+    "target_revenue": число (в сумах),
+    "target_margin": число (в сумах),
     "target_orders": число,
     "weight_revenue": число (0-100),
     "weight_margin": число (0-100),
     "weight_orders": число (0-100),
-    "reasoning": "Краткое объяснение на русском языке (2-3 предложения)"
+    "reasoning": "Подробное объяснение на русском языке (3-5 предложений с обоснованием целей, упоминанием наличия/отсутствия данных, все суммы в сумах)"
 }
 PROMPT;
     }
@@ -218,61 +343,46 @@ PROMPT;
     {
         $monthNames = [1 => 'Январь', 2 => 'Февраль', 3 => 'Март', 4 => 'Апрель', 5 => 'Май', 6 => 'Июнь', 7 => 'Июль', 8 => 'Август', 9 => 'Сентябрь', 10 => 'Октябрь', 11 => 'Ноябрь', 12 => 'Декабрь'];
 
-        $prompt = "Создай KPI-план для сотрудника.\n\n";
-        $prompt .= "Сотрудник: {$employee->name}\n";
+        $prompt = "Создай KPI-план для сотрудника в Узбекистане.\n\n";
+        $prompt .= "ВАЛЮТА: Узбекский сум (сум, UZS) — все суммы указывай только в сумах!\n\n";
+        $prompt .= "Сотрудник: {$employee->full_name}\n";
         $prompt .= "Сфера продаж: {$sphere->name}\n";
-        $prompt .= "Маркетплейс: " . ($sphere->hasMarketplaceLink() ? 'Да (автосбор данных)' : 'Нет (ручной ввод)') . "\n";
+        $prompt .= 'Маркетплейс: '.($sphere->hasMarketplaceLink() ? 'Да (автосбор данных)' : 'Нет (ручной ввод)')."\n";
         $prompt .= "Период: {$monthNames[$month]} {$year}\n\n";
 
         // Историческая статистика
-        $prompt .= "Историческая статистика продаж (последние 6 месяцев):\n";
+        $prompt .= "Историческая статистика продаж (последние 6 месяцев, все суммы в сумах):\n";
         $hasData = false;
         foreach (array_reverse($history) as $h) {
             $mName = $monthNames[$h['month']] ?? $h['month'];
             if ($h['revenue'] > 0 || $h['orders'] > 0) {
                 $hasData = true;
-                $prompt .= "- {$mName} {$h['year']}: оборот=" . number_format($h['revenue'], 0, '.', ' ') . ", маржа=" . number_format($h['margin'], 0, '.', ' ') . ", заказов={$h['orders']}\n";
+                $prompt .= "- {$mName} {$h['year']}: оборот=".number_format($h['revenue'], 0, '.', ' ').' сум, маржа='.number_format($h['margin'], 0, '.', ' ')." сум, заказов={$h['orders']}\n";
             } else {
                 $prompt .= "- {$mName} {$h['year']}: нет данных\n";
             }
         }
 
         if (! $hasData) {
-            $prompt .= "\nИсторических данных нет. Предложи начальные консервативные цели.\n";
+            $prompt .= "\n⚠️ ВАЖНО: Исторических данных продаж НЕТ!\n";
+            $prompt .= "Это новый сотрудник/сфера без истории продаж.\n";
+            $prompt .= "Предложи начальные консервативные цели для старта работы на узбекском рынке.\n";
+            $prompt .= "Ориентируйся на типичные показатели для маркетплейсов Узбекистана (Uzum Market и др.).\n\n";
         }
 
         // Прошлые KPI-планы
         if (! empty($pastPlans)) {
-            $prompt .= "\nПрошлые KPI-планы:\n";
+            $prompt .= "\nПрошлые KPI-планы (все суммы в сумах):\n";
             foreach ($pastPlans as $p) {
                 $mName = $monthNames[$p['month']] ?? $p['month'];
-                $prompt .= "- {$mName} {$p['year']}: план(оборот={$p['target_revenue']}, маржа={$p['target_margin']}, заказы={$p['target_orders']}) → факт(оборот={$p['actual_revenue']}, маржа={$p['actual_margin']}, заказы={$p['actual_orders']}) → выполнение={$p['achievement_percent']}%\n";
+                $prompt .= "- {$mName} {$p['year']}: план(оборот=".number_format($p['target_revenue'], 0, '.', ' ').' сум, маржа='.number_format($p['target_margin'], 0, '.', ' ').' сум, заказы='.$p['target_orders'].') → факт(оборот='.number_format($p['actual_revenue'], 0, '.', ' ').' сум, маржа='.number_format($p['actual_margin'], 0, '.', ' ').' сум, заказы='.$p['actual_orders'].") → выполнение={$p['achievement_percent']}%\n";
             }
         }
 
         $prompt .= "\nОтветь ТОЛЬКО в формате JSON, без лишнего текста.";
+        $prompt .= "\nВСЕ СУММЫ указывай в СУМАХ (не в рублях, не в долларах).";
 
         return $prompt;
-    }
-
-    private function callOpenAI(string $endpoint, array $data): array
-    {
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer {$this->apiKey}",
-            'Content-Type' => 'application/json',
-        ])->timeout(60)->post("{$this->baseUrl}{$endpoint}", $data);
-
-        if (! $response->successful()) {
-            Log::error('OpenAI KPI API Error', [
-                'endpoint' => $endpoint,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            throw new \Exception('Ошибка при обращении к ИИ: ' . $response->body());
-        }
-
-        return $response->json();
     }
 
     /**

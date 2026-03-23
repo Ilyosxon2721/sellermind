@@ -366,7 +366,7 @@
     </section>
 @endif
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function bannerCarousel() {
         return {
             current: 0,

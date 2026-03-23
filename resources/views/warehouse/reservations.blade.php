@@ -54,9 +54,9 @@
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" x-model="filters.status">
                             <option value="">Все</option>
                             <option value="ACTIVE">Активные</option>
-                            <option value="RELEASED">Отпущенные</option>
-                            <option value="CONSUMED">Списанные</option>
-                            <option value="CANCELLED">Отменённые</option>
+                            <option value="RELEASED">Отменённые</option>
+                            <option value="CONSUMED">Отгруженные</option>
+                            <option value="CANCELLED">Отменённые (системные)</option>
                         </select>
                     </div>
                     <div>
@@ -199,8 +199,8 @@
                                     </template>
                                 </td>
                                 <td class="px-4 py-4 text-right space-x-2">
-                                    <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="release(res.id)" :disabled="res.status !== 'ACTIVE'">Отпустить</button>
-                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'">Списать</button>
+                                    <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="release(res.id)" :disabled="res.status !== 'ACTIVE'" title="Отменить резерв — товар вернётся в доступные остатки">Отменить</button>
+                                    <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs transition-colors disabled:opacity-50" @click="consume(res.id)" :disabled="res.status !== 'ACTIVE'" title="Отгрузить — товар списывается со склада">Отгрузить</button>
                                 </td>
                             </tr>
                         </template>
@@ -261,7 +261,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function reservationsPage() {
         return {
             filters: { warehouse_id: '{{ $selectedWarehouseId }}', status: 'ACTIVE', reason: '' },
@@ -275,8 +275,8 @@
             // Status translations
             statusTranslations: {
                 'ACTIVE': 'Активный',
-                'RELEASED': 'Отпущен',
-                'CONSUMED': 'Списан',
+                'RELEASED': 'Отменён',
+                'CONSUMED': 'Отгружен',
                 'CANCELLED': 'Отменён'
             },
 
@@ -381,19 +381,19 @@
             },
 
             async release(id) {
-                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/release`);
+                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/release`, 'Резерв отменён — товар возвращён в доступные');
             },
 
             async consume(id) {
-                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/consume`);
+                await this.simpleAction(`/api/marketplace/stock/reservations/${id}/consume`, 'Отгружено — товар списан со склада');
             },
 
-            async simpleAction(url) {
+            async simpleAction(url, successMessage = 'Операция выполнена') {
                 try {
                     const resp = await fetch(url, { method: 'POST', headers: this.getAuthHeaders(), credentials: 'include' });
                     const json = await resp.json();
                     if (!resp.ok || json.errors) throw new Error(json.errors?.[0]?.message || 'Ошибка операции');
-                    this.showToast('Операция выполнена', 'success');
+                    this.showToast(successMessage, 'success');
                     this.load();
                 } catch (e) {
                     this.showToast(e.message || 'Ошибка', 'error');

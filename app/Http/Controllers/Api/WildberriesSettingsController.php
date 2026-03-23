@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Marketplace\UpdateWildberriesSettingsRequest;
 use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use Illuminate\Http\JsonResponse;
@@ -54,7 +55,7 @@ class WildberriesSettingsController extends Controller
     /**
      * Update WB account tokens
      */
-    public function update(Request $request, MarketplaceAccount $account): JsonResponse
+    public function update(UpdateWildberriesSettingsRequest $request, MarketplaceAccount $account): JsonResponse
     {
         \Log::info('WB Settings Update Request', [
             'account_id' => $account->id,
@@ -77,17 +78,7 @@ class WildberriesSettingsController extends Controller
             return response()->json(['message' => 'Аккаунт не является Wildberries.'], 400);
         }
 
-        $validated = $request->validate([
-            'api_key' => ['nullable', 'string', 'max:4000'],
-            'wb_content_token' => ['nullable', 'string', 'max:4000'],
-            'wb_marketplace_token' => ['nullable', 'string', 'max:4000'],
-            'wb_prices_token' => ['nullable', 'string', 'max:4000'],
-            'wb_statistics_token' => ['nullable', 'string', 'max:4000'],
-            'warehouse_id' => ['nullable', 'integer'], // для aggregated mode (WB склад)
-            'sync_mode' => ['nullable', 'in:basic,aggregated'], // режим синхронизации
-            'source_warehouse_ids' => ['nullable', 'array'], // для aggregated mode (внутренние склады)
-            'source_warehouse_ids.*' => ['integer'],
-        ]);
+        $validated = $request->validated();
 
         // Update only provided tokens (null = don't update, empty string = clear)
         $updateData = [];

@@ -12,12 +12,14 @@ use App\Models\MarketplaceOrder;
 use App\Models\MarketplaceOrderItem;
 use App\Models\MarketplaceProduct;
 use App\Models\MarketplaceSyncLog;
-use App\Services\Uzum\UzumOrderSyncService;
 use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesOrderService;
 use App\Services\Marketplaces\Wildberries\WildberriesPriceService;
 use App\Services\Marketplaces\Wildberries\WildberriesProductService;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
+use App\Models\VariantMarketplaceLink;
+use App\Services\Stock\StockSyncService;
+use App\Services\Uzum\UzumOrderSyncService;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Log;
@@ -185,6 +187,46 @@ class MarketplaceSyncService
                 return;
             }
 
+            // Uzum: используем StockSyncService (корректные fbsLinked/dbsLinked + все 7 полей)
+            if ($account->isUzum()) {
+                $syncService = app(StockSyncService::class);
+
+                $links = VariantMarketplaceLink::where('marketplace_account_id', $account->id)
+                    ->where('marketplace_code', 'uzum')
+                    ->where('is_active', true)
+                    ->where('sync_stock_enabled', true)
+                    ->whereNotNull('external_sku_id')
+                    ->with(['variant', 'marketplaceProduct', 'account'])
+                    ->get();
+
+                $synced = 0;
+                $skipped = 0;
+                $errors = 0;
+
+                foreach ($links as $link) {
+                    try {
+                        $syncService->syncLinkStock($link);
+                        $synced++;
+                    } catch (\RuntimeException $e) {
+                        if (str_contains($e->getMessage(), 'не подключён к FBS/DBS')) {
+                            $skipped++;
+                        } else {
+                            $errors++;
+                            Log::warning('Uzum stock sync error', ['sku_id' => $link->external_sku_id, 'error' => $e->getMessage()]);
+                        }
+                    } catch (Throwable $e) {
+                        $errors++;
+                        Log::error('Uzum stock sync failed', ['sku_id' => $link->external_sku_id, 'error' => $e->getMessage()]);
+                    }
+
+                    usleep(300000); // 300ms между запросами
+                }
+
+                $log->markAsSuccess("Uzum stocks: синхронизировано {$synced}, пропущено {$skipped}, ошибок {$errors}");
+
+                return;
+            }
+
             $query = MarketplaceProduct::where('marketplace_account_id', $account->id)
                 ->where('status', MarketplaceProduct::STATUS_ACTIVE);
 
@@ -316,7 +358,7 @@ class MarketplaceSyncService
                     25
                 ));
 
-                $uzumSync = new UzumOrderSyncService();
+                $uzumSync = new UzumOrderSyncService;
                 $daysBack = (int) ceil($from->diffInDays($to, true)) ?: 30;
                 $stats = $uzumSync->sync($account, $daysBack);
 
@@ -510,6 +552,7 @@ class MarketplaceSyncService
                     $orderedAt = Carbon::parse($val, 'Asia/Tashkent');
                 }
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты заказа маркетплейса', ['value' => $val ?? null, 'error' => $e->getMessage()]);
                 $orderedAt = null;
             }
         }
@@ -637,6 +680,7 @@ class MarketplaceSyncService
             try {
                 $orderedAt = \Carbon\Carbon::parse($orderData['ordered_at']);
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты заказа WB', ['value' => $orderData['ordered_at'] ?? null, 'error' => $e->getMessage()]);
                 $orderedAt = null;
             }
         }
@@ -727,6 +771,7 @@ class MarketplaceSyncService
                     $orderedAt = \Carbon\Carbon::parse($orderData['ordered_at']);
                 }
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты заказа Uzum', ['value' => $orderData['ordered_at'] ?? null, 'error' => $e->getMessage()]);
                 $orderedAt = null;
             }
         }
@@ -807,6 +852,7 @@ class MarketplaceSyncService
                 $dateStr = $orderData['created_at_ozon'] ?? $orderData['ordered_at'];
                 $createdAtOzon = \Carbon\Carbon::parse($dateStr);
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты создания заказа Ozon', ['value' => $dateStr ?? null, 'error' => $e->getMessage()]);
                 $createdAtOzon = null;
             }
         }
@@ -816,6 +862,7 @@ class MarketplaceSyncService
             try {
                 $shipmentDate = \Carbon\Carbon::parse($orderData['shipment_date']);
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты отгрузки Ozon', ['value' => $orderData['shipment_date'], 'error' => $e->getMessage()]);
                 $shipmentDate = null;
             }
         }
@@ -825,6 +872,7 @@ class MarketplaceSyncService
             try {
                 $inProcessAt = \Carbon\Carbon::parse($orderData['in_process_at']);
             } catch (\Throwable $e) {
+                Log::warning('Ошибка парсинга даты обработки Ozon', ['value' => $orderData['in_process_at'], 'error' => $e->getMessage()]);
                 $inProcessAt = null;
             }
         }
@@ -864,6 +912,12 @@ class MarketplaceSyncService
 
             return $client->testConnection($account);
         } catch (Throwable $e) {
+            Log::warning('Проверка подключения к маркетплейсу failed', [
+                'account_id' => $account->id,
+                'marketplace' => $account->marketplace ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Ошибка: '.$e->getMessage(),

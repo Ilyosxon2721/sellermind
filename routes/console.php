@@ -326,7 +326,7 @@ Schedule::command('marketplace:auto-link --all')
     })
     ->appendOutputTo(storage_path('logs/marketplace-autolink.log'));
 
-// Low Stock: Проверка остатков и отправка уведомлений (каждый день в 08:00)
+// Low Stock: Проверка остатков склада и отправка уведомлений (каждый день в 08:00)
 Schedule::command('stock:check-low')
     ->dailyAt('08:00')
     ->name('check-low-stock')
@@ -336,6 +336,19 @@ Schedule::command('stock:check-low')
     })
     ->onFailure(function () {
         \Log::error('Low stock check failed');
+    })
+    ->appendOutputTo(storage_path('logs/low-stock.log'));
+
+// Marketplace FBS Low Stock: Проверка прогноза FBS-остатков (каждый день в 09:00)
+Schedule::command('marketplace:check-fbs-stock --threshold=7')
+    ->dailyAt('09:00')
+    ->name('check-marketplace-fbs-stock')
+    ->withoutOverlapping(15)
+    ->onSuccess(function () {
+        \Log::info('Marketplace FBS stock check completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Marketplace FBS stock check failed');
     })
     ->appendOutputTo(storage_path('logs/low-stock.log'));
 
@@ -377,3 +390,108 @@ Schedule::command('telegram:daily-summary')
     ->withoutOverlapping()
     ->name('telegram:daily-summary')
     ->appendOutputTo(storage_path('logs/telegram-daily-summary.log'));
+
+/*
+|--------------------------------------------------------------------------
+| Uzum Analytics Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Automated tasks for Uzum Market competitive analytics module
+|
+*/
+
+// Uzum Analytics: Обновление пула JWT токенов каждые 5 минут
+Schedule::job(new \App\Modules\UzumAnalytics\Jobs\RefreshTokenPoolJob)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->name('uzum-analytics:refresh-tokens')
+    ->onFailure(function () {
+        \Log::error('[UzumAnalytics] Token refresh job failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
+
+// Uzum Analytics: Синхронизация дерева категорий 1 раз в сутки (ТЗ #071)
+Schedule::job(new \App\Modules\UzumAnalytics\Jobs\SyncCategoriesJob)
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->name('uzum-analytics:sync-categories')
+    ->onFailure(function () {
+        \Log::error('[UzumAnalytics] Categories sync job failed');
+    })
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));
+
+// Uzum Analytics: Снепшоты отслеживаемых товаров 4 раза в сутки (ТЗ #073)
+// 00:00, 06:00, 12:00, 18:00 UTC+5 (Ташкент)
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6; // rate limit: 10 товаров/мин = 6 сек между запросами
+            });
+    });
+})
+    ->at('00:00')->daily()
+    ->name('uzum-analytics:crawl-products-00')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('06:00')->daily()
+    ->name('uzum-analytics:crawl-products-06')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('12:00')->daily()
+    ->name('uzum-analytics:crawl-products-12')
+    ->withoutOverlapping(30);
+
+Schedule::call(function () {
+    $delay = 0;
+    \App\Models\Company::where('is_active', true)->cursor()->each(function ($company) use (&$delay) {
+        \App\Modules\UzumAnalytics\Models\UzumTrackedProduct::where('company_id', $company->id)
+            ->cursor()
+            ->each(function ($tracked) use ($company, &$delay) {
+                \App\Modules\UzumAnalytics\Jobs\CrawlProductJob::dispatch($tracked->product_id, $company->id)
+                    ->onQueue('uzum-crawler')
+                    ->delay(now()->addSeconds($delay));
+                $delay += 6;
+            });
+    });
+})
+    ->at('18:00')->daily()
+    ->name('uzum-analytics:crawl-products-18')
+    ->withoutOverlapping(30);
+
+// Ежедневная проверка структуры Uzum API (#084)
+Schedule::command('uzum:check-api-structure')
+    ->dailyAt('09:00')
+    ->name('uzum-analytics:check-api-structure')
+    ->appendOutputTo(storage_path('logs/uzum-analytics.log'));

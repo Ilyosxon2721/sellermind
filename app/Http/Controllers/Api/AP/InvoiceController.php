@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\AP;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AP\StoreApInvoiceRequest;
 use App\Models\AP\SupplierInvoice;
 use App\Services\AP\InvoiceService;
 use App\Support\ApiResponder;
@@ -61,14 +62,14 @@ class InvoiceController extends Controller
         return $this->successResponse($inv);
     }
 
-    public function store(Request $request)
+    public function store(StoreApInvoiceRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $data['company_id'] = $companyId;
         $data['created_by'] = Auth::id();
 
@@ -77,14 +78,14 @@ class InvoiceController extends Controller
         return $this->successResponse($invoice);
     }
 
-    public function update($id, Request $request)
+    public function update($id, StoreApInvoiceRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $this->validateData($request);
+        $data = $request->validated();
         $invoice = $this->service->updateDraft($id, $companyId, $data, $request->input('lines', []));
 
         return $this->successResponse($invoice);
@@ -119,23 +120,5 @@ class InvoiceController extends Controller
         $this->service->recalc($invoice->id);
 
         return $this->successResponse($invoice->fresh('lines'));
-    }
-
-    protected function validateData(Request $request): array
-    {
-        return $request->validate([
-            'supplier_id' => ['required', 'integer'],
-            'invoice_no' => ['required', 'string'],
-            'status' => ['nullable', 'string'],
-            'issue_date' => ['nullable', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'currency_code' => ['nullable', 'string'],
-            'exchange_rate' => ['nullable', 'numeric'],
-            'amount_tax' => ['nullable', 'numeric'],
-            'amount_total' => ['nullable', 'numeric'],
-            'related_type' => ['nullable', 'string'],
-            'related_id' => ['nullable', 'integer'],
-            'notes' => ['nullable', 'string'],
-        ]);
     }
 }

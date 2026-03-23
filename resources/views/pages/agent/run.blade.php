@@ -159,7 +159,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function agentRunPage(runId) {
     return {
         runId: runId,

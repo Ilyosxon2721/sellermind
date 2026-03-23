@@ -437,6 +437,11 @@ class WildberriesHttpClient
                 'data' => $result,
             ];
         } catch (\Exception $e) {
+            Log::warning('Проверка доступности WB API failed', [
+                'category' => $category,
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'category' => $category,

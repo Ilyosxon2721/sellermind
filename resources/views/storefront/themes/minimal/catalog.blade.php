@@ -208,7 +208,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function minimalCatalogPage() {
         return {
             adding: null,

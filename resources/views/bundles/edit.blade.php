@@ -214,7 +214,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function bundleEditForm(bundleId) {
     return {
         bundleId,

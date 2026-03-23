@@ -33,7 +33,7 @@
 @endif
 
 @push('structured_data')
-<script type="application/ld+json">
+<script nonce="{{ $cspNonce ?? '' }}" type="application/ld+json">
 {
     "@context": "https://schema.org/",
     "@type": "Product",
@@ -486,7 +486,7 @@
 
 {{-- Секция "Похожие товары" --}}
 {{-- Трекинг просмотра для "Недавно просмотренные" --}}
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     document.addEventListener('DOMContentLoaded', () => {
         window.dispatchEvent(new CustomEvent('track-product-view', {
             detail: {
@@ -613,7 +613,7 @@
 </section>
 @endif
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function relatedProducts() {
         return {
             adding: null,
@@ -658,7 +658,7 @@
     }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function productPage(variantsData, storeProductId, currency) {
         return {
             activeImage: 0,

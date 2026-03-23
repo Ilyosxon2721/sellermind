@@ -440,6 +440,7 @@ Route::middleware('auth.any')->group(function () {
         // Sync operations
         Route::post('accounts/{account}/sync/prices', [MarketplaceSyncController::class, 'syncPrices']);
         Route::post('accounts/{account}/sync/stocks', [MarketplaceSyncController::class, 'syncStocks']);
+        Route::get('accounts/{account}/sync/status', [MarketplaceSyncController::class, 'syncStatus']);
         Route::post('accounts/{account}/sync/products', [MarketplaceSyncController::class, 'syncProducts']);
         Route::post('accounts/{account}/sync/orders', [MarketplaceSyncController::class, 'syncOrders']);
         Route::post('accounts/{account}/sync/supplies', [MarketplaceSyncController::class, 'syncSupplies']);
@@ -454,6 +455,8 @@ Route::middleware('auth.any')->group(function () {
         Route::post('products/bulk-link', [MarketplaceProductController::class, 'bulkLink']);
         Route::put('products/{marketplaceProduct}', [MarketplaceProductController::class, 'update']);
         Route::delete('products/{marketplaceProduct}', [MarketplaceProductController::class, 'destroy']);
+        Route::post('products/{marketplaceProduct}/seo-optimize', [MarketplaceProductController::class, 'seoOptimize']);
+        Route::get('products/stock-forecast', [MarketplaceProductController::class, 'stockForecast']);
         Route::get('stock/logs', [\App\Http\Controllers\Api\MarketplaceStockLogController::class, 'index']);
         Route::get('stock/dashboard', [\App\Http\Controllers\Api\MarketplaceStockDashboardController::class, 'summary']);
         Route::get('stock/search', [\App\Http\Controllers\Api\MarketplaceStockDashboardController::class, 'search']);
@@ -623,6 +626,9 @@ Route::middleware('auth.any')->group(function () {
             Route::get('accounts/{account}/reviews', [\App\Http\Controllers\Api\UzumReviewController::class, 'reviews']);
             Route::post('accounts/{account}/reviews/{reviewId}/reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'reply']);
             Route::post('accounts/{account}/reviews/{reviewId}/ai-reply', [\App\Http\Controllers\Api\UzumReviewController::class, 'aiReply']);
+            Route::get('accounts/{account}/sku-schemes', [UzumSettingsController::class, 'skuSchemes']);
+            Route::post('accounts/{account}/sku-schemes/bulk', [UzumSettingsController::class, 'bulkUpdateSkuSchemes']);
+            Route::post('accounts/{account}/sku-schemes/{skuId}', [UzumSettingsController::class, 'updateSkuScheme']);
         });
 
         // Yandex Market
@@ -903,6 +909,7 @@ Route::middleware('auth.any')->group(function () {
         // KPI — планы, сферы продаж, шкалы бонусов
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
+            Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
 
             // Маркетплейс-аккаунты для привязки
             Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);

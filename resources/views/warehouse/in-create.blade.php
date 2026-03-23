@@ -236,7 +236,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function inCreatePage() {
         return {
             error: '',

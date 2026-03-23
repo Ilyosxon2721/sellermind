@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finance\EmployeeRequest;
+use App\Http\Requests\Finance\ExpenseAdvanceRequest;
+use App\Http\Requests\Finance\PenaltyDeductionRequest;
+use App\Http\Requests\Finance\SalaryPaymentRequest;
 use App\Models\Finance\Employee;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
@@ -155,7 +158,7 @@ class EmployeeController extends Controller
     /**
      * Pay salary manually to employee
      */
-    public function paySalary($id, Request $request)
+    public function paySalary($id, SalaryPaymentRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -164,12 +167,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::byCompany($companyId)->findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_date' => ['nullable', 'date'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'payment_method' => ['nullable', 'string', 'max:50'],
-        ]);
+        $data = $request->validated();
 
         // Create expense transaction for salary payment
         $transaction = \App\Models\Finance\FinanceTransaction::create([
@@ -203,7 +201,7 @@ class EmployeeController extends Controller
     /**
      * Add penalty/fine to employee
      */
-    public function addPenalty($id, Request $request)
+    public function addPenalty($id, PenaltyDeductionRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -212,11 +210,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::byCompany($companyId)->findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'reason' => ['required', 'string', 'max:500'],
-            'penalty_date' => ['nullable', 'date'],
-        ]);
+        $data = $request->validated();
 
         // Create income transaction (penalty reduces what we owe to employee)
         $transaction = \App\Models\Finance\FinanceTransaction::create([
@@ -250,7 +244,7 @@ class EmployeeController extends Controller
     /**
      * Add expense for employee (advances, equipment, etc.)
      */
-    public function addExpense($id, Request $request)
+    public function addExpense($id, ExpenseAdvanceRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -259,12 +253,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::byCompany($companyId)->findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'description' => ['required', 'string', 'max:500'],
-            'expense_date' => ['nullable', 'date'],
-            'expense_type' => ['nullable', 'string', 'in:advance,equipment,training,travel,other'],
-        ]);
+        $data = $request->validated();
 
         $expenseType = $data['expense_type'] ?? 'other';
         $typeLabels = [

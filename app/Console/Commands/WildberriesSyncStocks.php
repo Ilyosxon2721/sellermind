@@ -10,6 +10,7 @@ use App\Services\Marketplaces\Wildberries\WildberriesHttpClient;
 use App\Services\Marketplaces\Wildberries\WildberriesStockService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class WildberriesSyncStocks extends Command
 {
@@ -105,6 +106,10 @@ class WildberriesSyncStocks extends Command
             ]);
 
             $this->error("Ошибка синхронизации: {$e->getMessage()}");
+            Log::error('Ошибка синхронизации остатков WB', [
+                'account_id' => $account->id,
+                'error' => $e->getMessage(),
+            ]);
 
             return self::FAILURE;
         }

@@ -15,12 +15,13 @@ use Illuminate\Support\Facades\Log;
 final class TelegramNotificationService
 {
     private string $botToken;
+
     private bool $enabled;
 
     public function __construct()
     {
         $this->botToken = config('services.telegram.bot_token', '');
-        $this->enabled  = (bool) config('services.telegram.notifications_enabled', false);
+        $this->enabled = (bool) config('services.telegram.notifications_enabled', false);
     }
 
     /**
@@ -88,14 +89,14 @@ final class TelegramNotificationService
         }
 
         $typeLabels = ['retail' => 'Розница', 'wholesale' => 'Опт', 'direct' => 'Прямая'];
-        $type     = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
-        $amount   = number_format((float) $sale->total_amount, 0, '.', ' ');
+        $type = $typeLabels[$sale->sale_type] ?? $sale->sale_type;
+        $amount = number_format((float) $sale->total_amount, 0, '.', ' ');
         $currency = $sale->currency_code ?? 'UZS';
 
         $message = "🛒 *РУЧНАЯ ПРОДАЖА*\n\n"
-            . "🔢 Номер: {$sale->sale_number}\n"
-            . "📋 Тип: {$type}\n"
-            . "💰 Сумма: {$amount} {$currency}\n";
+            ."🔢 Номер: {$sale->sale_number}\n"
+            ."📋 Тип: {$type}\n"
+            ."💰 Сумма: {$amount} {$currency}\n";
 
         // Контрагент
         $counterpartyName = $sale->counterparty?->name ?? $sale->customer_name ?? null;
@@ -109,15 +110,15 @@ final class TelegramNotificationService
             $message .= "🛍 Товары:\n";
             foreach ($items->take(5) as $item) {
                 $name = $item->product_name ?? $item->sku_code ?? '—';
-                $qty  = (int) $item->quantity;
+                $qty = (int) $item->quantity;
                 $message .= "  • {$name} × {$qty}\n";
             }
             if ($items->count() > 5) {
-                $message .= '  ...и ещё ' . ($items->count() - 5) . " шт.\n";
+                $message .= '  ...и ещё '.($items->count() - 5)." шт.\n";
             }
         }
 
-        $message .= "🕐 Дата: " . $sale->sale_date->format('d.m.Y') . "\n";
+        $message .= '🕐 Дата: '.$sale->sale_date->format('d.m.Y')."\n";
 
         $this->send((string) $user->telegram_id, $message);
     }
@@ -125,12 +126,12 @@ final class TelegramNotificationService
     private function buildMessage(MarketplaceEvent $event): ?string
     {
         return match ($event->event_type) {
-            EventType::ORDER_CREATED        => $this->orderCreatedMessage($event),
-            EventType::ORDER_CANCELLED      => $this->orderCancelledMessage($event),
+            EventType::ORDER_CREATED => $this->orderCreatedMessage($event),
+            EventType::ORDER_CANCELLED => $this->orderCancelledMessage($event),
             EventType::ORDER_STATUS_CHANGED => $this->orderStatusMessage($event),
-            EventType::RETURN_CREATED       => $this->returnMessage($event),
+            EventType::RETURN_CREATED => $this->returnMessage($event),
             EventType::CHAT_MESSAGE_CREATED => $this->chatMessage($event),
-            default                         => null,
+            default => null,
         };
     }
 
@@ -138,8 +139,8 @@ final class TelegramNotificationService
     {
         $payload = $event->payload ?? [];
         $text = "✅ *НОВЫЙ ЗАКАЗ*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n";
+            ."📦 Маркетплейс: {$event->marketplace->label()}\n"
+            ."🔢 Заказ: \#{$event->entity_id}\n";
 
         if (! empty($payload['total_price'])) {
             $amount = number_format((float) $payload['total_price'], 0, '.', ' ');
@@ -151,15 +152,15 @@ final class TelegramNotificationService
             $text .= "🛍 Товары:\n";
             foreach (array_slice($payload['items'], 0, 5) as $item) {
                 $name = $item['name'] ?? $item['subject'] ?? $item['title'] ?? '—';
-                $qty  = $item['quantity'] ?? $item['qty'] ?? 1;
+                $qty = $item['quantity'] ?? $item['qty'] ?? 1;
                 $text .= "  • {$name} × {$qty}\n";
             }
             if (count($payload['items']) > 5) {
-                $text .= '  ...и ещё ' . (count($payload['items']) - 5) . " шт.\n";
+                $text .= '  ...и ещё '.(count($payload['items']) - 5)." шт.\n";
             }
         }
 
-        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $text .= '🕐 Время: '.$event->created_at->format('d.m.Y H:i')."\n";
 
         return $text;
     }
@@ -168,14 +169,14 @@ final class TelegramNotificationService
     {
         $payload = $event->payload ?? [];
         $text = "❌ *ЗАКАЗ ОТМЕНЁН*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n";
+            ."📦 Маркетплейс: {$event->marketplace->label()}\n"
+            ."🔢 Заказ: \#{$event->entity_id}\n";
 
         if (! empty($payload['cancel_reason'])) {
             $text .= "📝 Причина: {$payload['cancel_reason']}\n";
         }
 
-        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $text .= '🕐 Время: '.$event->created_at->format('d.m.Y H:i')."\n";
 
         return $text;
     }
@@ -184,14 +185,14 @@ final class TelegramNotificationService
     {
         $payload = $event->payload ?? [];
         $text = "⚠️ *СТАТУС ЗАКАЗА ИЗМЕНЁН*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n";
+            ."📦 Маркетплейс: {$event->marketplace->label()}\n"
+            ."🔢 Заказ: \#{$event->entity_id}\n";
 
         if (! empty($payload['status'])) {
             $text .= "📋 Статус: {$payload['status']}\n";
         }
 
-        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $text .= '🕐 Время: '.$event->created_at->format('d.m.Y H:i')."\n";
 
         return $text;
     }
@@ -200,15 +201,15 @@ final class TelegramNotificationService
     {
         $payload = $event->payload ?? [];
         $text = "🔄 *ВОЗВРАТ*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n"
-            . "🔢 Заказ: \#{$event->entity_id}\n";
+            ."📦 Маркетплейс: {$event->marketplace->label()}\n"
+            ."🔢 Заказ: \#{$event->entity_id}\n";
 
         if (! empty($payload['total_price'])) {
             $amount = number_format((float) $payload['total_price'], 0, '.', ' ');
             $text .= "💰 Сумма: {$amount}\n";
         }
 
-        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $text .= '🕐 Время: '.$event->created_at->format('d.m.Y H:i')."\n";
 
         return $text;
     }
@@ -217,14 +218,14 @@ final class TelegramNotificationService
     {
         $payload = $event->payload ?? [];
         $text = "💬 *НОВОЕ СООБЩЕНИЕ*\n\n"
-            . "📦 Маркетплейс: {$event->marketplace->label()}\n";
+            ."📦 Маркетплейс: {$event->marketplace->label()}\n";
 
         if (! empty($payload['text'])) {
             $preview = mb_substr($payload['text'], 0, 100);
             $text .= "✉️ {$preview}\n";
         }
 
-        $text .= "🕐 Время: " . $event->created_at->format('d.m.Y H:i') . "\n";
+        $text .= '🕐 Время: '.$event->created_at->format('d.m.Y H:i')."\n";
 
         return $text;
     }
@@ -233,8 +234,8 @@ final class TelegramNotificationService
     {
         try {
             Http::timeout(5)->post("https://api.telegram.org/bot{$this->botToken}/sendMessage", [
-                'chat_id'    => $chatId,
-                'text'       => $message,
+                'chat_id' => $chatId,
+                'text' => $message,
                 'parse_mode' => 'Markdown',
             ]);
         } catch (\Throwable $e) {

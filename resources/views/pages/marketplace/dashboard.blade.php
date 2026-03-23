@@ -17,11 +17,11 @@
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-                    <p class="text-gray-600 text-sm">KPI by marketplaces</p>
+                    <h1 class="text-2xl font-bold text-gray-900">Сводный дашборд</h1>
+                    <p class="text-gray-600 text-sm">KPI по всем маркетплейсам</p>
                 </div>
                 <a href="/marketplace" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                    Back to Accounts
+                    К аккаунтам
                 </a>
             </div>
         </header>
@@ -31,19 +31,19 @@
             <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
                 <div class="flex flex-wrap items-end gap-4">
                     <div class="flex-1 min-w-[150px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Period</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Период</label>
                         <select x-model="filters.period" @change="loadData" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="today">Today</option>
-                            <option value="7d">Last 7 days</option>
-                            <option value="30d">Last 30 days</option>
-                            <option value="custom">Custom</option>
+                            <option value="today">Сегодня</option>
+                            <option value="7d">7 дней</option>
+                            <option value="30d">30 дней</option>
+                            <option value="custom">Произвольный</option>
                         </select>
                     </div>
 
                     <div class="flex-1 min-w-[150px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Marketplace</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Маркетплейс</label>
                         <select x-model="filters.marketplace" @change="loadData" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="all">All</option>
+                            <option value="all">Все</option>
                             <option value="wb">Wildberries</option>
                             <option value="ozon">Ozon</option>
                             <option value="uzum">Uzum Market</option>
@@ -53,26 +53,26 @@
 
                     <template x-if="filters.period === 'custom'">
                         <div class="flex-1 min-w-[150px]">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">С</label>
                             <input type="date" x-model="filters.date_from" @change="loadData" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                     </template>
 
                     <template x-if="filters.period === 'custom'">
                         <div class="flex-1 min-w-[150px]">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">По</label>
                             <input type="date" x-model="filters.date_to" @change="loadData" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                     </template>
 
                     <button @click="loadData" :disabled="loading" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
-                        <span x-show="!loading">Refresh</span>
+                        <span x-show="!loading">Обновить</span>
                         <span x-show="loading" class="flex items-center">
                             <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Loading...
+                            Загрузка...
                         </span>
                     </button>
                 </div>
@@ -92,38 +92,44 @@
                 <!-- Overall KPI -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Overall Summary</h2>
+                        <h2 class="text-lg font-semibold text-gray-900">Общие показатели</h2>
                         <span class="text-sm text-gray-500" x-text="periodLabel"></span>
                     </div>
 
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <!-- Revenue -->
-                        <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-1">Revenue</div>
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.revenue || 0)"></div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+                        <!-- Выручка -->
+                        <div class="xl:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-sm text-gray-500 mb-1">Выручка</div>
+                            <div class="text-2xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.revenue || 0) + ' ₽'"></div>
                         </div>
 
-                        <!-- Orders -->
+                        <!-- Заказы -->
                         <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-1">Orders</div>
+                            <div class="text-sm text-gray-500 mb-1">Заказы</div>
                             <div class="text-2xl font-bold text-gray-900" x-text="data?.overall_kpi?.orders_count || 0"></div>
                         </div>
 
-                        <!-- Average Check -->
+                        <!-- Отменено -->
                         <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-1">Avg Check</div>
-                            <div class="text-2xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.avg_check || 0)"></div>
+                            <div class="text-sm text-gray-500 mb-1">Отменено</div>
+                            <div class="text-2xl font-bold" :class="(data?.overall_kpi?.cancelled_count || 0) > 0 ? 'text-red-500' : 'text-gray-900'" x-text="data?.overall_kpi?.cancelled_count || 0"></div>
                         </div>
 
-                        <!-- Return Rate -->
+                        <!-- Средний чек -->
                         <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-1">Return Rate</div>
+                            <div class="text-sm text-gray-500 mb-1">Средний чек</div>
+                            <div class="text-2xl font-bold text-gray-900" x-text="formatNumber(data?.overall_kpi?.avg_check || 0) + ' ₽'"></div>
+                        </div>
+
+                        <!-- Возвраты -->
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-sm text-gray-500 mb-1">Возвраты</div>
                             <div class="text-2xl font-bold" :class="(data?.overall_kpi?.return_rate || 0) > 5 ? 'text-red-600' : 'text-green-600'" x-text="(data?.overall_kpi?.return_rate || 0).toFixed(1) + '%'"></div>
                         </div>
 
-                        <!-- Active SKUs -->
+                        <!-- Активных SKU -->
                         <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-1">Active SKUs</div>
+                            <div class="text-sm text-gray-500 mb-1">Активных SKU</div>
                             <div class="text-2xl font-bold text-gray-900" x-text="data?.overall_kpi?.active_skus || 0"></div>
                         </div>
                     </div>
@@ -132,22 +138,22 @@
                 <!-- Charts Section -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Charts</h2>
-                        <span class="text-sm text-gray-500">Revenue and orders by day</span>
+                        <h2 class="text-lg font-semibold text-gray-900">Графики</h2>
+                        <span class="text-sm text-gray-500">Выручка и заказы по дням</span>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <!-- Revenue Chart -->
+                        <!-- Выручка -->
                         <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-3">Revenue by day</div>
+                            <div class="text-sm text-gray-500 mb-3">Выручка по дням, ₽</div>
                             <div class="relative" style="height: 250px;">
                                 <canvas id="chartRevenue"></canvas>
                             </div>
                         </div>
 
-                        <!-- Orders Chart -->
+                        <!-- Заказы -->
                         <div class="bg-white rounded-xl border border-gray-200 p-4">
-                            <div class="text-sm text-gray-500 mb-3">Orders by day</div>
+                            <div class="text-sm text-gray-500 mb-3">Заказы по дням</div>
                             <div class="relative" style="height: 250px;">
                                 <canvas id="chartOrders"></canvas>
                             </div>
@@ -158,25 +164,25 @@
                 <!-- By Account Table -->
                 <div class="bg-white rounded-xl border border-gray-200 mb-6">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-900">By Marketplace</h2>
+                        <h2 class="text-lg font-semibold text-gray-900">По маркетплейсам</h2>
                     </div>
 
                     <div x-show="!data?.accounts?.length" class="p-8 text-center text-gray-500">
-                        No connected marketplace accounts.
+                        Нет подключённых аккаунтов маркетплейсов.
                     </div>
 
                     <div x-show="data?.accounts?.length" class="overflow-x-auto">
                         <table class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marketplace</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Check</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Return Rate</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sync</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Маркетплейс</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Аккаунт</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Выручка</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Заказы</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Средний чек</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Возвраты</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Синхронизация</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -192,9 +198,9 @@
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 text-gray-600" x-text="account.name || '-'"></td>
-                                        <td class="px-4 py-3 text-right font-medium" x-text="formatNumber(getAccountKpi(account.id)?.revenue || 0)"></td>
+                                        <td class="px-4 py-3 text-right font-medium" x-text="formatNumber(getAccountKpi(account.id)?.revenue || 0) + ' ₽'"></td>
                                         <td class="px-4 py-3 text-right" x-text="getAccountKpi(account.id)?.orders_count || 0"></td>
-                                        <td class="px-4 py-3 text-right" x-text="formatNumber(getAccountKpi(account.id)?.avg_check || 0)"></td>
+                                        <td class="px-4 py-3 text-right" x-text="formatNumber(getAccountKpi(account.id)?.avg_check || 0) + ' ₽'"></td>
                                         <td class="px-4 py-3 text-right">
                                             <span :class="(getAccountKpi(account.id)?.return_rate || 0) > 5 ? 'text-red-600' : 'text-green-600'" x-text="(getAccountKpi(account.id)?.return_rate || 0).toFixed(1) + '%'"></span>
                                         </td>
@@ -216,7 +222,7 @@
                     <!-- Problem SKUs -->
                     <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
                         <div class="p-4 border-b border-gray-200">
-                            <h2 class="text-lg font-semibold text-gray-900">Problem SKUs (Returns / Low Revenue)</h2>
+                            <h2 class="text-lg font-semibold text-gray-900">Проблемные SKU (возвраты / низкая выручка)</h2>
                         </div>
 
                         <div x-show="!data?.problem_skus?.length" class="p-8 text-center">
@@ -225,7 +231,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </div>
-                            <p class="text-gray-600">No problem SKUs for the selected period.</p>
+                            <p class="text-gray-600">Проблемных SKU нет за выбранный период.</p>
                         </div>
 
                         <div x-show="data?.problem_skus?.length" class="overflow-x-auto">
@@ -233,11 +239,11 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Return Rate</th>
-                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Название</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Кол-во</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Выручка</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Возвраты</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Агент</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
@@ -246,7 +252,7 @@
                                             <td class="px-4 py-3 font-mono text-sm" x-text="sku.external_offer_id || '-'"></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" x-text="sku.name || '-'"></td>
                                             <td class="px-4 py-3 text-right" x-text="parseInt(sku.total_qty)"></td>
-                                            <td class="px-4 py-3 text-right" x-text="formatNumber(sku.total_revenue)"></td>
+                                            <td class="px-4 py-3 text-right" x-text="formatNumber(sku.total_revenue) + ' ₽'"></td>
                                             <td class="px-4 py-3 text-right">
                                                 <span :class="sku.return_rate > 10 ? 'text-red-600 font-medium' : (sku.return_rate > 5 ? 'text-yellow-600' : 'text-gray-600')" x-text="sku.return_rate.toFixed(1) + '%'"></span>
                                             </td>
@@ -255,7 +261,7 @@
                                                     @click="createAgentTask(sku)"
                                                     :disabled="creatingAgentTask"
                                                     class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition">
-                                                    <span x-show="!creatingAgentTask">Agent</span>
+                                                    <span x-show="!creatingAgentTask">Агент</span>
                                                     <span x-show="creatingAgentTask" class="flex items-center">
                                                         <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
                                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -271,14 +277,14 @@
                         </div>
                     </div>
 
-                    <!-- Recent Events -->
+                    <!-- Последние события -->
                     <div class="bg-white rounded-xl border border-gray-200">
                         <div class="p-4 border-b border-gray-200">
-                            <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
+                            <h2 class="text-lg font-semibold text-gray-900">Последние события</h2>
                         </div>
 
                         <div x-show="!data?.recent_events?.length" class="p-8 text-center text-gray-500">
-                            No sync events yet.
+                            Нет событий синхронизации.
                         </div>
 
                         <div x-show="data?.recent_events?.length" class="divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
@@ -305,9 +311,9 @@
 </div>
 
 <!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function marketplaceDashboard() {
     return {
         loading: false,
@@ -428,7 +434,7 @@ function marketplaceDashboard() {
             // Revenue Chart
             const revenueDatasets = [
                 {
-                    label: 'All Marketplaces',
+                    label: 'Все маркетплейсы',
                     data: overall.revenue || [],
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -496,7 +502,7 @@ function marketplaceDashboard() {
                 data: {
                     labels: labels.map(d => this.formatChartDate(d)),
                     datasets: [{
-                        label: 'Orders',
+                        label: 'Заказы',
                         data: overall.orders || [],
                         backgroundColor: 'rgba(59, 130, 246, 0.8)',
                         borderRadius: 4
@@ -572,7 +578,7 @@ function marketplaceDashboard() {
 
                 if (res.ok) {
                     const result = await res.json();
-                    this.agentTaskMessage = `Agent task created: #${result.task?.id}`;
+                    this.agentTaskMessage = `Задача агента создана: #${result.task?.id}`;
                     setTimeout(() => { this.agentTaskMessage = ''; }, 5000);
                 } else {
                     const err = await res.json();

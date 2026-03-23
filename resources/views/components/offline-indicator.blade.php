@@ -165,7 +165,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function syncQueueIndicator() {
     return {
         pendingCount: 0,
@@ -251,7 +251,7 @@ function syncQueueIndicator() {
 }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function offlineIndicator() {
     return {
         isOnline: navigator.onLine,

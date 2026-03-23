@@ -9,12 +9,15 @@ use App\Jobs\Marketplace\SyncMarketplaceOrdersJob;
 use App\Jobs\Marketplace\SyncMarketplacePricesJob;
 use App\Jobs\Marketplace\SyncMarketplaceProductsJob;
 use App\Jobs\Marketplace\SyncMarketplaceStocksJob;
+use App\Jobs\Marketplace\SyncUzumStocksJob;
 use App\Jobs\SyncWildberriesSupplies;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplaceSyncLog;
 use App\Services\Marketplaces\MarketplaceSyncService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MarketplaceSyncController extends Controller
 {
@@ -52,6 +55,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации цен', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -72,8 +77,14 @@ class MarketplaceSyncController extends Controller
         ]);
 
         if ($request->boolean('async', true)) {
-            SyncMarketplaceStocksJob::dispatch($account, $request->product_ids)
-                ->onConnection($this->asyncConnection());
+            $connection = $this->asyncConnection();
+
+            // Uzum: отдельный job через StockSyncService (корректные fbsLinked/dbsLinked)
+            if ($account->isUzum()) {
+                SyncUzumStocksJob::dispatch($account)->onConnection($connection);
+            } else {
+                SyncMarketplaceStocksJob::dispatch($account, $request->product_ids)->onConnection($connection);
+            }
 
             return response()->json([
                 'message' => 'Синхронизация остатков запущена в фоновом режиме.',
@@ -89,6 +100,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации остатков', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -126,6 +139,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации товаров', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -171,6 +186,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации заказов', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -206,6 +223,8 @@ class MarketplaceSyncController extends Controller
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Ошибка синхронизации поставок', ['account_id' => $account->id, 'marketplace' => $account->marketplace, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Ошибка синхронизации: '.$e->getMessage(),
                 'success' => false,
@@ -231,6 +250,52 @@ class MarketplaceSyncController extends Controller
         return response()->json([
             'message' => 'Полная синхронизация запущена.',
             'queued' => true,
+        ]);
+    }
+
+    /**
+     * Статус последней синхронизации по типу (stocks/prices/products/orders)
+     */
+    public function syncStatus(Request $request, MarketplaceAccount $account): JsonResponse
+    {
+        if (! $request->user()->hasCompanyAccess($account->company_id)) {
+            return response()->json(['message' => 'Доступ запрещён.'], 403);
+        }
+
+        $type = $request->query('type', 'stocks');
+
+        // since — unix timestamp (мс) момента нажатия кнопки
+        // Если передан, возвращаем только логи строго позже этого момента
+        $sinceMs = $request->query('since');
+        $query = MarketplaceSyncLog::where('marketplace_account_id', $account->id)
+            ->where('type', $type);
+
+        if ($sinceMs) {
+            $sinceCarbon = \Carbon\Carbon::createFromTimestampMs((int) $sinceMs);
+            $query->where('started_at', '>=', $sinceCarbon);
+        }
+
+        $log = $query->latest('started_at')->first();
+
+        // Нет лога после since — job ещё не начался, считаем pending
+        if (! $log) {
+            return response()->json(['status' => 'pending', 'is_running' => true]);
+        }
+
+        $duration = null;
+        if ($log->started_at && $log->finished_at) {
+            $duration = $log->finished_at->diffInSeconds($log->started_at);
+        } elseif ($log->started_at && $log->status === MarketplaceSyncLog::STATUS_RUNNING) {
+            $duration = now()->diffInSeconds($log->started_at);
+        }
+
+        return response()->json([
+            'status'     => $log->status,
+            'message'    => $log->message,
+            'started_at' => $log->started_at?->toISOString(),
+            'finished_at'=> $log->finished_at?->toISOString(),
+            'duration'   => $duration,
+            'is_running' => $log->status === MarketplaceSyncLog::STATUS_RUNNING,
         ]);
     }
 

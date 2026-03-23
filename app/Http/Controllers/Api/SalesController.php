@@ -1656,7 +1656,7 @@ class SalesController extends Controller
             // Для всех маркетплейсов — запускаем общий sync заказов
             Cache::put("sales_orders_sync:{$account->id}", [
                 'status' => 'running',
-                'message' => 'Синхронизация заказов ' . $this->getMarketplaceName($account->marketplace),
+                'message' => 'Синхронизация заказов '.$this->getMarketplaceName($account->marketplace),
                 'marketplace' => $account->marketplace,
                 'started_at' => now()->toIso8601String(),
             ], 600); // TTL 10 минут

@@ -1120,7 +1120,7 @@
     <div class="section-indicator" data-section="faq" title="FAQ"></div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Intersection Observer for scroll reveal animations - Optimized
 document.addEventListener('DOMContentLoaded', function() {
     const observer = new IntersectionObserver((entries) => {

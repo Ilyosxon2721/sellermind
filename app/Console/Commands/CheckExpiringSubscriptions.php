@@ -7,6 +7,7 @@ use App\Notifications\SubscriptionExpiredNotification;
 use App\Notifications\SubscriptionExpiringNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CheckExpiringSubscriptions extends Command
 {
@@ -101,6 +102,11 @@ class CheckExpiringSubscriptions extends Command
                     $count++;
                 } catch (\Exception $e) {
                     $this->error("Failed to notify user {$owner->id}: {$e->getMessage()}");
+                    Log::warning('Не удалось отправить уведомление об истечении подписки', [
+                        'user_id' => $owner->id,
+                        'subscription_id' => $subscription->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -115,6 +121,11 @@ class CheckExpiringSubscriptions extends Command
                     $count++;
                 } catch (\Exception $e) {
                     $this->error("Failed to notify manager {$manager->id}: {$e->getMessage()}");
+                    Log::warning('Не удалось отправить уведомление менеджеру об истечении подписки', [
+                        'manager_id' => $manager->id,
+                        'subscription_id' => $subscription->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
@@ -158,6 +169,11 @@ class CheckExpiringSubscriptions extends Command
                         $owner->notify(new SubscriptionExpiredNotification($subscription));
                     } catch (\Exception $e) {
                         $this->error("Failed to notify owner {$owner->id}: {$e->getMessage()}");
+                        Log::warning('Не удалось отправить уведомление владельцу об истекшей подписке', [
+                            'user_id' => $owner->id,
+                            'subscription_id' => $subscription->id,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
 

@@ -242,7 +242,10 @@ class SyncUzumFinanceOrdersJob implements ShouldQueue
                 $totalOrders += $shopTotal;
                 $shopTotals[$shopId] = $shopTotal;
             } catch (\Throwable $e) {
-                // Игнорируем ошибки при подсчёте
+                Log::debug('Ошибка при подсчёте заказов магазина', [
+                    'shop_id' => $shopId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

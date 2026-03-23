@@ -132,7 +132,7 @@ Alpine.store('auth', {
         const retryDelay = 500; // ms
 
         try {
-            console.log('Loading companies...', retryCount > 0 ? `(retry ${retryCount})` : '');
+            // Loading companies
             this.companies = await companies.list();
 
             // Auto-select company: prefer user's company_id, then persisted, then first
@@ -165,7 +165,7 @@ Alpine.store('auth', {
 
             // Retry на 401 — сессия могла не успеть синхронизироваться
             if (e.response?.status === 401 && retryCount < maxRetries) {
-                console.log(`Retrying loadCompanies in ${retryDelay}ms...`);
+                // Retry after delay
                 await new Promise(r => setTimeout(r, retryDelay * (retryCount + 1)));
                 return this.loadCompanies(retryCount + 1);
             }

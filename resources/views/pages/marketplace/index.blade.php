@@ -160,7 +160,7 @@
     .mp-add-ym { border-color: rgba(255, 204, 0, 0.4); }
     .mp-add-ym:hover { border-color: var(--ym-primary); background: rgba(255, 204, 0, 0.1); }
 </style>
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     window.marketplaceCredentialFields = @json(config('marketplaces.credential_fields'));
 </script>
 
@@ -782,7 +782,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Webhook Modal -->
 <div x-show="showWebhookModal" x-cloak
@@ -910,8 +909,9 @@
         </div>
     </div>
 </div>
+</div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function marketplacePage() {
     return {
         showConnectModal: false,

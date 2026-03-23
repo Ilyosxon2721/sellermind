@@ -7,6 +7,7 @@ use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\YandexMarket\YandexMarketClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class YandexMarketController extends Controller
 {
@@ -41,6 +42,8 @@ class YandexMarketController extends Controller
                 'campaigns' => $campaigns,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка получения кампаний Yandex Market', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -121,6 +124,8 @@ class YandexMarketController extends Controller
                 'message' => 'Каталог синхронизирован',
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка синхронизации каталога Yandex Market', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -151,6 +156,8 @@ class YandexMarketController extends Controller
                 'total' => count($orders),
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка получения заказов Yandex Market', ['account_id' => $account->id, 'from' => $from, 'to' => $to, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -178,6 +185,8 @@ class YandexMarketController extends Controller
                 'message' => "Синхронизировано {$result['synced']} заказов",
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка синхронизации заказов Yandex Market', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -217,6 +226,8 @@ class YandexMarketController extends Controller
                 'order' => $result['order'] ?? null,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка установки статуса "Готов к отгрузке" YM', ['account_id' => $account->id, 'order_id' => $orderId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -241,6 +252,8 @@ class YandexMarketController extends Controller
                 'Content-Disposition' => "attachment; filename=\"order-{$orderId}-labels.pdf\"",
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка скачивания ярлыков заказа YM', ['account_id' => $account->id, 'order_id' => $orderId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -273,6 +286,8 @@ class YandexMarketController extends Controller
                 'result' => $result,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка установки грузомест заказа YM', ['account_id' => $account->id, 'order_id' => $orderId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -298,6 +313,8 @@ class YandexMarketController extends Controller
                 'order' => $result['order'] ?? null,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка отмены заказа YM', ['account_id' => $account->id, 'order_id' => $orderId, 'reason' => $reason, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -320,6 +337,8 @@ class YandexMarketController extends Controller
                 'order' => $order,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка получения деталей заказа YM', ['account_id' => $account->id, 'order_id' => $orderId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

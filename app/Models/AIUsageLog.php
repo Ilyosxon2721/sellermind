@@ -71,14 +71,40 @@ class AIUsageLog extends Model
 
     private static function estimateCost(string $model, int $tokensInput, int $tokensOutput, int $images): float
     {
+        // Официальные цены AI провайдеров (обновлено: март 2026)
         $rates = [
+            // OpenAI GPT-5 models
+            'gpt-5.1' => ['input' => 0.005, 'output' => 0.015],
+            'gpt-5.1-kpi' => ['input' => 0.005, 'output' => 0.015],
+            'gpt-5' => ['input' => 0.004, 'output' => 0.012],
+
+            // OpenAI GPT-4o models
+            'gpt-4o' => ['input' => 0.0025, 'output' => 0.01],
+            'gpt-4o-mini' => ['input' => 0.00015, 'output' => 0.0006],
+            'gpt4o-mini-kpi' => ['input' => 0.00015, 'output' => 0.0006],
             'gpt5-mini' => ['input' => 0.00015, 'output' => 0.0006],
-            'gpt5' => ['input' => 0.01, 'output' => 0.03],
-            'gpt-vision' => ['input' => 0.01, 'output' => 0.03],
+
+            // Anthropic Claude models
+            'claude-opus-4-20250514' => ['input' => 0.015, 'output' => 0.075],
+            'claude-sonnet-4-20250514' => ['input' => 0.003, 'output' => 0.015],
+            'claude-haiku-4-20250514' => ['input' => 0.00025, 'output' => 0.00125],
+
+            // Provider:model формат (например: openai:gpt-5.1)
+            'openai:gpt-5.1' => ['input' => 0.005, 'output' => 0.015],
+            'openai:gpt-4o' => ['input' => 0.0025, 'output' => 0.01],
+            'openai:gpt-4o-mini' => ['input' => 0.00015, 'output' => 0.0006],
+            'anthropic:claude-opus-4-20250514' => ['input' => 0.015, 'output' => 0.075],
+            'anthropic:claude-sonnet-4-20250514' => ['input' => 0.003, 'output' => 0.015],
+            'anthropic:claude-haiku-4-20250514' => ['input' => 0.00025, 'output' => 0.00125],
+
+            // Vision & Image
+            'gpt-vision' => ['input' => 0.0025, 'output' => 0.01],
             'image-api' => ['image' => 0.04],
         ];
 
-        $rate = $rates[$model] ?? ['input' => 0.001, 'output' => 0.002];
+        // Убираем суффикс '-kpi' для поиска базовой модели
+        $baseModel = str_replace('-kpi', '', $model);
+        $rate = $rates[$model] ?? $rates[$baseModel] ?? ['input' => 0.001, 'output' => 0.002];
 
         $cost = 0;
         if (isset($rate['input'])) {

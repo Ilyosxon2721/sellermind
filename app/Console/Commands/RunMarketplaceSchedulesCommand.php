@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\MarketplaceSyncSchedule;
 use Cron\CronExpression;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class RunMarketplaceSchedulesCommand extends Command
 {
@@ -49,6 +50,11 @@ class RunMarketplaceSchedulesCommand extends Command
                 $executed++;
             } catch (\Exception $e) {
                 $this->error("Ошибка расписания #{$schedule->id}: {$e->getMessage()}");
+                Log::warning('Ошибка выполнения расписания синхронизации маркетплейса', [
+                    'schedule_id' => $schedule->id,
+                    'sync_type' => $schedule->sync_type,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

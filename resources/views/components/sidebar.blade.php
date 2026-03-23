@@ -151,6 +151,10 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.marketplace') }}</span>
                         </a>
+                        <a href="/marketplace/dashboard" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('marketplace/dashboard') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <span class="text-xs">•</span>
+                            <span class="text-sm">Сводный дашборд</span>
+                        </a>
                         <a href="/marketplace/stocks" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('marketplace/stocks') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs">•</span>
                             <span class="text-sm">Остатки МП</span>
@@ -200,6 +204,17 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
             </svg>
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">{{ __('admin.inventory') }}</span>
+        </a>
+
+        {{-- Остатки МП --}}
+        <a href="/marketplace/stocks"
+           class="flex items-center rounded-lg transition {{ request()->is('marketplace/stocks*') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Остатки МП' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Остатки МП</span>
         </a>
 
         {{-- Sync Logs --}}
@@ -255,6 +270,17 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
             <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">KPI</span>
+        </a>
+
+        {{-- Uzum Analytics --}}
+        <a href="/analytics/uzum"
+           class="flex items-center rounded-lg transition {{ request()->is('analytics/uzum*') ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-100' }}"
+           :class="$store.ui.sidebarCollapsed ? 'justify-center p-2.5' : 'space-x-3 px-3 py-2.5'"
+           :title="$store.ui.sidebarCollapsed ? 'Аналитика Uzum' : ''">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+            </svg>
+            <span x-show="!$store.ui.sidebarCollapsed" class="font-medium">Аналитика Uzum</span>
         </a>
 
         {{-- Debts --}}

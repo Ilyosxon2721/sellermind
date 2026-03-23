@@ -272,7 +272,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function billingTab() {
     return {
         companies: [],

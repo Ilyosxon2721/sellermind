@@ -368,14 +368,20 @@ class MarketplaceOrderController extends Controller
                 if (! empty($financeOrderIdsStr)) {
                     $uzumOrders = \App\Models\UzumOrder::where('marketplace_account_id', $account->id)
                         ->whereIn('external_order_id', $financeOrderIdsStr)
-                        ->get(['external_order_id', 'raw_payload']);
+                        ->get(['external_order_id', 'delivery_type', 'raw_payload']);
 
                     foreach ($uzumOrders as $order) {
                         $orderId = (int) $order->external_order_id;
-                        $payload = is_array($order->raw_payload) ? $order->raw_payload : json_decode($order->raw_payload, true);
-                        // Get scheme from raw_payload, default to FBS if exists in table
-                        $scheme = $payload['scheme'] ?? 'FBS';
-                        $orderSchemes[$orderId] = strtoupper($scheme);
+                        // Приоритет: колонка delivery_type → raw_payload.scheme → 'FBS'
+                        $scheme = ! empty($order->delivery_type) ? $order->delivery_type : null;
+                        if (empty($scheme) || $scheme === 'FBS') {
+                            $payload = is_array($order->raw_payload) ? $order->raw_payload : json_decode($order->raw_payload, true);
+                            $fromRaw = strtoupper($payload['scheme'] ?? '');
+                            if (! empty($fromRaw)) {
+                                $scheme = $fromRaw;
+                            }
+                        }
+                        $orderSchemes[$orderId] = strtoupper($scheme ?? 'FBS');
                     }
                 }
 
@@ -813,7 +819,7 @@ class MarketplaceOrderController extends Controller
                 return response()->json(['message' => 'Размер этикетки должен быть LARGE или BIG'], 422);
             }
 
-            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService;
 
             $stickers = [];
 
@@ -879,7 +885,7 @@ class MarketplaceOrderController extends Controller
         }
 
         try {
-            $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+            $syncService = new \App\Services\Uzum\UzumOrderSyncService;
             $syncService->confirmOrder($account, (int) $order->external_order_id);
 
             return response()->json([
@@ -946,7 +952,7 @@ class MarketplaceOrderController extends Controller
         try {
             if ($marketplace === 'uzum') {
                 // Отмена заказа Uzum через новый сервис
-                $syncService = new \App\Services\Uzum\UzumOrderSyncService();
+                $syncService = new \App\Services\Uzum\UzumOrderSyncService;
                 $syncService->cancelOrder($account, (int) $order->external_order_id);
             } else {
                 // Отмена заказа WB

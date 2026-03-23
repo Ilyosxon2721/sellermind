@@ -6,6 +6,7 @@ use App\Models\Review;
 use App\Models\ReviewTemplate;
 use App\Services\AI\AIService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ReviewResponseService
 {
@@ -306,6 +307,11 @@ class ReviewResponseService
 
             return array_map('trim', explode(',', $keywords));
         } catch (\Exception $e) {
+            Log::warning('Ошибка извлечения ключевых слов из отзыва', [
+                'review_id' => $review->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return [];
         }
     }

@@ -33,7 +33,7 @@
                     <h2 class="text-lg font-semibold text-gray-900">Фильтры</h2>
                     <button class="text-sm text-gray-500 hover:text-gray-700" @click="reset()">Сбросить</button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Склад</label>
                         <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="filters.warehouse_id">
@@ -41,6 +41,35 @@
                             @foreach($warehouses as $wh)
                                 <option value="{{ $wh->id }}" @selected($wh->id === $selectedWarehouseId)>{{ $wh->name }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Категория</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="filters.category_id">
+                            <option value="">Все категории</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Тип движения</label>
+                        <select class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" x-model="filters.source_type">
+                            <option value="">Все типы</option>
+                            <option value="marketplace_order_reserve">Резерв (заказ)</option>
+                            <option value="marketplace_order_cancel">Отмена резерва</option>
+                            <option value="marketplace_order_sold">Продажа (маркетплейс)</option>
+                            <option value="WB_ORDER">WB заказ</option>
+                            <option value="WB_ORDER_CANCEL">WB отмена</option>
+                            <option value="UZUM_ORDER">Uzum заказ</option>
+                            <option value="OZON_ORDER">Ozon заказ</option>
+                            <option value="OZON_ORDER_CANCEL">Ozon отмена</option>
+                            <option value="YANDEX_ORDER">YM заказ</option>
+                            <option value="offline_sale">Продажа</option>
+                            <option value="offline_sale_return">Возврат</option>
+                            <option value="initial_stock">Начальный остаток</option>
+                            <option value="stock_adjustment">Корректировка</option>
+                            <option value="risment_stock_sync">Синхр. Risment</option>
                         </select>
                     </div>
                     <div>
@@ -161,9 +190,16 @@
                     <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.prev" @click="paginate('prev')">
                         ← Назад
                     </button>
-                    <div class="text-sm text-gray-600">
-                        Страница <span class="font-semibold" x-text="cursor.page"></span> из <span class="font-semibold" x-text="cursor.lastPage"></span>
-                        <span class="text-gray-400 ml-2" x-text="'(' + cursor.total + ' записей)'"></span>
+                    <div class="flex items-center space-x-3 text-sm text-gray-600">
+                        <select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" x-model="perPage" @change="load()">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span>
+                            Страница <span class="font-semibold" x-text="cursor.page"></span> из <span class="font-semibold" x-text="cursor.lastPage"></span>
+                            <span class="text-gray-400 ml-2" x-text="'(' + cursor.total + ' записей)'"></span>
+                        </span>
                     </div>
                     <button class="px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50" :disabled="!cursor.next" @click="paginate('next')">
                         Вперёд →
@@ -174,15 +210,18 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function ledgerPage() {
         return {
             filters: {
                 warehouse_id: '{{ $selectedWarehouseId }}',
+                category_id: '',
+                source_type: '',
                 query: '',
                 from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
                 to: new Date().toISOString().slice(0, 10),
             },
+            perPage: 50,
             items: [],
             cursor: {next: false, prev: false, page: 1, lastPage: 1, total: 0},
             status: '',
@@ -236,8 +275,11 @@
 
             reset() {
                 this.filters.query = '';
+                this.filters.category_id = '';
+                this.filters.source_type = '';
                 this.filters.from = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
                 this.filters.to = new Date().toISOString().slice(0, 10);
+                this.perPage = 50;
                 this.load();
             },
 
@@ -246,6 +288,7 @@
                 if (newPage < 1 || newPage > this.cursor.lastPage) return;
                 const params = new URLSearchParams();
                 Object.entries(this.filters).forEach(([k, v]) => { if (v) params.append(k, v); });
+                params.append('per_page', this.perPage);
                 params.set('page', newPage);
                 await this.load(`/api/marketplace/stock/ledger?${params.toString()}`);
             },
@@ -257,6 +300,7 @@
                 Object.entries(this.filters).forEach(([k, v]) => {
                     if (v) params.append(k, v);
                 });
+                params.append('per_page', this.perPage);
                 const finalUrl = url || `/api/marketplace/stock/ledger?${params.toString()}`;
                 try {
                     const resp = await fetch(finalUrl, {headers: this.getAuthHeaders()});
@@ -308,6 +352,35 @@
                         @foreach($warehouses as $wh)
                             <option value="{{ $wh->id }}">{{ $wh->name }}</option>
                         @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Категория</label>
+                    <select class="native-input mt-1" x-model="filters.category_id">
+                        <option value="">Все категории</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="native-caption">Тип движения</label>
+                    <select class="native-input mt-1" x-model="filters.source_type">
+                        <option value="">Все типы</option>
+                        <option value="marketplace_order_reserve">Резерв (заказ)</option>
+                        <option value="marketplace_order_cancel">Отмена резерва</option>
+                        <option value="marketplace_order_sold">Продажа (маркетплейс)</option>
+                        <option value="WB_ORDER">WB заказ</option>
+                        <option value="WB_ORDER_CANCEL">WB отмена</option>
+                        <option value="UZUM_ORDER">Uzum заказ</option>
+                        <option value="OZON_ORDER">Ozon заказ</option>
+                        <option value="OZON_ORDER_CANCEL">Ozon отмена</option>
+                        <option value="YANDEX_ORDER">YM заказ</option>
+                        <option value="offline_sale">Продажа</option>
+                        <option value="offline_sale_return">Возврат</option>
+                        <option value="initial_stock">Начальный остаток</option>
+                        <option value="stock_adjustment">Корректировка</option>
+                        <option value="risment_stock_sync">Синхр. Risment</option>
                     </select>
                 </div>
                 <div>

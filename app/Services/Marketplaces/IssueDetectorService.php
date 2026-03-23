@@ -78,7 +78,7 @@ class IssueDetectorService
                 ];
             }
         } catch (\Throwable $e) {
-            // Ignore
+            Log::warning('Ошибка парсинга тела ответа API', ['error' => $e->getMessage()]);
         }
 
         return [];

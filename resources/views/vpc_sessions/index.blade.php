@@ -142,7 +142,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function vpcSessionsPage() {
     return {
         init() {

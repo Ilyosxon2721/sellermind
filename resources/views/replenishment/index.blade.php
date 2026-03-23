@@ -245,7 +245,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function replenishmentPagePwa() {
         return {
             warehouses: [],
@@ -334,7 +334,7 @@
     }
 </script>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function replenishmentPage() {
         return {
             warehouses: [],

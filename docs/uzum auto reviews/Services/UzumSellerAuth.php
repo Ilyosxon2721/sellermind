@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\UzumShop;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 class UzumSellerAuth
 {
@@ -24,6 +23,7 @@ class UzumSellerAuth
      * Если требуется Basic auth — задай client_secret в .env
      */
     protected string $clientId;
+
     protected string $clientSecret;
 
     public function __construct()
@@ -55,43 +55,43 @@ class UzumSellerAuth
                 ->timeout(30);
 
             // Если есть client_secret — используем Basic auth
-            if (!empty($this->clientSecret)) {
+            if (! empty($this->clientSecret)) {
                 $request = $request->withBasicAuth($this->clientId, $this->clientSecret);
             }
 
             $response = $request->post($this->tokenUrl, [
                 'grant_type' => 'password',
-                'username'   => $username,
-                'password'   => $password,
+                'username' => $username,
+                'password' => $password,
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
 
                 Log::info('UzumAuth: логин успешен', [
-                    'username'   => $this->maskEmail($username),
+                    'username' => $this->maskEmail($username),
                     'expires_in' => $data['expires_in'] ?? 'unknown',
                 ]);
 
                 return [
-                    'success'       => true,
-                    'access_token'  => $data['access_token'] ?? null,
+                    'success' => true,
+                    'access_token' => $data['access_token'] ?? null,
                     'refresh_token' => $data['refresh_token'] ?? null,
-                    'token_type'    => $data['token_type'] ?? 'bearer',
-                    'expires_in'    => $data['expires_in'] ?? 3600,
-                    'scope'         => $data['scope'] ?? '',
+                    'token_type' => $data['token_type'] ?? 'bearer',
+                    'expires_in' => $data['expires_in'] ?? 3600,
+                    'scope' => $data['scope'] ?? '',
                 ];
             }
 
             Log::warning('UzumAuth: ошибка логина', [
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
 
             return [
                 'success' => false,
-                'error'   => $response->json('error_description', $response->json('error', 'Ошибка авторизации')),
-                'status'  => $response->status(),
+                'error' => $response->json('error_description', $response->json('error', 'Ошибка авторизации')),
+                'status' => $response->status(),
             ];
 
         } catch (\Throwable $e) {
@@ -101,7 +101,7 @@ class UzumSellerAuth
 
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -120,12 +120,12 @@ class UzumSellerAuth
                 ->accept('application/json')
                 ->timeout(30);
 
-            if (!empty($this->clientSecret)) {
+            if (! empty($this->clientSecret)) {
                 $request = $request->withBasicAuth($this->clientId, $this->clientSecret);
             }
 
             $response = $request->post($this->tokenUrl, [
-                'grant_type'    => 'refresh_token',
+                'grant_type' => 'refresh_token',
                 'refresh_token' => $refreshToken,
             ]);
 
@@ -133,23 +133,23 @@ class UzumSellerAuth
                 $data = $response->json();
 
                 return [
-                    'success'       => true,
-                    'access_token'  => $data['access_token'] ?? null,
+                    'success' => true,
+                    'access_token' => $data['access_token'] ?? null,
                     'refresh_token' => $data['refresh_token'] ?? null,
-                    'expires_in'    => $data['expires_in'] ?? 3600,
+                    'expires_in' => $data['expires_in'] ?? 3600,
                 ];
             }
 
             return [
                 'success' => false,
-                'error'   => $response->json('error_description', 'Ошибка обновления токена'),
-                'status'  => $response->status(),
+                'error' => $response->json('error_description', 'Ошибка обновления токена'),
+                'status' => $response->status(),
             ];
 
         } catch (\Throwable $e) {
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -177,28 +177,28 @@ class UzumSellerAuth
                 $data = $response->json();
 
                 return [
-                    'success'    => true,
-                    'seller_id'  => $data['sellerId'] ?? null,
+                    'success' => true,
+                    'seller_id' => $data['sellerId'] ?? null,
                     'account_id' => $data['accountId'] ?? null,
-                    'email'      => $data['email'] ?? null,
+                    'email' => $data['email'] ?? null,
                     'first_name' => $data['firstName'] ?? null,
-                    'phone'      => $data['phoneNumber'] ?? null,
-                    'shop_ids'   => array_keys($data['organizations'] ?? []),
+                    'phone' => $data['phoneNumber'] ?? null,
+                    'shop_ids' => array_keys($data['organizations'] ?? []),
                     'permissions' => $data['permissions'] ?? [],
-                    'raw'        => $data,
+                    'raw' => $data,
                 ];
             }
 
             return [
                 'success' => false,
-                'error'   => 'Token invalid or expired',
-                'status'  => $response->status(),
+                'error' => 'Token invalid or expired',
+                'status' => $response->status(),
             ];
 
         } catch (\Throwable $e) {
             return [
                 'success' => false,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -214,14 +214,14 @@ class UzumSellerAuth
     {
         $result = $this->login($username, $password);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
         // Сохраняем токены
         $shop->update([
-            'session_token'   => $result['access_token'],
-            'refresh_token'   => $result['refresh_token'],
+            'session_token' => $result['access_token'],
+            'refresh_token' => $result['refresh_token'],
             'token_expires_at' => now()->addSeconds($result['expires_in'] - 60), // с запасом в 1 мин
         ]);
 
@@ -255,17 +255,17 @@ class UzumSellerAuth
 
             if ($result['success']) {
                 $shop->update([
-                    'session_token'    => $result['access_token'],
-                    'refresh_token'    => $result['refresh_token'] ?? $shop->refresh_token,
+                    'session_token' => $result['access_token'],
+                    'refresh_token' => $result['refresh_token'] ?? $shop->refresh_token,
                     'token_expires_at' => now()->addSeconds(($result['expires_in'] ?? 3600) - 60),
                 ]);
 
                 return $result['access_token'];
             }
 
-            Log::warning("UzumAuth: refresh_token не сработал", [
+            Log::warning('UzumAuth: refresh_token не сработал', [
                 'shop_id' => $shop->uzum_shop_id,
-                'error'   => $result['error'] ?? 'unknown',
+                'error' => $result['error'] ?? 'unknown',
             ]);
         }
 
@@ -277,8 +277,8 @@ class UzumSellerAuth
 
             if ($result['success']) {
                 $shop->update([
-                    'session_token'    => $result['access_token'],
-                    'refresh_token'    => $result['refresh_token'],
+                    'session_token' => $result['access_token'],
+                    'refresh_token' => $result['refresh_token'],
                     'token_expires_at' => now()->addSeconds(($result['expires_in'] ?? 3600) - 60),
                 ]);
 
@@ -287,6 +287,7 @@ class UzumSellerAuth
         }
 
         Log::error("UzumAuth: не удалось получить токен для магазина #{$shop->uzum_shop_id}");
+
         return null;
     }
 
@@ -297,11 +298,13 @@ class UzumSellerAuth
     protected function maskEmail(string $email): string
     {
         $parts = explode('@', $email);
-        if (count($parts) !== 2) return '***';
+        if (count($parts) !== 2) {
+            return '***';
+        }
 
         $name = $parts[0];
-        $masked = substr($name, 0, 2) . str_repeat('*', max(0, strlen($name) - 2));
+        $masked = substr($name, 0, 2).str_repeat('*', max(0, strlen($name) - 2));
 
-        return $masked . '@' . $parts[1];
+        return $masked.'@'.$parts[1];
     }
 }

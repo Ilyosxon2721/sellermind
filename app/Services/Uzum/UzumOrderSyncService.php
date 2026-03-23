@@ -23,7 +23,7 @@ final class UzumOrderSyncService
 
     public function __construct(?OrderStockService $stockService = null)
     {
-        $this->stockService = $stockService ?? new OrderStockService();
+        $this->stockService = $stockService ?? new OrderStockService;
     }
 
     /** Маппинг статусов Uzum API → внутренние */
@@ -79,6 +79,7 @@ final class UzumOrderSyncService
         $shopIds = $this->resolveShopIds($account, $uzum);
         if (empty($shopIds)) {
             Log::info("UzumOrderSync: нет магазинов для аккаунта #{$account->id}");
+
             return $stats;
         }
 
@@ -152,10 +153,11 @@ final class UzumOrderSyncService
                 $dateCreated = $orderData['dateCreated'] ?? null;
 
                 // Фильтрация по дате
-                if (!$isActive && is_numeric($dateCreated)) {
+                if (! $isActive && is_numeric($dateCreated)) {
                     $threshold = $isExtended ? $extendedFromMs : $fromMs;
                     if ((int) $dateCreated < $threshold) {
                         $stopStatus = true;
+
                         continue;
                     }
                 }
@@ -168,7 +170,7 @@ final class UzumOrderSyncService
                     $stats[$result]++;
                 } catch (\Throwable $e) {
                     $stats['errors']++;
-                    Log::warning("UzumOrderSync: ошибка сохранения заказа", [
+                    Log::warning('UzumOrderSync: ошибка сохранения заказа', [
                         'order_id' => $orderData['id'] ?? 'unknown',
                         'error' => $e->getMessage(),
                     ]);
@@ -178,7 +180,7 @@ final class UzumOrderSyncService
             $page++;
             usleep(300_000); // 300ms между страницами
 
-        } while (!$stopStatus && count($orders) === $size && $page < 100);
+        } while (! $stopStatus && count($orders) === $size && $page < 100);
     }
 
     /**
@@ -189,9 +191,20 @@ final class UzumOrderSyncService
         $uzum = new UzumApiManager($account);
         $result = $uzum->orders()->confirm($orderId);
 
-        // Обновить в БД
-        $mapped = $this->mapOrderData($result);
-        $this->persistOrder($account, $mapped);
+        // confirm возвращает простой ответ, не полный объект заказа —
+        // получаем детали отдельно и обновляем БД
+        try {
+            $detail = $uzum->orders()->detail($orderId);
+            if (!empty($detail) && isset($detail['id'])) {
+                $mapped = $this->mapOrderData($detail);
+                $this->persistOrder($account, $mapped);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('confirmOrder: не удалось обновить статус заказа в БД', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $result;
     }
@@ -204,8 +217,19 @@ final class UzumOrderSyncService
         $uzum = new UzumApiManager($account);
         $result = $uzum->orders()->cancel($orderId);
 
-        $mapped = $this->mapOrderData($result);
-        $this->persistOrder($account, $mapped);
+        // cancel тоже возвращает простой ответ — получаем детали отдельно
+        try {
+            $detail = $uzum->orders()->detail($orderId);
+            if (!empty($detail) && isset($detail['id'])) {
+                $mapped = $this->mapOrderData($detail);
+                $this->persistOrder($account, $mapped);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('cancelOrder: не удалось обновить статус заказа в БД', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $result;
     }
@@ -219,7 +243,7 @@ final class UzumOrderSyncService
         $response = $uzum->orders()->label($orderId, $size);
 
         $doc = $response['payload']['document'] ?? null;
-        if (!$doc) {
+        if (! $doc) {
             return null;
         }
 
@@ -235,6 +259,7 @@ final class UzumOrderSyncService
     public function getOrderCounts(MarketplaceAccount $account, string $shopIds): array
     {
         $uzum = new UzumApiManager($account);
+
         return $uzum->orders()->count($shopIds);
     }
 
@@ -244,6 +269,7 @@ final class UzumOrderSyncService
     public function getOrderDetail(MarketplaceAccount $account, int $orderId): array
     {
         $uzum = new UzumApiManager($account);
+
         return $uzum->orders()->detail($orderId);
     }
 
@@ -288,7 +314,11 @@ final class UzumOrderSyncService
             'delivered_at' => $orderData['dateDelivered'] ?? null,
             'items' => $items,
             'raw_payload' => $orderData,
-            'delivery_type' => strtoupper($orderData['scheme'] ?? $orderData['deliveryType'] ?? 'FBS'),
+            // Uzum API возвращает поле scheme: 'FBS'|'DBS' в теле каждого заказа.
+            // Если поле отсутствует — передаём null, чтобы не перезаписывать существующий delivery_type.
+            'delivery_type' => isset($orderData['scheme'])
+                ? strtoupper($orderData['scheme'])
+                : (isset($orderData['deliveryType']) ? strtoupper($orderData['deliveryType']) : null),
             'delivery_address_full' => $address['fullAddress'] ?? null,
             'delivery_city' => $address['city'] ?? null,
             'delivery_street' => $address['street'] ?? null,
@@ -307,7 +337,7 @@ final class UzumOrderSyncService
     public function persistOrder(MarketplaceAccount $account, array $orderData): string
     {
         $externalOrderId = $orderData['external_order_id'] ?? null;
-        if (!$externalOrderId) {
+        if (! $externalOrderId) {
             throw new \RuntimeException('Missing external_order_id');
         }
 
@@ -321,13 +351,19 @@ final class UzumOrderSyncService
         $orderedAt = $this->parseTimestamp($orderData['ordered_at'] ?? null);
         $deliveredAt = $this->parseTimestamp($orderData['delivered_at'] ?? null);
 
+        // delivery_type: если API явно вернул scheme — используем его.
+        // Если нет (null) — для нового заказа дефолт 'FBS', для существующего — сохраняем текущий.
+        $newDeliveryType = $orderData['delivery_type'] ?? null;
+        $deliveryType = $newDeliveryType
+            ?? ($existingOrder?->delivery_type ?? 'FBS');
+
         $payload = [
             'marketplace_account_id' => $account->id,
             'external_order_id' => $externalOrderId,
             'status' => $orderData['status'] ?? 'new',
             'status_normalized' => $orderData['status_normalized'] ?? $orderData['status'] ?? 'new',
             'uzum_status' => $orderData['uzum_status'] ?? null,
-            'delivery_type' => $orderData['delivery_type'] ?? 'FBS',
+            'delivery_type' => $deliveryType,
             'shop_id' => $orderData['shop_id'] ?? null,
             'customer_name' => $orderData['customer_name'] ?? null,
             'customer_phone' => $orderData['customer_phone'] ?? null,
@@ -402,7 +438,7 @@ final class UzumOrderSyncService
      */
     private function parseTimestamp(mixed $value): ?Carbon
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -410,10 +446,12 @@ final class UzumOrderSyncService
             if (is_numeric($value)) {
                 $ts = (int) $value;
                 $tz = config('app.timezone');
+
                 return $ts > 1e12
                     ? Carbon::createFromTimestampMs($ts, $tz)
                     : Carbon::createFromTimestamp($ts, $tz);
             }
+
             return Carbon::parse($value);
         } catch (\Exception) {
             return now();
@@ -427,14 +465,14 @@ final class UzumOrderSyncService
     {
         // 1. Из credentials_json
         $credentialsJson = $account->credentials_json ?? [];
-        if (!empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
+        if (! empty($credentialsJson['shop_ids']) && is_array($credentialsJson['shop_ids'])) {
             return array_values(array_filter(array_map('intval', $credentialsJson['shop_ids'])));
         }
 
         // 2. Из account->shop_id
         if ($account->shop_id) {
             $ids = array_filter(array_map('intval', explode(',', (string) $account->shop_id)));
-            if (!empty($ids)) {
+            if (! empty($ids)) {
                 return array_values($ids);
             }
         }
@@ -447,7 +485,7 @@ final class UzumOrderSyncService
             ->filter()
             ->toArray();
 
-        if (!empty($dbIds)) {
+        if (! empty($dbIds)) {
             return $dbIds;
         }
 
@@ -458,6 +496,7 @@ final class UzumOrderSyncService
             Log::warning("UzumOrderSync: не удалось получить магазины #{$account->id}", [
                 'error' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
@@ -498,7 +537,7 @@ final class UzumOrderSyncService
         $cancelledStatuses = OrderStockService::CANCELLED_STATUSES['uzum'] ?? [];
         $soldStatuses = OrderStockService::SOLD_STATUSES['uzum'] ?? [];
 
-        if (!in_array($order->status, $cancelledStatuses) && !in_array($order->status, $soldStatuses)) {
+        if (! in_array($order->status, $cancelledStatuses) && ! in_array($order->status, $soldStatuses)) {
             return;
         }
 
@@ -526,7 +565,7 @@ final class UzumOrderSyncService
      */
     public static function internalToExternalStatuses(?array $internalStatuses): array
     {
-        if (!$internalStatuses) {
+        if (! $internalStatuses) {
             return array_keys(self::STATUS_MAP);
         }
 

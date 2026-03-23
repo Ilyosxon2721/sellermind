@@ -30,6 +30,7 @@ class StockController extends Controller
             'sku_id' => ['nullable', 'integer'],
             'sku_ids' => ['nullable', 'array'],
             'query' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -76,6 +77,10 @@ class StockController extends Controller
             ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
             ->with(['product.images', 'productVariant.mainImage', 'productVariant.optionValues'])
             ->orderBy('sku_code');
+
+        if ($request->category_id) {
+            $query->whereHas('product', fn ($q) => $q->where('category_id', $request->category_id));
+        }
 
         if ($search = $request->get('query')) {
             $search = $this->escapeLike($search);
@@ -167,6 +172,8 @@ class StockController extends Controller
             'page' => ['nullable', 'integer'],
             'per_page' => ['nullable', 'integer'],
             'query' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer'],
+            'source_type' => ['nullable', 'string'],
         ]);
 
         $companyId = $this->getCompanyId();
@@ -190,6 +197,14 @@ class StockController extends Controller
         }
         if ($request->to) {
             $query->where('occurred_at', '<=', $request->to.' 23:59:59');
+        }
+
+        if ($request->category_id) {
+            $query->whereHas('sku.product', fn ($q) => $q->where('category_id', $request->category_id));
+        }
+
+        if ($request->source_type) {
+            $query->where('source_type', $request->source_type);
         }
 
         if ($request->query('query')) {

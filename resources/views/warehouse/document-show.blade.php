@@ -191,7 +191,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function documentPage(id) {
         return {
             doc: null,

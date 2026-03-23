@@ -34,6 +34,12 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
+                    <button @click="exportCsv()" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all" title="Экспорт в CSV">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        CSV
+                    </button>
                     <button @click="loadProducts" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -329,7 +335,19 @@
                     <div class="text-lg font-semibold" x-text="selectedProduct?.title || 'Без названия'"></div>
                     <div class="text-xs text-gray-500" x-text="selectedProduct?.external_sku || ''"></div>
                 </div>
-                <button class="text-gray-400 hover:text-gray-600" @click="detailOpen=false">&times;</button>
+                <div class="flex items-center space-x-1">
+                    <button @click="openSeoModal(selectedProduct)"
+                            class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all shadow-sm"
+                            title="AI SEO оптимизация">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        AI SEO
+                    </button>
+                    <button class="text-gray-400 hover:text-gray-600 p-1" @click="detailOpen=false">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Main Product Image -->
@@ -461,7 +479,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProducts(accountId) {
     return {
         accountId: accountId,
@@ -914,12 +932,39 @@ function wbProducts(accountId) {
         },
 
         showNotification(message, type = 'info') {
-            // TODO: Implement notification system
             alert(message);
         },
+
+        exportCsv() {
+            const rows = [["ID","nmID","Артикул","Название","Статус","Цена","Остаток","Обновлено"]];
+            for (const p of this.filtered) {
+                rows.push([
+                    p.id,
+                    p.external_product_id || '',
+                    p.external_sku || '',
+                    '"' + (p.title || '').replace(/"/g, '""') + '"',
+                    p.status || '',
+                    p.last_synced_price || 0,
+                    p.last_synced_stock || 0,
+                    p.last_synced_at || '',
+                ]);
+            }
+            const csv = rows.map(r => r.join(',')).join('\n');
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'wb-products-' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        },
+
+        ...marketplaceSeoMixin(),
     };
 }
 </script>
+
+<x-marketplace-seo-script />
+<x-marketplace-seo-modal />
 
 <style>
 [x-cloak] { display: none !important; }
@@ -1144,7 +1189,7 @@ function wbProducts(accountId) {
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function wbProductsPwa(accountId) {
     return {
         accountId,

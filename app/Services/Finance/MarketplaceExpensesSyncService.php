@@ -507,6 +507,10 @@ class MarketplaceExpensesSyncService
                         $result['by_category']['commission'] = ($result['by_category']['commission'] ?? 0) + $order->commission;
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка синхронизации комиссии Uzum', [
+                        'order_id' => $order->order_id ?? $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
                     $result['errors']++;
                 }
             }
@@ -532,6 +536,10 @@ class MarketplaceExpensesSyncService
                         $result['by_category']['logistics'] = ($result['by_category']['logistics'] ?? 0) + $order->logistic_delivery_fee;
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Ошибка синхронизации логистики Uzum', [
+                        'order_id' => $order->order_id ?? $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
                     $result['errors']++;
                 }
             }
@@ -583,6 +591,11 @@ class MarketplaceExpensesSyncService
                     $result['by_category'][$catKey] = ($result['by_category'][$catKey] ?? 0) + $amount;
                 }
             } catch (\Exception $e) {
+                Log::warning('Ошибка синхронизации расхода Uzum', [
+                    'expense_id' => $expense->id,
+                    'source' => $expense->source_normalized ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ]);
                 $result['errors']++;
             }
         }

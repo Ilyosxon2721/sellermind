@@ -123,6 +123,13 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'uzum-analytics' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/uzum-analytics.log'),
+            'level'  => env('LOG_LEVEL', 'info'),
+            'days'   => 14,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

@@ -3,9 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\UzumShop;
+use App\Services\ReviewAutoResponder;
 use App\Services\UzumSellerApi;
 use App\Services\UzumSellerAuth;
-use App\Services\ReviewAutoResponder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,6 +18,7 @@ class AutoReplyReviews implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $backoff = 30;
 
     public function handle(): void
@@ -25,24 +26,26 @@ class AutoReplyReviews implements ShouldQueue
         $shops = UzumShop::where('auto_reply_enabled', true)
             ->where(function ($q) {
                 $q->whereNotNull('session_token')
-                  ->orWhereNotNull('seller_email');
+                    ->orWhereNotNull('seller_email');
             })
             ->get();
 
         if ($shops->isEmpty()) {
             Log::info('AutoReplyReviews: нет магазинов с включённым авто-ответом');
+
             return;
         }
 
-        $auth = new UzumSellerAuth();
+        $auth = new UzumSellerAuth;
 
         foreach ($shops as $shop) {
             try {
                 // Получаем валидный session token (auto-refresh)
                 $token = $auth->getValidToken($shop);
 
-                if (!$token) {
+                if (! $token) {
                     Log::error("AutoReplyReviews: нет токена для магазина #{$shop->uzum_shop_id}");
+
                     continue;
                 }
 

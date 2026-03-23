@@ -237,6 +237,7 @@ class OrdersSyncService
             try {
                 $orderedAt = Carbon::parse($orderData['ordered_at']);
             } catch (\Exception $e) {
+                Log::warning('Ошибка парсинга даты заказа WB (OrdersSync)', ['value' => $orderData['ordered_at'], 'error' => $e->getMessage()]);
                 $orderedAt = now();
             }
         }
@@ -371,6 +372,7 @@ class OrdersSyncService
                     $orderedAt = Carbon::parse($orderData['ordered_at']);
                 }
             } catch (\Exception $e) {
+                Log::warning('Ошибка парсинга даты заказа Uzum (OrdersSync)', ['value' => $orderData['ordered_at'] ?? null, 'error' => $e->getMessage()]);
                 $orderedAt = now();
             }
         }

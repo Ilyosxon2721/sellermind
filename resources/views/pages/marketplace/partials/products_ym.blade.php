@@ -349,7 +349,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ymProductsPage() {
     return {
         products: [],
@@ -817,7 +817,7 @@ function ymProductsPage() {
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function ymProductsPwa(accountId) {
     return {
         accountId,

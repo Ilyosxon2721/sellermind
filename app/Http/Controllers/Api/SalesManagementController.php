@@ -13,6 +13,7 @@ use App\Services\SaleReservationService;
 use App\Services\SaleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -68,9 +69,17 @@ class SalesManagementController extends Controller
             $query->search($this->escapeLike($search));
         }
 
-        // Сортировка
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
+        // Сортировка (allowlist для защиты от SQL-инъекции)
+        $allowedSorts = [
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'amount' => 'amount',
+            'status' => 'status',
+            'type' => 'type',
+            'sale_number' => 'sale_number',
+        ];
+        $sortBy = $allowedSorts[$request->get('sort_by', 'created_at')] ?? 'created_at';
+        $sortOrder = $request->get('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortOrder);
 
         // Пагинация
@@ -262,6 +271,8 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка подтверждения продажи', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to confirm sale',
                 'error' => $e->getMessage(),
@@ -288,6 +299,8 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка завершения продажи', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to complete sale',
                 'error' => $e->getMessage(),
@@ -314,6 +327,8 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка отмены продажи', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to cancel sale',
                 'error' => $e->getMessage(),
@@ -346,6 +361,8 @@ class SalesManagementController extends Controller
                 'data' => $sale,
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка возврата продажи в черновик', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to revert sale to draft',
                 'error' => $e->getMessage(),
@@ -386,6 +403,8 @@ class SalesManagementController extends Controller
                 'data' => $sale->fresh(['items']),
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка отгрузки товаров', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to ship items',
                 'error' => $e->getMessage(),
@@ -458,6 +477,8 @@ class SalesManagementController extends Controller
                 'sale' => $sale->fresh(['items']),
             ], 201);
         } catch (\Exception $e) {
+            Log::error('Ошибка добавления позиции в продажу', ['sale_id' => $id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to add item',
                 'error' => $e->getMessage(),
@@ -508,6 +529,8 @@ class SalesManagementController extends Controller
                 'sale' => $item->sale->fresh(['items']),
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка обновления позиции продажи', ['sale_id' => $saleId, 'item_id' => $itemId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to update item',
                 'error' => $e->getMessage(),
@@ -542,6 +565,8 @@ class SalesManagementController extends Controller
                 'message' => 'Item deleted successfully',
             ]);
         } catch (\Exception $e) {
+            Log::error('Ошибка удаления позиции из продажи', ['sale_id' => $saleId, 'item_id' => $itemId, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to delete item',
                 'error' => $e->getMessage(),

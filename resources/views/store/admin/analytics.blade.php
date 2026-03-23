@@ -190,7 +190,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function storeAnalytics(storeId) {
     return {
         storeId,

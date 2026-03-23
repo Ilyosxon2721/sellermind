@@ -158,7 +158,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function pagesManager(storeId) {
     return {
         storeId,

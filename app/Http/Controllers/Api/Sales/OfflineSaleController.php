@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api\Sales;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\HasPaginatedResponse;
+use App\Http\Requests\Sales\MarkSalePaidRequest;
+use App\Http\Requests\Sales\StoreSaleRequest;
+use App\Http\Requests\Sales\UpdateSaleRequest;
 use App\Models\OfflineSale;
 use App\Models\OfflineSaleItem;
 use App\Services\Notifications\TelegramNotificationService;
@@ -83,42 +86,14 @@ class OfflineSaleController extends Controller
         return $this->successResponse($sale);
     }
 
-    public function store(Request $request)
+    public function store(StoreSaleRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $data = $request->validate([
-            'counterparty_id' => ['nullable', 'integer'],
-            'warehouse_id' => ['nullable', 'integer'],
-            'sale_number' => ['nullable', 'string', 'max:100'],
-            'sale_type' => ['required', 'in:retail,wholesale,direct'],
-            'status' => ['nullable', 'in:draft,confirmed,shipped,delivered,cancelled,returned'],
-            'customer_name' => ['nullable', 'string', 'max:255'],
-            'customer_phone' => ['nullable', 'string', 'max:50'],
-            'customer_email' => ['nullable', 'email', 'max:255'],
-            'discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'currency_code' => ['nullable', 'string', 'max:3'],
-            'payment_status' => ['nullable', 'in:unpaid,partial,paid'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'string', 'max:50'],
-            'sale_date' => ['required', 'date'],
-            'shipped_date' => ['nullable', 'date'],
-            'delivered_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['nullable', 'array'],
-            'items.*.sku_id' => ['nullable', 'integer'],
-            'items.*.product_id' => ['nullable', 'integer'],
-            'items.*.sku_code' => ['nullable', 'string'],
-            'items.*.product_name' => ['nullable', 'string'],
-            'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
-            'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $request->validated();
 
         $data['company_id'] = $companyId;
         $data['created_by'] = Auth::id();
@@ -150,7 +125,7 @@ class OfflineSaleController extends Controller
         return $this->successResponse($sale);
     }
 
-    public function update($id, Request $request)
+    public function update($id, UpdateSaleRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -164,30 +139,7 @@ class OfflineSaleController extends Controller
             return $this->errorResponse('Can only edit draft sales', 'invalid_state', null, 422);
         }
 
-        $data = $request->validate([
-            'counterparty_id' => ['nullable', 'integer'],
-            'warehouse_id' => ['nullable', 'integer'],
-            'sale_number' => ['nullable', 'string', 'max:100'],
-            'sale_type' => ['nullable', 'in:retail,wholesale,direct'],
-            'customer_name' => ['nullable', 'string', 'max:255'],
-            'customer_phone' => ['nullable', 'string', 'max:50'],
-            'customer_email' => ['nullable', 'email', 'max:255'],
-            'discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'currency_code' => ['nullable', 'string', 'max:3'],
-            'payment_method' => ['nullable', 'string', 'max:50'],
-            'sale_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['nullable', 'array'],
-            'items.*.sku_id' => ['nullable', 'integer'],
-            'items.*.product_id' => ['nullable', 'integer'],
-            'items.*.sku_code' => ['nullable', 'string'],
-            'items.*.product_name' => ['nullable', 'string'],
-            'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
-            'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $request->validated();
 
         $items = $data['items'] ?? null;
         unset($data['items']);
@@ -246,11 +198,10 @@ class OfflineSaleController extends Controller
             return $this->errorResponse('Sale must be confirmed or shipped', 'invalid_state', null, 422);
         }
 
+        // Обновляем статус - Observer автоматически обработает остатки
         $sale->update([
             'status' => OfflineSale::STATUS_DELIVERED,
             'delivered_date' => now(),
-            'stock_status' => 'sold',
-            'stock_sold_at' => now(),
         ]);
 
         return $this->successResponse($sale->fresh());
@@ -269,16 +220,15 @@ class OfflineSaleController extends Controller
             return $this->errorResponse('Sale already cancelled', 'invalid_state', null, 422);
         }
 
+        // Обновляем статус - Observer автоматически обработает возврат остатков
         $sale->update([
             'status' => OfflineSale::STATUS_CANCELLED,
-            'stock_status' => 'released',
-            'stock_released_at' => now(),
         ]);
 
         return $this->successResponse($sale->fresh());
     }
 
-    public function markPaid($id, Request $request)
+    public function markPaid($id, MarkSalePaidRequest $request)
     {
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
@@ -287,10 +237,7 @@ class OfflineSaleController extends Controller
 
         $sale = OfflineSale::byCompany($companyId)->findOrFail($id);
 
-        $data = $request->validate([
-            'paid_amount' => ['required', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'string', 'max:50'],
-        ]);
+        $data = $request->validated();
 
         $newPaidAmount = $sale->paid_amount + $data['paid_amount'];
         $paymentStatus = OfflineSale::PAYMENT_UNPAID;

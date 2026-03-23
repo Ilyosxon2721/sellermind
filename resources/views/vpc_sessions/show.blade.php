@@ -297,7 +297,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function vpcShowPage(sessionId) {
     return {
         sessionId: sessionId,

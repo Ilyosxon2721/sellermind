@@ -35,7 +35,7 @@ final class NewMarketplaceOrderNotification extends Notification implements Shou
      */
     public function deduplicationKey(): string
     {
-        return 'order_' . $this->marketplace . '_' . $this->orderNumber;
+        return 'order_'.$this->marketplace.'_'.$this->orderNumber;
     }
 
     public function deduplicationTtl(): int

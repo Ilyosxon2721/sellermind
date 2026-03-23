@@ -10,7 +10,7 @@
     $sizesData = ($globalSizes ?? collect())->map(fn($s) => ['id' => $s->id, 'value' => $s->value, 'code' => $s->code])->values();
     $colorsData = ($globalColors ?? collect())->map(fn($c) => ['id' => $c->id, 'value' => $c->value, 'code' => $c->code, 'hex' => $c->color_hex])->values();
 @endphp
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     window.__productEditorData = {
         initialState: @json($initialState),
         attributesList: @json($attrListMapped),
@@ -1560,8 +1560,8 @@
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function priceHistoryChart(productId) {
     return {
         productId: productId,

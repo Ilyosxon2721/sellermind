@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckPlanLimits
@@ -170,7 +171,9 @@ class CheckPlanLimits
         try {
             $upgradeUrl = route('pricing.index');
         } catch (\Exception $e) {
-            // Fallback to direct URL if route not found
+            Log::debug('Маршрут pricing.index не найден, используется fallback URL', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         if ($request->expectsJson() || $request->is('api/*')) {

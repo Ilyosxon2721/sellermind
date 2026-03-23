@@ -19,11 +19,11 @@ final class MarketplacePollingState extends Model
     ];
 
     protected $casts = [
-        'marketplace'  => MarketplaceType::class,
-        'is_active'    => 'boolean',
-        'is_locked'    => 'boolean',
+        'marketplace' => MarketplaceType::class,
+        'is_active' => 'boolean',
+        'is_locked' => 'boolean',
         'last_poll_at' => 'datetime',
-        'locked_at'    => 'datetime',
+        'locked_at' => 'datetime',
     ];
 
     public function store(): BelongsTo

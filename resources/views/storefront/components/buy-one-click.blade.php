@@ -143,7 +143,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     function buyOneClick() {
         return {
             visible: false,

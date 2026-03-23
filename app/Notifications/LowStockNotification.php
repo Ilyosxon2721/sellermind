@@ -26,7 +26,7 @@ class LowStockNotification extends Notification implements ShouldQueue
      */
     public function deduplicationKey(): string
     {
-        return 'lowstock_' . $this->variant->id;
+        return 'lowstock_'.$this->variant->id;
     }
 
     public function deduplicationTtl(): int

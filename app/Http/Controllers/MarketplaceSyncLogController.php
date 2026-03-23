@@ -162,7 +162,23 @@ class MarketplaceSyncLogController extends Controller
         $logs = $query->paginate($perPage);
 
         return response()->json([
-            'logs' => $logs->items(),
+            'logs' => collect($logs->items())->map(fn (MarketplaceSyncLog $log) => [
+                'id' => $log->id,
+                'type' => $log->type,
+                'type_label' => $log->getTypeLabel(),
+                'status' => $log->status,
+                'status_label' => $log->getStatusLabel(),
+                'message' => $log->message,
+                'started_at' => $log->started_at,
+                'finished_at' => $log->finished_at,
+                'duration' => $log->getDuration(),
+                'created_at' => $log->created_at,
+                'account' => $log->account ? [
+                    'id' => $log->account->id,
+                    'name' => $log->account->name,
+                    'marketplace' => $log->account->marketplace,
+                ] : null,
+            ]),
             'total' => $logs->total(),
             'current_page' => $logs->currentPage(),
             'last_page' => $logs->lastPage(),

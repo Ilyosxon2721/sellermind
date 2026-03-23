@@ -775,7 +775,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function categoriesPage() {
     return {
         categories: [],

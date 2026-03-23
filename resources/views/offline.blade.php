@@ -383,7 +383,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         // Проверка соединения
         function updateConnectionStatus() {
             const statusEl = document.getElementById('connection-status');

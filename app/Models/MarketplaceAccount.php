@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class MarketplaceAccount extends Model
 {
@@ -283,6 +284,10 @@ class MarketplaceAccount extends Model
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
             // Токен мог быть сохранён в открытом виде (миграция из uzum_api_key)
+            Log::debug('Не удалось расшифровать api_key, возвращается как есть', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return $value;
         }
     }
@@ -301,6 +306,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать uzum_access_token, возвращается как есть', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return $value;
         }
     }
@@ -319,6 +328,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать uzum_refresh_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -337,6 +350,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать uzum_client_secret', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -361,6 +378,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать client_secret', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -385,6 +406,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать oauth_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -409,6 +434,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать oauth_refresh_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -433,6 +462,10 @@ class MarketplaceAccount extends Model
         try {
             return json_decode(Crypt::decryptString($this->attributes['credentials']), true) ?? [];
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать credentials (legacy)', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return [];
         }
     }
@@ -677,7 +710,7 @@ class MarketplaceAccount extends Model
         }
 
         $prefix = str_starts_with($token, 'eyJ') ? 'Bearer' : '';
-        $value = $prefix !== '' ? trim($prefix . ' ' . $token) : $token;
+        $value = $prefix !== '' ? trim($prefix.' '.$token) : $token;
 
         return [
             'Authorization' => $value,
@@ -787,6 +820,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать wb_content_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -804,6 +841,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать wb_marketplace_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -821,6 +862,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать wb_prices_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
@@ -838,6 +883,10 @@ class MarketplaceAccount extends Model
         try {
             return Crypt::decryptString($value);
         } catch (\Exception $e) {
+            Log::debug('Не удалось расшифровать wb_statistics_token', [
+                'account_id' => $this->id ?? null,
+            ]);
+
             return null;
         }
     }
