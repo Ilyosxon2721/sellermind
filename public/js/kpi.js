@@ -15,13 +15,15 @@ function kpiPage(config) {
         employees: [],
         marketplaceAccounts: [],
         calculating: false,
-        chartData: [],
+        chartData: { labels: [], achievements: [], bonuses: [] },
         chart: null,
 
         // Модалки
         showPlanModal: false,
         showSphereModal: false,
         showScaleModal: false,
+        showActualsModal: false,
+        actualsForm: { id: null, actual_revenue: 0, actual_margin: 0, actual_orders: 0, employee_name: '', sphere_name: '' },
 
         // Формы
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
@@ -40,6 +42,11 @@ function kpiPage(config) {
             this.loadEmployees();
             this.loadMarketplaceAccounts();
             this.loadChartData(6);
+        },
+
+        reloadCurrentTab() {
+            if (this.tab === 'dashboard') { this.loadDashboard(); this.loadChartData(); }
+            else if (this.tab === 'plans') this.loadPlans();
         },
 
         emptyPlanForm() {
@@ -142,65 +149,9 @@ function kpiPage(config) {
             months = months || 6;
             try {
                 var res = await this.api('finance/kpi/chart-data?months=' + months);
-                this.chartData = (res.data ?? res).data ?? [];
-                this.renderChart();
-            } catch (e) { console.error('Chart load error:', e); }
-        },
-
-        // Данные для графика
-        chartInstance: null,
-        chartData: { labels: [], achievements: [], bonuses: [] },
-
-        async loadChartData() {
-            try {
-                var res = await this.api('finance/kpi/chart-data?months=6');
                 this.chartData = res.data ?? res;
                 this.renderChart();
-            } catch (e) { /* chart data may not be available */ }
-        },
-
-        renderChart() {
-            var canvas = document.getElementById('kpiChart');
-            if (!canvas) return;
-            if (this.chartInstance) this.chartInstance.destroy();
-            var ctx = canvas.getContext('2d');
-            var self = this;
-            this.chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: self.chartData.labels || [],
-                    datasets: [
-                        {
-                            label: 'Выполнение %',
-                            data: self.chartData.achievements || [],
-                            type: 'line',
-                            borderColor: '#3B82F6',
-                            backgroundColor: 'rgba(59,130,246,0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Бонусы',
-                            data: self.chartData.bonuses || [],
-                            backgroundColor: 'rgba(16,185,129,0.7)',
-                            borderRadius: 6,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        y: { position: 'left', title: { display: true, text: '%' }, suggestedMin: 0, suggestedMax: 120 },
-                        y1: { position: 'right', title: { display: true, text: 'Бонус' }, grid: { drawOnChartArea: false }, suggestedMin: 0 }
-                    },
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
+            } catch (e) { console.error('Chart load error:', e); }
         },
 
         // Расчёт KPI
@@ -220,6 +171,49 @@ function kpiPage(config) {
             this.planForm = this.emptyPlanForm();
             this.aiReasoning = '';
             this.showPlanModal = true;
+        },
+        editPlan(p) {
+            this.planForm = {
+                id: p.id,
+                employee_id: p.employee_id,
+                kpi_sales_sphere_id: p.kpi_sales_sphere_id,
+                kpi_bonus_scale_id: p.kpi_bonus_scale_id,
+                period_year: p.period_year,
+                period_month: p.period_month,
+                target_revenue: p.target_revenue,
+                target_margin: p.target_margin,
+                target_orders: p.target_orders,
+                weight_revenue: p.weight_revenue,
+                weight_margin: p.weight_margin,
+                weight_orders: p.weight_orders,
+                notes: p.notes || ''
+            };
+            this.aiReasoning = '';
+            this.showPlanModal = true;
+        },
+        openActualsModal(p) {
+            this.actualsForm = {
+                id: p.id,
+                actual_revenue: p.actual_revenue || 0,
+                actual_margin: p.actual_margin || 0,
+                actual_orders: p.actual_orders || 0,
+                employee_name: p.employee?.name ?? '—',
+                sphere_name: p.sales_sphere?.name ?? '—'
+            };
+            this.showActualsModal = true;
+        },
+        async saveActuals() {
+            try {
+                await this.api('finance/kpi/plans/' + this.actualsForm.id + '/actuals', 'PUT', {
+                    actual_revenue: parseFloat(this.actualsForm.actual_revenue) || 0,
+                    actual_margin: parseFloat(this.actualsForm.actual_margin) || 0,
+                    actual_orders: parseInt(this.actualsForm.actual_orders) || 0
+                });
+                this.showActualsModal = false;
+                this.notify('Фактические данные сохранены');
+                await this.loadPlans();
+                await this.loadDashboard();
+            } catch (e) { this.notify(e.message, 'error'); }
         },
         async aiSuggestPlan() {
             if (!this.planForm.employee_id || !this.planForm.kpi_sales_sphere_id) {
@@ -248,6 +242,12 @@ function kpiPage(config) {
             this.aiSuggesting = false;
         },
         async savePlan() {
+            // Валидация суммы весов
+            var wSum = parseInt(this.planForm.weight_revenue || 0) + parseInt(this.planForm.weight_margin || 0) + parseInt(this.planForm.weight_orders || 0);
+            if (wSum !== 100) {
+                this.notify('Сумма весов должна быть 100 (сейчас: ' + wSum + ')', 'error');
+                return;
+            }
             try {
                 if (this.planForm.id) {
                     await this.api('finance/kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
@@ -257,6 +257,7 @@ function kpiPage(config) {
                 this.showPlanModal = false;
                 this.notify('План сохранён');
                 await this.loadPlans();
+                await this.loadDashboard();
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async approvePlan(id) {
@@ -372,27 +373,19 @@ function kpiPage(config) {
             if (!canvas) return;
 
             var ctx = canvas.getContext('2d');
-            var self = this;
 
-            // Уничтожаем предыдущий график
             if (this.chart) {
                 this.chart.destroy();
             }
 
-            var labels = this.chartData.map(function(d) {
-                return self.monthName(d.month) + ' ' + d.year;
-            });
-            var achievements = this.chartData.map(function(d) { return d.avg_achievement; });
-            var bonuses = this.chartData.map(function(d) { return d.total_bonus; });
-
             this.chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: this.chartData.labels || [],
                     datasets: [
                         {
                             label: 'Средний % выполнения',
-                            data: achievements,
+                            data: this.chartData.achievements || [],
                             borderColor: 'rgb(59, 130, 246)',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             tension: 0.3,
@@ -401,7 +394,7 @@ function kpiPage(config) {
                         },
                         {
                             label: 'Бонусы (сум)',
-                            data: bonuses,
+                            data: this.chartData.bonuses || [],
                             borderColor: 'rgb(34, 197, 94)',
                             backgroundColor: 'rgba(34, 197, 94, 0.1)',
                             tension: 0.3,
@@ -413,21 +406,14 @@ function kpiPage(config) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: {
-                            position: 'top',
-                        },
+                        legend: { position: 'top' },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
                                     var label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
+                                    if (label) label += ': ';
                                     if (context.parsed.y !== null) {
                                         if (context.datasetIndex === 0) {
                                             label += context.parsed.y.toFixed(1) + '%';
@@ -442,35 +428,15 @@ function kpiPage(config) {
                     },
                     scales: {
                         y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: '% выполнения'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
+                            type: 'linear', display: true, position: 'left',
+                            title: { display: true, text: '% выполнения' },
+                            ticks: { callback: function(v) { return v + '%'; } }
                         },
                         y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Бонусы (сум)'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString('ru-RU');
-                                }
-                            }
+                            type: 'linear', display: true, position: 'right',
+                            title: { display: true, text: 'Бонусы (сум)' },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: function(v) { return v.toLocaleString('ru-RU'); } }
                         },
                     }
                 }
