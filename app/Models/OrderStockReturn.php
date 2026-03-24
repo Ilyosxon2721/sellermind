@@ -30,7 +30,7 @@ class OrderStockReturn extends Model
 {
     use HasFactory;
 
-    protected $table = 'marketplace_returns';
+    protected $table = 'order_stock_returns';
 
     public const STATUS_PENDING = 'pending';
 

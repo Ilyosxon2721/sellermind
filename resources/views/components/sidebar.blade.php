@@ -97,7 +97,13 @@
                             <span class="text-xs">•</span>
                             <span class="text-sm">{{ __('admin.warehouse_ledger') }}</span>
                         </a>
-                        @php $pendingReturns = \App\Models\OrderStockReturn::where('status','pending')->where('company_id', auth()->user()->company_id ?? 0)->count(); @endphp
+                        @php
+                            try {
+                                $pendingReturns = \App\Models\OrderStockReturn::where('status','pending')->where('company_id', auth()->user()->company_id ?? 0)->count();
+                            } catch (\Exception $e) {
+                                $pendingReturns = 0;
+                            }
+                        @endphp
                         <a href="/warehouse/returns" class="flex items-center space-x-2 px-3 py-2 rounded-lg transition {{ request()->is('warehouse/returns*') ? 'bg-orange-50 text-orange-700' : 'text-gray-700 hover:bg-gray-100' }}">
                             <span class="text-xs text-orange-500">•</span>
                             <span class="text-sm">Возвраты</span>
