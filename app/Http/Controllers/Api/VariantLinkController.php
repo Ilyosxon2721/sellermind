@@ -261,30 +261,45 @@ class VariantLinkController extends Controller
             ], 404);
         }
 
-        $synced = 0;
-        $errors = [];
+        $synced  = 0;
+        $skipped = 0;
+        $errors  = [];
 
         foreach ($links as $link) {
             try {
-                $this->stockSyncService->syncLinkStock($link);
-                $synced++;
+                $result = $this->stockSyncService->syncLinkStock($link);
+                // syncLinkStock возвращает массив с 'skipped'=>true для архивированных SKU
+                if (isset($result['skipped']) && $result['skipped']) {
+                    $skipped++;
+                } else {
+                    $synced++;
+                }
             } catch (\Exception $e) {
                 $errors[] = $e->getMessage();
             }
         }
 
-        if ($synced === 0) {
+        if ($synced === 0 && ! empty($errors)) {
             return response()->json([
                 'success' => false,
                 'message' => implode('; ', $errors),
             ], 400);
         }
 
+        $message = $synced > 0
+            ? "Синхронизировано: {$synced}"
+            : 'Нет активных SKU для синхронизации';
+
+        if ($skipped > 0) {
+            $message .= ". Пропущено {$skipped} архивированных — синхронизация для них отключена.";
+        }
+
         return response()->json([
             'success' => true,
-            'message' => "Синхронизировано: {$synced} из {$links->count()}",
-            'synced' => $synced,
-            'errors' => $errors,
+            'message' => $message,
+            'synced'  => $synced,
+            'skipped' => $skipped,
+            'errors'  => $errors,
         ]);
     }
 

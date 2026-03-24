@@ -83,6 +83,11 @@ class StockSyncService
             default => throw new \RuntimeException("Неподдерживаемый маркетплейс: {$account->marketplace}"),
         };
 
+        // Для пропущенных (архивированных) SKU — не обновляем статус и не логируем успех
+        if (! empty($result['skipped'])) {
+            return $result;
+        }
+
         // Обновить статус связи
         $link->markSynced($stock);
 
@@ -301,12 +306,21 @@ class StockSyncService
             Log::warning('Uzum GET stocks failed', ['error' => $e->getMessage()]);
         }
 
-        // SKU не найден в FBS/DBS системе — синхронизация невозможна
+        // SKU не найден в FBS/DBS системе — отключаем синхронизацию для этого SKU
         if (! $skuFoundInApi) {
-            throw new \RuntimeException(
-                "SKU {$skuId} не подключён к FBS/DBS в Uzum. " .
-                "Активируйте схему продаж для этого товара в кабинете Uzum."
-            );
+            Log::warning('Uzum syncToUzum: SKU не в FBS/DBS — отключаем sync_stock_enabled', [
+                'link_id' => $link->id,
+                'sku_id'  => $skuId,
+            ]);
+            $link->update(['sync_stock_enabled' => false]);
+
+            return [
+                'success'  => false,
+                'skipped'  => true,
+                'sku_id'   => $skuId,
+                'reason'   => 'not_in_fbs',
+                'message'  => "SKU {$skuId} не подключён к FBS/DBS в Uzum. Синхронизация отключена — активируйте схему продаж в кабинете Uzum.",
+            ];
         }
 
         if (! $barcode) {
@@ -320,10 +334,19 @@ class StockSyncService
         $updatedRecords = $result['payload']['updatedRecords'] ?? $result['updatedRecords'] ?? 0;
 
         if ($updatedRecords === 0) {
-            throw new \RuntimeException(
-                "Uzum не обновил остаток для SKU {$skuId} (updatedRecords=0). " .
-                "Проверьте статус товара в кабинете Uzum — возможно он заблокирован или архивирован."
-            );
+            Log::warning('Uzum syncToUzum: updatedRecords=0 (товар заблокирован/архивирован) — отключаем sync_stock_enabled', [
+                'link_id' => $link->id,
+                'sku_id'  => $skuId,
+            ]);
+            $link->update(['sync_stock_enabled' => false]);
+
+            return [
+                'success'  => false,
+                'skipped'  => true,
+                'sku_id'   => $skuId,
+                'reason'   => 'archived',
+                'message'  => "SKU {$skuId} заблокирован или архивирован в Uzum. Синхронизация отключена.",
+            ];
         }
 
         return ['success' => true, 'sku_id' => $skuId, 'stock' => $stock, 'updated_records' => $updatedRecords, 'response' => $result];
