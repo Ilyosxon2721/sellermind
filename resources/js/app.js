@@ -1,4 +1,5 @@
 import './bootstrap';
+import './pages/returns'; // Alpine компонент страницы возвратов
 import './smart-refresh'; // Умное обновление данных с анимацией
 import './polling'; // HTTP polling для real-time обновлений
 import './haptic'; // Haptic feedback system
