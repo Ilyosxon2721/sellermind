@@ -12,8 +12,9 @@ window.returnsPage = function returnsPage() {
         toast: { show: false, message: '', type: 'success' },
 
         getCompanyId() {
-            return parseInt(this.$el.dataset.companyId)
-                || Alpine.store('auth').user?.company_id
+            return Alpine.store('auth')?.currentCompany?.id
+                || Alpine.store('auth')?.user?.company_id
+                || parseInt(this.$el?.dataset?.companyId)
                 || null;
         },
 
