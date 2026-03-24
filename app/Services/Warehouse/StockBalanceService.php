@@ -21,6 +21,16 @@ class StockBalanceService
         ];
     }
 
+    /**
+     * Доступное количество SKU на складе (on_hand - reserved)
+     */
+    public function available(int $companyId, int $warehouseId, int $skuId, ?int $locationId = null): float
+    {
+        $balance = $this->balance($companyId, $warehouseId, $skuId, $locationId);
+
+        return (float) $balance['available'];
+    }
+
     public function bulkBalance(int $companyId, int $warehouseId, array $skuIds): Collection
     {
         $ledger = StockLedger::query()
