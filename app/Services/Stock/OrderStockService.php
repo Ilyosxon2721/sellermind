@@ -1064,6 +1064,13 @@ class OrderStockService
             }
 
             // Create stock ledger entry
+            // Кодируем маркетплейс в source_type: 'marketplace_order_sold' → 'uzum_order_sold'
+            // Это исправляет неверное определение маркетплейса в журнале движений,
+            // когда у WB и Uzum совпадают числовые ID заказа.
+            $effectiveSourceType = $marketplace
+                ? str_replace('marketplace_', $marketplace . '_', $sourceType)
+                : $sourceType;
+
             StockLedger::create([
                 'company_id' => $account->company_id,
                 'occurred_at' => now(),
@@ -1071,11 +1078,11 @@ class OrderStockService
                 'location_id' => null,
                 'sku_id' => $warehouseSku->id,
                 'qty_delta' => $qtyDelta,
-                'cost_delta' => 0, // We don't track cost here
+                'cost_delta' => 0,
                 'currency_code' => 'UZS',
                 'document_id' => null,
                 'document_line_id' => null,
-                'source_type' => $sourceType,
+                'source_type' => $effectiveSourceType,
                 'source_id' => $order->id,
                 'created_by' => null,
             ]);

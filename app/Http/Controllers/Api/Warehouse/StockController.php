@@ -252,19 +252,32 @@ class StockController extends Controller
             switch ($item->source_type) {
                 case 'WB_ORDER':
                 case 'WB_ORDER_CANCEL':
+                case 'wb_order_reserve':
+                case 'wb_order_sold':
+                case 'wb_order_cancel':
                     $wbIds[] = $item->source_id;
                     break;
                 case 'UZUM_ORDER':
+                case 'uzum_order_reserve':
+                case 'uzum_order_sold':
+                case 'uzum_order_cancel':
                     $uzumIds[] = $item->source_id;
                     break;
                 case 'OZON_ORDER':
                 case 'OZON_ORDER_CANCEL':
+                case 'ozon_order_reserve':
+                case 'ozon_order_sold':
+                case 'ozon_order_cancel':
                     $ozonIds[] = $item->source_id;
                     break;
                 case 'YANDEX_ORDER':
                 case 'YANDEX_ORDER_CANCEL':
+                case 'ym_order_reserve':
+                case 'ym_order_sold':
+                case 'ym_order_cancel':
                     $ymIds[] = $item->source_id;
                     break;
+                // Устаревшие unified source_type (без маркетплейса) — определяем по ID коллизии
                 case 'marketplace_order_reserve':
                 case 'marketplace_order_cancel':
                 case 'marketplace_order_sold':
@@ -282,6 +295,7 @@ class StockController extends Controller
         }
 
         // Batch fetch orders with account info
+        // Для маркетплейс-специфичных типов — грузим только нужные таблицы
         $wbOrders = ! empty($wbIds) || ! empty($unifiedIds)
             ? WbOrder::with('account:id,name,marketplace')
                 ->whereIn('id', array_unique(array_merge($wbIds, $unifiedIds)))
@@ -362,40 +376,63 @@ class StockController extends Controller
             switch ($item->source_type) {
                 case 'WB_ORDER':
                 case 'WB_ORDER_CANCEL':
+                case 'wb_order_reserve':
+                case 'wb_order_sold':
+                case 'wb_order_cancel':
                     $order = $wbOrders->get($item->source_id);
                     $marketplace = 'wb';
                     break;
 
                 case 'UZUM_ORDER':
+                case 'uzum_order_reserve':
+                case 'uzum_order_sold':
+                case 'uzum_order_cancel':
                     $order = $uzumOrders->get($item->source_id);
                     $marketplace = 'uzum';
                     break;
 
                 case 'OZON_ORDER':
                 case 'OZON_ORDER_CANCEL':
+                case 'ozon_order_reserve':
+                case 'ozon_order_sold':
+                case 'ozon_order_cancel':
                     $order = $ozonOrders->get($item->source_id);
                     $marketplace = 'ozon';
                     break;
 
                 case 'YANDEX_ORDER':
                 case 'YANDEX_ORDER_CANCEL':
+                case 'ym_order_reserve':
+                case 'ym_order_sold':
+                case 'ym_order_cancel':
                     $order = $ymOrders->get($item->source_id);
                     $marketplace = 'ym';
                     break;
 
+                // Устаревшие unified типы — эвристический поиск (старые записи в БД)
                 case 'marketplace_order_reserve':
                 case 'marketplace_order_cancel':
                 case 'marketplace_order_sold':
                 case 'marketplace_order':
-                    // Try each marketplace model (unified source_type)
-                    if ($order = $wbOrders->get($item->source_id)) {
-                        $marketplace = 'wb';
-                    } elseif ($order = $uzumOrders->get($item->source_id)) {
-                        $marketplace = 'uzum';
-                    } elseif ($order = $ozonOrders->get($item->source_id)) {
-                        $marketplace = 'ozon';
-                    } elseif ($order = $ymOrders->get($item->source_id)) {
-                        $marketplace = 'ym';
+                    // Для старых записей: ищем в той таблице, в которой ЕСТ заказ
+                    // но НЕТ в других (чтобы избежать коллизии ID)
+                    $foundInWb    = $wbOrders->has($item->source_id);
+                    $foundInUzum  = $uzumOrders->has($item->source_id);
+                    $foundInOzon  = $ozonOrders->has($item->source_id);
+                    $foundInYm    = $ymOrders->has($item->source_id);
+                    $matchCount   = (int) $foundInWb + (int) $foundInUzum + (int) $foundInOzon + (int) $foundInYm;
+
+                    if ($matchCount === 1) {
+                        // Однозначное совпадение — точно определяем маркетплейс
+                        if ($foundInWb)   { $order = $wbOrders->get($item->source_id);   $marketplace = 'wb'; }
+                        if ($foundInUzum) { $order = $uzumOrders->get($item->source_id); $marketplace = 'uzum'; }
+                        if ($foundInOzon) { $order = $ozonOrders->get($item->source_id); $marketplace = 'ozon'; }
+                        if ($foundInYm)   { $order = $ymOrders->get($item->source_id);   $marketplace = 'ym'; }
+                    } elseif ($matchCount > 1) {
+                        // Коллизия ID между маркетплейсами — показываем без маркетплейса
+                        // (эти записи были созданы до исправления, новые записи уже с корректным source_type)
+                        $order = null;
+                        $marketplace = null;
                     }
                     break;
 
