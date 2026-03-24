@@ -28,7 +28,7 @@ final class CreateDocumentRequest extends FormRequest
     {
         return [
             'doc_no' => ['nullable', 'string', 'max:100'],
-            'type' => ['required', 'string', 'in:in,out,transfer,writeoff,inventory'],
+            'type' => ['required', 'string', 'in:IN,OUT,MOVE,WRITE_OFF,INVENTORY,REVERSAL'],
             'warehouse_id' => ['required', 'integer'],
             'warehouse_to_id' => ['nullable', 'integer'],
             'comment' => ['nullable', 'string', 'max:1000'],
