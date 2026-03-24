@@ -31,7 +31,7 @@ window.returnsPage = function returnsPage() {
                 if (this.filters.status) params.append('status', this.filters.status);
                 if (this.filters.order_type) params.append('order_type', this.filters.order_type);
 
-                const res = await fetch('/api/returns?' + params, {
+                const res = await fetch('/api/marketplace/returns?' + params, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
@@ -48,7 +48,7 @@ window.returnsPage = function returnsPage() {
 
         async loadStats() {
             try {
-                const res = await fetch('/api/returns/stats?company_id=' + this.getCompanyId(), {
+                const res = await fetch('/api/marketplace/returns/stats?company_id=' + this.getCompanyId(), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
@@ -60,7 +60,7 @@ window.returnsPage = function returnsPage() {
             const pending = this.returns.filter(r => r.status === 'pending' && !r.order_items);
             for (const item of pending) {
                 try {
-                    const res = await fetch('/api/returns/' + item.id, {
+                    const res = await fetch('/api/marketplace/returns/' + item.id, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     const data = await res.json();
@@ -75,7 +75,7 @@ window.returnsPage = function returnsPage() {
             if (!confirm('Принять товар на склад? Остатки будут восстановлены.')) return;
             item.processing = true;
             try {
-                const res = await fetch('/api/returns/' + item.id + '/return-to-stock', {
+                const res = await fetch('/api/marketplace/returns/' + item.id + '/return-to-stock', {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -106,7 +106,7 @@ window.returnsPage = function returnsPage() {
             if (!confirm('Списать товар? Остатки не будут восстановлены.')) return;
             item.processing = true;
             try {
-                const res = await fetch('/api/returns/' + item.id + '/write-off', {
+                const res = await fetch('/api/marketplace/returns/' + item.id + '/write-off', {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -137,7 +137,7 @@ window.returnsPage = function returnsPage() {
             if (!confirm('Отклонить запись возврата?')) return;
             item.processing = true;
             try {
-                const res = await fetch('/api/returns/' + item.id + '/reject', {
+                const res = await fetch('/api/marketplace/returns/' + item.id + '/reject', {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
