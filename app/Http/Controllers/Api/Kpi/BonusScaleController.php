@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Kpi\StoreBonusScaleRequest;
+use App\Http\Requests\Kpi\UpdateBonusScaleRequest;
 use App\Models\Kpi\BonusScale;
 use App\Models\Kpi\KpiPlan;
 use App\Support\ApiResponder;
@@ -39,19 +41,11 @@ final class BonusScaleController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreBonusScaleRequest $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'is_default' => 'boolean',
-            'tiers' => 'required|array|min:1',
-            'tiers.*.min_percent' => 'required|integer|min:0|max:300',
-            'tiers.*.max_percent' => 'nullable|integer|min:1|max:300',
-            'tiers.*.bonus_type' => 'required|string|in:fixed,percent_revenue,percent_margin',
-            'tiers.*.bonus_value' => 'required|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         return DB::transaction(function () use ($companyId, $validated) {
             // Если это дефолтная, снимаем флаг с других
@@ -84,21 +78,13 @@ final class BonusScaleController extends Controller
         return $this->successResponse($scale);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateBonusScaleRequest $request, int $id): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
         $scale = BonusScale::byCompany($companyId)->findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'is_default' => 'boolean',
-            'tiers' => 'sometimes|array|min:1',
-            'tiers.*.min_percent' => 'required_with:tiers|integer|min:0|max:300',
-            'tiers.*.max_percent' => 'nullable|integer|min:1|max:300',
-            'tiers.*.bonus_type' => 'required_with:tiers|string|in:fixed,percent_revenue,percent_margin',
-            'tiers.*.bonus_value' => 'required_with:tiers|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         return DB::transaction(function () use ($companyId, $scale, $validated) {
             if (isset($validated['is_default']) && $validated['is_default']) {

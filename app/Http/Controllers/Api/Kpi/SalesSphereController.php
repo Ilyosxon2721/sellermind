@@ -98,25 +98,13 @@ final class SalesSphereController extends Controller
         return $this->successResponse($sphere);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateSalesSphereRequest $request, int $id): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
         $sphere = SalesSphere::byCompany($companyId)->findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'color' => 'nullable|string|max:7',
-            'icon' => 'nullable|string|max:50',
-            'marketplace_account_id' => ['nullable', 'integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
-            'marketplace_account_ids' => 'nullable|array',
-            'marketplace_account_ids.*' => ['integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
-            'offline_sale_types' => 'nullable|array',
-            'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
-            'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         // Синхронизируем старое поле с новым
         if (array_key_exists('marketplace_account_ids', $validated)) {
