@@ -35,14 +35,11 @@ final class KpiCalculationService
     public function collectActuals(KpiPlan $plan): array
     {
         $sphere = $plan->salesSphere;
+        $hasMarketplace = $sphere->hasMarketplaceLink();
+        $hasOffline = $sphere->hasOfflineSaleLink();
 
-        // Если сфера привязана к типам ручных продаж — автосбор из OfflineSale
-        if ($sphere->hasOfflineSaleLink()) {
-            return $this->collectOfflineSaleActuals($plan, $sphere);
-        }
-
-        // Если сфера не привязана ни к МП, ни к ручным продажам — ручной ввод
-        if (! $sphere->hasMarketplaceLink()) {
+        // Если нет привязок — ручной ввод
+        if (! $hasMarketplace && ! $hasOffline) {
             return [
                 'revenue' => $plan->actual_revenue,
                 'margin' => $plan->actual_margin,
@@ -50,8 +47,26 @@ final class KpiCalculationService
             ];
         }
 
-        // Автосбор из таблиц заказов маркетплейсов
-        return $this->collectMarketplaceActuals($plan, $sphere);
+        // Агрегируем из всех привязанных источников
+        $revenue = 0.0;
+        $margin = 0.0;
+        $orders = 0;
+
+        if ($hasMarketplace) {
+            $mpData = $this->collectMarketplaceActuals($plan, $sphere);
+            $revenue += $mpData['revenue'];
+            $margin += $mpData['margin'];
+            $orders += $mpData['orders'];
+        }
+
+        if ($hasOffline) {
+            $offData = $this->collectOfflineSaleActuals($plan, $sphere);
+            $revenue += $offData['revenue'];
+            $margin += $offData['margin'];
+            $orders += $offData['orders'];
+        }
+
+        return compact('revenue', 'margin', 'orders');
     }
 
     /**

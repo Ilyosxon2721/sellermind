@@ -247,7 +247,10 @@
                                         </div>
                                         <div>
                                             <h3 class="font-semibold text-gray-900" x-text="s.name"></h3>
-                                            <p class="text-xs text-gray-500" x-text="(s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
+                                            <p class="text-xs text-gray-500" x-text="[
+                                                (s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : '',
+                                                (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : ''
+                                            ].filter(Boolean).join(' + ') || (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
                                         </div>
                                     </div>
                                     <span class="w-2.5 h-2.5 rounded-full mt-1" :class="s.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>

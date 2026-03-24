@@ -133,21 +133,24 @@ final class KpiAiService
                 $monthData['revenue'] = $existingPlan->actual_revenue;
                 $monthData['margin'] = $existingPlan->actual_margin;
                 $monthData['orders'] = $existingPlan->actual_orders;
-            } elseif ($sphere && $sphere->hasMarketplaceLink()) {
-                // Читаем напрямую из таблиц заказов маркетплейсов
-                $accountIds = $sphere->getLinkedAccountIds();
-                $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
+            } elseif ($sphere) {
+                // Агрегируем из всех привязанных источников
+                if ($sphere->hasMarketplaceLink()) {
+                    $accountIds = $sphere->getLinkedAccountIds();
+                    $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
 
-                $monthData['revenue'] = $marketplaceData['revenue'];
-                $monthData['margin'] = $marketplaceData['margin'];
-                $monthData['orders'] = $marketplaceData['orders'];
-            } elseif ($sphere && $sphere->hasOfflineSaleLink()) {
-                // Читаем из ручных продаж (OfflineSale)
-                $offlineData = $this->collectOfflineSaleHistory($companyId, $sphere, $periodStart, $periodEnd);
+                    $monthData['revenue'] += $marketplaceData['revenue'];
+                    $monthData['margin'] += $marketplaceData['margin'];
+                    $monthData['orders'] += $marketplaceData['orders'];
+                }
 
-                $monthData['revenue'] = $offlineData['revenue'];
-                $monthData['margin'] = $offlineData['margin'];
-                $monthData['orders'] = $offlineData['orders'];
+                if ($sphere->hasOfflineSaleLink()) {
+                    $offlineData = $this->collectOfflineSaleHistory($companyId, $sphere, $periodStart, $periodEnd);
+
+                    $monthData['revenue'] += $offlineData['revenue'];
+                    $monthData['margin'] += $offlineData['margin'];
+                    $monthData['orders'] += $offlineData['orders'];
+                }
             }
 
             $history[] = $monthData;
