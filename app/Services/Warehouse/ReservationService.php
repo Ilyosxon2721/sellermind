@@ -28,9 +28,24 @@ class ReservationService
 
         return DB::transaction(function () use ($companyId, $warehouseId, $skuId, $qty, $reason, $sourceType, $sourceId, $userId, $allowNegative) {
             if (! $allowNegative) {
-                $balanceService = app(StockBalanceService::class);
-                $balance = $balanceService->balance($companyId, $warehouseId, $skuId);
-                if ($balance['available'] < $qty) {
+                // Блокируем записи ledger для предотвращения race condition
+                $onHand = (float) \App\Models\Warehouse\StockLedger::query()
+                    ->where('company_id', $companyId)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('sku_id', $skuId)
+                    ->lockForUpdate()
+                    ->sum('qty_delta');
+
+                $reserved = (float) StockReservation::query()
+                    ->where('company_id', $companyId)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('sku_id', $skuId)
+                    ->where('status', StockReservation::STATUS_ACTIVE)
+                    ->lockForUpdate()
+                    ->sum('qty');
+
+                $available = $onHand - $reserved;
+                if ($available < $qty) {
                     throw new \RuntimeException('Not enough available stock to reserve');
                 }
             }
@@ -79,7 +94,18 @@ class ReservationService
 
     protected function updateStatus(int $reservationId, int $companyId, string $status): StockReservation
     {
-        $reservation = StockReservation::where('company_id', $companyId)->findOrFail($reservationId);
+        $reservation = StockReservation::where('company_id', $companyId)->lockForUpdate()->findOrFail($reservationId);
+
+        // Валидация допустимых переходов статусов
+        $allowedTransitions = [
+            StockReservation::STATUS_ACTIVE => [StockReservation::STATUS_RELEASED, StockReservation::STATUS_CONSUMED],
+        ];
+
+        $allowed = $allowedTransitions[$reservation->status] ?? [];
+        if (! in_array($status, $allowed)) {
+            throw new \RuntimeException("Недопустимый переход статуса: {$reservation->status} → {$status}");
+        }
+
         $reservation->update(['status' => $status]);
 
         return $reservation;

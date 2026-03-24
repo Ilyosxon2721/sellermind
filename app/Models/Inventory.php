@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -7,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Inventory extends Model
 {
@@ -107,32 +110,51 @@ class Inventory extends Model
         $this->save();
     }
 
-    public function applyResults(): bool
+    /**
+     * Применить результаты инвентаризации через журнал остатков
+     */
+    public function applyResults(?int $userId = null): bool
     {
         if ($this->is_applied || $this->status !== 'completed') {
             return false;
         }
 
-        foreach ($this->items as $item) {
-            if ($item->actual_quantity !== null && $item->difference != 0) {
-                // Корректировка остатков на складе
-                $stock = WarehouseStock::where('warehouse_id', $this->warehouse_id)
-                    ->where('product_id', $item->product_id)
-                    ->first();
-
-                if ($stock) {
-                    $stock->quantity = $item->actual_quantity;
-                    $stock->save();
+        DB::transaction(function () use ($userId) {
+            foreach ($this->items as $item) {
+                if ($item->actual_quantity !== null && $item->difference != 0) {
+                    // Создаём корректирующую запись в журнале остатков
+                    \App\Models\Warehouse\StockLedger::create([
+                        'company_id' => $this->company_id,
+                        'warehouse_id' => $this->warehouse_id,
+                        'sku_id' => $this->resolveSkuId($item->product_id),
+                        'occurred_at' => now(),
+                        'qty_delta' => $item->difference,
+                        'cost_delta' => 0,
+                        'currency_code' => 'UZS',
+                        'source_type' => 'INVENTORY',
+                        'source_id' => $this->id,
+                        'created_by' => $userId,
+                    ]);
                 }
             }
-        }
 
-        $this->is_applied = true;
-        $this->applied_at = now();
-        $this->applied_by = auth()->id();
-        $this->save();
+            $this->is_applied = true;
+            $this->applied_at = now();
+            $this->applied_by = $userId;
+            $this->save();
+        });
 
         return true;
+    }
+
+    /**
+     * Найти SKU по product_id для записи в журнал
+     */
+    private function resolveSkuId(int $productId): ?int
+    {
+        return \App\Models\Warehouse\Sku::where('product_id', $productId)
+            ->where('is_active', true)
+            ->value('id');
     }
 
     public function scopeByCompany($query, int $companyId)

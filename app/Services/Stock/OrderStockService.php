@@ -337,60 +337,62 @@ class OrderStockService
      */
     protected function convertReserveToSold(Model $order): array
     {
-        // Получаем активные резервы ДО consumed
-        $reservations = StockReservation::where('source_type', 'marketplace_order')
-            ->where('source_id', $order->id)
-            ->where('status', StockReservation::STATUS_ACTIVE)
-            ->get();
-
-        // Создаём ledger entries для фактического списания
-        foreach ($reservations as $reservation) {
-            // Проверяем нет ли уже ledger entry от старой логики (backward compat)
-            $hasOldLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+        return DB::transaction(function () use ($order) {
+            // Получаем активные резервы ДО consumed
+            $reservations = StockReservation::where('source_type', 'marketplace_order')
                 ->where('source_id', $order->id)
-                ->where('sku_id', $reservation->sku_id)
-                ->exists();
+                ->where('status', StockReservation::STATUS_ACTIVE)
+                ->get();
 
-            if (! $hasOldLedger) {
-                // Новая логика: создаём ledger entry при фактической продаже
-                StockLedger::create([
-                    'company_id' => $reservation->company_id,
-                    'occurred_at' => now(),
-                    'warehouse_id' => $reservation->warehouse_id,
-                    'sku_id' => $reservation->sku_id,
-                    'qty_delta' => -$reservation->qty,
-                    'cost_delta' => 0,
-                    'currency_code' => 'UZS',
-                    'source_type' => 'marketplace_order_sold',
-                    'source_id' => $order->id,
-                ]);
+            // Создаём ledger entries для фактического списания
+            foreach ($reservations as $reservation) {
+                // Проверяем нет ли уже ledger entry от старой логики (backward compat)
+                $hasOldLedger = StockLedger::where('source_type', 'marketplace_order_reserve')
+                    ->where('source_id', $order->id)
+                    ->where('sku_id', $reservation->sku_id)
+                    ->exists();
 
-                Log::info('OrderStockService: Ledger entry created on sold', [
-                    'order_id' => $order->id,
-                    'sku_id' => $reservation->sku_id,
-                    'qty' => -$reservation->qty,
-                ]);
+                if (! $hasOldLedger) {
+                    // Новая логика: создаём ledger entry при фактической продаже
+                    StockLedger::create([
+                        'company_id' => $reservation->company_id,
+                        'occurred_at' => now(),
+                        'warehouse_id' => $reservation->warehouse_id,
+                        'sku_id' => $reservation->sku_id,
+                        'qty_delta' => -$reservation->qty,
+                        'cost_delta' => 0,
+                        'currency_code' => 'UZS',
+                        'source_type' => 'marketplace_order_sold',
+                        'source_id' => $order->id,
+                    ]);
+
+                    Log::info('OrderStockService: Ledger entry created on sold', [
+                        'order_id' => $order->id,
+                        'sku_id' => $reservation->sku_id,
+                        'qty' => -$reservation->qty,
+                    ]);
+                }
             }
-        }
 
-        // Переводим резервы в CONSUMED
-        $this->consumeStockReservations($order);
+            // Переводим резервы в CONSUMED
+            $this->consumeStockReservations($order);
 
-        $order->update([
-            'stock_status' => 'sold',
-            'stock_sold_at' => now(),
-        ]);
+            $order->update([
+                'stock_status' => 'sold',
+                'stock_sold_at' => now(),
+            ]);
 
-        Log::info('OrderStockService: Reserve converted to sold', [
-            'order_id' => $order->id,
-            'reservations_count' => $reservations->count(),
-        ]);
+            Log::info('OrderStockService: Reserve converted to sold', [
+                'order_id' => $order->id,
+                'reservations_count' => $reservations->count(),
+            ]);
 
-        return [
-            'success' => true,
-            'action' => 'sold',
-            'message' => 'Reserve converted to sold',
-        ];
+            return [
+                'success' => true,
+                'action' => 'sold',
+                'message' => 'Reserve converted to sold',
+            ];
+        });
     }
 
     /**
@@ -1164,12 +1166,16 @@ class OrderStockService
 
         // Priority 3: Create default warehouse if none exists
         try {
-            $warehouse = Warehouse::create([
-                'company_id' => $account->company_id,
-                'name' => 'Склад по умолчанию',
-                'code' => 'DEFAULT',
-                'is_active' => true,
-            ]);
+            $warehouse = Warehouse::firstOrCreate(
+                [
+                    'company_id' => $account->company_id,
+                    'code' => 'DEFAULT',
+                ],
+                [
+                    'name' => 'Склад по умолчанию',
+                    'is_active' => true,
+                ]
+            );
 
             Log::info('OrderStockService: Created default warehouse', [
                 'company_id' => $account->company_id,

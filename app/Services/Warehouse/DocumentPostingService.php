@@ -106,13 +106,20 @@ class DocumentPostingService
     /**
      * Sync stock_default for all ProductVariants affected by this document
      */
+    /**
+     * Синхронизация stock_default для всех ProductVariant, затронутых документом
+     */
     protected function syncStockDefaultForDocument(InventoryDocument $document): int
     {
         $syncedCount = 0;
 
+        // Предзагрузка SKU для предотвращения N+1
+        $skuIds = $document->lines->pluck('sku_id')->unique()->toArray();
+        $skus = Sku::with('productVariant')->whereIn('id', $skuIds)->get()->keyBy('id');
+
         foreach ($document->lines as $line) {
             try {
-                $sku = Sku::with('productVariant')->find($line->sku_id);
+                $sku = $skus[$line->sku_id] ?? null;
 
                 if (! $sku || ! $sku->productVariant) {
                     continue;
@@ -120,11 +127,13 @@ class DocumentPostingService
 
                 $variant = $sku->productVariant;
 
-                // Calculate total stock from ledger for this SKU
-                $ledgerStock = (float) StockLedger::where('sku_id', $sku->id)->sum('qty_delta');
+                // Рассчитываем остаток из ledger с фильтром по company_id
+                $ledgerStock = (float) StockLedger::where('sku_id', $sku->id)
+                    ->where('company_id', $document->company_id)
+                    ->sum('qty_delta');
                 $oldStock = (float) ($variant->stock_default ?? 0);
 
-                // Update stock_default if different
+                // Обновляем stock_default если отличается
                 if (abs($ledgerStock - $oldStock) > 0.001) {
                     $variant->update(['stock_default' => $ledgerStock]);
 
