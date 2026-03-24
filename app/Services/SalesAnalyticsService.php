@@ -88,16 +88,15 @@ final class SalesAnalyticsService
             )
             ->groupBy('date');
 
-        // Uzum: через order items
-        $uzumStats = DB::table('uzum_order_items')
-            ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
-            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
-            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+        // Uzum: из uzum_orders (total_amount — сумма заказа целиком)
+        $uzumStats = DB::table('uzum_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->select(
-                DB::raw('DATE(uzum_orders.ordered_at) as date'),
-                DB::raw('SUM(uzum_order_items.quantity) as quantity'),
-                DB::raw('SUM(uzum_order_items.total_price) as revenue')
+                DB::raw('DATE(ordered_at) as date'),
+                DB::raw('COUNT(*) as quantity'),
+                DB::raw('SUM(total_amount) as revenue')
             )
             ->groupBy('date');
 

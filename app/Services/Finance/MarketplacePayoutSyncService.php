@@ -25,6 +25,9 @@ class MarketplacePayoutSyncService
     {
         $results = [
             'uzum' => $this->syncUzum($companyId, $from, $to),
+            'wb' => $this->syncWildberries($companyId, $from, $to),
+            'ozon' => $this->syncOzon($companyId, $from, $to),
+            'ym' => $this->syncYandexMarket($companyId, $from, $to),
         ];
 
         $total = [
@@ -162,11 +165,266 @@ class MarketplacePayoutSyncService
     }
 
     /**
-     * Создать или обновить запись о выплате
+     * Синхронизировать выплаты Wildberries
+     * Агрегирует из wildberries_orders по неделям (WB платит еженедельно)
      */
-    protected function createOrUpdatePayout(
+    public function syncWildberries(int $companyId, ?string $from = null, ?string $to = null): array
+    {
+        $result = $this->emptyResult();
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'wb')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($accounts as $account) {
+            $cashAccount = CashAccount::getOrCreateForMarketplace($account->company_id, $account);
+
+            $query = DB::table('wildberries_orders')
+                ->where('marketplace_account_id', $account->id)
+                ->where('is_cancel', false)
+                ->where('is_return', false)
+                ->whereNotNull('order_date');
+
+            if ($from) {
+                $query->whereDate('order_date', '>=', $from);
+            }
+            if ($to) {
+                $query->whereDate('order_date', '<=', $to);
+            }
+
+            // Группируем по началу недели (понедельник)
+            $weeklyPayouts = $query->select(
+                DB::raw("DATE(DATE_SUB(order_date, INTERVAL WEEKDAY(order_date) DAY)) as week_start"),
+                DB::raw('SUM(for_pay) as net_amount'),
+                DB::raw('SUM(total_price) as gross_amount'),
+                DB::raw('COUNT(*) as orders_count')
+            )
+                ->groupBy('week_start')
+                ->orderBy('week_start')
+                ->get();
+
+            foreach ($weeklyPayouts as $week) {
+                if (! $week->week_start || $week->net_amount <= 0) {
+                    continue;
+                }
+
+                try {
+                    $payoutDate = Carbon::parse($week->week_start);
+                    $payoutId = "wb-{$account->id}-{$payoutDate->format('Y-m-d')}";
+
+                    $payoutResult = $this->createOrUpdatePayoutForMarketplace(
+                        $account,
+                        $cashAccount,
+                        'wb',
+                        $payoutId,
+                        $payoutDate,
+                        (float) $week->gross_amount,
+                        0, // WB комиссия отдельно не берётся из этой таблицы
+                        0, // логистика
+                        (float) $week->net_amount,
+                        (int) $week->orders_count
+                    );
+
+                    $result[$payoutResult['status']]++;
+                    if ($payoutResult['status'] !== 'payouts_skipped') {
+                        $result['total_amount'] += $week->net_amount;
+                    }
+                    if ($payoutResult['transaction_created']) {
+                        $result['transactions_created']++;
+                    }
+                } catch (\Exception $e) {
+                    $result['errors']++;
+                    Log::error('MarketplacePayoutSyncService WB: Failed to create payout', [
+                        'account_id' => $account->id,
+                        'week_start' => $week->week_start,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Синхронизировать выплаты Ozon
+     * Агрегирует из ozon_orders по месяцам (Ozon платит ежемесячно)
+     */
+    public function syncOzon(int $companyId, ?string $from = null, ?string $to = null): array
+    {
+        $result = $this->emptyResult();
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'ozon')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($accounts as $account) {
+            $cashAccount = CashAccount::getOrCreateForMarketplace($account->company_id, $account);
+
+            $query = DB::table('ozon_orders')
+                ->where('marketplace_account_id', $account->id)
+                ->whereNotIn('status', ['cancelled', 'canceled'])
+                ->whereNotNull('created_at_ozon');
+
+            if ($from) {
+                $query->whereDate('created_at_ozon', '>=', $from);
+            }
+            if ($to) {
+                $query->whereDate('created_at_ozon', '<=', $to);
+            }
+
+            // Группируем по месяцу
+            $monthlyPayouts = $query->select(
+                DB::raw("DATE_FORMAT(created_at_ozon, '%Y-%m-01') as period_start"),
+                DB::raw('SUM(total_price) as gross_amount'),
+                DB::raw('COUNT(*) as orders_count')
+            )
+                ->groupBy('period_start')
+                ->orderBy('period_start')
+                ->get();
+
+            foreach ($monthlyPayouts as $month) {
+                if (! $month->period_start || $month->gross_amount <= 0) {
+                    continue;
+                }
+
+                try {
+                    $payoutDate = Carbon::parse($month->period_start);
+                    $payoutId = "ozon-{$account->id}-{$payoutDate->format('Y-m')}";
+
+                    // Ozon берёт ~7% комиссии (приблизительно)
+                    $commission = round($month->gross_amount * 0.07, 2);
+                    $netAmount = round($month->gross_amount - $commission, 2);
+
+                    $payoutResult = $this->createOrUpdatePayoutForMarketplace(
+                        $account,
+                        $cashAccount,
+                        'ozon',
+                        $payoutId,
+                        $payoutDate,
+                        (float) $month->gross_amount,
+                        $commission,
+                        0,
+                        $netAmount,
+                        (int) $month->orders_count
+                    );
+
+                    $result[$payoutResult['status']]++;
+                    if ($payoutResult['status'] !== 'payouts_skipped') {
+                        $result['total_amount'] += $netAmount;
+                    }
+                    if ($payoutResult['transaction_created']) {
+                        $result['transactions_created']++;
+                    }
+                } catch (\Exception $e) {
+                    $result['errors']++;
+                    Log::error('MarketplacePayoutSyncService Ozon: Failed to create payout', [
+                        'account_id' => $account->id,
+                        'period' => $month->period_start,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Синхронизировать выплаты Yandex Market
+     * Агрегирует из yandex_market_orders по месяцам
+     */
+    public function syncYandexMarket(int $companyId, ?string $from = null, ?string $to = null): array
+    {
+        $result = $this->emptyResult();
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'ym')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($accounts as $account) {
+            $cashAccount = CashAccount::getOrCreateForMarketplace($account->company_id, $account);
+
+            $query = DB::table('yandex_market_orders')
+                ->where('marketplace_account_id', $account->id)
+                ->whereNotIn('status_normalized', ['cancelled', 'canceled', 'CANCELLED'])
+                ->whereNotNull('created_at_ym');
+
+            if ($from) {
+                $query->whereDate('created_at_ym', '>=', $from);
+            }
+            if ($to) {
+                $query->whereDate('created_at_ym', '<=', $to);
+            }
+
+            // Группируем по месяцу
+            $monthlyPayouts = $query->select(
+                DB::raw("DATE_FORMAT(created_at_ym, '%Y-%m-01') as period_start"),
+                DB::raw('SUM(total_price) as gross_amount'),
+                DB::raw('COUNT(*) as orders_count')
+            )
+                ->groupBy('period_start')
+                ->orderBy('period_start')
+                ->get();
+
+            foreach ($monthlyPayouts as $month) {
+                if (! $month->period_start || $month->gross_amount <= 0) {
+                    continue;
+                }
+
+                try {
+                    $payoutDate = Carbon::parse($month->period_start);
+                    $payoutId = "ym-{$account->id}-{$payoutDate->format('Y-m')}";
+
+                    // YM берёт ~10% комиссии (приблизительно)
+                    $commission = round($month->gross_amount * 0.10, 2);
+                    $netAmount = round($month->gross_amount - $commission, 2);
+
+                    $payoutResult = $this->createOrUpdatePayoutForMarketplace(
+                        $account,
+                        $cashAccount,
+                        'ym',
+                        $payoutId,
+                        $payoutDate,
+                        (float) $month->gross_amount,
+                        $commission,
+                        0,
+                        $netAmount,
+                        (int) $month->orders_count
+                    );
+
+                    $result[$payoutResult['status']]++;
+                    if ($payoutResult['status'] !== 'payouts_skipped') {
+                        $result['total_amount'] += $netAmount;
+                    }
+                    if ($payoutResult['transaction_created']) {
+                        $result['transactions_created']++;
+                    }
+                } catch (\Exception $e) {
+                    $result['errors']++;
+                    Log::error('MarketplacePayoutSyncService YM: Failed to create payout', [
+                        'account_id' => $account->id,
+                        'period' => $month->period_start,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Создать или обновить запись о выплате (универсальный метод для всех маркетплейсов)
+     */
+    protected function createOrUpdatePayoutForMarketplace(
         MarketplaceAccount $account,
         CashAccount $cashAccount,
+        string $marketplace,
+        string $payoutId,
         Carbon $payoutDate,
         float $grossAmount,
         float $commission,
@@ -174,8 +432,6 @@ class MarketplacePayoutSyncService
         float $netAmount,
         int $ordersCount
     ): array {
-        $payoutId = "uzum-{$account->id}-{$payoutDate->format('Y-m-d')}";
-
         $existing = MarketplacePayout::where('marketplace_account_id', $account->id)
             ->where('payout_id', $payoutId)
             ->first();
@@ -183,12 +439,10 @@ class MarketplacePayoutSyncService
         $transactionCreated = false;
 
         if ($existing) {
-            // Проверяем изменилась ли сумма
             if (abs($existing->net_amount - $netAmount) < 0.01) {
                 return ['status' => 'payouts_skipped', 'transaction_created' => false];
             }
 
-            // Обновляем существующую запись
             $existing->update([
                 'gross_amount' => $grossAmount,
                 'commission' => $commission,
@@ -203,13 +457,12 @@ class MarketplacePayoutSyncService
             return ['status' => 'payouts_updated', 'transaction_created' => false];
         }
 
-        // Создаём новую запись о выплате
         DB::beginTransaction();
         try {
             $payout = MarketplacePayout::create([
                 'company_id' => $account->company_id,
                 'marketplace_account_id' => $account->id,
-                'marketplace' => 'uzum',
+                'marketplace' => $marketplace,
                 'payout_id' => $payoutId,
                 'payout_date' => $payoutDate,
                 'period_from' => $payoutDate,
@@ -233,7 +486,6 @@ class MarketplacePayoutSyncService
                 ],
             ]);
 
-            // Создаём транзакцию в кассе
             $transaction = CashTransaction::createForMarketplacePayout(
                 $cashAccount,
                 $netAmount,
@@ -243,17 +495,16 @@ class MarketplacePayoutSyncService
                 MarketplacePayout::class
             );
 
-            // Связываем выплату с транзакцией
             $payout->update(['cash_transaction_id' => $transaction->id]);
             $transactionCreated = true;
 
             DB::commit();
 
             Log::info('MarketplacePayoutSyncService: Payout created', [
+                'marketplace' => $marketplace,
                 'payout_id' => $payoutId,
                 'account_id' => $account->id,
                 'net_amount' => $netAmount,
-                'transaction_id' => $transaction->id,
             ]);
 
             return ['status' => 'payouts_created', 'transaction_created' => $transactionCreated];
@@ -261,6 +512,33 @@ class MarketplacePayoutSyncService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Создать или обновить запись о выплате
+     */
+    protected function createOrUpdatePayout(
+        MarketplaceAccount $account,
+        CashAccount $cashAccount,
+        Carbon $payoutDate,
+        float $grossAmount,
+        float $commission,
+        float $logistics,
+        float $netAmount,
+        int $ordersCount
+    ): array {
+        return $this->createOrUpdatePayoutForMarketplace(
+            $account,
+            $cashAccount,
+            'uzum',
+            "uzum-{$account->id}-{$payoutDate->format('Y-m-d')}",
+            $payoutDate,
+            $grossAmount,
+            $commission,
+            $logistics,
+            $netAmount,
+            $ordersCount
+        );
     }
 
     /**

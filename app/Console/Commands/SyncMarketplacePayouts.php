@@ -13,7 +13,7 @@ class SyncMarketplacePayouts extends Command
                             {--company= : ID компании (если не указан - все активные)}
                             {--from= : Дата начала периода (Y-m-d)}
                             {--to= : Дата конца периода (Y-m-d)}
-                            {--marketplace= : Конкретный маркетплейс (uzum, wb, ozon)}';
+                            {--marketplace= : Конкретный маркетплейс (uzum, wb, ozon, ym)}';
 
     protected $description = 'Синхронизировать выплаты маркетплейсов в кассы';
 
@@ -59,11 +59,23 @@ class SyncMarketplacePayouts extends Command
                     $this->mergeResults($totalResults, $result);
                 }
 
-                // Можно добавить другие маркетплейсы
-                // if ($marketplace === 'wb' || !$marketplace) {
-                //     $result = $service->syncWildberries($company->id, $from, $to);
-                //     $this->displayResult('Wildberries', $result);
-                // }
+                if ($marketplace === 'wb' || ! $marketplace) {
+                    $result = $service->syncWildberries($company->id, $from, $to);
+                    $this->displayResult('Wildberries', $result);
+                    $this->mergeResults($totalResults, $result);
+                }
+
+                if ($marketplace === 'ozon' || ! $marketplace) {
+                    $result = $service->syncOzon($company->id, $from, $to);
+                    $this->displayResult('Ozon', $result);
+                    $this->mergeResults($totalResults, $result);
+                }
+
+                if ($marketplace === 'ym' || ! $marketplace) {
+                    $result = $service->syncYandexMarket($company->id, $from, $to);
+                    $this->displayResult('Yandex Market', $result);
+                    $this->mergeResults($totalResults, $result);
+                }
 
             } catch (\Exception $e) {
                 $this->error("Ошибка: {$e->getMessage()}");
