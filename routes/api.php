@@ -493,7 +493,7 @@ Route::middleware('auth.any')->group(function () {
         Route::post('orders/{order}/cancel', [MarketplaceOrderController::class, 'cancel']);
 
         // Order Stock Returns (для ручной обработки возвратов)
-        Route::prefix('returns')->group(function () {
+        Route::prefix('returns')->middleware('web')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'index']);
             Route::get('/stats', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'stats']);
             Route::get('/{id}', [\App\Http\Controllers\Api\OrderStockReturnController::class, 'show']);
