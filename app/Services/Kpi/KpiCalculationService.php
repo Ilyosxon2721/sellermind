@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class KpiCalculationService
 {
+    public function __construct(
+        private readonly KpiMarginCalculator $marginCalculator,
+    ) {}
+
     /**
      * Статусы отменённых заказов (исключаются из расчёта)
      */
@@ -73,6 +77,7 @@ final class KpiCalculationService
         $accountsByMarketplace = $accounts->groupBy('marketplace');
 
         $totalRevenue = 0.0;
+        $totalMargin = 0.0;
         $totalOrders = 0;
 
         foreach ($accountsByMarketplace as $marketplace => $mpAccounts) {
@@ -80,11 +85,18 @@ final class KpiCalculationService
             $stats = $this->getMarketplaceStats($marketplace, $mpAccountIds, $periodStart, $periodEnd);
             $totalRevenue += $stats['revenue'];
             $totalOrders += $stats['orders'];
+            $totalMargin += $this->marginCalculator->calculateMargin(
+                $marketplace,
+                $mpAccountIds,
+                $periodStart,
+                $periodEnd,
+                $plan->company_id,
+            );
         }
 
         return [
             'revenue' => $totalRevenue,
-            'margin' => 0.0, // Маржа недоступна из заказов маркетплейсов (нет себестоимости)
+            'margin' => $totalMargin,
             'orders' => $totalOrders,
         ];
     }

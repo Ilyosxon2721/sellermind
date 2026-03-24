@@ -8,6 +8,8 @@ use App\Models\AIUsageLog;
 use App\Models\Finance\Employee;
 use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
+use App\Models\OfflineSale;
+use App\Models\OfflineSaleItem;
 use App\Services\AI\AiProviderService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +25,8 @@ final class KpiAiService
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     public function __construct(
-        private readonly AiProviderService $aiProvider
+        private readonly AiProviderService $aiProvider,
+        private readonly KpiMarginCalculator $marginCalculator,
     ) {}
 
     /**
@@ -138,6 +141,13 @@ final class KpiAiService
                 $monthData['revenue'] = $marketplaceData['revenue'];
                 $monthData['margin'] = $marketplaceData['margin'];
                 $monthData['orders'] = $marketplaceData['orders'];
+            } elseif ($sphere && $sphere->hasOfflineSaleLink()) {
+                // Читаем из ручных продаж (OfflineSale)
+                $offlineData = $this->collectOfflineSaleHistory($companyId, $sphere, $periodStart, $periodEnd);
+
+                $monthData['revenue'] = $offlineData['revenue'];
+                $monthData['margin'] = $offlineData['margin'];
+                $monthData['orders'] = $offlineData['orders'];
             }
 
             $history[] = $monthData;
@@ -154,7 +164,7 @@ final class KpiAiService
     private function collectMarketplaceData(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
     {
         $totalRevenue = 0;
-        $totalMargin = 0;
+        $totalMargin = 0.0;
         $totalOrders = 0;
 
         foreach ($accountIds as $accountId) {
@@ -173,8 +183,16 @@ final class KpiAiService
             };
 
             $totalRevenue += $data['revenue'];
-            $totalMargin += $data['margin'];
             $totalOrders += $data['orders'];
+
+            // Расчёт маржи через себестоимость товаров
+            $totalMargin += $this->marginCalculator->calculateMargin(
+                $account->marketplace,
+                [$accountId],
+                $periodStart,
+                $periodEnd,
+                $account->company_id ?? 0,
+            );
         }
 
         return [
@@ -198,9 +216,6 @@ final class KpiAiService
             ')
             ->first();
 
-        // TODO: Расчёт маржи требует связи с Products через barcode/sku
-        // Пока возвращаем 0, можно добавить позже
-
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
             'margin' => 0,
@@ -222,8 +237,6 @@ final class KpiAiService
             ')
             ->first();
 
-        // TODO: Расчёт маржи
-
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
             'margin' => 0,
@@ -244,8 +257,6 @@ final class KpiAiService
                 COALESCE(SUM(total_price), 0) as total_revenue
             ')
             ->first();
-
-        // TODO: Расчёт маржи
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
@@ -270,8 +281,46 @@ final class KpiAiService
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
-            'margin' => 0, // TODO: добавить расчёт маржи для YM
+            'margin' => 0,
             'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать исторические данные из ручных продаж за период
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectOfflineSaleHistory(int $companyId, SalesSphere $sphere, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $saleTypes = $sphere->getOfflineSaleTypes();
+
+        $salesData = OfflineSale::byCompany($companyId)
+            ->whereIn('sale_type', $saleTypes)
+            ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+            ->whereBetween('sale_date', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
+            ->first();
+
+        $revenue = (float) ($salesData->total_revenue ?? 0);
+        $orders = (int) ($salesData->total_orders ?? 0);
+
+        // Маржа: выручка - себестоимость из OfflineSaleItem
+        $costData = OfflineSaleItem::whereHas('sale', function ($q) use ($companyId, $saleTypes, $periodStart, $periodEnd) {
+            $q->where('company_id', $companyId)
+                ->whereIn('sale_type', $saleTypes)
+                ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+                ->whereBetween('sale_date', [$periodStart, $periodEnd]);
+        })
+            ->selectRaw('COALESCE(SUM(line_total), 0) as total_sales, COALESCE(SUM(unit_cost * quantity), 0) as total_cost')
+            ->first();
+
+        $margin = (float) (($costData->total_sales ?? 0) - ($costData->total_cost ?? 0));
+
+        return [
+            'revenue' => $revenue,
+            'margin' => max(0, $margin),
+            'orders' => $orders,
         ];
     }
 
