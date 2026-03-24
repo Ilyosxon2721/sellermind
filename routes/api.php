@@ -937,8 +937,8 @@ Route::middleware('auth.any')->group(function () {
             Route::put('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'update']);
             Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
             Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
-            Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
-            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
+            Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate'])->middleware('throttle:kpi-calculate');
+            Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest'])->middleware('throttle:kpi-ai');
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
         });
     });
@@ -968,8 +968,8 @@ Route::middleware('auth.any')->group(function () {
         Route::put('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'update']);
         Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
         Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
-        Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
-        Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
+        Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate'])->middleware('throttle:kpi-calculate');
+        Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest'])->middleware('throttle:kpi-ai');
         Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
         Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
     });

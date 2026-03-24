@@ -7,6 +7,7 @@ namespace App\Models\Kpi;
 use App\Models\Company;
 use App\Models\Finance\Employee;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class KpiPlan extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_plans';
 
     public const STATUS_ACTIVE = 'active';

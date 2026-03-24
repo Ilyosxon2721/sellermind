@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Kpi\StoreKpiPlanRequest;
+use App\Http\Requests\Kpi\UpdateKpiPlanRequest;
 use App\Models\Kpi\KpiPlan;
 use App\Services\Kpi\KpiAiService;
 use App\Services\Kpi\KpiCalculationService;
@@ -49,45 +51,27 @@ final class KpiPlanController extends Controller
             $query->where('status', $request->status);
         }
 
+        $perPage = min((int) $request->get('per_page', 20), 100);
+
         $plans = $query->orderByDesc('period_year')
             ->orderByDesc('period_month')
             ->orderBy('employee_id')
-            ->get();
+            ->paginate($perPage);
 
-        return $this->successResponse($plans);
+        return $this->successResponse($plans->items(), [
+            'current_page' => $plans->currentPage(),
+            'last_page' => $plans->lastPage(),
+            'per_page' => $plans->perPage(),
+            'total' => $plans->total(),
+        ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreKpiPlanRequest $request): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
-        $validated = $request->validate([
-            'employee_id' => ['required', 'integer', Rule::exists('employees', 'id')->where('company_id', $companyId)],
-            'kpi_sales_sphere_id' => ['required', 'integer', Rule::exists('kpi_sales_spheres', 'id')->where('company_id', $companyId)],
-            'kpi_bonus_scale_id' => ['required', 'integer', Rule::exists('kpi_bonus_scales', 'id')->where('company_id', $companyId)],
-            'period_year' => 'required|integer|min:2020|max:2100',
-            'period_month' => 'required|integer|min:1|max:12',
-            'target_revenue' => 'required|numeric|min:0',
-            'target_margin' => 'required|numeric|min:0',
-            'target_orders' => 'required|integer|min:0',
-            'weight_revenue' => 'integer|min:0|max:100',
-            'weight_margin' => 'integer|min:0|max:100',
-            'weight_orders' => 'integer|min:0|max:100',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
+        $validated = $request->validated();
         $validated['company_id'] = $companyId;
-
-        // Проверяем сумму весов = 100
-        $weightSum = ($validated['weight_revenue'] ?? 0) + ($validated['weight_margin'] ?? 0) + ($validated['weight_orders'] ?? 0);
-        if ($weightSum !== 100) {
-            return $this->errorResponse(
-                "Сумма весов должна быть 100 (сейчас: {$weightSum})",
-                'invalid_weights',
-                null,
-                422
-            );
-        }
 
         // Проверяем уникальность
         $exists = KpiPlan::byCompany($companyId)
@@ -121,40 +105,13 @@ final class KpiPlanController extends Controller
         return $this->successResponse($plan);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdateKpiPlanRequest $request, int $id): JsonResponse
     {
         $companyId = $request->user()->company_id;
 
         $plan = KpiPlan::byCompany($companyId)->findOrFail($id);
 
-        if ($plan->status === KpiPlan::STATUS_APPROVED) {
-            return $this->errorResponse('Нельзя редактировать утверждённый план', 'invalid_state', null, 422);
-        }
-
-        $validated = $request->validate([
-            'kpi_bonus_scale_id' => ['sometimes', 'integer', Rule::exists('kpi_bonus_scales', 'id')->where('company_id', $companyId)],
-            'target_revenue' => 'sometimes|numeric|min:0',
-            'target_margin' => 'sometimes|numeric|min:0',
-            'target_orders' => 'sometimes|integer|min:0',
-            'weight_revenue' => 'integer|min:0|max:100',
-            'weight_margin' => 'integer|min:0|max:100',
-            'weight_orders' => 'integer|min:0|max:100',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        // Проверяем сумму весов при обновлении
-        $weightRevenue = $validated['weight_revenue'] ?? $plan->weight_revenue;
-        $weightMargin = $validated['weight_margin'] ?? $plan->weight_margin;
-        $weightOrders = $validated['weight_orders'] ?? $plan->weight_orders;
-        $weightSum = $weightRevenue + $weightMargin + $weightOrders;
-        if ($weightSum !== 100) {
-            return $this->errorResponse(
-                "Сумма весов должна быть 100 (сейчас: {$weightSum})",
-                'invalid_weights',
-                null,
-                422
-            );
-        }
+        $validated = $request->validated();
 
         $plan->update($validated);
 

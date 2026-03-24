@@ -6,6 +6,7 @@ namespace App\Models\Kpi;
 
 use App\Models\Company;
 use App\Models\MarketplaceAccount;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class SalesSphere extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_sales_spheres';
 
     protected $fillable = [

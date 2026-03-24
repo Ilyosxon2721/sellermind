@@ -23,13 +23,20 @@ final class BonusScaleController extends Controller
     {
         $companyId = $request->user()->company_id;
 
+        $perPage = min((int) $request->get('per_page', 50), 100);
+
         $scales = BonusScale::byCompany($companyId)
             ->with('tiers')
             ->orderByDesc('is_default')
             ->orderBy('name')
-            ->get();
+            ->paginate($perPage);
 
-        return $this->successResponse($scales);
+        return $this->successResponse($scales->items(), [
+            'current_page' => $scales->currentPage(),
+            'last_page' => $scales->lastPage(),
+            'per_page' => $scales->perPage(),
+            'total' => $scales->total(),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
