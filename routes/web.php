@@ -217,6 +217,11 @@ Route::middleware('auth.any')->group(function () {
             return $controller->ledger(request());
         })->name('ledger');
 
+        // Returns (возвраты с маркетплейсов)
+        Route::get('/returns', function () {
+            return view('pages.warehouse.returns');
+        })->name('returns');
+
         // Write-off
         Route::get('/write-off', [WarehouseController::class, 'writeOffs'])->name('write-offs');
         Route::get('/write-off/create', [WarehouseController::class, 'createWriteOff'])->name('write-off.create');
