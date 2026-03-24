@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Kpi;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kpi\BonusScale;
+use App\Models\Kpi\KpiPlan;
 use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -118,6 +119,15 @@ final class BonusScaleController extends Controller
         $companyId = $request->user()->company_id;
 
         $scale = BonusScale::byCompany($companyId)->findOrFail($id);
+
+        // Проверяем нет ли активных планов с этой шкалой
+        $hasActivePlans = KpiPlan::where('kpi_bonus_scale_id', $id)
+            ->whereIn('status', [KpiPlan::STATUS_ACTIVE, KpiPlan::STATUS_CALCULATED])
+            ->exists();
+
+        if ($hasActivePlans) {
+            return $this->errorResponse('Нельзя удалить шкалу с активными KPI-планами', 'has_plans', null, 422);
+        }
 
         $scale->delete();
 

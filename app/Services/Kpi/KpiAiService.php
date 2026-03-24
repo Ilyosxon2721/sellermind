@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\Log;
  */
 final class KpiAiService
 {
+    /**
+     * Статусы отменённых заказов (исключаются из расчёта)
+     */
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     public function __construct(
         private readonly AiProviderService $aiProvider
     ) {}
@@ -161,9 +166,9 @@ final class KpiAiService
             // Определяем тип маркетплейса и читаем из соответствующей таблицы
             $data = match ($account->marketplace) {
                 'uzum' => $this->collectUzumData($accountId, $periodStart, $periodEnd),
-                'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
+                'wb', 'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
                 'ozon' => $this->collectOzonData($accountId, $periodStart, $periodEnd),
-                'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
+                'ym', 'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
                 default => ['revenue' => 0, 'margin' => 0, 'orders' => 0],
             };
 
@@ -184,9 +189,8 @@ final class KpiAiService
      */
     private function collectUzumData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
-        // Uzum статусы: issued = доставлено, accepted_uzum = принято
         $orders = \App\Models\UzumOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status_normalized', ['issued', 'accepted_uzum'])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->whereBetween('ordered_at', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
@@ -211,7 +215,7 @@ final class KpiAiService
     {
         $orders = \App\Models\WildberriesOrder::where('marketplace_account_id', $accountId)
             ->whereIn('status_normalized', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereBetween('order_date', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(DISTINCT order_id) as total_orders,
                 COALESCE(SUM(total_price), 0) as total_revenue
@@ -233,8 +237,8 @@ final class KpiAiService
     private function collectOzonData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\OzonOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status_normalized', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
                 COALESCE(SUM(total_price), 0) as total_revenue
@@ -256,8 +260,8 @@ final class KpiAiService
     private function collectYandexMarketData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\YandexMarketOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status', ['PROCESSING', 'DELIVERY', 'DELIVERED'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
                 COALESCE(SUM(total), 0) as total_revenue

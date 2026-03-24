@@ -938,7 +938,6 @@ Route::middleware('auth.any')->group(function () {
             Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate']);
             Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest']);
             Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
-            Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
         });
     });
 

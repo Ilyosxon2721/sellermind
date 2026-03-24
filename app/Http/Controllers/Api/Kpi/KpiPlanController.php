@@ -77,6 +77,17 @@ final class KpiPlanController extends Controller
 
         $validated['company_id'] = $companyId;
 
+        // Проверяем сумму весов = 100
+        $weightSum = ($validated['weight_revenue'] ?? 0) + ($validated['weight_margin'] ?? 0) + ($validated['weight_orders'] ?? 0);
+        if ($weightSum !== 100) {
+            return $this->errorResponse(
+                "Сумма весов должна быть 100 (сейчас: {$weightSum})",
+                'invalid_weights',
+                null,
+                422
+            );
+        }
+
         // Проверяем уникальность
         $exists = KpiPlan::byCompany($companyId)
             ->forEmployee($validated['employee_id'])
@@ -129,6 +140,20 @@ final class KpiPlanController extends Controller
             'weight_orders' => 'integer|min:0|max:100',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        // Проверяем сумму весов при обновлении
+        $weightRevenue = $validated['weight_revenue'] ?? $plan->weight_revenue;
+        $weightMargin = $validated['weight_margin'] ?? $plan->weight_margin;
+        $weightOrders = $validated['weight_orders'] ?? $plan->weight_orders;
+        $weightSum = $weightRevenue + $weightMargin + $weightOrders;
+        if ($weightSum !== 100) {
+            return $this->errorResponse(
+                "Сумма весов должна быть 100 (сейчас: {$weightSum})",
+                'invalid_weights',
+                null,
+                422
+            );
+        }
 
         $plan->update($validated);
 
@@ -232,46 +257,6 @@ final class KpiPlanController extends Controller
     }
 
     /**
-     * Данные для графика динамики KPI за несколько месяцев
-     */
-    public function chartData(Request $request): JsonResponse
-    {
-        $companyId = $request->user()->company_id;
-        $months = (int) $request->get('months', 6);
-
-        $labels = [];
-        $achievements = [];
-        $bonuses = [];
-
-        $monthNames = [
-            1 => 'Янв', 2 => 'Фев', 3 => 'Мар', 4 => 'Апр',
-            5 => 'Май', 6 => 'Июн', 7 => 'Июл', 8 => 'Авг',
-            9 => 'Сен', 10 => 'Окт', 11 => 'Ноя', 12 => 'Дек',
-        ];
-
-        for ($i = $months - 1; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $year = $date->year;
-            $month = $date->month;
-
-            $plans = KpiPlan::byCompany($companyId)
-                ->forPeriod($year, $month)
-                ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
-                ->get();
-
-            $labels[] = ($monthNames[$month] ?? '') . ' ' . $year;
-            $achievements[] = $plans->count() > 0 ? round($plans->avg('achievement_percent'), 1) : 0;
-            $bonuses[] = round($plans->sum('bonus_amount'), 0);
-        }
-
-        return $this->successResponse([
-            'labels' => $labels,
-            'achievements' => $achievements,
-            'bonuses' => $bonuses,
-        ]);
-    }
-
-    /**
      * ИИ-рекомендация KPI-плана на основе исторических данных
      */
     public function aiSuggest(Request $request): JsonResponse
@@ -324,67 +309,44 @@ final class KpiPlanController extends Controller
         $employeeId = $validated['employee_id'] ?? null;
         $sphereId = $validated['sphere_id'] ?? null;
 
-        // Получаем данные за последние N месяцев
-        $endDate = now();
-        $startDate = now()->subMonths($months);
+        $monthNames = [
+            1 => 'Янв', 2 => 'Фев', 3 => 'Мар', 4 => 'Апр',
+            5 => 'Май', 6 => 'Июн', 7 => 'Июл', 8 => 'Авг',
+            9 => 'Сен', 10 => 'Окт', 11 => 'Ноя', 12 => 'Дек',
+        ];
 
-        $query = KpiPlan::byCompany($companyId)
-            ->with(['employee', 'salesSphere'])
-            ->where('period_year', '>=', $startDate->year)
-            ->where(function ($q) use ($startDate) {
-                $q->where('period_year', '>', $startDate->year)
-                    ->orWhere(function ($q2) use ($startDate) {
-                        $q2->where('period_year', '=', $startDate->year)
-                            ->where('period_month', '>=', $startDate->month);
-                    });
-            })
-            ->where(function ($q) use ($endDate) {
-                $q->where('period_year', '<', $endDate->year)
-                    ->orWhere(function ($q2) use ($endDate) {
-                        $q2->where('period_year', '=', $endDate->year)
-                            ->where('period_month', '<=', $endDate->month);
-                    });
-            })
-            ->orderBy('period_year')
-            ->orderBy('period_month');
+        $labels = [];
+        $achievements = [];
+        $bonuses = [];
 
-        if ($employeeId) {
-            $query->forEmployee($employeeId);
-        }
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $year = $date->year;
+            $month = $date->month;
 
-        if ($sphereId) {
-            $query->where('kpi_sales_sphere_id', $sphereId);
-        }
+            $query = KpiPlan::byCompany($companyId)
+                ->forPeriod($year, $month)
+                ->where('status', '!=', KpiPlan::STATUS_CANCELLED);
 
-        $plans = $query->get();
+            if ($employeeId) {
+                $query->forEmployee($employeeId);
+            }
 
-        // Группируем по периодам
-        $grouped = $plans->groupBy(function ($plan) {
-            return $plan->period_year.'-'.str_pad((string) $plan->period_month, 2, '0', STR_PAD_LEFT);
-        });
+            if ($sphereId) {
+                $query->where('kpi_sales_sphere_id', $sphereId);
+            }
 
-        $chartData = [];
-        foreach ($grouped as $period => $periodPlans) {
-            [$year, $month] = explode('-', $period);
-            $avgAchievement = $periodPlans->avg('achievement_percent') ?? 0;
-            $totalBonus = $periodPlans->sum('bonus_amount') ?? 0;
-            $totalRevenue = $periodPlans->sum('actual_revenue') ?? 0;
-            $planCount = $periodPlans->count();
+            $plans = $query->get();
 
-            $chartData[] = [
-                'period' => $period,
-                'year' => (int) $year,
-                'month' => (int) $month,
-                'avg_achievement' => round($avgAchievement, 1),
-                'total_bonus' => $totalBonus,
-                'total_revenue' => $totalRevenue,
-                'plan_count' => $planCount,
-            ];
+            $labels[] = ($monthNames[$month] ?? '').' '.$year;
+            $achievements[] = $plans->count() > 0 ? round($plans->avg('achievement_percent'), 1) : 0;
+            $bonuses[] = round($plans->sum('bonus_amount'), 0);
         }
 
         return $this->successResponse([
-            'data' => $chartData,
-            'months' => $months,
+            'labels' => $labels,
+            'achievements' => $achievements,
+            'bonuses' => $bonuses,
         ]);
     }
 }
