@@ -911,21 +911,31 @@ class OrderStockService
         MarketplaceAccount $account,
         string $barcode
     ): ?ProductVariant {
-        // Ищем MarketplaceProduct где в skuList есть этот barcode
+        // Шаг 1: MySQL JSON search — ищем MarketplaceProduct где skuList содержит этот barcode
+        // Используем JSON_SEARCH вместо загрузки всех продуктов в память
         $marketplaceProduct = \App\Models\MarketplaceProduct::query()
             ->where('marketplace_account_id', $account->id)
             ->whereNotNull('raw_payload')
-            ->get()
-            ->first(function ($product) use ($barcode) {
-                $skuList = $product->raw_payload['skuList'] ?? [];
-                foreach ($skuList as $sku) {
-                    if (isset($sku['barcode']) && (string) $sku['barcode'] === (string) $barcode) {
-                        return true;
-                    }
-                }
+            ->whereRaw("JSON_SEARCH(raw_payload->'$.skuList[*].barcode', 'one', ?) IS NOT NULL", [$barcode])
+            ->first();
 
-                return false;
-            });
+        // Fallback: если JSON_SEARCH не поддерживается или ничего не нашёл — загружаем в память
+        if (! $marketplaceProduct) {
+            $marketplaceProduct = \App\Models\MarketplaceProduct::query()
+                ->where('marketplace_account_id', $account->id)
+                ->whereNotNull('raw_payload')
+                ->get()
+                ->first(function ($product) use ($barcode) {
+                    $skuList = $product->raw_payload['skuList'] ?? [];
+                    foreach ($skuList as $sku) {
+                        if (isset($sku['barcode']) && (string) $sku['barcode'] === (string) $barcode) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                });
+        }
 
         if (! $marketplaceProduct) {
             Log::debug('OrderStockService: No MarketplaceProduct found with barcode in skuList', [
@@ -936,7 +946,7 @@ class OrderStockService
             return null;
         }
 
-        // Найти skuId для этого barcode
+        // Шаг 2: Найти skuId для этого barcode из skuList
         $skuList = $marketplaceProduct->raw_payload['skuList'] ?? [];
         $matchedSkuId = null;
         foreach ($skuList as $sku) {
@@ -955,7 +965,7 @@ class OrderStockService
             return null;
         }
 
-        // Теперь ищем VariantMarketplaceLink по этому skuId
+        // Шаг 3: Ищем VariantMarketplaceLink по skuId (external_sku_id)
         $link = VariantMarketplaceLink::query()
             ->where('marketplace_account_id', $account->id)
             ->where('external_sku_id', (string) $matchedSkuId)
@@ -974,8 +984,32 @@ class OrderStockService
             return $link->variant;
         }
 
-        // НЕ используем fallback - только точное совпадение по skuId
-        // Если связь не найдена, значит товар не привязан к нашей системе
+        // Шаг 4: Fallback — ищем по marketplace_product_id (если sku_id NULL но продукт привязан)
+        $link = VariantMarketplaceLink::query()
+            ->where('marketplace_account_id', $account->id)
+            ->where('marketplace_product_id', $marketplaceProduct->id)
+            ->where('is_active', true)
+            ->whereNull('external_sku_id')
+            ->first();
+
+        if ($link && $link->variant) {
+            Log::info('OrderStockService: Found variant via marketplace_product_id (single-sku fallback)', [
+                'barcode' => $barcode,
+                'product_id' => $marketplaceProduct->id,
+                'link_id' => $link->id,
+                'variant_id' => $link->variant->id,
+                'variant_sku' => $link->variant->sku,
+            ]);
+
+            // Автоматически заполняем external_sku_id и marketplace_barcode чтобы в следующий раз Strategy 1 сработала
+            $link->update([
+                'external_sku_id' => (string) $matchedSkuId,
+                'marketplace_barcode' => $barcode,
+            ]);
+
+            return $link->variant;
+        }
+
         Log::warning('OrderStockService: No VariantMarketplaceLink found for skuId', [
             'barcode' => $barcode,
             'sku_id' => $matchedSkuId,

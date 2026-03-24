@@ -62,16 +62,46 @@ class VariantLinkController extends Controller
             $skuList = $mpProduct->raw_payload['skuList'] ?? [];
             $externalSkuId = $validated['external_sku_id'] ?? null;
 
+            // 1. Точное совпадение по external_sku_id (приоритет)
             foreach ($skuList as $sku) {
-                // Ищем SKU по ID или берём первый с баркодом
                 if ($externalSkuId && (string) ($sku['skuId'] ?? '') === $externalSkuId) {
-                    $marketplaceBarcode = $sku['barcode'] ?? null;
+                    $marketplaceBarcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
                     break;
                 }
             }
-            // Если не нашли по ID, берём первый баркод
-            if (! $marketplaceBarcode && ! empty($skuList[0]['barcode'])) {
-                $marketplaceBarcode = $skuList[0]['barcode'];
+
+            // 2. Совпадение по баркоду варианта (variant->barcode совпадает с barcode в skuList)
+            if (! $marketplaceBarcode && $variant->barcode) {
+                foreach ($skuList as $sku) {
+                    if (isset($sku['barcode']) && (string) $sku['barcode'] === (string) $variant->barcode) {
+                        $marketplaceBarcode = (string) $sku['barcode'];
+                        // Обновляем external_sku_id, если он не был передан
+                        if (! $externalSkuId && isset($sku['skuId'])) {
+                            $externalSkuId = (string) $sku['skuId'];
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // 3. Совпадение по артикулу варианта (variant->sku совпадает с offerId/vendorCode в skuList)
+            if (! $marketplaceBarcode && $variant->sku) {
+                foreach ($skuList as $sku) {
+                    $offerMatch = isset($sku['offerId']) && $sku['offerId'] === $variant->sku;
+                    $vendorMatch = isset($sku['vendorCode']) && $sku['vendorCode'] === $variant->sku;
+                    if ($offerMatch || $vendorMatch) {
+                        $marketplaceBarcode = isset($sku['barcode']) ? (string) $sku['barcode'] : null;
+                        if (! $externalSkuId && isset($sku['skuId'])) {
+                            $externalSkuId = (string) $sku['skuId'];
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Обновляем externalSkuId в validated для использования в linkKey ниже
+            if ($externalSkuId && ! isset($validated['external_sku_id'])) {
+                $validated['external_sku_id'] = $externalSkuId;
             }
         }
 
