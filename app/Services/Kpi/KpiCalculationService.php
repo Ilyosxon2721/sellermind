@@ -279,7 +279,7 @@ final class KpiCalculationService
     {
         $plans = KpiPlan::byCompany($companyId)
             ->forPeriod($year, $month)
-            ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
+            ->whereIn('status', [KpiPlan::STATUS_ACTIVE, KpiPlan::STATUS_CALCULATED])
             ->with(['salesSphere', 'bonusScale.tiers', 'employee'])
             ->get();
 
