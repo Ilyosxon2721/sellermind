@@ -339,6 +339,143 @@ final class KpiCalculationService
     }
 
     /**
+     * Рейтинг сотрудников по проценту выполнения за период
+     *
+     * @return array<int, array{rank: int, employee_id: int, employee_name: string, avg_achievement: float, total_bonus: float, plans_count: int}>
+     */
+    public function getEmployeeRanking(int $companyId, int $year, int $month): array
+    {
+        $plans = KpiPlan::byCompany($companyId)
+            ->forPeriod($year, $month)
+            ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
+            ->with(['employee.user'])
+            ->get();
+
+        $grouped = $plans->groupBy('employee_id');
+
+        $ranking = $grouped->map(function (Collection $employeePlans, int $employeeId) {
+            $employee = $employeePlans->first()->employee;
+            $employeeName = $employee->name ?? $employee->user?->name ?? 'Сотрудник #' . $employeeId;
+
+            return [
+                'employee_id' => $employeeId,
+                'employee_name' => $employeeName,
+                'avg_achievement' => round($employeePlans->avg('achievement_percent'), 2),
+                'total_bonus' => round($employeePlans->sum('bonus_amount'), 2),
+                'plans_count' => $employeePlans->count(),
+            ];
+        })
+            ->sortByDesc('avg_achievement')
+            ->values();
+
+        // Присваиваем ранги
+        $result = [];
+        $rank = 1;
+        foreach ($ranking as $item) {
+            $item['rank'] = $rank++;
+            $result[] = $item;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Прогноз выполнения KPI на конец месяца
+     *
+     * @return array{days_elapsed: int, total_days: int, progress_percent: float, forecast_revenue: float, forecast_achievement: float, on_track_count: int, at_risk_count: int, plans: array}
+     */
+    public function getForecast(int $companyId, int $year, int $month): array
+    {
+        $periodDate = Carbon::create($year, $month, 1);
+        $totalDays = $periodDate->daysInMonth;
+        $now = now();
+
+        // Определяем сколько дней прошло
+        if ($now->year === $year && $now->month === $month) {
+            $daysElapsed = min($now->day, $totalDays);
+        } else {
+            $daysElapsed = $totalDays;
+        }
+
+        $progressRatio = $totalDays > 0 ? $daysElapsed / $totalDays : 0;
+
+        $plans = KpiPlan::byCompany($companyId)
+            ->forPeriod($year, $month)
+            ->whereIn('status', [KpiPlan::STATUS_ACTIVE, KpiPlan::STATUS_CALCULATED])
+            ->with(['employee', 'salesSphere'])
+            ->get();
+
+        $onTrackCount = 0;
+        $atRiskCount = 0;
+        $forecastRevenue = 0.0;
+        $forecastAchievements = [];
+        $planDetails = [];
+
+        foreach ($plans as $plan) {
+            $forecastAchievement = 0.0;
+            $planForecastRevenue = 0.0;
+            $planForecastOrders = 0;
+
+            if ($progressRatio > 0.1) {
+                $planForecastRevenue = $plan->actual_revenue / $progressRatio;
+                $planForecastOrders = (int) round($plan->actual_orders / $progressRatio);
+
+                // Пересчитываем achievement с прогнозными данными используя веса
+                $revenuePct = $plan->target_revenue > 0
+                    ? min($planForecastRevenue / $plan->target_revenue * 100, 200)
+                    : 0;
+                $marginPct = $plan->target_margin > 0
+                    ? min(($plan->actual_margin / $progressRatio) / $plan->target_margin * 100, 200)
+                    : 0;
+                $ordersPct = $plan->target_orders > 0
+                    ? min($planForecastOrders / $plan->target_orders * 100, 200)
+                    : 0;
+
+                $totalWeight = $plan->weight_revenue + $plan->weight_margin + $plan->weight_orders;
+                $forecastAchievement = $totalWeight > 0
+                    ? round(($revenuePct * $plan->weight_revenue + $marginPct * $plan->weight_margin + $ordersPct * $plan->weight_orders) / $totalWeight, 2)
+                    : 0;
+            }
+
+            if ($forecastAchievement >= 100) {
+                $onTrackCount++;
+            } elseif ($forecastAchievement < 80) {
+                $atRiskCount++;
+            }
+
+            $forecastRevenue += $planForecastRevenue;
+            if ($forecastAchievement > 0) {
+                $forecastAchievements[] = $forecastAchievement;
+            }
+
+            $planDetails[] = [
+                'plan_id' => $plan->id,
+                'employee_name' => $plan->employee?->name ?? '—',
+                'sphere_name' => $plan->salesSphere?->name ?? '—',
+                'actual_revenue' => $plan->actual_revenue,
+                'forecast_revenue' => round($planForecastRevenue, 2),
+                'forecast_orders' => $planForecastOrders,
+                'forecast_achievement' => $forecastAchievement,
+            ];
+        }
+
+        $avgForecastAchievement = count($forecastAchievements) > 0
+            ? round(array_sum($forecastAchievements) / count($forecastAchievements), 2)
+            : 0;
+
+        return [
+            'days_elapsed' => $daysElapsed,
+            'total_days' => $totalDays,
+            'progress_percent' => round($progressRatio * 100, 1),
+            'forecast_revenue' => round($forecastRevenue, 2),
+            'forecast_achievement' => $avgForecastAchievement,
+            'on_track_count' => $onTrackCount,
+            'at_risk_count' => $atRiskCount,
+            'plans' => $planDetails,
+        ];
+    }
+
+    /**
      * Сводка KPI по компании за период (для дашборда)
      */
     public function getDashboard(int $companyId, int $year, int $month): array

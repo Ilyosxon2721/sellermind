@@ -12,6 +12,7 @@ use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 /**
  * CRUD для KPI-планов + расчёт + дашборд
@@ -61,9 +62,9 @@ final class KpiPlanController extends Controller
         $companyId = $request->user()->company_id;
 
         $validated = $request->validate([
-            'employee_id' => 'required|integer|exists:employees,id',
-            'kpi_sales_sphere_id' => 'required|integer|exists:kpi_sales_spheres,id',
-            'kpi_bonus_scale_id' => 'required|integer|exists:kpi_bonus_scales,id',
+            'employee_id' => ['required', 'integer', Rule::exists('employees', 'id')->where('company_id', $companyId)],
+            'kpi_sales_sphere_id' => ['required', 'integer', Rule::exists('kpi_sales_spheres', 'id')->where('company_id', $companyId)],
+            'kpi_bonus_scale_id' => ['required', 'integer', Rule::exists('kpi_bonus_scales', 'id')->where('company_id', $companyId)],
             'period_year' => 'required|integer|min:2020|max:2100',
             'period_month' => 'required|integer|min:1|max:12',
             'target_revenue' => 'required|numeric|min:0',
@@ -131,7 +132,7 @@ final class KpiPlanController extends Controller
         }
 
         $validated = $request->validate([
-            'kpi_bonus_scale_id' => 'sometimes|integer|exists:kpi_bonus_scales,id',
+            'kpi_bonus_scale_id' => ['sometimes', 'integer', Rule::exists('kpi_bonus_scales', 'id')->where('company_id', $companyId)],
             'target_revenue' => 'sometimes|numeric|min:0',
             'target_margin' => 'sometimes|numeric|min:0',
             'target_orders' => 'sometimes|integer|min:0',
@@ -242,6 +243,36 @@ final class KpiPlanController extends Controller
     }
 
     /**
+     * Рейтинг сотрудников по проценту выполнения KPI
+     */
+    public function ranking(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $year = (int) $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+
+        $data = $this->kpiService->getEmployeeRanking($companyId, $year, $month);
+
+        return $this->successResponse($data);
+    }
+
+    /**
+     * Прогноз выполнения KPI на конец месяца
+     */
+    public function forecast(Request $request): JsonResponse
+    {
+        $companyId = $request->user()->company_id;
+
+        $year = (int) $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+
+        $data = $this->kpiService->getForecast($companyId, $year, $month);
+
+        return $this->successResponse($data);
+    }
+
+    /**
      * KPI дашборд — сводка за период
      */
     public function dashboard(Request $request): JsonResponse
@@ -265,8 +296,8 @@ final class KpiPlanController extends Controller
         $userId = $request->user()->id;
 
         $validated = $request->validate([
-            'employee_id' => 'required|integer|exists:employees,id',
-            'kpi_sales_sphere_id' => 'required|integer|exists:kpi_sales_spheres,id',
+            'employee_id' => ['required', 'integer', Rule::exists('employees', 'id')->where('company_id', $companyId)],
+            'kpi_sales_sphere_id' => ['required', 'integer', Rule::exists('kpi_sales_spheres', 'id')->where('company_id', $companyId)],
             'period_year' => 'required|integer|min:2020|max:2100',
             'period_month' => 'required|integer|min:1|max:12',
         ]);
@@ -301,8 +332,8 @@ final class KpiPlanController extends Controller
 
         $validated = $request->validate([
             'months' => 'sometimes|integer|min:3|max:24',
-            'employee_id' => 'sometimes|integer|exists:employees,id',
-            'sphere_id' => 'sometimes|integer|exists:kpi_sales_spheres,id',
+            'employee_id' => ['sometimes', 'integer', Rule::exists('employees', 'id')->where('company_id', $companyId)],
+            'sphere_id' => ['sometimes', 'integer', Rule::exists('kpi_sales_spheres', 'id')->where('company_id', $companyId)],
         ]);
 
         $months = $validated['months'] ?? 6;

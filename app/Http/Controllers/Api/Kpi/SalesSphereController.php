@@ -11,6 +11,7 @@ use App\Support\ApiResponder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * CRUD для сфер продаж
@@ -59,9 +60,9 @@ final class SalesSphereController extends Controller
             'description' => 'nullable|string|max:500',
             'color' => 'nullable|string|max:7',
             'icon' => 'nullable|string|max:50',
-            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
+            'marketplace_account_id' => ['nullable', 'integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
             'marketplace_account_ids' => 'nullable|array',
-            'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
+            'marketplace_account_ids.*' => ['integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
             'offline_sale_types' => 'nullable|array',
             'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
             'is_active' => 'boolean',
@@ -112,9 +113,9 @@ final class SalesSphereController extends Controller
             'description' => 'nullable|string|max:500',
             'color' => 'nullable|string|max:7',
             'icon' => 'nullable|string|max:50',
-            'marketplace_account_id' => 'nullable|integer|exists:marketplace_accounts,id',
+            'marketplace_account_id' => ['nullable', 'integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
             'marketplace_account_ids' => 'nullable|array',
-            'marketplace_account_ids.*' => 'integer|exists:marketplace_accounts,id',
+            'marketplace_account_ids.*' => ['integer', Rule::exists('marketplace_accounts', 'id')->where('company_id', $companyId)],
             'offline_sale_types' => 'nullable|array',
             'offline_sale_types.*' => 'string|in:retail,wholesale,direct',
             'is_active' => 'boolean',

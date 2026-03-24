@@ -17,6 +17,8 @@ function kpiPage(config) {
         calculating: false,
         chartData: { labels: [], achievements: [], bonuses: [] },
         chart: null,
+        ranking: [],
+        forecast: {},
 
         // Модалки
         showPlanModal: false,
@@ -113,6 +115,20 @@ function kpiPage(config) {
             try {
                 var res = await this.api('finance/kpi/dashboard?year=' + this.year + '&month=' + this.month);
                 this.dashboard = res.data ?? res;
+            } catch (e) { this.notify(e.message, 'error'); }
+            this.loadRanking();
+            this.loadForecast();
+        },
+        async loadRanking() {
+            try {
+                var res = await this.api('finance/kpi/ranking?year=' + this.year + '&month=' + this.month);
+                this.ranking = res.data ?? res;
+            } catch (e) { this.notify(e.message, 'error'); }
+        },
+        async loadForecast() {
+            try {
+                var res = await this.api('finance/kpi/forecast?year=' + this.year + '&month=' + this.month);
+                this.forecast = res.data ?? res;
             } catch (e) { this.notify(e.message, 'error'); }
         },
         async loadPlans() {

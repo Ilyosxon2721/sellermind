@@ -910,6 +910,8 @@ Route::middleware('auth.any')->group(function () {
         Route::prefix('kpi')->group(function () {
             Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
             Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
+            Route::get('ranking', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'ranking']);
+            Route::get('forecast', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'forecast']);
 
             // Маркетплейс-аккаунты для привязки
             Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
@@ -944,6 +946,8 @@ Route::middleware('auth.any')->group(function () {
     // Backward-compatible KPI routes (without finance/ prefix)
     Route::prefix('kpi')->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
+        Route::get('ranking', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'ranking']);
+        Route::get('forecast', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'forecast']);
         Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
 
         Route::get('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'index']);

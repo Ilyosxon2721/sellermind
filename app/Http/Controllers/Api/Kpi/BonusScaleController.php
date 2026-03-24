@@ -121,7 +121,8 @@ final class BonusScaleController extends Controller
         $scale = BonusScale::byCompany($companyId)->findOrFail($id);
 
         // Проверяем нет ли активных планов с этой шкалой
-        $hasActivePlans = KpiPlan::where('kpi_bonus_scale_id', $id)
+        $hasActivePlans = KpiPlan::byCompany($companyId)
+            ->where('kpi_bonus_scale_id', $id)
             ->whereIn('status', [KpiPlan::STATUS_ACTIVE, KpiPlan::STATUS_CALCULATED])
             ->exists();
 

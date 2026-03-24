@@ -490,6 +490,27 @@ Schedule::call(function () {
     ->name('uzum-analytics:crawl-products-18')
     ->withoutOverlapping(30);
 
+/*
+|--------------------------------------------------------------------------
+| KPI Scheduled Tasks
+|--------------------------------------------------------------------------
+|
+| Автоматический расчёт KPI планов
+|
+*/
+
+// KPI: Ежедневный расчёт KPI планов в 06:00
+Schedule::command('kpi:calculate')
+    ->dailyAt('06:00')
+    ->withoutOverlapping(30)
+    ->onSuccess(function () {
+        \Log::info('KPI: Расчёт планов завершён успешно');
+    })
+    ->onFailure(function () {
+        \Log::error('KPI: Ошибка расчёта планов');
+    })
+    ->appendOutputTo(storage_path('logs/kpi-calculation.log'));
+
 // Ежедневная проверка структуры Uzum API (#084)
 Schedule::command('uzum:check-api-structure')
     ->dailyAt('09:00')
