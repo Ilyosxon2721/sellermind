@@ -16,7 +16,7 @@ final class SalesAnalyticsService
     /**
      * Статусы отменённых заказов (исключаются из расчёта выручки)
      */
-    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELLED', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
      * Получить общую сводку продаж за период.
@@ -46,7 +46,9 @@ final class SalesAnalyticsService
         // Сравнение с предыдущим периодом (только выручка)
         $prevDateRange = $this->getPreviousDateRange($period);
         $prevRevenue = $this->getRevenueAndOrders($accountIds, $prevDateRange)['revenue'];
-        $revenueGrowth = $prevRevenue > 0 ? (($totalRevenue - $prevRevenue) / $prevRevenue) * 100 : 0;
+        $revenueGrowth = $prevRevenue > 0
+            ? (($totalRevenue - $prevRevenue) / $prevRevenue) * 100
+            : ($totalRevenue > 0 ? 100.0 : 0);
 
         return [
             'total_sales' => $totalSales,
@@ -88,15 +90,16 @@ final class SalesAnalyticsService
             )
             ->groupBy('date');
 
-        // Uzum: из uzum_orders (total_amount — сумма заказа целиком)
+        // Uzum: JOIN с uzum_order_items для подсчёта реального количества товаров
         $uzumStats = DB::table('uzum_orders')
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->join('uzum_order_items', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
             ->select(
-                DB::raw('DATE(ordered_at) as date'),
-                DB::raw('COUNT(*) as quantity'),
-                DB::raw('SUM(total_amount) as revenue')
+                DB::raw('DATE(uzum_orders.ordered_at) as date'),
+                DB::raw('SUM(uzum_order_items.quantity) as quantity'),
+                DB::raw('SUM(uzum_order_items.total_price) as revenue')
             )
             ->groupBy('date');
 
@@ -748,11 +751,11 @@ final class SalesAnalyticsService
         $row = OzonOrder::where('marketplace_account_id', $accountId)
             ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
             ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue')
+            ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue, SUM(COALESCE(items_count, 1)) as quantity')
             ->first();
 
         return [
-            'quantity' => (int) ($row->orders ?? 0),
+            'quantity' => (int) ($row->quantity ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),
             'orders' => (int) ($row->orders ?? 0),
         ];
@@ -766,11 +769,11 @@ final class SalesAnalyticsService
         $row = YandexMarketOrder::where('marketplace_account_id', $accountId)
             ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue')
+            ->selectRaw('COUNT(*) as orders, SUM(total_price) as revenue, SUM(COALESCE(items_count, 1)) as quantity')
             ->first();
 
         return [
-            'quantity' => (int) ($row->orders ?? 0),
+            'quantity' => (int) ($row->quantity ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),
             'orders' => (int) ($row->orders ?? 0),
         ];
