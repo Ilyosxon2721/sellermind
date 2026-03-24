@@ -49,6 +49,18 @@ class RuleController extends Controller
         return $this->successResponse($rule);
     }
 
+    public function destroy($id)
+    {
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return $this->errorResponse('No company', 'forbidden', null, 403);
+        }
+        $rule = AutopricingRule::byCompany($companyId)->findOrFail($id);
+        $rule->delete();
+
+        return $this->successResponse(null, ['message' => 'Правило удалено']);
+    }
+
     protected function validateData(Request $request): array
     {
         return $request->validate([

@@ -772,6 +772,12 @@ Route::middleware('auth.any')->group(function () {
             Route::get('publish-jobs', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'index']);
             Route::get('publish-jobs/{id}/export.csv', [\App\Http\Controllers\Api\Pricing\PublishJobController::class, 'exportCsv']);
 
+            // Channel Cost Rules (затраты каналов)
+            Route::get('channel-cost-rules', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'index']);
+            Route::post('channel-cost-rules', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'store']);
+            Route::put('channel-cost-rules/{id}', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'update']);
+            Route::delete('channel-cost-rules/{id}', [\App\Http\Controllers\Api\Pricing\ChannelCostRuleController::class, 'destroy']);
+
             // Pricing Calculator (калькулятор ценообразования)
             Route::prefix('calculator')->group(function () {
                 Route::post('calculate', [\App\Http\Controllers\Api\Pricing\CalculatorController::class, 'calculate']);
@@ -787,10 +793,12 @@ Route::middleware('auth.any')->group(function () {
             Route::get('policies', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'index']);
             Route::post('policies', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'store']);
             Route::put('policies/{id}', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'update']);
+            Route::delete('policies/{id}', [\App\Http\Controllers\Api\Autopricing\PolicyController::class, 'destroy']);
 
             Route::get('rules', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'index']);
             Route::post('rules', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'store']);
             Route::put('rules/{id}', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'update']);
+            Route::delete('rules/{id}', [\App\Http\Controllers\Api\Autopricing\RuleController::class, 'destroy']);
 
             Route::get('proposals', [\App\Http\Controllers\Api\Autopricing\ProposalController::class, 'index']);
             Route::post('calc', [\App\Http\Controllers\Api\Autopricing\ProposalController::class, 'calculate']);

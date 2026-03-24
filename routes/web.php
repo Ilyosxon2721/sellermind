@@ -375,6 +375,10 @@ Route::middleware('auth.any')->group(function () {
         return view('pricing.calculator');
     })->name('pricing.calculator');
 
+    Route::get('/pricing/settings', function () {
+        return view('pricing.settings');
+    })->name('pricing.settings');
+
     // Subscription Plans (Public - can be accessed without auth)
     Route::get('/plans', function () {
         return view('plans.index');

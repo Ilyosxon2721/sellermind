@@ -37,8 +37,17 @@ class PriceEngineService
 
         $minProfit = (float) ($skuOverride->min_profit_fixed ?? $scenario->target_profit_fixed ?? 0);
 
-        $percentSum = $rules['commission_percent'] + $rules['payment_fee_percent'] + $rules['other_percent'] + $promoReserve;
-        $fixedSum = $rules['commission_fixed'] + $rules['logistics_fixed'] + $rules['other_fixed'];
+        $percentSum = $rules['commission_percent']
+            + $rules['payment_fee_percent']
+            + $rules['return_percent']
+            + $rules['turnover_tax_percent']
+            + $rules['other_percent']
+            + $promoReserve;
+        $fixedSum = $rules['commission_fixed']
+            + $rules['logistics_fixed']
+            + ($rules['return_logistics_fixed'] * $rules['return_percent']) // обратная логистика × % возвратов
+            + $rules['storage_cost_per_day']
+            + $rules['other_fixed'];
 
         // VAT handling (VAT_INCLUDED common): part of price is VAT
         $vatRatio = 0;
@@ -60,7 +69,13 @@ class PriceEngineService
             'commission_percent' => $rules['commission_percent'],
             'commission_fixed' => $rules['commission_fixed'],
             'logistics_fixed' => $rules['logistics_fixed'],
+            'return_logistics_fixed' => $rules['return_logistics_fixed'],
             'payment_fee_percent' => $rules['payment_fee_percent'],
+            'return_percent' => $rules['return_percent'],
+            'storage_cost_per_day' => $rules['storage_cost_per_day'],
+            'vat_percent' => $rules['vat_percent'],
+            'turnover_tax_percent' => $rules['turnover_tax_percent'],
+            'profit_tax_percent' => $rules['profit_tax_percent'],
             'promo_reserve_percent' => $promoReserve,
             'other_percent' => $rules['other_percent'],
             'other_fixed' => $rules['other_fixed'],
