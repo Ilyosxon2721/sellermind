@@ -246,6 +246,8 @@ Schedule::call(function () {
     // Предварительный расчет аналитики для всех компаний
     foreach (\App\Models\Company::cursor() as $company) {
         try {
+            $currencyService = app(\App\Services\CurrencyConversionService::class);
+            $currencyService->forCompany($company);
             $analyticsService = app(\App\Services\SalesAnalyticsService::class);
 
             // Кэшируем аналитику на час

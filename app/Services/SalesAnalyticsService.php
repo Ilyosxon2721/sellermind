@@ -130,7 +130,7 @@ final class SalesAnalyticsService
             ->whereNotIn('status', self::CANCELLED_STATUSES)
             ->select(
                 DB::raw('DATE(created_at_ozon) as date'),
-                DB::raw('COUNT(*) as quantity'),
+                DB::raw('SUM(COALESCE(items_count, 1)) as quantity'),
                 DB::raw('SUM(total_price) as revenue')
             )
             ->groupBy('date');
@@ -142,7 +142,7 @@ final class SalesAnalyticsService
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
             ->select(
                 DB::raw('DATE(created_at_ym) as date'),
-                DB::raw('COUNT(*) as quantity'),
+                DB::raw('SUM(COALESCE(items_count, 1)) as quantity'),
                 DB::raw('SUM(total_price) as revenue')
             )
             ->groupBy('date');
@@ -315,14 +315,14 @@ final class SalesAnalyticsService
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
             ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as total_quantity, SUM(total_price) as total_revenue')
+            ->selectRaw('SUM(COALESCE(items_count, 1)) as total_quantity, SUM(total_price) as total_revenue')
             ->first();
 
         $ymRow = DB::table('yandex_market_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
             ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as total_quantity, SUM(total_price) as total_revenue')
+            ->selectRaw('SUM(COALESCE(items_count, 1)) as total_quantity, SUM(total_price) as total_revenue')
             ->first();
 
         // Конвертируем выручку WB категорий из RUB в валюту отображения
