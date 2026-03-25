@@ -219,7 +219,7 @@
                     <div x-show="overview.balance?.cash_accounts?.length > 0" class="mt-4 pt-4 border-t border-slate-700">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-slate-400">Денежные счета</span>
-                            <button @click="showCashAccountsModal = true" class="text-xs text-blue-400 hover:text-blue-300">Управление</button>
+                            <button @click="activeTab = 'accounts'; loadCashAccounts()" class="text-xs text-blue-400 hover:text-blue-300">Управление</button>
                         </div>
                         <div class="space-y-1 text-sm">
                             <template x-for="acc in overview.balance?.cash_accounts || []" :key="acc.id">
