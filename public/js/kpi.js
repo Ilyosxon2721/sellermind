@@ -214,7 +214,7 @@ function kpiPage(config) {
                 actual_margin: p.actual_margin || 0,
                 actual_orders: p.actual_orders || 0,
                 employee_name: p.employee?.name ?? '—',
-                sphere_name: p.sales_sphere?.name ?? '—'
+                sphere_name: p.salesSphere?.name ?? p.sales_sphere?.name ?? '—'
             };
             this.showActualsModal = true;
         },

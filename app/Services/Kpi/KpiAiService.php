@@ -102,6 +102,10 @@ final class KpiAiService
     private function collectHistory(int $companyId, int $employeeId, int $sphereId, int $year, int $month): array
     {
         $sphere = SalesSphere::find($sphereId);
+        if (! $sphere) {
+            return [];
+        }
+
         $history = [];
 
         for ($i = 1; $i <= 6; $i++) {
@@ -165,8 +169,11 @@ final class KpiAiService
         $totalMargin = 0.0;
         $totalOrders = 0;
 
+        // Предзагрузка всех аккаунтов одним запросом вместо N+1
+        $accountsMap = \App\Models\MarketplaceAccount::whereIn('id', $accountIds)->keyBy('id');
+
         foreach ($accountIds as $accountId) {
-            $account = \App\Models\MarketplaceAccount::find($accountId);
+            $account = $accountsMap[$accountId] ?? null;
             if (! $account) {
                 continue;
             }
