@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Kpi;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class BonusScaleTier extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_bonus_scale_tiers';
 
     public const TYPE_FIXED = 'fixed';

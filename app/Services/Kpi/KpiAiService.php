@@ -8,6 +8,8 @@ use App\Models\AIUsageLog;
 use App\Models\Finance\Employee;
 use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
+use App\Models\OfflineSale;
+use App\Models\OfflineSaleItem;
 use App\Services\AI\AiProviderService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +20,8 @@ use Illuminate\Support\Facades\Log;
 final class KpiAiService
 {
     public function __construct(
-        private readonly AiProviderService $aiProvider
+        private readonly AiProviderService $aiProvider,
+        private readonly KpiMarginCalculator $marginCalculator,
     ) {}
 
     /**
@@ -66,7 +69,7 @@ final class KpiAiService
         $provider = config('ai.provider', 'openai');
         $options['model'] = match ($provider) {
             'anthropic' => config('anthropic.models.kpi', 'claude-sonnet-4-20250514'),
-            default => config('openai.models.kpi', 'gpt-5.1'),
+            default => config('openai.models.kpi', 'gpt-4o'),
         };
 
         try {
@@ -125,14 +128,24 @@ final class KpiAiService
                 $monthData['revenue'] = $existingPlan->actual_revenue;
                 $monthData['margin'] = $existingPlan->actual_margin;
                 $monthData['orders'] = $existingPlan->actual_orders;
-            } elseif ($sphere && $sphere->hasMarketplaceLink()) {
-                // Читаем напрямую из таблиц заказов маркетплейсов
-                $accountIds = $sphere->getLinkedAccountIds();
-                $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
+            } elseif ($sphere) {
+                // Агрегируем из всех привязанных источников
+                if ($sphere->hasMarketplaceLink()) {
+                    $accountIds = $sphere->getLinkedAccountIds();
+                    $marketplaceData = $this->collectMarketplaceData($accountIds, $periodStart, $periodEnd);
 
-                $monthData['revenue'] = $marketplaceData['revenue'];
-                $monthData['margin'] = $marketplaceData['margin'];
-                $monthData['orders'] = $marketplaceData['orders'];
+                    $monthData['revenue'] += $marketplaceData['revenue'];
+                    $monthData['margin'] += $marketplaceData['margin'];
+                    $monthData['orders'] += $marketplaceData['orders'];
+                }
+
+                if ($sphere->hasOfflineSaleLink()) {
+                    $offlineData = $this->collectOfflineSaleHistory($companyId, $sphere, $periodStart, $periodEnd);
+
+                    $monthData['revenue'] += $offlineData['revenue'];
+                    $monthData['margin'] += $offlineData['margin'];
+                    $monthData['orders'] += $offlineData['orders'];
+                }
             }
 
             $history[] = $monthData;
@@ -149,7 +162,7 @@ final class KpiAiService
     private function collectMarketplaceData(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
     {
         $totalRevenue = 0;
-        $totalMargin = 0;
+        $totalMargin = 0.0;
         $totalOrders = 0;
 
         foreach ($accountIds as $accountId) {
@@ -161,15 +174,23 @@ final class KpiAiService
             // Определяем тип маркетплейса и читаем из соответствующей таблицы
             $data = match ($account->marketplace) {
                 'uzum' => $this->collectUzumData($accountId, $periodStart, $periodEnd),
-                'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
+                'wb', 'wildberries' => $this->collectWildberriesData($accountId, $periodStart, $periodEnd),
                 'ozon' => $this->collectOzonData($accountId, $periodStart, $periodEnd),
-                'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
+                'ym', 'yandex_market' => $this->collectYandexMarketData($accountId, $periodStart, $periodEnd),
                 default => ['revenue' => 0, 'margin' => 0, 'orders' => 0],
             };
 
             $totalRevenue += $data['revenue'];
-            $totalMargin += $data['margin'];
             $totalOrders += $data['orders'];
+
+            // Расчёт маржи через себестоимость товаров
+            $totalMargin += $this->marginCalculator->calculateMargin(
+                $account->marketplace,
+                [$accountId],
+                $periodStart,
+                $periodEnd,
+                $account->company_id ?? 0,
+            );
         }
 
         return [
@@ -184,18 +205,14 @@ final class KpiAiService
      */
     private function collectUzumData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
-        // Uzum статусы: issued = доставлено, accepted_uzum = принято
         $orders = \App\Models\UzumOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status_normalized', ['issued', 'accepted_uzum'])
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->whereBetween('ordered_at', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
                 COALESCE(SUM(total_amount), 0) as total_revenue
             ')
             ->first();
-
-        // TODO: Расчёт маржи требует связи с Products через barcode/sku
-        // Пока возвращаем 0, можно добавить позже
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
@@ -210,15 +227,13 @@ final class KpiAiService
     private function collectWildberriesData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\WildberriesOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status_normalized', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
+            ->whereBetween('order_date', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(DISTINCT order_id) as total_orders,
                 COALESCE(SUM(total_price), 0) as total_revenue
             ')
             ->first();
-
-        // TODO: Расчёт маржи
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
@@ -233,15 +248,13 @@ final class KpiAiService
     private function collectOzonData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\OzonOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status_normalized', ['confirmed', 'completed'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status', KpiPlan::CANCELLED_ORDER_STATUSES)
+            ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
                 COALESCE(SUM(total_price), 0) as total_revenue
             ')
             ->first();
-
-        // TODO: Расчёт маржи
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
@@ -256,18 +269,56 @@ final class KpiAiService
     private function collectYandexMarketData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\YandexMarketOrder::where('marketplace_account_id', $accountId)
-            ->whereIn('status', ['PROCESSING', 'DELIVERY', 'DELIVERED'])
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
+            ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
-                COALESCE(SUM(total), 0) as total_revenue
+                COALESCE(SUM(total_price), 0) as total_revenue
             ')
             ->first();
 
         return [
             'revenue' => (float) ($orders->total_revenue ?? 0),
-            'margin' => 0, // TODO: добавить расчёт маржи для YM
+            'margin' => 0,
             'orders' => (int) ($orders->total_orders ?? 0),
+        ];
+    }
+
+    /**
+     * Собрать исторические данные из ручных продаж за период
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectOfflineSaleHistory(int $companyId, SalesSphere $sphere, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        $saleTypes = $sphere->getOfflineSaleTypes();
+
+        $salesData = OfflineSale::byCompany($companyId)
+            ->whereIn('sale_type', $saleTypes)
+            ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+            ->whereBetween('sale_date', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_revenue, COUNT(*) as total_orders')
+            ->first();
+
+        $revenue = (float) ($salesData->total_revenue ?? 0);
+        $orders = (int) ($salesData->total_orders ?? 0);
+
+        // Маржа: выручка - себестоимость из OfflineSaleItem
+        $costData = OfflineSaleItem::whereHas('sale', function ($q) use ($companyId, $saleTypes, $periodStart, $periodEnd) {
+            $q->where('company_id', $companyId)
+                ->whereIn('sale_type', $saleTypes)
+                ->whereIn('status', [OfflineSale::STATUS_CONFIRMED, OfflineSale::STATUS_SHIPPED, OfflineSale::STATUS_DELIVERED])
+                ->whereBetween('sale_date', [$periodStart, $periodEnd]);
+        })
+            ->selectRaw('COALESCE(SUM(line_total), 0) as total_sales, COALESCE(SUM(unit_cost * quantity), 0) as total_cost')
+            ->first();
+
+        $margin = (float) (($costData->total_sales ?? 0) - ($costData->total_cost ?? 0));
+
+        return [
+            'revenue' => $revenue,
+            'margin' => max(0, $margin),
+            'orders' => $orders,
         ];
     }
 
@@ -304,7 +355,7 @@ final class KpiAiService
     private function getSystemPrompt(): string
     {
         return <<<'PROMPT'
-Ты — продвинутый ИИ-аналитик KPI (GPT-5.1) для платформы управления продажами на маркетплейсах СНГ (Wildberries, Ozon, Uzum, Yandex Market).
+Ты — продвинутый ИИ-аналитик KPI для платформы управления продажами на маркетплейсах СНГ (Wildberries, Ozon, Uzum, Yandex Market).
 
 ВАЖНО: Компания работает в Узбекистане, все суммы в узбекских сумах (сум, UZS). НИКОГДА не используй рубли, доллары или другие валюты в ответе.
 

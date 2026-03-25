@@ -109,6 +109,72 @@
                         </div>
                     </div>
 
+                    {{-- Прогноз на конец месяца --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6" x-show="forecast.total_days">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Прогноз на конец месяца</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600" x-text="(forecast.progress_percent || 0).toFixed(1) + '%'"></div>
+                                <div class="text-sm text-gray-500">Прошло месяца</div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div class="bg-blue-600 h-2 rounded-full transition-all" :style="'width:' + Math.min(forecast.progress_percent || 0, 100) + '%'"></div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold"
+                                     :class="(forecast.forecast_achievement || 0) >= 100 ? 'text-green-600' : 'text-yellow-600'"
+                                     x-text="(forecast.forecast_achievement || 0).toFixed(1) + '%'"></div>
+                                <div class="text-sm text-gray-500">Прогноз выполнения</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600" x-text="forecast.on_track_count || 0"></div>
+                                <div class="text-sm text-gray-500">В плане</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-600" x-text="forecast.at_risk_count || 0"></div>
+                                <div class="text-sm text-gray-500">Под угрозой</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Рейтинг сотрудников --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6" x-show="ranking.length > 0">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Рейтинг сотрудников</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-500">
+                                        <th class="pb-3 pr-4">#</th>
+                                        <th class="pb-3 pr-4">Сотрудник</th>
+                                        <th class="pb-3 pr-4 text-right">Выполнение</th>
+                                        <th class="pb-3 pr-4 text-right">Бонус</th>
+                                        <th class="pb-3 text-right">Планов</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="item in ranking" :key="item.employee_id">
+                                        <tr class="border-b last:border-0">
+                                            <td class="py-3 pr-4 font-bold" x-text="item.rank"></td>
+                                            <td class="py-3 pr-4" x-text="item.employee_name"></td>
+                                            <td class="py-3 pr-4 text-right">
+                                                <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': item.avg_achievement >= 100,
+                                                        'bg-yellow-100 text-yellow-800': item.avg_achievement >= 80 && item.avg_achievement < 100,
+                                                        'bg-red-100 text-red-800': item.avg_achievement < 80
+                                                    }"
+                                                    x-text="item.avg_achievement.toFixed(1) + '%'">
+                                                </span>
+                                            </td>
+                                            <td class="py-3 pr-4 text-right" x-text="Number(item.total_bonus).toLocaleString() + ' сум'"></td>
+                                            <td class="py-3 text-right" x-text="item.plans_count"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     {{-- Кнопка рассчитать --}}
                     <div class="flex justify-end mb-4">
                         <button @click="calculateAll()" :disabled="calculating"
@@ -160,13 +226,6 @@
                         </div>
                     </div>
 
-                    {{-- График динамики KPI --}}
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 mt-6">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-4">{{ __('kpi.dashboard.chart_title') ?? 'Динамика выполнения KPI' }}</h3>
-                        <div style="height: 300px;">
-                            <canvas id="kpiChart"></canvas>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- ============ ПЛАНЫ ============ --}}
@@ -254,7 +313,10 @@
                                         </div>
                                         <div>
                                             <h3 class="font-semibold text-gray-900" x-text="s.name"></h3>
-                                            <p class="text-xs text-gray-500" x-text="(s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
+                                            <p class="text-xs text-gray-500" x-text="[
+                                                (s.linked_accounts && s.linked_accounts.length) ? s.linked_accounts.map(function(a) { return a.name + ' (' + a.marketplace + ')'; }).join(', ') : '',
+                                                (s.offline_sale_types && s.offline_sale_types.length) ? s.offline_sale_types.map(function(t) { return {retail:'Розница',wholesale:'Опт',direct:'Прямые'}[t] || t; }).join(', ') : ''
+                                            ].filter(Boolean).join(' + ') || (s.description || '{{ __('kpi.spheres.no_marketplace') }}')"></p>
                                         </div>
                                     </div>
                                     <span class="w-2.5 h-2.5 rounded-full mt-1" :class="s.is_active ? 'bg-green-400' : 'bg-gray-300'"></span>

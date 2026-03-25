@@ -7,6 +7,7 @@ namespace App\Models\Kpi;
 use App\Models\Company;
 use App\Models\Finance\Employee;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class KpiPlan extends Model
 {
+    use HasFactory;
+
     protected $table = 'kpi_plans';
 
     public const STATUS_ACTIVE = 'active';
@@ -44,6 +47,11 @@ final class KpiPlan extends Model
     public const STATUS_APPROVED = 'approved';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    /**
+     * Статусы отменённых заказов маркетплейсов (исключаются из расчёта KPI)
+     */
+    public const CANCELLED_ORDER_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     protected $fillable = [
         'company_id',
