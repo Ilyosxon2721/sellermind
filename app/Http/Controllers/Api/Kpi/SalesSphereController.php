@@ -142,8 +142,8 @@ final class SalesSphereController extends Controller
         $companyId = $request->user()->company_id;
 
         $accounts = MarketplaceAccount::where('company_id', $companyId)
-            ->where('is_active', true)
-            ->select(['id', 'name', 'marketplace'])
+            ->select(['id', 'name', 'marketplace', 'is_active'])
+            ->orderBy('marketplace')
             ->orderBy('name')
             ->get();
 
