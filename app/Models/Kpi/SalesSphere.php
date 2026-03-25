@@ -42,6 +42,10 @@ final class SalesSphere extends Model
         'marketplace_account_ids',
         'offline_sale_types',
         'is_active',
+        'is_manual',
+        'label_metric1',
+        'label_metric2',
+        'label_metric3',
         'sort_order',
     ];
 
@@ -49,6 +53,7 @@ final class SalesSphere extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_manual' => 'boolean',
             'sort_order' => 'integer',
             'marketplace_account_ids' => 'array',
             'offline_sale_types' => 'array',
@@ -127,6 +132,27 @@ final class SalesSphere extends Model
     public function scopeByCompany($query, int $companyId)
     {
         return $query->where('company_id', $companyId);
+    }
+
+    /**
+     * Ручная сфера — данные вводятся вручную, без автосбора
+     */
+    public function isManual(): bool
+    {
+        return $this->is_manual || (! $this->hasMarketplaceLink() && ! $this->hasOfflineSaleLink());
+    }
+
+    /**
+     * Получить название метрики (с fallback на стандартное)
+     */
+    public function getMetricLabel(int $num): string
+    {
+        return match ($num) {
+            1 => $this->label_metric1 ?? 'Оборот',
+            2 => $this->label_metric2 ?? 'Маржа',
+            3 => $this->label_metric3 ?? 'Заказы',
+            default => '',
+        };
     }
 
     public function scopeActive($query)

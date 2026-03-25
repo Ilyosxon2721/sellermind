@@ -535,77 +535,119 @@
 
     {{-- ============ МОДАЛКА: СФЕРА ============ --}}
     <div x-show="showSphereModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSphereModal = false">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop>
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4" x-text="sphereForm.id ? '{{ __('kpi.spheres.edit') }}' : '{{ __('kpi.spheres.new') }}'"></h3>
+                <h3 class="text-lg font-semibold mb-1" x-text="sphereForm.id ? 'Редактировать сферу' : 'Новая сфера'"></h3>
+                <p class="text-sm text-gray-500 mb-5">Сфера определяет откуда берутся данные и как называются метрики KPI</p>
+
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.name') }}</label>
-                        <input type="text" x-model="sphereForm.name" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                        <input type="text" x-model="sphereForm.name" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Склад, Доставка, Wildberries">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.description') }}</label>
-                        <input type="text" x-model="sphereForm.description" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <input type="text" x-model="sphereForm.description" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Краткое описание сферы">
                     </div>
+
+                    {{-- Режим: автоматический vs ручной --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.marketplace') }}</label>
-                        <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
-                            <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
-                                <input type="checkbox"
-                                       :checked="(sphereForm.marketplace_account_ids || []).length === 0"
-                                       @change="sphereForm.marketplace_account_ids = []"
-                                       class="rounded border-gray-300 text-blue-600">
-                                <span class="text-sm text-gray-500">{{ __('kpi.spheres.no_marketplace') }}</span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Тип сферы</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors"
+                                   :class="!sphereForm.is_manual ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" :checked="!sphereForm.is_manual" @change="sphereForm.is_manual = false" class="sr-only">
+                                <span class="text-2xl">🔄</span>
+                                <span class="text-sm font-medium text-center">Автоматический</span>
+                                <span class="text-xs text-gray-500 text-center">Данные из маркетплейсов или продаж</span>
                             </label>
-                            <template x-for="ma in marketplaceAccounts" :key="ma.id">
-                                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                    <input type="checkbox"
-                                           :value="ma.id"
-                                           :checked="(sphereForm.marketplace_account_ids || []).includes(ma.id)"
-                                           @change="toggleMarketplace(ma.id)"
-                                           class="rounded border-gray-300 text-blue-600">
-                                    <span class="text-sm" x-text="ma.name + ' (' + ma.marketplace + ')'"></span>
-                                </label>
-                            </template>
+                            <label class="relative flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors"
+                                   :class="sphereForm.is_manual ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" :checked="sphereForm.is_manual" @change="sphereForm.is_manual = true" class="sr-only">
+                                <span class="text-2xl">✏️</span>
+                                <span class="text-sm font-medium text-center">Ручной</span>
+                                <span class="text-xs text-gray-500 text-center">Склад, доставка, поддержка и т.п.</span>
+                            </label>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Привязка к маркетплейсу позволит автоматически собирать данные</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ручные продажи (автосбор)</label>
-                        <div class="border border-gray-300 rounded-lg">
-                            <template x-for="ost in [{value:'retail',label:'Розница (штучные)'},{value:'wholesale',label:'Опт (оптовые)'},{value:'direct',label:'Прямые продажи'}]" :key="ost.value">
-                                <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-                                    <input type="checkbox"
-                                           :value="ost.value"
-                                           :checked="(sphereForm.offline_sale_types || []).includes(ost.value)"
-                                           @change="toggleOfflineSaleType(ost.value)"
-                                           class="rounded border-gray-300 text-blue-600">
-                                    <span class="text-sm" x-text="ost.label"></span>
-                                </label>
-                            </template>
+
+                    {{-- Автоматический: маркетплейсы --}}
+                    <template x-if="!sphereForm.is_manual">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Маркетплейс-аккаунты</label>
+                                <div class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+                                    <template x-for="ma in marketplaceAccounts" :key="ma.id">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox"
+                                                   :value="ma.id"
+                                                   :checked="(sphereForm.marketplace_account_ids || []).includes(ma.id)"
+                                                   @change="toggleMarketplace(ma.id)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="ma.name + ' (' + ma.marketplace + ')'"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ручные продажи</label>
+                                <div class="border border-gray-300 rounded-lg">
+                                    <template x-for="ost in [{value:'retail',label:'Розница'},{value:'wholesale',label:'Опт'},{value:'direct',label:'Прямые продажи'}]" :key="ost.value">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                            <input type="checkbox"
+                                                   :value="ost.value"
+                                                   :checked="(sphereForm.offline_sale_types || []).includes(ost.value)"
+                                                   @change="toggleOfflineSaleType(ost.value)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="ost.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Выберите типы ручных продаж для автоматического расчёта KPI</p>
-                    </div>
+                    </template>
+
+                    {{-- Ручной: кастомные названия метрик --}}
+                    <template x-if="sphereForm.is_manual">
+                        <div class="space-y-3">
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <p class="text-sm text-amber-800">Задайте свои названия для 3 метрик KPI. Факт вводится вручную.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 1 (вместо «Оборот»)</label>
+                                <input type="text" x-model="sphereForm.label_metric1" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Обработано посылок, Выручка, Собрано заказов">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 2 (вместо «Маржа»)</label>
+                                <input type="text" x-model="sphereForm.label_metric2" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Скорость (мин/заказ), Без брака, Рейтинг">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Метрика 3 (вместо «Заказы»)</label>
+                                <input type="text" x-model="sphereForm.label_metric3" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Доставлено, Кол-во смен, Звонки">
+                            </div>
+                        </div>
+                    </template>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.color') }}</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Цвет</label>
                             <input type="color" x-model="sphereForm.color" class="w-full h-10 rounded-lg border-gray-300">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.spheres.icon') }}</label>
-                            <input type="text" x-model="sphereForm.icon" class="w-full rounded-lg border-gray-300 text-sm" placeholder="📊">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Иконка</label>
+                            <input type="text" x-model="sphereForm.icon" class="w-full rounded-lg border-gray-300 text-sm" placeholder="📦">
                         </div>
                     </div>
                     <div>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" x-model="sphereForm.is_active" class="rounded border-gray-300 text-blue-600">
-                            {{ __('kpi.spheres.active') }}
+                            Активная
                         </label>
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button @click="showSphereModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">{{ __('kpi.cancel') }}</button>
-                    <button @click="saveSphere()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">{{ __('kpi.save') }}</button>
+                    <button @click="showSphereModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Отмена</button>
+                    <button @click="saveSphere()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">Сохранить</button>
                 </div>
             </div>
         </div>
