@@ -893,17 +893,17 @@ final class SalesAnalyticsService
                 ->where('is_return', false)
                 ->count();
 
-            // Ozon
-            $ozonSales = OzonOrder::whereIn('marketplace_account_id', $accountIds)
+            // Ozon: SUM(items_count) для учёта нескольких позиций в одном заказе
+            $ozonSales = (int) OzonOrder::whereIn('marketplace_account_id', $accountIds)
                 ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
                 ->whereNotIn('status', self::CANCELLED_STATUSES)
-                ->count();
+                ->sum(DB::raw('COALESCE(items_count, 1)'));
 
-            // Yandex Market
-            $ymSales = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
+            // Yandex Market: SUM(items_count) для учёта нескольких позиций в одном заказе
+            $ymSales = (int) YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
                 ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
                 ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-                ->count();
+                ->sum(DB::raw('COALESCE(items_count, 1)'));
 
             $marketplaceSales = (int) ($uzumSales + $wbSales + $ozonSales + $ymSales);
         }
