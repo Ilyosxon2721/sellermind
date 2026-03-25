@@ -80,7 +80,8 @@ function kpiPage(config) {
             var res = await fetch('/api/' + url, opts);
             if (!res.ok) {
                 var err = await res.json().catch(function() { return {}; });
-                throw new Error(err.message || 'Ошибка запроса');
+                var msg = err.message || (err.errors && err.errors[0] && err.errors[0].message) || 'Ошибка запроса';
+                throw new Error(msg);
             }
             return res.json();
         },
