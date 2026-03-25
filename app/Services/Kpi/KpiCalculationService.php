@@ -13,6 +13,7 @@ use App\Models\OfflineSaleItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Сервис расчёта KPI и бонусов сотрудников
