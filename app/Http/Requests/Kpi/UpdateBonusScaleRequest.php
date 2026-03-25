@@ -69,7 +69,7 @@ final class UpdateBonusScaleRequest extends FormRequest
                         $bMin = (int) ($tiers[$j]['min_percent'] ?? 0);
                         $bMax = isset($tiers[$j]['max_percent']) ? (int) $tiers[$j]['max_percent'] : PHP_INT_MAX;
 
-                        if ($aMin <= $bMax && $bMin <= $aMax) {
+                        if ($aMin < $bMax && $bMin < $aMax) {
                             $validator->errors()->add(
                                 "tiers.{$j}.min_percent",
                                 "Ступень #" . ($j + 1) . " пересекается со ступенью #" . ($i + 1)
