@@ -218,8 +218,16 @@
                                 </div>
                             </div>
                             <div class="mt-3 pt-3 border-t border-blue-200 text-blue-700">
-                                <p><strong>Маржа</strong> рассчитывается как оборот минус себестоимость товаров. Для корректного расчёта заполните себестоимость (<em>purchase_price</em>) в карточках товаров.</p>
+                                <p><strong>Маржа</strong> рассчитывается как оборот минус себестоимость товаров. Для корректного расчёта заполните себестоимость в карточках товаров.</p>
                                 <p class="mt-1"><strong>Заказы</strong> — количество завершённых заказов (без отменённых и возвратов).</p>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-200">
+                                <h4 class="font-semibold text-amber-800 mb-2">&#9888; Важно: валюта</h4>
+                                <div class="text-amber-800 space-y-1">
+                                    <p><strong>Uzum Market</strong> — суммы в <strong>узбекских сумах (UZS)</strong></p>
+                                    <p><strong>Wildberries, Ozon, Yandex Market</strong> — суммы в <strong>российских рублях (RUB)</strong></p>
+                                    <p class="text-sm mt-2">При установке плановых показателей учитывайте валюту маркетплейса. Суммы разных маркетплейсов <strong>не конвертируются</strong> автоматически.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -245,8 +253,8 @@
                                         <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
                                         <td class="px-4 py-3">
                                             <span class="inline-flex items-center gap-1.5">
-                                                <span class="w-2.5 h-2.5 rounded-full" :style="'background:' + (p.salesSphere?.color ?? '#6B7280')"></span>
-                                                <span x-text="p.salesSphere?.name ?? '—'"></span>
+                                                <span class="w-2.5 h-2.5 rounded-full" :style="'background:' + ((p.salesSphere || p.sales_sphere)?.color ?? '#6B7280')"></span>
+                                                <span x-text="(p.salesSphere || p.sales_sphere)?.name ?? '—'"></span>
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-right text-xs">
@@ -314,7 +322,7 @@
                                 <template x-for="p in plans" :key="p.id">
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
-                                        <td class="px-4 py-3" x-text="p.salesSphere?.name ?? '—'"></td>
+                                        <td class="px-4 py-3" x-text="(p.salesSphere || p.sales_sphere)?.name ?? '—'"></td>
                                         <td class="px-4 py-3 text-gray-500" x-text="monthName(p.period_month) + ' ' + p.period_year"></td>
                                         <td class="px-4 py-3 text-right text-xs">
                                             <div x-text="fmt(p.target_revenue) + ' / ' + fmt(p.actual_revenue)"></div>
