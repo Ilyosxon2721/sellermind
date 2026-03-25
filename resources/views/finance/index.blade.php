@@ -574,7 +574,7 @@
                                     <div class="flex items-center space-x-2 mb-3">
                                         <div class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">Y</div>
                                         <span class="font-medium text-yellow-700">Yandex Market</span>
-                                        <span class="text-xs text-gray-400 ml-auto">RUB → UZS</span>
+                                        <span class="text-xs text-gray-400 ml-auto">UZS</span>
                                     </div>
                                     <div class="space-y-2 text-sm">
                                         <div class="flex justify-between items-center">
@@ -593,7 +593,6 @@
                                             <span class="text-gray-600">Отменены</span>
                                             <span class="font-medium text-red-600" x-text="(marketplaceIncome.marketplaces?.yandex?.cancelled?.count || 0) + ' шт / ' + formatMoney(marketplaceIncome.marketplaces?.yandex?.cancelled?.amount || 0)"></span>
                                         </div>
-                                        <div class="text-xs text-gray-400 text-right pt-1" x-text="'(' + formatMoney(marketplaceIncome.marketplaces?.yandex?.sold?.amount_rub || 0) + ' ₽)'"></div>
                                     </div>
                                 </div>
 
