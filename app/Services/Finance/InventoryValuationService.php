@@ -364,6 +364,27 @@ final class InventoryValuationService
             return null;
         }
 
+        // Предзагрузка данных для устранения N+1 запросов
+        $accountIds = $uzumOrders->pluck('marketplace_account_id')->unique()->values()->all();
+
+        $offerIds = $uzumOrders->pluck('offer_id')->filter()->unique()->values()->all();
+        $linksByOfferId = ! empty($offerIds)
+            ? \App\Models\VariantMarketplaceLink::whereIn('marketplace_account_id', $accountIds)
+                ->whereIn('external_offer_id', $offerIds)
+                ->with('variant')
+                ->get()
+                ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->external_offer_id)
+            : collect();
+
+        $barcodes = $uzumOrders->pluck('barcode')->filter()->unique()->values()->all();
+        $linksByBarcode = ! empty($barcodes)
+            ? \App\Models\VariantMarketplaceLink::whereIn('marketplace_account_id', $accountIds)
+                ->whereIn('marketplace_barcode', $barcodes)
+                ->with('variant')
+                ->get()
+                ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->marketplace_barcode)
+            : collect();
+
         $cogs = 0;
         $revenue = 0;
         $itemsCount = $uzumOrders->count();
@@ -375,7 +396,7 @@ final class InventoryValuationService
             $rev = (float) ($order->amount ?? 0);
             $revenue += $rev;
 
-            $purchasePrice = $this->findPurchasePrice($order, $financeSettings, $companyId);
+            $purchasePrice = $this->findPurchasePriceFromCache($order, $financeSettings, $linksByOfferId, $linksByBarcode);
 
             if ($purchasePrice !== null) {
                 $cogs += $purchasePrice;
@@ -420,6 +441,35 @@ final class InventoryValuationService
             return null;
         }
 
+        // Предзагрузка данных для устранения N+1 запросов
+        $accountIds = $wbOrders->pluck('marketplace_account_id')->unique()->values()->all();
+
+        $barcodes = $wbOrders->pluck('barcode')->filter()->unique()->values()->all();
+        $linksByBarcode = ! empty($barcodes)
+            ? \App\Models\VariantMarketplaceLink::whereIn('marketplace_account_id', $accountIds)
+                ->whereIn('marketplace_barcode', $barcodes)
+                ->with('variant')
+                ->get()
+                ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->marketplace_barcode)
+            : collect();
+
+        $nmIds = $wbOrders->pluck('nm_id')->filter()->unique()->values()->all();
+        $linksByNmId = ! empty($nmIds)
+            ? \App\Models\VariantMarketplaceLink::whereIn('marketplace_account_id', $accountIds)
+                ->whereHas('marketplaceProduct', fn ($q) => $q->whereIn('external_id', $nmIds))
+                ->with(['variant', 'marketplaceProduct'])
+                ->get()
+                ->groupBy(fn ($link) => $link->marketplace_account_id.':'.($link->marketplaceProduct->external_id ?? ''))
+            : collect();
+
+        $skus = $wbOrders->pluck('supplier_article')->filter()->unique()->values()->all();
+        $variantsBySku = ! empty($skus)
+            ? \App\Models\ProductVariant::where('company_id', $companyId)
+                ->whereIn('sku', $skus)
+                ->get()
+                ->keyBy('sku')
+            : collect();
+
         $cogs = 0;
         $revenueRub = 0;
         $itemsCount = $wbOrders->count();
@@ -433,10 +483,8 @@ final class InventoryValuationService
             $purchasePrice = null;
 
             if ($order->barcode) {
-                $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                    ->where('marketplace_barcode', $order->barcode)
-                    ->with('variant')
-                    ->first();
+                $key = $order->marketplace_account_id.':'.$order->barcode;
+                $link = $linksByBarcode->get($key)?->first();
                 if ($link?->variant?->purchase_price) {
                     $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                     $fromInternal++;
@@ -444,10 +492,8 @@ final class InventoryValuationService
             }
 
             if (! $purchasePrice && $order->nm_id) {
-                $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                    ->whereHas('marketplaceProduct', fn ($q) => $q->where('external_id', $order->nm_id))
-                    ->with('variant')
-                    ->first();
+                $key = $order->marketplace_account_id.':'.$order->nm_id;
+                $link = $linksByNmId->get($key)?->first();
                 if ($link?->variant?->purchase_price) {
                     $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                     $fromInternal++;
@@ -455,9 +501,7 @@ final class InventoryValuationService
             }
 
             if (! $purchasePrice && $order->supplier_article) {
-                $variant = \App\Models\ProductVariant::where('company_id', $companyId)
-                    ->where('sku', $order->supplier_article)
-                    ->first();
+                $variant = $variantsBySku->get($order->supplier_article);
                 if ($variant?->purchase_price) {
                     $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                     $fromInternal++;
@@ -502,6 +546,26 @@ final class InventoryValuationService
             return null;
         }
 
+        // Предзагрузка данных для устранения N+1 запросов
+        $accountIds = $ozonOrders->pluck('marketplace_account_id')->unique()->values()->all();
+
+        $offerIds = $ozonOrders->pluck('offer_id')->filter()->unique()->values()->all();
+        $linksByOfferId = ! empty($offerIds)
+            ? \App\Models\VariantMarketplaceLink::whereIn('marketplace_account_id', $accountIds)
+                ->whereIn('external_offer_id', $offerIds)
+                ->with('variant')
+                ->get()
+                ->groupBy(fn ($link) => $link->marketplace_account_id.':'.$link->external_offer_id)
+            : collect();
+
+        $skus = $ozonOrders->pluck('sku')->filter()->unique()->values()->all();
+        $variantsBySku = ! empty($skus)
+            ? \App\Models\ProductVariant::where('company_id', $companyId)
+                ->whereIn('sku', $skus)
+                ->get()
+                ->keyBy('sku')
+            : collect();
+
         $cogs = 0;
         $revenueRub = 0;
         $itemsCount = $ozonOrders->count();
@@ -515,10 +579,8 @@ final class InventoryValuationService
             $purchasePrice = null;
 
             if ($order->offer_id) {
-                $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                    ->where('external_offer_id', $order->offer_id)
-                    ->with('variant')
-                    ->first();
+                $key = $order->marketplace_account_id.':'.$order->offer_id;
+                $link = $linksByOfferId->get($key)?->first();
                 if ($link?->variant?->purchase_price) {
                     $purchasePrice = $link->variant->getPurchasePriceInBase($financeSettings);
                     $fromInternal++;
@@ -526,9 +588,7 @@ final class InventoryValuationService
             }
 
             if (! $purchasePrice && $order->sku) {
-                $variant = \App\Models\ProductVariant::where('company_id', $companyId)
-                    ->where('sku', $order->sku)
-                    ->first();
+                $variant = $variantsBySku->get($order->sku);
                 if ($variant?->purchase_price) {
                     $purchasePrice = $variant->getPurchasePriceInBase($financeSettings);
                     $fromInternal++;
@@ -621,16 +681,18 @@ final class InventoryValuationService
     }
 
     /**
-     * Найти закупочную цену товара через внутренние связи
+     * Найти закупочную цену через предзагруженные коллекции (без N+1)
      */
-    protected function findPurchasePrice($order, FinanceSettings $financeSettings, int $companyId): ?float
-    {
+    protected function findPurchasePriceFromCache(
+        $order,
+        FinanceSettings $financeSettings,
+        $linksByOfferId,
+        $linksByBarcode
+    ): ?float {
         // 1. По offer_id
         if ($order->offer_id) {
-            $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                ->where('external_offer_id', $order->offer_id)
-                ->with('variant')
-                ->first();
+            $key = $order->marketplace_account_id.':'.$order->offer_id;
+            $link = $linksByOfferId->get($key)?->first();
             if ($link?->variant?->purchase_price) {
                 return $link->variant->getPurchasePriceInBase($financeSettings);
             }
@@ -638,10 +700,8 @@ final class InventoryValuationService
 
         // 2. По barcode
         if (! empty($order->barcode)) {
-            $link = \App\Models\VariantMarketplaceLink::where('marketplace_account_id', $order->marketplace_account_id)
-                ->where('marketplace_barcode', $order->barcode)
-                ->with('variant')
-                ->first();
+            $key = $order->marketplace_account_id.':'.$order->barcode;
+            $link = $linksByBarcode->get($key)?->first();
             if ($link?->variant?->purchase_price) {
                 return $link->variant->getPurchasePriceInBase($financeSettings);
             }

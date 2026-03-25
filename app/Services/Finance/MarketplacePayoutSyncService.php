@@ -7,6 +7,7 @@ use App\Models\Finance\CashTransaction;
 use App\Models\Finance\MarketplacePayout;
 use App\Models\MarketplaceAccount;
 use App\Models\UzumFinanceOrder;
+use App\Models\Pricing\MarketplaceCommission;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -294,8 +295,7 @@ class MarketplacePayoutSyncService
                     $payoutDate = Carbon::parse($month->period_start);
                     $payoutId = "ozon-{$account->id}-{$payoutDate->format('Y-m')}";
 
-                    // Ozon берёт ~7% комиссии (приблизительно)
-                    $commission = round($month->gross_amount * 0.07, 2);
+                    $commission = $this->getMarketplaceCommission('ozon', (float) $month->gross_amount);
                     $netAmount = round($month->gross_amount - $commission, 2);
 
                     $payoutResult = $this->createOrUpdatePayoutForMarketplace(
@@ -379,8 +379,7 @@ class MarketplacePayoutSyncService
                     $payoutDate = Carbon::parse($month->period_start);
                     $payoutId = "ym-{$account->id}-{$payoutDate->format('Y-m')}";
 
-                    // YM берёт ~10% комиссии (приблизительно)
-                    $commission = round($month->gross_amount * 0.10, 2);
+                    $commission = $this->getMarketplaceCommission('ym', (float) $month->gross_amount);
                     $netAmount = round($month->gross_amount - $commission, 2);
 
                     $payoutResult = $this->createOrUpdatePayoutForMarketplace(
@@ -637,5 +636,32 @@ class MarketplacePayoutSyncService
         $target['transactions_created'] += $source['transactions_created'];
         $target['total_amount'] += $source['total_amount'];
         $target['errors'] += $source['errors'];
+    }
+
+    /**
+     * Получить комиссию маркетплейса из справочника или по умолчанию
+     */
+    protected function getMarketplaceCommission(string $marketplace, float $grossAmount): float
+    {
+        if ($grossAmount <= 0) {
+            return 0;
+        }
+
+        if (class_exists(MarketplaceCommission::class)) {
+            $rule = MarketplaceCommission::forMarketplace($marketplace)
+                ->active()
+                ->first();
+            if ($rule) {
+                return $rule->calculateCommission($grossAmount);
+            }
+        }
+
+        $defaultRates = [
+            'ozon' => 0.07,
+            'ym' => 0.10,
+            'wb' => 0.05,
+        ];
+
+        return round($grossAmount * ($defaultRates[$marketplace] ?? 0.07), 2);
     }
 }
