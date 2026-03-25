@@ -41,6 +41,8 @@ final class SalesSphere extends Model
         'marketplace_account_id',
         'marketplace_account_ids',
         'offline_sale_types',
+        'store_ids',
+        'sale_sources',
         'is_active',
         'is_manual',
         'label_metric1',
@@ -57,6 +59,8 @@ final class SalesSphere extends Model
             'sort_order' => 'integer',
             'marketplace_account_ids' => 'array',
             'offline_sale_types' => 'array',
+            'store_ids' => 'array',
+            'sale_sources' => 'array',
         ];
     }
 
@@ -135,11 +139,27 @@ final class SalesSphere extends Model
     }
 
     /**
+     * Привязана ли сфера к интернет-магазину (StoreOrder)
+     */
+    public function hasStoreLink(): bool
+    {
+        return ! empty($this->store_ids);
+    }
+
+    /**
+     * Привязана ли сфера к ручным/POS продажам (Sale)
+     */
+    public function hasSaleSourceLink(): bool
+    {
+        return ! empty($this->sale_sources);
+    }
+
+    /**
      * Ручная сфера — данные вводятся вручную, без автосбора
      */
     public function isManual(): bool
     {
-        return $this->is_manual || (! $this->hasMarketplaceLink() && ! $this->hasOfflineSaleLink());
+        return $this->is_manual || (! $this->hasMarketplaceLink() && ! $this->hasOfflineSaleLink() && ! $this->hasStoreLink() && ! $this->hasSaleSourceLink());
     }
 
     /**

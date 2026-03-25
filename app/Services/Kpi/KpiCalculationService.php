@@ -33,9 +33,11 @@ final class KpiCalculationService
         $sphere = $plan->salesSphere;
         $hasMarketplace = $sphere->hasMarketplaceLink();
         $hasOffline = $sphere->hasOfflineSaleLink();
+        $hasStore = $sphere->hasStoreLink();
+        $hasSaleSources = $sphere->hasSaleSourceLink();
 
         // Если нет привязок — ручной ввод
-        if (! $hasMarketplace && ! $hasOffline) {
+        if (! $hasMarketplace && ! $hasOffline && ! $hasStore && ! $hasSaleSources) {
             return [
                 'revenue' => $plan->actual_revenue,
                 'margin' => $plan->actual_margin,
@@ -60,6 +62,20 @@ final class KpiCalculationService
             $revenue += $offData['revenue'];
             $margin += $offData['margin'];
             $orders += $offData['orders'];
+        }
+
+        if ($hasStore) {
+            $storeData = $this->collectStoreOrderActuals($plan, $sphere);
+            $revenue += $storeData['revenue'];
+            $margin += $storeData['margin'];
+            $orders += $storeData['orders'];
+        }
+
+        if ($hasSaleSources) {
+            $saleData = $this->collectSaleActuals($plan, $sphere);
+            $revenue += $saleData['revenue'];
+            $margin += $saleData['margin'];
+            $orders += $saleData['orders'];
         }
 
         return compact('revenue', 'margin', 'orders');
@@ -265,6 +281,97 @@ final class KpiCalculationService
         return [
             'revenue' => $revenue,
             'margin' => max(0, $margin),
+            'orders' => $orders,
+        ];
+    }
+
+    /**
+     * Собрать фактические данные из заказов интернет-магазина (StoreOrder)
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectStoreOrderActuals(KpiPlan $plan, SalesSphere $sphere): array
+    {
+        $storeIds = $sphere->store_ids ?? [];
+        $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
+        $periodEnd = $periodStart->copy()->endOfMonth();
+
+        if (empty($storeIds)) {
+            return ['revenue' => 0.0, 'margin' => 0.0, 'orders' => 0];
+        }
+
+        $row = DB::table('store_orders')
+            ->whereIn('store_id', $storeIds)
+            ->whereIn('status', ['delivered', 'completed'])
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(total), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        $revenue = (float) ($row->revenue ?? 0);
+        $orders = (int) ($row->orders ?? 0);
+
+        // Маржа: выручка - себестоимость из store_order_items
+        $costRow = DB::table('store_order_items as soi')
+            ->join('store_orders as so', 'so.id', '=', 'soi.order_id')
+            ->leftJoin('product_variants as pv', 'pv.id', '=', 'soi.variant_id')
+            ->whereIn('so.store_id', $storeIds)
+            ->whereIn('so.status', ['delivered', 'completed'])
+            ->where('so.payment_status', 'paid')
+            ->whereBetween('so.created_at', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(soi.total), 0) as total_sales, COALESCE(SUM(COALESCE(pv.purchase_price, 0) * soi.quantity), 0) as total_cost')
+            ->first();
+
+        $margin = (float) (($costRow->total_sales ?? 0) - ($costRow->total_cost ?? 0));
+
+        return [
+            'revenue' => $revenue,
+            'margin' => max(0.0, $margin),
+            'orders' => $orders,
+        ];
+    }
+
+    /**
+     * Собрать фактические данные из ручных/POS продаж (Sale)
+     *
+     * @return array{revenue: float, margin: float, orders: int}
+     */
+    private function collectSaleActuals(KpiPlan $plan, SalesSphere $sphere): array
+    {
+        $sources = $sphere->sale_sources ?? [];
+        $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
+        $periodEnd = $periodStart->copy()->endOfMonth();
+
+        if (empty($sources)) {
+            return ['revenue' => 0.0, 'margin' => 0.0, 'orders' => 0];
+        }
+
+        $row = DB::table('sales')
+            ->where('company_id', $plan->company_id)
+            ->whereIn('source', $sources)
+            ->where('status', 'completed')
+            ->whereBetween('completed_at', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
+            ->first();
+
+        $revenue = (float) ($row->revenue ?? 0);
+        $orders = (int) ($row->orders ?? 0);
+
+        // Маржа из sale_items.cost_price
+        $costRow = DB::table('sale_items as si')
+            ->join('sales as s', 's.id', '=', 'si.sale_id')
+            ->where('s.company_id', $plan->company_id)
+            ->whereIn('s.source', $sources)
+            ->where('s.status', 'completed')
+            ->whereBetween('s.completed_at', [$periodStart, $periodEnd])
+            ->selectRaw('COALESCE(SUM(si.total), 0) as total_sales, COALESCE(SUM(COALESCE(si.cost_price, 0) * si.quantity), 0) as total_cost')
+            ->first();
+
+        $margin = (float) (($costRow->total_sales ?? 0) - ($costRow->total_cost ?? 0));
+
+        return [
+            'revenue' => $revenue,
+            'margin' => max(0.0, $margin),
             'orders' => $orders,
         ];
     }

@@ -31,7 +31,8 @@ function kpiPage(config) {
         planForm: { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: now.getFullYear(), period_month: now.getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 },
         aiSuggesting: false,
         aiReasoning: '',
-        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' },
+        stores: [],
+        sphereForm: { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], store_ids: [], sale_sources: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' },
         scaleForm: { id: null, name: '', is_default: false, tiers: [] },
 
         // Уведомления
@@ -43,6 +44,7 @@ function kpiPage(config) {
             this.loadScales();
             this.loadEmployees();
             this.loadMarketplaceAccounts();
+            this.loadStores();
             this.loadChartData(6);
         },
 
@@ -55,7 +57,7 @@ function kpiPage(config) {
             return { id: null, employee_id: '', kpi_sales_sphere_id: '', kpi_bonus_scale_id: '', period_year: new Date().getFullYear(), period_month: new Date().getMonth()+1, target_revenue: 0, target_margin: 0, target_orders: 0, weight_revenue: 40, weight_margin: 40, weight_orders: 20 };
         },
         emptySphereForm() {
-            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' };
+            return { id: null, name: '', description: '', color: '#3B82F6', icon: '📊', marketplace_account_ids: [], offline_sale_types: [], store_ids: [], sale_sources: [], is_active: true, is_manual: false, label_metric1: '', label_metric2: '', label_metric3: '' };
         },
         emptyScaleForm() {
             return { id: null, name: '', is_default: false, tiers: [] };
@@ -160,6 +162,12 @@ function kpiPage(config) {
                 var res = await this.api('finance/kpi/marketplace-accounts');
                 this.marketplaceAccounts = res.data ?? [];
             } catch (e) { /* маркетплейсы могут быть не доступны */ }
+        },
+        async loadStores() {
+            try {
+                var res = await this.api('store/stores');
+                this.stores = res.data ?? [];
+            } catch (e) { /* магазины могут быть не доступны */ }
         },
         async loadChartData(months) {
             months = months || 6;
@@ -303,6 +311,8 @@ function kpiPage(config) {
                 marketplace_account_ids: (s.marketplace_account_ids || []).map(function(id) { return parseInt(id); }),
                 offline_sale_types: (s.offline_sale_types || []).slice(),
                 is_manual: s.is_manual || false,
+                store_ids: (s.store_ids || []).map(function(id) { return parseInt(id); }),
+                sale_sources: (s.sale_sources || []).slice(),
                 label_metric1: s.label_metric1 || '',
                 label_metric2: s.label_metric2 || '',
                 label_metric3: s.label_metric3 || ''
@@ -328,6 +338,18 @@ function kpiPage(config) {
                 types.splice(idx, 1);
             }
             this.sphereForm.offline_sale_types = types.slice();
+        },
+        toggleStoreId(id) {
+            var ids = this.sphereForm.store_ids || [];
+            var idx = ids.indexOf(id);
+            if (idx === -1) { ids.push(id); } else { ids.splice(idx, 1); }
+            this.sphereForm.store_ids = ids.slice();
+        },
+        toggleSaleSource(source) {
+            var sources = this.sphereForm.sale_sources || [];
+            var idx = sources.indexOf(source);
+            if (idx === -1) { sources.push(source); } else { sources.splice(idx, 1); }
+            this.sphereForm.sale_sources = sources.slice();
         },
         async saveSphere() {
             try {
