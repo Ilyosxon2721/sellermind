@@ -463,7 +463,7 @@
     </div>
 
     {{-- ============ МОДАЛКА: ПЛАН ============ --}}
-    <div x-show="showPlanModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showPlanModal = false">
+    <div x-cloak x-show="showPlanModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showPlanModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -575,7 +575,7 @@
     </div>
 
     {{-- ============ МОДАЛКА: СФЕРА ============ --}}
-    <div x-show="showSphereModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSphereModal = false">
+    <div x-cloak x-show="showSphereModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSphereModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-1" x-text="sphereForm.id ? 'Редактировать сферу' : 'Новая сфера'"></h3>
@@ -728,7 +728,7 @@
     </div>
 
     {{-- ============ МОДАЛКА: ШКАЛА ============ --}}
-    <div x-show="showScaleModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showScaleModal = false">
+    <div x-cloak x-show="showScaleModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showScaleModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-1" x-text="scaleForm.id ? 'Редактировать шкалу бонусов' : 'Новая шкала бонусов'"></h3>
@@ -831,7 +831,7 @@
     </div>
 
     {{-- ============ МОДАЛКА: ФАКТИЧЕСКИЕ ДАННЫЕ ============ --}}
-    <div x-show="showActualsModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showActualsModal = false">
+    <div x-cloak x-show="showActualsModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showActualsModal = false">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md" @click.stop>
             <div class="p-6">
                 <h3 class="text-lg font-semibold mb-1">Ввод фактических данных</h3>
