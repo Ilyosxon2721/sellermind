@@ -223,8 +223,20 @@
                         </div>
                         <div class="space-y-1 text-sm">
                             <template x-for="acc in overview.balance?.cash_accounts || []" :key="acc.id">
-                                <div class="flex justify-between">
-                                    <span class="text-slate-300" x-text="acc.name"></span>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-300 flex items-center gap-1.5">
+                                        <template x-if="acc.marketplace">
+                                            <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                                :class="{
+                                                    'bg-purple-500/20 text-purple-300': acc.marketplace === 'wb',
+                                                    'bg-blue-500/20 text-blue-300': acc.marketplace === 'ozon',
+                                                    'bg-yellow-500/20 text-yellow-300': acc.marketplace === 'uzum',
+                                                    'bg-red-500/20 text-red-300': acc.marketplace === 'ym',
+                                                }"
+                                                x-text="({wb:'WB', ozon:'Ozon', uzum:'Uzum', ym:'YM'})[acc.marketplace] || acc.marketplace"></span>
+                                        </template>
+                                        <span x-text="acc.name"></span>
+                                    </span>
                                     <span class="text-white font-medium" x-text="formatMoney(acc.balance) + ' ' + acc.currency_code"></span>
                                 </div>
                             </template>
@@ -1453,7 +1465,19 @@
                                         </template>
                                     </div>
                                     <div>
-                                        <div class="font-medium text-gray-900" x-text="account.name"></div>
+                                        <div class="font-medium text-gray-900 flex items-center gap-1.5">
+                                            <template x-if="account.marketplace">
+                                                <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                                    :class="{
+                                                        'bg-purple-100 text-purple-700': account.marketplace === 'wb',
+                                                        'bg-blue-100 text-blue-700': account.marketplace === 'ozon',
+                                                        'bg-yellow-100 text-yellow-700': account.marketplace === 'uzum',
+                                                        'bg-red-100 text-red-700': account.marketplace === 'ym',
+                                                    }"
+                                                    x-text="({wb:'WB', ozon:'Ozon', uzum:'Uzum', ym:'YM'})[account.marketplace] || account.marketplace"></span>
+                                            </template>
+                                            <span x-text="account.name"></span>
+                                        </div>
                                         <div class="text-xs text-gray-500" x-text="getAccountTypeName(account.type)"></div>
                                     </div>
                                 </div>

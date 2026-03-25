@@ -513,6 +513,7 @@ class FinanceController extends Controller
                 'type' => $a->type,
                 'balance' => $a->balance,
                 'currency_code' => $a->currency_code,
+                'marketplace' => $a->marketplace,
             ])->toArray();
 
             // Total конвертируем в выбранную валюту
