@@ -40,6 +40,8 @@ final class KpiPlan extends Model
 
     protected $table = 'kpi_plans';
 
+    protected $appends = ['sphere_currency', 'bonus_amount_uzs'];
+
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_CALCULATED = 'calculated';
@@ -171,6 +173,54 @@ final class KpiPlan extends Model
         }
 
         return round($tier->calculateBonus($this->actual_revenue, $this->actual_margin), 2);
+    }
+
+    /**
+     * Определить валюту сферы по привязанным маркетплейсам
+     */
+    public function getSphereCurrencyAttribute(): string
+    {
+        $sphere = $this->salesSphere;
+        if (! $sphere || $sphere->isManual()) {
+            return 'UZS';
+        }
+
+        $accountIds = $sphere->getLinkedAccountIds();
+        if (empty($accountIds)) {
+            return 'UZS';
+        }
+
+        $marketplace = \App\Models\MarketplaceAccount::whereIn('id', $accountIds)
+            ->value('marketplace');
+
+        return match ($marketplace) {
+            'wb', 'wildberries', 'ozon', 'ym', 'yandex_market' => 'RUB',
+            default => 'UZS',
+        };
+    }
+
+    /**
+     * Бонус конвертированный в UZS (если сфера в RUB)
+     */
+    public function getBonusAmountUzsAttribute(): float
+    {
+        if ($this->bonus_amount == 0) {
+            return 0;
+        }
+
+        $currency = $this->sphere_currency;
+
+        if ($currency === 'UZS') {
+            return $this->bonus_amount;
+        }
+
+        $rate = \Illuminate\Support\Facades\Cache::get("exchange_rate:{$currency}_UZS", 0);
+
+        if ($rate <= 0) {
+            return $this->bonus_amount; // fallback — без конвертации
+        }
+
+        return round($this->bonus_amount * $rate, 2);
     }
 
     public function getPeriodLabelAttribute(): string

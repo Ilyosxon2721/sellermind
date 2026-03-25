@@ -273,7 +273,12 @@
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
                                         <td class="px-4 py-3 text-right font-medium">
-                                            <span x-text="fmt(p.bonus_amount)"></span>
+                                            <div>
+                                                <span x-text="fmt(p.bonus_amount) + ' ' + (p.sphere_currency ?? 'UZS')"></span>
+                                            </div>
+                                            <template x-if="p.sphere_currency === 'RUB' && p.bonus_amount_uzs > 0 && p.bonus_amount > 0">
+                                                <div class="text-xs text-green-600 mt-0.5" x-text="'≈ ' + fmt(p.bonus_amount_uzs) + ' сум'"></div>
+                                            </template>
                                             <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
                                                 <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
                                             </template>
@@ -340,7 +345,12 @@
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
                                         <td class="px-4 py-3 text-right font-medium">
-                                            <span x-text="fmt(p.bonus_amount)"></span>
+                                            <div>
+                                                <span x-text="fmt(p.bonus_amount) + ' ' + (p.sphere_currency ?? 'UZS')"></span>
+                                            </div>
+                                            <template x-if="p.sphere_currency === 'RUB' && p.bonus_amount_uzs > 0 && p.bonus_amount > 0">
+                                                <div class="text-xs text-green-600 mt-0.5" x-text="'≈ ' + fmt(p.bonus_amount_uzs) + ' сум'"></div>
+                                            </template>
                                             <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
                                                 <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
                                             </template>
