@@ -303,32 +303,50 @@ final class KpiPlanController extends Controller
             9 => 'Сен', 10 => 'Окт', 11 => 'Ноя', 12 => 'Дек',
         ];
 
+        // Одна SQL-агрегация вместо N запросов
+        $startDate = now()->subMonths($months - 1)->startOfMonth();
+
+        $query = KpiPlan::byCompany($companyId)
+            ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
+            ->where(function ($q) use ($startDate) {
+                $q->where('period_year', '>', $startDate->year)
+                    ->orWhere(function ($q2) use ($startDate) {
+                        $q2->where('period_year', $startDate->year)
+                            ->where('period_month', '>=', $startDate->month);
+                    });
+            })
+            ->select([
+                'period_year',
+                'period_month',
+                \Illuminate\Support\Facades\DB::raw('ROUND(AVG(achievement_percent), 1) as avg_achievement'),
+                \Illuminate\Support\Facades\DB::raw('ROUND(SUM(bonus_amount), 0) as total_bonus'),
+            ])
+            ->groupBy('period_year', 'period_month');
+
+        if ($employeeId) {
+            $query->forEmployee($employeeId);
+        }
+
+        if ($sphereId) {
+            $query->where('kpi_sales_sphere_id', $sphereId);
+        }
+
+        $results = $query->orderBy('period_year')
+            ->orderBy('period_month')
+            ->get()
+            ->keyBy(fn ($row) => $row->period_year.'-'.$row->period_month);
+
         $labels = [];
         $achievements = [];
         $bonuses = [];
 
         for ($i = $months - 1; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $year = $date->year;
-            $month = $date->month;
+            $key = $date->year.'-'.$date->month;
 
-            $query = KpiPlan::byCompany($companyId)
-                ->forPeriod($year, $month)
-                ->where('status', '!=', KpiPlan::STATUS_CANCELLED);
-
-            if ($employeeId) {
-                $query->forEmployee($employeeId);
-            }
-
-            if ($sphereId) {
-                $query->where('kpi_sales_sphere_id', $sphereId);
-            }
-
-            $plans = $query->get();
-
-            $labels[] = ($monthNames[$month] ?? '').' '.$year;
-            $achievements[] = $plans->count() > 0 ? round($plans->avg('achievement_percent'), 1) : 0;
-            $bonuses[] = round($plans->sum('bonus_amount'), 0);
+            $labels[] = ($monthNames[$date->month] ?? '').' '.$date->year;
+            $achievements[] = isset($results[$key]) ? (float) $results[$key]->avg_achievement : 0;
+            $bonuses[] = isset($results[$key]) ? (float) $results[$key]->total_bonus : 0;
         }
 
         return $this->successResponse([

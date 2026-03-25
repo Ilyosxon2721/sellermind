@@ -943,36 +943,6 @@ Route::middleware('auth.any')->group(function () {
         });
     });
 
-    // Backward-compatible KPI routes (without finance/ prefix)
-    Route::prefix('kpi')->group(function () {
-        Route::get('dashboard', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'dashboard']);
-        Route::get('ranking', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'ranking']);
-        Route::get('forecast', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'forecast']);
-        Route::get('marketplace-accounts', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'marketplaceAccounts']);
-
-        Route::get('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'index']);
-        Route::post('spheres', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'store']);
-        Route::get('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'show']);
-        Route::put('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'update']);
-        Route::delete('spheres/{id}', [\App\Http\Controllers\Api\Kpi\SalesSphereController::class, 'destroy']);
-
-        Route::get('bonus-scales', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'index']);
-        Route::post('bonus-scales', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'store']);
-        Route::get('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'show']);
-        Route::put('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'update']);
-        Route::delete('bonus-scales/{id}', [\App\Http\Controllers\Api\Kpi\BonusScaleController::class, 'destroy']);
-
-        Route::get('plans', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'index']);
-        Route::post('plans', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'store']);
-        Route::get('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'show']);
-        Route::put('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'update']);
-        Route::delete('plans/{id}', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'destroy']);
-        Route::put('plans/{id}/actuals', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'updateActuals']);
-        Route::post('plans/calculate', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'calculate'])->middleware('throttle:kpi-calculate');
-        Route::post('plans/ai-suggest', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'aiSuggest'])->middleware('throttle:kpi-ai');
-        Route::post('plans/{id}/approve', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'approve']);
-        Route::get('chart-data', [\App\Http\Controllers\Api\Kpi\KpiPlanController::class, 'chartData']);
-    });
 
     // Admin Routes
     Route::prefix('admin')->group(function () {

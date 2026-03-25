@@ -38,6 +38,50 @@ final class UpdateBonusScaleRequest extends FormRequest
     }
 
     /**
+     * Кастомная валидация: max >= min, без пересечения диапазонов
+     */
+    public function after(): array
+    {
+        return [
+            function (\Illuminate\Validation\Validator $validator): void {
+                $tiers = $this->input('tiers', []);
+                if (empty($tiers)) {
+                    return;
+                }
+
+                foreach ($tiers as $i => $tier) {
+                    $min = (int) ($tier['min_percent'] ?? 0);
+                    $max = isset($tier['max_percent']) ? (int) $tier['max_percent'] : null;
+
+                    if ($max !== null && $max < $min) {
+                        $validator->errors()->add(
+                            "tiers.{$i}.max_percent",
+                            "Максимальный процент ({$max}) не может быть меньше минимального ({$min})"
+                        );
+                    }
+                }
+
+                $count = count($tiers);
+                for ($i = 0; $i < $count; $i++) {
+                    for ($j = $i + 1; $j < $count; $j++) {
+                        $aMin = (int) ($tiers[$i]['min_percent'] ?? 0);
+                        $aMax = isset($tiers[$i]['max_percent']) ? (int) $tiers[$i]['max_percent'] : PHP_INT_MAX;
+                        $bMin = (int) ($tiers[$j]['min_percent'] ?? 0);
+                        $bMax = isset($tiers[$j]['max_percent']) ? (int) $tiers[$j]['max_percent'] : PHP_INT_MAX;
+
+                        if ($aMin <= $bMax && $bMin <= $aMax) {
+                            $validator->errors()->add(
+                                "tiers.{$j}.min_percent",
+                                "Ступень #" . ($j + 1) . " пересекается со ступенью #" . ($i + 1)
+                            );
+                        }
+                    }
+                }
+            },
+        ];
+    }
+
+    /**
      * Сообщения об ошибках на русском
      *
      * @return array<string, string>

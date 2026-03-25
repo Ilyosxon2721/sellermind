@@ -306,7 +306,7 @@ final class KpiCalculationService
             ->with(['salesSphere', 'bonusScale.tiers', 'employee'])
             ->get();
 
-        return $plans->map(fn (KpiPlan $plan) => $this->calculatePlan($plan));
+        return DB::transaction(fn () => $plans->map(fn (KpiPlan $plan) => $this->calculatePlan($plan)));
     }
 
     /**

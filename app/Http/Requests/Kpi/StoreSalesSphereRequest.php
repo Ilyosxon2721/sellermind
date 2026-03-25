@@ -53,6 +53,26 @@ final class StoreSalesSphereRequest extends FormRequest
     }
 
     /**
+     * Кастомная валидация: хотя бы один источник данных
+     */
+    public function after(): array
+    {
+        return [
+            function (\Illuminate\Validation\Validator $validator): void {
+                $mpIds = $this->input('marketplace_account_ids', []);
+                $offlineTypes = $this->input('offline_sale_types', []);
+
+                if (empty($mpIds) && empty($offlineTypes) && ! $this->input('marketplace_account_id')) {
+                    $validator->errors()->add(
+                        'marketplace_account_ids',
+                        'Необходимо указать хотя бы один маркетплейс-аккаунт или тип офлайн-продаж'
+                    );
+                }
+            },
+        ];
+    }
+
+    /**
      * Сообщения об ошибках на русском
      *
      * @return array<string, string>
