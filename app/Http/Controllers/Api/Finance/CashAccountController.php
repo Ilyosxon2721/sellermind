@@ -420,6 +420,13 @@ class CashAccountController extends Controller
                 $result = $service->syncAll($companyId, $data['from'] ?? null, $data['to'] ?? null);
             }
 
+            // Пересчитать балансы всех marketplace-счетов на основе транзакций
+            CashAccount::where('company_id', $companyId)
+                ->where('type', CashAccount::TYPE_MARKETPLACE)
+                ->where('is_active', true)
+                ->get()
+                ->each(fn (CashAccount $acc) => $acc->recalculateBalance());
+
             return $this->successResponse([
                 'success' => true,
                 'result' => $result,
