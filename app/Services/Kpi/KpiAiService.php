@@ -234,11 +234,12 @@ final class KpiAiService
     private function collectWildberriesData(int $accountId, Carbon $periodStart, Carbon $periodEnd): array
     {
         $orders = \App\Models\WildberriesOrder::where('marketplace_account_id', $accountId)
-            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
+            ->where('is_cancel', false)
+            ->where('is_return', false)
             ->whereBetween('order_date', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(DISTINCT order_id) as total_orders,
-                COALESCE(SUM(total_price), 0) as total_revenue
+                COALESCE(SUM(for_pay), 0) as total_revenue
             ')
             ->first();
 
