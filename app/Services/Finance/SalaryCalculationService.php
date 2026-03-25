@@ -62,9 +62,11 @@ class SalaryCalculationService
 
                 $grossAmount = $employee->base_salary + $kpiBonus;
 
-                // Расчёт налогов (примерные ставки для Узбекистана)
-                $taxAmount = $grossAmount * 0.12; // НДФЛ 12%
-                $pensionAmount = $grossAmount * 0.01; // Накопительная пенсия 1%
+                // Расчёт налогов из настроек компании
+                $incomeTaxRate = ($settings->income_tax_rate ?? 12) / 100;
+                $pensionRate = 0.01; // Накопительная пенсия 1% (фиксированная ставка)
+                $taxAmount = $grossAmount * $incomeTaxRate;
+                $pensionAmount = $grossAmount * $pensionRate;
 
                 $netAmount = $grossAmount - $taxAmount - $pensionAmount;
 

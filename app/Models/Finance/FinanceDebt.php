@@ -150,7 +150,11 @@ class FinanceDebt extends Model
         $this->amount_paid += $amount;
         $this->amount_outstanding = max(0, $this->original_amount - $this->amount_paid);
 
-        if ($this->amount_outstanding <= 0) {
+        if ($this->amount_paid > $this->original_amount) {
+            // Переплата — фиксируем и закрываем долг
+            $this->amount_outstanding = 0;
+            $this->status = self::STATUS_PAID;
+        } elseif ($this->amount_outstanding <= 0) {
             $this->status = self::STATUS_PAID;
         } elseif ($this->amount_paid > 0) {
             $this->status = self::STATUS_PARTIALLY_PAID;

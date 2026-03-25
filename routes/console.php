@@ -187,6 +187,15 @@ Schedule::command('ym:push-stocks')
     })
     ->appendOutputTo(storage_path('logs/marketplace-sync.log'));
 
+// Синхронизация курсов валют из ЦБ Узбекистана — ежедневно в 9:00
+Schedule::command('finance:sync-currency-rates')
+    ->dailyAt('09:00')
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('Currency rates sync failed');
+    })
+    ->appendOutputTo(storage_path('logs/currency-rates.log'));
+
 // Кэширование расходов маркетплейсов (WB, Ozon, Uzum, Yandex)
 // Синхронизируем в кэш-таблицу каждые 4 часа для быстрой загрузки страницы финансов
 Schedule::command('marketplace:sync-expenses --period=30days')

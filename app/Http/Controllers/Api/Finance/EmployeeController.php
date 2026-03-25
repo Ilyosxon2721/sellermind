@@ -10,6 +10,7 @@ use App\Http\Requests\Finance\SalaryPaymentRequest;
 use App\Models\Finance\Employee;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
+use App\Models\Finance\FinanceSettings;
 use Illuminate\Support\Facades\Auth;
 
 class EmployeeController extends Controller
@@ -170,13 +171,19 @@ class EmployeeController extends Controller
         $data = $request->validated();
 
         // Create expense transaction for salary payment
+        $currencyCode = $employee->currency_code ?? 'UZS';
+        $settings = FinanceSettings::getForCompany($companyId);
+        $exchangeRate = $settings->getRate($currencyCode);
+
         $transaction = \App\Models\Finance\FinanceTransaction::create([
             'company_id' => $companyId,
             'type' => 'expense',
             'category_id' => $this->getSalaryCategoryId($companyId),
             'employee_id' => $employee->id,
             'amount' => $data['amount'],
-            'currency_code' => $employee->currency_code ?? 'UZS',
+            'currency_code' => $currencyCode,
+            'exchange_rate' => $exchangeRate,
+            'amount_base' => $data['amount'] * $exchangeRate,
             'description' => $data['description'] ?? "Зарплата: {$employee->full_name}",
             'transaction_date' => $data['payment_date'] ?? now()->toDateString(),
             'status' => 'confirmed',
@@ -213,13 +220,19 @@ class EmployeeController extends Controller
         $data = $request->validated();
 
         // Create income transaction (penalty reduces what we owe to employee)
+        $currencyCode = $employee->currency_code ?? 'UZS';
+        $settings = FinanceSettings::getForCompany($companyId);
+        $exchangeRate = $settings->getRate($currencyCode);
+
         $transaction = \App\Models\Finance\FinanceTransaction::create([
             'company_id' => $companyId,
             'type' => 'income',
             'category_id' => $this->getPenaltyCategoryId($companyId),
             'employee_id' => $employee->id,
             'amount' => $data['amount'],
-            'currency_code' => $employee->currency_code ?? 'UZS',
+            'currency_code' => $currencyCode,
+            'exchange_rate' => $exchangeRate,
+            'amount_base' => $data['amount'] * $exchangeRate,
             'description' => "Штраф: {$employee->full_name} - {$data['reason']}",
             'transaction_date' => $data['penalty_date'] ?? now()->toDateString(),
             'status' => 'confirmed',
@@ -264,13 +277,19 @@ class EmployeeController extends Controller
             'other' => 'Прочее',
         ];
 
+        $currencyCode = $employee->currency_code ?? 'UZS';
+        $settings = FinanceSettings::getForCompany($companyId);
+        $exchangeRate = $settings->getRate($currencyCode);
+
         $transaction = \App\Models\Finance\FinanceTransaction::create([
             'company_id' => $companyId,
             'type' => 'expense',
             'category_id' => $this->getEmployeeExpenseCategoryId($companyId),
             'employee_id' => $employee->id,
             'amount' => $data['amount'],
-            'currency_code' => $employee->currency_code ?? 'UZS',
+            'currency_code' => $currencyCode,
+            'exchange_rate' => $exchangeRate,
+            'amount_base' => $data['amount'] * $exchangeRate,
             'description' => "{$typeLabels[$expenseType]}: {$employee->full_name} - {$data['description']}",
             'transaction_date' => $data['expense_date'] ?? now()->toDateString(),
             'status' => 'confirmed',
@@ -313,9 +332,9 @@ class EmployeeController extends Controller
             ->get();
 
         $summary = [
-            'total_salary_paid' => $transactions->where('metadata.type', 'salary')->sum('amount'),
-            'total_penalties' => $transactions->where('metadata.type', 'penalty')->sum('amount'),
-            'total_expenses' => $transactions->where('metadata.type', 'employee_expense')->sum('amount'),
+            'total_salary_paid' => $transactions->where('metadata.type', 'salary')->sum('amount_base'),
+            'total_penalties' => $transactions->where('metadata.type', 'penalty')->sum('amount_base'),
+            'total_expenses' => $transactions->where('metadata.type', 'employee_expense')->sum('amount_base'),
         ];
 
         return $this->successResponse([
