@@ -189,7 +189,7 @@ class CashAccount extends Model
                 'name' => $marketplaceAccount->name.' (выплаты)',
                 'type' => self::TYPE_MARKETPLACE,
                 'marketplace' => $marketplaceAccount->marketplace,
-                'currency_code' => $marketplaceAccount->marketplace === 'uzum' ? 'UZS' : 'RUB',
+                'currency_code' => in_array($marketplaceAccount->marketplace, ['uzum', 'ym']) ? 'UZS' : 'RUB',
                 'balance' => 0,
                 'initial_balance' => 0,
                 'is_active' => true,

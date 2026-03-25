@@ -219,7 +219,16 @@ final class MarketplaceSalesService
                     ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(total_price, 0)) as revenue')
                     ->first();
 
-                $revenueRub = (float) ($ymSales?->revenue ?? 0);
+                $revenueRaw = (float) ($ymSales?->revenue ?? 0);
+
+                // Определяем валюту YM заказов — для Узбекистана цены в UZS
+                $ymCurrency = \App\Models\YandexMarketOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
+                    ->whereNotNull('currency')
+                    ->value('currency');
+                $isUzs = in_array($ymCurrency, ['UZS', 'uzs']);
+
+                $revenueUzs = $isUzs ? $revenueRaw : $revenueRaw * $rubToUzs;
+                $revenueRub = $isUzs ? ($rubToUzs > 0 ? $revenueRaw / $rubToUzs : 0) : $revenueRaw;
 
                 $ymExpenses = FinanceTransaction::byCompany($companyId)
                     ->confirmed()
@@ -228,8 +237,6 @@ final class MarketplaceSalesService
                     ->whereHas('category', fn ($q) => $q->where('code', 'like', 'MP_%'))
                     ->where('metadata->source', 'ym_sync')
                     ->sum('amount_base');
-
-                $revenueUzs = $revenueRub * $rubToUzs;
 
                 return [
                     'orders' => (int) ($ymSales?->cnt ?? 0),
