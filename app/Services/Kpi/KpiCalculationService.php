@@ -185,12 +185,32 @@ final class KpiCalculationService
     }
 
     /**
-     * Статистика Uzum из uzum_orders
+     * Статистика Uzum — чистый оборот из uzum_finance_orders (за вычетом комиссии)
+     * Fallback на uzum_orders.total_amount если финансовых данных нет
      *
      * @return array{revenue: float, orders: int}
      */
     private function getUzumStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
     {
+        // Приоритет: uzum_finance_orders (содержит seller_profit = чистый оборот)
+        $finRow = DB::table('uzum_finance_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('order_date', [$periodStart, $periodEnd])
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
+            ->selectRaw('COALESCE(SUM(seller_profit), 0) as revenue_tiyin, COALESCE(SUM(amount - amount_returns), 0) as orders')
+            ->first();
+
+        $revenueFromFinance = (float) (($finRow->revenue_tiyin ?? 0) / 100); // тийины → сумы
+        $ordersFromFinance = (int) ($finRow->orders ?? 0);
+
+        if ($revenueFromFinance > 0) {
+            return [
+                'revenue' => $revenueFromFinance,
+                'orders' => $ordersFromFinance,
+            ];
+        }
+
+        // Fallback: uzum_orders.total_amount (валовый, без вычета комиссии)
         $row = DB::table('uzum_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('ordered_at', [$periodStart, $periodEnd])
@@ -206,6 +226,9 @@ final class KpiCalculationService
 
     /**
      * Статистика Ozon из ozon_orders
+     *
+     * TODO: Ozon API не предоставляет данные о комиссии в заказах.
+     * Оборот считается валовый (total_price). Для чистого нужна интеграция с Ozon Finance API.
      *
      * @return array{revenue: float, orders: int}
      */
@@ -226,6 +249,9 @@ final class KpiCalculationService
 
     /**
      * Статистика Yandex Market из yandex_market_orders
+     *
+     * TODO: YM API не предоставляет данные о комиссии в заказах.
+     * Оборот считается валовый (total_price). Для чистого нужна интеграция с YM Finance API.
      *
      * @return array{revenue: float, orders: int}
      */
