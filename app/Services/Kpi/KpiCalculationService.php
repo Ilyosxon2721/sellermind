@@ -407,52 +407,6 @@ final class KpiCalculationService
     }
 
     /**
-     * Собрать фактические данные из заказов интернет-магазина (StoreOrder)
-     *
-     * @return array{revenue: float, margin: float, orders: int}
-     */
-    private function collectStoreOrderActuals(KpiPlan $plan, SalesSphere $sphere): array
-    {
-        $storeIds = $sphere->store_ids ?? [];
-        $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
-        $periodEnd = $periodStart->copy()->endOfMonth();
-
-        if (empty($storeIds)) {
-            return ['revenue' => 0.0, 'margin' => 0.0, 'orders' => 0];
-        }
-
-        $row = DB::table('store_orders')
-            ->whereIn('store_id', $storeIds)
-            ->whereIn('status', ['delivered', 'completed'])
-            ->where('payment_status', 'paid')
-            ->whereBetween('created_at', [$periodStart, $periodEnd])
-            ->selectRaw('COALESCE(SUM(total), 0) as revenue, COUNT(*) as orders')
-            ->first();
-
-        $revenue = (float) ($row->revenue ?? 0);
-        $orders = (int) ($row->orders ?? 0);
-
-        // Маржа: выручка - себестоимость из store_order_items
-        $costRow = DB::table('store_order_items as soi')
-            ->join('store_orders as so', 'so.id', '=', 'soi.order_id')
-            ->leftJoin('product_variants as pv', 'pv.id', '=', 'soi.variant_id')
-            ->whereIn('so.store_id', $storeIds)
-            ->whereIn('so.status', ['delivered', 'completed'])
-            ->where('so.payment_status', 'paid')
-            ->whereBetween('so.created_at', [$periodStart, $periodEnd])
-            ->selectRaw('COALESCE(SUM(soi.total), 0) as total_sales, COALESCE(SUM(COALESCE(pv.purchase_price, 0) * soi.quantity), 0) as total_cost')
-            ->first();
-
-        $margin = (float) (($costRow->total_sales ?? 0) - ($costRow->total_cost ?? 0));
-
-        return [
-            'revenue' => $revenue,
-            'margin' => max(0.0, $margin),
-            'orders' => $orders,
-        ];
-    }
-
-    /**
      * Собрать фактические данные из ручных/POS продаж (Sale)
      *
      * @return array{revenue: float, margin: float, orders: int}
