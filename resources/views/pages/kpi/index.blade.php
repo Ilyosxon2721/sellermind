@@ -604,6 +604,39 @@
                                     </template>
                                 </div>
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Интернет-магазин (Store)</label>
+                                <div class="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+                                    <template x-for="st in stores" :key="st.id">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox"
+                                                   :value="st.id"
+                                                   :checked="(sphereForm.store_ids || []).includes(st.id)"
+                                                   @change="toggleStoreId(st.id)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="st.name"></span>
+                                        </label>
+                                    </template>
+                                    <template x-if="stores.length === 0">
+                                        <p class="px-3 py-2 text-xs text-gray-400">Нет интернет-магазинов</p>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ручные/POS продажи (Sale)</label>
+                                <div class="border border-gray-300 rounded-lg">
+                                    <template x-for="src in [{value:'manual',label:'Ручные продажи'},{value:'pos',label:'POS-продажи (касса)'}]" :key="src.value">
+                                        <label class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                            <input type="checkbox"
+                                                   :value="src.value"
+                                                   :checked="(sphereForm.sale_sources || []).includes(src.value)"
+                                                   @change="toggleSaleSource(src.value)"
+                                                   class="rounded border-gray-300 text-blue-600">
+                                            <span class="text-sm" x-text="src.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                     </template>
 
