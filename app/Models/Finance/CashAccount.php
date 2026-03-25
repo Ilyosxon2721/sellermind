@@ -76,10 +76,6 @@ class CashAccount extends Model
         return $this->belongsTo(MarketplaceAccount::class);
     }
 
-    public function movements(): HasMany
-    {
-        return $this->hasMany(CashMovement::class);
-    }
 
     public function scopeOfType($query, string $type)
     {
@@ -147,29 +143,17 @@ class CashAccount extends Model
      */
     public function recalculateBalance(): float
     {
-        // Проверяем какая связь используется
-        if (method_exists($this, 'movements') && $this->movements()->exists()) {
-            $movementsSum = $this->movements()
-                ->where('status', 'confirmed')
-                ->selectRaw("SUM(CASE WHEN type IN ('income', 'transfer_in') THEN amount ELSE -amount END) as total")
-                ->value('total') ?? 0;
+        $income = $this->transactions()
+            ->where('status', 'confirmed')
+            ->whereIn('type', ['income', 'transfer_in'])
+            ->sum('amount');
 
-            $this->balance = $this->initial_balance + $movementsSum;
-        } else {
-            // Fallback на старую логику с transactions
-            $income = $this->transactions()
-                ->where('status', 'confirmed')
-                ->whereIn('type', ['income', 'transfer_in'])
-                ->sum('amount');
+        $expense = $this->transactions()
+            ->where('status', 'confirmed')
+            ->whereIn('type', ['expense', 'transfer_out'])
+            ->sum('amount');
 
-            $expense = $this->transactions()
-                ->where('status', 'confirmed')
-                ->whereIn('type', ['expense', 'transfer_out'])
-                ->sum('amount');
-
-            $this->balance = $this->initial_balance + $income - $expense;
-        }
-
+        $this->balance = $this->initial_balance + $income - $expense;
         $this->save();
 
         return $this->balance;
