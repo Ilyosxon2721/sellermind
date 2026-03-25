@@ -21,9 +21,24 @@ final class SalesAnalyticsService
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELLED', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
+     * Валюты маркетплейсов: WB, Ozon, YandexMarket — RUB; Uzum — UZS
+     */
+    private const MARKETPLACE_CURRENCIES = [
+        'wb' => 'RUB',
+        'ozon' => 'RUB',
+        'ym' => 'RUB',
+        'yandex_market' => 'RUB',
+        'uzum' => 'UZS',
+    ];
+
+    /**
      * ID компании для текущего запроса (используется в protected методах для ручных/оффлайн продаж)
      */
     private int $companyId = 0;
+
+    public function __construct(
+        private readonly ?CurrencyConversionService $currencyService = null,
+    ) {}
 
     /**
      * Получить общую сводку продаж за период.
@@ -133,14 +148,23 @@ final class SalesAnalyticsService
             ->groupBy('date');
 
         // Собираем данные маркетплейсов (только если есть аккаунты)
+        // Конвертируем выручку каждого маркетплейса в единую валюту отображения
         $allData = collect();
 
         if ($accountIds->isNotEmpty()) {
+            $convertRevenue = function (Collection $rows, string $currency): Collection {
+                return $rows->map(function ($row) use ($currency) {
+                    $row->revenue = $this->convertToDisplay((float) $row->revenue, $currency);
+
+                    return $row;
+                });
+            };
+
             $allData = $allData
-                ->merge($wbStats->get())
-                ->merge($uzumStats->get())
-                ->merge($ozonStats->get())
-                ->merge($ymStats->get());
+                ->merge($convertRevenue($wbStats->get(), 'RUB'))
+                ->merge($convertRevenue($uzumStats->get(), 'UZS'))
+                ->merge($convertRevenue($ozonStats->get(), 'RUB'))
+                ->merge($convertRevenue($ymStats->get(), 'RUB'));
         }
 
         // Ручные продажи: GROUP BY DATE(created_at), сумма количеств и выручки
@@ -301,18 +325,19 @@ final class SalesAnalyticsService
             ->selectRaw('COUNT(*) as total_quantity, SUM(total_price) as total_revenue')
             ->first();
 
+        // Конвертируем выручку WB категорий из RUB в валюту отображения
         $result = $wbCategories->map(fn ($item) => [
             'category_name' => $item->category_name,
             'total_quantity' => (int) $item->total_quantity,
-            'total_revenue' => round((float) $item->total_revenue, 2),
+            'total_revenue' => round($this->convertToDisplay((float) $item->total_revenue, 'RUB'), 2),
         ])->toArray();
 
-        // Добавляем другие маркетплейсы как отдельные категории
+        // Добавляем другие маркетплейсы как отдельные категории (с конвертацией валют)
         if (($uzumRow->total_quantity ?? 0) > 0) {
             $result[] = [
                 'category_name' => 'Uzum Market',
                 'total_quantity' => (int) $uzumRow->total_quantity,
-                'total_revenue' => round((float) ($uzumRow->total_revenue ?? 0), 2),
+                'total_revenue' => round($this->convertToDisplay((float) ($uzumRow->total_revenue ?? 0), 'UZS'), 2),
             ];
         }
 
@@ -320,7 +345,7 @@ final class SalesAnalyticsService
             $result[] = [
                 'category_name' => 'Ozon',
                 'total_quantity' => (int) $ozonRow->total_quantity,
-                'total_revenue' => round((float) ($ozonRow->total_revenue ?? 0), 2),
+                'total_revenue' => round($this->convertToDisplay((float) ($ozonRow->total_revenue ?? 0), 'RUB'), 2),
             ];
         }
 
@@ -328,7 +353,7 @@ final class SalesAnalyticsService
             $result[] = [
                 'category_name' => 'Yandex Market',
                 'total_quantity' => (int) $ymRow->total_quantity,
-                'total_revenue' => round((float) ($ymRow->total_revenue ?? 0), 2),
+                'total_revenue' => round($this->convertToDisplay((float) ($ymRow->total_revenue ?? 0), 'RUB'), 2),
             ];
         }
 
@@ -355,11 +380,15 @@ final class SalesAnalyticsService
             $stats = $this->getAccountStats($account, $dateRange);
 
             if ($stats['orders'] > 0) {
+                // Конвертируем выручку из валюты маркетплейса в валюту отображения
+                $currency = self::MARKETPLACE_CURRENCIES[$account->marketplace] ?? 'RUB';
+                $convertedRevenue = $this->convertToDisplay($stats['revenue'], $currency);
+
                 $result[] = [
                     'marketplace' => $account->marketplace,
                     'account_name' => $account->name,
                     'total_quantity' => $stats['quantity'],
-                    'total_revenue' => round($stats['revenue'], 2),
+                    'total_revenue' => round($convertedRevenue, 2),
                     'order_count' => $stats['orders'],
                 ];
             }
@@ -396,9 +425,15 @@ final class SalesAnalyticsService
         $ozonResult = $this->getOzonProductPerformance($links, $dateRange);
         $ymResult = $this->getYmProductPerformance($links, $dateRange);
 
+        // Конвертируем выручку каждого маркетплейса в единую валюту отображения
+        $wbRevenueConverted = $this->convertToDisplay($wbResult['revenue'], 'RUB');
+        $uzumRevenueConverted = $this->convertToDisplay($uzumResult['revenue'], 'UZS');
+        $ozonRevenueConverted = $this->convertToDisplay($ozonResult['revenue'], 'RUB');
+        $ymRevenueConverted = $this->convertToDisplay($ymResult['revenue'], 'RUB');
+
         // Суммируем итоги со всех маркетплейсов
         $totalQuantity = $wbResult['quantity'] + $uzumResult['quantity'] + $ozonResult['quantity'] + $ymResult['quantity'];
-        $totalRevenue = $wbResult['revenue'] + $uzumResult['revenue'] + $ozonResult['revenue'] + $ymResult['revenue'];
+        $totalRevenue = $wbRevenueConverted + $uzumRevenueConverted + $ozonRevenueConverted + $ymRevenueConverted;
         $orderCount = $wbResult['orders'] + $uzumResult['orders'] + $ozonResult['orders'] + $ymResult['orders'];
 
         // Средняя цена — средневзвешенная по количеству
@@ -423,22 +458,22 @@ final class SalesAnalyticsService
             'breakdown' => [
                 'wb' => [
                     'quantity' => $wbResult['quantity'],
-                    'revenue' => round($wbResult['revenue'], 2),
+                    'revenue' => round($wbRevenueConverted, 2),
                     'orders' => $wbResult['orders'],
                 ],
                 'uzum' => [
                     'quantity' => $uzumResult['quantity'],
-                    'revenue' => round($uzumResult['revenue'], 2),
+                    'revenue' => round($uzumRevenueConverted, 2),
                     'orders' => $uzumResult['orders'],
                 ],
                 'ozon' => [
                     'quantity' => $ozonResult['quantity'],
-                    'revenue' => round($ozonResult['revenue'], 2),
+                    'revenue' => round($ozonRevenueConverted, 2),
                     'orders' => $ozonResult['orders'],
                 ],
                 'yandex_market' => [
                     'quantity' => $ymResult['quantity'],
-                    'revenue' => round($ymResult['revenue'], 2),
+                    'revenue' => round($ymRevenueConverted, 2),
                     'orders' => $ymResult['orders'],
                 ],
             ],
@@ -786,6 +821,19 @@ final class SalesAnalyticsService
     }
 
     /**
+     * Конвертировать сумму из валюты маркетплейса в отображаемую валюту.
+     * Если сервис конвертации не настроен — возвращает исходную сумму (graceful fallback).
+     */
+    protected function convertToDisplay(float $amount, string $fromCurrency): float
+    {
+        if ($this->currencyService === null || $amount == 0.0) {
+            return $amount;
+        }
+
+        return $this->currencyService->convertToDisplay($amount, $fromCurrency);
+    }
+
+    /**
      * Получить диапазон дат по периоду.
      */
     protected function getDateRange(string $period): array
@@ -920,12 +968,11 @@ final class SalesAnalyticsService
                 ->selectRaw('SUM(total_price) as revenue, COUNT(*) as orders')
                 ->first();
 
-            $marketplaceRevenue = (float) (
-                ($uzumRow->revenue ?? 0) +
-                ($wbRow->revenue ?? 0) +
-                ($ozonRow->revenue ?? 0) +
-                ($ymRow->revenue ?? 0)
-            );
+            $marketplaceRevenue =
+                $this->convertToDisplay((float) ($wbRow->revenue ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($ozonRow->revenue ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($ymRow->revenue ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($uzumRow->revenue ?? 0), 'UZS');
             $marketplaceOrders = (int) (
                 ($uzumRow->orders ?? 0) +
                 ($wbRow->orders ?? 0) +
@@ -1005,12 +1052,11 @@ final class SalesAnalyticsService
                 ($ozonRow->cnt ?? 0) +
                 ($ymRow->cnt ?? 0)
             );
-            $marketplaceAmount = (float) (
-                ($uzumRow->amount ?? 0) +
-                ($wbRow->amount ?? 0) +
-                ($ozonRow->amount ?? 0) +
-                ($ymRow->amount ?? 0)
-            );
+            $marketplaceAmount =
+                $this->convertToDisplay((float) ($wbRow->amount ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($ozonRow->amount ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($ymRow->amount ?? 0), 'RUB') +
+                $this->convertToDisplay((float) ($uzumRow->amount ?? 0), 'UZS');
         }
 
         // Отменённые ручные продажи
@@ -1062,7 +1108,7 @@ final class SalesAnalyticsService
                 'external_offer_id' => $rows->first()->external_offer_id,
                 'name' => $rows->first()->name,
                 'total_quantity' => $rows->count(),
-                'total_revenue' => (float) $rows->sum('total_price'),
+                'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                 'order_count' => $rows->unique('order_id')->count(),
             ]);
 
@@ -1085,7 +1131,7 @@ final class SalesAnalyticsService
                 'external_offer_id' => $rows->first()->external_offer_id,
                 'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
                 'total_quantity' => (int) $rows->sum('quantity'),
-                'total_revenue' => (float) $rows->sum('total_price'),
+                'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'UZS'),
                 'order_count' => $rows->unique('order_id')->count(),
             ]);
 
@@ -1108,7 +1154,7 @@ final class SalesAnalyticsService
                 'external_offer_id' => $rows->first()->external_offer_id,
                 'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
                 'total_quantity' => (int) $rows->sum('quantity'),
-                'total_revenue' => (float) $rows->sum('total_price'),
+                'total_revenue' => $this->convertToDisplay((float) $rows->sum('total_price'), 'RUB'),
                 'order_count' => $rows->unique('order_id')->count(),
             ]);
 
