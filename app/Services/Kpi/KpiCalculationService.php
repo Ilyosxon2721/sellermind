@@ -367,17 +367,20 @@ final class KpiCalculationService
 
         // Подгрузить имена сотрудников одним запросом
         $employeeIds = $results->pluck('employee_id')->toArray();
-        $employees = Employee::whereIn('id', $employeeIds)->pluck('name', 'id');
+        $employeeModels = Employee::whereIn('id', $employeeIds)->get(['id', 'first_name', 'last_name', 'middle_name'])->keyBy('id');
 
         $rank = 0;
 
-        return $results->map(function ($row) use (&$rank, $employees) {
+        return $results->map(function ($row) use (&$rank, $employeeModels) {
             $rank++;
+
+            $employee = $employeeModels[$row->employee_id] ?? null;
+            $employeeName = $employee ? $employee->full_name : 'Сотрудник #' . $row->employee_id;
 
             return [
                 'rank' => $rank,
                 'employee_id' => (int) $row->employee_id,
-                'employee_name' => $employees[$row->employee_id] ?? 'Сотрудник #' . $row->employee_id,
+                'employee_name' => $employeeName,
                 'avg_achievement' => round((float) $row->avg_achievement, 2),
                 'total_bonus' => round((float) $row->total_bonus, 2),
                 'plans_count' => (int) $row->plans_count,
@@ -415,7 +418,7 @@ final class KpiCalculationService
                 'weight_revenue', 'weight_margin', 'weight_orders',
                 'status',
             ])
-            ->with(['employee:id,name,company_id', 'salesSphere:id,name'])
+            ->with(['employee:id,first_name,last_name,middle_name,company_id', 'salesSphere:id,name'])
             ->get();
 
         $onTrackCount = 0;
@@ -510,7 +513,7 @@ final class KpiCalculationService
         $plans = KpiPlan::byCompany($companyId)
             ->forPeriod($year, $month)
             ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
-            ->with(['employee:id,name,company_id', 'salesSphere:id,name'])
+            ->with(['employee:id,first_name,last_name,middle_name,company_id', 'salesSphere:id,name'])
             ->get();
 
         return [

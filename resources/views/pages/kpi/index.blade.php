@@ -200,7 +200,7 @@
                             <tbody class="divide-y divide-gray-100">
                                 <template x-for="p in (dashboard.plans ?? [])" :key="p.id">
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee?.name ?? '—'"></td>
+                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
                                         <td class="px-4 py-3">
                                             <span class="inline-flex items-center gap-1.5">
                                                 <span class="w-2.5 h-2.5 rounded-full" :style="'background:' + (p.salesSphere?.color ?? '#6B7280')"></span>
@@ -255,7 +255,7 @@
                             <tbody class="divide-y divide-gray-100">
                                 <template x-for="p in plans" :key="p.id">
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee?.name ?? '—'"></td>
+                                        <td class="px-4 py-3 font-medium text-gray-900" x-text="p.employee ? ((p.employee.last_name || '') + ' ' + (p.employee.first_name || '')).trim() || '—' : '—'"></td>
                                         <td class="px-4 py-3" x-text="p.salesSphere?.name ?? '—'"></td>
                                         <td class="px-4 py-3 text-gray-500" x-text="monthName(p.period_month) + ' ' + p.period_year"></td>
                                         <td class="px-4 py-3 text-right" x-text="fmt(p.target_revenue)"></td>
