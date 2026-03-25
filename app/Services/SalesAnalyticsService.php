@@ -370,64 +370,419 @@ final class SalesAnalyticsService
 
     /**
      * Получить метрики производительности товара.
-     * Ищет товар по ID через WB Statistics API (nm_id) и order items.
+     * Агрегирует данные по всем маркетплейсам: WB, Uzum, Ozon, Yandex Market.
      */
     public function getProductPerformance(int $productId, string $period = '30days'): array
     {
         $dateRange = $this->getDateRange($period);
 
-        // Ищем nm_id связанных вариантов через wildberries_products
-        $nmIds = DB::table('wildberries_products')
-            ->join('marketplace_product_links', function ($join) {
-                $join->on('wildberries_products.nm_id', '=', 'marketplace_product_links.external_product_id')
-                    ->where('marketplace_product_links.marketplace', '=', 'wb');
-            })
-            ->join('product_variants', 'marketplace_product_links.product_variant_id', '=', 'product_variants.id')
-            ->where('product_variants.product_id', $productId)
-            ->pluck('wildberries_products.nm_id');
+        // Получаем связи вариантов товара со всеми маркетплейсами
+        $variantIds = DB::table('product_variants')
+            ->where('product_id', $productId)
+            ->pluck('id');
 
-        // WB Statistics — по nm_id
-        $wbStats = null;
-        $wbByDay = collect();
-
-        if ($nmIds->isNotEmpty()) {
-            $wbStats = DB::table('wildberries_orders')
-                ->whereIn('nm_id', $nmIds)
-                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-                ->where('is_cancel', false)
-                ->where('is_return', false)
-                ->selectRaw('COUNT(*) as total_quantity, SUM(for_pay) as total_revenue, COUNT(DISTINCT order_id) as order_count, AVG(for_pay) as avg_price')
-                ->first();
-
-            $wbByDay = DB::table('wildberries_orders')
-                ->whereIn('nm_id', $nmIds)
-                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-                ->where('is_cancel', false)
-                ->where('is_return', false)
-                ->select(
-                    DB::raw('DATE(order_date) as date'),
-                    DB::raw('COUNT(*) as quantity')
-                )
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get();
+        if ($variantIds->isEmpty()) {
+            return $this->buildEmptyPerformanceResult();
         }
 
-        $totalQuantity = (int) ($wbStats->total_quantity ?? 0);
-        $totalRevenue = (float) ($wbStats->total_revenue ?? 0);
-        $orderCount = (int) ($wbStats->order_count ?? 0);
-        $avgPrice = (float) ($wbStats->avg_price ?? 0);
+        $links = DB::table('variant_marketplace_links')
+            ->whereIn('product_variant_id', $variantIds)
+            ->where('is_active', true)
+            ->get();
+
+        // Собираем данные по каждому маркетплейсу
+        $wbResult = $this->getWbProductPerformance($links, $dateRange);
+        $uzumResult = $this->getUzumProductPerformance($links, $dateRange);
+        $ozonResult = $this->getOzonProductPerformance($links, $dateRange);
+        $ymResult = $this->getYmProductPerformance($links, $dateRange);
+
+        // Суммируем итоги со всех маркетплейсов
+        $totalQuantity = $wbResult['quantity'] + $uzumResult['quantity'] + $ozonResult['quantity'] + $ymResult['quantity'];
+        $totalRevenue = $wbResult['revenue'] + $uzumResult['revenue'] + $ozonResult['revenue'] + $ymResult['revenue'];
+        $orderCount = $wbResult['orders'] + $uzumResult['orders'] + $ozonResult['orders'] + $ymResult['orders'];
+
+        // Средняя цена — средневзвешенная по количеству
+        $avgPrice = $totalQuantity > 0
+            ? $totalRevenue / $totalQuantity
+            : 0.0;
+
+        // Объединяем продажи по дням со всех маркетплейсов
+        $salesByDay = $this->mergeSalesByDay(
+            $wbResult['by_day'],
+            $uzumResult['by_day'],
+            $ozonResult['by_day'],
+            $ymResult['by_day'],
+        );
 
         return [
             'total_quantity' => $totalQuantity,
             'total_revenue' => round($totalRevenue, 2),
             'order_count' => $orderCount,
             'avg_price' => round($avgPrice, 2),
-            'sales_by_day' => $wbByDay->map(fn ($item) => [
-                'date' => $item->date,
-                'quantity' => (int) $item->quantity,
-            ])->toArray(),
+            'sales_by_day' => $salesByDay,
+            'breakdown' => [
+                'wb' => [
+                    'quantity' => $wbResult['quantity'],
+                    'revenue' => round($wbResult['revenue'], 2),
+                    'orders' => $wbResult['orders'],
+                ],
+                'uzum' => [
+                    'quantity' => $uzumResult['quantity'],
+                    'revenue' => round($uzumResult['revenue'], 2),
+                    'orders' => $uzumResult['orders'],
+                ],
+                'ozon' => [
+                    'quantity' => $ozonResult['quantity'],
+                    'revenue' => round($ozonResult['revenue'], 2),
+                    'orders' => $ozonResult['orders'],
+                ],
+                'yandex_market' => [
+                    'quantity' => $ymResult['quantity'],
+                    'revenue' => round($ymResult['revenue'], 2),
+                    'orders' => $ymResult['orders'],
+                ],
+            ],
         ];
+    }
+
+    /**
+     * Пустой результат производительности товара.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildEmptyPerformanceResult(): array
+    {
+        $emptyBreakdown = ['quantity' => 0, 'revenue' => 0.0, 'orders' => 0];
+
+        return [
+            'total_quantity' => 0,
+            'total_revenue' => 0.0,
+            'order_count' => 0,
+            'avg_price' => 0.0,
+            'sales_by_day' => [],
+            'breakdown' => [
+                'wb' => $emptyBreakdown,
+                'uzum' => $emptyBreakdown,
+                'ozon' => $emptyBreakdown,
+                'yandex_market' => $emptyBreakdown,
+            ],
+        ];
+    }
+
+    /**
+     * Производительность товара на Wildberries.
+     * Ищет nm_id через variant_marketplace_links.external_offer_id и считает по wildberries_orders.
+     *
+     * @return array{quantity: int, revenue: float, orders: int, by_day: Collection}
+     */
+    private function getWbProductPerformance(Collection $links, array $dateRange): array
+    {
+        $empty = ['quantity' => 0, 'revenue' => 0.0, 'orders' => 0, 'by_day' => collect()];
+
+        // Берём external_offer_id для WB-связей (это nm_id)
+        $wbLinks = $links->filter(fn ($link) => in_array($link->marketplace_code, ['wb', 'wildberries']));
+
+        if ($wbLinks->isEmpty()) {
+            return $empty;
+        }
+
+        // external_offer_id при автолинковке WB = nm_id
+        $nmIds = $wbLinks->pluck('external_offer_id')->filter()->unique()->values();
+
+        if ($nmIds->isEmpty()) {
+            return $empty;
+        }
+
+        $stats = DB::table('wildberries_orders')
+            ->whereIn('nm_id', $nmIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->selectRaw('COUNT(*) as total_quantity, SUM(for_pay) as total_revenue, COUNT(DISTINCT order_id) as order_count')
+            ->first();
+
+        $byDay = DB::table('wildberries_orders')
+            ->whereIn('nm_id', $nmIds)
+            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+            ->where('is_cancel', false)
+            ->where('is_return', false)
+            ->select(
+                DB::raw('DATE(order_date) as date'),
+                DB::raw('COUNT(*) as quantity')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return [
+            'quantity' => (int) ($stats->total_quantity ?? 0),
+            'revenue' => (float) ($stats->total_revenue ?? 0),
+            'orders' => (int) ($stats->order_count ?? 0),
+            'by_day' => $byDay,
+        ];
+    }
+
+    /**
+     * Производительность товара на Uzum.
+     * Ищет по external_offer_id через uzum_order_items.
+     *
+     * @return array{quantity: int, revenue: float, orders: int, by_day: Collection}
+     */
+    private function getUzumProductPerformance(Collection $links, array $dateRange): array
+    {
+        $empty = ['quantity' => 0, 'revenue' => 0.0, 'orders' => 0, 'by_day' => collect()];
+
+        $uzumLinks = $links->filter(fn ($link) => $link->marketplace_code === 'uzum');
+
+        if ($uzumLinks->isEmpty()) {
+            return $empty;
+        }
+
+        // Собираем external_offer_id и external_sku для сопоставления
+        $externalOfferIds = $uzumLinks->pluck('external_offer_id')->filter()->unique()->values();
+        $externalSkus = $uzumLinks->pluck('external_sku')->filter()->unique()->values();
+        $matchIds = $externalOfferIds->merge($externalSkus)->unique()->values();
+
+        if ($matchIds->isEmpty()) {
+            return $empty;
+        }
+
+        // Получаем account_id для фильтрации
+        $accountIds = $uzumLinks->pluck('marketplace_account_id')->unique();
+
+        $stats = DB::table('uzum_order_items')
+            ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+            ->whereIn('uzum_order_items.external_offer_id', $matchIds)
+            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+            ->selectRaw('SUM(uzum_order_items.quantity) as total_quantity, SUM(uzum_order_items.total_price) as total_revenue, COUNT(DISTINCT uzum_orders.id) as order_count')
+            ->first();
+
+        $byDay = DB::table('uzum_order_items')
+            ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+            ->whereIn('uzum_order_items.external_offer_id', $matchIds)
+            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+            ->select(
+                DB::raw('DATE(uzum_orders.ordered_at) as date'),
+                DB::raw('SUM(uzum_order_items.quantity) as quantity')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return [
+            'quantity' => (int) ($stats->total_quantity ?? 0),
+            'revenue' => (float) ($stats->total_revenue ?? 0),
+            'orders' => (int) ($stats->order_count ?? 0),
+            'by_day' => $byDay,
+        ];
+    }
+
+    /**
+     * Производительность товара на Ozon.
+     * Ozon хранит товары в JSON-поле products внутри ozon_orders.
+     * Фильтрует по SKU/offer_id из связей.
+     *
+     * @return array{quantity: int, revenue: float, orders: int, by_day: Collection}
+     */
+    private function getOzonProductPerformance(Collection $links, array $dateRange): array
+    {
+        $empty = ['quantity' => 0, 'revenue' => 0.0, 'orders' => 0, 'by_day' => collect()];
+
+        $ozonLinks = $links->filter(fn ($link) => $link->marketplace_code === 'ozon');
+
+        if ($ozonLinks->isEmpty()) {
+            return $empty;
+        }
+
+        // Собираем все возможные идентификаторы товара
+        $externalSkus = $ozonLinks->pluck('external_sku')->filter()->unique()->values();
+        $externalOfferIds = $ozonLinks->pluck('external_offer_id')->filter()->unique()->values();
+        $accountIds = $ozonLinks->pluck('marketplace_account_id')->unique();
+
+        if ($externalSkus->isEmpty() && $externalOfferIds->isEmpty()) {
+            return $empty;
+        }
+
+        // Ozon не имеет таблицы order_items — товары хранятся в JSON поле products.
+        // Загружаем заказы и фильтруем товары в PHP.
+        $orders = DB::table('ozon_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->select('id', 'products', 'order_data', 'created_at_ozon')
+            ->get();
+
+        $totalQuantity = 0;
+        $totalRevenue = 0.0;
+        $orderIds = [];
+        /** @var array<string, int> $dailyQuantities */
+        $dailyQuantities = [];
+
+        foreach ($orders as $order) {
+            $products = json_decode($order->products ?? '[]', true);
+
+            // Если products пуст, пробуем order_data.products
+            if (empty($products)) {
+                $orderData = json_decode($order->order_data ?? '{}', true);
+                $products = $orderData['products'] ?? [];
+            }
+
+            $orderQty = 0;
+            $orderRevenue = 0.0;
+
+            foreach ($products as $product) {
+                $sku = (string) ($product['sku'] ?? '');
+                $offerId = (string) ($product['offer_id'] ?? '');
+
+                $matched = $externalSkus->contains($sku)
+                    || $externalSkus->contains($offerId)
+                    || $externalOfferIds->contains($sku)
+                    || $externalOfferIds->contains($offerId);
+
+                if ($matched) {
+                    $qty = (int) ($product['quantity'] ?? 1);
+                    $price = (float) ($product['price'] ?? 0);
+                    $orderQty += $qty;
+                    $orderRevenue += $price * $qty;
+                }
+            }
+
+            if ($orderQty > 0) {
+                $totalQuantity += $orderQty;
+                $totalRevenue += $orderRevenue;
+                $orderIds[] = $order->id;
+                $date = date('Y-m-d', strtotime($order->created_at_ozon));
+                $dailyQuantities[$date] = ($dailyQuantities[$date] ?? 0) + $orderQty;
+            }
+        }
+
+        ksort($dailyQuantities);
+        $byDay = collect($dailyQuantities)->map(fn ($qty, $date) => (object) [
+            'date' => $date,
+            'quantity' => $qty,
+        ])->values();
+
+        return [
+            'quantity' => $totalQuantity,
+            'revenue' => $totalRevenue,
+            'orders' => count(array_unique($orderIds)),
+            'by_day' => $byDay,
+        ];
+    }
+
+    /**
+     * Производительность товара на Yandex Market.
+     * YM хранит товары в JSON-поле order_data (items).
+     * Фильтрует по offerId/shopSku из связей.
+     *
+     * @return array{quantity: int, revenue: float, orders: int, by_day: Collection}
+     */
+    private function getYmProductPerformance(Collection $links, array $dateRange): array
+    {
+        $empty = ['quantity' => 0, 'revenue' => 0.0, 'orders' => 0, 'by_day' => collect()];
+
+        $ymLinks = $links->filter(fn ($link) => in_array($link->marketplace_code, ['ym', 'yandex_market']));
+
+        if ($ymLinks->isEmpty()) {
+            return $empty;
+        }
+
+        $externalOfferIds = $ymLinks->pluck('external_offer_id')->filter()->unique()->values();
+        $externalSkus = $ymLinks->pluck('external_sku')->filter()->unique()->values();
+        $accountIds = $ymLinks->pluck('marketplace_account_id')->unique();
+
+        if ($externalOfferIds->isEmpty() && $externalSkus->isEmpty()) {
+            return $empty;
+        }
+
+        // YM не имеет отдельной таблицы items — товары в JSON поле order_data
+        $orders = DB::table('yandex_market_orders')
+            ->whereIn('marketplace_account_id', $accountIds)
+            ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->select('id', 'order_data', 'created_at_ym')
+            ->get();
+
+        $totalQuantity = 0;
+        $totalRevenue = 0.0;
+        $orderIds = [];
+        /** @var array<string, int> $dailyQuantities */
+        $dailyQuantities = [];
+
+        foreach ($orders as $order) {
+            $orderData = json_decode($order->order_data ?? '{}', true);
+            $items = $orderData['items'] ?? [];
+            $orderQty = 0;
+            $orderRevenue = 0.0;
+
+            foreach ($items as $item) {
+                $offerId = (string) ($item['offerId'] ?? $item['offer_id'] ?? '');
+                $shopSku = (string) ($item['shopSku'] ?? $item['shop_sku'] ?? '');
+
+                $matched = $externalOfferIds->contains($offerId)
+                    || $externalOfferIds->contains($shopSku)
+                    || $externalSkus->contains($offerId)
+                    || $externalSkus->contains($shopSku);
+
+                if ($matched) {
+                    $qty = (int) ($item['count'] ?? $item['quantity'] ?? 1);
+                    $price = (float) ($item['price'] ?? $item['buyerPrice'] ?? 0);
+                    $orderQty += $qty;
+                    $orderRevenue += $price * $qty;
+                }
+            }
+
+            if ($orderQty > 0) {
+                $totalQuantity += $orderQty;
+                $totalRevenue += $orderRevenue;
+                $orderIds[] = $order->id;
+                $date = date('Y-m-d', strtotime($order->created_at_ym));
+                $dailyQuantities[$date] = ($dailyQuantities[$date] ?? 0) + $orderQty;
+            }
+        }
+
+        ksort($dailyQuantities);
+        $byDay = collect($dailyQuantities)->map(fn ($qty, $date) => (object) [
+            'date' => $date,
+            'quantity' => $qty,
+        ])->values();
+
+        return [
+            'quantity' => $totalQuantity,
+            'revenue' => $totalRevenue,
+            'orders' => count(array_unique($orderIds)),
+            'by_day' => $byDay,
+        ];
+    }
+
+    /**
+     * Объединить данные продаж по дням со всех маркетплейсов.
+     * Суммирует количество за одинаковые даты, сортирует по дате.
+     *
+     * @return array<int, array{date: string, quantity: int}>
+     */
+    private function mergeSalesByDay(Collection ...$sources): array
+    {
+        /** @var array<string, int> $merged */
+        $merged = [];
+
+        foreach ($sources as $source) {
+            foreach ($source as $item) {
+                $date = $item->date;
+                $merged[$date] = ($merged[$date] ?? 0) + (int) $item->quantity;
+            }
+        }
+
+        ksort($merged);
+
+        return collect($merged)->map(fn (int $quantity, string $date) => [
+            'date' => $date,
+            'quantity' => $quantity,
+        ])->values()->toArray();
     }
 
     /**
