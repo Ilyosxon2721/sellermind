@@ -91,5 +91,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners
         Event::listen(StockUpdated::class, SyncStockToMarketplaces::class);
+
+        // KPI events → Telegram уведомления
+        Event::listen(\App\Events\Kpi\KpiBatchCalculated::class, \App\Listeners\Kpi\SendKpiBatchNotifications::class);
+        Event::listen(\App\Events\Kpi\KpiPlanApproved::class, \App\Listeners\Kpi\SendKpiApprovedNotification::class);
     }
 }

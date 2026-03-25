@@ -534,6 +534,15 @@ Schedule::command('kpi:calculate')
     })
     ->appendOutputTo(storage_path('logs/kpi-calculation.log'));
 
+// KPI: Утренний отчёт в Telegram в 09:30 (после расчёта в 06:00)
+Schedule::command('kpi:morning-report')
+    ->dailyAt('09:30')
+    ->withoutOverlapping(10)
+    ->onFailure(function () {
+        \Log::error('KPI: Ошибка отправки утреннего отчёта');
+    })
+    ->appendOutputTo(storage_path('logs/kpi-morning-report.log'));
+
 // Ежедневная проверка структуры Uzum API (#084)
 Schedule::command('uzum:check-api-structure')
     ->dailyAt('09:00')
