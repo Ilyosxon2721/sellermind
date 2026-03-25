@@ -190,8 +190,9 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.employee') }}</th>
                                     <th class="px-4 py-3 text-left">{{ __('kpi.plans.sphere') }}</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.target') }}</th>
-                                    <th class="px-4 py-3 text-right">{{ __('kpi.plans.actual') }}</th>
+                                    <th class="px-4 py-3 text-right">Оборот (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Маржа (план / факт)</th>
+                                    <th class="px-4 py-3 text-right">Заказы (план / факт)</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.achievement') }}</th>
                                     <th class="px-4 py-3 text-right">{{ __('kpi.plans.bonus') }}</th>
                                     <th class="px-4 py-3 text-center">{{ __('kpi.plans.status') }}</th>
@@ -207,8 +208,18 @@
                                                 <span x-text="p.salesSphere?.name ?? '—'"></span>
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.target_revenue)"></td>
-                                        <td class="px-4 py-3 text-right" x-text="fmt(p.actual_revenue)"></td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_revenue) + ' / ' + fmt(p.actual_revenue)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_revenue ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="fmt(p.target_margin) + ' / ' + fmt(p.actual_margin)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_margin ?? 0) + '%'"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <div x-text="(p.target_orders ?? 0) + ' / ' + (p.actual_orders ?? 0)"></div>
+                                            <div class="text-gray-400" x-text="'вес: ' + (p.weight_orders ?? 0) + '%'"></div>
+                                        </td>
                                         <td class="px-4 py-3 text-right font-medium"
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
