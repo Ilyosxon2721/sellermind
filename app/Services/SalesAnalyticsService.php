@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\MarketplaceAccount;
+use App\Models\OfflineSale;
 use App\Models\OzonOrder;
+use App\Models\Sale;
 use App\Models\WildberriesOrder;
 use App\Models\YandexMarketOrder;
 use Illuminate\Support\Collection;
@@ -19,11 +21,17 @@ final class SalesAnalyticsService
     private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELLED', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
+     * ID компании для текущего запроса (используется в protected методах для ручных/оффлайн продаж)
+     */
+    private int $companyId = 0;
+
+    /**
      * Получить общую сводку продаж за период.
      * $accountIds запрашивается один раз и передаётся во все вспомогательные методы.
      */
     public function getOverview(int $companyId, string $period = '30days'): array
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
 
         // Один запрос для получения ID аккаунтов (используется во всех helper-методах)
@@ -70,12 +78,9 @@ final class SalesAnalyticsService
      */
     public function getSalesByDay(int $companyId, string $period = '30days'): array
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
-        if ($accountIds->isEmpty()) {
-            return ['labels' => [], 'quantities' => [], 'revenues' => []];
-        }
 
         // WB Statistics API: каждая строка = один товар
         $wbStats = DB::table('wildberries_orders')
@@ -127,12 +132,50 @@ final class SalesAnalyticsService
             )
             ->groupBy('date');
 
-        // Собираем все данные и группируем по дате
-        $allData = collect()
-            ->merge($wbStats->get())
-            ->merge($uzumStats->get())
-            ->merge($ozonStats->get())
-            ->merge($ymStats->get())
+        // Собираем данные маркетплейсов (только если есть аккаунты)
+        $allData = collect();
+
+        if ($accountIds->isNotEmpty()) {
+            $allData = $allData
+                ->merge($wbStats->get())
+                ->merge($uzumStats->get())
+                ->merge($ozonStats->get())
+                ->merge($ymStats->get());
+        }
+
+        // Ручные продажи: GROUP BY DATE(created_at), сумма количеств и выручки
+        $manualStats = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->select(
+                DB::raw('DATE(sales.created_at) as date'),
+                DB::raw('SUM(sale_items.quantity) as quantity'),
+                DB::raw('SUM(sale_items.total) as revenue')
+            )
+            ->groupBy('date')
+            ->get();
+
+        // Оффлайн продажи: GROUP BY DATE(sale_date), сумма количеств и выручки
+        $offlineStats = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->select(
+                DB::raw('DATE(offline_sales.sale_date) as date'),
+                DB::raw('SUM(offline_sale_items.quantity) as quantity'),
+                DB::raw('SUM(offline_sale_items.line_total) as revenue')
+            )
+            ->groupBy('date')
+            ->get();
+
+        $allData = $allData
+            ->merge($manualStats)
+            ->merge($offlineStats)
             ->groupBy('date')
             ->map(fn ($rows) => [
                 'date' => $rows->first()->date,
@@ -155,12 +198,9 @@ final class SalesAnalyticsService
      */
     public function getTopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
-        if ($accountIds->isEmpty()) {
-            return collect();
-        }
 
         $items = $this->getAggregatedOrderItems($accountIds, $dateRange);
 
@@ -186,12 +226,9 @@ final class SalesAnalyticsService
      */
     public function getFlopProducts(int $companyId, string $period = '30days', int $limit = 10): Collection
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
-
-        if ($accountIds->isEmpty()) {
-            return collect();
-        }
 
         $items = $this->getAggregatedOrderItems($accountIds, $dateRange);
 
@@ -219,6 +256,7 @@ final class SalesAnalyticsService
      */
     public function getSalesByCategory(int $companyId, string $period = '30days'): Collection
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accountIds = MarketplaceAccount::where('company_id', $companyId)->pluck('id');
 
@@ -303,6 +341,7 @@ final class SalesAnalyticsService
      */
     public function getSalesByMarketplace(int $companyId, string $period = '30days'): Collection
     {
+        $this->companyId = $companyId;
         $dateRange = $this->getDateRange($period);
         $accounts = MarketplaceAccount::where('company_id', $companyId)->get();
 
@@ -433,38 +472,55 @@ final class SalesAnalyticsService
      */
     protected function getTotalSales(Collection $accountIds, array $dateRange): int
     {
-        if ($accountIds->isEmpty()) {
-            return 0;
+        $marketplaceSales = 0;
+
+        if ($accountIds->isNotEmpty()) {
+            // Uzum: SQL JOIN — устраняет N+1
+            $uzumSales = DB::table('uzum_order_items')
+                ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
+                ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
+                ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
+                ->sum('uzum_order_items.quantity');
+
+            // WB Statistics API: каждая строка — один товар
+            $wbSales = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+                ->where('is_cancel', false)
+                ->where('is_return', false)
+                ->count();
+
+            // Ozon
+            $ozonSales = OzonOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status', self::CANCELLED_STATUSES)
+                ->count();
+
+            // Yandex Market
+            $ymSales = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->count();
+
+            $marketplaceSales = (int) ($uzumSales + $wbSales + $ozonSales + $ymSales);
         }
 
-        // Uzum: SQL JOIN — устраняет N+1
-        $uzumSales = DB::table('uzum_order_items')
-            ->join('uzum_orders', 'uzum_order_items.uzum_order_id', '=', 'uzum_orders.id')
-            ->whereIn('uzum_orders.marketplace_account_id', $accountIds)
-            ->whereBetween('uzum_orders.ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('uzum_orders.status_normalized', self::CANCELLED_STATUSES)
-            ->sum('uzum_order_items.quantity');
-
-        // WB Statistics API: каждая строка — один товар
-        $wbSales = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where('is_cancel', false)
-            ->where('is_return', false)
+        // Ручные продажи: количество не отменённых
+        $manualSales = Sale::where('company_id', $this->companyId)
+            ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('status', '!=', 'cancelled')
             ->count();
 
-        // Ozon
-        $ozonSales = OzonOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->count();
+        // Оффлайн продажи: сумма количеств позиций для подтверждённых/доставленных
+        $offlineSales = (int) DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $this->companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->sum('offline_sale_items.quantity');
 
-        // Yandex Market
-        $ymSales = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->count();
-
-        return (int) ($uzumSales + $wbSales + $ozonSales + $ymSales);
+        return $marketplaceSales + $manualSales + $offlineSales;
     }
 
     /**
@@ -475,53 +531,75 @@ final class SalesAnalyticsService
      */
     protected function getRevenueAndOrders(Collection $accountIds, array $dateRange): array
     {
-        if ($accountIds->isEmpty()) {
-            return ['revenue' => 0.0, 'orders' => 0];
-        }
+        $marketplaceRevenue = 0.0;
+        $marketplaceOrders = 0;
 
-        // Uzum
-        $uzumRow = DB::table('uzum_orders')
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
-            ->first();
+        if ($accountIds->isNotEmpty()) {
+            // Uzum
+            $uzumRow = DB::table('uzum_orders')
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
+                ->first();
 
-        // WB Statistics API
-        $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where('is_cancel', false)
-            ->where('is_return', false)
-            ->selectRaw('SUM(for_pay) as revenue, COUNT(*) as orders')
-            ->first();
+            // WB Statistics API
+            $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+                ->where('is_cancel', false)
+                ->where('is_return', false)
+                ->selectRaw('SUM(for_pay) as revenue, COUNT(*) as orders')
+                ->first();
 
-        // Ozon
-        $ozonRow = OzonOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
-            ->selectRaw('SUM(total_price) as revenue, COUNT(*) as orders')
-            ->first();
+            // Ozon
+            $ozonRow = OzonOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status', self::CANCELLED_STATUSES)
+                ->selectRaw('SUM(total_price) as revenue, COUNT(*) as orders')
+                ->first();
 
-        // Yandex Market
-        $ymRow = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('SUM(total_price) as revenue, COUNT(*) as orders')
-            ->first();
+            // Yandex Market
+            $ymRow = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->selectRaw('SUM(total_price) as revenue, COUNT(*) as orders')
+                ->first();
 
-        return [
-            'revenue' => (float) (
+            $marketplaceRevenue = (float) (
                 ($uzumRow->revenue ?? 0) +
                 ($wbRow->revenue ?? 0) +
                 ($ozonRow->revenue ?? 0) +
                 ($ymRow->revenue ?? 0)
-            ),
-            'orders' => (int) (
+            );
+            $marketplaceOrders = (int) (
                 ($uzumRow->orders ?? 0) +
                 ($wbRow->orders ?? 0) +
                 ($ozonRow->orders ?? 0) +
                 ($ymRow->orders ?? 0)
-            ),
+            );
+        }
+
+        // Ручные продажи: выручка и количество заказов (подтверждённые + завершённые)
+        $manualRow = Sale::where('company_id', $this->companyId)
+            ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
+            ->first();
+
+        // Оффлайн продажи: выручка и количество заказов (подтверждённые + доставленные)
+        $offlineRow = OfflineSale::where('company_id', $this->companyId)
+            ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('status', ['confirmed', 'delivered'])
+            ->selectRaw('SUM(total_amount) as revenue, COUNT(*) as orders')
+            ->first();
+
+        return [
+            'revenue' => $marketplaceRevenue +
+                (float) ($manualRow->revenue ?? 0) +
+                (float) ($offlineRow->revenue ?? 0),
+            'orders' => $marketplaceOrders +
+                (int) ($manualRow->orders ?? 0) +
+                (int) ($offlineRow->orders ?? 0),
         ];
     }
 
