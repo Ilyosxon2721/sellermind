@@ -47,6 +47,10 @@ final class UpdateSalesSphereRequest extends FormRequest
             'offline_sale_types' => ['nullable', 'array'],
             'offline_sale_types.*' => ['string', 'in:retail,wholesale,direct'],
             'is_active' => ['boolean'],
+            'is_manual' => ['boolean'],
+            'label_metric1' => ['nullable', 'string', 'max:100'],
+            'label_metric2' => ['nullable', 'string', 'max:100'],
+            'label_metric3' => ['nullable', 'string', 'max:100'],
             'sort_order' => ['integer', 'min:0'],
         ];
     }
