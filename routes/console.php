@@ -304,6 +304,18 @@ Schedule::command('subscriptions:check-expiring --notify-days=7,3,1 --mark-expir
 |
 */
 
+// Освобождение истёкших резервов остатков (каждый час)
+Schedule::command('warehouse:release-expired-reservations')
+    ->hourly()
+    ->withoutOverlapping(10)
+    ->onSuccess(function () {
+        \Log::info('Expired reservations release completed');
+    })
+    ->onFailure(function () {
+        \Log::error('Expired reservations release failed');
+    })
+    ->appendOutputTo(storage_path('logs/stock-processing.log'));
+
 // Обработка резервов для заказов (обрабатывает заказы, которые могли быть пропущены)
 Schedule::command('orders:process-stocks')
     ->hourly()

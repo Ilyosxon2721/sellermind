@@ -6,23 +6,29 @@ use Illuminate\Support\Facades\DB;
 
 class DocNumberService
 {
+    /**
+     * Генерация уникального номера документа с блокировкой для предотвращения race condition
+     */
     public function generate(int $companyId, string $type): string
     {
-        $prefix = strtoupper($type).'-'.now()->format('Ymd').'-';
+        return DB::transaction(function () use ($companyId, $type) {
+            $prefix = strtoupper($type).'-'.now()->format('Ymd').'-';
 
-        // Используем MAX номера вместо count для избежания дублей
-        $lastDocNo = DB::table('inventory_documents')
-            ->where('company_id', $companyId)
-            ->where('doc_no', 'like', $prefix.'%')
-            ->max('doc_no');
+            // Используем MAX номера с блокировкой для избежания дублей
+            $lastDocNo = DB::table('inventory_documents')
+                ->where('company_id', $companyId)
+                ->where('doc_no', 'like', $prefix.'%')
+                ->lockForUpdate()
+                ->max('doc_no');
 
-        if ($lastDocNo) {
-            $lastSeq = (int) substr($lastDocNo, strlen($prefix));
-            $seq = $lastSeq + 1;
-        } else {
-            $seq = 1;
-        }
+            if ($lastDocNo) {
+                $lastSeq = (int) substr($lastDocNo, strlen($prefix));
+                $seq = $lastSeq + 1;
+            } else {
+                $seq = 1;
+            }
 
-        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+            return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+        });
     }
 }

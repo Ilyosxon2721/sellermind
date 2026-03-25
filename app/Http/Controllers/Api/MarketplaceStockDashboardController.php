@@ -238,13 +238,14 @@ final class MarketplaceStockDashboardController extends Controller
         }
 
         // Поиск
-        if ($search = $request->query) {
-            $query->where(function ($q) use ($search) {
-                $q->where('wildberries_products.supplier_article', 'like', "%{$search}%")
-                    ->orWhere('wildberries_products.title', 'like', "%{$search}%")
-                    ->orWhere('wildberries_products.barcode', 'like', "%{$search}%")
-                    ->orWhere('wildberries_products.nm_id', 'like', "%{$search}%")
-                    ->orWhere('wildberries_products.brand', 'like', "%{$search}%");
+        if ($search = $request->input('query')) {
+            $escaped = str_replace(['%', '_'], ['\%', '\_'], $search);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('wildberries_products.supplier_article', 'like', "%{$escaped}%")
+                    ->orWhere('wildberries_products.title', 'like', "%{$escaped}%")
+                    ->orWhere('wildberries_products.barcode', 'like', "%{$escaped}%")
+                    ->orWhere('wildberries_products.nm_id', 'like', "%{$escaped}%")
+                    ->orWhere('wildberries_products.brand', 'like', "%{$escaped}%");
             });
         }
 

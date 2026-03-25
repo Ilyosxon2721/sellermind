@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Web\Warehouse;
 
 use App\Http\Controllers\Controller;
@@ -359,20 +361,16 @@ class WarehouseController extends Controller
         }
     }
 
-    private function ensureUser(Request $request): ?User
+    /**
+     * Получить авторизованного пользователя или прервать запрос
+     */
+    private function ensureUser(Request $request): User
     {
         $user = $request->user();
-        if ($user) {
-            return $user;
+        if (! $user) {
+            abort(401, 'Необходима авторизация');
         }
 
-        $fallback = User::query()->first();
-        if ($fallback) {
-            Auth::login($fallback);
-
-            return $fallback;
-        }
-
-        return null;
+        return $user;
     }
 }

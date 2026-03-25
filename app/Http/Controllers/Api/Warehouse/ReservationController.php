@@ -12,7 +12,6 @@ use App\Services\Warehouse\ReservationService;
 use App\Support\ApiResponder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class ReservationController extends Controller
 {
@@ -22,12 +21,6 @@ class ReservationController extends Controller
     public function index(Request $request)
     {
         $companyId = $this->getCompanyId();
-
-        Log::debug('ReservationController::index', [
-            'user_id' => Auth::id(),
-            'company_id' => $companyId,
-            'filters' => $request->only(['warehouse_id', 'status', 'reason']),
-        ]);
 
         if (! $companyId) {
             return $this->errorResponse('No company', 'forbidden', null, 403);
@@ -51,18 +44,14 @@ class ReservationController extends Controller
                     $q->where('source_type', 'manual')->orWhereNull('source_type');
                 });
             } else {
-                $query->where('reason', 'like', '%'.$request->reason.'%');
+                $query->where('reason', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $request->reason).'%');
             }
         }
 
-        $reservations = $query->orderByDesc('id')->limit(500)->get();
+        $paginated = $query->orderByDesc('id')->paginate($request->integer('per_page', 50));
 
-        Log::debug('ReservationController::index results', [
-            'count' => $reservations->count(),
-        ]);
-
-        // Load order information for marketplace orders
-        $reservations = $reservations->map(function ($reservation) {
+        // Загрузка информации о заказах для маркетплейс-заказов
+        $items = collect($paginated->items())->map(function ($reservation) {
             $data = $reservation->toArray();
 
             // Add product image and name
@@ -121,7 +110,15 @@ class ReservationController extends Controller
             return $data;
         });
 
-        return $this->successResponse($reservations);
+        return $this->successResponse([
+            'data' => $items,
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ]);
     }
 
     /**
