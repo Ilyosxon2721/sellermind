@@ -64,6 +64,7 @@ final class KpiPlanFactory extends Factory
             'status' => KpiPlan::STATUS_APPROVED,
             'calculated_at' => now(),
             'approved_at' => now(),
+            'approved_by' => \App\Models\User::factory(),
         ]);
     }
 

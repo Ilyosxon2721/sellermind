@@ -48,9 +48,9 @@ final class UpdateKpiPlanRequest extends FormRequest
             'target_revenue' => ['sometimes', 'numeric', 'min:0'],
             'target_margin' => ['sometimes', 'numeric', 'min:0'],
             'target_orders' => ['sometimes', 'integer', 'min:0'],
-            'weight_revenue' => ['integer', 'min:0', 'max:100'],
-            'weight_margin' => ['integer', 'min:0', 'max:100'],
-            'weight_orders' => ['integer', 'min:0', 'max:100'],
+            'weight_revenue' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'weight_margin' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'weight_orders' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

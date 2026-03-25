@@ -69,7 +69,7 @@ final class KpiAiService
         $provider = config('ai.provider', 'openai');
         $options['model'] = match ($provider) {
             'anthropic' => config('anthropic.models.kpi', 'claude-sonnet-4-20250514'),
-            default => config('openai.models.kpi', 'gpt-5.1'),
+            default => config('openai.models.kpi', 'gpt-4o'),
         };
 
         try {
@@ -273,7 +273,7 @@ final class KpiAiService
             ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
             ->selectRaw('
                 COUNT(*) as total_orders,
-                COALESCE(SUM(total), 0) as total_revenue
+                COALESCE(SUM(total_price), 0) as total_revenue
             ')
             ->first();
 
@@ -355,7 +355,7 @@ final class KpiAiService
     private function getSystemPrompt(): string
     {
         return <<<'PROMPT'
-Ты — продвинутый ИИ-аналитик KPI (GPT-5.1) для платформы управления продажами на маркетплейсах СНГ (Wildberries, Ozon, Uzum, Yandex Market).
+Ты — продвинутый ИИ-аналитик KPI для платформы управления продажами на маркетплейсах СНГ (Wildberries, Ozon, Uzum, Yandex Market).
 
 ВАЖНО: Компания работает в Узбекистане, все суммы в узбекских сумах (сум, UZS). НИКОГДА не используй рубли, доллары или другие валюты в ответе.
 

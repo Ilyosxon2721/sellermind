@@ -292,6 +292,8 @@ final class KpiCalculationService
         $plan->calculated_at = now();
         $plan->save();
 
+        event(new \App\Events\Kpi\KpiPlanCalculated($plan));
+
         return $plan;
     }
 
@@ -306,7 +308,11 @@ final class KpiCalculationService
             ->with(['salesSphere', 'bonusScale.tiers', 'employee'])
             ->get();
 
-        return DB::transaction(fn () => $plans->map(fn (KpiPlan $plan) => $this->calculatePlan($plan)));
+        $calculated = DB::transaction(fn () => $plans->map(fn (KpiPlan $plan) => $this->calculatePlan($plan)));
+
+        event(new \App\Events\Kpi\KpiBatchCalculated($companyId, $year, $month, $calculated->count()));
+
+        return $calculated;
     }
 
     /**
@@ -331,7 +337,11 @@ final class KpiCalculationService
             'approved_at' => now(),
         ]);
 
-        return $plan->fresh();
+        $plan = $plan->fresh();
+
+        event(new \App\Events\Kpi\KpiPlanApproved($plan, \App\Models\User::find($userId)));
+
+        return $plan;
     }
 
     /**

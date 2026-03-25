@@ -35,7 +35,7 @@ final class KpiMarginCalculator
 
         return match ($marketplace) {
             'wb', 'wildberries' => $this->getWbMargin($accountIds, $periodStart, $periodEnd, $companyId),
-            'uzum' => $this->getUzumMargin($accountIds, $periodStart, $periodEnd),
+            'uzum' => $this->getUzumMargin($accountIds, $periodStart, $periodEnd, $companyId),
             'ozon' => $this->getOzonMargin($accountIds, $periodStart, $periodEnd),
             'ym', 'yandex_market' => $this->getYmMargin($accountIds, $periodStart, $periodEnd),
             default => 0.0,
@@ -84,7 +84,7 @@ final class KpiMarginCalculator
         $row = DB::table('wb_orders as wo')
             ->join('wb_order_items as woi', 'woi.wb_order_id', '=', 'wo.id')
             ->leftJoin('product_variants as pv', function ($join) use ($companyId) {
-                $join->on('pv.sku', '=', 'wo.sku')
+                $join->on('pv.sku', '=', 'woi.sku')
                     ->where('pv.company_id', '=', $companyId)
                     ->whereNotNull('pv.sku')
                     ->where('pv.sku', '!=', '');
@@ -104,12 +104,13 @@ final class KpiMarginCalculator
     /**
      * Маржа Uzum: uzum_order_items через external_offer_id → product_variants.sku
      */
-    private function getUzumMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd): float
+    private function getUzumMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
         $row = DB::table('uzum_order_items as uoi')
             ->join('uzum_orders as uo', 'uo.id', '=', 'uoi.uzum_order_id')
-            ->leftJoin('product_variants as pv', function ($join) {
+            ->leftJoin('product_variants as pv', function ($join) use ($companyId) {
                 $join->on('pv.sku', '=', 'uoi.external_offer_id')
+                    ->where('pv.company_id', '=', $companyId)
                     ->whereNotNull('pv.sku')
                     ->where('pv.sku', '!=', '');
             })
