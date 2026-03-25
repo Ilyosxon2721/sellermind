@@ -64,8 +64,8 @@ class FinanceController extends Controller
             ->inPeriod($from, $to);
 
         // Суммы в базовой валюте (UZS)
-        $totalIncomeBase = (clone $transactions)->income()->sum('amount');
-        $totalExpenseBase = (clone $transactions)->expense()->sum('amount');
+        $totalIncomeBase = (clone $transactions)->income()->sum('amount_base');
+        $totalExpenseBase = (clone $transactions)->expense()->sum('amount_base');
 
         // ========== ПРОДАЖИ МАРКЕТПЛЕЙСОВ ==========
         $marketplaceSalesBase = $this->getMarketplaceSales($companyId, $from, $to, $financeSettings);
@@ -331,10 +331,20 @@ class FinanceController extends Controller
                     ->first();
 
                 $revenue = (float) ($uzumSales?->revenue ?? 0);
+
+                // Рассчитываем прибыль через синхронизированные расходы из FinanceTransaction
+                $uzumExpenses = FinanceTransaction::byCompany($companyId)
+                    ->confirmed()
+                    ->expense()
+                    ->inPeriod($from, $to)
+                    ->whereHas('category', fn ($q) => $q->where('code', 'like', 'MP_%'))
+                    ->where('metadata->source', 'uzum_sync')
+                    ->sum('amount_base');
+
                 $result['uzum'] = [
                     'orders' => (int) ($uzumSales?->cnt ?? 0),
                     'revenue' => $revenue,
-                    'profit' => $revenue * 0.85, // Примерная прибыль после комиссий
+                    'profit' => $revenue - (float) $uzumExpenses,
                 ];
 
                 \Log::info('Uzum sales fetched from uzum_orders (fallback)', $result['uzum']);
@@ -348,20 +358,24 @@ class FinanceController extends Controller
         // Фильтрация: по last_change_date (дата завершения)
         try {
             if (class_exists(\App\Models\WildberriesOrder::class)) {
+                // for_pay = сумма к выплате продавцу (выручка минус комиссия WB)
+                // finished_price = цена для покупателя после скидок
                 $wbSales = \App\Models\WildberriesOrder::whereHas('account', fn ($q) => $q->where('company_id', $companyId))
                     ->where('is_realization', true)
                     ->where('is_cancel', false)
                     ->whereDate('last_change_date', '>=', $from)
                     ->whereDate('last_change_date', '<=', $to)
-                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(for_pay, finished_price, total_price, 0)) as revenue')
+                    ->selectRaw('COUNT(*) as cnt, SUM(COALESCE(finished_price, total_price, 0)) as revenue, SUM(COALESCE(for_pay, 0)) as seller_revenue')
                     ->first();
 
                 $revenueRub = (float) ($wbSales?->revenue ?? 0);
+                $sellerRevenueRub = (float) ($wbSales?->seller_revenue ?? 0);
                 $result['wb'] = [
                     'orders' => (int) ($wbSales?->cnt ?? 0),
                     'revenue' => $revenueRub * $rubToUzs,
                     'revenue_rub' => $revenueRub,
-                    'profit' => 0,
+                    'profit' => $sellerRevenueRub * $rubToUzs,
+                    'profit_rub' => $sellerRevenueRub,
                 ];
 
                 \Log::info('WB sales fetched', $result['wb']);
@@ -384,11 +398,22 @@ class FinanceController extends Controller
                     ->first();
 
                 $revenueRub = (float) ($ozonSales?->revenue ?? 0);
+
+                // Расчёт прибыли: выручка минус синхронизированные расходы из FinanceTransaction
+                $ozonExpenses = FinanceTransaction::byCompany($companyId)
+                    ->confirmed()
+                    ->expense()
+                    ->inPeriod($from, $to)
+                    ->whereHas('category', fn ($q) => $q->where('code', 'like', 'MP_%'))
+                    ->where('metadata->source', 'ozon_sync')
+                    ->sum('amount_base');
+
+                $revenueUzs = $revenueRub * $rubToUzs;
                 $result['ozon'] = [
                     'orders' => (int) ($ozonSales?->cnt ?? 0),
-                    'revenue' => $revenueRub * $rubToUzs,
+                    'revenue' => $revenueUzs,
                     'revenue_rub' => $revenueRub,
-                    'profit' => 0,
+                    'profit' => $revenueUzs - (float) $ozonExpenses,
                 ];
 
                 \Log::info('Ozon sales fetched', $result['ozon']);
@@ -411,11 +436,22 @@ class FinanceController extends Controller
                     ->first();
 
                 $revenueRub = (float) ($ymSales?->revenue ?? 0);
+
+                // Расчёт прибыли: выручка минус синхронизированные расходы из FinanceTransaction
+                $ymExpenses = FinanceTransaction::byCompany($companyId)
+                    ->confirmed()
+                    ->expense()
+                    ->inPeriod($from, $to)
+                    ->whereHas('category', fn ($q) => $q->where('code', 'like', 'MP_%'))
+                    ->where('metadata->source', 'ym_sync')
+                    ->sum('amount_base');
+
+                $revenueUzs = $revenueRub * $rubToUzs;
                 $result['ym'] = [
                     'orders' => (int) ($ymSales?->cnt ?? 0),
-                    'revenue' => $revenueRub * $rubToUzs,
+                    'revenue' => $revenueUzs,
                     'revenue_rub' => $revenueRub,
-                    'profit' => 0,
+                    'profit' => $revenueUzs - (float) $ymExpenses,
                 ];
 
                 \Log::info('YM sales fetched', $result['ym']);
@@ -796,8 +832,7 @@ class FinanceController extends Controller
         foreach ($items as $item) {
             $amount = $item['amount'] ?? $item['total'] ?? 0;
             $converted = [
-                'category_id' => $item['category_id'] ?? null,
-                'category_name' => $item['category_name'] ?? $item['name'] ?? '',
+                'category' => $item['category'] ?? $item['category_name'] ?? $item['name'] ?? '',
                 'amount' => $currencyService->convert($amount, $baseCurrency, $displayCurrency),
             ];
             $result[] = $converted;
@@ -853,13 +888,13 @@ class FinanceController extends Controller
             ->confirmed()
             ->inPeriod($from, $to)
             ->income()
-            ->sum('amount');
+            ->sum('amount_base');
 
         $transactionExpense = FinanceTransaction::byCompany($companyId)
             ->confirmed()
             ->inPeriod($from, $to)
             ->expense()
-            ->sum('amount');
+            ->sum('amount_base');
 
         // Продажи маркетплейсов за период (уже передаётся в overview)
         $marketplaceSales = $this->getMarketplaceSales($companyId, $from, $to, $settings);

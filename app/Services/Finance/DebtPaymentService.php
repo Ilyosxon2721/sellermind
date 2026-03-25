@@ -139,14 +139,48 @@ class DebtPaymentService
 
             $debt->save();
 
-            // Отменяем транзакцию
+            // Отменяем финансовую транзакцию
             if ($payment->transaction) {
                 $payment->transaction->cancel();
+            }
+
+            // Откатываем кассовую транзакцию и баланс счёта
+            if ($payment->cash_account_id) {
+                $this->reverseCashTransaction($payment);
             }
 
             $payment->update(['status' => FinanceDebtPayment::STATUS_CANCELLED]);
 
             return true;
         });
+    }
+
+    /**
+     * Откатить кассовую транзакцию при отмене платежа
+     */
+    protected function reverseCashTransaction(FinanceDebtPayment $payment): void
+    {
+        $cashTx = CashTransaction::where('source_type', FinanceDebtPayment::class)
+            ->where('source_id', $payment->id)
+            ->where('status', CashTransaction::STATUS_CONFIRMED)
+            ->first();
+
+        if (! $cashTx) {
+            return;
+        }
+
+        // Блокируем счёт для атомарного обновления баланса
+        $account = CashAccount::lockForUpdate()->findOrFail($cashTx->cash_account_id);
+
+        // Откатываем баланс: приход → вычитаем, расход → прибавляем
+        if ($cashTx->type === CashTransaction::TYPE_INCOME) {
+            $account->balance -= $cashTx->amount;
+        } else {
+            $account->balance += $cashTx->amount;
+        }
+        $account->save();
+
+        // Помечаем кассовую транзакцию как отменённую
+        $cashTx->update(['status' => CashTransaction::STATUS_CANCELLED]);
     }
 }

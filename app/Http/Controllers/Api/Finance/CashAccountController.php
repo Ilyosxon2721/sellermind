@@ -177,18 +177,22 @@ class CashAccountController extends Controller
 
         $data = $request->validated();
 
-        $fromAccount = CashAccount::byCompany($companyId)->findOrFail($data['from_account_id']);
-        $toAccount = CashAccount::byCompany($companyId)->findOrFail($data['to_account_id']);
-
-        if ($fromAccount->balance < $data['amount']) {
-            return $this->errorResponse('Insufficient funds', 'validation_error', null, 422);
-        }
-
         DB::beginTransaction();
         try {
+            // Блокируем счета для атомарного обновления (lockForUpdate предотвращает race condition)
+            $fromAccount = CashAccount::lockForUpdate()->where('company_id', $companyId)->findOrFail($data['from_account_id']);
+            $toAccount = CashAccount::lockForUpdate()->where('company_id', $companyId)->findOrFail($data['to_account_id']);
+
+            if ($fromAccount->balance < $data['amount']) {
+                DB::rollBack();
+
+                return $this->errorResponse('Insufficient funds', 'validation_error', null, 422);
+            }
+
             $date = $data['transaction_date'] ?? now()->toDateString();
 
             // Списание
+            $fromBalanceBefore = $fromAccount->balance;
             $fromAccount->balance -= $data['amount'];
             $fromAccount->save();
 
@@ -196,7 +200,9 @@ class CashAccountController extends Controller
                 'company_id' => $companyId,
                 'cash_account_id' => $fromAccount->id,
                 'type' => CashTransaction::TYPE_TRANSFER_OUT,
+                'operation' => CashTransaction::OP_TRANSFER,
                 'amount' => $data['amount'],
+                'balance_before' => $fromBalanceBefore,
                 'balance_after' => $fromAccount->balance,
                 'currency_code' => $fromAccount->currency_code,
                 'transfer_to_account_id' => $toAccount->id,
@@ -207,6 +213,7 @@ class CashAccountController extends Controller
             ]);
 
             // Зачисление
+            $toBalanceBefore = $toAccount->balance;
             $toAccount->balance += $data['amount'];
             $toAccount->save();
 
@@ -214,7 +221,9 @@ class CashAccountController extends Controller
                 'company_id' => $companyId,
                 'cash_account_id' => $toAccount->id,
                 'type' => CashTransaction::TYPE_TRANSFER_IN,
+                'operation' => CashTransaction::OP_TRANSFER,
                 'amount' => $data['amount'],
+                'balance_before' => $toBalanceBefore,
                 'balance_after' => $toAccount->balance,
                 'currency_code' => $toAccount->currency_code,
                 'transfer_from_transaction_id' => $outTransaction->id,
@@ -327,8 +336,6 @@ class CashAccountController extends Controller
             return $this->errorResponse('No company', 'forbidden', null, 403);
         }
 
-        $account = CashAccount::byCompany($companyId)->findOrFail($accountId);
-
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'category_id' => ['nullable', 'exists:finance_categories,id'],
@@ -339,14 +346,20 @@ class CashAccountController extends Controller
             'transaction_date' => ['nullable', 'date'],
         ]);
 
-        // Проверка на достаточность средств для расхода
-        if ($type === CashTransaction::TYPE_EXPENSE && $account->balance < $data['amount']) {
-            return $this->errorResponse('Insufficient funds', 'validation_error', null, 422);
-        }
-
         DB::beginTransaction();
         try {
+            // Блокируем счёт для атомарного обновления баланса
+            $account = CashAccount::lockForUpdate()->where('company_id', $companyId)->findOrFail($accountId);
+
+            // Проверка на достаточность средств для расхода
+            if ($type === CashTransaction::TYPE_EXPENSE && $account->balance < $data['amount']) {
+                DB::rollBack();
+
+                return $this->errorResponse('Insufficient funds', 'validation_error', null, 422);
+            }
+
             // Обновляем баланс
+            $balanceBefore = $account->balance;
             if ($type === CashTransaction::TYPE_INCOME) {
                 $account->balance += $data['amount'];
             } else {
@@ -360,6 +373,7 @@ class CashAccountController extends Controller
                 'cash_account_id' => $account->id,
                 'type' => $type,
                 'amount' => $data['amount'],
+                'balance_before' => $balanceBefore,
                 'balance_after' => $account->balance,
                 'currency_code' => $account->currency_code,
                 'category_id' => $data['category_id'] ?? null,

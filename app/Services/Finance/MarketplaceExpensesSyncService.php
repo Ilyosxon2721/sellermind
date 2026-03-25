@@ -7,6 +7,7 @@ use App\Models\Finance\FinanceSettings;
 use App\Models\Finance\FinanceTransaction;
 use App\Models\MarketplaceAccount;
 use App\Models\OzonOrder;
+use App\Models\Pricing\MarketplaceCommission;
 use App\Models\UzumExpense;
 use App\Models\UzumFinanceOrder;
 use Carbon\Carbon;
@@ -32,6 +33,7 @@ class MarketplaceExpensesSyncService
             'uzum' => $this->syncUzumExpenses($companyId, $from, $to),
             'wb' => $this->syncWildberriesExpenses($companyId, $from, $to),
             'ozon' => $this->syncOzonExpenses($companyId, $from, $to),
+            'ym' => $this->syncYandexMarketExpenses($companyId, $from, $to),
         ];
 
         // Агрегируем итоги
@@ -143,6 +145,7 @@ class MarketplaceExpensesSyncService
                     'acceptance' => $expenses['acceptance'],
                     'penalties' => $expenses['penalties'],
                     'retentions' => $expenses['retentions'],
+                    'advertising' => $expenses['advertising'],
                 ]);
 
                 // Синхронизируем комиссию
@@ -283,6 +286,29 @@ class MarketplaceExpensesSyncService
                     }
                 }
 
+                // Синхронизируем рекламные расходы
+                if (($expenses['advertising'] ?? 0) > 0) {
+                    $amount = $expenses['advertising'] * $rubRate;
+                    $txResult = $this->createOrUpdateTransaction(
+                        $companyId,
+                        FinanceCategory::CODE_MP_ADS,
+                        $amount,
+                        $to,
+                        "Реклама WB за период {$from->format('d.m.Y')} - {$to->format('d.m.Y')}",
+                        MarketplaceAccount::class,
+                        $account->id,
+                        'advertising_period',
+                        'wb',
+                        $currency,
+                        $rubRate
+                    );
+                    $result[$txResult]++;
+                    if ($txResult !== 'skipped') {
+                        $result['total_amount'] += $amount;
+                        $result['by_category']['advertising'] = ($result['by_category']['advertising'] ?? 0) + $amount;
+                    }
+                }
+
             } catch (\Exception $e) {
                 $result['errors']++;
                 Log::error('MarketplaceExpensesSyncService: WB expenses sync failed', [
@@ -315,6 +341,7 @@ class MarketplaceExpensesSyncService
             'acceptance' => 0,
             'penalties' => 0,
             'retentions' => 0,
+            'advertising' => 0,
             'sales' => 0,
             'refunds' => 0,
             'currency' => 'RUB',
@@ -369,6 +396,11 @@ class MarketplaceExpensesSyncService
             if (str_contains($type, 'Возмещение издержек')) {
                 $expenses['retentions'] += abs($r['rebill_logistic_cost'] ?? 0);
             }
+
+            // Реклама - удержания за продвижение товаров
+            if ($type === 'Реклама' || str_contains($type, 'Продвижение')) {
+                $expenses['advertising'] += abs($r['ppvz_reward'] ?? $r['retail_amount'] ?? 0);
+            }
         }
 
         // Комиссия не может быть отрицательной
@@ -411,9 +443,9 @@ class MarketplaceExpensesSyncService
                 ->get();
 
             foreach ($orders as $order) {
-                // Примерная комиссия Ozon ~15% от цены
+                // Рассчитываем комиссию из таблицы MarketplaceCommission по категории
                 $totalPrice = (float) ($order->total_price ?? 0);
-                $commission = $totalPrice * 0.15;
+                $commission = $this->calculateOzonCommission($order, $totalPrice);
 
                 if ($commission > 0) {
                     try {
@@ -723,6 +755,155 @@ class MarketplaceExpensesSyncService
             'returns' => FinanceCategory::CODE_MP_RETURNS,
             default => FinanceCategory::CODE_OTHER_EXPENSE,
         };
+    }
+
+    /**
+     * Синхронизировать расходы Yandex Market
+     *
+     * YM не предоставляет детальное API расходов как WB.
+     * Используем данные из MarketplaceCommission для расчёта комиссии.
+     */
+    public function syncYandexMarketExpenses(int $companyId, Carbon $from, Carbon $to): array
+    {
+        $result = $this->emptyResult();
+
+        if (! class_exists(\App\Models\YandexMarketOrder::class)) {
+            return $result;
+        }
+
+        $accounts = MarketplaceAccount::where('company_id', $companyId)
+            ->where('marketplace', 'ym')
+            ->where('is_active', true)
+            ->get();
+
+        if ($accounts->isEmpty()) {
+            return $result;
+        }
+
+        $rubRate = $this->getRubRate($companyId);
+
+        foreach ($accounts as $account) {
+            try {
+                // Получаем завершённые заказы
+                $orders = \App\Models\YandexMarketOrder::where('marketplace_account_id', $account->id)
+                    ->where('stock_status', 'sold')
+                    ->whereNotNull('stock_sold_at')
+                    ->whereDate('stock_sold_at', '>=', $from)
+                    ->whereDate('stock_sold_at', '<=', $to)
+                    ->get();
+
+                foreach ($orders as $order) {
+                    $totalPrice = (float) ($order->total_price ?? 0);
+                    if ($totalPrice <= 0) {
+                        continue;
+                    }
+
+                    // Рассчитываем комиссию из справочника или order_data
+                    $commission = $this->calculateYmCommission($order, $totalPrice);
+
+                    if ($commission > 0) {
+                        $commissionUzs = $commission * $rubRate;
+
+                        $txResult = $this->createOrUpdateTransaction(
+                            $companyId,
+                            FinanceCategory::CODE_MP_COMMISSION,
+                            $commissionUzs,
+                            $order->stock_sold_at,
+                            "Комиссия YM: заказ #{$order->order_id}",
+                            \App\Models\YandexMarketOrder::class,
+                            $order->id,
+                            'commission',
+                            'ym',
+                            'RUB',
+                            $rubRate
+                        );
+
+                        $result[$txResult]++;
+                        if ($txResult !== 'skipped') {
+                            $result['total_amount'] += $commissionUzs;
+                            $result['by_category']['commission'] = ($result['by_category']['commission'] ?? 0) + $commissionUzs;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                $result['errors']++;
+                Log::error('MarketplaceExpensesSyncService: YM expenses sync failed', [
+                    'account_id' => $account->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Рассчитать комиссию Yandex Market
+     */
+    protected function calculateYmCommission(\App\Models\YandexMarketOrder $order, float $totalPrice): float
+    {
+        // Пытаемся получить комиссию из order_data (если YM API вернул)
+        $orderData = $order->order_data ?? [];
+        if (is_array($orderData)) {
+            $commission = $orderData['commission'] ?? $orderData['commission_amount'] ?? null;
+            if ($commission !== null && (float) $commission > 0) {
+                return abs((float) $commission);
+            }
+        }
+
+        // Ищем в справочнике MarketplaceCommission
+        if (class_exists(MarketplaceCommission::class)) {
+            $commissionRule = MarketplaceCommission::forMarketplace('ym')
+                ->active()
+                ->first();
+
+            if ($commissionRule) {
+                return $commissionRule->calculateCommission($totalPrice);
+            }
+        }
+
+        // Средняя комиссия YM ~7%
+        return round($totalPrice * 0.07, 2);
+    }
+
+    /**
+     * Рассчитать комиссию Ozon из таблицы MarketplaceCommission
+     * Если данных нет — используем средний процент из products JSON
+     */
+    protected function calculateOzonCommission(OzonOrder $order, float $totalPrice): float
+    {
+        if ($totalPrice <= 0) {
+            return 0;
+        }
+
+        // Пытаемся найти комиссию из products JSON (если Ozon API вернул)
+        $products = $order->products ?? [];
+        if (is_array($products)) {
+            $totalCommission = 0;
+            foreach ($products as $product) {
+                $commission = $product['commission_amount'] ?? $product['commission'] ?? null;
+                if ($commission !== null) {
+                    $totalCommission += abs((float) $commission);
+                }
+            }
+            if ($totalCommission > 0) {
+                return $totalCommission;
+            }
+        }
+
+        // Ищем комиссию в справочнике MarketplaceCommission
+        if (class_exists(MarketplaceCommission::class)) {
+            $commissionRule = MarketplaceCommission::forMarketplace('ozon')
+                ->active()
+                ->first();
+
+            if ($commissionRule) {
+                return $commissionRule->calculateCommission($totalPrice);
+            }
+        }
+
+        // Последний fallback — средняя комиссия Ozon по данным маркетплейса
+        return round($totalPrice * 0.15, 2);
     }
 
     protected function emptyResult(): array

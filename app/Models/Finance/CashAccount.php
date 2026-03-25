@@ -7,6 +7,7 @@ use App\Models\MarketplaceAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class CashAccount extends Model
 {
@@ -133,8 +134,12 @@ class CashAccount extends Model
      */
     public function updateBalance(float $amount): void
     {
-        $this->balance += $amount;
-        $this->save();
+        DB::transaction(function () use ($amount) {
+            $fresh = static::lockForUpdate()->find($this->id);
+            $fresh->balance += $amount;
+            $fresh->save();
+            $this->balance = $fresh->balance;
+        });
     }
 
     /**
