@@ -611,52 +611,74 @@ final class SalesAnalyticsService
      */
     protected function getCancelledStats(Collection $accountIds, array $dateRange): array
     {
-        if ($accountIds->isEmpty()) {
-            return ['count' => 0, 'amount' => 0.0];
-        }
+        $marketplaceCount = 0;
+        $marketplaceAmount = 0.0;
 
-        // Uzum
-        $uzumRow = DB::table('uzum_orders')
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
-            ->first();
+        if ($accountIds->isNotEmpty()) {
+            // Uzum
+            $uzumRow = DB::table('uzum_orders')
+                ->whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('ordered_at', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('status_normalized', self::CANCELLED_STATUSES)
+                ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+                ->first();
 
-        // WB Statistics API
-        $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
-            ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
-            ->selectRaw('COUNT(*) as cnt, SUM(for_pay) as amount')
-            ->first();
+            // WB Statistics API
+            $wbRow = WildberriesOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('order_date', [$dateRange['from'], $dateRange['to']])
+                ->where(fn ($q) => $q->where('is_cancel', true)->orWhere('is_return', true))
+                ->selectRaw('COUNT(*) as cnt, SUM(for_pay) as amount')
+                ->first();
 
-        // Ozon
-        $ozonRow = OzonOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as cnt, SUM(total_price) as amount')
-            ->first();
+            // Ozon
+            $ozonRow = OzonOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ozon', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('status', self::CANCELLED_STATUSES)
+                ->selectRaw('COUNT(*) as cnt, SUM(total_price) as amount')
+                ->first();
 
-        // Yandex Market
-        $ymRow = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
-            ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
-            ->whereIn('status_normalized', self::CANCELLED_STATUSES)
-            ->selectRaw('COUNT(*) as cnt, SUM(total_price) as amount')
-            ->first();
+            // Yandex Market
+            $ymRow = YandexMarketOrder::whereIn('marketplace_account_id', $accountIds)
+                ->whereBetween('created_at_ym', [$dateRange['from'], $dateRange['to']])
+                ->whereIn('status_normalized', self::CANCELLED_STATUSES)
+                ->selectRaw('COUNT(*) as cnt, SUM(total_price) as amount')
+                ->first();
 
-        return [
-            'count' => (int) (
+            $marketplaceCount = (int) (
                 ($uzumRow->cnt ?? 0) +
                 ($wbRow->cnt ?? 0) +
                 ($ozonRow->cnt ?? 0) +
                 ($ymRow->cnt ?? 0)
-            ),
-            'amount' => (float) (
+            );
+            $marketplaceAmount = (float) (
                 ($uzumRow->amount ?? 0) +
                 ($wbRow->amount ?? 0) +
                 ($ozonRow->amount ?? 0) +
                 ($ymRow->amount ?? 0)
-            ),
+            );
+        }
+
+        // Отменённые ручные продажи
+        $manualRow = Sale::where('company_id', $this->companyId)
+            ->whereBetween('created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('status', 'cancelled')
+            ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+            ->first();
+
+        // Отменённые оффлайн продажи
+        $offlineRow = OfflineSale::where('company_id', $this->companyId)
+            ->whereBetween('sale_date', [$dateRange['from'], $dateRange['to']])
+            ->where('status', 'cancelled')
+            ->selectRaw('COUNT(*) as cnt, SUM(total_amount) as amount')
+            ->first();
+
+        return [
+            'count' => $marketplaceCount +
+                (int) ($manualRow->cnt ?? 0) +
+                (int) ($offlineRow->cnt ?? 0),
+            'amount' => $marketplaceAmount +
+                (float) ($manualRow->amount ?? 0) +
+                (float) ($offlineRow->amount ?? 0),
         ];
     }
 
@@ -735,10 +757,58 @@ final class SalesAnalyticsService
                 'order_count' => $rows->unique('order_id')->count(),
             ]);
 
+        // Ручные продажи: группировка по SKU или названию товара
+        $manualItems = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.company_id', $this->companyId)
+            ->whereBetween('sales.created_at', [$dateRange['from'], $dateRange['to']])
+            ->where('sales.status', '!=', 'cancelled')
+            ->whereNull('sales.deleted_at')
+            ->select(
+                DB::raw('COALESCE(sale_items.sku, sale_items.product_name) as external_offer_id'),
+                'sale_items.product_name as name',
+                'sale_items.quantity',
+                'sale_items.total as total_price',
+                'sales.id as order_id'
+            )
+            ->get()
+            ->groupBy('external_offer_id')
+            ->map(fn ($rows) => [
+                'external_offer_id' => $rows->first()->external_offer_id,
+                'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
+                'total_quantity' => (int) $rows->sum('quantity'),
+                'total_revenue' => (float) $rows->sum('total_price'),
+                'order_count' => $rows->unique('order_id')->count(),
+            ]);
+
+        // Оффлайн продажи: группировка по SKU или названию товара
+        $offlineItems = DB::table('offline_sale_items')
+            ->join('offline_sales', 'offline_sale_items.offline_sale_id', '=', 'offline_sales.id')
+            ->where('offline_sales.company_id', $this->companyId)
+            ->whereBetween('offline_sales.sale_date', [$dateRange['from'], $dateRange['to']])
+            ->whereIn('offline_sales.status', ['confirmed', 'delivered'])
+            ->whereNull('offline_sales.deleted_at')
+            ->select(
+                DB::raw('COALESCE(offline_sale_items.sku_code, offline_sale_items.product_name) as external_offer_id'),
+                'offline_sale_items.product_name as name',
+                'offline_sale_items.quantity',
+                'offline_sale_items.line_total as total_price',
+                'offline_sales.id as order_id'
+            )
+            ->get()
+            ->groupBy('external_offer_id')
+            ->map(fn ($rows) => [
+                'external_offer_id' => $rows->first()->external_offer_id,
+                'name' => $rows->first()->name ?? $rows->first()->external_offer_id,
+                'total_quantity' => (int) $rows->sum('quantity'),
+                'total_revenue' => (float) $rows->sum('total_price'),
+                'order_count' => $rows->unique('order_id')->count(),
+            ]);
+
         // Объединяем все данные, суммируя по external_offer_id
         $merged = collect();
 
-        foreach ([$wbItems, $uzumItems, $wbFbsItems] as $items) {
+        foreach ([$wbItems, $uzumItems, $wbFbsItems, $manualItems, $offlineItems] as $items) {
             foreach ($items as $key => $item) {
                 if ($merged->has($key)) {
                     $existing = $merged->get($key);
