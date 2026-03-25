@@ -223,7 +223,12 @@
                                         <td class="px-4 py-3 text-right font-medium"
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
-                                        <td class="px-4 py-3 text-right font-medium" x-text="fmt(p.bonus_amount)"></td>
+                                        <td class="px-4 py-3 text-right font-medium">
+                                            <span x-text="fmt(p.bonus_amount)"></span>
+                                            <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
+                                                <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
+                                            </template>
+                                        </td>
                                         <td class="px-4 py-3 text-center">
                                             <span class="px-2 py-1 text-xs font-medium rounded-full"
                                                   :class="statusClass(p.status)" x-text="statusLabel(p.status)"></span>
@@ -285,7 +290,12 @@
                                         <td class="px-4 py-3 text-right font-medium"
                                             :class="p.achievement_percent >= 100 ? 'text-green-600' : 'text-orange-500'"
                                             x-text="(p.achievement_percent ?? 0).toFixed(1) + '%'"></td>
-                                        <td class="px-4 py-3 text-right font-medium" x-text="fmt(p.bonus_amount)"></td>
+                                        <td class="px-4 py-3 text-right font-medium">
+                                            <span x-text="fmt(p.bonus_amount)"></span>
+                                            <template x-if="!p.kpi_bonus_scale_id && p.bonus_amount == 0">
+                                                <div class="text-xs text-orange-500 mt-0.5">Шкала не привязана</div>
+                                            </template>
+                                        </td>
                                         <td class="px-4 py-3 text-center">
                                             <span class="px-2 py-1 text-xs font-medium rounded-full"
                                                   :class="statusClass(p.status)" x-text="statusLabel(p.status)"></span>
