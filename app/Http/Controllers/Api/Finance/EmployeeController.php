@@ -313,9 +313,9 @@ class EmployeeController extends Controller
             ->get();
 
         $summary = [
-            'total_salary_paid' => $transactions->where('metadata.type', 'salary')->sum('amount'),
-            'total_penalties' => $transactions->where('metadata.type', 'penalty')->sum('amount'),
-            'total_expenses' => $transactions->where('metadata.type', 'employee_expense')->sum('amount'),
+            'total_salary_paid' => $transactions->where('metadata.type', 'salary')->sum('amount_base'),
+            'total_penalties' => $transactions->where('metadata.type', 'penalty')->sum('amount_base'),
+            'total_expenses' => $transactions->where('metadata.type', 'employee_expense')->sum('amount_base'),
         ];
 
         return $this->successResponse([

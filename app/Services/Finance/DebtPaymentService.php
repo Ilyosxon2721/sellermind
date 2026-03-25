@@ -84,7 +84,7 @@ class DebtPaymentService
         FinanceTransaction $transaction,
         int $userId
     ): CashTransaction {
-        $account = CashAccount::findOrFail($cashAccountId);
+        $account = CashAccount::lockForUpdate()->findOrFail($cashAccountId);
 
         // receivable = нам платят → приход на кассу
         // payable = мы платим → расход с кассы

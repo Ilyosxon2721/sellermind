@@ -193,7 +193,7 @@ class DashboardController extends Controller
         $ymTodaySalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, $today)->sum('total_price');
         $ymTodaySales = $this->currencyService->convertFromRub($ymTodaySalesRub);
         $todaySalesAmount = $uzumTodaySales + $wbTodaySales + $ozonTodaySales + $ymTodaySales;
-        $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, $today)->sum('amount')
+        $todaySalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, $today)->count()
             + (clone $wbCompleted)->whereDate($dateFieldWb, $today)->count()
             + (clone $ozonCompleted)->whereDate($dateFieldOzon, $today)->count()
             + (clone $ymCompleted)->whereDate($dateFieldYm, $today)->count());
@@ -209,7 +209,7 @@ class DashboardController extends Controller
         $ymWeekSalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $weekAgo)->sum('total_price');
         $ymWeekSales = $this->currencyService->convertFromRub($ymWeekSalesRub);
         $weekSalesAmount = $uzumWeekSales + $wbWeekSales + $ozonWeekSales + $ymWeekSales;
-        $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $weekAgo)->sum('amount')
+        $weekSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $weekAgo)->count()
             + (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $weekAgo)->count()
             + (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $weekAgo)->count()
             + (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $weekAgo)->count());
@@ -225,7 +225,7 @@ class DashboardController extends Controller
         $ymMonthSalesRub = (float) (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $monthAgo)->sum('total_price');
         $ymMonthSales = $this->currencyService->convertFromRub($ymMonthSalesRub);
         $monthSalesAmount = $uzumMonthSales + $wbMonthSales + $ozonMonthSales + $ymMonthSales;
-        $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $monthAgo)->sum('amount')
+        $monthSalesCount = (int) ((clone $uzumCompleted)->whereDate($dateFieldUzum, '>=', $monthAgo)->count()
             + (clone $wbCompleted)->whereDate($dateFieldWb, '>=', $monthAgo)->count()
             + (clone $ozonCompleted)->whereDate($dateFieldOzon, '>=', $monthAgo)->count()
             + (clone $ymCompleted)->whereDate($dateFieldYm, '>=', $monthAgo)->count());
@@ -244,7 +244,7 @@ class DashboardController extends Controller
         $ymWeekTransitRub = (float) (clone $ymTransit)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
         $ymWeekTransit = $this->currencyService->convertFromRub($ymWeekTransitRub);
         $weekTransitAmount = $uzumWeekTransit + $wbWeekTransit + $ozonWeekTransit + $ymWeekTransit;
-        $weekTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+        $weekTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $wbTransit)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
             + (clone $ymTransit)->whereDate('created_at_ym', '>=', $weekAgo)->count());
@@ -260,7 +260,7 @@ class DashboardController extends Controller
         $ymMonthTransitRub = (float) (clone $ymTransit)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
         $ymMonthTransit = $this->currencyService->convertFromRub($ymMonthTransitRub);
         $monthTransitAmount = $uzumMonthTransit + $wbMonthTransit + $ozonMonthTransit + $ymMonthTransit;
-        $monthTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
+        $monthTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', '>=', $monthAgo)->count()
             + (clone $wbTransit)->whereDate('order_date', '>=', $monthAgo)->count()
             + (clone $ozonTransit)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
             + (clone $ymTransit)->whereDate('created_at_ym', '>=', $monthAgo)->count());
@@ -279,7 +279,7 @@ class DashboardController extends Controller
         $ymWeekAwaitingRub = (float) (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
         $ymWeekAwaiting = $this->currencyService->convertFromRub($ymWeekAwaitingRub);
         $weekAwaitingAmount = $uzumWeekAwaiting + $wbWeekAwaiting + $ozonWeekAwaiting + $ymWeekAwaiting;
-        $weekAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+        $weekAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
             + (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $weekAgo)->count());
@@ -295,7 +295,7 @@ class DashboardController extends Controller
         $ymMonthAwaitingRub = (float) (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $monthAgo)->sum('total_price');
         $ymMonthAwaiting = $this->currencyService->convertFromRub($ymMonthAwaitingRub);
         $monthAwaitingAmount = $uzumMonthAwaiting + $wbMonthAwaiting + $ozonMonthAwaiting + $ymMonthAwaiting;
-        $monthAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->sum('amount')
+        $monthAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->count()
             + (clone $wbAwaitingPickup)->whereDate('order_date', '>=', $monthAgo)->count()
             + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', '>=', $monthAgo)->count()
             + (clone $ymAwaitingPickup)->whereDate('created_at_ym', '>=', $monthAgo)->count());
@@ -313,17 +313,17 @@ class DashboardController extends Controller
         $ymWeekCancelledRub = (float) (clone $ymCancelled)->whereDate('created_at_ym', '>=', $weekAgo)->sum('total_price');
         $ymWeekCancelled = $this->currencyService->convertFromRub($ymWeekCancelledRub);
         $weekCancelledAmount = $uzumWeekCancelled + $wbWeekCancelled + $ozonWeekCancelled + $ymWeekCancelled;
-        $weekCancelledCount = (int) ((clone $uzumCancelled)->whereDate('order_date', '>=', $weekAgo)->sum('amount')
+        $weekCancelledCount = (int) ((clone $uzumCancelled)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $wbCancelled)->whereDate('order_date', '>=', $weekAgo)->count()
             + (clone $ozonCancelled)->whereDate('created_at_ozon', '>=', $weekAgo)->count()
             + (clone $ymCancelled)->whereDate('created_at_ym', '>=', $weekAgo)->count());
 
         // ========== ВСЕГО ЗАКАЗОВ (для общей статистики) ==========
-        $todayTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', $today)->sum('amount')
+        $todayTransitCount = (int) ((clone $uzumTransit)->whereDate('order_date', $today)->count()
             + (clone $wbTransit)->whereDate('order_date', $today)->count()
             + (clone $ozonTransit)->whereDate('created_at_ozon', $today)->count()
             + (clone $ymTransit)->whereDate('created_at_ym', $today)->count());
-        $todayAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', $today)->sum('amount')
+        $todayAwaitingCount = (int) ((clone $uzumAwaitingPickup)->whereDate('order_date', $today)->count()
             + (clone $wbAwaitingPickup)->whereDate('order_date', $today)->count()
             + (clone $ozonAwaitingPickup)->whereDate('created_at_ozon', $today)->count()
             + (clone $ymAwaitingPickup)->whereDate('created_at_ym', $today)->count());
@@ -371,11 +371,11 @@ class DashboardController extends Controller
             + $this->currencyService->convertFromRub($ozonAllTransitRub + $ozonAllAwaitingRub)
             + $this->currencyService->convertFromRub($ymAllTransitRub + $ymAllAwaitingRub);
 
-        $totalTransitCount = (int) ((clone $uzumTransit)->sum('amount')
+        $totalTransitCount = (int) ((clone $uzumTransit)->count()
             + (clone $wbTransit)->count()
             + (clone $ozonTransit)->count()
             + (clone $ymTransit)->count());
-        $totalAwaitingCount = (int) ((clone $uzumAwaitingPickup)->sum('amount')
+        $totalAwaitingCount = (int) ((clone $uzumAwaitingPickup)->count()
             + (clone $wbAwaitingPickup)->count()
             + (clone $ozonAwaitingPickup)->count()
             + (clone $ymAwaitingPickup)->count());
@@ -851,7 +851,7 @@ class DashboardController extends Controller
         $revenueTiyin = (float) (clone $query)->selectRaw('SUM(sell_price * amount) as total')->value('total');
         $revenue = $revenueTiyin / 100; // Конвертируем тийины в сумы
 
-        $ordersCount = (int) (clone $query)->sum('amount');
+        $ordersCount = (int) (clone $query)->count();
 
         return [
             'revenue' => $revenue,
