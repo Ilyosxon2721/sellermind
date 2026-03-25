@@ -405,52 +405,6 @@ final class KpiCalculationService
             'orders' => $orders,
         ];
     }
-
-    /**
-     * Собрать фактические данные из ручных/POS продаж (Sale)
-     *
-     * @return array{revenue: float, margin: float, orders: int}
-     */
-    private function collectSaleActuals(KpiPlan $plan, SalesSphere $sphere): array
-    {
-        $sources = $sphere->sale_sources ?? [];
-        $periodStart = Carbon::create($plan->period_year, $plan->period_month, 1)->startOfMonth();
-        $periodEnd = $periodStart->copy()->endOfMonth();
-
-        if (empty($sources)) {
-            return ['revenue' => 0.0, 'margin' => 0.0, 'orders' => 0];
-        }
-
-        $row = DB::table('sales')
-            ->where('company_id', $plan->company_id)
-            ->whereIn('source', $sources)
-            ->where('status', 'completed')
-            ->whereBetween('completed_at', [$periodStart, $periodEnd])
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
-            ->first();
-
-        $revenue = (float) ($row->revenue ?? 0);
-        $orders = (int) ($row->orders ?? 0);
-
-        // Маржа из sale_items.cost_price
-        $costRow = DB::table('sale_items as si')
-            ->join('sales as s', 's.id', '=', 'si.sale_id')
-            ->where('s.company_id', $plan->company_id)
-            ->whereIn('s.source', $sources)
-            ->where('s.status', 'completed')
-            ->whereBetween('s.completed_at', [$periodStart, $periodEnd])
-            ->selectRaw('COALESCE(SUM(si.total), 0) as total_sales, COALESCE(SUM(COALESCE(si.cost_price, 0) * si.quantity), 0) as total_cost')
-            ->first();
-
-        $margin = (float) (($costRow->total_sales ?? 0) - ($costRow->total_cost ?? 0));
-
-        return [
-            'revenue' => $revenue,
-            'margin' => max(0.0, $margin),
-            'orders' => $orders,
-        ];
-    }
-
     /**
      * Рассчитать один KPI-план: собрать данные, посчитать %, посчитать бонус
      */
