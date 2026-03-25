@@ -18,6 +18,8 @@ use App\Models\MarketplaceExpenseCache;
 use App\Models\Warehouse\StockLedger;
 use App\Services\CurrencyConversionService;
 use App\Services\Finance\FinanceReportService;
+use App\Services\Finance\InventoryValuationService;
+use App\Services\Finance\MarketplaceSalesService;
 use App\Services\Marketplaces\OzonClient;
 use App\Services\Marketplaces\UzumClient;
 use App\Services\Marketplaces\Wildberries\WildberriesFinanceService;
@@ -37,7 +39,9 @@ class FinanceController extends Controller
         protected FinanceReportService $reportService,
         protected UzumClient $uzumClient,
         protected OzonClient $ozonClient,
-        protected CurrencyConversionService $currencyService
+        protected CurrencyConversionService $currencyService,
+        protected MarketplaceSalesService $marketplaceSalesService,
+        protected InventoryValuationService $inventoryValuationService,
     ) {}
 
     public function overview(Request $request)
@@ -264,6 +268,14 @@ class FinanceController extends Controller
      */
     protected function getMarketplaceSales(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
     {
+        return $this->marketplaceSalesService->getSales($companyId, $from, $to, $settings);
+    }
+
+    /**
+     * @deprecated Метод перенесён в MarketplaceSalesService. Оставлен для обратной совместимости.
+     */
+    protected function getMarketplaceSalesLegacy(int $companyId, Carbon $from, Carbon $to, FinanceSettings $settings): array
+    {
         $rubToUzs = $settings->rub_rate ?? 140;
 
         $result = [
@@ -486,10 +498,17 @@ class FinanceController extends Controller
      */
     protected function getStockSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
+        return $this->inventoryValuationService->getStockSummary($companyId, $settings, $currencyService, $displayCurrency);
+    }
+
+    /**
+     * @deprecated Метод перенесён в InventoryValuationService
+     */
+    protected function getStockSummaryLegacy(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
+    {
         $baseCurrency = 'UZS';
 
         try {
-            // Рассчитываем стоимость из актуальных закупочных цен вариантов (с конвертацией валют)
             $stockData = StockLedger::where('stock_ledger.company_id', $companyId)
                 ->join('skus', 'stock_ledger.sku_id', '=', 'skus.id')
                 ->leftJoin('product_variants', 'skus.product_variant_id', '=', 'product_variants.id')
@@ -591,6 +610,14 @@ class FinanceController extends Controller
      * Все суммы конвертируются в выбранную валюту
      */
     protected function getTransitSummary(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
+    {
+        return $this->inventoryValuationService->getTransitSummary($companyId, $settings, $currencyService, $displayCurrency);
+    }
+
+    /**
+     * @deprecated Метод перенесён в InventoryValuationService
+     */
+    protected function getTransitSummaryLegacy(int $companyId, FinanceSettings $settings, $currencyService = null, string $displayCurrency = 'UZS'): array
     {
         $rubToUzs = $settings->rub_rate ?? 140;
         $baseCurrency = 'UZS';
@@ -2117,6 +2144,14 @@ class FinanceController extends Controller
      * ВАЖНО: purchase_price в ProductVariant конвертируется в UZS через getPurchasePriceInBase()
      */
     protected function calculateCogs(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
+    {
+        return $this->inventoryValuationService->calculateCogs($companyId, $from, $to, $rubToUzs);
+    }
+
+    /**
+     * @deprecated Метод перенесён в InventoryValuationService
+     */
+    protected function calculateCogsLegacy(int $companyId, Carbon $from, Carbon $to, float $rubToUzs): array
     {
         $financeSettings = \App\Models\Finance\FinanceSettings::getForCompany($companyId);
 
