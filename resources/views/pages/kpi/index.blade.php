@@ -613,45 +613,102 @@
 
     {{-- ============ МОДАЛКА: ШКАЛА ============ --}}
     <div x-show="showScaleModal" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showScaleModal = false">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="p-6">
-                <h3 class="text-lg font-semibold mb-4" x-text="scaleForm.id ? '{{ __('kpi.scales.edit') }}' : '{{ __('kpi.scales.new') }}'"></h3>
-                <div class="space-y-4">
+                <h3 class="text-lg font-semibold mb-1" x-text="scaleForm.id ? 'Редактировать шкалу бонусов' : 'Новая шкала бонусов'"></h3>
+                <p class="text-sm text-gray-500 mb-5">Шкала определяет какой бонус получит сотрудник при разном уровне выполнения KPI</p>
+
+                <div class="space-y-5">
+                    {{-- Название --}}
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('kpi.scales.name') }}</label>
-                        <input type="text" x-model="scaleForm.name" class="w-full rounded-lg border-gray-300 text-sm">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Название шкалы</label>
+                        <input type="text" x-model="scaleForm.name" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Например: Стандартная шкала для менеджеров">
                     </div>
+
                     <div>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" x-model="scaleForm.is_default" class="rounded border-gray-300 text-blue-600">
-                            {{ __('kpi.scales.default') }}
+                            Использовать по умолчанию для новых планов
                         </label>
+                    </div>
+
+                    {{-- Пояснение --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-800 font-medium mb-2">Как это работает?</p>
+                        <p class="text-sm text-blue-700">Добавьте ступени: при каком проценте выполнения KPI какой бонус получит сотрудник. Например:</p>
+                        <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                            <li>Выполнил <b>80–99%</b> плана &rarr; бонус <b>3%</b> от оборота</li>
+                            <li>Выполнил <b>100–119%</b> плана &rarr; бонус <b>5%</b> от оборота</li>
+                            <li>Выполнил <b>120%+</b> плана &rarr; бонус <b>7%</b> от оборота</li>
+                        </ul>
                     </div>
 
                     {{-- Ступени --}}
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm font-medium text-gray-700">{{ __('kpi.scales.tiers') }}</label>
-                            <button @click="addTier()" class="text-xs text-blue-600 hover:text-blue-800">+ {{ __('kpi.scales.add_tier') }}</button>
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-medium text-gray-700">Ступени бонусов</label>
+                            <button @click="addTier()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Добавить ступень</button>
                         </div>
-                        <template x-for="(tier, idx) in scaleForm.tiers" :key="idx">
-                            <div class="flex items-center gap-2 mb-2">
-                                <input type="number" x-model="tier.min_percent" placeholder="От %" class="w-20 rounded-lg border-gray-300 text-sm" min="0">
-                                <input type="number" x-model="tier.max_percent" placeholder="До %" class="w-20 rounded-lg border-gray-300 text-sm" min="0">
-                                <select x-model="tier.bonus_type" class="flex-1 rounded-lg border-gray-300 text-sm">
-                                    <option value="fixed">{{ __('kpi.scales.type_fixed') }}</option>
-                                    <option value="percent_revenue">{{ __('kpi.scales.type_percent_revenue') }}</option>
-                                    <option value="percent_margin">{{ __('kpi.scales.type_percent_margin') }}</option>
-                                </select>
-                                <input type="number" x-model="tier.bonus_value" placeholder="Значение" class="w-24 rounded-lg border-gray-300 text-sm" min="0" step="0.01">
-                                <button @click="scaleForm.tiers.splice(idx, 1)" class="text-red-400 hover:text-red-600">&times;</button>
+
+                        <template x-if="scaleForm.tiers.length === 0">
+                            <div class="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                                <p class="text-gray-400 text-sm mb-2">Нет ступеней</p>
+                                <button @click="addTier()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Добавить первую ступень</button>
                             </div>
                         </template>
+
+                        <div class="space-y-3">
+                            <template x-for="(tier, idx) in scaleForm.tiers" :key="idx">
+                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 relative">
+                                    <button @click="scaleForm.tiers.splice(idx, 1)" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-lg" title="Удалить ступень">&times;</button>
+
+                                    <p class="text-xs font-semibold text-gray-500 uppercase mb-3" x-text="'Ступень ' + (idx + 1)"></p>
+
+                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Выполнение KPI от (%)</label>
+                                            <input type="number" x-model="tier.min_percent" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="300" placeholder="80">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Выполнение KPI до (%) <span class="text-gray-400">— пусто = без ограничения</span></label>
+                                            <input type="number" x-model="tier.max_percent" class="w-full rounded-lg border-gray-300 text-sm" min="0" max="300" placeholder="100 или пусто">
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Тип бонуса</label>
+                                            <select x-model="tier.bonus_type" class="w-full rounded-lg border-gray-300 text-sm">
+                                                <option value="fixed">Фиксированная сумма (сум)</option>
+                                                <option value="percent_revenue">% от оборота</option>
+                                                <option value="percent_margin">% от маржи</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1" x-text="tier.bonus_type === 'fixed' ? 'Сумма бонуса (сум)' : 'Процент (%)'"></label>
+                                            <input type="number" x-model="tier.bonus_value" class="w-full rounded-lg border-gray-300 text-sm" min="0" step="0.01"
+                                                   :placeholder="tier.bonus_type === 'fixed' ? '500 000' : '5'">
+                                        </div>
+                                    </div>
+
+                                    {{-- Пример расчёта --}}
+                                    <div class="mt-3 bg-white rounded-lg px-3 py-2 border border-gray-100">
+                                        <p class="text-xs text-gray-500">
+                                            <span class="font-medium">Пример:</span>
+                                            <span x-show="tier.bonus_type === 'fixed'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value ? parseInt(tier.bonus_value).toLocaleString('ru-RU') : '?') + ' сум'"></span>
+                                            <span x-show="tier.bonus_type === 'percent_revenue'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value || '?') + '% от оборота (при обороте 100 млн = ' + (tier.bonus_value ? (1000000 * tier.bonus_value / 100 * 100).toLocaleString('ru-RU') : '?') + ' сум)'"></span>
+                                            <span x-show="tier.bonus_type === 'percent_margin'" x-text="'при выполнении ' + (tier.min_percent || '?') + '–' + (tier.max_percent || '...') + '% KPI сотрудник получит ' + (tier.bonus_value || '?') + '% от маржи'"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
+
                 <div class="flex justify-end gap-3 mt-6">
-                    <button @click="showScaleModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">{{ __('kpi.cancel') }}</button>
-                    <button @click="saveScale()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">{{ __('kpi.save') }}</button>
+                    <button @click="showScaleModal = false" class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Отмена</button>
+                    <button @click="saveScale()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">Сохранить</button>
                 </div>
             </div>
         </div>
