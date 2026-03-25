@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Kpi;
 
+use App\Models\Finance\Employee;
 use App\Models\Kpi\KpiPlan;
 use App\Models\Kpi\SalesSphere;
 use App\Models\MarketplaceAccount;
@@ -21,11 +22,6 @@ final class KpiCalculationService
     public function __construct(
         private readonly KpiMarginCalculator $marginCalculator,
     ) {}
-
-    /**
-     * Статусы отменённых заказов (исключаются из расчёта)
-     */
-    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
 
     /**
      * Собрать фактические данные по сфере за период
@@ -156,7 +152,7 @@ final class KpiCalculationService
             $wbFbsRow = DB::table('wb_orders')
                 ->whereIn('marketplace_account_id', $accountIds)
                 ->whereBetween('ordered_at', [$periodStart, $periodEnd])
-                ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+                ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
                 ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
                 ->first();
 
@@ -182,7 +178,7 @@ final class KpiCalculationService
         $row = DB::table('uzum_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('ordered_at', [$periodStart, $periodEnd])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(total_amount), 0) as revenue, COUNT(*) as orders')
             ->first();
 
@@ -202,7 +198,7 @@ final class KpiCalculationService
         $row = DB::table('ozon_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->whereNotIn('status', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders')
             ->first();
 
@@ -222,7 +218,7 @@ final class KpiCalculationService
         $row = DB::table('yandex_market_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders')
             ->first();
 
@@ -345,38 +341,38 @@ final class KpiCalculationService
      */
     public function getEmployeeRanking(int $companyId, int $year, int $month): array
     {
-        $plans = KpiPlan::byCompany($companyId)
+        // SQL агрегация вместо загрузки всех планов и группировки в PHP
+        $results = KpiPlan::byCompany($companyId)
             ->forPeriod($year, $month)
             ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
-            ->with(['employee.user'])
+            ->select([
+                'employee_id',
+                DB::raw('AVG(achievement_percent) as avg_achievement'),
+                DB::raw('SUM(bonus_amount) as total_bonus'),
+                DB::raw('COUNT(*) as plans_count'),
+            ])
+            ->groupBy('employee_id')
+            ->orderByDesc('avg_achievement')
             ->get();
 
-        $grouped = $plans->groupBy('employee_id');
+        // Подгрузить имена сотрудников одним запросом
+        $employeeIds = $results->pluck('employee_id')->toArray();
+        $employees = Employee::whereIn('id', $employeeIds)->pluck('name', 'id');
 
-        $ranking = $grouped->map(function (Collection $employeePlans, int $employeeId) {
-            $employee = $employeePlans->first()->employee;
-            $employeeName = $employee->name ?? $employee->user?->name ?? 'Сотрудник #' . $employeeId;
+        $rank = 0;
+
+        return $results->map(function ($row) use (&$rank, $employees) {
+            $rank++;
 
             return [
-                'employee_id' => $employeeId,
-                'employee_name' => $employeeName,
-                'avg_achievement' => round($employeePlans->avg('achievement_percent'), 2),
-                'total_bonus' => round($employeePlans->sum('bonus_amount'), 2),
-                'plans_count' => $employeePlans->count(),
+                'rank' => $rank,
+                'employee_id' => (int) $row->employee_id,
+                'employee_name' => $employees[$row->employee_id] ?? 'Сотрудник #' . $row->employee_id,
+                'avg_achievement' => round((float) $row->avg_achievement, 2),
+                'total_bonus' => round((float) $row->total_bonus, 2),
+                'plans_count' => (int) $row->plans_count,
             ];
-        })
-            ->sortByDesc('avg_achievement')
-            ->values();
-
-        // Присваиваем ранги
-        $result = [];
-        $rank = 1;
-        foreach ($ranking as $item) {
-            $item['rank'] = $rank++;
-            $result[] = $item;
-        }
-
-        return $result;
+        })->toArray();
     }
 
     /**
@@ -402,7 +398,14 @@ final class KpiCalculationService
         $plans = KpiPlan::byCompany($companyId)
             ->forPeriod($year, $month)
             ->whereIn('status', [KpiPlan::STATUS_ACTIVE, KpiPlan::STATUS_CALCULATED])
-            ->with(['employee', 'salesSphere'])
+            ->select([
+                'id', 'company_id', 'employee_id', 'kpi_sales_sphere_id',
+                'actual_revenue', 'actual_margin', 'actual_orders',
+                'target_revenue', 'target_margin', 'target_orders',
+                'weight_revenue', 'weight_margin', 'weight_orders',
+                'status',
+            ])
+            ->with(['employee:id,name,company_id', 'salesSphere:id,name'])
             ->get();
 
         $onTrackCount = 0;
@@ -480,24 +483,32 @@ final class KpiCalculationService
      */
     public function getDashboard(int $companyId, int $year, int $month): array
     {
+        // Одна SQL агрегация вместо загрузки всех записей и подсчёта в PHP
+        $stats = KpiPlan::byCompany($companyId)
+            ->forPeriod($year, $month)
+            ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
+            ->select([
+                DB::raw('COUNT(DISTINCT employee_id) as employees'),
+                DB::raw('AVG(achievement_percent) as avg_achievement'),
+                DB::raw('SUM(bonus_amount) as total_bonus'),
+                DB::raw('SUM(actual_revenue) as total_revenue'),
+                DB::raw('SUM(target_revenue) as target_revenue'),
+            ])
+            ->first();
+
+        // Отдельный запрос для списка планов (нужен для отображения)
         $plans = KpiPlan::byCompany($companyId)
             ->forPeriod($year, $month)
             ->where('status', '!=', KpiPlan::STATUS_CANCELLED)
-            ->with(['employee', 'salesSphere'])
+            ->with(['employee:id,name,company_id', 'salesSphere:id,name'])
             ->get();
 
-        $employeeCount = $plans->pluck('employee_id')->unique()->count();
-        $avgAchievement = $plans->count() > 0 ? round($plans->avg('achievement_percent'), 1) : 0;
-        $totalBonus = $plans->sum('bonus_amount');
-        $totalTargetRevenue = $plans->sum('target_revenue');
-        $totalActualRevenue = $plans->sum('actual_revenue');
-
         return [
-            'employees' => $employeeCount,
-            'avg_achievement' => $avgAchievement,
-            'total_bonus' => $totalBonus,
-            'total_revenue' => $totalActualRevenue,
-            'target_revenue' => $totalTargetRevenue,
+            'employees' => (int) ($stats->employees ?? 0),
+            'avg_achievement' => round((float) ($stats->avg_achievement ?? 0), 1),
+            'total_bonus' => (float) ($stats->total_bonus ?? 0),
+            'total_revenue' => (float) ($stats->total_revenue ?? 0),
+            'target_revenue' => (float) ($stats->target_revenue ?? 0),
             'plans' => $plans,
         ];
     }

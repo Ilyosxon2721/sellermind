@@ -48,6 +48,11 @@ final class KpiPlan extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * Статусы отменённых заказов маркетплейсов (исключаются из расчёта KPI)
+     */
+    public const CANCELLED_ORDER_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
+
     protected $fillable = [
         'company_id',
         'employee_id',

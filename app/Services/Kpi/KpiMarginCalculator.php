@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Kpi;
 
+use App\Models\Kpi\KpiPlan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -12,11 +13,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class KpiMarginCalculator
 {
-    /**
-     * Статусы отменённых заказов (исключаются из расчёта)
-     */
-    private const CANCELLED_STATUSES = ['cancelled', 'canceled', 'CANCELED', 'PENDING_CANCELLATION'];
-
     /**
      * Рассчитать маржу по маркетплейсу за период
      *
@@ -95,7 +91,7 @@ final class KpiMarginCalculator
             })
             ->whereIn('wo.marketplace_account_id', $accountIds)
             ->whereBetween('wo.ordered_at', [$periodStart, $periodEnd])
-            ->whereNotIn('wo.status_normalized', self::CANCELLED_STATUSES)
+            ->whereNotIn('wo.status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(woi.total_price), 0) as revenue, COALESCE(SUM(pv.purchase_price * woi.quantity), 0) as total_cost')
             ->first();
 
@@ -119,7 +115,7 @@ final class KpiMarginCalculator
             })
             ->whereIn('uo.marketplace_account_id', $accountIds)
             ->whereBetween('uo.ordered_at', [$periodStart, $periodEnd])
-            ->whereNotIn('uo.status_normalized', self::CANCELLED_STATUSES)
+            ->whereNotIn('uo.status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(uoi.total_price), 0) as revenue, COALESCE(SUM(pv.purchase_price * uoi.quantity), 0) as total_cost')
             ->first();
 
@@ -141,7 +137,7 @@ final class KpiMarginCalculator
         $ordersRow = DB::table('ozon_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->whereNotIn('status', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as total_orders')
             ->first();
 
@@ -173,7 +169,7 @@ final class KpiMarginCalculator
         $ordersRow = DB::table('yandex_market_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
-            ->whereNotIn('status_normalized', self::CANCELLED_STATUSES)
+            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
             ->selectRaw('COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as total_orders')
             ->first();
 
