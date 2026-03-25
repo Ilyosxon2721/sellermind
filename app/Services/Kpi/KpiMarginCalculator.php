@@ -7,6 +7,7 @@ namespace App\Services\Kpi;
 use App\Models\Kpi\KpiPlan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Расчёт маржи из заказов маркетплейсов через себестоимость внутренних товаров
@@ -29,13 +30,23 @@ final class KpiMarginCalculator
             return 0.0;
         }
 
-        return match ($marketplace) {
+        $margin = match ($marketplace) {
             'wb', 'wildberries' => $this->getWbMargin($accountIds, $periodStart, $periodEnd, $companyId),
             'uzum' => $this->getUzumMargin($accountIds, $periodStart, $periodEnd, $companyId),
             'ozon' => $this->getOzonMargin($accountIds, $periodStart, $periodEnd, $companyId),
             'ym', 'yandex_market' => $this->getYmMargin($accountIds, $periodStart, $periodEnd, $companyId),
             default => 0.0,
         };
+
+        Log::info('KPI MarginCalculator', [
+            'marketplace' => $marketplace,
+            'account_ids' => $accountIds,
+            'period' => $periodStart->format('Y-m') . ' to ' . $periodEnd->format('Y-m-d'),
+            'company_id' => $companyId,
+            'margin_result' => $margin,
+        ]);
+
+        return $margin;
     }
 
     /**

@@ -193,15 +193,16 @@ final class KpiCalculationService
     private function getUzumStats(array $accountIds, Carbon $periodStart, Carbon $periodEnd): array
     {
         // Приоритет: uzum_finance_orders (содержит seller_profit = чистый оборот)
+        // Фильтруем по status (не status_normalized, т.к. он может быть null)
         $finRow = DB::table('uzum_finance_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('order_date', [$periodStart, $periodEnd])
-            ->whereNotIn('status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
-            ->selectRaw('COALESCE(SUM(seller_profit), 0) as revenue_tiyin, COALESCE(SUM(amount - amount_returns), 0) as orders')
+            ->where('status', 'COMPLETED')
+            ->selectRaw('COALESCE(SUM(seller_profit), 0) as revenue_tiyin, COALESCE(SUM(amount), 0) as total_amount, COALESCE(SUM(amount_returns), 0) as total_returns')
             ->first();
 
         $revenueFromFinance = (float) (($finRow->revenue_tiyin ?? 0) / 100); // тийины → сумы
-        $ordersFromFinance = (int) ($finRow->orders ?? 0);
+        $ordersFromFinance = (int) (($finRow->total_amount ?? 0) - ($finRow->total_returns ?? 0));
 
         if ($revenueFromFinance > 0) {
             return [
@@ -417,6 +418,16 @@ final class KpiCalculationService
         $plan->actual_revenue = $actuals['revenue'];
         $plan->actual_margin = $actuals['margin'];
         $plan->actual_orders = $actuals['orders'];
+
+        Log::info('KPI calculatePlan result', [
+            'plan_id' => $plan->id,
+            'employee_id' => $plan->employee_id,
+            'sphere' => $plan->salesSphere?->name,
+            'sphere_type' => $plan->salesSphere?->is_manual ? 'manual' : 'auto',
+            'has_marketplace' => $plan->salesSphere?->hasMarketplaceLink(),
+            'marketplace_account_ids' => $plan->salesSphere?->getLinkedAccountIds(),
+            'actuals' => $actuals,
+        ]);
 
         // Рассчитать % выполнения
         $plan->achievement_percent = $plan->calculateAchievement();
