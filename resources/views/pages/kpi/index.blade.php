@@ -183,6 +183,47 @@
                         </button>
                     </div>
 
+                    {{-- Инфо: как считается оборот --}}
+                    <div x-data="{ showInfo: false }" class="mb-4">
+                        <button @click="showInfo = !showInfo" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span x-text="showInfo ? 'Скрыть' : 'Как считается оборот?'"></span>
+                        </button>
+                        <div x-show="showInfo" x-transition class="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-5 text-sm text-blue-900">
+                            <h4 class="font-semibold mb-3">Как считается оборот по маркетплейсам</h4>
+                            <div class="space-y-2.5">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex-shrink-0">W</span>
+                                    <div>
+                                        <span class="font-medium">Wildberries</span> — <span class="text-green-700 font-medium">чистый оборот</span> (сумма к перечислению продавцу, за вычетом комиссии WB, логистики и удержаний)
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex-shrink-0">U</span>
+                                    <div>
+                                        <span class="font-medium">Uzum Market</span> — <span class="text-green-700 font-medium">чистый оборот</span> (прибыль продавца из финансового отчёта, за вычетом комиссии Uzum). Если финансовые данные ещё не загружены — используется полная сумма заказа.
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex-shrink-0">O</span>
+                                    <div>
+                                        <span class="font-medium">Ozon</span> — <span class="text-orange-600 font-medium">валовый оборот</span> (полная сумма заказа, без вычета комиссии). API Ozon пока не предоставляет данные о комиссии в заказах.
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-700 text-xs font-bold flex-shrink-0">Я</span>
+                                    <div>
+                                        <span class="font-medium">Yandex Market</span> — <span class="text-orange-600 font-medium">валовый оборот</span> (полная сумма заказа, без вычета комиссии). API YM пока не предоставляет данные о комиссии в заказах.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-200 text-blue-700">
+                                <p><strong>Маржа</strong> рассчитывается как оборот минус себестоимость товаров. Для корректного расчёта заполните себестоимость (<em>purchase_price</em>) в карточках товаров.</p>
+                                <p class="mt-1"><strong>Заказы</strong> — количество завершённых заказов (без отменённых и возвратов).</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Таблица дашборда --}}
                     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                         <table class="w-full text-sm" x-show="(dashboard.plans ?? []).length > 0">
