@@ -170,7 +170,7 @@ final class KpiAiService
         $totalOrders = 0;
 
         // Предзагрузка всех аккаунтов одним запросом вместо N+1
-        $accountsMap = \App\Models\MarketplaceAccount::whereIn('id', $accountIds)->keyBy('id');
+        $accountsMap = \App\Models\MarketplaceAccount::whereIn('id', $accountIds)->get()->keyBy('id');
 
         foreach ($accountIds as $accountId) {
             $account = $accountsMap[$accountId] ?? null;
