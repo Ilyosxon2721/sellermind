@@ -9,18 +9,14 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Расчёт маржи из заказов маркетплейсов через себестоимость товаров
+ * Расчёт маржи из заказов маркетплейсов через себестоимость внутренних товаров
+ *
+ * Цепочка: order_item → variant_marketplace_links → product_variants.purchase_price
  */
 final class KpiMarginCalculator
 {
     /**
      * Рассчитать маржу по маркетплейсу за период
-     *
-     * @param  string  $marketplace  Идентификатор маркетплейса
-     * @param  array<int>  $accountIds  ID аккаунтов маркетплейса
-     * @param  Carbon  $periodStart  Начало периода
-     * @param  Carbon  $periodEnd  Конец периода
-     * @param  int  $companyId  ID компании (для связи с product_variants)
      */
     public function calculateMargin(
         string $marketplace,
@@ -36,28 +32,27 @@ final class KpiMarginCalculator
         return match ($marketplace) {
             'wb', 'wildberries' => $this->getWbMargin($accountIds, $periodStart, $periodEnd, $companyId),
             'uzum' => $this->getUzumMargin($accountIds, $periodStart, $periodEnd, $companyId),
-            'ozon' => $this->getOzonMargin($accountIds, $periodStart, $periodEnd),
-            'ym', 'yandex_market' => $this->getYmMargin($accountIds, $periodStart, $periodEnd),
+            'ozon' => $this->getOzonMargin($accountIds, $periodStart, $periodEnd, $companyId),
+            'ym', 'yandex_market' => $this->getYmMargin($accountIds, $periodStart, $periodEnd, $companyId),
             default => 0.0,
         };
     }
 
     /**
-     * Маржа Wildberries: выручка (for_pay) минус себестоимость через barcode
+     * Маржа Wildberries Statistics API (wildberries_orders)
      *
-     * Связь: wildberries_orders.barcode → product_variants.barcode → purchase_price
-     * Fallback: wb_orders + wb_order_items через sku → product_variants.sku
+     * Связь: wildberries_orders.barcode → variant_marketplace_links.marketplace_barcode
+     *        → product_variants.purchase_price
      */
     private function getWbMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
-        // Основной источник — Statistics API (wildberries_orders)
         $row = DB::table('wildberries_orders as wo')
-            ->leftJoin('product_variants as pv', function ($join) use ($companyId) {
-                $join->on('pv.barcode', '=', 'wo.barcode')
-                    ->where('pv.company_id', '=', $companyId)
-                    ->whereNotNull('pv.barcode')
-                    ->where('pv.barcode', '!=', '');
+            ->leftJoin('variant_marketplace_links as vml', function ($join) use ($accountIds) {
+                $join->on('vml.marketplace_barcode', '=', 'wo.barcode')
+                    ->whereIn('vml.marketplace_account_id', $accountIds)
+                    ->where('vml.is_active', true);
             })
+            ->leftJoin('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('wo.marketplace_account_id', $accountIds)
             ->whereBetween('wo.order_date', [$periodStart, $periodEnd])
             ->where('wo.is_cancel', false)
@@ -68,12 +63,11 @@ final class KpiMarginCalculator
         $revenue = (float) ($row->revenue ?? 0);
         $totalCost = (float) ($row->total_cost ?? 0);
 
-        // Если Statistics API не синхронизировался — fallback на FBS заказы (wb_orders + wb_order_items)
+        // Если Statistics API не синхронизировался — fallback на FBS заказы
         if ($revenue == 0) {
             return $this->getWbFbsMargin($accountIds, $periodStart, $periodEnd, $companyId);
         }
 
-        // Если себестоимость не найдена (нет привязки к product_variants) — маржа неизвестна
         if ($totalCost == 0) {
             return 0.0;
         }
@@ -82,18 +76,21 @@ final class KpiMarginCalculator
     }
 
     /**
-     * Маржа WB FBS: wb_orders + wb_order_items через sku → product_variants.sku
+     * Маржа WB FBS (wb_orders + wb_order_items)
+     *
+     * Связь: wb_order_items.external_offer_id → variant_marketplace_links.external_offer_id
+     *        → product_variants.purchase_price
      */
     private function getWbFbsMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
         $row = DB::table('wb_orders as wo')
             ->join('wb_order_items as woi', 'woi.wb_order_id', '=', 'wo.id')
-            ->leftJoin('product_variants as pv', function ($join) use ($companyId) {
-                $join->on('pv.sku', '=', 'woi.sku')
-                    ->where('pv.company_id', '=', $companyId)
-                    ->whereNotNull('pv.sku')
-                    ->where('pv.sku', '!=', '');
+            ->leftJoin('variant_marketplace_links as vml', function ($join) use ($accountIds) {
+                $join->on('vml.external_offer_id', '=', 'woi.external_offer_id')
+                    ->whereIn('vml.marketplace_account_id', $accountIds)
+                    ->where('vml.is_active', true);
             })
+            ->leftJoin('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('wo.marketplace_account_id', $accountIds)
             ->whereBetween('wo.ordered_at', [$periodStart, $periodEnd])
             ->whereNotIn('wo.status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
@@ -111,18 +108,24 @@ final class KpiMarginCalculator
     }
 
     /**
-     * Маржа Uzum: uzum_order_items через external_offer_id → product_variants.sku
+     * Маржа Uzum (uzum_order_items)
+     *
+     * Связь: uzum_order_items.external_offer_id → variant_marketplace_links.external_offer_id
+     *        (fallback на external_sku_id) → product_variants.purchase_price
      */
     private function getUzumMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
         $row = DB::table('uzum_order_items as uoi')
             ->join('uzum_orders as uo', 'uo.id', '=', 'uoi.uzum_order_id')
-            ->leftJoin('product_variants as pv', function ($join) use ($companyId) {
-                $join->on('pv.sku', '=', 'uoi.external_offer_id')
-                    ->where('pv.company_id', '=', $companyId)
-                    ->whereNotNull('pv.sku')
-                    ->where('pv.sku', '!=', '');
+            ->leftJoin('variant_marketplace_links as vml', function ($join) use ($accountIds) {
+                $join->where(function ($q) use ($accountIds) {
+                    $q->whereColumn('vml.external_sku_id', '=', 'uoi.external_offer_id')
+                        ->orWhereColumn('vml.external_offer_id', '=', 'uoi.external_offer_id');
+                })
+                    ->whereIn('vml.marketplace_account_id', $accountIds)
+                    ->where('vml.is_active', true);
             })
+            ->leftJoin('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
             ->whereIn('uo.marketplace_account_id', $accountIds)
             ->whereBetween('uo.ordered_at', [$periodStart, $periodEnd])
             ->whereNotIn('uo.status_normalized', KpiPlan::CANCELLED_ORDER_STATUSES)
@@ -140,14 +143,13 @@ final class KpiMarginCalculator
     }
 
     /**
-     * Маржа Ozon: упрощённый подход через среднюю себестоимость из marketplace_products
+     * Маржа Ozon
      *
-     * Точный расчёт невозможен т.к. items хранятся в JSON.
-     * Используем: margin = revenue - (avg_purchase_price * total_orders)
+     * Ozon хранит items в JSON, поэтому используем среднюю себестоимость
+     * из привязанных через variant_marketplace_links внутренних товаров
      */
-    private function getOzonMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd): float
+    private function getOzonMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
-        // Выручка и количество заказов
         $ordersRow = DB::table('ozon_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ozon', [$periodStart, $periodEnd])
@@ -162,8 +164,7 @@ final class KpiMarginCalculator
             return 0.0;
         }
 
-        // Средняя себестоимость товаров аккаунтов
-        $avgCost = $this->getAvgPurchasePrice($accountIds);
+        $avgCost = $this->getAvgCostViaLinks($accountIds);
 
         if ($avgCost <= 0) {
             return 0.0;
@@ -173,13 +174,13 @@ final class KpiMarginCalculator
     }
 
     /**
-     * Маржа Yandex Market: упрощённый подход через среднюю себестоимость из marketplace_products
+     * Маржа Yandex Market
      *
-     * Аналогично Ozon — items в JSON, используем средневзвешенную оценку.
+     * Аналогично Ozon — items в JSON, используем среднюю себестоимость
+     * из привязанных через variant_marketplace_links внутренних товаров
      */
-    private function getYmMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd): float
+    private function getYmMargin(array $accountIds, Carbon $periodStart, Carbon $periodEnd, int $companyId): float
     {
-        // Выручка и количество заказов
         $ordersRow = DB::table('yandex_market_orders')
             ->whereIn('marketplace_account_id', $accountIds)
             ->whereBetween('created_at_ym', [$periodStart, $periodEnd])
@@ -194,8 +195,7 @@ final class KpiMarginCalculator
             return 0.0;
         }
 
-        // Средняя себестоимость товаров аккаунтов
-        $avgCost = $this->getAvgPurchasePrice($accountIds);
+        $avgCost = $this->getAvgCostViaLinks($accountIds);
 
         if ($avgCost <= 0) {
             return 0.0;
@@ -205,14 +205,18 @@ final class KpiMarginCalculator
     }
 
     /**
-     * Получить среднюю себестоимость товаров из marketplace_products для указанных аккаунтов
+     * Средняя себестоимость через variant_marketplace_links → product_variants
+     *
+     * Берёт purchase_price из внутренних товаров, привязанных к МП-аккаунтам
      */
-    private function getAvgPurchasePrice(array $accountIds): float
+    private function getAvgCostViaLinks(array $accountIds): float
     {
-        $row = DB::table('marketplace_products')
-            ->whereIn('marketplace_account_id', $accountIds)
-            ->where('purchase_price', '>', 0)
-            ->selectRaw('AVG(purchase_price) as avg_cost')
+        $row = DB::table('variant_marketplace_links as vml')
+            ->join('product_variants as pv', 'pv.id', '=', 'vml.product_variant_id')
+            ->whereIn('vml.marketplace_account_id', $accountIds)
+            ->where('vml.is_active', true)
+            ->where('pv.purchase_price', '>', 0)
+            ->selectRaw('AVG(pv.purchase_price) as avg_cost')
             ->first();
 
         return (float) ($row->avg_cost ?? 0);
