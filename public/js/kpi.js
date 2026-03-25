@@ -273,11 +273,20 @@ function kpiPage(config) {
                 this.notify('Сумма весов должна быть 100 (сейчас: ' + wSum + ')', 'error');
                 return;
             }
+            // Нормализация: пустые поля → 0
+            var payload = Object.assign({}, this.planForm, {
+                target_revenue: parseFloat(this.planForm.target_revenue) || 0,
+                target_margin: parseFloat(this.planForm.target_margin) || 0,
+                target_orders: parseInt(this.planForm.target_orders) || 0,
+                weight_revenue: parseInt(this.planForm.weight_revenue) || 0,
+                weight_margin: parseInt(this.planForm.weight_margin) || 0,
+                weight_orders: parseInt(this.planForm.weight_orders) || 0,
+            });
             try {
-                if (this.planForm.id) {
-                    await this.api('finance/kpi/plans/' + this.planForm.id, 'PUT', this.planForm);
+                if (payload.id) {
+                    await this.api('finance/kpi/plans/' + payload.id, 'PUT', payload);
                 } else {
-                    await this.api('finance/kpi/plans', 'POST', this.planForm);
+                    await this.api('finance/kpi/plans', 'POST', payload);
                 }
                 this.showPlanModal = false;
                 this.notify('План сохранён');
