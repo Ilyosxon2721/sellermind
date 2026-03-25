@@ -28,7 +28,7 @@ final class SalesAnalyticsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'period' => ['nullable', 'string', 'in:7days,30days,90days,365days,all'],
+            'period' => ['nullable', 'string', 'in:today,7days,30days,90days,365days,month,year,all'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
@@ -57,7 +57,7 @@ final class SalesAnalyticsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'period.in' => 'Допустимые значения периода: 7days, 30days, 90days, 365days, all.',
+            'period.in' => 'Допустимые значения периода: today, 7days, 30days, 90days, 365days, month, year, all.',
             'limit.integer' => 'Лимит должен быть целым числом.',
             'limit.min' => 'Лимит должен быть не менее 1.',
             'limit.max' => 'Лимит не может превышать 100.',
