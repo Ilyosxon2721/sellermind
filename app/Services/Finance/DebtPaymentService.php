@@ -96,6 +96,13 @@ class DebtPaymentService
             ? $balanceBefore + $payment->amount
             : $balanceBefore - $payment->amount;
 
+        // Проверка на отрицательный баланс при расходе
+        if (! $isIncome && $balanceAfter < 0 && ! ($account->allow_negative ?? false)) {
+            throw new \DomainException(
+                "Недостаточно средств на счёте «{$account->name}»: баланс {$balanceBefore}, платёж {$payment->amount}"
+            );
+        }
+
         $cashTx = CashTransaction::create([
             'company_id' => $debt->company_id,
             'cash_account_id' => $account->id,
