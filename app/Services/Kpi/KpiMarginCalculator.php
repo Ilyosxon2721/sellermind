@@ -73,6 +73,11 @@ final class KpiMarginCalculator
             return $this->getWbFbsMargin($accountIds, $periodStart, $periodEnd, $companyId);
         }
 
+        // Если себестоимость не найдена (нет привязки к product_variants) — маржа неизвестна
+        if ($totalCost == 0) {
+            return 0.0;
+        }
+
         return max(0.0, $revenue - $totalCost);
     }
 
@@ -98,6 +103,10 @@ final class KpiMarginCalculator
         $revenue = (float) ($row->revenue ?? 0);
         $totalCost = (float) ($row->total_cost ?? 0);
 
+        if ($totalCost == 0) {
+            return 0.0;
+        }
+
         return max(0.0, $revenue - $totalCost);
     }
 
@@ -122,6 +131,10 @@ final class KpiMarginCalculator
 
         $revenue = (float) ($row->revenue ?? 0);
         $totalCost = (float) ($row->total_cost ?? 0);
+
+        if ($totalCost == 0) {
+            return 0.0;
+        }
 
         return max(0.0, $revenue - $totalCost);
     }
