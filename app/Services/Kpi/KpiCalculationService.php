@@ -276,11 +276,15 @@ final class KpiCalculationService
             ->selectRaw('COALESCE(SUM(line_total), 0) as total_sales, COALESCE(SUM(unit_cost * quantity), 0) as total_cost')
             ->first();
 
-        $margin = (float) (($costData->total_sales ?? 0) - ($costData->total_cost ?? 0));
+        $totalSales = (float) ($costData->total_sales ?? 0);
+        $totalCost = (float) ($costData->total_cost ?? 0);
+
+        // Если себестоимость не заполнена — маржа неизвестна, возвращаем 0
+        $margin = $totalCost > 0 ? max(0, $totalSales - $totalCost) : 0.0;
 
         return [
             'revenue' => $revenue,
-            'margin' => max(0, $margin),
+            'margin' => $margin,
             'orders' => $orders,
         ];
     }
